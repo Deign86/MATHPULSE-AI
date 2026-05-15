@@ -1044,7 +1044,9 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                 <Menu size={20} />
               </button>
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-display font-bold text-[#0a1628] leading-tight truncate">{activeTab}</h1>
+                <h1 className="text-lg sm:text-xl font-display font-bold text-[#0a1628] leading-tight truncate">
+                  {activeTab === 'Grades' ? 'Assessment' : activeTab === 'Leaderboard' ? 'Leadership Board' : activeTab}
+                </h1>
                 <p className="text-xs text-[#5a6578] font-body truncate">Welcome back, {profileData.name.split(' ')[0]}!</p>
               </div>
               {/* Inline gamification badges — always visible */}

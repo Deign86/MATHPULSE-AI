@@ -46,16 +46,16 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
       whileHover={isAvailable ? { y: -8 } : undefined}
       onClick={isAvailable ? onClick : undefined}
       onKeyDown={isAvailable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-      className={`relative text-left rounded-[1.4rem] overflow-visible min-h-[290px] bg-transparent group w-full ${!isAvailable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      className={`relative text-left rounded-2xl md:rounded-[1.4rem] overflow-visible min-h-[170px] md:min-h-[290px] bg-transparent group w-full flex flex-col ${!isAvailable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {/* FOLDER TAB */}
       <div 
-        className={`absolute top-0 left-4 h-7 w-32 rounded-t-xl shadow-sm transition-colors duration-300 ${theme.tab}`}
+        className={`absolute top-0 left-3 md:left-4 h-5 md:h-7 w-20 md:w-32 rounded-t-lg md:rounded-t-xl shadow-sm transition-colors duration-300 ${theme.tab}`}
       />
 
       {/* FOLDER BODY */}
       <div 
-        className={`relative mt-6 rounded-[1.4rem] p-6 transition-all duration-300 overflow-hidden flex flex-col h-[calc(100%-24px)] ${theme.bg} shadow-[0_18px_30px_-20px_rgba(0,0,0,0.45)] group-hover:shadow-[0_24px_40px_-15px_rgba(0,0,0,0.5)]`}
+        className={`relative mt-4 md:mt-6 rounded-2xl md:rounded-[1.4rem] p-3.5 md:p-6 transition-all duration-300 overflow-hidden flex flex-col h-[calc(100%-16px)] md:h-[calc(100%-24px)] flex-1 ${theme.bg} shadow-[0_18px_30px_-20px_rgba(0,0,0,0.45)] group-hover:shadow-[0_24px_40px_-15px_rgba(0,0,0,0.5)]`}
       >
         {/* SPINE / TOP HIGHLIGHT */}
         <div className="absolute top-0 left-0 right-0 h-1.5 mix-blend-overlay bg-white/40" />
@@ -74,38 +74,38 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
             )}
           </div>
 
-          <h3 className="text-2xl md:text-[22px] font-display font-black text-white leading-[1.1] mb-2 drop-shadow-sm pr-4 line-clamp-2">
+          <h3 className="text-base md:text-[22px] font-display font-black text-white leading-[1.15] md:leading-[1.1] mb-1.5 md:mb-2 drop-shadow-sm pr-4 line-clamp-2">
             {module.title}
           </h3>
 
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            <span className="rounded-full border border-white/20 bg-black/15 px-2.5 py-1 text-[10px] font-bold text-white/95">
+          <div className="mb-2 md:mb-3 flex flex-wrap gap-1 md:gap-1.5">
+            <span className="rounded-full border border-white/20 bg-black/15 px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-white/95 leading-none">
               {curriculumBadge}
             </span>
             {module.content_domain && (
-              <span className="rounded-full border border-white/20 bg-black/15 px-2.5 py-1 text-[10px] font-bold text-white/95">
+              <span className="rounded-full border border-white/20 bg-black/15 px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-white/95 leading-none">
                 {module.content_domain}
               </span>
             )}
             {isRecommended && (
-              <span className="rounded-full border border-purple-200 bg-purple-100 px-2.5 py-1 text-[10px] font-bold text-purple-700 shadow-sm animate-pulse">
+              <span className="rounded-full border border-purple-200 bg-purple-100 px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-purple-700 shadow-sm animate-pulse leading-none">
                 Recommended
               </span>
             )}
           </div>
 
-          <p className="text-white/85 text-[13px] line-clamp-2 mb-4 font-medium leading-relaxed pr-2">
+          <p className="text-white/85 text-[10px] md:text-[13px] line-clamp-1 md:line-clamp-2 mb-2 md:mb-4 font-medium leading-snug md:leading-relaxed pr-2">
             {module.subtitle || module.description || 'Master this module to unlock the next level of your mathematical journey.'}
           </p>
           
-          <div className="mt-auto space-y-4">
+          <div className="mt-auto space-y-2 md:space-y-4">
             {/* Progress Bar */}
             <div>
-              <div className="flex justify-between text-white font-bold text-[12px] mb-1.5 drop-shadow-sm">
+              <div className="flex justify-between text-white font-bold text-[10px] md:text-[12px] mb-1 md:mb-1.5 drop-shadow-sm">
                  <span className="opacity-90 uppercase tracking-wider">Progress</span>
                  <span>{module.progress > 0 ? module.progress : 0}%</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-black/20 overflow-hidden shadow-inner">
+              <div className="w-full h-1.5 md:h-2 rounded-full bg-black/20 overflow-hidden shadow-inner">
                  <div
                    className="h-full bg-white rounded-full transition-all duration-1000 ease-out e-w"
                    style={{ ['--w' as any]: `${module.progress > 0 ? module.progress : 0}%` }}
@@ -113,14 +113,14 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-1.5 md:gap-2">
               {/* Lessons & Quizzes Pills - Bottom Left */}
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center gap-1 px-2 py-1 bg-white/20 rounded-lg text-white font-bold text-[11px] backdrop-blur-sm shadow-sm border border-white/10">
-                  <BookOpen size={12} className="opacity-90" /> {module.totalLessons || module.lessons?.length || 0} lessons
+              <div className="flex flex-wrap md:flex-nowrap items-center gap-1 md:gap-1.5">
+                <div className="flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 bg-white/20 rounded-md md:rounded-lg text-white font-bold text-[9px] md:text-[11px] backdrop-blur-sm shadow-sm border border-white/10">
+                  <BookOpen size={10} className="md:w-3 md:h-3 opacity-90" /> {module.totalLessons || module.lessons?.length || 0} lessons
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-white/20 rounded-lg text-white font-bold text-[11px] backdrop-blur-sm shadow-sm border border-white/10">
-                  <Clock size={12} className="opacity-90" /> {module.totalQuizzes || module.quizzes?.length || 0} quizzes
+                <div className="flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 bg-white/20 rounded-md md:rounded-lg text-white font-bold text-[9px] md:text-[11px] backdrop-blur-sm shadow-sm border border-white/10">
+                  <Clock size={10} className="md:w-3 md:h-3 opacity-90" /> {module.totalQuizzes || module.quizzes?.length || 0} quizzes
                 </div>
               </div>
 
@@ -131,9 +131,9 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
                     event.stopPropagation();
                     onPreviewSources();
                   }}
-                  className="flex items-center gap-1 rounded-lg bg-black/20 hover:bg-black/40 px-2 py-1 font-bold uppercase tracking-wider text-white transition-all shadow-sm border border-white/10 leading-none text-[8px]"
+                  className="flex shrink-0 items-center gap-0.5 md:gap-1 rounded-md md:rounded-lg bg-black/20 hover:bg-black/40 px-1.5 md:px-2 py-1 font-bold uppercase tracking-wider text-white transition-all shadow-sm border border-white/10 leading-none text-[7px] md:text-[8px]"
                 >
-                  <Link2 size={10} />
+                  <Link2 size={8} className="md:w-[10px] md:h-[10px]" />
                   SOURCE
                 </button>
               )}
@@ -148,14 +148,14 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
 
           {!isAvailable && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-[1.4rem] bg-black/60 backdrop-blur-[2px]">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
-                  <Lock size={28} className="text-white" />
+              <div className="flex flex-col items-center gap-2 md:gap-3">
+                <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
+                  <Lock className="w-5 h-5 md:w-7 md:h-7 text-white" />
                 </div>
-                <div className="text-center">
-                  <p className="text-white font-black text-sm tracking-wide">Content Unavailable</p>
-                  <p className="text-white/70 text-[11px] font-semibold mt-1 max-w-[180px]">
-                    Teaching module PDF not yet loaded. Check back soon.
+                <div className="text-center px-2">
+                  <p className="text-white font-black text-xs md:text-sm tracking-wide">Content Unavailable</p>
+                  <p className="text-white/70 text-[9px] md:text-[11px] font-semibold mt-0.5 md:mt-1 max-w-[140px] md:max-w-[180px] mx-auto leading-tight">
+                    Teaching module PDF not yet loaded.
                   </p>
                 </div>
               </div>
