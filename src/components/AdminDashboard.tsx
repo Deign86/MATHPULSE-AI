@@ -251,19 +251,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </div>
 
             <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-              {/* AI Insights Button (Static for now in Admin) */}
-              <div className="relative group">
-                <button
-                  className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
-                  aria-label="View AI Insight"
-                >
-                  <Sparkles size={18} />
-                </button>
-                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                  System Health
-                </span>
-              </div>
-
               {/* Notification Bell */}
               <div className="relative">
                 <button
@@ -302,7 +289,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         </header>
 
         {/* Main Grid */}
-        <main className="flex-1 overflow-y-auto px-[24px] xl:px-[32px] pb-[32px] scrollbar-hide">
+        <main className={`flex-1 overflow-y-auto px-[24px] xl:px-[32px] scrollbar-hide ${activeTab === 'User Management' ? 'pb-0' : 'pb-[32px]'}`}>
           {activeTab === 'Overview' && (
             <div className="max-w-[1600px] mx-auto space-y-6 mt-4">
               {/* Row 1: Ratio 4:8 */}
