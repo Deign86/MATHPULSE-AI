@@ -122,7 +122,7 @@ const AdminAuditLog: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-8 pt-6 xl:pt-8"
     >
       {/* Header Section */}
       <div className="flex flex-col gap-1">

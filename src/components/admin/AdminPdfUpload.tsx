@@ -170,7 +170,7 @@ formData.append('quarter', quarter);
     : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pt-6 xl:pt-8">
       {/* Upload Card */}
       <div className="bg-white rounded-2xl border border-[#dde3eb] shadow-sm p-6">
         <div className="flex items-center gap-3 mb-5">

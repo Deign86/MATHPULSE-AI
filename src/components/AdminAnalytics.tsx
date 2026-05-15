@@ -112,7 +112,8 @@ const AdminAnalytics: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="pt-6 xl:pt-8">
+      <div className="space-y-8">
       {/* Time Range & Export Controls */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -398,6 +399,7 @@ const AdminAnalytics: React.FC = () => {
           />
         </motion.div>
       </div>
+    </div>
     </div>
   );
 };

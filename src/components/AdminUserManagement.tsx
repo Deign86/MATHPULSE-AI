@@ -752,7 +752,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
   return (
     <div className="flex flex-col min-h-full animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex-1 space-y-6 pt-8 xl:pt-10 pb-6 px-1">
+      <div className="flex-1 space-y-8 pt-6 xl:pt-8 pb-6 px-1">
         {/* Stats Cards - Bento Style */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         {loading && users.length === 0

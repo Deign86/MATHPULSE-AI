@@ -1,269 +1,149 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Search, Plus, CheckCircle, FileText, Trash2,
-  Video, HelpCircle, Edit3,
-  BookOpen, Users, Loader2, RefreshCw,
-  ChevronDown
+  FileText, Plus, Search, Filter, MoreVertical, 
+  Trash2, Edit2, Eye, Download, RefreshCw, 
+  CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Switch } from './ui/switch';
-import ConfirmModal from './ConfirmModal';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
-import {
-  getModules,
-  createModule,
-  updateModule,
-  deleteModule,
-  addAuditLog,
-  type ContentModule,
-} from '../services/adminService';
-import { useAuth } from '../contexts/AuthContext';
+import { 
+  Table, TableBody, TableCell, TableHead, 
+  TableHeader, TableRow 
+} from './ui/table';
+import { 
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from './ui/dropdown-menu';
+import { Badge } from './ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+import ConfirmModal from './ConfirmModal';
 
-type ModuleFormData = Omit<ContentModule, 'id' | 'created'> & {
-  ragEnabled?: boolean;
-  ragDocumentUrl?: string;
-  ragChunkSize?: number;
-  ragChunkOverlap?: number;
-  ragEmbeddingModel?: string;
-  ragTopK?: number;
-  ragNamespace?: string;
-  ragIndexStatus?: 'pending' | 'indexed' | 'failed' | 'not_indexed';
-  ragLastIndexedAt?: string;
-};
+interface ContentModule {
+  id: string;
+  title: string;
+  subject: string;
+  gradeLevel: string;
+  type: 'PDF' | 'Template' | 'Quiz' | 'Interactive';
+  status: 'Published' | 'Draft' | 'Archived';
+  lastModified: string;
+  author: string;
+  size?: string;
+}
 
 const AdminContent: React.FC = () => {
-  const { userProfile } = useAuth();
   const [modules, setModules] = useState<ContentModule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('All Types');
-  const [selectedStatus, setSelectedStatus] = useState('All Status');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [pendingDeleteModule, setPendingDeleteModule] = useState<ContentModule | null>(null);
-  const [editingModule, setEditingModule] = useState<ContentModule | null>(null);
-  const [ragSectionExpanded, setRagSectionExpanded] = useState(false);
-  const [formData, setFormData] = useState<ModuleFormData>({
-    title: '',
-    subject: '',
-    type: 'Video',
-    difficulty: 'Beginner',
-    status: 'Draft',
-    assigned: 0,
-    // RAG defaults
-    ragEnabled: false,
-    ragDocumentUrl: '',
-    ragChunkSize: 512,
-    ragChunkOverlap: 64,
-    ragEmbeddingModel: 'BAAI/bge-small-en-v1.5',
-    ragTopK: 5,
-    ragNamespace: '',
-    ragIndexStatus: 'not_indexed',
-  });
+  const [filterType, setFilterType] = useState<string>('All');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const loadModules = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getModules();
-      setModules(data);
-    } catch {
-      toast.error('Failed to load modules');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  // Mock data loading
   useEffect(() => {
     loadModules();
-  }, [loadModules]);
+  }, []);
+
+  const loadModules = () => {
+    setLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setModules([
+        {
+          id: '1',
+          title: 'Introduction to Functions',
+          subject: 'General Mathematics',
+          gradeLevel: 'Grade 11',
+          type: 'PDF',
+          status: 'Published',
+          lastModified: '2024-03-10',
+          author: 'Admin User',
+          size: '2.4 MB'
+        },
+        {
+          id: '2',
+          title: 'Unit Circle Trigonometry',
+          subject: 'Pre-Calculus',
+          gradeLevel: 'Grade 11',
+          type: 'Template',
+          status: 'Published',
+          lastModified: '2024-03-08',
+          author: 'Curriculum Team',
+          size: '1.1 MB'
+        },
+        {
+          id: '3',
+          title: 'Limits and Continuity',
+          subject: 'Basic Calculus',
+          gradeLevel: 'Grade 12',
+          type: 'Interactive',
+          status: 'Draft',
+          lastModified: '2024-03-12',
+          author: 'Admin User',
+          size: '4.8 MB'
+        },
+        {
+          id: '4',
+          title: 'Hypothesis Testing',
+          subject: 'Stats & Probability',
+          gradeLevel: 'Grade 11',
+          type: 'Quiz',
+          status: 'Published',
+          lastModified: '2024-03-05',
+          author: 'Teacher Sarah',
+          size: '0.5 MB'
+        }
+      ]);
+      setLoading(false);
+    }, 800);
+  };
+
+  const handleDelete = (id: string) => {
+    setModules(modules.filter(m => m.id !== id));
+    setDeleteConfirmId(null);
+    toast.success('Module deleted successfully');
+  };
 
   const handleOpenAdd = () => {
-    setEditingModule(null);
-    setFormData({
-      title: '',
-      subject: '',
-      type: 'Video',
-      difficulty: 'Beginner',
-      status: 'Draft',
-      assigned: 0,
-      // RAG defaults
-      ragEnabled: false,
-      ragDocumentUrl: '',
-      ragChunkSize: 512,
-      ragChunkOverlap: 64,
-      ragEmbeddingModel: 'BAAI/bge-small-en-v1.5',
-      ragTopK: 5,
-      ragNamespace: '',
-      ragIndexStatus: 'not_indexed',
-    });
-    setIsModalOpen(true);
+    setShowAddModal(true);
   };
 
-  const handleOpenEdit = (mod: ContentModule) => {
-    setEditingModule(mod);
-    setFormData({
-      title: mod.title,
-      subject: mod.subject,
-      type: mod.type,
-      difficulty: mod.difficulty,
-      status: mod.status,
-      assigned: mod.assigned,
-      // RAG fields
-      ragEnabled: mod.ragEnabled ?? false,
-      ragDocumentUrl: mod.ragDocumentUrl ?? '',
-      ragChunkSize: mod.ragChunkSize ?? 512,
-      ragChunkOverlap: mod.ragChunkOverlap ?? 64,
-      ragEmbeddingModel: mod.ragEmbeddingModel ?? 'BAAI/bge-small-en-v1.5',
-      ragTopK: mod.ragTopK ?? 5,
-      ragNamespace: mod.ragNamespace ?? '',
-      ragIndexStatus: mod.ragIndexStatus ?? 'not_indexed',
-    });
-    setIsModalOpen(true);
-  };
+  const filteredModules = modules.filter(m => {
+    const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         m.subject.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'All' || m.type === filterType;
+    return matchesSearch && matchesType;
+  });
 
-  const handleSave = async () => {
-    if (!formData.title.trim() || !formData.subject.trim()) {
-      toast.error('Title and subject are required');
-      return;
-    }
-    setSaving(true);
-    try {
-      if (editingModule) {
-        await updateModule(editingModule.id, formData);
-        await addAuditLog(
-          'Module Updated',
-          'Content',
-          'Info',
-          `Updated module: "${formData.title}"`,
-          { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
-        );
-        toast.success('Module updated');
-      } else {
-        await createModule(formData);
-        await addAuditLog(
-          'Module Created',
-          'Content',
-          'Info',
-          `Created new module: "${formData.title}" (${formData.subject})`,
-          { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
-        );
-        toast.success('Module created');
-      }
-      await loadModules();
-      setIsModalOpen(false);
-    } catch {
-      toast.error('Failed to save module');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = (mod: ContentModule) => {
-    setPendingDeleteModule(mod);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!pendingDeleteModule || isDeleting) return;
-
-    setIsDeleting(true);
-    try {
-      await deleteModule(pendingDeleteModule.id);
-      await addAuditLog(
-        'Module Deleted',
-        'Content',
-        'Warning',
-        `Deleted module: "${pendingDeleteModule.title}"`,
-        { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null }
-      );
-      toast.success('Module deleted');
-      setModules(prev => prev.filter(m => m.id !== pendingDeleteModule.id));
-      setIsDeleteModalOpen(false);
-      setPendingDeleteModule(null);
-    } catch {
-      toast.error('Failed to delete module');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // Computed stats from real data
-  const totalModules = modules.length;
-  const publishedCount = modules.filter(m => m.status === 'Published').length;
-  const draftCount = modules.filter(m => m.status === 'Draft').length;
-  const archivedCount = modules.filter(m => m.status === 'Archived').length;
-
-  // Note: old hardcoded block below was replaced — no stray variables left
-  // (the following legacy lines in the original file are removed)
-
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Published': return 'bg-green-100 text-green-700 border-green-200';
-      case 'Draft': return 'bg-rose-100 text-rose-700 border-rose-200';
-      case 'Archived': return 'bg-[#edf1f7] text-[#0a1628] border-[#dde3eb]';
-      default: return 'bg-[#edf1f7] text-[#0a1628]';
-    }
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Beginner': return 'bg-sky-50 text-sky-700';
-      case 'Intermediate': return 'bg-sky-50 text-sky-700';
-      case 'Advanced': return 'bg-sky-50 text-sky-700';
-      default: return 'bg-[#edf1f7] text-[#0a1628]';
+      case 'Published':
+        return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50">Published</Badge>;
+      case 'Draft':
+        return <Badge variant="outline" className="text-slate-400 border-slate-200">Draft</Badge>;
+      case 'Archived':
+        return <Badge variant="outline" className="text-slate-400 border-slate-200 bg-slate-50">Archived</Badge>;
+      default:
+        return null;
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'Video': return <Video size={16} className="text-sky-600" />;
-      case 'Quiz': return <HelpCircle size={16} className="text-teal-600" />;
-      default: return <FileText size={16} className="text-[#5a6578]" />;
+      case 'PDF': return <FileText size={14} className="text-blue-500" />;
+      case 'Template': return <Eye size={14} className="text-purple-500" />;
+      case 'Quiz': return <Eye size={14} className="text-orange-500" />;
+      case 'Interactive': return <Eye size={14} className="text-emerald-500" />;
+      default: return <FileText size={14} />;
     }
   };
-
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case 'Video': return 'bg-sky-100 text-sky-700';
-      case 'Quiz': return 'bg-teal-100 text-teal-700';
-      default: return 'bg-[#edf1f7] text-[#0a1628]';
-    }
-  };
-
-  // Filter logic
-  const filteredModules = modules.filter(module => {
-    const matchesSearch = module.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          module.subject.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = selectedType === 'All Types' || module.type === selectedType;
-    const matchesStatus = selectedStatus === 'All Status' || module.status === selectedStatus;
-    
-    return matchesSearch && matchesType && matchesStatus;
-  });
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-8 pt-6 xl:pt-8"
     >
       {/* Header Section */}
       <div className="flex flex-col gap-1">
@@ -279,405 +159,191 @@ const AdminContent: React.FC = () => {
         </Button>
         <Button className="gap-2 bg-sky-600 hover:bg-sky-700 text-white" onClick={handleOpenAdd}>
           <Plus size={16} />
-          Create Module
+          New Content
         </Button>
-      </div>
-
-      {/* Stats Cards */}
-      {loading ? (
-        <div className="flex items-center justify-center h-24">
-          <Loader2 size={24} className="animate-spin text-sky-500" />
-        </div>
-      ) : null}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm">
-          <p className="text-xs font-bold text-[#5a6578] mb-1">Total Modules</p>
-          <p className="text-2xl font-bold text-[#0a1628]">{totalModules}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle size={14} className="text-green-500" />
-              <p className="text-xs font-bold text-[#5a6578]">Published</p>
-            </div>
-            <p className="text-2xl font-bold text-[#0a1628]">{publishedCount}</p>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input 
+              placeholder="Search modules..." 
+              className="pl-9 w-[260px] h-10 border-[#dde3eb] bg-white rounded-xl focus-visible:ring-sky-500/20"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Edit3 size={14} className="text-rose-500" />
-              <p className="text-xs font-bold text-[#5a6578]">Drafts</p>
-            </div>
-            <p className="text-2xl font-bold text-[#0a1628]">{draftCount}</p>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Trash2 size={14} className="text-slate-500" />
-              <p className="text-xs font-bold text-[#5a6578]">Archived</p>
-            </div>
-            <p className="text-2xl font-bold text-[#0a1628]">{archivedCount}</p>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2 border-[#dde3eb] rounded-xl h-10">
+                <Filter size={16} />
+                {filterType}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[180px] rounded-xl border-[#dde3eb] shadow-lg">
+              {['All', 'PDF', 'Template', 'Quiz', 'Interactive'].map((type) => (
+                <DropdownMenuItem key={type} onClick={() => setFilterType(type)}>
+                  {type}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-          <Input 
-            type="text" 
-            placeholder="Search modules by title or topic..." 
-            className="pl-10 bg-[#edf1f7] border-[#dde3eb]"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All Types">All Types</SelectItem>
-              <SelectItem value="Video">Video</SelectItem>
-              <SelectItem value="Quiz">Quiz</SelectItem>
-              <SelectItem value="Document">Document</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All Status">All Status</SelectItem>
-              <SelectItem value="Published">Published</SelectItem>
-              <SelectItem value="Draft">Draft</SelectItem>
-              <SelectItem value="Archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Modules List */}
-      <div className="bg-white rounded-xl border border-[#dde3eb] shadow-sm overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left border-collapse">
-          <thead>
-            <tr className="bg-[#edf1f7] border-b border-[#dde3eb]">
-              <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Module</th>
-              <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Type</th>
-              <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Difficulty</th>
-              <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Status</th>
-              <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Assigned</th>
-              <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Created</th>
-              <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#dde3eb]">
-            {filteredModules.map((module) => (
-              <tr key={module.id} className="hover:bg-[#edf1f7] transition-colors">
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${module.type === 'Video' ? 'bg-sky-100 text-sky-600' : module.type === 'Quiz' ? 'bg-teal-100 text-teal-600' : 'bg-[#edf1f7] text-[#5a6578]'}`}>
-                      {getTypeIcon(module.type)}
+      {/* Modules Table */}
+      <div className="bg-white rounded-2xl border border-[#dde3eb] shadow-sm overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-[#f8fafc] border-b border-[#dde3eb] hover:bg-[#f8fafc]">
+              <TableHead className="w-[300px] text-xs font-bold text-[#5a6578] uppercase py-4">Title</TableHead>
+              <TableHead className="text-xs font-bold text-[#5a6578] uppercase py-4">Subject</TableHead>
+              <TableHead className="text-xs font-bold text-[#5a6578] uppercase py-4">Type</TableHead>
+              <TableHead className="text-xs font-bold text-[#5a6578] uppercase py-4">Status</TableHead>
+              <TableHead className="text-xs font-bold text-[#5a6578] uppercase py-4">Last Modified</TableHead>
+              <TableHead className="text-right py-4"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array(4).fill(0).map((_, idx) => (
+                <TableRow key={idx}>
+                  <TableCell colSpan={6} className="h-16 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <RefreshCw size={16} className="animate-spin text-slate-300" />
+                      <span className="text-slate-400 text-sm">Loading...</span>
                     </div>
-                    <div>
-                      <p className="font-bold text-[#0a1628] text-sm">{module.title}</p>
-                      <p className="text-xs text-[#5a6578]">{module.subject}</p>
-                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : filteredModules.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-32 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <AlertCircle size={24} className="text-slate-200" />
+                    <p className="text-slate-400 text-sm">No content modules found</p>
                   </div>
-                </td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${getTypeBadge(module.type)}`}>
-                    {module.type}
-                  </span>
-                </td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${getDifficultyColor(module.difficulty)}`}>
-                    {module.difficulty}
-                  </span>
-                </td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold border ${getStatusColor(module.status)}`}>
-                    {module.status}
-                  </span>
-                </td>
-                <td className="p-4">
-                  <div className="flex items-center gap-1 text-[#5a6578] text-sm">
-                    <Users size={14} />
-                    <span>{module.assigned}</span>
-                  </div>
-                </td>
-                <td className="p-4 text-sm text-[#5a6578]">
-                  {module.created || 'Unknown'}
-                </td>
-                <td className="p-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(module)}
-                      aria-label={`Edit module ${module.title}`}
-                      className="p-2 hover:bg-[#dde3eb] rounded-lg text-[#5a6578] hover:text-sky-600 transition-colors"
-                    >
-                      <Edit3 size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(module)}
-                      aria-label={`Delete module ${module.title}`}
-                      className="p-2 hover:bg-red-50 rounded-lg text-[#5a6578] hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {filteredModules.length === 0 && !loading && (
-          <div className="p-12 text-center text-[#5a6578]">
-            <BookOpen size={48} className="mx-auto mb-4 text-slate-500" />
-            <p className="font-medium">No modules found</p>
-            <p className="text-sm">{modules.length === 0 ? 'Create your first module to get started' : 'Try adjusting your search or filters'}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Create / Edit Module Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>{editingModule ? 'Edit Module' : 'Create New Module'}</DialogTitle>
-            <DialogDescription>
-              {editingModule ? 'Update module details below.' : 'Fill in the details to create a new learning module.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Title</label>
-              <Input
-                value={formData.title}
-                onChange={e => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Module title"
-                className="sm:col-span-3"
-              />
-            </div>
-            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Subject</label>
-              <Input
-                value={formData.subject}
-                onChange={e => setFormData({ ...formData, subject: e.target.value })}
-                placeholder="e.g. Algebra, Calculus"
-                className="sm:col-span-3"
-              />
-            </div>
-            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Type</label>
-              <div className="sm:col-span-3">
-                <Select value={formData.type} onValueChange={v => setFormData({ ...formData, type: v as ContentModule['type'] })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Video">Video</SelectItem>
-                    <SelectItem value="Quiz">Quiz</SelectItem>
-                    <SelectItem value="Document">Document</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Difficulty</label>
-              <div className="sm:col-span-3">
-                <Select value={formData.difficulty} onValueChange={v => setFormData({ ...formData, difficulty: v as ContentModule['difficulty'] })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Beginner">Beginner</SelectItem>
-                    <SelectItem value="Intermediate">Intermediate</SelectItem>
-                    <SelectItem value="Advanced">Advanced</SelectItem>
-                    <SelectItem value="N/A">N/A</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-              <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Status</label>
-              <div className="sm:col-span-3">
-                <Select value={formData.status} onValueChange={v => setFormData({ ...formData, status: v as ContentModule['status'] })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Draft">Draft</SelectItem>
-                    <SelectItem value="Published">Published</SelectItem>
-                    <SelectItem value="Archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            {/* RAG Pipeline Configuration */}
-            <div className="border-t border-[#dde3eb] pt-4">
-              <button
-                type="button"
-                onClick={() => setRagSectionExpanded(!ragSectionExpanded)}
-                className="flex items-center justify-between w-full text-left"
-              >
-                <span className="text-sm font-medium text-[#0a1628]">RAG Pipeline Configuration</span>
-                <ChevronDown 
-                  className={`w-4 h-4 text-[#5a6578] transition-transform ${ragSectionExpanded ? 'rotate-180' : ''}`} 
-                />
-              </button>
-              
-              {ragSectionExpanded && (
-                <div className="mt-4 space-y-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-                  {/* Enable RAG */}
-                  <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Enable RAG</label>
-                    <div className="sm:col-span-3 flex items-center gap-2">
-                      <Switch
-                        checked={formData.ragEnabled ?? false}
-                        onCheckedChange={(checked) => setFormData({ ...formData, ragEnabled: checked })}
-                      />
-                      <span className="text-sm text-[#5a6578]">
-                        {formData.ragEnabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Document Source URL */}
-                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Document URL</label>
-                    <Input
-                      value={formData.ragDocumentUrl ?? ''}
-                      onChange={e => setFormData({ ...formData, ragDocumentUrl: e.target.value })}
-                      placeholder="https://... (Firebase Storage or public URL)"
-                      className="sm:col-span-3"
-                      disabled={!formData.ragEnabled}
-                    />
-                  </div>
-                  
-                  {/* Chunk Size */}
-                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Chunk Size</label>
-                    <Input
-                      type="number"
-                      value={formData.ragChunkSize ?? 512}
-                      onChange={e => setFormData({ ...formData, ragChunkSize: parseInt(e.target.value) || 512 })}
-                      min={128}
-                      max={2048}
-                      step={64}
-                      className="sm:col-span-3"
-                      disabled={!formData.ragEnabled}
-                    />
-                  </div>
-                  
-                  {/* Chunk Overlap */}
-                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Chunk Overlap</label>
-                    <Input
-                      type="number"
-                      value={formData.ragChunkOverlap ?? 64}
-                      onChange={e => setFormData({ ...formData, ragChunkOverlap: parseInt(e.target.value) || 64 })}
-                      min={0}
-                      max={512}
-                      step={32}
-                      className="sm:col-span-3"
-                      disabled={!formData.ragEnabled}
-                    />
-                  </div>
-                  
-                  {/* Embedding Model */}
-                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Embedding Model</label>
-                    <div className="sm:col-span-3">
-                      <Select 
-                        value={formData.ragEmbeddingModel ?? 'BAAI/bge-small-en-v1.5'} 
-                        onValueChange={v => setFormData({ ...formData, ragEmbeddingModel: v })}
-                        disabled={!formData.ragEnabled}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="BAAI/bge-small-en-v1.5">BAAI/bge-small-en-v1.5</SelectItem>
-                          <SelectItem value="BAAI/bge-base-en-v1.5">BAAI/bge-base-en-v1.5</SelectItem>
-                          <SelectItem value="sentence-transformers/all-MiniLM-L6-v2">sentence-transformers/all-MiniLM-L6-v2</SelectItem>
-                          <SelectItem value="intfloat/multilingual-e5-small">intfloat/multilingual-e5-small</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
-                  {/* Top-K Retrieval */}
-                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Top-K</label>
-                    <Input
-                      type="number"
-                      value={formData.ragTopK ?? 5}
-                      onChange={e => setFormData({ ...formData, ragTopK: parseInt(e.target.value) || 5 })}
-                      min={1}
-                      max={20}
-                      className="sm:col-span-3"
-                      disabled={!formData.ragEnabled}
-                    />
-                  </div>
-                  
-                  {/* Namespace */}
-                  <div className={`grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4 ${!formData.ragEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Namespace</label>
-                    <Input
-                      value={formData.ragNamespace ?? ''}
-                      onChange={e => setFormData({ ...formData, ragNamespace: e.target.value })}
-                      placeholder="e.g. math-grade7-algebra"
-                      className="sm:col-span-3"
-                      disabled={!formData.ragEnabled}
-                    />
-                  </div>
-                  
-                  {/* Index Status (read-only, only show when editing) */}
-                  {editingModule && (
-                    <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-                      <label className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Index Status</label>
-                      <div className="sm:col-span-3">
-                        <span className={`inline-flex px-2 py-1 rounded text-xs font-bold ${
-                          formData.ragIndexStatus === 'indexed' ? 'bg-green-100 text-green-700' :
-                          formData.ragIndexStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          formData.ragIndexStatus === 'failed' ? 'bg-red-100 text-red-700' :
-                          'bg-slate-100 text-slate-600'
-                        }`}>
-                          {formData.ragIndexStatus ?? 'not_indexed'}
-                        </span>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredModules.map((module) => (
+                <TableRow key={module.id} className="hover:bg-[#f8fafc] transition-colors border-b border-[#f1f5f9]">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                        {getTypeIcon(module.type)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-[#0a1628] text-sm leading-tight">{module.title}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{module.author} • {module.size}</p>
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancel</Button>
-            <Button onClick={handleSave} className="bg-sky-600 hover:bg-sky-700 text-white" disabled={saving}>
-              {saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-              {editingModule ? 'Save Changes' : 'Create Module'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-[#5a6578]">{module.subject}</span>
+                      <span className="text-[11px] text-slate-400">{module.gradeLevel}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs font-medium text-[#5a6578]">{module.type}</span>
+                  </TableCell>
+                  <TableCell>
+                    {getStatusBadge(module.status)}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-slate-500 font-medium">{module.lastModified}</span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600 rounded-lg">
+                          <MoreVertical size={16} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-[#dde3eb] shadow-lg">
+                        <DropdownMenuItem className="gap-2">
+                          <Edit2 size={14} /> Edit Module
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2">
+                          <Download size={14} /> Download
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="gap-2 text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+                          onClick={() => setDeleteConfirmId(module.id)}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-      <ConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          if (isDeleting) return;
-          setIsDeleteModalOpen(false);
-          setPendingDeleteModule(null);
-        }}
-        onConfirm={handleConfirmDelete}
-        title="Delete Module?"
-        message={pendingDeleteModule ? `Delete \"${pendingDeleteModule.title}\"? This cannot be undone.` : 'Delete this module? This cannot be undone.'}
-        confirmText={isDeleting ? 'Deleting...' : 'Delete'}
+      {/* Stats Summary Footer */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-2xl border border-[#dde3eb] p-5 flex items-center gap-4 shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600">
+            <CheckCircle size={24} />
+          </div>
+          <div>
+            <p className="text-2xl font-display font-black text-[#0a1628]">128</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Modules Published</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-[#dde3eb] p-5 flex items-center gap-4 shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600">
+            <FileText size={24} />
+          </div>
+          <div>
+            <p className="text-2xl font-display font-black text-[#0a1628]">14.2 GB</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Storage used</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-[#dde3eb] p-5 flex items-center gap-4 shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
+            <AlertCircle size={24} />
+          </div>
+          <div>
+            <p className="text-2xl font-display font-black text-[#0a1628]">5</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Drafts Pending</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Confirmation */}
+      <ConfirmModal 
+        isOpen={!!deleteConfirmId}
+        onClose={() => setDeleteConfirmId(null)}
+        onConfirm={() => { if (deleteConfirmId) handleDelete(deleteConfirmId); }}
+        title="Delete Content Module"
+        message="Are you sure you want to delete this module? This action cannot be undone and will remove the content from all linked subjects."
+        confirmText="Delete Module"
         cancelText="Cancel"
         type="danger"
         icon="delete"
       />
+
+      {/* Add Module Dialog - Simplified for mock */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="sm:max-w-[425px] rounded-[28px] border-[#dde3eb]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[#0a1628]">Add New Content</DialogTitle>
+          </DialogHeader>
+          <div className="py-6 flex flex-col gap-4">
+            <p className="text-sm text-[#5a6578]">This is a mock dialog. In a real system, you would select file types and upload resources here.</p>
+            <div className="h-32 border-2 border-dashed border-[#dde3eb] rounded-2xl flex items-center justify-center text-slate-300">
+              <Plus size={32} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-xl" onClick={() => setShowAddModal(false)}>Cancel</Button>
+            <Button className="bg-sky-600 hover:bg-sky-700 text-white rounded-xl">Create Module</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 };
