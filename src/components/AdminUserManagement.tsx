@@ -751,265 +751,188 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const visibleRangeEnd = totalUsers === 0 ? 0 : Math.min(currentPage * pageSize, totalUsers);
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Stats Cards - Bento Style */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-        {loading
+        {loading && users.length === 0
           ? Array.from({ length: 5 }).map((_, idx) => (
-              <div key={`stats-skeleton-${idx}`} className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm">
-                <div className="h-7 w-16 bg-[#edf1f7] rounded animate-pulse mb-2" />
-                <div className="h-4 w-24 bg-[#edf1f7] rounded animate-pulse" />
+              <div key={`stats-skeleton-${idx}`} className="bg-white p-5 rounded-[28px] border border-slate-200/60 shadow-sm shadow-slate-200/50 animate-pulse">
+                <div className="h-4 w-20 bg-slate-100 rounded-full mb-3" />
+                <div className="h-8 w-12 bg-slate-100 rounded-lg" />
               </div>
             ))
-          : stats.map((stat, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm">
-                <h3 className={`text-2xl font-bold ${stat.color}`}>{stat.value}</h3>
-                <p className="text-sm text-[#5a6578]">{stat.label}</p>
+          : [
+              { label: 'Total Users', value: totalUsers, icon: Users, color: 'bg-indigo-50 text-indigo-600', border: 'border-indigo-100' },
+              { label: 'Active Today', value: users.filter(u => u.status === 'Active').length, icon: UserCheck, color: 'bg-emerald-50 text-emerald-600', border: 'border-emerald-100' },
+              { label: 'Admins', value: users.filter(u => u.role === 'Admin').length, icon: Shield, color: 'bg-sky-50 text-sky-600', border: 'border-sky-100' },
+              { label: 'Teachers', value: users.filter(u => u.role === 'Teacher').length, icon: GraduationCap, color: 'bg-purple-50 text-purple-600', border: 'border-purple-100' },
+              { label: 'Students', value: users.filter(u => u.role === 'Student').length, icon: School, color: 'bg-blue-50 text-blue-600', border: 'border-blue-100' },
+            ].map((stat, idx) => (
+              <div key={idx} className={`bg-white p-5 rounded-[28px] border ${stat.border || 'border-slate-200/60'} shadow-sm shadow-slate-200/50 group hover:shadow-md transition-all duration-300 relative overflow-hidden`}>
+                <div className={`absolute -right-4 -top-4 w-16 h-16 rounded-full opacity-[0.03] group-hover:scale-150 transition-transform duration-700 ${stat.color.split(' ')[0]}`}></div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                  <div className={`p-2 rounded-xl ${stat.color}`}>
+                    <stat.icon size={14} />
+                  </div>
+                </div>
+                <h3 className="text-3xl font-display font-black text-[#1e293b] leading-none">{stat.value}</h3>
               </div>
             ))}
       </div>
 
-      {/* Action Bar */}
-      <div className="bg-white p-4 rounded-xl border border-[#dde3eb] shadow-sm space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-          <Input 
-            placeholder="Search users by name or email..." 
-            className="pl-10 bg-[#edf1f7] border-[#dde3eb]"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-              clearSelection();
-            }}
-          />
-        </div>
-        
-        <div className="flex flex-col md:flex-row justify-between gap-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Select
-              value={roleFilter}
-              onValueChange={(value) => {
-                setRoleFilter(value);
+      {/* Action Bar - Premium Integrated */}
+      <div className="bg-white rounded-[28px] border border-slate-200/60 shadow-sm shadow-slate-200/50 p-3">
+        <div className="flex flex-col xl:flex-row items-center gap-3">
+          {/* Global Search */}
+          <div className="relative flex-1 w-full group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
+            <Input 
+              placeholder="Search by name, email, or LRN..." 
+              className="pl-11 h-12 bg-slate-50/50 border-slate-200/60 rounded-2xl focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all text-sm font-medium"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
                 setCurrentPage(1);
                 clearSelection();
               }}
-            >
-              <SelectTrigger className="w-full sm:w-[140px] bg-[#edf1f7] border-[#dde3eb]">
-                <SelectValue placeholder="All Roles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All Roles">All Roles</SelectItem>
-                <SelectItem value="Admin">Admin</SelectItem>
-                <SelectItem value="Teacher">Teacher</SelectItem>
-                <SelectItem value="Student">Student</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => {
-                setStatusFilter(value);
-                setCurrentPage(1);
-                clearSelection();
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-[140px] bg-[#edf1f7] border-[#dde3eb]">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All Status">All Status</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={String(pageSize)}
-              onValueChange={(value) => {
-                const nextPageSize = Number(value);
-                if (Number.isNaN(nextPageSize)) {
-                  return;
-                }
-                setPageSize(nextPageSize);
-                setCurrentPage(1);
-                clearSelection();
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-[150px] bg-[#edf1f7] border-[#dde3eb]">
-                <SelectValue placeholder="Rows per page" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem key={size} value={size}>{size} / page</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
+          
+          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+            <div className="flex items-center bg-slate-50/50 p-1 rounded-2xl border border-slate-200/60 h-12">
+              <Select
+                value={roleFilter}
+                onValueChange={(value) => {
+                  setRoleFilter(value);
+                  setCurrentPage(1);
+                  clearSelection();
+                }}
+              >
+                <SelectTrigger className="w-[120px] bg-transparent border-none focus:ring-0 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="All Roles">All Roles</SelectItem>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="Teacher">Teacher</SelectItem>
+                  <SelectItem value="Student">Student</SelectItem>
+                </SelectContent>
+              </Select>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+              <div className="w-[1px] h-4 bg-slate-200 mx-1"></div>
+
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setCurrentPage(1);
+                  clearSelection();
+                }}
+              >
+                <SelectTrigger className="w-[120px] bg-transparent border-none focus:ring-0 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="All Status">All Status</SelectItem>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button
               variant="outline"
-              className="gap-2 border-[#dde3eb] text-[#5a6578]"
+              size="icon"
+              className="h-12 w-12 rounded-2xl border-slate-200/60 text-slate-500 hover:bg-slate-50"
               onClick={() => loadUsers(currentPage)}
               disabled={loading || isProcessingBulkAction}
             >
-              <RefreshCw size={16} />
-              Refresh
+              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
             </Button>
+
             <Button 
-              className="gap-2 bg-sky-500 hover:bg-sky-600 text-white"
+              className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl gap-2 font-bold text-sm shadow-sm shadow-indigo-500/20 transition-all hover:translate-y-[-1px] active:translate-y-[1px]"
               onClick={() => handleOpenAddModal()}
               disabled={isProcessingBulkAction}
             >
-              <Plus size={16} />
+              <Plus size={18} />
               Add User
             </Button>
           </div>
         </div>
 
-        {selectedCount > 0 ? (
-          <div className="border-t border-[#dde3eb] pt-4 space-y-3">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-              <div className="text-sm text-[#5a6578]">
-                <span className="font-semibold text-[#0a1628]">{selectedCount}</span> user(s) selected
-                {allFilteredSelected ? ' across filtered results' : ''}
+        {/* Floating Bulk Action Bar */}
+        {selectedCount > 0 && (
+          <div className="mt-3 bg-indigo-900 rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-4 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3 px-3 border-r border-white/10 pr-6">
+              <div className="w-8 h-8 rounded-xl bg-indigo-500/30 flex items-center justify-center text-white font-black text-xs">
+                {selectedCount}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {!allFilteredSelected && selectedCount > 0 && selectedCount < totalUsers ? (
-                  <Button variant="outline" size="sm" className="border-[#dde3eb]" onClick={handleSelectAllFiltered}>
-                    <CheckCheck size={14} className="mr-2" />
-                    Select all {totalUsers} filtered users
-                  </Button>
-                ) : null}
-                <Button variant="outline" size="sm" className="border-[#dde3eb]" onClick={clearSelection}>
-                  Clear selection
-                </Button>
+              <div>
+                <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest leading-none">Selected</p>
+                <p className="text-[9px] text-white/60 font-medium mt-1">
+                  {allFilteredSelected ? 'All matching users' : `${selectedCount} users chosen`}
+                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
-              <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-wrap items-center gap-2 flex-1">
+              {/* Compact Bulk Tools */}
+              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
                 <Select value={bulkRoleTarget} onValueChange={(value) => setBulkRoleTarget(value as 'Student' | 'Teacher' | 'Admin')}>
-                  <SelectTrigger className="bg-[#edf1f7] border-[#dde3eb] sm:w-[160px]">
-                    <SelectValue placeholder="Role target" />
+                  <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
+                    <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     <SelectItem value="Student">Student</SelectItem>
                     <SelectItem value="Teacher">Teacher</SelectItem>
                     <SelectItem value="Admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-[#dde3eb]"
-                  onClick={() => void handleBulkChangeRole()}
-                  disabled={isProcessingBulkAction}
-                >
-                  Change Role
-                </Button>
+                <Button size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeRole()}>Apply Role</Button>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
                 <Select value={bulkStatusTarget} onValueChange={(value) => setBulkStatusTarget(value as 'Active' | 'Inactive')}>
-                  <SelectTrigger className="bg-[#edf1f7] border-[#dde3eb] sm:w-[160px]">
-                    <SelectValue placeholder="Status target" />
+                  <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
+                    <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     <SelectItem value="Active">Active</SelectItem>
                     <SelectItem value="Inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-[#dde3eb]"
-                  onClick={() => void handleBulkChangeStatus()}
-                  disabled={isProcessingBulkAction}
-                >
-                  Change Status
-                </Button>
+                <Button size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeStatus()}>Set Status</Button>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  value={bulkGradeTarget}
-                  onChange={(e) => setBulkGradeTarget(e.target.value)}
-                  className="bg-[#edf1f7] border-[#dde3eb] sm:w-[140px]"
-                  placeholder="Grade"
-                />
-                <Input
-                  value={bulkSectionTarget}
-                  onChange={(e) => setBulkSectionTarget(e.target.value)}
-                  className="bg-[#edf1f7] border-[#dde3eb] sm:w-[140px]"
-                  placeholder="Section"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-[#dde3eb]"
-                  onClick={() => void handleBulkAssignClassSection()}
-                  disabled={isProcessingBulkAction || !canAssignClassSection}
-                >
-                  Assign Class
+              <div className="h-6 w-[1px] bg-white/10 mx-1"></div>
+
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" className="h-9 text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest gap-2" onClick={() => void handleBulkResetPassword()}>
+                  <Mail size={14} /> Reset Pass
+                </Button>
+                <Button size="sm" variant="ghost" className="h-9 text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest gap-2" onClick={() => void handleBulkExport()}>
+                  <Download size={14} /> Export
+                </Button>
+                <Button size="sm" variant="ghost" className="h-9 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-[10px] font-black uppercase tracking-widest gap-2" onClick={handleBulkDelete}>
+                  <Trash2 size={14} /> Delete
                 </Button>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-[#dde3eb]"
-                onClick={handleBulkActivate}
-                disabled={isProcessingBulkAction || !canActivate}
-              >
-                <UserCheck size={14} className="mr-2" />
-                Activate
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-[#dde3eb]"
-                onClick={handleBulkDeactivate}
-                disabled={isProcessingBulkAction || !canDeactivate}
-              >
-                <Ban size={14} className="mr-2" />
-                Deactivate
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-[#dde3eb]"
-                onClick={() => void handleBulkResetPassword()}
-                disabled={isProcessingBulkAction}
-              >
-                <Mail size={14} className="mr-2" />
-                Send Reset Email
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-[#dde3eb]"
-                onClick={() => void handleBulkExport()}
-                disabled={isProcessingBulkAction}
-              >
-                <Download size={14} className="mr-2" />
-                Export Selection
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleBulkDelete}
-                disabled={isProcessingBulkAction}
-              >
-                <Trash2 size={14} className="mr-2" />
-                Delete
+            <div className="flex items-center gap-2 pl-4 border-l border-white/10">
+               {!allFilteredSelected && selectedCount < totalUsers && (
+                <Button variant="ghost" className="h-9 text-indigo-200 hover:text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest" onClick={handleSelectAllFiltered}>
+                  Select All {totalUsers}
+                </Button>
+              )}
+              <Button size="icon" variant="ghost" className="h-9 w-9 text-white/40 hover:text-white hover:bg-white/10 rounded-xl" onClick={clearSelection}>
+                <Edit size={16} className="rotate-45" />
               </Button>
             </div>
           </div>
-        ) : null}
+        )}
       </div>
 
       {loadError ? (
@@ -1033,222 +956,269 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         </div>
       ) : null}
 
-      {/* Users Table */}
-      <div className="bg-white rounded-xl border border-[#dde3eb] shadow-sm overflow-hidden">
-        <div className="md:hidden divide-y divide-[#dde3eb]">
-          <div className="px-4 py-3 bg-[#edf1f7] border-b border-[#dde3eb] flex items-center justify-between">
-            <label className="flex items-center gap-2 text-xs text-[#5a6578]">
-              <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} />
-              Select visible ({users.length})
+      {/* Users Table - Premium Styling */}
+      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 overflow-hidden relative">
+        {loading && users.length > 0 && (
+          <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-20 flex items-center justify-center">
+            <Loader2 className="animate-spin text-indigo-500" size={32} />
+          </div>
+        )}
+        
+        <div className="md:hidden divide-y divide-slate-100">
+          <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+            <label className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer">
+              <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300" />
+              Select Page
             </label>
-            <span className="text-xs text-[#5a6578]">Page {currentPage} / {totalPages}</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
           </div>
           {loading && users.length === 0 ? (
-            <div className="px-6 py-10 text-center text-[#5a6578]">Loading users...</div>
+            <div className="px-6 py-12 text-center text-slate-400 font-medium">Loading users...</div>
           ) : users.length > 0 ? (
             users.map((user) => {
               const isPendingToggle = pendingRowActionUserId === user.id;
               return (
-                <div key={`mobile-${user.id}`} className="p-4 space-y-3">
-                  <div className="flex items-center gap-3">
+                <div key={`mobile-${user.id}`} className="p-5 space-y-4 group hover:bg-slate-50/50 transition-colors">
+                  <div className="flex items-center gap-4">
                     <Checkbox
                       checked={isUserSelected(user.id)}
                       onCheckedChange={() => handleToggleUserSelection(user.id)}
+                      className="rounded-md border-slate-300"
                     />
-                    <Avatar>
-                      <AvatarImage src={user.photo} />
-                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-12 w-12 rounded-2xl border-2 border-white shadow-sm">
+                        <AvatarImage src={user.photo} className="object-cover" />
+                        <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold">{user.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                    </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-[#0a1628] truncate">{user.name}</p>
-                      <p className="text-xs text-[#5a6578] truncate">{user.email}</p>
+                      <p className="font-black text-[#1e293b] truncate text-sm">{user.name}</p>
+                      <p className="text-[11px] font-medium text-slate-400 truncate mt-0.5">{user.email}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="rounded-lg bg-[#edf1f7] px-2 py-1.5 text-[#5a6578]">Role: <span className="font-semibold text-[#0a1628]">{user.role}</span></div>
-                    <div className="rounded-lg bg-[#edf1f7] px-2 py-1.5 text-[#5a6578]">Status: <span className="font-semibold text-[#0a1628]">{user.status}</span></div>
-                    <div className="rounded-lg bg-[#edf1f7] px-2 py-1.5 text-[#5a6578] col-span-2">
-                      Last Login: <span className="font-semibold text-[#0a1628]">{user.lastLogin || 'Never'}</span>
-                    </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
+                      user.role === 'Admin' ? 'bg-sky-50 text-sky-600' :
+                      user.role === 'Teacher' ? 'bg-purple-50 text-purple-600' :
+                      'bg-blue-50 text-blue-600'
+                    }`}>
+                      {user.role}
+                    </span>
+                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-slate-50 text-slate-500">
+                      {user.grade} • {user.section || user.department}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
+
+                  <div className="flex items-center gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 h-9 rounded-xl border-slate-200 text-slate-600 font-bold text-xs gap-2"
                       onClick={() => handleOpenEditModal(user)}
-                      aria-label={`Edit ${user.name}`}
-                      className="px-3 py-2 rounded-lg border border-[#dde3eb] text-[#5a6578] hover:bg-[#edf1f7]"
                     >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
+                      <Edit size={14} /> Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`flex-1 h-9 rounded-xl border-slate-200 font-bold text-xs gap-2 ${
+                        user.status === 'Active' ? 'text-slate-600' : 'text-emerald-600'
+                      }`}
                       onClick={() => handleToggleStatus(user)}
-                      aria-label={user.status === 'Active' ? `Deactivate ${user.name}` : `Activate ${user.name}`}
                       disabled={isPendingToggle || isProcessingBulkAction}
-                      className="px-3 py-2 rounded-lg border border-[#dde3eb] text-[#5a6578] disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {isPendingToggle ? 'Updating...' : user.status === 'Active' ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button
-                      type="button"
+                      {isPendingToggle ? <Loader2 size={14} className="animate-spin" /> : user.status === 'Active' ? <Ban size={14} /> : <UserCheck size={14} />}
+                      {user.status === 'Active' ? 'Ban' : 'Active'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 rounded-xl border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-100"
                       onClick={() => handleDeleteUser(user.id, user.name)}
-                      aria-label={`Delete ${user.name}`}
                       disabled={isProcessingBulkAction}
-                      className="px-3 py-2 rounded-lg border border-red-200 text-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Delete
-                    </button>
+                      <Trash2 size={14} />
+                    </Button>
                   </div>
                 </div>
               );
             })
-          ) : loadError ? (
-            <div className="px-6 py-12 text-center text-red-600">
-              <div className="flex flex-col items-center gap-3">
-                <AlertCircle size={24} className="text-red-500" />
-                <p>Users could not be loaded.</p>
-              </div>
-            </div>
           ) : (
-            <div className="px-6 py-12 text-center text-[#5a6578]">
-              <div className="flex flex-col items-center gap-3">
-                <div className="p-3 bg-[#edf1f7] rounded-full">
-                  <Users size={24} className="text-slate-500" />
-                </div>
-                <p>No users found matching your filters</p>
+            <div className="px-6 py-20 text-center space-y-4">
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
+                <Users size={32} className="text-slate-300" />
               </div>
+              <div className="space-y-1">
+                <p className="font-black text-slate-600 uppercase tracking-widest text-sm">No Users Found</p>
+                <p className="text-xs text-slate-400 font-medium max-w-[200px] mx-auto leading-relaxed">
+                  We couldn't find any users matching your current filters. Try adjusting your search.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="rounded-xl border-slate-200 text-indigo-600 font-bold" onClick={() => {
+                setSearchQuery('');
+                setRoleFilter('All Roles');
+                setStatusFilter('All Status');
+              }}>
+                Clear Filters
+              </Button>
             </div>
           )}
         </div>
 
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-[#5a6578] uppercase bg-[#edf1f7] border-b border-[#dde3eb]">
-              <tr>
-                <th className="px-4 py-4 font-semibold w-[56px]">
-                  <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} />
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50 border-b border-slate-100">
+                <th className="px-6 py-5 w-[60px]">
+                  <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300" />
                 </th>
-                <th className="px-6 py-4 font-semibold">User</th>
-                <th className="px-6 py-4 font-semibold">Role</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold">Class/Department</th>
-                <th className="px-6 py-4 font-semibold">Last Login</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">User Profile</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Role & Access</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Placement</th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Activity</th>
+                <th className="px-6 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#dde3eb]">
+            <tbody className="divide-y divide-slate-50">
               {loading && users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-[#5a6578]">Loading users...</td>
+                  <td colSpan={7} className="px-6 py-20 text-center">
+                    <Loader2 className="animate-spin text-indigo-200 mx-auto" size={40} />
+                    <p className="mt-4 text-[10px] font-black text-slate-300 uppercase tracking-widest">Loading Records...</p>
+                  </td>
                 </tr>
               ) : users.length > 0 ? (
                 users.map((user) => {
                   const isPendingToggle = pendingRowActionUserId === user.id;
                   return (
-                  <tr key={user.id} className="hover:bg-[#edf1f7]/50 transition-colors">
-                    <td className="px-4 py-4">
+                  <tr key={user.id} className="hover:bg-slate-50/50 transition-all group">
+                    <td className="px-6 py-4">
                       <Checkbox
                         checked={isUserSelected(user.id)}
                         onCheckedChange={() => handleToggleUserSelection(user.id)}
+                        className="rounded-md border-slate-300 group-hover:border-indigo-400 transition-colors"
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={user.photo} />
-                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold text-[#0a1628]">{user.name}</p>
-                          <p className="text-xs text-[#5a6578]">{user.email}</p>
+                      <div className="flex items-center gap-4">
+                        <div className="relative shrink-0">
+                          <Avatar className="h-11 w-11 rounded-2xl border-2 border-white shadow-sm ring-1 ring-slate-100">
+                            <AvatarImage src={user.photo} className="object-cover" />
+                            <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold text-sm">{user.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-black text-[#1e293b] truncate text-sm leading-tight group-hover:text-indigo-600 transition-colors">{user.name}</p>
+                          <p className="text-[11px] font-medium text-slate-400 truncate mt-0.5">{user.email}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5">
-                        {user.role === 'Admin' && <Shield size={14} className="text-sky-600" />}
-                        {user.role === 'Teacher' && <GraduationCap size={14} className="text-sky-600" />}
-                        {user.role === 'Student' && <School size={14} className="text-emerald-600" />}
-                        <span className={`
-                          font-medium text-xs px-2 py-0.5 rounded-full
-                          ${user.role === 'Admin' ? 'bg-sky-100 text-sky-700' : ''}
-                          ${user.role === 'Teacher' ? 'bg-sky-100 text-sky-700' : ''}
-                          ${user.role === 'Student' ? 'bg-emerald-100 text-emerald-700' : ''}
-                        `}>
-                          {user.role}
-                        </span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`
+                            text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider
+                            ${user.role === 'Admin' ? 'bg-sky-50 text-sky-600' : ''}
+                            ${user.role === 'Teacher' ? 'bg-purple-50 text-purple-600' : ''}
+                            ${user.role === 'Student' ? 'bg-blue-50 text-blue-600' : ''}
+                          `}>
+                            {user.role}
+                          </span>
+                        </div>
+                        {user.lrn && <p className="text-[9px] font-black text-slate-300 uppercase tracking-tighter ml-0.5">LRN: {user.lrn}</p>}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`
-                        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
+                        inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-wider border
                         ${user.status === 'Active' 
-                          ? 'bg-green-50 text-green-700 border-green-200' 
-                          : 'bg-[#edf1f7] text-[#5a6578] border-[#dde3eb]'}
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                          : 'bg-slate-50 text-slate-400 border-slate-100'}
                       `}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-green-500' : 'bg-[#a8a5b3]'}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
                         {user.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-[#5a6578]">{user.role === 'Student' ? (user.classSection || user.department) : user.department}</td>
-                    <td className="px-6 py-4 text-[#5a6578]">{user.lastLogin || 'Never'}</td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-black text-slate-600">{user.grade || 'N/A'}</p>
+                        <p className="text-[10px] font-medium text-slate-400">{user.role === 'Student' ? (user.classSection || user.section || 'Unassigned') : user.department}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                       <div className="space-y-0.5">
+                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">{user.lastLogin ? 'Recent Activity' : 'Inactive Account'}</p>
+                        <p className="text-[10px] font-medium text-slate-400">{user.lastLogin || 'No login history'}</p>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleOpenEditModal(user)}
-                          aria-label={`Edit ${user.name}`}
-                          className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
+                          className="h-9 w-9 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                          title="Edit User"
                         >
                           <Edit size={16} />
-                        </button>
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleToggleStatus(user)}
-                          aria-label={user.status === 'Active' ? `Deactivate ${user.name}` : `Activate ${user.name}`}
                           disabled={isPendingToggle || isProcessingBulkAction}
-                          className={`p-1.5 rounded-lg transition-colors ${
-                            isPendingToggle ? 'opacity-60 cursor-not-allowed' : ''
-                          } ${
+                          className={`h-9 w-9 rounded-xl transition-all ${
                             user.status === 'Active' 
-                              ? 'text-slate-500 hover:text-orange-600 hover:bg-orange-50'
-                              : 'text-orange-500 hover:text-green-600 hover:bg-green-50'
+                              ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
+                              : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
                           }`}
-                          title={user.status === 'Active' ? 'Deactivate User' : 'Activate User'}
+                          title={user.status === 'Active' ? 'Deactivate' : 'Activate'}
                         >
                           {isPendingToggle ? <Loader2 size={16} className="animate-spin" /> : user.status === 'Active' ? <Ban size={16} /> : <UserCheck size={16} />}
-                        </button>
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleDeleteUser(user.id, user.name)}
-                          aria-label={`Delete ${user.name}`}
                           disabled={isProcessingBulkAction}
-                          className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="h-9 w-9 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                          title="Delete User"
                         >
                           <Trash2 size={16} />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
                   );
                 })
-              ) : loadError ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-red-600">
-                    <div className="flex flex-col items-center gap-3">
-                      <AlertCircle size={24} className="text-red-500" />
-                      <p>Users could not be loaded.</p>
-                    </div>
-                  </td>
-                </tr>
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-[#5a6578]">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="p-3 bg-[#edf1f7] rounded-full">
-                        <Users size={24} className="text-slate-500" />
+                  <td colSpan={7} className="px-6 py-32 text-center">
+                    <div className="max-w-xs mx-auto space-y-6">
+                      <div className="w-24 h-24 bg-slate-50 rounded-[32px] flex items-center justify-center mx-auto shadow-sm shadow-slate-100 group-hover:scale-110 transition-transform duration-500">
+                        <Users size={40} className="text-slate-200" />
                       </div>
-                      <p>No users found matching your filters</p>
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-black text-slate-600 uppercase tracking-widest">No matching users</h4>
+                        <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                          We couldn't find any results for your current query. Try broadening your search or clearing filters.
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="rounded-xl border-slate-200 text-indigo-600 font-bold px-6 h-10 hover:bg-indigo-50"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setRoleFilter('All Roles');
+                          setStatusFilter('All Status');
+                        }}
+                      >
+                        Reset Filters
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -1258,307 +1228,217 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-1">
-        <p className="text-sm text-[#5a6578]">
-          Showing <span className="font-semibold text-[#0a1628]">{visibleRangeStart}-{visibleRangeEnd}</span> of{' '}
-          <span className="font-semibold text-[#0a1628]">{totalUsers}</span> users
+      {/* Pagination - Refined Styling */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-2 py-4 border-t border-slate-100">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          Showing <span className="text-slate-600">{visibleRangeStart}-{visibleRangeEnd}</span> of{' '}
+          <span className="text-slate-600">{totalUsers}</span> users
         </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-[#dde3eb]"
-            disabled={currentPage <= 1 || loading || isProcessingBulkAction}
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          >
-            Previous
-          </Button>
-          <span className="text-xs text-[#5a6578] min-w-[72px] text-center">Page {currentPage} / {Math.max(totalPages, 1)}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-[#dde3eb]"
-            disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
-          >
-            Next
-          </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 mr-4">
+             <Select
+              value={String(pageSize)}
+              onValueChange={(value) => {
+                const nextPageSize = Number(value);
+                if (Number.isNaN(nextPageSize)) return;
+                setPageSize(nextPageSize);
+                setCurrentPage(1);
+                clearSelection();
+              }}
+            >
+              <SelectTrigger className="h-8 w-[100px] bg-slate-50 border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-500 rounded-lg focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={size}>{size} / Page</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/60">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:bg-white hover:shadow-sm disabled:opacity-30 transition-all"
+              disabled={currentPage <= 1 || loading || isProcessingBulkAction}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            >
+              <Edit size={14} className="rotate-180" />
+            </Button>
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest min-w-[80px] text-center">
+              Page {currentPage} / {Math.max(totalPages, 1)}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 rounded-lg text-slate-500 hover:bg-white hover:shadow-sm disabled:opacity-30 transition-all"
+              disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
+            >
+              <Edit size={14} />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Add/Edit User Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{editingUser ? 'Edit User Access' : 'Add New User'}</DialogTitle>
-            <DialogDescription>
-              {editingUser 
-                ? 'Update user details and manage access permissions.' 
-                : 'Create a new account and send welcome credentials by email.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
-              <label htmlFor="name" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Name</label>
-              <div className="sm:col-span-3">
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => {
-                    setFormData({ ...formData, name: e.target.value });
-                    if (formErrors.name) {
-                      setFormErrors((prev) => ({ ...prev, name: undefined }));
-                    }
-                  }}
-                  className={formErrors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
-                />
-                {formErrors.name ? <p className="mt-1 text-xs text-red-600">{formErrors.name}</p> : null}
+      {/* Add/Edit User Modal - Premium Styling */}
+      <Dialog open={isModalOpen} onOpenChange={(open) => !saving && setIsModalOpen(open)}>
+        <DialogContent className="sm:max-w-[450px] rounded-[32px] border-none shadow-2xl p-0 overflow-hidden">
+          <div className={`h-2 w-full bg-gradient-to-r ${editingUser ? 'from-indigo-500 to-purple-500' : 'from-emerald-500 to-indigo-500'}`}></div>
+          <div className="p-8 space-y-6">
+            <DialogHeader className="text-left space-y-2">
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${editingUser ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  {editingUser ? <Edit size={24} /> : <Plus size={24} />}
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-display font-black text-[#1e293b] leading-tight">
+                    {editingUser ? 'Edit User Access' : 'Add New User'}
+                  </DialogTitle>
+                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                    {editingUser ? 'System Management' : 'Onboarding Pipeline'}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
-              <label htmlFor="email" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Email</label>
-              <div className="sm:col-span-3">
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => {
-                    if (editingUser) {
-                      return;
-                    }
-                    setFormData({ ...formData, email: e.target.value });
-                    if (formErrors.email) {
-                      setFormErrors((prev) => ({ ...prev, email: undefined }));
-                    }
-                  }}
-                  readOnly={Boolean(editingUser)}
-                  aria-readonly={Boolean(editingUser)}
-                  className={`${formErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''} ${editingUser ? 'bg-[#edf1f7] text-[#5a6578] cursor-not-allowed' : ''}`}
-                />
-                {formErrors.email ? <p className="mt-1 text-xs text-red-600">{formErrors.email}</p> : null}
-                {editingUser ? <p className="mt-1 text-xs text-[#5a6578]">Email changes are disabled because authentication email updates are not supported in this panel.</p> : null}
-              </div>
-            </div>
+            </DialogHeader>
 
-            <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
-              <label htmlFor="role" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Role</label>
-              <div className="sm:col-span-3">
-                <Select 
-                  value={formData.role} 
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, role: value as 'Student' | 'Teacher' | 'Admin', lrn: value === 'Student' ? formData.lrn : '' });
-                    setFormErrors((prev) => ({ ...prev, role: undefined, lrn: undefined }));
-                  }}
-                >
-                  <SelectTrigger className={formErrors.role ? 'border-red-500 focus:ring-red-500' : ''}>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Student">Student</SelectItem>
-                    <SelectItem value="Teacher">Teacher</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                {formErrors.role ? <p className="mt-1 text-xs text-red-600">{formErrors.role}</p> : null}
-              </div>
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
-              <label htmlFor="status" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Status</label>
-              <div className="sm:col-span-3">
-                <Select 
-                  value={formData.status} 
-                  onValueChange={(value) => {
-                    setFormData({ ...formData, status: value });
-                    if (formErrors.status) {
-                      setFormErrors((prev) => ({ ...prev, status: undefined }));
-                    }
-                  }}
-                >
-                  <SelectTrigger className={formErrors.status ? 'border-red-500 focus:ring-red-500' : ''}>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-                {formErrors.status ? <p className="mt-1 text-xs text-red-600">{formErrors.status}</p> : null}
-              </div>
-            </div>
-
-            {editingUser ? (
-              formData.role === 'Student' ? (
-                <>
-                  <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-                    <label htmlFor="lrn" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">LRN</label>
-                    <Input
-                      id="lrn"
-                      value={formData.lrn}
-                      onChange={(e) => setFormData({ ...formData, lrn: e.target.value })}
-                      placeholder="12-digit learner reference"
-                      className="sm:col-span-3"
-                    />
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-                    <label htmlFor="grade" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Grade</label>
-                    <Input
-                      id="grade"
-                      value={formData.grade}
-                      onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                      placeholder="e.g. Grade 11"
-                      className="sm:col-span-3"
-                    />
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-                    <label htmlFor="section" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Section</label>
-                    <Input
-                      id="section"
-                      value={formData.section}
-                      onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                      placeholder="e.g. STEM A"
-                      className="sm:col-span-3"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-                  <label htmlFor="department" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Department</label>
+            <div className="space-y-4 pt-2">
+              {/* Name Input */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                <div className="relative group">
                   <Input
-                    id="department"
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    placeholder="e.g. Mathematics"
-                    className="sm:col-span-3"
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
+                    }}
+                    placeholder="Enter full name"
+                    className={`h-11 rounded-xl bg-slate-50/50 border-slate-200 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all font-medium ${formErrors.name ? 'border-rose-300 bg-rose-50/20' : ''}`}
+                  />
+                  {formErrors.name && <AlertCircle size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500" />}
+                </div>
+                {formErrors.name && <p className="text-[10px] text-rose-500 font-bold ml-1">{formErrors.name}</p>}
+              </div>
+
+              {/* Email Input */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                <div className="relative">
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => {
+                      if (editingUser) return;
+                      setFormData({ ...formData, email: e.target.value });
+                      if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: undefined }));
+                    }}
+                    readOnly={Boolean(editingUser)}
+                    placeholder="name@example.com"
+                    className={`h-11 rounded-xl bg-slate-50/50 border-slate-200 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all font-medium ${formErrors.email ? 'border-rose-300 bg-rose-50/20' : ''} ${editingUser ? 'opacity-60 grayscale' : ''}`}
                   />
                 </div>
-              )
-            ) : (
-              <>
-                <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
-                  <label htmlFor="grade" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Grade</label>
-                  <div className="sm:col-span-3">
-                    <Input
-                      id="grade"
-                      value={formData.grade}
-                      onChange={(e) => {
-                        setFormData({ ...formData, grade: e.target.value });
-                        if (formErrors.grade) {
-                          setFormErrors((prev) => ({ ...prev, grade: undefined }));
-                        }
-                      }}
-                      placeholder="e.g. Grade 11"
-                      className={formErrors.grade ? 'border-red-500 focus-visible:ring-red-500' : ''}
-                    />
-                    {formErrors.grade ? <p className="mt-1 text-xs text-red-600">{formErrors.grade}</p> : null}
-                  </div>
+                {formErrors.email && <p className="text-[10px] text-rose-500 font-bold ml-1">{formErrors.email}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Role Select */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Access Role</label>
+                  <Select 
+                    value={formData.role} 
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, role: value as 'Student' | 'Teacher' | 'Admin', lrn: value === 'Student' ? formData.lrn : '' });
+                      setFormErrors((prev) => ({ ...prev, role: undefined, lrn: undefined }));
+                    }}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl bg-slate-50/50 border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold text-slate-700">
+                      <SelectValue placeholder="Role" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200">
+                      <SelectItem value="Student">Student</SelectItem>
+                      <SelectItem value="Teacher">Teacher</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
-                  <label htmlFor="section" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Section</label>
-                  <div className="sm:col-span-3">
-                    <Input
-                      id="section"
-                      value={formData.section}
-                      onChange={(e) => {
-                        setFormData({ ...formData, section: e.target.value });
-                        if (formErrors.section) {
-                          setFormErrors((prev) => ({ ...prev, section: undefined }));
-                        }
-                      }}
-                      placeholder="e.g. STEM A"
-                      className={formErrors.section ? 'border-red-500 focus-visible:ring-red-500' : ''}
-                    />
-                    {formErrors.section ? <p className="mt-1 text-xs text-red-600">{formErrors.section}</p> : null}
+                {/* Status Select */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Account Status</label>
+                  <Select 
+                    value={formData.status} 
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, status: value });
+                      if (formErrors.status) setFormErrors((prev) => ({ ...prev, status: undefined }));
+                    }}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl bg-slate-50/50 border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold text-slate-700">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200">
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Dynamic Inputs based on Role */}
+              {formData.role === 'Student' && (
+                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-300">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade Level</label>
+                    <Input value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} placeholder="Grade 11" className="h-11 rounded-xl bg-slate-50/50 border-slate-200 font-bold" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Section</label>
+                    <Input value={formData.section} onChange={(e) => setFormData({ ...formData, section: e.target.value })} placeholder="STEM A" className="h-11 rounded-xl bg-slate-50/50 border-slate-200 font-bold" />
+                  </div>
+                  <div className="space-y-1.5 col-span-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">LRN (12 Digits)</label>
+                    <Input value={formData.lrn} onChange={(e) => setFormData({ ...formData, lrn: e.target.value })} placeholder="Required for students" className="h-11 rounded-xl bg-slate-50/50 border-slate-200 font-bold tracking-widest" />
                   </div>
                 </div>
+              )}
 
-                {formData.role === 'Student' ? (
-                  <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
-                    <label htmlFor="lrn" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">LRN</label>
-                    <div className="sm:col-span-3">
+              {(formData.role === 'Teacher' || formData.role === 'Admin') && (
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-300">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Department</label>
+                  <Input value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} placeholder="Mathematics Department" className="h-11 rounded-xl bg-slate-50/50 border-slate-200 font-bold" />
+                </div>
+              )}
+
+              {/* Password Fields for New Users */}
+              {!editingUser && (
+                <div className="space-y-4 pt-2 border-t border-slate-100 mt-4">
+                   <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Set Password</label>
+                    <div className="relative">
                       <Input
-                        id="lrn"
-                        value={formData.lrn}
-                        onChange={(e) => {
-                          setFormData({ ...formData, lrn: e.target.value });
-                          if (formErrors.lrn) {
-                            setFormErrors((prev) => ({ ...prev, lrn: undefined }));
-                          }
-                        }}
-                        placeholder="Required for student accounts"
-                        className={formErrors.lrn ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="h-11 rounded-xl bg-slate-50/50 border-slate-200 pr-10 font-bold tracking-widest"
                       />
-                      {formErrors.lrn ? <p className="mt-1 text-xs text-red-600">{formErrors.lrn}</p> : null}
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                      </button>
                     </div>
                   </div>
-                ) : null}
-
-                <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
-                  <label htmlFor="password" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Password</label>
-                  <div className="sm:col-span-3 relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={(e) => {
-                        setFormData({ ...formData, password: e.target.value });
-                        if (formErrors.password) {
-                          setFormErrors((prev) => ({ ...prev, password: undefined }));
-                        }
-                      }}
-                      placeholder="Min 8 chars, upper/lowercase, number, and symbol"
-                      className={(formErrors.password ? 'border-red-500 focus-visible:ring-red-500 pr-10 ' : 'pr-10 ') + ''}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
-                    </button>
-                    {formErrors.password ? <p className="mt-1 text-xs text-red-600">{formErrors.password}</p> : null}
-                  </div>
                 </div>
+              )}
+            </div>
 
-                <div className="grid gap-2 sm:grid-cols-4 sm:items-start sm:gap-4">
-                  <label htmlFor="confirmPassword" className="text-left sm:text-right text-sm font-medium text-[#0a1628]">Confirm</label>
-                  <div className="sm:col-span-3 relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={formData.confirmPassword}
-                      onChange={(e) => {
-                        setFormData({ ...formData, confirmPassword: e.target.value });
-                        if (formErrors.confirmPassword) {
-                          setFormErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-                        }
-                      }}
-                      placeholder="Retype password"
-                      className={(formErrors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500 pr-10 ' : 'pr-10 ') + ''}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
-                    </button>
-                    {formErrors.confirmPassword ? <p className="mt-1 text-xs text-red-600">{formErrors.confirmPassword}</p> : null}
-                  </div>
-                </div>
-              </>
-            )}
+            <DialogFooter className="flex items-center justify-between gap-3 pt-4">
+              <Button variant="ghost" className="rounded-xl font-bold text-slate-500 hover:bg-slate-100" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancel</Button>
+              <Button onClick={handleSaveUser} className={`flex-1 h-12 rounded-xl font-black uppercase tracking-widest gap-2 text-xs shadow-lg transition-all active:scale-95 ${editingUser ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20'}`} disabled={saving}>
+                {saving ? <Loader2 size={16} className="animate-spin" /> : editingUser ? 'Save Changes' : 'Onboard User'}
+              </Button>
+            </DialogFooter>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsModalOpen(false); setShowPassword(false); setShowConfirmPassword(false); }} disabled={saving}>Cancel</Button>
-            <Button onClick={handleSaveUser} className="bg-sky-600 hover:bg-sky-700 text-white" disabled={saving}>
-              {saving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-              {editingUser ? 'Save Changes' : 'Create User & Send Email'}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
