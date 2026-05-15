@@ -5,7 +5,6 @@ import ConfirmModal from './ConfirmModal';
 import UserAvatar from './UserAvatar';
 import AdminPdfUpload from './admin/AdminPdfUpload';
 import AdminAuditLog from './AdminAuditLog';
-import AdminSettings from './AdminSettings';
 import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
 import AdminAIMonitoring from './AdminAIMonitoring';
@@ -32,17 +31,15 @@ import { useAuth } from '../contexts/AuthContext';
 interface AdminDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
+  onOpenSettings?: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('Overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showLeaveSettingsConfirm, setShowLeaveSettingsConfirm] = useState(false);
-  const [pendingTabAfterSettings, setPendingTabAfterSettings] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [settingsDirty, setSettingsDirty] = useState(false);
   const [createIntentRole, setCreateIntentRole] = useState<'Teacher' | 'Student' | null>(null);
   const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<AuditLogEntry[]>([]);
@@ -57,11 +54,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       return true;
     }
 
-    if (activeTab === 'Settings' && nextTab !== 'Settings' && settingsDirty) {
-      setPendingTabAfterSettings(nextTab);
-      setShowLeaveSettingsConfirm(true);
-      return false;
-    }
 
     setActiveTab(nextTab);
     
@@ -73,20 +65,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
     return true;
   };
 
-  const handleConfirmLeaveSettings = () => {
-    if (pendingTabAfterSettings) {
-      setActiveTab(pendingTabAfterSettings);
-    }
-    setSettingsDirty(false);
-    setPendingTabAfterSettings(null);
-    setShowLeaveSettingsConfirm(false);
-    setIsMobileSidebarOpen(false);
-  };
 
-  const handleCancelLeaveSettings = () => {
-    setPendingTabAfterSettings(null);
-    setShowLeaveSettingsConfirm(false);
-  };
 
   const handleSidebarTabChange = (nextTab: string) => {
     const didChange = handleTabChange(nextTab);
@@ -170,7 +149,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           activeTab={activeTab}
           setActiveTab={handleSidebarTabChange}
           userRole="admin"
-          onOpenSettings={() => handleSidebarTabChange('Settings')}
+          onOpenSettings={() => onOpenSettings?.()}
           onLogout={() => setShowLogoutConfirm(true)}
           sidebarCollapsed={sidebarCollapsed}
           setSidebarCollapsed={setSidebarCollapsed}
@@ -192,7 +171,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               activeTab={activeTab}
               setActiveTab={handleSidebarTabChange}
               userRole="admin"
-              onOpenSettings={() => handleSidebarTabChange('Settings')}
+              onOpenSettings={() => onOpenSettings?.()}
               onLogout={() => {
                 setShowLogoutConfirm(true);
                 setIsMobileSidebarOpen(false);
@@ -225,7 +204,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   {activeTab === 'User Management' && 'User Management'}
                   {activeTab === 'Analytics' && 'Analytics'}
                   {activeTab === 'AI Monitoring' && 'AI Monitoring'}
-                  {activeTab === 'Settings' && 'Settings'}
                   {activeTab === 'Subjects' && 'Curriculum Control'}
                 </h1>
                 <p className="text-[13px] text-[#64748b] mt-1">
@@ -235,7 +213,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   {activeTab === 'User Management' && 'Manage all user accounts and roles.'}
                   {activeTab === 'Analytics' && 'Detailed system performance metrics.'}
                   {activeTab === 'AI Monitoring' && 'Platform AI usage and system health.'}
-                  {activeTab === 'Settings' && 'Configure global platform settings.'}
                   {activeTab === 'Subjects' && 'Manage academic subjects, availability, and RAG knowledge sources.'}
                 </p>
               </div>
@@ -705,7 +682,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           )}
           {activeTab === 'Analytics' && <AdminAnalytics />}
           {activeTab === 'AI Monitoring' && <AdminAIMonitoring />}
-          {activeTab === 'Settings' && <AdminSettings onDirtyChange={setSettingsDirty} />}
+          
           {activeTab === 'Subjects' && <AdminSubjects />}
         </main>
       </div>
@@ -727,17 +704,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         cancelText="Cancel"
       />
 
-      <ConfirmModal
-        isOpen={showLeaveSettingsConfirm}
-        onClose={handleCancelLeaveSettings}
-        onConfirm={handleConfirmLeaveSettings}
-        title="Discard Unsaved Changes?"
-        message="You have unsaved settings changes. If you continue, your edits will be discarded."
-        confirmText="Discard Changes"
-        cancelText="Keep Editing"
-        type="warning"
-        icon="warning"
-      />
+
     </div>
   );
 };
