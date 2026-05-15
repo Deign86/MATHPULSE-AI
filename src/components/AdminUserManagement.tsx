@@ -751,7 +751,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const visibleRangeEnd = totalUsers === 0 ? 0 : Math.min(currentPage * pageSize, totalUsers);
 
   return (
-    <div className="flex flex-col min-h-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="flex flex-col min-h-full animate-in fade-in duration-500">
       <div className="flex-1 space-y-8 pt-6 xl:pt-8 pb-6 px-1">
         {/* Stats Cards - Bento Style */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
@@ -783,9 +783,10 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               </div>
             ))}
       </div>
+      </div>
 
-      {/* Action Bar - Premium Integrated */}
-      <div className="sticky top-0 z-40 -mx-[24px] xl:-mx-[32px] px-[24px] xl:px-[32px] pt-4 pb-4 bg-[#f8fafc]">
+      {/* Action Bar - Sticky Header */}
+      <div className="sticky top-0 z-40 -mx-[24px] xl:-mx-[32px] px-[24px] xl:px-[32px] pt-4 pb-4 bg-[#f8fafc] backdrop-blur-sm">
         <div className="flex flex-col xl:flex-row items-center gap-3">
           {/* Global Search */}
           <div className="relative flex-1 w-full group">
@@ -951,7 +952,6 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             </div>
           </div>
         )}
-      </div>
 
       {loadError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start justify-between gap-3">
@@ -1087,9 +1087,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
         <div className="hidden md:block">
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-[106px] z-30 shadow-md bg-[#f8fafc]">
+            <thead className="sticky top-[80px] z-30 bg-[#f8fafc] backdrop-blur-sm shadow-[0_-12px_0_0_#f8fafc]">
               <tr className="border-b border-[#8b5cf6]">
-                <th className="bg-[#9956DE] px-6 py-4 w-[60px] rounded-tl-[32px]">
+                <th className="bg-[#9956DE] px-6 py-4 w-[60px] rounded-tl-[20px]">
                   <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#9956DE]" />
                 </th>
                 <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">User Profile</th>
@@ -1097,7 +1097,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Status</th>
                 <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Placement</th>
                 <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Activity</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-right text-[11px] font-black text-white uppercase tracking-widest rounded-tr-[32px]">Actions</th>
+                <th className="bg-[#9956DE] px-6 py-4 text-right text-[11px] font-black text-white uppercase tracking-widest rounded-tr-[20px]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
