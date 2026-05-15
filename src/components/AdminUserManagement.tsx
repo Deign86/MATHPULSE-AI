@@ -3,7 +3,7 @@ import {
   Search, Plus, Save,
   Edit, Trash2, Shield, Ban, Users, UserCheck,
   GraduationCap, School, Loader2, RefreshCw, CheckCheck, Mail, Download, AlertCircle,
-  Eye, EyeOff, ChevronLeft, ChevronRight,
+  Eye, EyeOff, ChevronLeft, ChevronRight, RotateCcw, UserPlus
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -785,14 +785,14 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       </div>
 
       {/* Action Bar - Premium Integrated */}
-      <div className="bg-white rounded-[28px] border border-slate-200/60 shadow-sm shadow-slate-200/50 p-3">
+      <div className="sticky top-0 z-40 -mx-[24px] xl:-mx-[32px] px-[24px] xl:px-[32px] pt-4 pb-4 bg-[#f8fafc]">
         <div className="flex flex-col xl:flex-row items-center gap-3">
           {/* Global Search */}
           <div className="relative flex-1 w-full group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
             <Input 
               placeholder="Search by name, email, or LRN..." 
-              className="pl-11 h-12 bg-slate-50/50 border-slate-200/60 rounded-2xl focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all text-sm font-medium"
+              className="pl-11 h-12 bg-white border-slate-200/60 rounded-2xl focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all text-sm font-medium shadow-md shadow-slate-200/40"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -802,8 +802,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             />
           </div>
           
-          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-            <div className="flex items-center bg-slate-50/80 p-1.5 rounded-2xl border border-slate-200/80 h-12 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
               <Select
                 value={roleFilter}
                 onValueChange={(value) => {
@@ -812,18 +811,18 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   clearSelection();
                 }}
               >
-                <SelectTrigger className="w-[140px] bg-white border border-slate-300 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[11px] font-black uppercase tracking-wider text-slate-900 rounded-xl h-11 shadow-sm px-4">
-                  <span className="truncate">{roleFilter}</span>
+                <SelectTrigger className="w-[180px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-4">
+                  <span className="truncate">
+                    {roleFilter === 'All Roles' ? 'All Roles' : roleFilter === 'Admin' ? 'Administrator' : roleFilter === 'Teacher' ? 'Educator' : roleFilter}
+                  </span>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-slate-200">
-                  <SelectItem value="All Roles" className="font-bold">All Roles</SelectItem>
-                  <SelectItem value="Admin" className="font-bold">Admin</SelectItem>
-                  <SelectItem value="Teacher" className="font-bold">Teacher</SelectItem>
-                  <SelectItem value="Student" className="font-bold">Student</SelectItem>
+                  <SelectItem value="All Roles" className="font-bold uppercase tracking-widest text-[10px]">All Roles</SelectItem>
+                  <SelectItem value="Admin" className="font-bold uppercase tracking-widest text-[10px]">Administrator</SelectItem>
+                  <SelectItem value="Teacher" className="font-bold uppercase tracking-widest text-[10px]">Educator</SelectItem>
+                  <SelectItem value="Student" className="font-bold uppercase tracking-widest text-[10px]">Student</SelectItem>
                 </SelectContent>
               </Select>
-
-              <div className="w-[1px] h-4 bg-slate-200 mx-2"></div>
 
               <Select
                 value={statusFilter}
@@ -833,21 +832,37 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   clearSelection();
                 }}
               >
-                <SelectTrigger className="w-[140px] bg-white border border-slate-300 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[11px] font-black uppercase tracking-wider text-slate-900 rounded-xl h-11 shadow-sm px-4">
-                  <span className="truncate">{statusFilter}</span>
+                <SelectTrigger className="w-[180px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-4">
+                  <span className="truncate">{statusFilter === 'All Status' ? 'All Statuses' : statusFilter}</span>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-slate-200">
-                  <SelectItem value="All Status" className="font-bold">All Status</SelectItem>
-                  <SelectItem value="Active" className="font-bold">Active</SelectItem>
-                  <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
+                  <SelectItem value="All Status" className="font-bold uppercase tracking-widest text-[10px]">All Statuses</SelectItem>
+                  <SelectItem value="Active" className="font-bold uppercase tracking-widest text-[10px]">Active</SelectItem>
+                  <SelectItem value="Inactive" className="font-bold uppercase tracking-widest text-[10px]">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                setSearchQuery('');
+                setRoleFilter('All Roles');
+                setStatusFilter('All Status');
+                setCurrentPage(1);
+                clearSelection();
+              }}
+              disabled={!searchQuery && roleFilter === 'All Roles' && statusFilter === 'All Status'}
+              className="h-12 w-12 rounded-xl border-slate-200 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-slate-200/40"
+              title="Reset Filters"
+            >
+              <RotateCcw size={18} />
+            </Button>
 
             <Button
               variant="outline"
               size="icon"
-              className="h-12 w-12 rounded-2xl border-slate-200/60 text-slate-500 hover:bg-slate-50"
+              className="h-12 w-12 rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 transition-all shadow-md shadow-slate-200/40"
               onClick={() => loadUsers(currentPage)}
               disabled={loading || isProcessingBulkAction}
             >
@@ -855,11 +870,11 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             </Button>
 
             <Button 
-              className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl gap-2 font-bold text-sm shadow-sm shadow-indigo-500/20 transition-all hover:translate-y-[-1px] active:translate-y-[1px]"
+              className="h-12 gap-2 bg-[#9956DE] hover:bg-[#8b5cf6] text-white rounded-xl shadow-lg shadow-purple-200/50 transition-all px-6 font-black uppercase text-[11px] tracking-widest" 
               onClick={() => handleOpenAddModal()}
               disabled={isProcessingBulkAction}
             >
-              <Plus size={18} />
+              <UserPlus size={18} />
               Add User
             </Button>
           </div>
@@ -960,7 +975,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       ) : null}
 
       {/* Users Table - Premium Styling */}
-      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 overflow-hidden relative">
+      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 relative">
         {loading && users.length > 0 && (
           <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-20 flex items-center justify-center">
             <Loader2 className="animate-spin text-indigo-500" size={32} />
@@ -1030,9 +1045,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                         user.status === 'Active' ? 'text-slate-600' : 'text-emerald-600'
                       }`}
                       onClick={() => handleToggleStatus(user)}
-                      disabled={isPendingToggle || isProcessingBulkAction}
+                      disabled={(pendingRowActionUserId === user.id) || isProcessingBulkAction}
                     >
-                      {isPendingToggle ? <Loader2 size={14} className="animate-spin" /> : user.status === 'Active' ? <Ban size={14} /> : <UserCheck size={14} />}
+                      {(pendingRowActionUserId === user.id) ? <Loader2 size={14} className="animate-spin" /> : user.status === 'Active' ? <Ban size={14} /> : <UserCheck size={14} />}
                       {user.status === 'Active' ? 'Ban' : 'Active'}
                     </Button>
                     <Button
@@ -1046,7 +1061,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     </Button>
                   </div>
                 </div>
-              );
+              )
             })
           ) : (
             <div className="px-6 py-20 text-center space-y-4">
@@ -1070,19 +1085,19 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           )}
         </div>
 
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden md:block">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-md">
-                <th className="px-6 py-4 w-[60px]">
+            <thead className="sticky top-[106px] z-30 shadow-md bg-[#f8fafc]">
+              <tr className="border-b border-[#8b5cf6]">
+                <th className="bg-[#9956DE] px-6 py-4 w-[60px] rounded-tl-[32px]">
                   <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#9956DE]" />
                 </th>
-                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">User Profile</th>
-                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Role & Access</th>
-                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Placement</th>
-                <th className="px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Activity</th>
-                <th className="px-6 py-4 text-right text-[11px] font-black text-white uppercase tracking-widest">Actions</th>
+                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">User Profile</th>
+                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Role & Access</th>
+                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Status</th>
+                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Placement</th>
+                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Activity</th>
+                <th className="bg-[#9956DE] px-6 py-4 text-right text-[11px] font-black text-white uppercase tracking-widest rounded-tr-[32px]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -1195,8 +1210,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                       </div>
                     </td>
                   </tr>
-                  );
-                })
+                )
+              })
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-32 text-center">
@@ -1231,10 +1246,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         </div>
       </div>
 
-      </div>{/* End flex-1 content wrapper */}
-
-      {/* Pagination - Sticky Footer */}
-      <div className="sticky bottom-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-12 py-5 bg-white border-t-2 border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] -mx-[24px] xl:-mx-[32px] w-[calc(100%+48px)] xl:w-[calc(100%+64px)]">
+      {/* Pagination — ── Standardized Sticky Footer Pagination ── */}
+      <div className="sticky bottom-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-12 py-3 bg-white border-t-2 border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] -mx-[24px] xl:-mx-[32px] w-[calc(100%+48px)] xl:w-[calc(100%+64px)]">
         <p className="text-[12px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-4">
           <span className="w-2.5 h-2.5 rounded-full bg-[#9956DE] animate-pulse shadow-[0_0_12px_rgba(153,86,222,0.6)]"></span>
           Showing <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">{visibleRangeStart}–{visibleRangeEnd}</span>
@@ -1475,7 +1488,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         type="danger"
         icon="delete"
       />
-    </div>
+      </div>
   );
 };
 
