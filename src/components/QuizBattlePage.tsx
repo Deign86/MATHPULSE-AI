@@ -2333,7 +2333,7 @@ const QuizBattlePage: React.FC = () => {
                           </div>
 
                           {/* Light rays from behind podium */}
-                          <div className="absolute bottom-[60px] left-1/2 -translate-x-1/2 w-[220px] h-[160px] bg-gradient-to-t from-white/20 to-transparent blur-[2px] z-0 pointer-events-none" style={{ clipPath: 'polygon(25% 0, 75% 0, 100% 100%, 0% 100%)' }}></div>
+                          <div className="absolute bottom-[50px] left-1/2 -translate-x-1/2 w-[220px] h-[160px] bg-gradient-to-t from-white/20 to-transparent blur-[2px] z-0 pointer-events-none" style={{ clipPath: 'polygon(25% 0, 75% 0, 100% 100%, 0% 100%)' }}></div>
 
                           {/* Podium */}
                           <div className="flex items-end justify-center z-10 relative px-4 bottom-[35px]">
