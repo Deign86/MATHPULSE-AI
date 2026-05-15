@@ -78,7 +78,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             { icon: BarChart3, label: 'Analytics' },
             { icon: Cpu, label: 'AI Monitoring' },
             { icon: Shield, label: 'Audit Log' },
-            { icon: Settings, label: 'Settings' },
           ],
         },
       ];
@@ -249,7 +248,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       <div className="mt-4 space-y-2 border-t border-[#dde3eb] pt-4">
-        {userRole !== 'admin' ? (
+        {true ? (
           <Tooltip open={shouldShowIconOnlyTooltips && hoveredTooltip === 'Settings'}>
             <TooltipTrigger asChild>
               <motion.button
