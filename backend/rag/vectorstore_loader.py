@@ -32,9 +32,14 @@ def _resolve_vectorstore_dir() -> Path:
     return backend_candidate
 
 
+# FIX(502): Respect EMBEDDING_MODEL env var, default to bge-small-en-v1.5 (matches .env.example).
+# bge-base-en-v1.5 was the old hardcoded default — downloading the wrong model on HF Spaces
+# cold start triggers a ~130 MB download that can exceed the 60s startup timeout.
+_DEFAULT_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+
 def get_vectorstore_components(
     collection_name: str = "curriculum_chunks",
-    model_name: str = "BAAI/bge-base-en-v1.5",
+    model_name: str = _DEFAULT_EMBEDDING_MODEL,
 ):
     global _VECTORSTORE_SINGLETON
     if _VECTORSTORE_SINGLETON is None:

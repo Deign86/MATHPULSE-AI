@@ -435,39 +435,55 @@ def _set_cache_response_header(response: Optional[Response], hit: bool) -> None:
 async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Initialize and tear down backend services for app lifespan."""
     logger.info("⚙️  Initializing backend services...")
+
+    # FIX(502): Firebase init is fast (reads env vars), keep synchronous.
     _init_firebase_admin()
 
-    # Pre-initialize inference client at startup to avoid first-request latency spike
-    logger.info("🔧 Pre-initializing InferenceClient...")
-    try:
-        get_inference_client()
-        logger.info("✅ InferenceClient pre-initialized at startup")
-    except Exception as e:
-        logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
+    # FIX(502): Yield the lifespan IMMEDIATELY so Uvicorn binds port 7860 before
+    # heavy model downloads can block.  HF Spaces has a ~60s startup timeout —
+    # any blocking call in lifespan that exceeds it causes the reverse proxy to
+    # return 502.  Heavy warm-up is deferred to background tasks instead.
+    logger.info("✅ MathPulse AI backend binding on 0.0.0.0:7860 (warm-up deferred to background)")
 
-    active_model = os.getenv("HF_MODEL_ID", "deepseek-chat")
-    try:
-        from rag.vectorstore_loader import get_vectorstore_health
-        health = get_vectorstore_health()
-        logger.info(
-            "RAG vectorstore ready: %d chunks | subjects: %s | model: %s",
-            health["chunkCount"],
-            list(health["subjects"].keys()),
-            active_model,
-        )
-        if health["chunkCount"] == 0:
-            logger.warning(
-                "RAG vectorstore is EMPTY. Run: python backend/scripts/ingest_curriculum.py"
-            )
-        if "235B" in active_model:
+    async def _warmup_inference_client() -> None:
+        logger.info("🔧 Pre-initializing InferenceClient (background)...")
+        try:
+            get_inference_client()
+            logger.info("✅ InferenceClient pre-initialized at startup")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
+
+    async def _warmup_vectorstore() -> None:
+        active_model = os.getenv("HF_MODEL_ID", "deepseek-chat")
+        try:
+            from rag.vectorstore_loader import get_vectorstore_health
+            health = get_vectorstore_health()
             logger.info(
-                "Production model active: %s — sequential inference only (--max-num-seqs 1)",
+                "RAG vectorstore ready: %d chunks | subjects: %s | model: %s",
+                health["chunkCount"],
+                list(health["subjects"].keys()),
                 active_model,
             )
-    except Exception as exc:
-        logger.error("RAG vectorstore warm-up failed: %s", exc)
+            if health["chunkCount"] == 0:
+                logger.warning(
+                    "RAG vectorstore is EMPTY. Run: python backend/scripts/ingest_curriculum.py"
+                )
+            if "235B" in active_model:
+                logger.info(
+                    "Production model active: %s — sequential inference only (--max-num-seqs 1)",
+                    active_model,
+                )
+        except Exception as exc:
+            logger.error("RAG vectorstore warm-up failed: %s", exc)
 
-    logger.info(f"✅ MathPulse AI backend ready at http://0.0.0.0:7860")
+    _warmup_inference_task = asyncio.create_task(_warmup_inference_client())
+    _warmup_vectorstore_task = asyncio.create_task(_warmup_vectorstore())
+
+    # FIX(502): Set a readiness flag so /health reports the true state without
+    # triggering heavy init on every health-check ping from HF Spaces' proxy.
+    global _backend_ready
+    _backend_ready = True
+
     logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'deepseek')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
     logger.info(f"   - INFERENCE_CHAT_MODEL_ID: {os.getenv('INFERENCE_CHAT_MODEL_ID', HF_MATH_MODEL_ID)}")
@@ -505,6 +521,7 @@ class AuthenticatedUser(BaseModel):
 
 
 _firebase_ready = False
+_backend_ready = False  # FIX(502): set after lifespan yields, used by /health
 _role_cache: Dict[str, Dict[str, Any]] = {}
 _ROLE_CACHE_TTL_SECONDS = 60
 _firestore_role_lookup_warning_emitted = False
@@ -1877,21 +1894,18 @@ class TestingResetResponse(BaseModel):
 # ─── Routes ────────────────────────────────────────────────────
 
 
+# FIX(502): Lightweight health check — returns immediately without initialising
+# the inference client or vectorstore.  HF Spaces' reverse proxy pings /health
+# to decide whether to route traffic; a slow response or crash here causes 502.
 @app.get("/health")
 async def health_check():
-    chat_model = CHAT_MODEL
-    try:
-        routing_client = get_inference_client()
-        chat_model, _ = routing_client._resolve_primary_model(
-            InferenceRequest(
-                messages=[{"role": "user", "content": "health_check"}],
-                task_type="chat",
-            )
-        )
-    except Exception:
-        pass
-
-    return {"status": "healthy", "models": {"chat": chat_model, "risk": RISK_MODEL}}
+    return {
+        "status": "ready" if _backend_ready else "starting",
+        "space": "mathpulse-ai",
+        "firebase": _firebase_ready,
+        "chat_model": CHAT_MODEL,
+        "risk_model": RISK_MODEL,
+    }
 
 
 @app.get("/")
