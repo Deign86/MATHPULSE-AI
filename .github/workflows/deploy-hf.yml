@@ -296,31 +296,42 @@ jobs:
           VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
           VITE_API_URL: https://deign86-mathpulse-api-v3test.hf.space
         run: |
-          cat > .env.production <<EOF
-          VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
-          VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
-          VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
-          VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
-          VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
-          VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
-          VITE_FIREBASE_MEASUREMENT_ID=${VITE_FIREBASE_MEASUREMENT_ID}
-          VITE_FIREBASE_DATABASE_URL=${VITE_FIREBASE_DATABASE_URL}
-          VITE_FIREBASE_VAPID_KEY=${VITE_FIREBASE_VAPID_KEY}
-          VITE_API_URL=${VITE_API_URL}
-          EOF
+          # Defensively strip BOM (\xEF\xBB\xBF), CR, and surrounding whitespace from each
+          # secret value before writing to .env.production. GitHub Actions secrets pasted
+          # from Windows-encoded files can contain a UTF-8 BOM that Vite then bakes into
+          # the bundle, breaking Firebase Auth with auth/network-request-failed
+          # (see TypeError: 'Failed to read the headers property... String contains
+          # non ISO-8859-1 code point').
+          strip() {
+            printf '%s' "$1" | sed 's/^\xEF\xBB\xBF//' | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+          }
+          {
+            printf 'VITE_FIREBASE_API_KEY=%s\n'             "$(strip "${VITE_FIREBASE_API_KEY}")"
+            printf 'VITE_FIREBASE_AUTH_DOMAIN=%s\n'         "$(strip "${VITE_FIREBASE_AUTH_DOMAIN}")"
+            printf 'VITE_FIREBASE_PROJECT_ID=%s\n'          "$(strip "${VITE_FIREBASE_PROJECT_ID}")"
+            printf 'VITE_FIREBASE_STORAGE_BUCKET=%s\n'      "$(strip "${VITE_FIREBASE_STORAGE_BUCKET}")"
+            printf 'VITE_FIREBASE_MESSAGING_SENDER_ID=%s\n' "$(strip "${VITE_FIREBASE_MESSAGING_SENDER_ID}")"
+            printf 'VITE_FIREBASE_APP_ID=%s\n'              "$(strip "${VITE_FIREBASE_APP_ID}")"
+            printf 'VITE_FIREBASE_MEASUREMENT_ID=%s\n'      "$(strip "${VITE_FIREBASE_MEASUREMENT_ID}")"
+            printf 'VITE_FIREBASE_DATABASE_URL=%s\n'        "$(strip "${VITE_FIREBASE_DATABASE_URL}")"
+            printf 'VITE_FIREBASE_VAPID_KEY=%s\n'           "$(strip "${VITE_FIREBASE_VAPID_KEY}")"
+            printf 'VITE_API_URL=%s\n'                      "$(strip "${VITE_API_URL}")"
+          } > .env.production
+
+          # Sanity-check that the apiKey did not survive with a BOM/CR/space
+          if head -1 .env.production | grep -q $'\xEF\xBB\xBF'; then
+            echo "::error::BOM detected in .env.production after strip — aborting"
+            exit 1
+          fi
+          if grep -P '[^\x00-\x7F]' .env.production >/dev/null 2>&1; then
+            echo "::warning::Non-ASCII characters present in .env.production"
+          fi
 
       - name: Build frontend
-        env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
-          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
-          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
-          VITE_API_URL: https://deign86-mathpulse-api-v3test.hf.space
+        # Vite auto-loads variables from the cleaned .env.production written above.
+        # We deliberately do NOT pass VITE_FIREBASE_* through the process env here:
+        # GitHub Actions secrets pasted with a UTF-8 BOM would otherwise override the
+        # cleaned file values and reintroduce auth/network-request-failed in the bundle.
         run: npm run build
 
       - name: Push frontend to HF Space
