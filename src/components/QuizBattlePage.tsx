@@ -2333,33 +2333,47 @@ const QuizBattlePage: React.FC = () => {
                           </div>
 
                           {/* Light rays from behind podium */}
-                          <div className="absolute bottom-[70px] left-1/2 -translate-x-1/2 w-[220px] h-[160px] bg-gradient-to-t from-white/20 to-transparent blur-[2px] z-0 pointer-events-none" style={{ clipPath: 'polygon(25% 0, 75% 0, 100% 100%, 0% 100%)' }}></div>
+                          <div className="absolute bottom-[60px] left-1/2 -translate-x-1/2 w-[220px] h-[160px] bg-gradient-to-t from-white/20 to-transparent blur-[2px] z-0 pointer-events-none" style={{ clipPath: 'polygon(25% 0, 75% 0, 100% 100%, 0% 100%)' }}></div>
 
                           {/* Podium */}
-                          <div className="flex items-end justify-center z-10 relative px-4 bottom-[55px]">
+                          <div className="flex items-end justify-center z-10 relative px-4 bottom-[35px]">
                             {/* Left step */}
-                            <div className="w-[75px] h-[35px] bg-[#ED6060] rounded-t-[8px] flex items-center justify-center relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)]">
-                              <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-t-[8px]"></div>
-                              <div className="w-10 h-1.5 bg-white/70 rounded-full mt-1 relative z-10"></div>
+                            <div className="flex flex-col items-center relative z-10">
+                              <div className="w-[75px] h-[14px] bg-[#D44747] rounded-t-[3px] border-x-[1.5px] border-white/90" />
+                              <div className="w-[65px] h-[45px] bg-[#FE6464] flex flex-col items-center justify-center gap-2 border-x-[1.5px] border-white/90">
+                                <div className="w-8 h-1.5 bg-white/90 rounded-full mt-1" />
+                                <div className="w-8 h-1.5 bg-white/90 rounded-full" />
+                              </div>
                             </div>
 
                             {/* Center step */}
-                            <div className="w-[90px] h-[65px] bg-[#ED4E4E] rounded-t-[8px] -mx-2 z-20 flex flex-col items-center justify-center gap-2.5 relative shadow-[0_0_15px_rgba(0,0,0,0.2),inset_0_2px_4px_rgba(255,255,255,0.2)]">
-                              <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-t-[8px]"></div>
-                              <div className="w-12 h-2 bg-white/80 rounded-full mt-2 relative z-10"></div>
-                              <div className="w-12 h-2 bg-white/80 rounded-full relative z-10"></div>
+                            <div className="flex flex-col items-center relative z-20 -mx-1">
+                              <div className="w-[90px] h-[16px] bg-[#F39029] rounded-t-[3px] border-x-[1.5px] border-white/90" />
+                              <div className="w-[80px] h-[65px] bg-[#FFA23A] flex flex-col items-center justify-center gap-2.5 border-x-[1.5px] border-white/90">
+                                <div className="w-10 h-1.5 bg-white/90 rounded-full mt-1" />
+                                <div className="w-10 h-1.5 bg-white/90 rounded-full" />
+                              </div>
                             </div>
 
                             {/* Right step */}
-                            <div className="w-[75px] h-[25px] bg-[#C62B2B] rounded-t-[8px] flex items-center justify-center relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.1)]">
-                              <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent rounded-t-[8px]"></div>
+                            <div className="flex flex-col items-center relative z-10">
+                              <div className="w-[75px] h-[14px] bg-[#D44747] rounded-t-[3px] border-x-[1.5px] border-white/90" />
+                              <div className="w-[65px] h-[45px] bg-[#FE6464] flex flex-col items-center justify-center gap-2 border-x-[1.5px] border-white/90">
+                                <div className="w-8 h-1.5 bg-white/90 rounded-full mt-1" />
+                                <div className="w-8 h-1.5 bg-white/90 rounded-full" />
+                              </div>
                             </div>
                           </div>
 
                           {/* Bottom Banner */}
-                          <div className="absolute bottom-0 w-full h-[55px] bg-[#A91919] z-20 flex flex-col items-center justify-center rounded-b-[24px] shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)]">
-                            <h3 className="text-[20px] font-black text-white tracking-wide leading-none drop-shadow-md font-nunito mt-0.5">Hall of Fame</h3>
-                            <span className="text-[11px] font-bold text-white/90 tracking-wide mt-1">View Page &gt;</span>
+                          <div className="absolute bottom-[2px] w-full flex justify-center z-30">
+                            {/* Wings */}
+                            <div className="absolute top-[10px] w-full h-[35px] bg-[#8E1010] z-0"></div>
+                            {/* Main Banner */}
+                            <div className="relative w-[85%] h-[50px] bg-[#C62828] z-10 flex flex-col items-center justify-center rounded-[3px] shadow-[0_4px_10px_rgba(0,0,0,0.2)]">
+                              <h3 className="text-[18px] font-black text-white tracking-wide leading-none font-nunito mt-0.5">Hall of Fame</h3>
+                              <span className="text-[10px] font-bold text-white/90 tracking-wide mt-1">View Page &gt;</span>
+                            </div>
                           </div>
                         </div>
                       </div>
