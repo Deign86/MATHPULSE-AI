@@ -423,7 +423,7 @@ const AdminAIMonitoring: React.FC = () => {
   // ── Render ────────────────────────────────────
 
   return (
-    <div className="space-y-8" data-testid="ai-usage-dashboard">
+    <div className="space-y-8 pt-6 xl:pt-8" data-testid="ai-usage-dashboard">
       {/* ── Header ── */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}

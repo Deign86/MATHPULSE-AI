@@ -103,62 +103,59 @@ const AdminSubjects: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col min-h-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-6">
-      {/* Stats Dashboard */}
-      <div className="flex flex-col gap-6">
+    <div className="flex flex-col min-h-full space-y-8 pt-6 xl:pt-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-6">
+      {loading && (
         <div className="flex items-center justify-end px-2">
-          {loading && (
-            <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-2xl border border-indigo-100 animate-pulse">
-              <Loader2 size={16} className="animate-spin" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Syncing Subject Cloud Data...</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-2xl border border-indigo-100 animate-pulse">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Syncing Subject Cloud Data...</span>
+          </div>
         </div>
+      )}
 
-        {/* Stats Grid - Bento Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { 
-              label: 'Total Subjects', 
-              value: SUBJECT_ROWS.length, 
-              icon: BookOpen, 
-              bg: 'bg-[#4f46e5]', 
-              shadow: 'shadow-indigo-500/20' 
-            },
-            { 
-              label: 'Available', 
-              value: SUBJECT_ROWS.filter(s => availability[s.id]?.available !== false).length, 
-              icon: Unlock, 
-              bg: 'bg-[#10b981]', 
-              shadow: 'shadow-emerald-500/20' 
-            },
-            { 
-              label: 'Locked', 
-              value: SUBJECT_ROWS.filter(s => availability[s.id]?.available === false).length, 
-              icon: Lock, 
-              bg: 'bg-[#ef4444]', 
-              shadow: 'shadow-rose-500/20' 
-            },
-            { 
-              label: 'RAG Sources', 
-              value: SUBJECT_ROWS.filter(s => availability[s.id]?.pdfPath).length, 
-              icon: FileText, 
-              bg: 'bg-[#8b5cf6]', 
-              shadow: 'shadow-purple-500/20' 
-            },
-          ].map((stat, idx) => (
-            <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-5 rounded-[28px] text-white flex flex-col gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg`}>
-              <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
-              <div className="relative z-10 flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{stat.label}</p>
-                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
-                  <stat.icon size={14} />
-                </div>
+      {/* Stats Grid - Bento Style */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { 
+            label: 'Total Subjects', 
+            value: SUBJECT_ROWS.length, 
+            icon: BookOpen, 
+            bg: 'bg-[#4f46e5]', 
+            shadow: 'shadow-indigo-500/20' 
+          },
+          { 
+            label: 'Available', 
+            value: SUBJECT_ROWS.filter(s => availability[s.id]?.available !== false).length, 
+            icon: Unlock, 
+            bg: 'bg-[#10b981]', 
+            shadow: 'shadow-emerald-500/20' 
+          },
+          { 
+            label: 'Locked', 
+            value: SUBJECT_ROWS.filter(s => availability[s.id]?.available === false).length, 
+            icon: Lock, 
+            bg: 'bg-[#ef4444]', 
+            shadow: 'shadow-rose-500/20' 
+          },
+          { 
+            label: 'RAG Sources', 
+            value: SUBJECT_ROWS.filter(s => availability[s.id]?.pdfPath).length, 
+            icon: FileText, 
+            bg: 'bg-[#8b5cf6]', 
+            shadow: 'shadow-purple-500/20' 
+          },
+        ].map((stat, idx) => (
+          <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-5 rounded-[28px] text-white flex flex-col gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg`}>
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
+            <div className="relative z-10 flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{stat.label}</p>
+              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                <stat.icon size={14} />
               </div>
-              <h3 className="relative z-10 text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
             </div>
-          ))}
-        </div>
+            <h3 className="relative z-10 text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
+          </div>
+        ))}
       </div>
 
       {error && (
@@ -171,15 +168,15 @@ const AdminSubjects: React.FC = () => {
       {/* Subject Table - Premium Integrated */}
       <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 overflow-hidden relative">
         <Table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-md">
-              <th className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Subject Identity</th>
-              <th className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Grade / Semester</th>
-              <th className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Access Status</th>
-              <th className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Toggle Access</th>
-              <th className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">RAG Resource Mapping</th>
-            </tr>
-          </thead>
+          <TableHeader>
+            <TableRow className="bg-[#9956DE] hover:bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-md">
+              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Subject Identity</TableHead>
+              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Grade / Semester</TableHead>
+              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Access Status</TableHead>
+              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Toggle Access</TableHead>
+              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">RAG Resource Mapping</TableHead>
+            </TableRow>
+          </TableHeader>
           <TableBody className="divide-y divide-slate-50">
             {SUBJECT_ROWS.map((subject) => {
               const entry = availability[subject.id];

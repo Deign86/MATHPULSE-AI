@@ -320,7 +320,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         {/* Main Grid */}
         <main className={`flex-1 overflow-y-auto px-[24px] xl:px-[32px] scrollbar-hide ${activeTab === 'User Management' ? 'pb-0' : 'pb-[32px]'}`}>
           {activeTab === 'Overview' && (
-            <div className="max-w-[1600px] mx-auto space-y-6 mt-4">
+            <div className="max-w-[1600px] mx-auto space-y-8 pt-6 xl:pt-8">
               {/* Row 1: Ratio 4:8 */}
               <div className="grid grid-cols-12 gap-6 h-[170px]">
                 {/* Welcome Card (col-span-4) */}
