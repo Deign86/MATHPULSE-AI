@@ -10,6 +10,7 @@ import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
 import AdminAIMonitoring from './AdminAIMonitoring';
 import AdminSubjects from './admin/AdminSubjects';
+import SubjectsHelpModal from './admin/SubjectsHelpModal';
 import MasteryHeatmap from './MasteryHeatmap';
 import AdminPriorityModules from './AdminPriorityModules';
 import NotificationDropdown from './NotificationDropdown';
@@ -17,7 +18,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, 
   ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie 
 } from 'recharts';
-import { Zap, Activity, TrendingUp, ArrowUpRight, CheckCircle2, Sparkles, Bell } from 'lucide-react';
+import { Zap, Activity, TrendingUp, ArrowUpRight, CheckCircle2, Sparkles, Bell, HelpCircle } from 'lucide-react';
 import {
   getDashboardStats,
   getAuditLogs,
@@ -48,6 +49,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const [topPerformers, setTopPerformers] = useState<TopPerformer[]>([]);
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isSubjectsHelpModalOpen, setIsSubjectsHelpModalOpen] = useState(false);
+  const [showHelpTooltip, setShowHelpTooltip] = useState(false);
 
   const handleTabChange = (nextTab: string): boolean => {
     if (activeTab === nextTab) {
@@ -61,6 +64,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
     }
 
     setActiveTab(nextTab);
+    
+    if (nextTab === 'Subjects') {
+      setShowHelpTooltip(true);
+      setTimeout(() => setShowHelpTooltip(false), 2000);
+    }
+    
     return true;
   };
 
@@ -217,7 +226,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   {activeTab === 'Analytics' && 'Analytics'}
                   {activeTab === 'AI Monitoring' && 'AI Monitoring'}
                   {activeTab === 'Settings' && 'Settings'}
-                  {activeTab === 'Subjects' && 'Subjects'}
+                  {activeTab === 'Subjects' && 'Curriculum Control'}
                 </h1>
                 <p className="text-[13px] text-[#64748b] mt-1">
                   {activeTab === 'Overview' && `System Overview & Management`}
@@ -227,7 +236,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   {activeTab === 'Analytics' && 'Detailed system performance metrics.'}
                   {activeTab === 'AI Monitoring' && 'Platform AI usage and system health.'}
                   {activeTab === 'Settings' && 'Configure global platform settings.'}
-                  {activeTab === 'Subjects' && 'Manage academic subjects and curriculum.'}
+                  {activeTab === 'Subjects' && 'Manage academic subjects, availability, and RAG knowledge sources.'}
                 </p>
               </div>
               
@@ -251,6 +260,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </div>
 
             <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+              {/* Help Toggle (Subjects Only) */}
+              {activeTab === 'Subjects' && (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsSubjectsHelpModalOpen(true)}
+                    className="relative w-10 h-10 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-lg shadow-indigo-200 text-white transition-all cursor-pointer hover:scale-110 active:scale-95 animate-in zoom-in duration-300"
+                    aria-label="How it works"
+                  >
+                    <HelpCircle size={20} />
+                  </button>
+                  
+                  {showHelpTooltip && (
+                    <div className="absolute top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-[#1e293b] text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-300 z-50">
+                      How It Works?
+                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#1e293b] rotate-45" />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Notification Bell */}
               <div className="relative">
                 <button
@@ -680,6 +709,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           {activeTab === 'Subjects' && <AdminSubjects />}
         </main>
       </div>
+
+      {/* Help Modal */}
+      <SubjectsHelpModal 
+        isOpen={isSubjectsHelpModalOpen} 
+        onClose={() => setIsSubjectsHelpModalOpen(false)} 
+      />
 
       {/* Logout Confirmation Modal */}
       <ConfirmModal
