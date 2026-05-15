@@ -46,7 +46,7 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
       whileHover={isAvailable ? { y: -8 } : undefined}
       onClick={isAvailable ? onClick : undefined}
       onKeyDown={isAvailable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-      className={`relative text-left rounded-2xl md:rounded-[1.4rem] overflow-visible min-h-[170px] md:min-h-[290px] bg-transparent group w-full flex flex-col ${!isAvailable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      className={`relative text-left rounded-2xl md:rounded-[1.4rem] overflow-visible h-full min-h-[185px] md:min-h-[290px] bg-transparent group w-full flex flex-col ${!isAvailable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {/* FOLDER TAB */}
       <div 

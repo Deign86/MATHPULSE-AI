@@ -2193,7 +2193,7 @@ const QuizBattlePage: React.FC = () => {
                         <h2 className="flex items-center gap-2 pb-4 text-xl lg:text-2xl font-black tracking-wide uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.4)]">
                           <Swords className="h-6 w-6 lg:h-8 lg:w-8 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]" /> BATTLE MODES
                         </h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 relative z-10 w-full mb-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 relative z-10 w-full mb-2">
                           {/* VS Player Card */}
                           <motion.button
                             type="button"
@@ -2201,7 +2201,7 @@ const QuizBattlePage: React.FC = () => {
                             whileHover={{ scale: 1.025 }}
                             whileTap={{ scale: 0.98 }}
                             transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                            className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#8A3FD3] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(138,63,211,0.2)] hover:shadow-[0_12px_45px_rgba(138,63,211,0.4)] block flex-col group"
+                            className="w-full h-[170px] sm:h-[245px] lg:h-[265px] bg-[#8A3FD3] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(138,63,211,0.2)] hover:shadow-[0_12px_45px_rgba(138,63,211,0.4)] block flex-col group"
                           >
                             {/* Top Highlight border / Inner Shadow effect */}
                             <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
@@ -2221,19 +2221,19 @@ const QuizBattlePage: React.FC = () => {
 
                               <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
                                 {/* Expanded Full-Width Stage (Dark Purple) */}
-                                <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                                <div className="absolute bottom-0 left-0 w-full h-[50px] sm:h-[95px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
 
                                 {/* Animated Avatar Clones (VS Match) - CSS WAAPI animations */}
-                                <div className="relative z-10 flex items-center justify-center mb-[2px] h-[120px] sm:h-[140px] w-full">
+                                <div className="relative z-10 flex items-center justify-center mb-[2px] h-[80px] sm:h-[140px] w-full">
                                   {/* Left Avatar */}
                                   <img
                                     src="/avatar/avatar_icon.png"
                                     alt=""
-                                    className="h-[120%] sm:h-[125%] object-contain relative z-20 origin-bottom right-[-15px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)] animate-avatar-left"
+                                    className="h-[120%] sm:h-[125%] object-contain relative z-20 origin-bottom right-[-10px] sm:right-[-15px] drop-shadow-[0_12px_15px_rgba(0,0,0,0.3)] animate-avatar-left"
                                   />
                                   {/* Center VS */}
                                   <div className="relative z-30 flex flex-col items-center mx-[-20px] scale-[1.1] animate-vs-pulse">
-                                    <span className="font-black italic text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)] webkit-text-stroke">
+                                    <span className="font-black italic text-[28px] sm:text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)] webkit-text-stroke">
                                       <span className="text-gray-300">V</span><span className="text-gray-400">S</span>
                                     </span>
                                   </div>
@@ -2246,8 +2246,8 @@ const QuizBattlePage: React.FC = () => {
                                 </div>
                               </div>
 
-                              <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#662AA8]">
-                                <p className="text-[13px] font-bold text-white leading-[1.45] font-nunito">
+                              <div className="relative z-10 w-full px-3 sm:px-5 py-2 sm:py-4 text-center bg-[#662AA8]">
+                                <p className="text-[10px] sm:text-[13px] font-bold text-white leading-[1.4] font-nunito">
                                   Queue or room-code match with another student.
                                 </p>
                               </div>
@@ -2261,7 +2261,7 @@ const QuizBattlePage: React.FC = () => {
                             whileHover={{ scale: 1.025 }}
                             whileTap={{ scale: 0.98 }}
                             transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                            className="w-full h-[205px] sm:h-[245px] lg:h-[265px] bg-[#1FA7E1] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(31,167,225,0.2)] hover:shadow-[0_12px_45px_rgba(31,167,225,0.4)] block flex-col group"
+                            className="w-full h-[170px] sm:h-[245px] lg:h-[265px] bg-[#1FA7E1] rounded-[22px] border-none relative text-left shadow-[0_8px_30px_rgba(31,167,225,0.2)] hover:shadow-[0_12px_45px_rgba(31,167,225,0.4)] block flex-col group"
                           >
                             {/* Top Highlight border / Inner Shadow effect */}
                             <div className="absolute inset-0 rounded-[22px] shadow-[inset_0_6px_15px_rgba(255,255,255,0.4)] pointer-events-none z-40" />
@@ -2281,21 +2281,21 @@ const QuizBattlePage: React.FC = () => {
 
                               <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
                                 {/* Expanded Full-Width Stage (Dark Blue) */}
-                                <div className="absolute bottom-0 left-0 w-full h-[70px] sm:h-[95px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
+                                <div className="absolute bottom-0 left-0 w-full h-[50px] sm:h-[95px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
 
                                 {/* Ghosting Avatars - CSS WAAPI for smooth compositor animation */}
-                                <div className="relative z-10 flex items-end justify-center mb-[2px] h-[125px] sm:h-[145px] w-full">
+                                <div className="relative z-10 flex items-end justify-center mb-[2px] h-[85px] sm:h-[145px] w-full">
                                   {/* Left Ghost */}
                                   <img
                                     src="/avatar/avatar_icon.png"
                                     alt=""
-                                    className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom -translate-x-[45px] sm:-translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-left"
+                                    className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom -translate-x-[30px] sm:-translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-left"
                                   />
                                   {/* Right Ghost */}
                                   <img
                                     src="/avatar/avatar_icon.png"
                                     alt=""
-                                    className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom translate-x-[45px] sm:translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-right"
+                                    className="absolute opacity-40 blur-[1px] h-full object-contain origin-bottom translate-x-[30px] sm:translate-x-[60px] scale-[0.80] sm:scale-[0.85] animate-ghost-right"
                                   />
                                   {/* Main Avatar */}
                                   <img
@@ -2306,8 +2306,8 @@ const QuizBattlePage: React.FC = () => {
                                 </div>
                               </div>
 
-                              <div className="relative z-10 w-full px-5 py-3 sm:py-4 text-center bg-[#127DA6]">
-                                <p className="text-[13px] font-bold text-white leading-[1.45] font-nunito">
+                              <div className="relative z-10 w-full px-3 sm:px-5 py-2 sm:py-4 text-center bg-[#127DA6]">
+                                <p className="text-[10px] sm:text-[13px] font-bold text-white leading-[1.4] font-nunito">
                                   Instant solo duel with selectable bot difficulty.
                                 </p>
                               </div>
