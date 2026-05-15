@@ -5,7 +5,7 @@ import {
   Calendar, Eye, Loader2, RefreshCw, Lock,
   FileText, ShieldAlert, UserCheck, ChevronLeft, ChevronRight,
   ListFilter, ArrowRight, Clock, ShieldCheck, Activity,
-  Filter, Download, RotateCcw
+  Filter, FilterX, Download, RotateCcw
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -212,7 +212,7 @@ const AdminAuditLog: React.FC = () => {
   const visibleRangeEnd = Math.min(currentPage * pageSize, filteredLogs.length);
 
   return (
-    <div className="flex flex-col min-h-full animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="flex flex-col min-h-full animate-in fade-in duration-500">
       <div className="flex-1 space-y-8 pt-6 xl:pt-8 pb-6 px-1 max-w-[1600px] mx-auto w-full">
         {/* ── 1. Action Header Bar ── */}
         <div className="flex items-center justify-between px-2 shrink-0">
@@ -270,9 +270,10 @@ const AdminAuditLog: React.FC = () => {
             variant={alertCount > 0 ? 'rose' : 'emerald'}
           />
         </div>
+      </div>{/* End flex-1 stats wrapper */}
 
-        {/* ── 3. High-Fidelity Filtering Area ── */}
-        <div className="sticky top-0 z-40 -mx-[24px] xl:-mx-[32px] px-[24px] xl:px-[32px] pt-4 pb-4 bg-[#f8fafc]">
+      {/* ── 3. High-Fidelity Filtering Area ── */}
+        <div className="sticky top-0 z-40 -mx-[24px] xl:-mx-[32px] px-[24px] xl:px-[32px] pt-4 pb-4 bg-[#f8fafc] backdrop-blur-sm">
           <div className="flex flex-col xl:flex-row items-center gap-3">
               {/* Global Search */}
               <div className="relative flex-1 w-full group">
@@ -339,7 +340,7 @@ const AdminAuditLog: React.FC = () => {
                   className="h-12 w-12 rounded-2xl border-slate-200/60 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
                   title="Reset Filters"
                 >
-                  <RotateCcw size={18} />
+                  <FilterX size={18} />
                 </Button>
               </div>
           </div>
@@ -349,14 +350,14 @@ const AdminAuditLog: React.FC = () => {
         <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/40 relative">
           <div className="rounded-[32px]">
             <table className="w-full text-left border-collapse min-w-[1000px]">
-              <thead className="sticky top-[106px] z-30 shadow-md bg-[#f8fafc]">
+              <thead className="sticky top-[80px] z-30 bg-[#f8fafc] backdrop-blur-sm shadow-[0_-12px_0_0_#f8fafc]">
                 <tr className="border-b border-[#8b5cf6]">
-                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest whitespace-nowrap rounded-tl-[32px]">Incident Level</th>
+                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest whitespace-nowrap rounded-tl-[20px]">Incident Level</th>
                   <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest whitespace-nowrap">Timestamp</th>
                   <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">User Actor</th>
                   <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">Action Performed</th>
                   <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">Component</th>
-                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest text-right whitespace-nowrap rounded-tr-[32px]">Review</th>
+                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest text-right whitespace-nowrap rounded-tr-[20px]">Review</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -429,7 +430,7 @@ const AdminAuditLog: React.FC = () => {
                          <div className="flex justify-end">
                            <button
                             onClick={() => setSelectedLog(log)}
-                            className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-purple-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-purple-50 transition-all "
                           >
                             <Eye size={16} />
                           </button>
@@ -442,7 +443,7 @@ const AdminAuditLog: React.FC = () => {
             </table>
           </div>
         </div>
-      </div>{/* End flex-1 content wrapper */}
+
 
       {/* ── 5. Standardized Sticky Footer Pagination ── */}
       <div className="sticky bottom-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-12 py-3 bg-white border-t-2 border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] -mx-[24px] xl:-mx-[32px] w-[calc(100%+48px)] xl:w-[calc(100%+64px)]">
