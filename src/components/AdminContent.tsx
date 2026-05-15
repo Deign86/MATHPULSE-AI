@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   FileText, Plus, Search, Filter, MoreVertical, 
   Trash2, Edit2, Eye, Download, RefreshCw, 
-  CheckCircle, XCircle, AlertCircle
+  CheckCircle, XCircle, AlertCircle, RotateCcw, ChevronRight
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -143,8 +143,9 @@ const AdminContent: React.FC = () => {
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-8 pt-6 xl:pt-8"
+      className="flex flex-col min-h-full bg-slate-50/50 relative"
     >
+      <div className="flex-1 space-y-8 pt-6 xl:pt-8 pb-6 px-1 max-w-[1600px] mx-auto w-full">
       {/* Header Section */}
       <div className="flex flex-col gap-1">
         <h2 className="text-lg font-bold text-[#0a1628]">Content Management</h2>
@@ -152,134 +153,183 @@ const AdminContent: React.FC = () => {
       </div>
 
       {/* Action Bar */}
-      <div className="flex items-center gap-3">
-        <Button variant="outline" className="gap-2 border-[#dde3eb] hover:bg-[#edf1f7]" onClick={loadModules}>
-          <RefreshCw size={16} />
-          Refresh
-        </Button>
-        <Button className="gap-2 bg-sky-600 hover:bg-sky-700 text-white" onClick={handleOpenAdd}>
-          <Plus size={16} />
-          New Content
-        </Button>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input 
-              placeholder="Search modules..." 
-              className="pl-9 w-[260px] h-10 border-[#dde3eb] bg-white rounded-xl focus-visible:ring-sky-500/20"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2 border-[#dde3eb] rounded-xl h-10">
-                <Filter size={16} />
-                {filterType}
+      <div className="sticky top-0 z-40 -mx-[24px] xl:-mx-[32px] px-[24px] xl:px-[32px] pt-4 pb-4 bg-[#f8fafc]">
+        <div className="flex flex-col xl:flex-row items-center gap-3">
+            <div className="flex items-center gap-3 w-full xl:w-auto">
+            <Button variant="outline" className="h-12 gap-2 border-slate-200/60 hover:bg-slate-50 text-slate-600 rounded-2xl shadow-md shadow-slate-200/40 transition-all" onClick={loadModules}>
+                <RefreshCw size={16} />
+                Refresh
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[180px] rounded-xl border-[#dde3eb] shadow-lg">
-              {['All', 'PDF', 'Template', 'Quiz', 'Interactive'].map((type) => (
-                <DropdownMenuItem key={type} onClick={() => setFilterType(type)}>
-                  {type}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <Button className="h-12 gap-2 bg-[#9956DE] hover:bg-[#8b5cf6] text-white rounded-2xl shadow-lg shadow-purple-200/50 transition-all px-6 font-black uppercase text-[11px] tracking-widest" onClick={handleOpenAdd}>
+                <Plus size={16} />
+                New Content
+              </Button>
+            </div>
+            
+            <div className="relative flex-1 w-full group">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#9956DE] transition-colors" />
+              <Input 
+                placeholder="Search by title or subject..." 
+                className="pl-11 h-12 bg-slate-50/50 border-slate-200/60 rounded-2xl focus-visible:ring-[#9956DE]/20 focus-visible:border-[#9956DE] transition-all text-sm font-medium"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-12 w-[200px] bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[11px] font-black uppercase tracking-wider text-slate-900 rounded-xl shadow-md shadow-slate-200/50 px-4 flex justify-between">
+                  <span className="truncate">{filterType === 'All' ? 'All Types' : filterType}</span>
+                  <Filter size={14} className="opacity-40" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px] rounded-xl border-slate-200 shadow-xl p-1">
+                {['All', 'PDF', 'Template', 'Quiz', 'Interactive'].map((type) => (
+                  <DropdownMenuItem key={type} onClick={() => setFilterType(type)} className="rounded-lg font-bold uppercase tracking-widest text-[10px] py-2.5">
+                    {type === 'All' ? 'All Types' : type}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                setSearchTerm('');
+                setFilterType('All');
+              }}
+              disabled={!searchTerm && filterType === 'All'}
+              className="h-12 w-12 rounded-2xl border-slate-200/60 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-slate-200/40"
+              title="Reset Filters"
+            >
+              <RotateCcw size={18} />
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Modules Table */}
-      <div className="bg-white rounded-2xl border border-[#dde3eb] shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-[#f8fafc] border-b border-[#dde3eb] hover:bg-[#f8fafc]">
-              <TableHead className="w-[300px] text-xs font-bold text-[#5a6578] uppercase py-4">Title</TableHead>
-              <TableHead className="text-xs font-bold text-[#5a6578] uppercase py-4">Subject</TableHead>
-              <TableHead className="text-xs font-bold text-[#5a6578] uppercase py-4">Type</TableHead>
-              <TableHead className="text-xs font-bold text-[#5a6578] uppercase py-4">Status</TableHead>
-              <TableHead className="text-xs font-bold text-[#5a6578] uppercase py-4">Last Modified</TableHead>
-              <TableHead className="text-right py-4"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array(4).fill(0).map((_, idx) => (
-                <TableRow key={idx}>
-                  <TableCell colSpan={6} className="h-16 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <RefreshCw size={16} className="animate-spin text-slate-300" />
-                      <span className="text-slate-400 text-sm">Loading...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : filteredModules.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-32 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <AlertCircle size={24} className="text-slate-200" />
-                    <p className="text-slate-400 text-sm">No content modules found</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredModules.map((module) => (
-                <TableRow key={module.id} className="hover:bg-[#f8fafc] transition-colors border-b border-[#f1f5f9]">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                        {getTypeIcon(module.type)}
+      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/40 relative">
+        <div className="rounded-[32px]">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
+            <thead className="sticky top-[106px] z-30 shadow-md bg-[#f8fafc]">
+              <tr className="border-b border-[#8b5cf6]">
+                <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest whitespace-nowrap rounded-tl-[32px]">Title</th>
+                <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">Subject</th>
+                <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">Type</th>
+                <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">Status</th>
+                <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">Modified</th>
+                <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest text-right rounded-tr-[32px]">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                Array(4).fill(0).map((_, idx) => (
+                  <tr key={idx}>
+                    <td colSpan={6} className="h-16 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCw size={16} className="animate-spin text-slate-300" />
+                        <span className="text-slate-400 text-sm">Loading...</span>
                       </div>
-                      <div>
-                        <p className="font-bold text-[#0a1628] text-sm leading-tight">{module.title}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{module.author} • {module.size}</p>
+                    </td>
+                  </tr>
+                ))
+              ) : filteredModules.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="h-32 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <AlertCircle size={24} className="text-slate-200" />
+                      <p className="text-slate-400 text-sm">No content modules found</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredModules.map((module) => (
+                  <tr key={module.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white transition-colors">
+                          {getTypeIcon(module.type)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-[#1e293b] leading-tight group-hover:text-indigo-600 transition-colors">{module.title}</p>
+                          <p className="text-[10px] font-bold text-slate-400 mt-0.5">{module.size || '0 KB'}</p>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-[#5a6578]">{module.subject}</span>
-                      <span className="text-[11px] text-slate-400">{module.gradeLevel}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-xs font-medium text-[#5a6578]">{module.type}</span>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(module.status)}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-slate-500 font-medium">{module.lastModified}</span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600 rounded-lg">
-                          <MoreVertical size={16} />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-[#dde3eb] shadow-lg">
-                        <DropdownMenuItem className="gap-2">
-                          <Edit2 size={14} /> Edit Module
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
-                          <Download size={14} /> Download
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="gap-2 text-rose-600 focus:text-rose-600 focus:bg-rose-50"
-                          onClick={() => setDeleteConfirmId(module.id)}
-                        >
-                          <Trash2 size={14} /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                    </td>
+                    <td className="px-8 py-5">
+                      <p className="text-xs font-black text-slate-600">{module.subject}</p>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest">{module.gradeLevel}</p>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                        {module.type}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5">
+                      {getStatusBadge(module.status)}
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex flex-col">
+                        <p className="text-[11px] font-black text-slate-600 leading-tight">{module.lastModified}</p>
+                        <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest">{module.author}</p>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-slate-100 transition-all">
+                            <MoreVertical size={16} className="text-slate-400" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[180px] rounded-xl border-slate-200 shadow-xl p-1">
+                          <DropdownMenuItem className="rounded-lg font-bold text-[10px] uppercase tracking-widest py-2.5 gap-3">
+                            <Edit2 size={14} className="text-indigo-500" /> Edit Content
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="rounded-lg font-bold text-[10px] uppercase tracking-widest py-2.5 gap-3">
+                            <Eye size={14} className="text-sky-500" /> Preview
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="rounded-lg font-bold text-[10px] uppercase tracking-widest py-2.5 gap-3">
+                            <Download size={14} className="text-emerald-500" /> Download
+                          </DropdownMenuItem>
+                          <div className="h-[1px] bg-slate-100 my-1"></div>
+                          <DropdownMenuItem 
+                            className="rounded-lg font-bold text-[10px] uppercase tracking-widest py-2.5 gap-3 text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+                            onClick={() => setDeleteConfirmId(module.id)}
+                          >
+                            <Trash2 size={14} /> Delete Module
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Standardized Sticky Footer Pagination ── */}
+      <div className="sticky bottom-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-12 py-3 bg-white border-t-2 border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] -mx-[24px] xl:-mx-[32px] w-[calc(100%+48px)] xl:w-[calc(100%+64px)]">
+        <p className="text-[12px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-4">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#9956DE] animate-pulse shadow-[0_0_12px_rgba(153,86,222,0.6)]"></span>
+          Showing <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">1–{filteredModules.length}</span>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-400">{filteredModules.length}</span> Total Records
+        </p>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="rounded-xl border-slate-200 h-10 w-10 p-0 hover:bg-purple-50 hover:text-[#9956DE] transition-all disabled:opacity-30" disabled>
+            <ChevronRight className="rotate-180" size={18} />
+          </Button>
+          <div className="flex items-center px-4 h-10 rounded-xl bg-slate-50 border border-slate-200 font-black text-[11px] uppercase tracking-widest text-slate-600 gap-2">
+            Page <span className="text-slate-900">1</span> <span className="text-slate-300">of</span> 1
+          </div>
+          <Button variant="outline" size="sm" className="rounded-xl border-slate-200 h-10 w-10 p-0 hover:bg-purple-50 hover:text-[#9956DE] transition-all disabled:opacity-30" disabled>
+            <ChevronRight size={18} />
+          </Button>
+        </div>
       </div>
 
       {/* Stats Summary Footer */}

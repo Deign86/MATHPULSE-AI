@@ -318,7 +318,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         </header>
 
         {/* Main Grid */}
-        <main className={`flex-1 overflow-y-auto px-[24px] xl:px-[32px] scrollbar-hide ${activeTab === 'User Management' ? 'pb-0' : 'pb-[32px]'}`}>
+        <main className={`flex-1 overflow-y-auto px-[24px] xl:px-[32px] scrollbar-hide ${['User Management', 'Audit Log'].includes(activeTab) ? 'pb-0' : 'pb-[32px]'}`}>
           {activeTab === 'Overview' && (
             <div className="max-w-[1600px] mx-auto space-y-8 pt-6 xl:pt-8">
               {/* Row 1: Ratio 4:8 */}

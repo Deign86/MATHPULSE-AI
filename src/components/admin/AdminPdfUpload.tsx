@@ -1,12 +1,24 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   Upload, FileText, CheckCircle, XCircle, RefreshCw,
-  Loader2, AlertTriangle, Trash2, BarChart3
+  Loader2, AlertTriangle, Trash2, BarChart3, 
+  Sparkles, Database, BookOpen, Search, Info,
+  ChevronDown, ArrowUpRight, CheckCircle2,
+  Cpu, FileSpreadsheet, Layers, Activity, Clock
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table';
 import { Input } from '../ui/input';
 import { toast } from 'sonner';
 import { apiService } from '../../services/apiService';
@@ -24,6 +36,7 @@ interface AdminPdfUploadProps {
 }
 
 const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
+  const [activeTab, setActiveTab] = useState<'upload' | 'inventory'>('upload');
   const [uploading, setUploading] = useState(false);
   const [reingesting, setReingesting] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -71,7 +84,6 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
       return;
     }
     setSelectedFile(file);
-    // Auto-fill subject name if subject is selected
     if (subjectId) {
       const subject = SHS_MATH_SUBJECTS.find(s => s.id === subjectId);
       if (subject) setSubjectName(subject.name);
@@ -111,9 +123,8 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
       formData.append('file', selectedFile);
       formData.append('subjectId', subjectId);
       formData.append('subjectName', subjectName.trim());
-formData.append('quarter', quarter);
+      formData.append('quarter', quarter);
 
-      // Simulate progress (XHR would give real progress, but Fetch doesn't)
       const progressInterval = setInterval(() => {
         setUploadProgress(p => Math.min(p + 15, 85));
       }, 300);
@@ -130,6 +141,7 @@ formData.append('quarter', quarter);
           onUploadSuccess?.(subjectId, result.chunkCount);
         }
         loadHealth();
+        setTimeout(() => setActiveTab('inventory'), 1000);
       } else {
         toast.error(result.error || 'Upload failed');
       }
@@ -158,7 +170,6 @@ formData.append('quarter', quarter);
     }
   };
 
-  // Build status table rows from ragHealth
   const statusRows: RagHealthSubject[] = ragHealth
     ? Object.entries(ragHealth.subjects).map(([name, chunks]) => ({
         name,
@@ -170,236 +181,333 @@ formData.append('quarter', quarter);
     : [];
 
   return (
-    <div className="space-y-8 pt-6 xl:pt-8">
-      {/* Upload Card */}
-      <div className="bg-white rounded-2xl border border-[#dde3eb] shadow-sm p-6">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-            <Upload size={20} className="text-sky-600" />
-          </div>
-          <div>
-            <h3 className="font-bold text-[#0a1628]">Upload Module PDF</h3>
-            <p className="text-xs text-[#5a6578]">Upload a DepEd teaching module PDF and trigger RAG ingestion</p>
-          </div>
-        </div>
-
-        {/* Drop Zone */}
-        <div
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`
-            border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all mb-4
-            ${dragOver ? 'border-sky-500 bg-sky-50' : 'border-[#dde3eb] hover:border-sky-400 hover:bg-sky-50/50'}
-            ${uploading ? 'cursor-not-allowed opacity-60' : ''}
-          `}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf"
-            className="hidden"
-            onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-          />
-          {selectedFile ? (
-            <div className="flex items-center justify-center gap-3">
-              <FileText size={24} className="text-sky-600" />
-              <div className="text-left">
-                <p className="font-semibold text-[#0a1628]">{selectedFile.name}</p>
-                <p className="text-xs text-[#5a6578]">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-              </div>
-              {!uploading && (
-                <button
-                  onClick={e => { e.stopPropagation(); setSelectedFile(null); }}
-                  className="ml-4 p-1.5 hover:bg-rose-50 rounded-lg text-rose-500"
-                  aria-label="Remove file"
-                >
-                  <XCircle size={18} />
-                </button>
-              )}
-            </div>
-          ) : (
-            <>
-              <Upload size={28} className="mx-auto mb-2 text-[#dde3eb]" />
-              <p className="font-semibold text-[#0a1628]">Drop PDF here or click to browse</p>
-              <p className="text-xs text-[#5a6578] mt-1">PDF files only, max 50MB</p>
-            </>
-          )}
-        </div>
-
-        {/* Upload Progress */}
-        {uploadProgress > 0 && (
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-[#5a6578] mb-1">
-              <span>{uploading ? 'Uploading...' : 'Complete'}</span>
-              <span>{uploadProgress}%</span>
-            </div>
-            <div className="h-2 bg-[#edf1f7] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-sky-500 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Form Fields */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="text-xs font-medium text-[#5a6578] mb-1.5 block">Subject</label>
-            <Select value={subjectId} onValueChange={handleSubjectChange} disabled={uploading}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select subject" />
-              </SelectTrigger>
-              <SelectContent>
-                {SHS_MATH_SUBJECTS.map(s => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} ({s.gradeLevel} — {s.semester})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-[#5a6578] mb-1.5 block">Subject Name (display)</label>
-            <Input
-              value={subjectName}
-              onChange={e => setSubjectName(e.target.value)}
-              placeholder="e.g. General Mathematics"
-              disabled={uploading}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-[#5a6578] mb-1.5 block">Semester</label>
-            <Select value={quarter} onValueChange={setQuarter} disabled={uploading}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">Q1</SelectItem>
-                <SelectItem value="2">Q2</SelectItem>
-                <SelectItem value="3">Q3</SelectItem>
-                <SelectItem value="4">Q4</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <Button
-          onClick={handleUpload}
-          disabled={uploading || !selectedFile || !subjectId || !subjectName.trim()}
-          className="w-full gap-2 bg-sky-600 hover:bg-sky-700 text-white"
-        >
-          {uploading ? (
-            <><Loader2 size={16} className="animate-spin" /> Uploading & Indexing...</>
-          ) : (
-            <><Upload size={16} /> Upload & Ingest</>
-          )}
-        </Button>
-      </div>
-
-      {/* Current PDFs Status Table */}
-      <div className="bg-white rounded-2xl border border-[#dde3eb] shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-[#dde3eb] flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
-              <BarChart3 size={20} className="text-teal-600" />
-            </div>
-            <div>
-              <h3 className="font-bold text-[#0a1628]">RAG Index Status</h3>
-              <p className="text-xs text-[#5a6578]">
-                {loadingHealth ? 'Loading...' : `${ragHealth?.chunkCount ?? 0} total chunks across ${statusRows.length} subjects`}
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={loadHealth}
-            disabled={loadingHealth}
+    <div className="space-y-4 pt-2 xl:pt-4 pb-4 max-w-[1200px] mx-auto">
+      {/* 1. Tab Switcher & Stats Bar (Compact & System Colors) */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
+          <button
+            onClick={() => setActiveTab('upload')}
+            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[12px] font-black transition-all duration-300 ${
+              activeTab === 'upload' 
+                ? 'bg-[#9956DE] text-white shadow-lg shadow-purple-200' 
+                : 'text-slate-400 hover:text-purple-600 hover:bg-purple-50'
+            }`}
           >
-            <RefreshCw size={14} className={loadingHealth ? 'animate-spin' : ''} />
-            Refresh
-          </Button>
+            <Upload size={14} />
+            Import
+          </button>
+          <button
+            onClick={() => setActiveTab('inventory')}
+            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[12px] font-black transition-all duration-300 ${
+              activeTab === 'inventory' 
+                ? 'bg-[#9956DE] text-white shadow-lg shadow-purple-200' 
+                : 'text-slate-400 hover:text-purple-600 hover:bg-purple-50'
+            }`}
+          >
+            <Database size={14} />
+            Inventory
+          </button>
         </div>
 
-        {loadingHealth ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 size={20} className="animate-spin text-sky-500" />
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm">
+            <div className="flex flex-col items-end">
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Chunks</span>
+              <span className="text-[12px] font-black text-purple-600 leading-none mt-1">{loadingHealth ? '...' : (ragHealth?.chunkCount ?? 0).toLocaleString()}</span>
+            </div>
+            <div className="w-px h-5 bg-slate-100" />
+            <div className="flex flex-col items-end">
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Health</span>
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-[12px] font-black text-purple-600 leading-none">{statusRows.length}</span>
+                <div className={`w-1.5 h-1.5 rounded-full ${statusRows.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+              </div>
+            </div>
           </div>
-        ) : statusRows.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <AlertTriangle size={24} className="text-[#dde3eb]" />
-            <p className="text-sm text-[#5a6578]">No PDFs indexed yet</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-[#edf1f7] border-b border-[#dde3eb]">
-                  <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Subject</th>
-                  <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Chunks</th>
-                  <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider">Status</th>
-                  <th className="p-4 text-xs font-bold text-[#5a6578] uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#dde3eb]">
-                {statusRows.map(row => (
-                  <tr key={row.name} className="hover:bg-[#f8fafc] transition-colors">
-                    <td className="p-4">
-                      <div className="flex items-center gap-2.5">
-                        <FileText size={16} className="text-[#5a6578]" />
-                        <span className="font-semibold text-sm text-[#0a1628]">{row.name}</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm font-bold text-[#0a1628]">{row.chunks}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border ${
-                        row.status === 'active'
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : row.status === 'locked'
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : 'bg-rose-50 text-rose-700 border-rose-200'
-                      }`}>
-                        {row.status === 'active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
-                        {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 text-xs"
-                        onClick={() => handleReingest(row.name.toLowerCase().replace(/\s+/g, '-').replace('&', ''), row.storagePath)}
-                        disabled={reingesting === row.name.toLowerCase().replace(/\s+/g, '-').replace('&', '')}
-                      >
-                        {reingesting === row.name.toLowerCase().replace(/\s+/g, '-').replace('&', '') ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          <RefreshCw size={12} />
-                        )}
-                        Re-ingest
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {ragHealth?.lastIngested && (
-          <div className="p-4 border-t border-[#dde3eb] bg-[#f8fafc]">
-            <p className="text-xs text-[#5a6578]">
-              Last ingestion: {new Date(ragHealth.lastIngested).toLocaleString()}
-            </p>
-          </div>
-        )}
+        </div>
       </div>
+
+      <AnimatePresence mode="wait">
+        {activeTab === 'upload' ? (
+          <motion.div
+            key="upload-tab"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="space-y-4"
+          >
+            <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden group">
+              {/* Card Header (Pulse Purple Theme) */}
+              <div className="p-6 border-b border-slate-50 bg-gradient-to-br from-white to-purple-50/20 relative">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-black text-[#1e293b] tracking-tight">Learning Module Upload</h3>
+                    <p className="text-[11px] text-slate-500 font-medium italic">Provide curriculum context for AI tutoring logic.</p>
+                  </div>
+                  <div className="w-10 h-10 bg-[#9956DE] rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-110">
+                    <Upload size={20} />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onClick={() => !uploading && fileInputRef.current?.click()}
+                    className={`
+                      relative border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 group/drop
+                      ${dragOver ? 'border-[#9956DE] bg-purple-50 scale-[0.99]' : 'border-slate-200 hover:border-[#9956DE] bg-white hover:bg-purple-50/30'}
+                      ${uploading ? 'cursor-not-allowed opacity-60' : ''}
+                      min-h-[160px] flex flex-col items-center justify-center
+                    `}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                    />
+                    
+                    {selectedFile ? (
+                      <div className="flex items-center gap-4 text-left">
+                        <div className="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 border border-purple-100 shadow-sm shrink-0">
+                          <FileText size={28} />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="font-black text-[14px] text-[#1e293b] truncate max-w-[300px]">{selectedFile.name}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-purple-500 font-black uppercase">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">PDF Source</span>
+                          </div>
+                          <button
+                            onClick={e => { e.stopPropagation(); setSelectedFile(null); }}
+                            className="text-[10px] font-black text-rose-500 hover:text-rose-600 mt-1 flex items-center gap-1"
+                          >
+                            <Trash2 size={10} /> Replace
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 mb-4 group-hover/drop:text-purple-500 group-hover/drop:bg-purple-50 transition-all">
+                          <Upload size={24} />
+                        </div>
+                        <h4 className="text-[14px] font-black text-[#1e293b]">Drop PDF or click to browse</h4>
+                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Max 50MB (SLM, Textbook, Guide)</p>
+                      </div>
+                    )}
+
+                    {uploadProgress > 0 && (
+                      <div className="absolute inset-0 bg-white/95 backdrop-blur-[1px] rounded-2xl flex flex-col items-center justify-center p-8 z-20">
+                        <div className="w-full max-w-xs space-y-3 text-center">
+                          <div className="w-12 h-12 bg-[#9956DE] rounded-xl flex items-center justify-center mx-auto mb-2 animate-bounce">
+                            <Sparkles size={24} className="text-white" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <h5 className="text-sm font-black text-[#1e293b]">{uploading ? 'Analyzing Curriculum...' : 'Complete!'}</h5>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Platform Ingestion</p>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200 mt-2">
+                            <motion.div
+                              className="h-full bg-gradient-to-r from-purple-500 to-sky-500 rounded-full"
+                              initial={{ width: 0 }}
+                              animate={{ width: `${uploadProgress}%` }}
+                              transition={{ duration: 0.3 }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Curriculum Subject</label>
+                    <Select value={subjectId} onValueChange={handleSubjectChange} disabled={uploading}>
+                      <SelectTrigger className="w-full h-10 bg-slate-50/50 border-slate-200 rounded-xl text-[12px] font-bold focus:ring-purple-500/20">
+                        <SelectValue placeholder="Select subject" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200">
+                        {SHS_MATH_SUBJECTS.map(s => (
+                          <SelectItem key={s.id} value={s.id} className="rounded-lg py-2">
+                            <div className="flex flex-col items-start">
+                              <span className="font-black text-[12px]">{s.name}</span>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase">{s.gradeLevel} • {s.semester}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Display Label</label>
+                    <Input
+                      value={subjectName}
+                      onChange={e => setSubjectName(e.target.value)}
+                      placeholder="e.g. General Mathematics"
+                      disabled={uploading}
+                      className="h-10 bg-slate-50/50 border-slate-200 rounded-xl text-[12px] font-bold px-4 focus-visible:ring-purple-500/20"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Quarter</label>
+                    <Select value={quarter} onValueChange={setQuarter} disabled={uploading}>
+                      <SelectTrigger className="w-full h-10 bg-slate-50/50 border-slate-200 rounded-xl text-[12px] font-bold focus:ring-purple-500/20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200">
+                        <SelectItem value="1" className="rounded-lg text-[12px] font-bold">First Quarter</SelectItem>
+                        <SelectItem value="2" className="rounded-lg text-[12px] font-bold">Second Quarter</SelectItem>
+                        <SelectItem value="3" className="rounded-lg text-[12px] font-bold">Third Quarter</SelectItem>
+                        <SelectItem value="4" className="rounded-lg text-[12px] font-bold">Fourth Quarter</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleUpload}
+                  disabled={uploading || !selectedFile || !subjectId || !subjectName.trim()}
+                  className="w-full h-12 gap-2 bg-[#9956DE] hover:bg-[#8b5cf6] text-white rounded-2xl shadow-lg shadow-purple-100 transition-all hover:scale-[1.01] active:scale-95 text-[14px] font-black"
+                >
+                  {uploading ? (
+                    <><Loader2 size={16} className="animate-spin" /> Ingesting...</>
+                  ) : (
+                    <><Upload size={16} /> Deploy Knowledge Source</>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Compact Feature Summary (System Blue/Purple) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { icon: Sparkles, color: 'bg-purple-50', iconColor: 'text-purple-600', title: 'Grounding', desc: 'Curriculum-pinned logic.' },
+                { icon: Database, color: 'bg-sky-50', iconColor: 'text-sky-600', title: 'Indexing', desc: 'Millisecond RAG retrieval.' },
+                { icon: Cpu, color: 'bg-emerald-50', iconColor: 'text-emerald-600', title: 'Extraction', desc: 'Neural chunk parsing.' }
+              ].map((item, idx) => (
+                <div key={idx} className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm flex items-start gap-3">
+                  <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center shrink-0`}>
+                    <item.icon size={14} className={item.iconColor} />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-black text-[#1e293b] uppercase tracking-wide leading-none">{item.title}</h4>
+                    <p className="text-[9px] text-slate-400 leading-tight mt-1 font-medium italic">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="inventory-tab"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="space-y-4"
+          >
+            <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden relative">
+              <Table className="w-full text-left border-collapse">
+                <TableHeader>
+                  <TableRow className="bg-[#9956DE] hover:bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-sm">
+                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Identity</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Density</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto text-center">Status</TableHead>
+                    <th className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="relative group">
+                          <Search className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-white transition-colors" />
+                          <Input 
+                            placeholder="Filter..." 
+                            className="pl-8 h-8 w-32 bg-white/10 border-white/20 rounded-lg text-[10px] font-black placeholder:text-white/40 text-white focus-visible:ring-white/20 transition-all"
+                          />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 bg-white/10 text-white hover:bg-white/20 rounded-lg"
+                          onClick={loadHealth}
+                          disabled={loadingHealth}
+                        >
+                          <RefreshCw size={12} className={loadingHealth ? 'animate-spin' : ''} />
+                        </Button>
+                      </div>
+                    </th>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-50">
+                  {loadingHealth ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-48 text-center">
+                        <Loader2 size={24} className="animate-spin text-purple-500 mx-auto" />
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Syncing Knowledge Base...</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : statusRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-48 text-center">
+                        <Database size={24} className="text-slate-200 mx-auto" />
+                        <p className="text-[12px] font-black text-slate-400 mt-2">No data in index.</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    statusRows.map(row => (
+                      <TableRow key={row.name} className="group hover:bg-purple-50/10 transition-all border-b border-slate-50">
+                        <TableCell className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-50 to-white border border-purple-100 flex items-center justify-center text-purple-500 shadow-sm group-hover:scale-110 transition-transform">
+                              <BookOpen size={18} />
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-black text-[#1e293b] text-[13px] block group-hover:text-purple-600 transition-colors">{row.name}</span>
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-1 block">Curriculum Source</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4">
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[14px] font-display font-black text-purple-600 leading-none">{row.chunks.toLocaleString()} <span className="text-[9px] text-slate-400">units</span></span>
+                            <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                              <div className="h-full bg-purple-500 rounded-full" style={{ width: '100%' }} />
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                              row.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
+                            }`}>
+                              <div className={`w-1 h-1 rounded-full ${row.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                              {row.status}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-4 gap-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg border-slate-200 hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-all"
+                            onClick={() => handleReingest(row.name.toLowerCase().replace(/\s+/g, '-').replace('&', ''), row.storagePath)}
+                            disabled={reingesting === row.name.toLowerCase().replace(/\s+/g, '-').replace('&', '')}
+                          >
+                            <RefreshCw size={10} className={reingesting === row.name.toLowerCase() ? 'animate-spin' : ''} />
+                            Sync
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
