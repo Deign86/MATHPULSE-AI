@@ -3,26 +3,26 @@ import { motion } from 'motion/react';
 import {
   Users, GraduationCap, BookOpen, Clock,
   BarChart3, Activity, Target, Award,
-  Calendar, Download, Filter, Zap, Brain, Flame,
-  PieChart, Database, Loader2
+  Calendar, Download, Zap, Brain, Flame,
+  PieChart, Database, Loader2, TrendingUp,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { getAnalyticsSummary, type AnalyticsSummary } from '../services/adminService';
 
 type TimeRange = '7d' | '30d' | '90d' | '12m';
 
-// ─── Empty state card ────────────────────────────────────────────────────────
 const EmptySection: React.FC<{
   icon: React.ReactNode;
   title: string;
   subtitle?: string;
 }> = ({ icon, title, subtitle }) => (
-  <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-    <div className="w-12 h-12 rounded-full bg-[#edf1f7] flex items-center justify-center">
+  <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+    <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center">
       {icon}
     </div>
-    <p className="text-sm font-semibold text-[#5a6578]">{title}</p>
-    {subtitle && <p className="text-xs text-[#a0aec0] max-w-xs">{subtitle}</p>}
+    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{title}</p>
+    {subtitle && <p className="text-[10px] text-slate-400 font-medium max-w-xs leading-relaxed">{subtitle}</p>}
   </div>
 );
 
@@ -32,284 +32,224 @@ const AdminAnalytics: React.FC = () => {
   const [loadingKPIs, setLoadingKPIs] = useState(true);
   const rangeSelectionSupported = false;
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoadingKPIs(true);
     getAnalyticsSummary()
       .then(setSummary)
       .catch(console.error)
       .finally(() => setLoadingKPIs(false));
-  }, []);
-
-  const timeRangeLabels: Record<TimeRange, string> = {
-    '7d': 'Last 7 Days',
-    '30d': 'Last 30 Days',
-    '90d': 'Last 90 Days',
-    '12m': 'Last 12 Months',
   };
 
-  // KPI card definitions — Total Active Users and At-Risk Students come from real Firestore data
+  useEffect(() => { loadData(); }, []);
+
+  const timeRangeLabels: Record<TimeRange, string> = {
+    '7d': '7 Days',
+    '30d': '30 Days',
+    '90d': '90 Days',
+    '12m': '12 Months',
+  };
+
   const kpis = [
-    {
-      label: 'Total Active Users',
-      value: loadingKPIs ? null : (summary?.totalActiveUsers ?? 0).toLocaleString(),
-      icon: Users,
-      color: 'from-sky-500 to-blue-600',
-    },
-    {
-      label: 'Avg. Completion Rate',
-      value: 'N/A',
-      icon: Target,
-      color: 'from-teal-500 to-emerald-600',
-    },
-    {
-      label: 'Avg. Session Duration',
-      value: 'N/A',
-      icon: Clock,
-      color: 'from-violet-500 to-purple-600',
-    },
-    {
-      label: 'At-Risk Students',
-      value: loadingKPIs ? null : (summary?.atRiskStudents ?? 0).toString(),
-      icon: Activity,
-      color: 'from-rose-500 to-orange-600',
-    },
+    { label: 'Total Active Users', value: loadingKPIs ? null : (summary?.totalActiveUsers ?? 0).toLocaleString(), icon: Users, bg: 'bg-[#4f46e5]', shadow: 'shadow-indigo-500/20' },
+    { label: 'Completion Rate', value: 'N/A', icon: Target, bg: 'bg-[#10b981]', shadow: 'shadow-emerald-500/20' },
+    { label: 'Session Duration', value: 'N/A', icon: Clock, bg: 'bg-[#8b5cf6]', shadow: 'shadow-purple-500/20' },
+    { label: 'At-Risk Students', value: loadingKPIs ? null : (summary?.atRiskStudents ?? 0).toString(), icon: Activity, bg: 'bg-[#f43f5e]', shadow: 'shadow-rose-500/20' },
   ];
 
   const gamificationCards = [
-    {
-      label: 'Achievements Unlocked',
-      icon: Award,
-      color: 'text-rose-600',
-      bg: 'bg-rose-50',
-      value: loadingKPIs ? null : (summary?.achievementsUnlocked ?? 0).toLocaleString(),
-    },
-    {
-      label: 'XP Earned (Platform)',
-      icon: Zap,
-      color: 'text-violet-600',
-      bg: 'bg-violet-50',
-      value: loadingKPIs ? null : (
-        (summary?.totalXPEarned ?? 0) >= 1_000_000
-          ? `${((summary?.totalXPEarned ?? 0) / 1_000_000).toFixed(1)}M`
-          : (summary?.totalXPEarned ?? 0) >= 1_000
-          ? `${Math.round((summary?.totalXPEarned ?? 0) / 1_000)}K`
-          : (summary?.totalXPEarned ?? 0).toLocaleString()
-      ),
-    },
-    {
-      label: 'Active Streaks',
-      icon: Flame,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
-      value: loadingKPIs ? null : (summary?.activeStreaks ?? 0).toLocaleString(),
-    },
-    {
-      label: 'AI Tutor Sessions',
-      icon: Brain,
-      color: 'text-sky-600',
-      bg: 'bg-sky-50',
-      value: loadingKPIs ? null : (summary?.aiTutorSessions ?? 0).toLocaleString(),
-    },
+    { label: 'Achievements Unlocked', icon: Award, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', value: loadingKPIs ? null : (summary?.achievementsUnlocked ?? 0).toLocaleString() },
+    { label: 'XP Earned (Platform)', icon: Zap, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-100', value: loadingKPIs ? null : ((summary?.totalXPEarned ?? 0) >= 1_000_000 ? `${((summary?.totalXPEarned ?? 0) / 1_000_000).toFixed(1)}M` : (summary?.totalXPEarned ?? 0) >= 1_000 ? `${Math.round((summary?.totalXPEarned ?? 0) / 1_000)}K` : (summary?.totalXPEarned ?? 0).toLocaleString()) },
+    { label: 'Active Streaks', icon: Flame, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', value: loadingKPIs ? null : (summary?.activeStreaks ?? 0).toLocaleString() },
+    { label: 'AI Tutor Sessions', icon: Brain, color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-100', value: loadingKPIs ? null : (summary?.aiTutorSessions ?? 0).toLocaleString() },
   ];
 
   return (
-    <div className="pt-6 xl:pt-8">
-      <div className="space-y-8">
-      {/* Time Range & Export Controls */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="flex items-center justify-between"
-      >
-        <div className="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm border border-[#dde3eb]">
-          {(Object.entries(timeRangeLabels) as [TimeRange, string][]).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setTimeRange(key)}
-              disabled={!rangeSelectionSupported}
-              title={!rangeSelectionSupported ? 'Range selection is unavailable until backend range queries are supported.' : undefined}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                timeRange === key
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-[#5a6578] hover:bg-[#edf1f7]'
-              } ${!rangeSelectionSupported ? 'opacity-60 cursor-not-allowed' : ''}`}
-            >
-              {label}
-            </button>
-          ))}
+    <div className="space-y-6 pt-6 xl:pt-8 pb-10 max-w-[1600px] mx-auto">
+      {/* ── Header Bar ── */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-6 bg-[#9956DE] rounded-full" />
+          <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Platform Analytics</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center bg-white rounded-xl p-1 shadow-sm border border-slate-200/60">
+            {(Object.entries(timeRangeLabels) as [TimeRange, string][]).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTimeRange(key)}
+                disabled={!rangeSelectionSupported}
+                title={!rangeSelectionSupported ? 'Range selection unavailable' : undefined}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  timeRange === key
+                    ? 'bg-[#9956DE] text-white shadow-sm'
+                    : 'text-slate-500 hover:bg-slate-50'
+                } ${!rangeSelectionSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={loadData}
+            disabled={loadingKPIs}
+            title="Refresh data"
+            className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-[#9956DE] shadow-sm transition-all active:scale-95"
+          >
+            <RefreshCw size={14} className={loadingKPIs ? 'animate-spin' : ''} />
+          </button>
           <Button
             variant="outline"
             disabled
-            title="Advanced analytics filters are not implemented yet"
-            className="px-4 py-2 gap-2 rounded-xl border-[#dde3eb] font-semibold text-sm opacity-50 cursor-not-allowed"
+            title="Export unavailable"
+            className="h-9 px-4 gap-2 rounded-xl border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-400 opacity-50 cursor-not-allowed shadow-sm"
           >
-            <Filter size={16} />
-            Filters
-          </Button>
-          <Button
-            variant="outline"
-            disabled
-            title="Export is unavailable until backend report generation is implemented"
-            className="px-4 py-2 gap-2 rounded-xl border-[#dde3eb] font-semibold text-sm opacity-50 cursor-not-allowed"
-          >
-            <Download size={16} />
+            <Download size={14} />
             Export
           </Button>
         </div>
-      </motion.div>
+      </div>
 
-      {!rangeSelectionSupported ? (
-        <p className="text-xs text-[#5a6578] -mt-3">
-          Time-range filtering is currently disabled because analytics range queries are not yet supported by the backend.
-        </p>
-      ) : null}
-
-      {/* Loading / no full data banner */}
-      {!loadingKPIs && !summary?.totalActiveUsers && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="flex items-center gap-3 bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4"
-        >
-          <Database size={18} className="text-rose-600 shrink-0" />
-          <p className="text-sm text-rose-800">
-            <span className="font-semibold">Limited analytics data.</span>{' '}
-            KPI cards will populate automatically as students, quizzes, and sessions accumulate in the platform.
-            Chart visualisations require time-series data.
-          </p>
-        </motion.div>
-      )}
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {kpis.map((kpi, index) => {
+      {/* ── KPI Stat Cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
             <motion.div
               key={kpi.label}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: index * 0.06 }}
-              className="bg-white rounded-2xl p-5 shadow-sm border border-[#dde3eb]"
+              transition={{ duration: 0.3, delay: idx * 0.05 }}
+              className={`relative overflow-hidden ${kpi.bg} ${kpi.shadow} p-5 rounded-[28px] text-white flex flex-col gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${kpi.color} flex items-center justify-center shadow-sm`}>
-                  <Icon size={20} className="text-white" />
+              <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
+              <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-700 delay-75 ease-out" />
+              <div className="relative z-10 flex items-center justify-between">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{kpi.label}</p>
+                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+                  <Icon size={14} />
                 </div>
               </div>
               {loadingKPIs ? (
-                <div className="flex items-center gap-2 mb-2">
-                  <Loader2 size={16} className="animate-spin text-[#a0aec0]" />
-                  <div className="w-14 h-6 bg-[#edf1f7] rounded-lg animate-pulse" />
+                <div className="relative z-10 flex items-center gap-2">
+                  <Loader2 size={18} className="animate-spin opacity-60" />
                 </div>
               ) : (
-                <p className="text-2xl font-bold text-[#0a1628] mb-2">{kpi.value}</p>
+                <h3 className="relative z-10 text-3xl font-display font-black leading-none tracking-tight">{kpi.value}</h3>
               )}
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[#5a6578] font-medium">{kpi.label}</p>
-                <span className="text-xs text-[#a0aec0] font-medium">
-                  {timeRangeLabels[timeRange]}
-                </span>
-              </div>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Performance Trends + Grade Distribution */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      {/* ── Limited Data Banner ── */}
+      {!loadingKPIs && !summary?.totalActiveUsers && (
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-          className="xl:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3"
         >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-bold text-[#0a1628]">Performance Trends</h2>
-              <p className="text-sm text-[#5a6578]">Average scores — students vs. teacher targets</p>
+          <Database size={16} className="text-amber-600 shrink-0" />
+          <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">
+            Limited data — KPIs populate as platform usage grows. Charts require time-series data.
+          </p>
+        </motion.div>
+      )}
+
+      {/* ── Row 1: Performance Trends (8) + Grade Distribution (4) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.1 }}
+          className="xl:col-span-8 bg-white rounded-[28px] border border-slate-200/60 p-6 shadow-sm shadow-slate-200/40"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                <TrendingUp size={18} />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-[#1e293b] tracking-tight">Performance Trends</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Students vs. Teacher Targets</p>
+              </div>
             </div>
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-sky-300" />
-                <span className="text-[#a0aec0] font-medium">Students</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Students</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-violet-300" />
-                <span className="text-[#a0aec0] font-medium">Teacher Targets</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Targets</span>
               </div>
             </div>
           </div>
           <EmptySection
-            icon={<BarChart3 size={24} className="text-[#c2cad8]" />}
+            icon={<BarChart3 size={22} className="text-slate-300" />}
             title="No performance data yet"
-            subtitle="Import student and class records to generate trend charts."
+            subtitle="Trend charts will generate as students complete quizzes and assessments."
           />
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="xl:col-span-4 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          transition={{ duration: 0.35, delay: 0.15 }}
+          className="xl:col-span-4 bg-white rounded-[28px] border border-slate-200/60 p-6 shadow-sm shadow-slate-200/40"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center">
-              <PieChart size={20} className="text-violet-400" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+              <PieChart size={18} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0a1628]">Grade Distribution</h2>
-              <p className="text-xs text-[#5a6578]">All students, current term</p>
+              <h2 className="text-sm font-black text-[#1e293b] tracking-tight">Grade Distribution</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Current Term</p>
             </div>
           </div>
           <EmptySection
-            icon={<Database size={24} className="text-[#c2cad8]" />}
+            icon={<Database size={22} className="text-slate-300" />}
             title="No grade data"
-            subtitle="Import quiz and assessment results to see grade breakdowns."
+            subtitle="Import quiz results to see grade breakdowns."
           />
         </motion.div>
       </div>
 
-      {/* Subject Engagement + Weekly Activity */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      {/* ── Row 2: Subject Engagement (7) + Weekly Activity (5) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.25 }}
-          className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          transition={{ duration: 0.35, delay: 0.2 }}
+          className="xl:col-span-7 bg-white rounded-[28px] border border-slate-200/60 p-6 shadow-sm shadow-slate-200/40"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
-              <BookOpen size={20} className="text-sky-400" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100">
+              <BookOpen size={18} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0a1628]">Subject Engagement</h2>
-              <p className="text-xs text-[#5a6578]">Enrollment, completion, and average scores</p>
+              <h2 className="text-sm font-black text-[#1e293b] tracking-tight">Subject Engagement</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Enrollment & Completion</p>
             </div>
           </div>
 
-          {/* Table header */}
-          <div className="overflow-hidden rounded-xl border border-[#dde3eb]">
+          <div className="rounded-2xl border border-slate-200/60 overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="bg-[#f7f9fc]">
-                  <th className="text-left text-xs font-semibold text-[#5a6578] px-4 py-3">Subject</th>
-                  <th className="text-right text-xs font-semibold text-[#5a6578] px-4 py-3">Enrolled</th>
-                  <th className="text-right text-xs font-semibold text-[#5a6578] px-4 py-3">Completion</th>
-                  <th className="text-right text-xs font-semibold text-[#5a6578] px-4 py-3">Avg. Score</th>
-                  <th className="text-left text-xs font-semibold text-[#5a6578] px-4 py-3 w-36">Progress</th>
+                <tr className="bg-slate-50/80">
+                  <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-widest px-5 py-3">Subject</th>
+                  <th className="text-right text-[10px] font-black text-slate-400 uppercase tracking-widest px-5 py-3">Enrolled</th>
+                  <th className="text-right text-[10px] font-black text-slate-400 uppercase tracking-widest px-5 py-3">Completion</th>
+                  <th className="text-right text-[10px] font-black text-slate-400 uppercase tracking-widest px-5 py-3">Avg. Score</th>
+                  <th className="text-left text-[10px] font-black text-slate-400 uppercase tracking-widest px-5 py-3 w-32">Progress</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td colSpan={5} className="px-4 py-10">
+                  <td colSpan={5} className="px-4 py-8">
                     <EmptySection
-                      icon={<Database size={22} className="text-[#c2cad8]" />}
+                      icon={<Database size={20} className="text-slate-300" />}
                       title="No subject data available"
-                      subtitle="Import class enrollment records to view subject engagement."
+                      subtitle="Import class enrollment records to view engagement."
                     />
                   </td>
                 </tr>
@@ -319,43 +259,43 @@ const AdminAnalytics: React.FC = () => {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-          className="xl:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          transition={{ duration: 0.35, delay: 0.25 }}
+          className="xl:col-span-5 bg-white rounded-[28px] border border-slate-200/60 p-6 shadow-sm shadow-slate-200/40"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-              <Calendar size={20} className="text-orange-400" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100">
+              <Calendar size={18} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0a1628]">Weekly Activity</h2>
-              <p className="text-xs text-[#5a6578]">Sessions per day of week</p>
+              <h2 className="text-sm font-black text-[#1e293b] tracking-tight">Weekly Activity</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Sessions Per Day</p>
             </div>
           </div>
           <EmptySection
-            icon={<Activity size={24} className="text-[#c2cad8]" />}
+            icon={<Activity size={22} className="text-slate-300" />}
             title="No session activity yet"
-            subtitle="Student logins and session data will appear here after data is imported."
+            subtitle="Student logins and session data will appear here."
           />
         </motion.div>
       </div>
 
-      {/* Gamification + Top Classes */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      {/* ── Row 3: Gamification (5) + Top Classes (7) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
-          className="xl:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          transition={{ duration: 0.35, delay: 0.3 }}
+          className="xl:col-span-5 bg-white rounded-[28px] border border-slate-200/60 p-6 shadow-sm shadow-slate-200/40"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
-              <Award size={20} className="text-rose-400" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+              <Award size={18} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0a1628]">Gamification Overview</h2>
-              <p className="text-xs text-[#5a6578]">Engagement & motivation metrics</p>
+              <h2 className="text-sm font-black text-[#1e293b] tracking-tight">Gamification Overview</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Engagement Metrics</p>
             </div>
           </div>
 
@@ -363,14 +303,16 @@ const AdminAnalytics: React.FC = () => {
             {gamificationCards.map((card) => {
               const Icon = card.icon;
               return (
-                <div key={card.label} className={`${card.bg} border border-[#dde3eb] rounded-xl p-4`}>
-                  <Icon size={20} className={card.color} />
+                <div key={card.label} className={`${card.bg} border ${card.border} rounded-2xl p-4 group hover:scale-[1.02] transition-all duration-200`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <Icon size={18} className={card.color} />
+                  </div>
                   {loadingKPIs ? (
-                    <div className="w-12 h-5 bg-white/60 rounded mt-2 mb-1 animate-pulse" />
+                    <div className="w-12 h-5 bg-white/60 rounded-lg mt-1 mb-1 animate-pulse" />
                   ) : (
-                    <p className="text-lg font-bold text-[#0a1628] mt-2 mb-1">{card.value}</p>
+                    <p className="text-xl font-black text-[#1e293b] leading-none">{card.value}</p>
                   )}
-                  <p className="text-xs text-[#5a6578] font-medium">{card.label}</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{card.label}</p>
                 </div>
               );
             })}
@@ -378,28 +320,27 @@ const AdminAnalytics: React.FC = () => {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.4 }}
-          className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-[#dde3eb]"
+          transition={{ duration: 0.35, delay: 0.35 }}
+          className="xl:col-span-7 bg-white rounded-[28px] border border-slate-200/60 p-6 shadow-sm shadow-slate-200/40"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-teal-100 rounded-xl flex items-center justify-center">
-              <GraduationCap size={20} className="text-teal-400" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+              <GraduationCap size={18} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-[#0a1628]">Top Performing Classes</h2>
-              <p className="text-xs text-[#5a6578]">Ranked by average score this term</p>
+              <h2 className="text-sm font-black text-[#1e293b] tracking-tight">Top Performing Classes</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Ranked by Average Score</p>
             </div>
           </div>
           <EmptySection
-            icon={<Database size={24} className="text-[#c2cad8]" />}
+            icon={<Database size={22} className="text-slate-300" />}
             title="No class data yet"
-            subtitle="Import class and student records to see top performers ranked here."
+            subtitle="Import class and student records to see top performers."
           />
         </motion.div>
       </div>
-    </div>
     </div>
   );
 };
