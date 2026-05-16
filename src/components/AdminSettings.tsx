@@ -266,7 +266,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onDirtyChange: _onDirtyCh
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-8 pt-6 xl:pt-8"
     >
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
         {/* Sidebar nav */}
