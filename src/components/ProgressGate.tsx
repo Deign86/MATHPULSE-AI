@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, Lock, CheckCircle, Loader2 } from 'lucide-react';
 import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { sanitizeDisplayName } from '../utils/profileValidation';
 import { useAuth } from '../contexts/AuthContext';
 
 export const ProgressGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -43,7 +44,7 @@ export const ProgressGate: React.FC<{ children: React.ReactNode }> = ({ children
               const teacherSnap = await getDoc(doc(db, 'users', teacherId));
               if (teacherSnap.exists()) {
                 const tData = teacherSnap.data();
-                setTeacherName(tData?.displayName || tData?.name || 'your teacher');
+                setTeacherName(sanitizeDisplayName(tData?.displayName || tData?.name, 'your teacher'));
               }
             } catch {
               // ignore
