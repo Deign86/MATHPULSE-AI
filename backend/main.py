@@ -1563,6 +1563,12 @@ _MATH_SCOPE_KEYWORDS: Set[str] = {
     "evaluate",
     "compute",
     "calculate",
+    "step by step",
+    "real life",
+    "example",
+    "why",
+    "how",
+    "remember",
 }
 
 _MATH_SCOPE_PATTERNS: Tuple[re.Pattern[str], ...] = (
@@ -1687,12 +1693,28 @@ def _is_contextual_continuation_followup(message: str, history: Optional[Sequenc
     return any(pattern.search(latest_assistant_message) for pattern in _CONTINUATION_INVITE_PATTERNS)
 
 
-def _scope_boundary_response_without_continuation(message: str) -> Optional[str]:
+def _has_math_context_in_history(history: Optional[Sequence[Any]]) -> bool:
+    if not history:
+        return False
+    latest_intent = _extract_latest_user_intent_message(history)
+    if not latest_intent:
+        return False
+    return is_math_related_query(latest_intent)
+
+
+def _scope_boundary_response_without_continuation(
+    message: str,
+    history: Optional[Sequence[Any]] = None,
+) -> Optional[str]:
     normalized = (message or "").strip().lower()
     if not normalized:
         return random.choice(_NON_MATH_REDIRECT_RESPONSES)
 
     if is_math_related_query(normalized):
+        return None
+
+    # Allow conversational follow-ups when recent history shows math context
+    if _has_math_context_in_history(history):
         return None
 
     if _GREETING_PATTERN.search(normalized):
@@ -1705,7 +1727,7 @@ def _scope_boundary_response_without_continuation(message: str) -> Optional[str]
 
 
 def get_scope_boundary_response(message: str, history: Optional[Sequence[Any]] = None) -> Optional[str]:
-    boundary_response = _scope_boundary_response_without_continuation(message)
+    boundary_response = _scope_boundary_response_without_continuation(message, history)
     if boundary_response is None:
         return None
 
