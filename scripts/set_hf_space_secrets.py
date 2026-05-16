@@ -71,6 +71,10 @@ secrets = {
     "FIREBASE_SERVICE_ACCOUNT_JSON": FIREBASE_SERVICE_ACCOUNT_JSON,
     "DEEPSEEK_API_KEY": DEEPSEEK_API_KEY,
     "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
+    # CRITICAL: must match the embedding model used to create the vectorstore in Firebase Storage.
+    # Vectorstore was created with BAAI/bge-base-en-v1.5 (768-dim). If this secret is deleted,
+    # the app falls back to bge-small (384-dim) → dimension mismatch → 503 on all RAG queries.
+    "EMBEDDING_MODEL": "BAAI/bge-base-en-v1.5",
 }
 
 for key, value in secrets.items():
