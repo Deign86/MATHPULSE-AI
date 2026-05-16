@@ -561,6 +561,24 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && ownerByField('userId') || isAdmin();
     }
 
+    // ── Tutor Memory (student-specific AI tutoring memory) ──
+    // Profile memory: long-term student profile data
+    match /users/{uid}/tutorMemory/profile/{docId} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+    // Session memory: episodic summaries of tutoring sessions
+    match /users/{uid}/tutorMemory/sessions/{sessionId} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isTeacherOrAdmin());
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+    // Working memory: active session state (current topic, problem, turns)
+    match /users/{uid}/tutorMemory/working/{docId} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;

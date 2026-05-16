@@ -381,17 +381,9 @@ export function getCurriculumModulesForLearner(
       const quizzes = makeQuizzes(module, assessments);
       const subjectMeta = SUBJECT_META[module.subjectId];
 
-      // Module availability is gated by subject-level availability (Firestore
-      // `platformConfig/subjects` via useSubjectAvailability). The blueprint
-      // can also explicitly set `isAvailable: false` to override.
-      //
-      // Historical note: this used to require lesson-level storagePath
-      // mappings via CURRICULUM_LESSONS, which only covered 8 competencies
-      // out of dozens — every module without an explicit mapping locked
-      // even though the RAG vectorstore had ingested its source PDFs.
-      // See QA report 2026-05-16: "all the lessons show up as locked even
-      // though the rag pipeline has already ingested the lessons before".
-      const isAvailable = module.isAvailable ?? true;
+      // Check if module has PDF-backed lessons for RAG availability
+      const hasPdfBackedLessons = lessons.some((lesson) => lesson.storagePath && lesson.storagePath.length > 0);
+      const isAvailable = module.isAvailable ?? hasPdfBackedLessons ?? true;
 
       return {
         id: module.id,

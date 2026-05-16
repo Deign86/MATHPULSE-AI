@@ -92,6 +92,7 @@ export interface ChatRequest {
   message: string;
   history: { role: 'user' | 'assistant'; content: string }[];
   userId?: string;
+  sessionId?: string;
   verify?: boolean;
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
@@ -100,6 +101,7 @@ export interface ChatRequest {
 }
 
 export interface ChatCompletionOptions {
+  sessionId?: string;
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
   continuationMaxRounds?: number;
@@ -1542,6 +1544,7 @@ export const apiService = {
     const requestPayload: ChatRequest = {
       message,
       history: history ?? [],
+      ...(options?.sessionId ? { sessionId: options.sessionId } : {}),
       ...(options?.expectedEndMarker ? { expectedEndMarker: options.expectedEndMarker } : {}),
       ...(options?.completionMode ? { completionMode: options.completionMode } : {}),
       ...(typeof options?.continuationMaxRounds === 'number'
