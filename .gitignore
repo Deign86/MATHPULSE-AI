@@ -91,6 +91,8 @@ documents/
 *.key
 *.pem
 service-account*.json
+serviceAccountKey*.json
+**/serviceAccountKey.json
 
 # Memory bank — local agent notes only, never commit
 memory-bank/
