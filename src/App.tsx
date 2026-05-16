@@ -940,6 +940,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           <AdminDashboard 
             onLogout={handleLogout}
             onOpenProfile={() => setShowProfileModal(true)}
+            onOpenSettings={() => setShowSettingsModal(true)}
           />
         </Suspense>
         {showProfileModal && (
