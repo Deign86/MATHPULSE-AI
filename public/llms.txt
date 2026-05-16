@@ -1,0 +1,40 @@
+# MathPulse AI
+
+> AI-powered mathematics tutoring platform for Filipino senior high school STEM students (Grade 11–12), their teachers, and administrators. Powered by DeepSeek, Firebase, and FastAPI.
+
+## Overview
+
+MathPulse AI delivers personalized math learning through:
+- AI chat tutor (DeepSeek) for on-demand math help
+- Diagnostic assessments and adaptive learning paths
+- Interactive lessons across Algebra, Geometry, Calculus, Trigonometry, Statistics
+- Gamification with XP, streaks, achievements, and leaderboards
+- Teacher dashboards with risk classification and class analytics
+- Admin tools for user management, content, and system configuration
+
+## Primary entry points
+
+- [Home](/) — Landing and login
+- [Student dashboard](/student) — Lessons, quizzes, AI tutor, progress
+- [Teacher dashboard](/teacher) — Class analytics, topic mastery, data import
+- [Admin dashboard](/admin) — User management, content, system settings
+
+## Public documentation
+
+- [README](https://github.com/Deign86/MATHPULSE-AI/blob/main/README.md) — Project overview, setup, architecture
+- [API Reference](https://deign86-mathpulse-api-v3test.hf.space/docs) — Interactive Swagger UI for the FastAPI backend
+
+## Authentication
+
+Authenticated routes (`/student`, `/teacher`, `/admin`, `/api/*`) require Firebase Auth credentials and are not crawlable. Public landing content is at `/`.
+
+## Tech stack
+
+- Frontend: React 18, TypeScript, Vite, Tailwind CSS v4
+- Backend: FastAPI, Python 3.10+, DeepSeek API
+- Infra: Firebase Auth, Firestore, Cloud Functions, Hugging Face Spaces
+
+## Contact
+
+- GitHub: https://github.com/Deign86/MATHPULSE-AI
+- Issues: https://github.com/Deign86/MATHPULSE-AI/issues

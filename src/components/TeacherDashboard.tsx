@@ -569,6 +569,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [liveActivity, setLiveActivity] = useState<{ id: string; student: string; action: string; topic: string; time: string; type: string }[]>([]);
   const [dailyInsight, setDailyInsight] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
+  // Imported overview loads asynchronously after the initial Firestore fetch
+  // settles. Hero stats are gated on this so we never display zero counts
+  // while data is still in-flight (was a perceived "Dashboard 0 vs Analytics 12"
+  // inconsistency caught in QA).
+  const [importedOverviewLoading, setImportedOverviewLoading] = useState(true);
   const [insightLoading, setInsightLoading] = useState(false);
   const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
   const [teacherDirectory, setTeacherDirectory] = useState<TeacherDirectoryOption[]>([]);
@@ -590,6 +595,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
     const fetchData = async () => {
       setDataLoading(true);
+      setImportedOverviewLoading(true);
       try {
         const classrooms = await getClassroomsByTeacher(teacherId);
         let classViews = classrooms.map(toClassView);
@@ -754,6 +760,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           })
           .catch((importedErr) => {
             console.warn('Imported class overview merge unavailable:', importedErr);
+          })
+          .finally(() => {
+            if (isActive) setImportedOverviewLoading(false);
           });
 
         // Subscribe to live activity
@@ -807,9 +816,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     };
   }, [currentUser]);
 
-  // Fetch AI daily insight when students data is available
+  // Fetch AI daily insight when students data is available and the imported
+  // overview merge has settled. This deliberately waits for both data sources
+  // (Firestore + imported overview) to combine before issuing the request, so
+  // we don't fire a second POST when the merged dataset arrives a moment
+  // later (each call costs DeepSeek tokens — see QA Issue #7).
   useEffect(() => {
+    if (importedOverviewLoading) return;
     if (students.length === 0) return;
+
+    const controller = new AbortController();
+    let isCancelled = false;
 
     const fetchInsight = async () => {
       setInsightLoading(true);
@@ -821,17 +838,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           attendance: s.attendance,
           riskLevel: s.riskLevel,
         }));
-        const response = await apiService.getDailyInsight({ students: studentData });
-        setDailyInsight(response.insight);
-      } catch {
-        setDailyInsight(`${students.filter((s) => s.riskLevel === 'high').length} students are at high risk of falling behind. Review their progress in the analytics view.`);
+        const response = await apiService.getDailyInsight(
+          { students: studentData },
+          { signal: controller.signal },
+        );
+        if (!isCancelled) {
+          setDailyInsight(response.insight);
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        if (!isCancelled) {
+          setDailyInsight(`${students.filter((s) => s.riskLevel === 'high').length} students are at high risk of falling behind. Review their progress in the analytics view.`);
+        }
       } finally {
-        setInsightLoading(false);
+        if (!isCancelled) {
+          setInsightLoading(false);
+        }
       }
     };
 
     fetchInsight();
-  }, [students]);
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [students, importedOverviewLoading]);
 
   // Computed stats
   const totalStudents = classes.reduce((sum, c) => sum + c.studentCount, 0);
@@ -1327,18 +1359,30 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </div>
                 {/* Quick teacher stats */}
                 {activeView === 'dashboard' && (
-                  <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
+                  <div className="hidden xl:flex items-center gap-2 ml-4 mt-1" aria-live="polite">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
                       <Users size={13} className="text-[#9956DE]" />
-                      <span className="text-xs font-display font-semibold text-[#9956DE]">{totalStudents} students</span>
+                      <span className="text-xs font-display font-semibold text-[#9956DE]">
+                        {importedOverviewLoading
+                          ? <Skeleton className="h-3 w-14 inline-block align-middle bg-[#9956DE]/30" />
+                          : `${totalStudents} students`}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
                       <AlertTriangle size={13} className="text-[#F08386]" />
-                      <span className="text-xs font-display font-semibold text-[#C65E63]">{totalAtRisk} at risk</span>
+                      <span className="text-xs font-display font-semibold text-[#C65E63]">
+                        {importedOverviewLoading
+                          ? <Skeleton className="h-3 w-14 inline-block align-middle bg-[#F08386]/30" />
+                          : `${totalAtRisk} at risk`}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
                       <TrendingUp size={13} className="text-[#75D06A]" />
-                      <span className="text-xs font-display font-semibold text-[#4D9F46]">{avgPerformance}% avg</span>
+                      <span className="text-xs font-display font-semibold text-[#4D9F46]">
+                        {importedOverviewLoading
+                          ? <Skeleton className="h-3 w-14 inline-block align-middle bg-[#75D06A]/30" />
+                          : `${avgPerformance}% avg`}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -1420,6 +1464,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   totalStudents={totalStudents}
                   totalAtRisk={totalAtRisk}
                   avgPerformance={avgPerformance}
+                  statsLoading={importedOverviewLoading}
                 />
               )}
             {activeView === 'analytics' && effectiveAnalyticsClass && (
@@ -1443,6 +1488,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length > 0 && (
               <ClassesOverviewMenu
                 classes={classes}
+                students={students.map((s) => ({
+                  classroomId: s.classroomId,
+                  attendance: s.attendance,
+                  weakestTopic: s.weakestTopic,
+                }))}
                 onSelectClass={handleViewClass}
                 onOpenNotifications={() => setActiveView('notifications')}
                 onOpenProfile={onOpenProfile}
@@ -1508,6 +1558,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
               <ClassesOverviewMenu
                 classes={classes}
+                students={students.map((s) => ({
+                  classroomId: s.classroomId,
+                  attendance: s.attendance,
+                  weakestTopic: s.weakestTopic,
+                }))}
                 onSelectClass={(cls) => setSelectedClass(cls)}
                 onOpenNotifications={() => setActiveView('notifications')}
                 onOpenProfile={onOpenProfile}
@@ -1654,6 +1709,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </div>
                 <button 
                   onClick={() => { setInsightModalOpen(false); }}
+                  aria-label="Close AI insight"
                   className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
                 >
                   <X size={18} />
@@ -1717,7 +1773,7 @@ const NavItem: React.FC<{
       collapsed && !forceExpanded ? 'justify-center' : ''
     } ${
       active
-        ? 'bg-[#9956DE]/12 border-[#9956DE]/30 shadow-sm text-[#9956DE]'
+        ? 'bg-[#9956DE]/12 border-[#9956DE]/30 shadow-sm text-[#6d28d9]'
         : 'bg-transparent border-transparent text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628]'
     }`}
   >
@@ -1769,7 +1825,8 @@ const DashboardView: React.FC<{
   totalStudents: number;
   totalAtRisk: number;
   avgPerformance: number;
-}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance }) => {
+  statsLoading?: boolean;
+}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance, statsLoading = false }) => {
   const riskPercentage = totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0;
   const engagementRate = totalStudents > 0 ? Math.round(((totalStudents - totalAtRisk) / totalStudents) * 100) : 0;
 
@@ -1811,57 +1868,63 @@ const DashboardView: React.FC<{
 
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-3">
-        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#047857] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px] opacity-90">Total students</span>
+            <span className="text-[11px]">Total students</span>
             <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={15} /></div>
           </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{totalStudents}</div>
-          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
-            <span>Added this year</span>
-            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{totalStudents > 0 ? '+1' : '0'}</span>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight" aria-live="polite">
+            {statsLoading ? <Skeleton className="h-7 w-12 bg-white/30" /> : totalStudents}
+          </div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px]">
+            <span>{classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
           </div>
         </div>
         
-        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#0369a1] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px] opacity-90">Class average</span>
+            <span className="text-[11px]">Class average</span>
             <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={15} /></div>
           </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{avgPerformance}%</div>
-          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
-            <span>Vs. last month</span>
-            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">+2.5%</span>
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight" aria-live="polite">
+            {statsLoading ? <Skeleton className="h-7 w-16 bg-white/30" /> : `${avgPerformance}%`}
+          </div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px]">
+            <span>Across {totalStudents} {totalStudents === 1 ? 'student' : 'students'}</span>
           </div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#7e22ce] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px] opacity-90">Engagement rate</span>
+            <span className="text-[11px]">Engagement rate</span>
             <div className="bg-white/20 p-1.5 rounded-lg flex"><Activity size={15} /></div>
           </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{engagementRate}%</div>
-          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight" aria-live="polite">
+            {statsLoading ? <Skeleton className="h-7 w-16 bg-white/30" /> : `${engagementRate}%`}
+          </div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px]">
             <span>Active participants</span>
             <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{Math.round((engagementRate/100)*totalStudents)}</span>
           </div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#c2410c] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px] opacity-90">At risk</span>
+            <span className="text-[11px]">At risk</span>
             <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertCircle size={15} /></div>
           </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{totalAtRisk}</div>
-          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px] opacity-90">
+          <div className="relative z-10 text-[26px] font-semibold tracking-tight" aria-live="polite">
+            {statsLoading ? <Skeleton className="h-7 w-12 bg-white/30" /> : totalAtRisk}
+          </div>
+          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px]">
             <span>Requires attention</span>
             <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{riskPercentage}%</span>
           </div>
@@ -1901,7 +1964,7 @@ const DashboardView: React.FC<{
               </div>
               <div className="flex-1">
                 <div className="text-[12.5px] font-medium text-[#1e293b]">{classItem.name}</div>
-                <div className="text-[11px] text-[#94a3b8] mt-[1px]">{classItem.classification || 'High School'}</div>
+                <div className="text-[11px] text-[#475569] mt-[1px]">{classItem.classification || 'High School'}</div>
               </div>
               <div className="text-[12px] text-[#64748b] min-w-[65px]">{classItem.schedule || 'Mon-Fri'}</div>
               <div className="text-[12px] text-[#64748b] min-w-[85px]">{classItem.studentCount} students</div>
@@ -2134,7 +2197,7 @@ const AnalyticsView: React.FC<{
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-[18px] w-full">
-        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#0369a1] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -2144,7 +2207,7 @@ const AnalyticsView: React.FC<{
           <div className="relative z-10 text-[26px] font-semibold tracking-tight">{selectedClass.avgScore}%</div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#047857] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -2154,7 +2217,7 @@ const AnalyticsView: React.FC<{
           <div className="relative z-10 text-[26px] font-semibold tracking-tight">{averageCompletion}%</div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#7e22ce] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -2164,7 +2227,7 @@ const AnalyticsView: React.FC<{
           <div className="relative z-10 text-[26px] font-semibold tracking-tight">{participationRate}%</div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#c2410c] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -4253,8 +4316,8 @@ const DashboardRightSidebar: React.FC<{
           <UserAvatar src={userProfile?.photo} name={teacherName} className="w-full h-full rounded-full" />
         </div>
         <div className="text-[13.5px] font-semibold text-[#1e293b] mt-1">{teacherName}</div>
-        <div className="text-[11px] text-[#94a3b8]">Teacher</div>
-        <button onClick={onOpenProfile} className="mt-[4px] py-[6px] px-[22px] bg-[#818cf8] hover:bg-[#6366f1] text-white rounded-full text-[11.5px] font-medium transition-colors">
+        <div className="text-[11px] text-[#475569]">Teacher</div>
+        <button onClick={onOpenProfile} className="mt-[4px] py-[6px] px-[22px] bg-[#4f46e5] hover:bg-[#4338ca] text-white rounded-full text-[11.5px] font-medium transition-colors">
           Profile
         </button>
       </div>
@@ -4267,6 +4330,7 @@ const DashboardRightSidebar: React.FC<{
         <div className="flex items-center justify-between mb-2">
           <button
             onClick={(e) => { e.stopPropagation(); goToPrevMonth(); }}
+            aria-label="Previous month"
             className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
           >
             <ChevronLeft size={14} />
@@ -4274,6 +4338,7 @@ const DashboardRightSidebar: React.FC<{
           <span className="text-[12px] font-semibold text-[#1e293b] group-hover/cal:text-[#4f46e5] transition-colors">{monthLabel()}</span>
           <button
             onClick={(e) => { e.stopPropagation(); goToNextMonth(); }}
+            aria-label="Next month"
             className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
           >
             <ChevronRight size={14} />
@@ -4283,7 +4348,7 @@ const DashboardRightSidebar: React.FC<{
         {/* Calendar Grid */}
         <div className="grid grid-cols-7 gap-[2px] text-center mb-1">
           {dayLabels.map((label) => (
-            <div key={label} className="text-[10px] font-semibold text-[#94a3b8] p-[2px_0_4px]">
+            <div key={label} className="text-[10px] font-semibold text-[#475569] p-[2px_0_4px]">
               {label}
             </div>
           ))}
@@ -4298,7 +4363,7 @@ const DashboardRightSidebar: React.FC<{
                   day === null
                     ? 'text-[#cbd5e1]'
                     : isToday(day)
-                      ? 'bg-[#818cf8] text-white font-semibold'
+                      ? 'bg-[#4f46e5] text-white font-semibold'
                       : 'text-[#475569] group-hover/cal:bg-slate-100'
                 }`}
               >
@@ -4318,8 +4383,8 @@ const DashboardRightSidebar: React.FC<{
           onClick={() => setActiveTab('pulse')}
           className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${
             activeTab === 'pulse'
-              ? 'text-[#10b981] border-[#10b981]'
-              : 'text-[#94a3b8] border-transparent'
+              ? 'text-[#047857] border-[#047857]'
+              : 'text-[#475569] border-transparent'
           }`}
         >
           Live pulse
@@ -4328,8 +4393,8 @@ const DashboardRightSidebar: React.FC<{
           onClick={() => setActiveTab('reminders')}
           className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${
             activeTab === 'reminders'
-              ? 'text-[#10b981] border-[#10b981]'
-              : 'text-[#94a3b8] border-transparent'
+              ? 'text-[#047857] border-[#047857]'
+              : 'text-[#475569] border-transparent'
           }`}
         >
           Reminders
@@ -4344,14 +4409,14 @@ const DashboardRightSidebar: React.FC<{
               <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Live Activity Stream</div>
               <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span className="text-[9px] font-bold text-emerald-600">LIVE</span>
+                <span className="text-[9px] font-bold text-emerald-700">LIVE</span>
               </div>
             </div>
             
             {liveActivity.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
+              <div className="flex flex-col items-center justify-center py-10 text-center">
                 <Activity size={32} className="text-slate-300 mb-2" />
-                <p className="text-[11px] font-bold text-[#1e293b]">No recent activity</p>
+                <p className="text-[11px] font-bold text-[#475569]">No recent activity</p>
               </div>
             ) : (
               <div className="space-y-4">

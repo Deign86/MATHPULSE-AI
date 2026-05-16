@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
 import { createNotification } from "../automations/notificationSender";
+import { sanitizeProfileFields } from "../utils/profileSanitizer";
 import {
   detectProfileReassessmentReasons,
   hasCompletedInitialAssessment,
@@ -192,6 +193,29 @@ export const onStudentProfileUpdated = functions.firestore
     const beforeData = change.before.data() as Record<string, unknown>;
     const afterData = change.after.data() as Record<string, unknown>;
 
+    // ── Defence-in-depth: sanitize user-controlled text fields ─────────────
+    // Mirrors the client-side Zod rules. If the document was written through
+    // an unprivileged path or a compromised client, this removes HTML/script
+    // tag characters and clamps phone format. Idempotent — only re-writes
+    // when the cleaned value differs, which prevents infinite trigger loops.
+    const sanitization = sanitizeProfileFields(afterData);
+    if (sanitization.changed) {
+      functions.logger.warn("[SECURITY] Sanitized invalid profile fields on user write", {
+        userId,
+        fieldsRewritten: Object.keys(sanitization.patches),
+      });
+      try {
+        await change.after.ref.update(sanitization.patches);
+      } catch (sanitizeErr) {
+        functions.logger.error("[SECURITY] Failed to apply profile sanitization", {
+          userId,
+          error: sanitizeErr instanceof Error ? sanitizeErr.message : String(sanitizeErr),
+        });
+      }
+      // Reflect the cleaned values for downstream logic in this same invocation.
+      Object.assign(afterData, sanitization.patches);
+    }
+
     const db = admin.firestore();
     await handleStudentProfileReassessmentUpdate({
       db,
@@ -324,6 +348,25 @@ export const onStudentCreated = functions.firestore
   .onCreate(async (snap, context) => {
     const userId = context.params.userId;
     const userData = snap.data();
+
+    // Sanitize on create: a freshly-created user doc may already contain an
+    // injection payload from the signup form. Strip HTML chars + clamp phone.
+    const sanitization = sanitizeProfileFields(userData);
+    if (sanitization.changed) {
+      functions.logger.warn("[SECURITY] Sanitized invalid profile fields on user create", {
+        userId,
+        fieldsRewritten: Object.keys(sanitization.patches),
+      });
+      try {
+        await snap.ref.update(sanitization.patches);
+        Object.assign(userData, sanitization.patches);
+      } catch (sanitizeErr) {
+        functions.logger.error("[SECURITY] Failed to apply profile sanitization on create", {
+          userId,
+          error: sanitizeErr instanceof Error ? sanitizeErr.message : String(sanitizeErr),
+        });
+      }
+    }
 
     if (userData.role !== "student") return null;
 

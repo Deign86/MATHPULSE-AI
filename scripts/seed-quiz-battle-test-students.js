@@ -17,9 +17,19 @@ try {
   }
 }
 
-const KEY_PATH = path.resolve(__dirname, 'serviceAccountKey.json');
-if (!fs.existsSync(KEY_PATH)) {
-  console.error('Missing scripts/serviceAccountKey.json');
+// Priority: env var → .secrets/firebase-service-account.json → legacy scripts/serviceAccountKey.json
+const KEY_CANDIDATES = [
+  process.env.FIREBASE_SERVICE_ACCOUNT_FILE,
+  path.resolve(__dirname, '..', '.secrets', 'firebase-service-account.json'),
+  path.resolve(__dirname, 'serviceAccountKey.json'), // legacy fallback
+].filter(Boolean);
+
+const KEY_PATH = KEY_CANDIDATES.find((p) => fs.existsSync(p));
+if (!KEY_PATH) {
+  console.error(
+    'Missing Firebase service account key. Save it to: .secrets/firebase-service-account.json\n' +
+    '  (or set FIREBASE_SERVICE_ACCOUNT_FILE env var)'
+  );
   process.exit(1);
 }
 

@@ -95,6 +95,10 @@ app = main_module.app
 
 # Mock auth verification so protected endpoints can run in tests without Firebase credentials.
 main_module._firebase_ready = True
+# Simulate a fully started backend so the lightweight /health endpoint reports
+# "ready" instead of "starting".  The lifespan context that would normally flip
+# this flag is bypassed by TestClient when used without a `with` block.
+main_module._backend_ready = True
 main_module._init_firebase_admin = lambda: None
 main_module.firebase_firestore = None
 main_module.firebase_auth = MagicMock()
@@ -138,10 +142,12 @@ class TestHealthEndpoints:
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
-        # Accept both legacy ("healthy") and current ("ready"/"starting") shapes.
-        # The lightweight /health on main returns "ready" when lifespan has run,
-        # "starting" otherwise (TestClient without `with` block does not run lifespan).
-        assert data["status"] in {"healthy", "ready", "starting"}
+        # Accept legacy ("healthy") and current ("ready") response shapes.
+        # The test setup forces _backend_ready = True so "starting" indicates a
+        # regression where the readiness flag isn't being honored.
+        assert data["status"] in {"healthy", "ready"}, (
+            f"Expected /health status to be 'ready' (or legacy 'healthy'), got {data['status']!r}"
+        )
         # Legacy shape exposed `models`; current shape exposes `chat_model`/`risk_model`.
         assert "models" in data or "chat_model" in data
 
