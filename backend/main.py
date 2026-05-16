@@ -1741,7 +1741,7 @@ def get_scope_boundary_response(message: str, history: Optional[Sequence[Any]] =
     if not reconstructed_intent:
         return _CONTINUATION_CONTEXT_CLARIFY_RESPONSE
 
-    reconstructed_boundary_response = _scope_boundary_response_without_continuation(reconstructed_intent)
+    reconstructed_boundary_response = _scope_boundary_response_without_continuation(reconstructed_intent, history)
     if reconstructed_boundary_response is None:
         return None
 
