@@ -405,29 +405,32 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
               <div className="flex items-center gap-5 relative z-10">
                 <button
                   onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#a855f7] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
+                  aria-label="Previous month"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <h2 className="text-[22px] font-bold text-white w-44 text-center tracking-tight">{monthLabel(month)}</h2>
                 <button
                   onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#a855f7] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
+                  aria-label="Next month"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
               
               <div className="flex items-center gap-3 relative z-10">
-                <span className="text-[13px] font-bold text-[#a855f7] bg-white px-4 py-1.5 rounded-full shadow-sm">
+                <span className="text-[13px] font-bold text-[#6d28d9] bg-white px-4 py-1.5 rounded-full shadow-sm">
                   {monthEvents.length} events
                 </span>
                 <button 
                   onClick={() => setShowSidebar(!showSidebar)}
                   className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm hover:shadow-md border ${
-                    showSidebar ? 'text-[#a855f7] bg-white border-white' : 'text-white bg-white/20 border-white/30 backdrop-blur-md'
+                    showSidebar ? 'text-[#6d28d9] bg-white border-white' : 'text-white bg-white/20 border-white/30 backdrop-blur-md'
                   }`}
                   title={showSidebar ? "Hide Sidebar" : "Show Sidebar"}
+                  aria-label={showSidebar ? "Hide Sidebar" : "Show Sidebar"}
                 >
                   <PanelRight className="w-4 h-4" />
                 </button>
@@ -439,7 +442,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
               {/* Weekdays */}
               <div className="grid grid-cols-7 text-center border-b border-slate-200/60 pb-5 shrink-0 sticky top-0 bg-white z-20 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.05)] px-4 pt-6">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-[12px] font-bold text-[#94a3b8] uppercase tracking-widest">{day}</div>
+                  <div key={day} className="text-[12px] font-bold text-[#475569] uppercase tracking-widest">{day}</div>
                 ))}
               </div>
 
@@ -668,7 +671,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
         <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden rounded-[24px] border-none shadow-2xl [&>button]:hidden">
           {selectedEvent && (
             <div className="p-8 bg-white relative">
-              <button onClick={() => setViewEventOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+              <button onClick={() => setViewEventOpen(false)} aria-label="Close event details" className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
                 <X size={18} />
               </button>
               

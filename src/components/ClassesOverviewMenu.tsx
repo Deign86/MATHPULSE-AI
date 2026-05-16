@@ -14,8 +14,26 @@ export interface ClassView {
   riskLevel: 'high' | 'medium' | 'low';
 }
 
+/**
+ * Lightweight projection of student-level fields needed for class-overview
+ * aggregates. Components passing real data should map their richer student
+ * model down to this shape.
+ */
+export interface ClassOverviewStudentSignal {
+  classroomId?: string;
+  attendance?: number;
+  weakestTopic?: string;
+}
+
 interface ClassesOverviewMenuProps {
   classes: ClassView[];
+  /**
+   * Optional per-student signals used to compute attendance and the most
+   * common weakness across all classes. When omitted the corresponding
+   * cards/text fall back to a neutral "—" placeholder rather than fabricated
+   * numbers.
+   */
+  students?: ClassOverviewStudentSignal[];
   onSelectClass: (classItem: ClassView) => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
@@ -34,6 +52,7 @@ export const CLASS_COLORS = [
 
 export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
   classes,
+  students = [],
   onSelectClass,
   onOpenNotifications,
   onOpenProfile,
@@ -52,6 +71,48 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
   const avgPerformance = classes.length > 0 
     ? (classes.reduce((sum, c) => sum + (c.avgScore || 0), 0) / classes.length).toFixed(1)
     : 0;
+
+  // ── Real attendance: average over student signals when available ──────────
+  const studentsWithAttendance = students.filter(
+    (s) => typeof s.attendance === 'number' && Number.isFinite(s.attendance!)
+  );
+  const avgAttendance = studentsWithAttendance.length > 0
+    ? Math.round(
+        studentsWithAttendance.reduce((sum, s) => sum + (s.attendance ?? 0), 0)
+        / studentsWithAttendance.length
+      )
+    : null;
+
+  // ── Real "active participants" = students above attendance threshold ──────
+  const activeParticipants = avgAttendance !== null
+    ? Math.round(totalStudents * (avgAttendance / 100))
+    : null;
+
+  // ── Most common weakest topic across classes (universal weakness) ─────────
+  const weaknessCounts = students.reduce<Record<string, number>>((acc, s) => {
+    const topic = (s.weakestTopic || '').trim();
+    if (!topic) return acc;
+    acc[topic] = (acc[topic] ?? 0) + 1;
+    return acc;
+  }, {});
+  const universalWeakness = Object.entries(weaknessCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+  // ── Real "AI Action Items": derive from class data, no fabricated alerts ──
+  const highRiskClass = classes
+    .filter((c) => c.riskLevel === 'high')
+    .sort((a, b) => (b.atRiskCount || 0) - (a.atRiskCount || 0))[0];
+  const mediumRiskClass = classes
+    .filter((c) => c.riskLevel === 'medium')
+    .sort((a, b) => (b.atRiskCount || 0) - (a.atRiskCount || 0))[0];
+
+  const actionItems: { kind: 'risk' | 'medium'; className: string; atRisk: number }[] = [];
+  if (highRiskClass) {
+    actionItems.push({ kind: 'risk', className: highRiskClass.name, atRisk: highRiskClass.atRiskCount });
+  }
+  if (mediumRiskClass && mediumRiskClass.id !== highRiskClass?.id) {
+    actionItems.push({ kind: 'medium', className: mediumRiskClass.name, atRisk: mediumRiskClass.atRiskCount });
+  }
 
   // Filter classes by global search query
   const filteredClasses = classes.filter(c => 
@@ -86,14 +147,14 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
             <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col justify-between h-full group text-white">
               <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
               <div className="flex items-start justify-between relative z-10 mb-4">
-                <span className="text-[13px] font-medium text-white/90">Total Students Evaluated</span>
+                <span className="text-[13px] font-medium text-white">Total Students Evaluated</span>
                 <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
                   <Users className="w-4 h-4 text-white" />
                 </div>
               </div>
               <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{totalStudents}</div>
               <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                <span className="text-[12px] font-medium text-white/90">Active across all classes</span>
+                <span className="text-[12px] font-medium text-white">Active across all classes</span>
               </div>
             </div>
             
@@ -101,15 +162,14 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
             <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between h-full group text-white">
               <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
               <div className="flex items-start justify-between relative z-10 mb-4">
-                <span className="text-[13px] font-medium text-white/90">Global Avg Competency</span>
+                <span className="text-[13px] font-medium text-white">Global Avg Competency</span>
                 <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
                   <Target className="w-4 h-4 text-white" />
                 </div>
               </div>
               <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{avgPerformance}%</div>
               <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                <span className="text-[12px] font-medium text-white/90">Vs. expected benchmark</span>
-                <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">+1.4%</span>
+                <span className="text-[12px] font-medium text-white">Across all classes</span>
               </div>
             </div>
             
@@ -117,14 +177,18 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
             <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between h-full group text-white">
               <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
               <div className="flex items-start justify-between relative z-10 mb-4">
-                <span className="text-[13px] font-medium text-white/90">Universal Weakness</span>
+                <span className="text-[13px] font-medium text-white">Universal Weakness</span>
                 <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
                   <Target className="w-4 h-4 text-white" />
                 </div>
               </div>
-              <div className="text-[20px] font-bold relative z-10 leading-tight mb-2 truncate">Foundational Skills</div>
+              <div className="text-[20px] font-bold relative z-10 leading-tight mb-2 truncate">{universalWeakness ?? '—'}</div>
               <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-                <span className="text-[12px] font-medium text-white/90">Identified in {classes.length} classes</span>
+                <span className="text-[12px] font-medium text-white">
+                  {universalWeakness
+                    ? `Identified across ${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`
+                    : 'Awaiting student topic data'}
+                </span>
               </div>
             </div>
           </div>
@@ -137,15 +201,19 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
               <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(16,185,129,0.2)] flex flex-col justify-between h-full group text-white">
                 <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
                 <div className="flex items-start justify-between relative z-10 mb-4">
-                  <span className="text-[13px] font-medium text-white/90">Attendance rate</span>
+                  <span className="text-[13px] font-medium text-white">Attendance rate</span>
                   <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
                     <Users className="w-4 h-4 text-white" />
                   </div>
                 </div>
-                <div className="text-[32px] font-bold relative z-10 leading-none mb-6">94%</div>
+                <div className="text-[32px] font-bold relative z-10 leading-none mb-6">
+                  {avgAttendance !== null ? `${avgAttendance}%` : '—'}
+                </div>
                 <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                  <span className="text-[12px] font-medium text-white/90">Active participants</span>
-                  <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">{totalStudents > 0 ? Math.round(totalStudents * 0.94) : 0}</span>
+                  <span className="text-[12px] font-medium text-white">Active participants</span>
+                  <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">
+                    {activeParticipants !== null ? activeParticipants : '—'}
+                  </span>
                 </div>
               </div>
               
@@ -153,15 +221,14 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
               <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between h-full group text-white">
                 <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
                 <div className="flex items-start justify-between relative z-10 mb-4">
-                  <span className="text-[13px] font-medium text-white/90">Class average</span>
+                  <span className="text-[13px] font-medium text-white">Class average</span>
                   <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
                     <Target className="w-4 h-4 text-white" />
                   </div>
                 </div>
                 <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{avgPerformance}%</div>
                 <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                  <span className="text-[12px] font-medium text-white/90">Vs. last month</span>
-                  <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">+2.1%</span>
+                  <span className="text-[12px] font-medium text-white">Across {classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
                 </div>
               </div>
               
@@ -169,14 +236,14 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
               <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between h-full group text-white">
                 <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
                 <div className="flex items-start justify-between relative z-10 mb-4">
-                  <span className="text-[13px] font-medium text-white/90">At risk</span>
+                  <span className="text-[13px] font-medium text-white">At risk</span>
                   <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
                     <AlertCircle className="w-4 h-4 text-white" />
                   </div>
                 </div>
                 <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{totalAtRisk}</div>
                 <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                  <span className="text-[12px] font-medium text-white/90">Requires attention</span>
+                  <span className="text-[12px] font-medium text-white">Requires attention</span>
                   <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">
                     {totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%
                   </span>
@@ -193,29 +260,37 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
                   <div className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
                   AI Action Items
                 </h3>
-                <span className="text-[10px] font-bold text-[#9333ea] bg-white px-2 py-0.5 rounded-[4px]">2 Pending</span>
+                <span className="text-[10px] font-bold text-[#9333ea] bg-white px-2 py-0.5 rounded-[4px]">
+                  {actionItems.length === 0 ? 'All clear' : `${actionItems.length} Pending`}
+                </span>
               </div>
               
               <div className="space-y-[8px] flex-1 overflow-y-auto no-scrollbar relative z-10">
-                {/* Alert 1 */}
-                <div className="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start">
-                  <div className="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
-                    <TrendingDown className="w-4 h-4" />
+                {actionItems.length === 0 && (
+                  <div className="bg-white/10 rounded-[8px] p-3 text-[12px] border border-white/10 backdrop-blur-sm flex gap-3 items-start">
+                    <div className="mt-0.5 shrink-0 text-white">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div className="leading-snug text-white">
+                      No high-risk classes detected. Review individual student progress in the Competency tab.
+                    </div>
                   </div>
-                  <div className="leading-snug text-white/90">
-                    <span className="font-bold text-white">Grade 11 - Section B</span> average dropped by 4% after the last quiz.
+                )}
+                {actionItems.map((item, idx) => (
+                  <div
+                    key={`${item.kind}-${idx}-${item.className}`}
+                    className="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start"
+                  >
+                  <div className="mt-0.5 shrink-0 text-white">
+                    {item.kind === 'risk' ? <AlertCircle className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   </div>
-                </div>
-                
-                {/* Alert 2 */}
-                <div className="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start">
-                  <div className="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
-                    <FileText className="w-4 h-4" />
+                  <div className="leading-snug text-white">
+                      <span className="font-bold text-white">{item.className}</span>{' '}
+                      has {item.atRisk} {item.atRisk === 1 ? 'student' : 'students'} flagged{' '}
+                      {item.kind === 'risk' ? 'as high-risk' : 'as needing attention'}.
+                    </div>
                   </div>
-                  <div className="leading-snug text-white/90">
-                    <span className="font-bold text-white">3 Lesson Plans</span> generated and awaiting your review.
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
