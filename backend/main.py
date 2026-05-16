@@ -1958,6 +1958,23 @@ async def health_check():
     }
 
 
+@app.get("/debug/scope-info")
+async def debug_scope_info():
+    """Reveal what scope check code is deployed and its current state."""
+    import subprocess
+    try:
+        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=os.path.dirname(os.path.abspath(__file__))).decode().strip()
+    except Exception:
+        git_hash = "unknown"
+    return {
+        "git_commit": git_hash,
+        "math_keywords": list(_MATH_SCOPE_KEYWORDS),
+        "pattern_names": list(_MATH_SCOPE_PATTERNS.keys()),
+        "has_history_check": "_has_math_context_in_history" in globals() or "_has_math_context_in_history" in dir(),
+        "thanks_pattern": _THANKS_PATTERN.pattern if hasattr(_THANKS_PATTERN, 'pattern') else str(_THANKS_PATTERN),
+    }
+
+
 @app.get("/")
 async def root():
     return {
