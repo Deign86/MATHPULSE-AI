@@ -120,6 +120,30 @@ from rag.curriculum_rag import (
     summarize_retrieval_confidence,
 )
 
+# Memory-aware tutoring service — optional, no-ops if unavailable
+try:
+    from services.memory_service import (
+        collect_memory_context,
+        update_memory_after_response,
+        get_active_state,
+        set_active_state,
+        increment_turn_count,
+        update_active_topic,
+        load_profile,
+        finalize_session,
+    )
+    HAS_MEMORY_SERVICE = True
+except ImportError:
+    HAS_MEMORY_SERVICE = False
+    collect_memory_context = None
+    update_memory_after_response = None
+    get_active_state = None
+    set_active_state = None
+    increment_turn_count = None
+    update_active_topic = None
+    load_profile = None
+    finalize_session = None
+
 try:
     import firebase_admin  # type: ignore[import-not-found]
     from firebase_admin import auth as firebase_auth  # type: ignore[import-not-found]
@@ -1760,6 +1784,10 @@ class ChatRequest(BaseModel):
     message: str
     history: List[ChatMessage] = Field(default_factory=list)
     userId: Optional[str] = None
+    sessionId: Optional[str] = Field(
+        default=None,
+        description="Session ID for memory-aware tutoring. If absent, no memory features are used.",
+    )
     verify: bool = Field(default=False, description="Enable self-consistency verification for math answers")
     expectedEndMarker: Optional[str] = Field(
         default=None,
@@ -1959,7 +1987,16 @@ RESPONSE FORMAT FOR MATH EXPLANATIONS:
 AWARENESS OF FULL CURRICULUM:
 You have complete knowledge of all topics in the MathPulse topic registry
 (NA-*, BM-*, SP-*, FM1-*, FM2-* topic codes). When a student asks "what's next?"
-refer to their suggested_learning_path from the diagnostic result."""
+refer to their suggested_learning_path from the diagnostic result.
+
+MEMORY AWARENESS:
+- You will receive a MEMORY CONTEXT block before these instructions when memory is available.
+- Use the student's name from the profile to personalize responses.
+- Reference previously covered topics and struggles from session summaries.
+- Build on what was previously taught — don't repeat from scratch unless the student asks.
+- If the student refers to "that problem" or "last time", use memory context to infer what they mean.
+- If memory is not available, continue tutoring normally without it.
+- Never mention the memory system to the student — just use it naturally."""
 
 
 _STREAM_COMPLETION_MODES: Set[str] = {"auto", "marker", "none"}
@@ -2175,6 +2212,22 @@ async def chat_tutor(request: ChatRequest):
             return ChatResponse(response=boundary_response)
 
         system_prompt = MATH_TUTOR_SYSTEM_PROMPT
+
+        # ─── Memory Context Injection ────────────────────────────
+        memory_context = ""
+        _mem = collect_memory_context  # local alias for type safety
+        if request.userId and request.sessionId and _mem is not None:
+            try:
+                memory_context = await _mem(
+                    uid=request.userId,
+                    session_id=request.sessionId,
+                    current_message=request.message,
+                )
+            except Exception as mem_err:
+                logger.debug(f"Memory context injection skipped: {mem_err}")
+        if memory_context:
+            system_prompt = memory_context + "\n\n" + system_prompt
+        # ─── End Memory Context ──────────────────────────────────
         
         if request.userId and HAS_FIREBASE_ADMIN and firebase_firestore:
             try:
@@ -2238,6 +2291,21 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
                 detail="AI model service is temporarily unavailable. Please try again.",
             )
 
+        # ─── Background Memory Update (async, non-blocking) ─────
+        if request.userId and request.sessionId and HAS_MEMORY_SERVICE:
+            _gs = get_active_state
+            if _gs is not None:
+                active_state = _gs(request.userId, request.sessionId)
+                turn_count = active_state.turn_count if active_state else 0
+                asyncio.create_task(_update_memory_after_response(
+                    uid=request.userId,
+                    session_id=request.sessionId,
+                    user_message=request.message,
+                    ai_response=answer,
+                    turn_count=turn_count,
+                ))
+        # ─── End Background Memory Update ────────────────────────
+
         # Optional self-consistency verification
         if request.verify:
             logger.info("Running self-consistency verification for chat response")
@@ -2258,12 +2326,51 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
         raise HTTPException(status_code=500, detail=f"Chat service error: {str(e)}")
 
 
+async def _update_memory_after_response(
+    uid: str, session_id: str, user_message: str,
+    ai_response: str, turn_count: int,
+) -> None:
+    """Fire-and-forget memory update after chat response.
+    Never blocks the response. All errors are caught and logged as debug."""
+    _upd = update_memory_after_response
+    if _upd is None:
+        return
+    try:
+        await _upd(
+            uid=uid,
+            session_id=session_id,
+            user_message=user_message,
+            ai_response=ai_response,
+            turn_count=turn_count,
+        )
+    except Exception as e:
+        logger.debug(f"Background memory update failed (non-fatal): {e}")
+
+
 @app.post("/api/chat/stream")
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
     try:
         boundary_response = get_scope_boundary_response(request.message, request.history)
-        messages = [{"role": "system", "content": MATH_TUTOR_SYSTEM_PROMPT}]
+        
+        # ─── Memory Context Injection ────────────────────────────
+        memory_context = ""
+        _mem = collect_memory_context  # local alias for type safety
+        if request.userId and request.sessionId and _mem is not None:
+            try:
+                memory_context = await _mem(
+                    uid=request.userId,
+                    session_id=request.sessionId,
+                    current_message=request.message,
+                )
+            except Exception as mem_err:
+                logger.debug(f"Memory context injection skipped: {mem_err}")
+        prompt_content = MATH_TUTOR_SYSTEM_PROMPT
+        if memory_context:
+            prompt_content = memory_context + "\n\n" + MATH_TUTOR_SYSTEM_PROMPT
+        # ─── End Memory Context ──────────────────────────────────
+        
+        messages = [{"role": "system", "content": prompt_content}]
         for msg in request.history[-10:]:
             messages.append({"role": msg.role, "content": msg.content})
         messages.append({"role": "user", "content": request.message})
@@ -2418,6 +2525,21 @@ async def chat_tutor_stream(request: ChatRequest):
                 })
                 yield _sse("error", err_payload)
             finally:
+                # ─── Background Memory Update after stream ──
+                if (request.userId and request.sessionId and HAS_MEMORY_SERVICE
+                        and assembled_response and emitted_any_chunk):
+                    _gs = get_active_state
+                    if _gs is not None:
+                        active_state = _gs(request.userId, request.sessionId)
+                        turn_count = active_state.turn_count if active_state else 0
+                        asyncio.create_task(_update_memory_after_response(
+                            uid=request.userId,
+                            session_id=request.sessionId,
+                            user_message=request.message,
+                            ai_response=assembled_response,
+                            turn_count=turn_count,
+                        ))
+                # ─── End Background Memory Update ────────────
                 yield _sse("end", "done")
 
         return StreamingResponse(
