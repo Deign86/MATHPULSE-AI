@@ -30,6 +30,8 @@ concurrency:
   group: hf-deploy-${{ github.ref }}
   cancel-in-progress: true
 
+# Last redeploy: 2026-05-16 — restore VITE_FIREBASE_* secrets after stale "-" overwrite
+
 on:
   push:
     branches:
