@@ -16,6 +16,7 @@ import ConfirmModal from './ConfirmModal';
 import NotificationDropdown from './NotificationDropdown';
 import LogoutActionButton from './LogoutActionButton';
 import UserAvatar from './UserAvatar';
+import { sanitizeDisplayName } from '../utils/profileValidation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -1065,7 +1066,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     setSelectedStudent(null);
   };
 
-  const teacherName = userProfile?.name || 'Teacher';
+  const teacherName = sanitizeDisplayName(userProfile?.name, 'Teacher');
   const selectedClassSectionId = useMemo(() => {
     if (!selectedClass) return undefined;
     if (selectedClass.classMetadata?.classSectionId) return selectedClass.classMetadata.classSectionId || undefined;

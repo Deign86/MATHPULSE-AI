@@ -15,6 +15,24 @@ import { z } from 'zod';
 // payloads are still accepted to avoid false positives on edge cases.
 const NAME_DISALLOWED = /[<>]/;
 
+/**
+ * Display-time sanitizer for legacy / unsanitized name records.
+ *
+ * The Cloud Function `onStudentProfileUpdated` strips `<>` chars on the
+ * write path, but pre-existing user docs (created before that trigger
+ * shipped) can still contain payloads like `<script>alert("XSS")</script>`.
+ * React escapes by default so this is not an execution risk, but the raw
+ * tag text leaks into UI cards. Strip on display as a defence-in-depth.
+ *
+ * Empty / falsy input returns 'User' so we never render an empty card.
+ */
+export function sanitizeDisplayName(value: unknown, fallback: string = 'User'): string {
+  if (typeof value !== 'string') return fallback;
+  // Strip HTML/script tag chars and normalise whitespace.
+  const cleaned = value.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+  return cleaned.length > 0 ? cleaned.slice(0, 100) : fallback;
+}
+
 // Phone numbers: digits + common separators only. Optional leading '+'.
 // Length 7–20 covers international formats. Empty string is allowed since
 // phone is optional in ProfileData.

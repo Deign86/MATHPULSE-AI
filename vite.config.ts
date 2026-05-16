@@ -230,7 +230,20 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    // Force IPv4 loopback. On Windows 10/11 with Hyper-V Host Network Service
+    // running (Docker Desktop / WSL2 / virtualization), the OS reserves random
+    // ports in the 1024–14999 dynamic range, hidden from
+    // `netsh int ipv4 show excludedportrange`. Vite's default `localhost` host
+    // resolves to `::1` first → EACCES on `::1:3000` even when no process
+    // listens. Binding to `127.0.0.1` sidesteps the IPv6 reservation; the
+    // explicit port choice (5173) sits above the HNS dynamic pool ceiling
+    // (~15000) so it is never silently reserved by the kernel.
+    //
+    // Recovery if 3000 is reservation-blocked again: see DEV_SERVER.md or run
+    // (in elevated PowerShell): `net stop winnat && net start winnat`.
+    host: '127.0.0.1',
+    port: 5173,
+    strictPort: false,
     open: false,
     warmup: {
       clientFiles: [

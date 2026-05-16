@@ -28,7 +28,7 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Suppress browser console.log/info in production builds (localhost:3000 dev shows them)
+// Suppress browser console.log/info in production builds (localhost dev shows them)
 if (!import.meta.env.DEV) {
   // Preserve original for any emergency debugging needs
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
