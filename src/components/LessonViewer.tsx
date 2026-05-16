@@ -147,13 +147,12 @@ function SectionRenderer({
               {section.callouts.map((callout, i) => (
                 <div
                   key={i}
-                  className={`rounded-xl p-4 border-l-4 flex items-start gap-3 ${
-                    callout.type === 'important'
-                      ? 'bg-rose-50 border-rose-400'
-                      : callout.type === 'tip'
+                  className={`rounded-xl p-4 border-l-4 flex items-start gap-3 ${callout.type === 'important'
+                    ? 'bg-rose-50 border-rose-400'
+                    : callout.type === 'tip'
                       ? 'bg-emerald-50 border-emerald-400'
                       : 'bg-amber-50 border-amber-400'
-                  }`}
+                    }`}
                 >
                   <Lightbulb
                     size={18}
@@ -161,8 +160,8 @@ function SectionRenderer({
                       callout.type === 'important'
                         ? 'text-rose-500 mt-0.5'
                         : callout.type === 'tip'
-                        ? 'text-emerald-500 mt-0.5'
-                        : 'text-amber-500 mt-0.5'
+                          ? 'text-emerald-500 mt-0.5'
+                          : 'text-amber-500 mt-0.5'
                     }
                   />
                   <p className="text-sm text-slate-700">{callout.text}</p>
@@ -481,7 +480,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   // Track lesson view activity when lesson loads
   useEffect(() => {
     if (sections.length > 0 && userProfile?.uid && lesson.id) {
-      logLessonView(userProfile.uid, lesson.id, lessonSpecificTopic || lesson.title).catch(() => {});
+      logLessonView(userProfile.uid, lesson.id, lessonSpecificTopic || lesson.title).catch(() => { });
     }
   }, [sections.length, userProfile?.uid, lesson.id, lessonSpecificTopic, lesson.title]);
 
@@ -545,20 +544,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 overflow-hidden font-sans">
-      <header className="flex-none bg-transparent px-4 sm:px-8 py-6 relative z-40">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 min-w-0">
+      <header className="flex-none bg-transparent px-3 sm:px-8 pt-10 md:pt-0 pb-3 sm:py-6 relative z-40">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <button
               onClick={onBack}
-              className="w-10 h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors flex-shrink-0 shadow-sm"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors flex-shrink-0 shadow-sm"
               aria-label="Go back"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={16} />
             </button>
             <div className="min-w-0 flex flex-col justify-center">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">
-                <BookOpen size={12} />
-                <span>NOTEBOOK LESSON</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">
+                <BookOpen size={10} />
+                <span>NOTEBOOK</span>
                 {activeModel && (
                   <span className="text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono">
                     {activeModel.split('/').pop()}
@@ -574,14 +573,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <div className="text-right">
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+            <div className="text-right hidden sm:block">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progress</p>
               <p className="text-sm font-bold text-slate-800">
                 {Math.round(((currentSection + 1) / totalSections) * 100)}%
               </p>
             </div>
-            <div className="w-24 sm:w-32 h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div className="w-16 sm:w-24 md:w-32 h-1.5 sm:h-2 bg-slate-200 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-[#7ec16d] rounded-full"
                 animate={{ width: `${((currentSection + 1) / totalSections) * 100}%` }}
@@ -593,14 +592,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       </header>
 
       <main className="flex-1 overflow-hidden px-4 sm:px-8 pb-8 relative flex justify-center">
-        <div className="w-full max-w-5xl h-full relative flex md:pl-16">
-          
+        <div className="w-full max-w-5xl h-full relative flex md:pl-16 pt-5 md:pt-0">
+
           {/* Tabs - Stick out on left */}
           <div className="hidden md:flex absolute left-0 top-8 bottom-8 w-20 flex-col justify-between z-0 py-2">
             {SECTION_TABS.map((tab, idx) => {
               const active = idx === currentSection;
               const Icon = tab.icon;
-              
+
               return (
                 <button
                   key={tab.type}
@@ -611,8 +610,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   className={cn(
                     'group relative flex items-center justify-start pl-4 rounded-l-[1.5rem] transition-all duration-300 shadow-sm border-r-0 flex-shrink-0',
                     tab.tabBg,
-                    active 
-                      ? 'w-24 h-20 -translate-x-4 shadow-xl z-20 brightness-105' 
+                    active
+                      ? 'w-24 h-20 -translate-x-4 shadow-xl z-20 brightness-105'
                       : 'w-16 h-16 hover:w-24 hover:h-20 hover:-translate-x-4 hover:brightness-110 opacity-90 hover:opacity-100 z-10'
                   )}
                   aria-label={`Go to ${tab.label} section`}
@@ -631,27 +630,55 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             })}
           </div>
 
+          {/* Mobile Folder Tabs - OUTSIDE colored section */}
+          <div className="md:hidden absolute left-0 right-0 top-0 z-30 px-2 bg-slate-100/95 backdrop-blur-sm">
+            <div className="flex gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {SECTION_TABS.map((tab, idx) => {
+                const active = idx === currentSection;
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.type}
+                    onClick={() => {
+                      setDirection(idx > currentSection ? 1 : -1);
+                      setCurrentSection(idx);
+                    }}
+                    className={cn(
+                      'flex items-center gap-1 px-2.5 py-1.5 rounded-t-lg transition-all duration-200 shrink-0 text-[10px] font-bold',
+                      active
+                        ? `${tab.tabBg} text-white shadow-md`
+                        : 'bg-slate-200/80 text-slate-500'
+                    )}
+                  >
+                    <Icon size={12} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Main Notebook Container */}
           <div className={cn("flex-1 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden relative z-10 transition-colors duration-500", currentTab.tabBg)}>
             {/* Header inside notebook */}
-            <div className="px-6 sm:px-8 py-5 flex items-center gap-4 text-white">
-              <div className="bg-white/20 p-2.5 rounded-xl shrink-0">
-                 <CurrentTabIcon size={28} className="text-white" />
+            <div className="px-4 sm:px-8 py-3 sm:py-5 flex items-center gap-3 sm:gap-4 text-white">
+              <div className="bg-white/20 p-2 sm:p-2.5 rounded-xl shrink-0">
+                <CurrentTabIcon size={22} className="text-white" />
               </div>
               <div className="flex flex-col min-w-0">
-                <h2 className="text-2xl sm:text-3xl font-bold truncate" title={currentSectionData.title}>
+                <h2 className="text-lg sm:text-2xl md:text-3xl font-bold truncate" title={currentSectionData.title}>
                   {currentSectionData.title}
                 </h2>
-                <p className="text-white/90 text-sm font-medium truncate mt-0.5" title={lesson.title}>
+                <p className="text-white/90 text-xs sm:text-sm font-medium truncate mt-0.5" title={lesson.title}>
                   {lesson.title}
                 </p>
               </div>
             </div>
 
             {/* Inner Paper Area */}
-            <div className="flex-1 bg-[#fdfdfd] rounded-[1.5rem] m-2 mt-0 relative overflow-hidden shadow-inner flex flex-col">
+            <div className="flex-1 bg-[#fdfdfd] rounded-[1.5rem] m-1 sm:m-2 mt-0 relative overflow-hidden shadow-inner flex flex-col">
               {/* Notebook lines background */}
-              <div 
+              <div
                 className="absolute inset-0 pointer-events-none opacity-30"
                 style={{
                   backgroundImage: 'linear-gradient(transparent 95%, #cbd5e1 95%)',
@@ -660,38 +687,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 }}
               />
               {/* Red margin line */}
-              <div className="absolute top-0 bottom-0 left-12 md:left-16 w-[2px] bg-rose-300/60 pointer-events-none z-0" />
+              <div className="absolute top-0 bottom-0 left-10 sm:left-12 md:left-16 w-[2px] bg-rose-300/60 pointer-events-none z-0" />
 
               {/* Scrollable Content */}
-              <div className="relative z-10 flex-1 overflow-y-auto px-6 md:pl-24 md:pr-12 py-8" key={currentSection}>
-                {/* Mobile Tabs */}
-                <div className="md:hidden flex gap-2 overflow-x-auto pb-4 mb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {SECTION_TABS.map((tab, idx) => {
-                    const active = idx === currentSection;
-                    const Icon = tab.icon;
-                    return (
-                      <button
-                        key={tab.type}
-                        onClick={() => {
-                          setDirection(idx > currentSection ? 1 : -1);
-                          setCurrentSection(idx);
-                        }}
-                        className={cn(
-                          'min-w-[100px] rounded-2xl px-3 py-2 text-left transition-all duration-200',
-                          active
-                            ? `${tab.tabBg} text-white shadow-md`
-                            : 'bg-slate-100 text-slate-600 border border-slate-200'
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Icon size={14} />
-                          <span className="text-xs font-bold">{tab.label}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
+              <div className="relative z-10 flex-1 overflow-y-auto px-4 sm:px-6 md:pl-24 md:pr-12 py-4 sm:py-8" key={currentSection}>
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentSection}
@@ -701,19 +700,19 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     transition={{ duration: 0.2 }}
                     className="space-y-6"
                   >
-                    <div className="bg-white/90 backdrop-blur-sm rounded-[1.5rem] p-6 sm:p-8 shadow-sm border border-slate-100/50">
-<SectionRenderer
-                           section={currentSectionData}
-                           sectionIndex={currentSection}
-                           onShowSolution={(idx) =>
-                             setExpandedProblem(expandedProblem === idx ? null : idx)
-                           }
-                           expandedIndex={expandedProblem}
-lesson={lesson}
-                            lessonSpecificTopic={lessonSpecificTopic}
-                            onTryItQuizComplete={onTryItQuizComplete}
-                            onContinueLearning={onContinueLearning}
-                         />
+                    <div className="bg-white/90 backdrop-blur-sm rounded-[1.5rem] p-4 sm:p-6 md:p-8 shadow-sm border border-slate-100/50">
+                      <SectionRenderer
+                        section={currentSectionData}
+                        sectionIndex={currentSection}
+                        onShowSolution={(idx) =>
+                          setExpandedProblem(expandedProblem === idx ? null : idx)
+                        }
+                        expandedIndex={expandedProblem}
+                        lesson={lesson}
+                        lessonSpecificTopic={lessonSpecificTopic}
+                        onTryItQuizComplete={onTryItQuizComplete}
+                        onContinueLearning={onContinueLearning}
+                      />
                     </div>
 
                     {sources.length > 0 && (userProfile?.role === 'admin' || userProfile?.role === 'teacher') && (
@@ -738,43 +737,43 @@ lesson={lesson}
         </div>
       </main>
 
-      <footer className="bg-transparent px-4 sm:px-8 flex-shrink-0 relative z-40 w-full flex justify-center items-center h-20">
+      <footer className="bg-transparent px-3 sm:px-8 flex-shrink-0 relative z-40 w-full flex justify-center items-center h-16 sm:h-20">
         <div className="w-full max-w-5xl flex flex-col items-center">
-          <div className="flex items-center justify-center gap-8 w-full md:ml-16">
+          <div className="flex items-center justify-center gap-4 sm:gap-8 w-full md:ml-16">
             <Button
               onClick={handlePrevious}
               disabled={currentSection === 0}
               variant="outline"
-              className="px-6 py-3 rounded-full font-bold text-sm bg-white border-slate-200 text-slate-600 shadow-sm disabled:opacity-40 hover:bg-slate-50 transition-colors flex items-center gap-2"
+              className="px-4 sm:px-6 py-2 sm:py-3 rounded-full font-bold text-xs sm:text-sm bg-white border-slate-200 text-slate-600 shadow-sm disabled:opacity-40 hover:bg-slate-50 transition-colors flex items-center gap-1 sm:gap-2"
             >
-              <ArrowLeft size={16} />
-              Previous
+              <ArrowLeft size={14} />
+              <span className="hidden sm:inline">Previous</span>
             </Button>
 
-            <p className="text-sm text-slate-500 font-bold tabular-nums">
+            <p className="text-xs sm:text-sm text-slate-500 font-bold tabular-nums">
               {currentSection + 1} / {totalSections}
             </p>
 
             <Button
               onClick={handleNext}
               disabled={currentSection === totalSections - 1 && isPracticeRequired}
-              className="px-8 py-3 rounded-full font-bold text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center gap-2"
+              className="px-5 sm:px-8 py-2 sm:py-3 rounded-full font-bold text-xs sm:text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center gap-1 sm:gap-2"
             >
               {currentSection === totalSections - 1 ? (
                 <>
-                  Complete
-                  <CheckCircle size={16} />
+                  <span className="hidden sm:inline">Complete</span>
+                  <CheckCircle size={14} />
                 </>
               ) : (
-                 <>
-                  Next
-                  <ArrowRight size={16} />
+                <>
+                  <span className="hidden sm:inline">Next</span>
+                  <ArrowRight size={14} />
                 </>
               )}
             </Button>
           </div>
           {currentSection === totalSections - 1 && isPracticeRequired && (
-            <p className="text-center text-xs font-semibold text-amber-600 mt-3 md:ml-16">
+            <p className="text-center text-[10px] sm:text-xs font-semibold text-amber-600 mt-2 sm:mt-3 md:ml-16">
               Complete the practice quiz first to unlock lesson completion.
             </p>
           )}
