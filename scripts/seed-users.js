@@ -7,8 +7,9 @@
  * Prerequisites:
  *   1. Download a Firebase service account key from:
  *      Firebase Console → Project Settings → Service Accounts → Generate new private key
- *   2. Save the JSON file as:  scripts/serviceAccountKey.json
- *      (This file is .gitignored — never commit it)
+ *   2. Save the JSON file as:  .secrets/firebase-service-account.json
+ *      (The .secrets/ directory is gitignored — never commit credentials)
+ *      Override location with env var: FIREBASE_SERVICE_ACCOUNT_FILE=path/to/key.json
  *
  * Usage (run from project root):
  *   node scripts/seed-users.js
@@ -42,12 +43,21 @@ try {
 }
 
 // ── Load service account key ──────────────────────────────────────────────────
-const KEY_PATH = path.resolve(__dirname, 'serviceAccountKey.json');
-if (!fs.existsSync(KEY_PATH)) {
+// Priority: env var → .secrets/firebase-service-account.json → legacy scripts/serviceAccountKey.json
+const KEY_CANDIDATES = [
+  process.env.FIREBASE_SERVICE_ACCOUNT_FILE,
+  path.resolve(__dirname, '..', '.secrets', 'firebase-service-account.json'),
+  path.resolve(__dirname, 'serviceAccountKey.json'), // legacy fallback
+].filter(Boolean);
+
+const KEY_PATH = KEY_CANDIDATES.find((p) => fs.existsSync(p));
+if (!KEY_PATH) {
   console.error(
-    '\n❌  Service account key not found at: scripts/serviceAccountKey.json\n' +
+    '\n❌  Service account key not found. Looked in:\n' +
+    KEY_CANDIDATES.map((p) => `      ${p}`).join('\n') + '\n' +
     '    Download it from Firebase Console:\n' +
-    '      Project Settings → Service Accounts → Generate new private key\n'
+    '      Project Settings → Service Accounts → Generate new private key\n' +
+    '    Then save to:  .secrets/firebase-service-account.json\n'
   );
   process.exit(1);
 }

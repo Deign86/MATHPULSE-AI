@@ -41,6 +41,7 @@ import {
   deleteAccountWithReauth,
 } from '../services/settingsService';
 import { TeacherPreferences } from '../types/settings';
+import { validateProfileDraft } from '../utils/profileValidation';
 
 interface ProfileData {
   uid?: string;
@@ -243,6 +244,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   // ─── Save ──────────────────────────────────────────────────────────────────
   const handleSaveChanges = async () => {
+    // Validate name + phone before persisting. Reject obvious injection
+    // attempts and malformed phone numbers.
+    const validationError = validateProfileDraft({
+      name: accountData.name,
+      phone: accountData.phone,
+    });
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
     setIsSaving(true);
     try {
       if (onSave) await onSave(accountData);
@@ -375,6 +386,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       type="text"
                       value={accountData.name || ''}
                       onChange={(e) => setAccountData((prev) => ({ ...prev, name: e.target.value }))}
+                      maxLength={100}
+                      autoComplete="name"
                       className="max-w-md"
                     />
                   </div>
@@ -393,6 +406,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       type="tel"
                       value={accountData.phone || ''}
                       onChange={(e) => setAccountData((prev) => ({ ...prev, phone: e.target.value }))}
+                      maxLength={20}
+                      inputMode="tel"
+                      autoComplete="tel"
+                      pattern="^\+?[0-9 ()\-.]{7,20}$"
+                      placeholder="+63 912 345 6789"
                       className="max-w-md"
                     />
                   </div>

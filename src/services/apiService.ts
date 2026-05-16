@@ -1828,14 +1828,17 @@ export const apiService = {
   },
 
   /** Daily AI Insights for Teacher Dashboard */
-  async getDailyInsight(request: DailyInsightRequest): Promise<DailyInsightResponse> {
+  async getDailyInsight(
+    request: DailyInsightRequest,
+    options?: { signal?: AbortSignal },
+  ): Promise<DailyInsightResponse> {
     if (!Array.isArray(request.students) || request.students.length === 0) {
       throw new ApiValidationError('/api/analytics/daily-insight', 'students array must not be empty');
     }
 
     return apiFetch<DailyInsightResponse>(
       '/api/analytics/daily-insight',
-      { method: 'POST', body: JSON.stringify(request) },
+      { method: 'POST', body: JSON.stringify(request), signal: options?.signal },
       AI_RETRY_OPTS,
     );
   },

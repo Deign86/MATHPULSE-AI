@@ -1,0 +1,15 @@
+# MathPulse AI — robots.txt
+# Allow public marketing/landing pages; block authenticated app routes
+# and any backend/API endpoints from indexing.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /teacher/
+Disallow: /student/
+Disallow: /auth/
+Disallow: /diagnostic/
+
+# Sitemap (uncomment when public sitemap is generated)
+# Sitemap: https://mathpulse.ai/sitemap.xml

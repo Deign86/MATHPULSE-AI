@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Phone, Calendar, BookOpen, Award, Users, Building, Globe, Save, Venus, Mars, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import {
@@ -11,6 +12,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { getLeaderboard, getUserRank } from '../services/gamificationService';
+import { validateProfileDraft } from '../utils/profileValidation';
 import { LeaderboardEntry } from '../types/models';
 import ProfilePictureUploader from './ProfilePictureUploader';
 
@@ -93,6 +95,14 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
   }, [isOpen, editedData.role, editedData.uid]);
 
   const handleSave = () => {
+    const validationError = validateProfileDraft({
+      name: editedData.name,
+      phone: editedData.phone,
+    });
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
     onSave(editedData);
     setIsEditing(false);
   };
@@ -195,6 +205,8 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                             value={editedData.name}
                             onChange={(e) => setEditedData({ ...editedData, name: e.target.value })}
                             disabled={!isEditing}
+                            maxLength={100}
+                            autoComplete="name"
                             className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                           />
                         </div>
@@ -220,6 +232,12 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                             value={editedData.phone}
                             onChange={(e) => setEditedData({ ...editedData, phone: e.target.value })}
                             disabled={!isEditing}
+                            type="tel"
+                            inputMode="tel"
+                            maxLength={20}
+                            autoComplete="tel"
+                            pattern="^\+?[0-9 ()\-.]{7,20}$"
+                            placeholder="+63 912 345 6789"
                             className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-100 disabled:cursor-default"
                           />
                         </div>
