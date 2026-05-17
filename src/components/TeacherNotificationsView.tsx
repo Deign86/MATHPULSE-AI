@@ -28,8 +28,11 @@ interface TeacherNotificationsViewProps {
 }
 
 const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => {
-  const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount: _rawUnreadCount, isLoading, markAsRead, markAllAsRead } = useNotifications();
   const [filter, setFilter] = useState<'all' | 'unread' | 'important'>('all');
+
+  const STUDENT_ONLY_TYPES = ['streak_reminder', 'daily_checkin', 'streak_milestone', 'achievement_unlocked', 'level_up', 'xp_earned', 'quiz_result'];
+  const unreadCount = notifications.filter(n => !n.isRead && !STUDENT_ONLY_TYPES.includes(n.type)).length;
 
   const iconForType = (type: string) => {
     switch (type) {
@@ -94,7 +97,7 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
   };
 
   const filteredNotifications = useMemo(() => {
-    let result = notifications;
+    let result = notifications.filter(n => !STUDENT_ONLY_TYPES.includes(n.type));
     if (filter === 'unread') result = result.filter(n => !n.isRead);
     if (filter === 'important') result = result.filter(n => n.type === 'risk_alert');
     return result;
@@ -150,7 +153,9 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
             }`}
           >
             Important
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+            {notifications.some(n => n.type === 'risk_alert' && !n.isRead) && (
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" />
+            )}
           </button>
 
           {/* Right: unread count + mark all */}
