@@ -478,7 +478,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
         ? data.timestamp
         : timestampToString(data.timestamp as { toDate?: () => Date }),
         user: { 
-          name: (data.actorName as string) || (data.teacherEmail as string) || (data.teacherId as string) || 'SYSTEM', 
+          name: ((data.actorName as string) && (data.actorName as string) !== 'Unknown' ? (data.actorName as string) : null) || (data.actorEmail as string) || (data.teacherEmail as string) || (data.teacherId as string) || 'SYSTEM', 
           role: capitalizeRole((data.actorRole as string) || (data.role as string) || 'System'), 
           avatar: null 
         },

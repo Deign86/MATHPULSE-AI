@@ -379,6 +379,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/learning-path": ALL_APP_ROLES,
     "/api/analytics/daily-insight": TEACHER_OR_ADMIN,
     "/api/upload/class-records": TEACHER_OR_ADMIN,
+    "/api/class-section/{class_section_id}": TEACHER_OR_ADMIN,
     "/api/upload/class-records/risk-refresh/recent": TEACHER_OR_ADMIN,
     "/api/import/student-accounts/preview": TEACHER_OR_ADMIN,
     "/api/import/student-accounts/commit": TEACHER_OR_ADMIN,
@@ -546,6 +547,7 @@ logger.info("🚀 FastAPI app created, startup sequence beginning...")
 class AuthenticatedUser(BaseModel):
     uid: str
     email: Optional[str] = None
+    name: Optional[str] = None
     role: str
     claims: Dict[str, Any] = Field(default_factory=dict)
 
@@ -677,9 +679,10 @@ def _get_role_from_firestore(uid: str) -> Optional[str]:
 
     try:
         doc = cast(Any, firebase_firestore.client().collection("users").document(uid).get())
-        role = _snapshot_to_dict(doc).get("role") if _snapshot_exists(doc) else None
+        data = _snapshot_to_dict(doc) if _snapshot_exists(doc) else {}
+        role = data.get("role")
         if isinstance(role, str):
-            _role_cache[uid] = {"role": role, "ts": now}
+            _role_cache[uid] = {"role": role, "ts": now, "name": data.get("name") or data.get("displayName") or ""}
             return role
     except Exception as e:
         _warn_firestore_role_lookup_once(f"Failed to resolve role from Firestore for {uid}: {e}")
@@ -1059,6 +1062,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         request.state.user = AuthenticatedUser(
             uid=uid,
             email=decoded.get("email"),
+            name=decoded.get("name") or decoded.get("displayName") or (_role_cache.get(uid) or {}).get("name") or None,
             role=role,
             claims=decoded,
         )
@@ -4763,8 +4767,8 @@ def _write_access_audit_log(
             _get_audit_logger()(
                 action=action,
                 actor_uid=user.uid,
-                actor_name=getattr(user, "name", "Unknown"),
-                actor_email=getattr(user, "email", ""),
+                actor_name=user.name or user.email or user.uid,
+                actor_email=user.email or "",
                 actor_role=user.role,
                 description=f"Action: {action} (Status: {status})",
                 route=request.url.path,
@@ -7276,6 +7280,65 @@ async def get_recent_risk_refresh_status(
     except Exception as e:
         logger.error(f"Risk refresh monitor lookup error: {e}")
         raise HTTPException(status_code=500, detail=f"Risk refresh monitor lookup error: {str(e)}")
+
+
+@app.delete("/api/class-section/{class_section_id}")
+async def delete_class_section(request: Request, class_section_id: str):
+    """Delete a class section and all associated imported data."""
+    user = get_current_user(request)
+    if user.role not in ("teacher", "admin"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if not (_firebase_ready and firebase_firestore):
+        raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+    db = firebase_firestore.client()
+    deleted = 0
+
+    def _delete_by_field(coll: str, field: str, value: str) -> int:
+        count = 0
+        docs = db.collection(coll).where(field, "==", value).stream()
+        for d in docs:
+            d.reference.delete()
+            count += 1
+        return count
+
+    # Verify ownership
+    ownership_docs = list(db.collection("classSectionOwnership").where("classSectionId", "==", class_section_id).where("ownerTeacherId", "==", user.uid).stream())
+    if not ownership_docs and user.role != "admin":
+        raise HTTPException(status_code=403, detail="You do not own this class section")
+
+    # Delete associated data
+    deleted += _delete_by_field("managedStudents", "classSectionId", class_section_id)
+    deleted += _delete_by_field("normalizedClassRecords", "classSectionId", class_section_id)
+    deleted += _delete_by_field("classRecordImports", "classSectionId", class_section_id)
+    deleted += _delete_by_field("riskRefreshEvents", "classSectionId", class_section_id)
+    deleted += _delete_by_field("importGroundedFeedbackEvents", "classSectionId", class_section_id)
+
+    # Delete classrooms linked to this section
+    classroom_docs = list(db.collection("classrooms").where("classSectionId", "==", class_section_id).stream())
+    for cd in classroom_docs:
+        _delete_by_field("managedStudents", "classroomId", cd.id)
+        cd.reference.delete()
+        deleted += 1
+
+    # Delete ownership record
+    for od in ownership_docs:
+        od.reference.delete()
+        deleted += 1
+
+    # Also try deleting by the section ID as document ID in classSectionOwnership
+    try:
+        ownership_ref = db.collection("classSectionOwnership").document(class_section_id)
+        if ownership_ref.get().exists:
+            ownership_ref.delete()
+            deleted += 1
+    except Exception:
+        pass
+
+    _write_access_audit_log(request, action="delete_class_section", status="success", class_section_id=class_section_id, metadata={"deletedDocs": deleted})
+
+    return {"success": True, "deletedDocs": deleted, "classSectionId": class_section_id}
 
 
 @app.post("/api/upload/class-records")

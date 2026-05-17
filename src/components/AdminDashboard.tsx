@@ -13,6 +13,7 @@ import SubjectsHelpModal from './admin/SubjectsHelpModal';
 import MasteryHeatmap from './MasteryHeatmap';
 import AdminPriorityModules from './AdminPriorityModules';
 import NotificationDropdown from './NotificationDropdown';
+import { useNotifications } from '@/features/notifications';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, 
   ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie 
@@ -46,6 +47,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const [topPerformers, setTopPerformers] = useState<TopPerformer[]>([]);
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
+  const { unreadCount } = useNotifications();
   const [isSubjectsHelpModalOpen, setIsSubjectsHelpModalOpen] = useState(false);
   const [showHelpTooltip, setShowHelpTooltip] = useState(false);
 
@@ -265,7 +267,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   aria-label="View notifications"
                 >
                   <Bell size={18} />
-                  <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                  {unreadCount > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>}
                 </button>
 
                 <NotificationDropdown 
