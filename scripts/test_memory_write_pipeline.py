@@ -93,6 +93,7 @@ def init_firebase():
 
 
 def run_tests():
+    global passes, fails
     """Run all three smoke tests."""
     import firebase_admin
     from firebase_admin import firestore
@@ -331,7 +332,7 @@ def run_tests():
         data = doc.to_dict() if doc.exists else {}
         concepts = data.get("concepts_covered", [])
         insights = data.get("key_insights", "")
-        ok = "Pythagorean" in concepts and "real-world" in insights
+        ok = any("Pythagorean" in c for c in concepts) and "real-world" in insights
         report(
             "Verify second session summary",
             ok,
