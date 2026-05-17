@@ -40,8 +40,8 @@ export interface PushPayload {
   imageUrl?: string;
 }
 
-const DEFAULT_ICON = "/mathpulse_logo.png";
-const DEFAULT_BADGE = "/mathpulse_logo.png";
+const DEFAULT_ICON = "/mathpulse_final_logo.png";
+const DEFAULT_BADGE = "/mathpulse_final_logo.png";
 
 const INVALID_TOKEN_ERRORS = new Set([
   "messaging/registration-token-not-registered",
