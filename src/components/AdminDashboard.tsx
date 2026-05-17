@@ -202,7 +202,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               <div>
                 <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">
                   {activeTab === 'Overview' && 'Admin Dashboard'}
-                  {activeTab === 'Content' && 'Content & RAG'}
+                  {activeTab === 'Content' && 'Content'}
                   {activeTab === 'Audit Log' && 'Audit Log'}
                   {activeTab === 'User Management' && 'User Management'}
                   {activeTab === 'Analytics' && 'Analytics'}
