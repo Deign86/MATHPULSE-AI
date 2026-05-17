@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Award, Target, Calendar, Download, Filter } from 'lucide-react';
+import { TrendingUp, Award, Target, Calendar, Download, Filter, Brain, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToGradeSummary, subscribeToAssessments, type GradeSummary, type AssessmentRecord } from '../services/gradesService';
 import { type StudentProfile } from '../types/models';
 import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 import { useCurriculum } from '../hooks/useCurriculum';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+
+interface DiagnosticSummary {
+  score: number;
+  riskLevel: string;
+  weaknesses: string[];
+  recommendation: string;
+}
 
 const GradesPage = () => {
   const { currentUser, userProfile } = useAuth();
@@ -14,6 +23,7 @@ const GradesPage = () => {
   const [loading, setLoading] = useState(true);
   const [gradeSummary, setGradeSummary] = useState<GradeSummary | null>(null);
   const [assessments, setAssessments] = useState<AssessmentRecord[]>([]);
+  const [diagnosticSummary, setDiagnosticSummary] = useState<DiagnosticSummary | null>(null);
 
 // Safely cast userProfile to StudentProfile to access grade
 const studentGrade = (userProfile as StudentProfile | null)?.grade;
@@ -59,6 +69,32 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
       unsubAssessments();
     };
   }, [currentUser]);
+
+  // Fetch diagnostic assessment results
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    (async () => {
+      try {
+        // Try dashboardSummary first
+        const summarySnap = await getDoc(doc(db, 'users', currentUser.uid, 'dashboardSummary', 'heroBannerModal'));
+        if (summarySnap.exists()) {
+          const d = summarySnap.data();
+          if (d.status === 'ready') {
+            setDiagnosticSummary({ score: d.latestScorePercent || 0, riskLevel: d.latestRiskLevel || 'Unknown', weaknesses: d.weaknesses || [], recommendation: d.recommendation || '' });
+            return;
+          }
+        }
+        // Fallback: user profile
+        const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userSnap.exists()) {
+          const u = userSnap.data();
+          if (u.initialAssessmentCompleted || u.hasCompletedInitialAssessment) {
+            setDiagnosticSummary({ score: 0, riskLevel: (u.atRiskSubjects?.length > 0) ? 'Moderate' : 'Low', weaknesses: u.atRiskSubjects || [], recommendation: 'Continue with your personalized learning path.' });
+          }
+        }
+      } catch { /* non-fatal */ }
+    })();
+  }, [currentUser?.uid]);
 
   // Compute stats safely
   const averageScore = gradeSummary?.averageScore ? Math.round(gradeSummary.averageScore) : 0;
@@ -304,6 +340,57 @@ const subjectPerformance = Object.entries({})
           </div>
         </div>
       </div>
+
+      {/* Diagnostic Assessment Results */}
+      {diagnosticSummary && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                <Brain className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800">Diagnostic Assessment Results</h3>
+                <p className="text-xs text-slate-500">Your initial competency evaluation</p>
+              </div>
+            </div>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+              diagnosticSummary.riskLevel === 'Low' ? 'bg-emerald-100 text-emerald-700' :
+              diagnosticSummary.riskLevel === 'High' || diagnosticSummary.riskLevel === 'At Risk' ? 'bg-red-100 text-red-700' :
+              'bg-amber-100 text-amber-700'
+            }`}>
+              {diagnosticSummary.riskLevel === 'Low' ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+              {diagnosticSummary.riskLevel}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {diagnosticSummary.score > 0 && (
+              <div className="bg-slate-50 rounded-xl p-4">
+                <p className="text-xs font-bold text-slate-400 uppercase mb-1">Score</p>
+                <p className="text-2xl font-black text-slate-800">{diagnosticSummary.score}%</p>
+              </div>
+            )}
+            {diagnosticSummary.weaknesses.length > 0 && (
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                <p className="text-xs font-bold text-amber-600 uppercase mb-2">Focus Areas</p>
+                <ul className="space-y-1">
+                  {diagnosticSummary.weaknesses.map((w, i) => (
+                    <li key={i} className="text-sm text-amber-800 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />{w}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {diagnosticSummary.recommendation && (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                <p className="text-xs font-bold text-indigo-600 uppercase mb-2">Recommendation</p>
+                <p className="text-sm text-indigo-800">{diagnosticSummary.recommendation}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
