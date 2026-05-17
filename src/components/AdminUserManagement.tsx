@@ -426,6 +426,12 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         toast.warning(
           `Completed with partial failures. ${result.summary.succeeded} succeeded, ${result.summary.failed} failed, ${result.summary.skipped} skipped.`,
         );
+      } else if (result.summary.succeeded === 0 && result.summary.targeted > 0) {
+        toast.error(
+          result.summary.skipped > 0
+            ? `Action skipped for ${result.summary.skipped} user(s).`
+            : 'Action could not be completed. No users were updated.',
+        );
       } else {
         toast.success(`Action completed. ${result.summary.succeeded} user(s) updated.`);
       }
@@ -434,13 +440,17 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         toast.info(result.warnings[0]);
       }
 
-      await addAuditLog(
-        options.auditAction,
-        'User',
-        action === 'delete' || action === 'deactivate' ? 'Warning' : 'Info',
-        `${options.auditDetail}; targeted=${result.summary.targeted}, succeeded=${result.summary.succeeded}, failed=${result.summary.failed}, skipped=${result.summary.skipped}`,
-        { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null },
-      );
+      try {
+        await addAuditLog(
+          options.auditAction,
+          'User',
+          action === 'delete' || action === 'deactivate' ? 'Warning' : 'Info',
+          `${options.auditDetail}; targeted=${result.summary.targeted}, succeeded=${result.summary.succeeded}, failed=${result.summary.failed}, skipped=${result.summary.skipped}`,
+          { name: userProfile?.name || 'Admin', role: 'Admin', avatar: userProfile?.photo || null },
+        );
+      } catch {
+        // Audit log write may fail due to Firestore permissions — non-critical
+      }
 
       if (!options.skipSelectionReset) {
         clearSelection();

@@ -291,6 +291,12 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /auditLogs/{docId} {
+      allow read: if isTeacherOrAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
     match /accessAuditLogs/{auditId} {
       allow read: if isTeacherOrAdmin();
       allow create, update, delete: if false;
