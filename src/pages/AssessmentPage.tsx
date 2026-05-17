@@ -54,15 +54,22 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
     }
   });
   const [answerResults, setAnswerResults] = useState<boolean[]>([]);
-  const [timeSpent, setTimeSpent] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const questionStartRef = useRef<number>(Date.now());
+  const autoSkipRef = useRef(false);
 
   const totalQuestions = questions.length;
   const currentQuestion = questions[currentIndex];
   const progressPct = Math.round(((currentIndex + (selectedAnswer ? 1 : 0)) / totalQuestions) * 100);
+
+  const getTimeLimit = (difficulty: string) => {
+    if (difficulty === 'easy') return 60;
+    if (difficulty === 'hard') return 120;
+    return 90; // medium default
+  };
 
   // Animated orbs
   const [orbs] = useState(Array.from({ length: 10 }, (_, i) => ({
@@ -75,20 +82,54 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
     color: ['bg-purple-500/10', 'bg-blue-500/10', 'bg-cyan-500/10', 'bg-emerald-500/10'][Math.floor(Math.random() * 4)]
   })));
 
-  const startTimer = useCallback(() => {
+  // Countdown timer with auto-skip
+  useEffect(() => {
+    const limit = getTimeLimit(currentQuestion?.difficulty || 'medium');
     questionStartRef.current = Date.now();
+    autoSkipRef.current = false;
+    setTimeLeft(limit);
+
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      setTimeSpent(Math.floor((Date.now() - questionStartRef.current) / 1000));
-    }, 200);
-  }, []);
+      const elapsed = Math.floor((Date.now() - questionStartRef.current) / 1000);
+      const remaining = Math.max(0, limit - elapsed);
+      setTimeLeft(remaining);
+      if (remaining <= 0 && !autoSkipRef.current) {
+        autoSkipRef.current = true;
+        clearInterval(timerRef.current!);
+      }
+    }, 250);
 
-  useEffect(() => {
-    startTimer();
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [currentIndex, startTimer]);
+  }, [currentIndex]);
+
+  // Auto-advance when time expires
+  useEffect(() => {
+    if (timeLeft === 0 && autoSkipRef.current && step === 'testing') {
+      const timeSpentSeconds = getTimeLimit(currentQuestion?.difficulty || 'medium');
+      const newResponses = [
+        ...responses,
+        {
+          question_id: currentQuestion.question_id,
+          student_answer: selectedAnswer || '',
+          time_spent_seconds: timeSpentSeconds,
+        },
+      ];
+      const newAnswerResults = [...answerResults, false];
+
+      setAnswerResults(newAnswerResults);
+      setResponses(newResponses);
+      setSelectedAnswer(null);
+
+      if (currentIndex < totalQuestions - 1) {
+        setCurrentIndex((prev) => prev + 1);
+      } else {
+        handleSubmit(newResponses);
+      }
+    }
+  }, [timeLeft]);
 
   // Fullscreen toggle - target the assessment container itself
   const toggleFullscreen = useCallback(() => {
@@ -130,7 +171,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
 
     if (timerRef.current) clearInterval(timerRef.current);
 
-    const timeSpentSeconds = Math.floor((Date.now() - questionStartRef.current) / 1000);
+    const timeSpentSeconds = getTimeLimit(currentQuestion?.difficulty || 'medium') - timeLeft;
     const newAnswerResults = [...answerResults, true];
 
     const newResponses = [
@@ -260,9 +301,9 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
                 <span className="font-bold text-sm">{responses.length} / {totalQuestions}</span>
               </div>
             </div>
-            <div className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full">
+            <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${timeLeft <= 10 ? 'bg-red-500/80 animate-pulse' : 'bg-white/20'}`}>
               <Clock size={16} />
-              <span className="font-bold text-sm">{formatTime(timeSpent)}</span>
+              <span className="font-bold text-sm">{formatTime(timeLeft)}</span>
             </div>
           </div>
 
@@ -362,7 +403,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
                   Ready for the next one!
                 </span>
               ) : (
-                <span>Select an answer to continue</span>
+                <span>{timeLeft <= 10 ? `Auto-skipping in ${timeLeft}s...` : 'Select an answer to continue'}</span>
               )}
             </div>
             <Button

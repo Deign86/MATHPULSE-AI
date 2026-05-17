@@ -123,7 +123,7 @@ export const isRealtimeDbEnabled = Boolean(databaseUrl);
 // Wrapped in try/catch to prevent ERR_BLOCKED_BY_CLIENT from crashing the app
 // when ad/tracking blockers block Firebase Analytics telemetry URLs.
 let analytics = null;
-if (typeof window !== 'undefined' && firebaseConfig.measurementId) {
+if (typeof window !== 'undefined' && firebaseConfig.measurementId && !firebaseConfig.measurementId.startsWith('your')) {
   try {
     analytics = getAnalytics(app);
   } catch {
