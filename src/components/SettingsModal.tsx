@@ -315,7 +315,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   return (
     <AnimatePresence>
       <>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -329,10 +329,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2 }}
-          className="relative bg-[#f7f9fc] rounded-2xl shadow-2xl border border-[#dde3eb] w-full max-w-4xl max-h-[85vh] overflow-hidden flex"
+          className="relative bg-[#f7f9fc] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-[#dde3eb] w-full sm:max-w-4xl h-[92vh] sm:max-h-[85vh] overflow-hidden flex flex-col sm:flex-row"
         >
-          {/* Sidebar */}
-          <div className="w-64 bg-slate-50 border-r border-slate-200 p-6 overflow-y-auto">
+          {/* Desktop Sidebar — hidden on mobile */}
+          <div className="hidden sm:flex w-64 flex-shrink-0 bg-slate-50 border-r border-slate-200 flex-col p-6 overflow-y-auto">
             <div className="mb-6">
               <h2 className="text-xl font-display font-bold text-[#0a1628]">Settings</h2>
               <p className="text-xs text-slate-500 mt-1 font-body">Manage your preferences</p>
@@ -359,9 +359,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-[#dde3eb]">
-              <h3 className="text-lg font-display font-bold text-[#0a1628]">
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Mobile tab-bar — shown only on mobile */}
+            <div className="sm:hidden flex items-center border-b border-[#dde3eb] bg-slate-50 overflow-x-auto no-scrollbar px-2">
+              {sections.map((section) => {
+                const Icon = section.icon;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={`flex flex-col items-center gap-0.5 px-3 py-2.5 shrink-0 text-xs font-medium border-b-2 transition-colors ${
+                      activeSection === section.id
+                        ? 'border-sky-600 text-sky-700'
+                        : 'border-transparent text-slate-500'
+                    }`}
+                  >
+                    <Icon size={16} />
+                    <span className="whitespace-nowrap">{section.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Content header */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#dde3eb]">
+              <h3 className="text-base sm:text-lg font-display font-bold text-[#0a1628]">
                 {sections.find((s) => s.id === activeSection)?.label}
               </h3>
               <button onClick={handleCancel} className="p-2 hover:bg-[#edf1f7] rounded-xl transition-colors">
@@ -369,7 +391,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {/* ─── Account Section ─── */}
               {activeSection === 'account' && (
                 <div className="space-y-6">
@@ -1039,13 +1061,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-[#dde3eb] bg-[#edf1f7] flex items-center justify-between">
-              <p className="text-xs text-slate-500 font-body">MathPulse AI v2.1.0</p>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleCancel} className="rounded-lg border-[#dde3eb]" disabled={isSaving}>
+            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-[#dde3eb] bg-[#edf1f7] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0">
+              <p className="text-xs text-slate-500 font-body text-center sm:text-left">MathPulse AI v2.1.0</p>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button variant="outline" onClick={handleCancel} className="rounded-lg border-[#dde3eb] flex-1 sm:flex-none" disabled={isSaving}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveChanges} className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white" disabled={isSaving}>
+                <Button onClick={handleSaveChanges} className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex-1 sm:flex-none" disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>

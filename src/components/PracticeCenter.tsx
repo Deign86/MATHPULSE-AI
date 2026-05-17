@@ -81,10 +81,10 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
   const filteredQuizzes = quizzes.filter(quiz => {
     const typeMatch = selectedFilter === 'all' || quiz.type === selectedFilter;
     const subjectMatch = selectedSubject === 'all' || quiz.subject === selectedSubject;
-    const searchMatch = !searchQuery || 
-      quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const searchMatch = !searchQuery ||
+      quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       quiz.subject.toLowerCase().includes(searchQuery.toLowerCase());
-      
+
     return typeMatch && subjectMatch && searchMatch;
   });
 
@@ -138,96 +138,99 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
     <div className="px-4 sm:px-6 xl:px-10 py-4 sm:py-6">
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-sky-700 to-sky-500 rounded-2xl p-5 text-white shadow-lg"
+          className="bg-gradient-to-br from-sky-700 to-sky-500 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg"
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Award size={24} />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 sm:mb-3 gap-1 sm:gap-0">
+            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0">
+              <Award size={16} className="sm:hidden" />
+              <Award size={24} className="hidden sm:block" />
             </div>
-            <span className="text-3xl font-bold">{totalQuizzesCompleted}</span>
+            <span className="text-xl sm:text-3xl font-bold">{totalQuizzesCompleted}</span>
           </div>
-          <p className="text-sm font-medium text-sky-100">Quizzes Completed</p>
+          <p className="text-[10px] sm:text-sm font-medium text-sky-100 leading-tight">Quizzes Completed</p>
         </motion.div>
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-5 text-white shadow-lg"
+          className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg"
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Zap size={24} />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 sm:mb-3 gap-1 sm:gap-0">
+            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0">
+              <Zap size={16} className="sm:hidden" />
+              <Zap size={24} className="hidden sm:block" />
             </div>
-            <span className="text-3xl font-bold">{totalXPEarned.toLocaleString()}</span>
+            <span className="text-xl sm:text-3xl font-bold">{totalXPEarned.toLocaleString()}</span>
           </div>
-          <p className="text-sm font-medium text-cyan-100">Total XP Earned</p>
+          <p className="text-[10px] sm:text-sm font-medium text-cyan-100 leading-tight">Total XP Earned</p>
         </motion.div>
 
         <motion.div
           whileHover={{ scale: 1.02 }}
-          className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg"
+          className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg"
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Target size={24} />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 sm:mb-3 gap-1 sm:gap-0">
+            <div className="w-8 h-8 sm:w-12 sm:h-12 bg-white/20 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0">
+              <Target size={16} className="sm:hidden" />
+              <Target size={24} className="hidden sm:block" />
             </div>
-            <span className="text-3xl font-bold">{avgScore}%</span>
+            <span className="text-xl sm:text-3xl font-bold">{avgScore}%</span>
           </div>
-          <p className="text-sm font-medium text-sky-100">Average Score</p>
+          <p className="text-[10px] sm:text-sm font-medium text-sky-100 leading-tight">Average Score</p>
         </motion.div>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm">
-          <button
-            onClick={() => setSelectedFilter('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-              selectedFilter === 'all'
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-6">
+        {/* Type filter pills - scrollable on mobile, centered */}
+        <div className="overflow-x-auto scrollbar-hide flex justify-center">
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm w-max">
+            <button
+              onClick={() => setSelectedFilter('all')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${selectedFilter === 'all'
                 ? 'bg-sky-600 text-white shadow-md'
                 : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setSelectedFilter('practice')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-              selectedFilter === 'practice'
+                }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setSelectedFilter('practice')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${selectedFilter === 'practice'
                 ? 'bg-sky-500 text-white shadow-md'
                 : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
-          >
-            Practice
-          </button>
-          <button
-            onClick={() => setSelectedFilter('challenge')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-              selectedFilter === 'challenge'
+                }`}
+            >
+              Practice
+            </button>
+            <button
+              onClick={() => setSelectedFilter('challenge')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${selectedFilter === 'challenge'
                 ? 'bg-orange-500 text-white shadow-md'
                 : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
-          >
-            Challenge
-          </button>
-          <button
-            onClick={() => setSelectedFilter('mastery')}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-              selectedFilter === 'mastery'
+                }`}
+            >
+              Challenge
+            </button>
+            <button
+              onClick={() => setSelectedFilter('mastery')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${selectedFilter === 'mastery'
                 ? 'bg-sky-500 text-white shadow-md'
                 : 'text-[#5a6578] hover:bg-[#edf1f7]'
-            }`}
-          >
-            Mastery
-          </button>
+                }`}
+            >
+              Mastery
+            </button>
+          </div>
         </div>
 
+        {/* Subject select - full width on mobile, auto on desktop */}
         <select
           value={selectedSubject}
           onChange={(e) => setSelectedSubject(e.target.value)}
-          className="px-4 py-2.5 bg-white border-2 border-[#dde3eb] rounded-xl text-sm font-bold text-[#0a1628] focus:border-indigo-600 focus:outline-none"
+          className="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-[#dde3eb] rounded-xl text-xs sm:text-sm font-bold text-[#0a1628] focus:border-indigo-600 focus:outline-none"
         >
           <option value="all">All Subjects</option>
           {availableSubjects.map((subject) => (
@@ -237,7 +240,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
       </div>
 
       {/* Quizzes Grid */}
-      <div 
+      <div
         className="pr-2 pb-4 rounded-[2rem] border border-slate-200 shadow-inner relative"
         style={{
           backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
@@ -263,53 +266,49 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => !isLocked && onStartQuiz?.(quiz)}
-                className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 border-2 relative select-none transition-all duration-300 ${
-                  isLocked
-                    ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
-                    : quiz.completed
+                className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 border-2 relative select-none transition-all duration-300 ${isLocked
+                  ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
+                  : quiz.completed
                     ? 'border-teal-200 shadow-sm hover:border-teal-300 hover:shadow-md cursor-pointer'
                     : isHard
-                    ? 'border-indigo-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
-                    : 'border-orange-200 shadow-sm hover:border-orange-300 hover:shadow-md cursor-pointer'
-                } group`}
+                      ? 'border-indigo-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
+                      : 'border-orange-200 shadow-sm hover:border-orange-300 hover:shadow-md cursor-pointer'
+                  } group`}
               >
                 <div className="flex items-center justify-between gap-3 md:gap-4">
                   <div className="flex items-center gap-3 md:gap-4 flex-1">
-                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${
-                      isLocked ? 'bg-slate-100 text-slate-400' :
+                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${isLocked ? 'bg-slate-100 text-slate-400' :
                       quiz.completed ? 'bg-teal-500 text-white' :
-                      isHard ? 'bg-indigo-500 text-white' : 'bg-orange-500 text-white'
-                    }`}>
+                        isHard ? 'bg-indigo-500 text-white' : 'bg-orange-500 text-white'
+                      }`}>
                       {isLocked ? <Lock size={18} /> :
-                       quiz.completed ? <Trophy size={18} /> :
-                       <PenTool size={18} />}
+                        quiz.completed ? <Trophy size={18} /> :
+                          <PenTool size={18} />}
                     </div>
 
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className={`px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider ${
-                          isHard ? 'bg-indigo-100 text-indigo-700' :
+                        <span className={`px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider ${isHard ? 'bg-indigo-100 text-indigo-700' :
                           isChallenge ? 'bg-orange-100 text-orange-700' :
-                          'bg-sky-100 text-sky-700'
-                        }`}>
+                            'bg-sky-100 text-sky-700'
+                          }`}>
                           {quiz.type} Î“Ã‡Ã³ {quiz.difficulty}
                         </span>
                         {!isLocked && !quiz.completed && (
                           <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-rose-500 animate-pulse"></span>
                         )}
                       </div>
-                      <h3 className={`font-bold text-[14px] md:text-[16px] leading-tight mb-1 md:mb-1.5 transition-colors ${
-                        isLocked ? 'text-slate-600' : 'text-[#0a1628]'
-                      }`}>
+                      <h3 className={`font-bold text-[14px] md:text-[16px] leading-tight mb-1 md:mb-1.5 transition-colors ${isLocked ? 'text-slate-600' : 'text-[#0a1628]'
+                        }`}>
                         {quiz.title}
                       </h3>
                       <p className="text-[11px] md:text-[12px] text-slate-500 mb-1.5 line-clamp-1">{quiz.subject}</p>
                       <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[11px] md:text-[12px] font-bold text-slate-400">
-                        <span className="flex items-center gap-1"><BookOpen size={12}/> {quiz.questions} Qs</span>
+                        <span className="flex items-center gap-1"><BookOpen size={12} /> {quiz.questions} Qs</span>
                         <span className="hidden sm:inline">Î“Ã‡Ã³</span>
-                        <span className="flex items-center gap-1"><Clock size={12}/> {quiz.duration}</span>
+                        <span className="flex items-center gap-1"><Clock size={12} /> {quiz.duration}</span>
                         <span className="hidden sm:inline">Î“Ã‡Ã³</span>
-                        <span className="flex items-center gap-1 text-rose-500"><Trophy size={12}/> +{quiz.xpReward} XP</span>
+                        <span className="flex items-center gap-1 text-rose-500"><Trophy size={12} /> +{quiz.xpReward} XP</span>
                       </div>
                     </div>
                   </div>
@@ -321,13 +320,12 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
                         <div className="text-[9px] uppercase tracking-wide text-slate-400 font-bold mt-1">Best Score</div>
                       </div>
                     )}
-                    
+
                     {!isLocked && (
-                      <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] md:text-[12px] font-black uppercase tracking-wider shadow-sm transition-all ${
-                        quiz.completed 
-                          ? 'bg-white border border-slate-200 text-slate-600 group-hover:bg-slate-50' 
-                          : 'bg-slate-900 text-white group-hover:bg-slate-600'
-                      }`}>
+                      <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] md:text-[12px] font-black uppercase tracking-wider shadow-sm transition-all ${quiz.completed
+                        ? 'bg-white border border-teal-500 text-slate-600 group-hover:bg-slate-50'
+                        : 'bg-teal-500 text-white group-hover:bg-teal-600 shadow-teal-200'
+                        }`}>
                         {quiz.completed ? 'Review' : 'Start'}
                       </div>
                     )}
