@@ -5,7 +5,7 @@ import { Dialog, DialogContent } from '../ui/dialog';
 import AssessmentHistoryChart from './AssessmentHistoryChart';
 import { getAssessmentHistory, getLatestAssessmentResult } from '../../services/assessmentResultsService';
 import { getHeroBannerModalSummary, subscribeToHeroBannerModalSummary } from '../../services/heroBannerSummaryService';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import type { AssessmentResult, AssessmentHistoryEntry, HeroBannerModalSummary } from '../../types/models';
 
@@ -239,6 +239,74 @@ const HeroBannerModalContent: React.FC<{
   );
 };
 
+/** Check all possible Firestore locations for assessment data and build a summary */
+async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalSummary | null> {
+  // 1. competencyProfiles/{uid}
+  const cpSnap = await getDoc(doc(db, 'competencyProfiles', studentId)).catch(() => null);
+  if (cpSnap?.exists()) {
+    const cp = cpSnap.data();
+    const strengths: string[] = cp.primaryStrength ? [cp.primaryStrength] : [];
+    const weaknesses: string[] = cp.primaryWeakness ? [cp.primaryWeakness] : [];
+    return {
+      status: 'ready',
+      headline: cp.overallScore >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
+      summary: weaknesses.length > 0
+        ? `Focus on strengthening ${weaknesses[0]} to improve your overall performance.`
+        : 'Keep practicing to maintain and expand your skills.',
+      strengths, weaknesses,
+      recommendation: cp.suggestedModule ? `Start with the ${cp.suggestedModule} module.` : 'Continue with your personalized learning path.',
+      latestAssessmentId: '', latestScorePercent: cp.overallScore || 0,
+      latestRiskLevel: cp.overallScore >= 70 ? 'Low' : cp.overallScore >= 50 ? 'Moderate' : 'High',
+      updatedAt: cp.updatedAt?.toDate?.() || new Date(),
+    };
+  }
+
+  // 2. assessments/{uid}/attempts (from completeInitialAssessment)
+  const assessSnap = await getDocs(
+    query(collection(db, 'assessments', studentId, 'attempts'), orderBy('completedAt', 'desc'), limit(1))
+  ).catch(() => null);
+  if (assessSnap && !assessSnap.empty) {
+    const d = assessSnap.docs[0].data();
+    const score = d.rawScore || d.overallScorePercent || 0;
+    const profile = d.proficiencyProfile;
+    return {
+      status: 'ready',
+      headline: score >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
+      summary: profile?.weaknesses?.length > 0
+        ? `Focus on strengthening ${profile.weaknesses[0]} to improve.`
+        : score >= 70 ? 'You have a solid foundation!' : 'With practice, you\'ll build confidence.',
+      strengths: profile?.strengths || [],
+      weaknesses: profile?.weaknesses || [],
+      recommendation: profile?.suggestedStartingModule ? `Start with ${profile.suggestedStartingModule}.` : 'Follow your personalized learning path.',
+      latestAssessmentId: d.assessmentId || '', latestScorePercent: score,
+      latestRiskLevel: score >= 70 ? 'Low' : score >= 50 ? 'Moderate' : 'High',
+      updatedAt: d.completedAt?.toDate?.() || new Date(),
+    };
+  }
+
+  // 3. diagnosticResults/{uid}
+  const diagSnap = await getDoc(doc(db, 'diagnosticResults', studentId)).catch(() => null);
+  if (diagSnap?.exists()) {
+    const d = diagSnap.data();
+    const score = d.overallScorePercent || d.overall_score_percent || 0;
+    const weakDomains: string[] = d.riskProfile?.weak_domains || [];
+    return {
+      status: 'ready',
+      headline: score >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
+      summary: weakDomains.length > 0
+        ? `Areas to focus on: ${weakDomains.join(', ')}.`
+        : 'Assessment completed. Follow your learning path.',
+      strengths: [], weaknesses: weakDomains,
+      recommendation: d.recommended_intervention || 'Continue with your personalized learning path.',
+      latestAssessmentId: '', latestScorePercent: score,
+      latestRiskLevel: d.overall_risk || (score >= 70 ? 'Low' : 'Moderate'),
+      updatedAt: d.completedAt?.toDate?.() || new Date(),
+    };
+  }
+
+  return null;
+}
+
 const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
   isOpen,
   onClose,
@@ -284,29 +352,9 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
             if (directSummary) {
               setInternalHeroBannerSummary(directSummary);
             } else if (!result) {
-              // Final fallback: build summary from competencyProfiles
-              const cpSnap = await getDoc(doc(db, 'competencyProfiles', studentId));
-              if (cpSnap.exists()) {
-                const cp = cpSnap.data();
-                const strengths: string[] = cp.primaryStrength ? [cp.primaryStrength] : [];
-                const weaknesses: string[] = cp.primaryWeakness ? [cp.primaryWeakness] : [];
-                setInternalHeroBannerSummary({
-                  status: 'ready',
-                  headline: cp.overallScore >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
-                  summary: weaknesses.length > 0
-                    ? `Focus on strengthening ${weaknesses[0]} to improve your overall performance.`
-                    : 'Keep practicing to maintain and expand your skills.',
-                  strengths,
-                  weaknesses,
-                  recommendation: cp.suggestedModule
-                    ? `Start with the ${cp.suggestedModule} module for guided practice.`
-                    : 'Continue with your personalized learning path.',
-                  latestAssessmentId: '',
-                  latestScorePercent: cp.overallScore || 0,
-                  latestRiskLevel: cp.overallScore >= 70 ? 'Low' : cp.overallScore >= 50 ? 'Moderate' : 'High',
-                  updatedAt: cp.updatedAt?.toDate?.() || new Date(),
-                });
-              }
+              // Fallback chain: try multiple data sources
+              const summary = await buildFallbackSummary(studentId);
+              if (summary) setInternalHeroBannerSummary(summary);
             }
           }
         } catch (err) {
