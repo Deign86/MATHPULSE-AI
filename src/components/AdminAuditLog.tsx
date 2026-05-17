@@ -412,8 +412,8 @@ const AdminAuditLog: React.FC = () => {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-black text-[#1e293b] leading-none group-hover:text-[#9956DE] transition-colors truncate">{log.user.name}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{log.user.role}</p>
+                            <p className="text-sm font-black text-[#1e293b] leading-none group-hover:text-[#9956DE] transition-colors truncate">{log.user.name || 'SYSTEM'}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{log.user.role || 'System'}</p>
                           </div>
                         </div>
                       </td>

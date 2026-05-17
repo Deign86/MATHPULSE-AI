@@ -452,16 +452,16 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
       return [];
     }
 
-    const q = query(collection(db, 'accessAuditLogs'), orderBy('timestamp', 'desc'), limit(100));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => {
+    // Read from accessAuditLogs (backend-written events)
+    const accessQ = query(collection(db, 'accessAuditLogs'), orderBy('timestamp', 'desc'), limit(100));
+    const accessSnap = await getDocs(accessQ);
+    const accessEntries: AuditLogEntry[] = accessSnap.docs.map(d => {
       const data = d.data() as Record<string, unknown>;
       
       const success = data.success !== false;
       const severity: AuditSeverity = !success ? 'Error' : 'Info';
       
       const actionRaw = (data.action as string) || '';
-      // Simple categorization based on the action prefix or module
       let category: AuditCategory = 'System';
       const module = data.module as string;
       if (module === 'admin' || actionRaw.startsWith('admin_')) category = 'User';
@@ -475,8 +475,8 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
         ? data.timestamp
         : timestampToString(data.timestamp as { toDate?: () => Date }),
         user: { 
-          name: (data.actorName as string) || (data.teacherEmail as string) || 'System', 
-          role: (data.actorRole as string) || (data.role as string) || 'Admin', 
+          name: (data.actorName as string) || (data.teacherEmail as string) || (data.teacherId as string) || 'SYSTEM', 
+          role: capitalizeRole((data.actorRole as string) || (data.role as string) || 'System'), 
           avatar: null 
         },
         action: actionRaw,
@@ -484,6 +484,32 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
         details: (data.description as string) || (data.status ? `Status: ${data.status}` : ''),
       };
     });
+
+    // Also read from auditLogs (frontend + cloud function written entries)
+    const auditQ = query(collection(db, 'auditLogs'), orderBy('timestampRaw', 'desc'), limit(50));
+    const auditSnap = await getDocs(auditQ);
+    const auditEntries: AuditLogEntry[] = auditSnap.docs.map(d => {
+      const data = d.data() as Record<string, unknown>;
+      const rawUser = data.user as { name?: string; role?: string; avatar?: string | null } | undefined;
+      return {
+        id: `audit-${d.id}`,
+        severity: (data.severity as AuditSeverity) || 'Info',
+        timestamp: (data.timestamp as string) || timestampToString(data.timestampRaw as { toDate?: () => Date }),
+        user: {
+          name: rawUser?.name || 'SYSTEM',
+          role: rawUser?.role || 'System',
+          avatar: rawUser?.avatar ?? null,
+        },
+        action: (data.action as string) || '',
+        category: (data.category as AuditCategory) || 'System',
+        details: (data.details as string) || '',
+      };
+    });
+
+    // Merge and sort by timestamp descending
+    return [...accessEntries, ...auditEntries]
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+      .slice(0, 100);
   } catch (err: unknown) {
     // Log only unexpected errors, not permission-denied (which is expected for non-admin/teacher)
     const error = err as { code?: string };

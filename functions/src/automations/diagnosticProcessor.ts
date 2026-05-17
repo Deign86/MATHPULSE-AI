@@ -833,6 +833,17 @@ async function writeProgressionAuditEvent(
     unlockCriteriaVersion: LEARNING_PATH_UNLOCK_CRITERIA_VERSION,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+
+  // Write to auditLogs for admin panel visibility
+  await db.collection("auditLogs").add({
+    severity: "Info",
+    timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+    timestampRaw: admin.firestore.FieldValue.serverTimestamp(),
+    user: { name: "SYSTEM", role: "System", avatar: null },
+    action: `Diagnostic: ${event.eventType}`,
+    category: "System",
+    details: `Student ${event.userId} - ${event.assessmentType} (${event.gradeLevel})`,
+  });
 }
 
 async function getRemediationStatusSummary(
