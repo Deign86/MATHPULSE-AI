@@ -4,7 +4,9 @@ import { X, TrendingUp, Award, Target, Brain, Sparkles, AlertCircle, ShieldAlert
 import { Dialog, DialogContent } from '../ui/dialog';
 import AssessmentHistoryChart from './AssessmentHistoryChart';
 import { getAssessmentHistory, getLatestAssessmentResult } from '../../services/assessmentResultsService';
-import { subscribeToHeroBannerModalSummary } from '../../services/heroBannerSummaryService';
+import { getHeroBannerModalSummary, subscribeToHeroBannerModalSummary } from '../../services/heroBannerSummaryService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import type { AssessmentResult, AssessmentHistoryEntry, HeroBannerModalSummary } from '../../types/models';
 
 interface AssessmentResultsModalProps {
@@ -266,16 +268,55 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
   useEffect(() => {
     if (isOpen && studentId) {
       setLoading(true);
-      Promise.all([
-        initialResult ? Promise.resolve(initialResult) : getLatestAssessmentResult(studentId),
-        getAssessmentHistory(studentId),
-      ])
-        .then(([result, hist]) => {
+
+      const fetchData = async () => {
+        try {
+          const [result, hist] = await Promise.all([
+            initialResult ? Promise.resolve(initialResult) : getLatestAssessmentResult(studentId),
+            getAssessmentHistory(studentId),
+          ]);
           setLatestResult(result);
           setHistory(hist);
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
+
+          // If no heroBannerSummary from subscription yet, do a one-time read
+          if (!heroBannerSummary && !internalHeroBannerSummary) {
+            const directSummary = await getHeroBannerModalSummary(studentId);
+            if (directSummary) {
+              setInternalHeroBannerSummary(directSummary);
+            } else if (!result) {
+              // Final fallback: build summary from competencyProfiles
+              const cpSnap = await getDoc(doc(db, 'competencyProfiles', studentId));
+              if (cpSnap.exists()) {
+                const cp = cpSnap.data();
+                const strengths: string[] = cp.primaryStrength ? [cp.primaryStrength] : [];
+                const weaknesses: string[] = cp.primaryWeakness ? [cp.primaryWeakness] : [];
+                setInternalHeroBannerSummary({
+                  status: 'ready',
+                  headline: cp.overallScore >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
+                  summary: weaknesses.length > 0
+                    ? `Focus on strengthening ${weaknesses[0]} to improve your overall performance.`
+                    : 'Keep practicing to maintain and expand your skills.',
+                  strengths,
+                  weaknesses,
+                  recommendation: cp.suggestedModule
+                    ? `Start with the ${cp.suggestedModule} module for guided practice.`
+                    : 'Continue with your personalized learning path.',
+                  latestAssessmentId: '',
+                  latestScorePercent: cp.overallScore || 0,
+                  latestRiskLevel: cp.overallScore >= 70 ? 'Low' : cp.overallScore >= 50 ? 'Moderate' : 'High',
+                  updatedAt: cp.updatedAt?.toDate?.() || new Date(),
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[AssessmentResultsModal] fetch error:', err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchData();
     }
   }, [isOpen, studentId, initialResult]);
 
