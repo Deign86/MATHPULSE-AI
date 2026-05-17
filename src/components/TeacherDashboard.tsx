@@ -2054,7 +2054,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               <div className="p-6">
                   <div className="text-sm text-slate-600 leading-relaxed">
                     <ChatMarkdown>
-                      {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `I've noticed **${totalAtRisk} students (${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%)** are currently showing a high risk of falling behind in recent topics. Shall I draft an intervention plan?`}
+                      {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `**${totalAtRisk} students (${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%)** are currently at high risk of falling behind in recent topics. Review their progress in the analytics view to plan interventions.`}
                     </ChatMarkdown>
                   </div>
               </div>
@@ -2216,7 +2216,7 @@ const DashboardView: React.FC<{
               <span className="bg-[#fee2e2] text-[#b91c1c] text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#fca5a5]">Attention needed</span>
             </div>
             <div className="text-[12.5px] text-[#475569] leading-[1.55]">
-              I've noticed some students are currently showing a high risk of falling behind. Click to view detailed analysis...
+              Some students may be at risk of falling behind. Click to view detailed analysis.
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0 self-end sm:self-auto">
