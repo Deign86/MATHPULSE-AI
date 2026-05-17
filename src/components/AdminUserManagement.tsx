@@ -1488,6 +1488,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
       <ConfirmModal
         isOpen={isConfirmModalOpen}
+        zIndexClass="z-[70]"
         onClose={() => {
           if (isConfirmingAction) return;
           setIsConfirmModalOpen(false);
