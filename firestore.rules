@@ -64,14 +64,14 @@ service cloud.firestore {
     match /users/{userId}/assessments/{docId} {
       allow read: if isSelf(userId) || isTeacherOrAdmin();
       allow create, update: if isSelf(userId);
-      allow delete: if isAdmin();
+      allow delete: if isSelf(userId) || isAdmin();
     }
 
     // ── User Grade Summary (subcollection — rolling averages maintained by student write) ──
     match /users/{userId}/gradeSummary/{docId} {
       allow read: if isSelf(userId) || isTeacherOrAdmin();
       allow create, update: if isSelf(userId);
-      allow delete: if isAdmin();
+      allow delete: if isSelf(userId) || isAdmin();
     }
 
     // Leaderboard collection - publicly readable, written only by backend
