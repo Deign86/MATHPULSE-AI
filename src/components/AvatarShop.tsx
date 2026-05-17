@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { Save, Sparkles, Shirt, Scissors, Footprints, Crown, Lock, ShoppingBag, RotateCcw } from 'lucide-react';
+import { Save, Sparkles, Shirt, Scissors, Footprints, Crown, Lock, ShoppingBag, RotateCcw, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { updateUserProfile } from '../services/authService';
@@ -61,17 +61,20 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     shoes: userProfile?.avatarLayers?.shoes || '',
     accessory: userProfile?.avatarLayers?.accessory || '',
   });
+  const [savedEquipped, setSavedEquipped] = useState<AvatarLayers>({ top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID, bottom: userProfile?.avatarLayers?.bottom || '', shoes: userProfile?.avatarLayers?.shoes || '', accessory: userProfile?.avatarLayers?.accessory || '' });
   const [isSaving, setIsSaving] = useState(false);
   const [ownedItems, setOwnedItems] = useState<string[]>([]);
   const [currentXP, setCurrentXP] = useState(0);
   const [purchasingItemId, setPurchasingItemId] = useState<string | null>(null);
   const [avatarSpeech, setAvatarSpeech] = useState<string | null>(null);
   const [inventoryItems, setInventoryItems] = useState<AvatarInventoryItem[]>(MOCK_INVENTORY);
-  const [activeCategory, setActiveCategory] = useState<keyof AvatarLayers>('top');
+  const [activeCategory, setActiveCategory] = useState<keyof AvatarLayers | 'exclusive'>('top');
 
   const userProfileRef = useRef(userProfile);
   userProfileRef.current = userProfile;
   const saveGuardRef = useRef(false);
+
+  const hasUnsavedChanges = equipped.top !== savedEquipped.top || equipped.bottom !== savedEquipped.bottom || equipped.shoes !== savedEquipped.shoes || equipped.accessory !== savedEquipped.accessory;
   const pendingSaveRef = useRef<{ layers: AvatarLayers; options: { showSuccessToast?: boolean; showSavingState?: boolean } } | null>(null);
 
   useEffect(() => {
@@ -125,6 +128,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
       shoes: userProfile?.avatarLayers?.shoes || '',
       accessory: userProfile?.avatarLayers?.accessory || '',
     });
+    setSavedEquipped({ top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID, bottom: userProfile?.avatarLayers?.bottom || '', shoes: userProfile?.avatarLayers?.shoes || '', accessory: userProfile?.avatarLayers?.accessory || '' });
   }, []);
 
   useEffect(() => {
@@ -150,8 +154,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   const handleEquip = (category: keyof AvatarLayers, id: string) => {
     const item = inventoryItems.find(i => i.id === id);
     if (item && ((item.price && item.price > 0) || item.isReward) && !ownedItems.includes(id)) {
-      toast.error('This item is locked. Earn or purchase it first!');
-      return;
+      if (!item.isExclusive) { toast.error('This item is locked. Earn or purchase it first!'); return; }
+      // Exclusive items can be previewed
     }
 
     const nextEquipped: AvatarLayers = {
@@ -162,7 +166,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     setEquipped(nextEquipped);
     setAvatarSpeech(EQUIP_EXPRESSIONS[Math.floor(Math.random() * EQUIP_EXPRESSIONS.length)]);
 
-    void persistAvatarLayers(nextEquipped, { showSuccessToast: false, showSavingState: false });
+    // No auto-save - user must click Save
   };
 
   const handlePurchaseItem = async (e: React.MouseEvent, itemId: string, price: number) => {
@@ -286,6 +290,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
         'Avatar save',
       );
       if (onSaveProfile) onSaveProfile(normalizedEquipped);
+      setSavedEquipped(normalizedEquipped);
       if (showSuccessToast) toast.success('Avatar saved successfully');
     } catch (err) {
       console.error(err);
@@ -311,11 +316,12 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     await persistAvatarLayers(equipped, { showSuccessToast: true, showSavingState: true });
   };
 
-  const categories: { id: keyof AvatarLayers; label: string; icon: React.ReactNode }[] = [
+  const categories: { id: string; label: string; icon: React.ReactNode }[] = [
     { id: 'top', label: 'Tops', icon: <Shirt size={16} /> },
     { id: 'bottom', label: 'Bottoms', icon: <Scissors size={16} className="rotate-90" /> },
     { id: 'shoes', label: 'Shoes', icon: <Footprints size={16} /> },
     { id: 'accessory', label: 'Accessories', icon: <Crown size={16} /> },
+    { id: 'exclusive' as keyof AvatarLayers | 'exclusive', label: 'Exclusive', icon: <Star size={16} /> },
   ];
 
   if (featureAccessLoading) {
@@ -347,7 +353,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     <>
       <style>{shopAnimations}</style>
     <div className="h-full w-full flex items-start xl:items-center justify-center p-4 sm:p-6 lg:p-8 overflow-y-auto xl:overflow-hidden">
-      <div className="relative w-full max-w-[1000px] min-h-[500px] xl:h-[80vh] xl:max-h-[700px] rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-8 xl:gap-12 overflow-visible xl:overflow-hidden">
+      <div className="relative w-full min-h-[500px] xl:h-[80vh] xl:max-h-[700px] rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-8 xl:gap-12 overflow-visible xl:overflow-hidden">
 
         <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />
@@ -358,9 +364,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
         <div className="flex flex-col xl:h-full min-h-0 relative z-10 w-full xl:w-[50%] mx-auto xl:mx-0 flex-1">
           <div className="mb-6 flex flex-col gap-2 shrink-0">
             <div className="flex flex-wrap items-center justify-between xl:justify-start gap-4">
-              <h1 className="text-3xl md:text-4xl font-display font-black text-[#0a1628] tracking-tight flex items-center gap-2.5">
-                <span className="whitespace-nowrap">Avatar Studio</span> <Sparkles className="text-blue-500 fill-blue-500" size={28} />
-              </h1>
+              
 
               <div className="flex items-center gap-2">
                 {isDevMode && (
@@ -399,12 +403,12 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                 </div>
               </div>
             </div>
-            <p className="text-slate-500 font-medium text-sm md:text-base">Design your perfect learning companion.</p>
+            
           </div>
 
           <Tabs.Root
             value={activeCategory}
-            onValueChange={(value) => setActiveCategory(value as keyof AvatarLayers)}
+            onValueChange={(value) => setActiveCategory(value as keyof AvatarLayers | 'exclusive')}
             className="flex flex-col flex-1 min-h-0"
           >
             <Tabs.List className="flex flex-nowrap shrink-0 justify-start space-x-1 sm:space-x-2 mb-4 bg-white shadow-sm p-1 rounded-full border border-slate-100 w-fit overflow-x-auto max-w-full scrollbar-hide">
@@ -422,7 +426,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 pb-6 scrollbar-hide px-2 -mx-2">
               {categories.map(cat => {
-                const categoryItems = inventoryItems.filter(item => item.category === cat.id);
+                const categoryItems = cat.id === 'exclusive' ? inventoryItems.filter(item => item.isExclusive) : inventoryItems.filter(item => item.category === cat.id && !item.isExclusive);
                 
                 return (
                   <Tabs.Content key={cat.id} value={cat.id} className="outline-none pt-2 h-full">
@@ -442,13 +446,12 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                       return (
                         <div key={item.id} className="flex flex-col gap-1.5">
                           <button
-                            onClick={() => !isLocked && handleEquip(cat.id, item.id)}
-                            disabled={isLocked}
+                            onClick={() => (!isLocked || item.isExclusive) && handleEquip(item.category, item.id)}
+                            disabled={isLocked && !item.isExclusive}
                             className={`relative w-full aspect-square rounded-2xl border-2 transition-all flex flex-col items-center justify-center group ${
                               isEquipped && !isLocked
                                 ? 'bg-white border-blue-500 shadow-md scale-[1.02] z-10'
-                                : isLocked
-                                ? 'bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed'
+                                : isLocked && !item.isExclusive ? 'bg-slate-50 border-slate-200 opacity-50 cursor-not-allowed' : item.isExclusive && isLocked ? 'bg-white border-slate-200 hover:border-amber-300 hover:shadow-lg hover:scale-[1.02] hover:z-10 cursor-pointer'
                                 : 'bg-white border-slate-100 hover:border-sky-300 hover:shadow-lg hover:scale-[1.02] hover:z-10'
                             }`}
                           >
@@ -467,7 +470,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
                             <img 
                               src={item.thumbnail} 
                               alt={item.name} 
-                              className={`w-3/4 h-3/4 object-contain transition-transform e-filter ${!isLocked && 'group-hover:scale-110'}`}
+                              className={`w-[85%] h-[85%] object-contain transition-transform e-filter ${!isLocked && 'group-hover:scale-110'}`}
                               style={{ ['--filter' as any]: isLocked ? 'grayscale(70%)' : 'none' }}
                             />
                           </button>
@@ -540,6 +543,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
       </div>
       </div>
 
+            {hasUnsavedChanges && (<button onClick={() => { setEquipped(savedEquipped); }} className="w-full max-w-[450px] mx-auto h-[54px] bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-colors border border-slate-200 mb-2">Cancel</button>)}
       <button
             onClick={handleSave}
             disabled={isSaving}
