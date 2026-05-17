@@ -23,6 +23,17 @@ import { Input } from '../ui/input';
 import { toast } from 'sonner';
 import { apiService } from '../../services/apiService';
 import { SHS_MATH_SUBJECTS } from '../../data/subjects';
+import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+
+interface UploadedFile {
+  id: string;
+  fileName: string;
+  teacherEmail: string;
+  fileType: string;
+  className?: string;
+  createdAt: Date;
+}
 
 interface RagHealthSubject {
   name: string;
@@ -52,6 +63,44 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
   } | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+
+  // Load teacher-uploaded files
+  const loadUploadedFiles = useCallback(async () => {
+    setLoadingFiles(true);
+    try {
+      const [materialsSnap, recordsSnap] = await Promise.all([
+        getDocs(query(collection(db, 'courseMaterials'), orderBy('createdAt', 'desc'))),
+        getDocs(query(collection(db, 'classRecordImports'), orderBy('createdAt', 'desc'))),
+      ]);
+      const files: UploadedFile[] = [
+        ...materialsSnap.docs.map(d => {
+          const data = d.data();
+          return { id: d.id, fileName: data.fileName || 'Untitled', teacherEmail: data.teacherEmail || '', fileType: data.fileType || 'PDF', className: data.className, createdAt: data.createdAt?.toDate?.() || new Date() };
+        }),
+        ...recordsSnap.docs.map(d => {
+          const data = d.data();
+          return { id: d.id, fileName: data.fileName || 'Untitled', teacherEmail: data.teacherEmail || '', fileType: data.fileType || 'CSV', className: data.className, createdAt: data.createdAt?.toDate?.() || new Date() };
+        }),
+      ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      setUploadedFiles(files);
+    } catch (err) {
+      console.error('Failed to load uploaded files:', err);
+    } finally {
+      setLoadingFiles(false);
+    }
+  }, []);
+
+  const handleDeleteFile = async (fileId: string, collectionName: string) => {
+    try {
+      await deleteDoc(doc(db, collectionName, fileId));
+      toast.success('File removed');
+      loadUploadedFiles();
+    } catch { toast.error('Failed to delete file'); }
+  };
+
+  React.useEffect(() => { loadUploadedFiles(); }, [loadUploadedFiles]);
 
   // Load RAG health on mount
   const loadHealth = useCallback(async () => {
@@ -210,20 +259,6 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-3 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-100 shadow-sm">
-            <div className="flex flex-col items-end">
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Chunks</span>
-              <span className="text-[12px] font-black text-purple-600 leading-none mt-1">{loadingHealth ? '...' : (ragHealth?.chunkCount ?? 0).toLocaleString()}</span>
-            </div>
-            <div className="w-px h-5 bg-slate-100" />
-            <div className="flex flex-col items-end">
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Health</span>
-              <div className="flex items-center gap-1 mt-1">
-                <span className="text-[12px] font-black text-purple-600 leading-none">{statusRows.length}</span>
-                <div className={`w-1.5 h-1.5 rounded-full ${statusRows.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -415,88 +450,49 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
               <Table className="w-full text-left border-collapse">
                 <TableHeader>
                   <TableRow className="bg-[#9956DE] hover:bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-sm">
-                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Identity</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Density</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto text-center">Status</TableHead>
-                    <th className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="relative group">
-                          <Search className="w-3 h-3 absolute left-3 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-white transition-colors" />
-                          <Input 
-                            placeholder="Filter..." 
-                            className="pl-8 h-8 w-32 bg-white/10 border-white/20 rounded-lg text-[10px] font-black placeholder:text-white/40 text-white focus-visible:ring-white/20 transition-all"
-                          />
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 bg-white/10 text-white hover:bg-white/20 rounded-lg"
-                          onClick={loadHealth}
-                          disabled={loadingHealth}
-                        >
-                          <RefreshCw size={12} className={loadingHealth ? 'animate-spin' : ''} />
-                        </Button>
-                      </div>
-                    </th>
+                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">File Name</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Uploaded By</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Type</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Date</TableHead>
+                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto text-right">
+                      <Button variant="ghost" size="sm" className="h-8 px-2 bg-white/10 text-white hover:bg-white/20 rounded-lg" onClick={loadUploadedFiles} disabled={loadingFiles}>
+                        <RefreshCw size={12} className={loadingFiles ? 'animate-spin' : ''} />
+                      </Button>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-50">
-                  {loadingHealth ? (
+                  {loadingFiles ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-48 text-center">
+                      <TableCell colSpan={5} className="h-48 text-center">
                         <Loader2 size={24} className="animate-spin text-purple-500 mx-auto" />
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Syncing Knowledge Base...</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Loading files...</p>
                       </TableCell>
                     </TableRow>
-                  ) : statusRows.length === 0 ? (
+                  ) : uploadedFiles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-48 text-center">
-                        <Database size={24} className="text-slate-200 mx-auto" />
-                        <p className="text-[12px] font-black text-slate-400 mt-2">No data in index.</p>
+                      <TableCell colSpan={5} className="h-48 text-center">
+                        <FileText size={24} className="text-slate-200 mx-auto" />
+                        <p className="text-[12px] font-black text-slate-400 mt-2">No uploaded files found.</p>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    statusRows.map(row => (
-                      <TableRow key={row.name} className="group hover:bg-purple-50/10 transition-all border-b border-slate-50">
+                    uploadedFiles.map(file => (
+                      <TableRow key={file.id} className="group hover:bg-purple-50/10 transition-all">
                         <TableCell className="px-6 py-4">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-50 to-white border border-purple-100 flex items-center justify-center text-purple-500 shadow-sm group-hover:scale-110 transition-transform">
-                              <BookOpen size={18} />
-                            </div>
-                            <div className="min-w-0">
-                              <span className="font-black text-[#1e293b] text-[13px] block group-hover:text-purple-600 transition-colors">{row.name}</span>
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-1 block">Curriculum Source</span>
-                            </div>
+                          <div className="flex items-center gap-3">
+                            <FileText size={16} className="text-purple-500" />
+                            <span className="font-bold text-[13px] text-slate-800 truncate max-w-[200px]">{file.fileName}</span>
                           </div>
                         </TableCell>
+                        <TableCell className="px-6 py-4 text-[12px] text-slate-600">{file.teacherEmail || '—'}</TableCell>
                         <TableCell className="px-6 py-4">
-                          <div className="flex flex-col gap-1.5">
-                            <span className="text-[14px] font-display font-black text-purple-600 leading-none">{row.chunks.toLocaleString()} <span className="text-[9px] text-slate-400">units</span></span>
-                            <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                              <div className="h-full bg-purple-500 rounded-full" style={{ width: '100%' }} />
-                            </div>
-                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-slate-100 text-slate-600">{file.fileType}</span>
                         </TableCell>
-                        <TableCell className="px-6 py-4 text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-                              row.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
-                            }`}>
-                              <div className={`w-1 h-1 rounded-full ${row.status === 'active' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                              {row.status}
-                            </span>
-                          </div>
-                        </TableCell>
+                        <TableCell className="px-6 py-4 text-[12px] text-slate-500">{file.createdAt.toLocaleDateString()}</TableCell>
                         <TableCell className="px-6 py-4 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-4 gap-1.5 text-[9px] font-black uppercase tracking-widest rounded-lg border-slate-200 hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-all"
-                            onClick={() => handleReingest(row.name.toLowerCase().replace(/\s+/g, '-').replace('&', ''), row.storagePath)}
-                            disabled={reingesting === row.name.toLowerCase().replace(/\s+/g, '-').replace('&', '')}
-                          >
-                            <RefreshCw size={10} className={reingesting === row.name.toLowerCase() ? 'animate-spin' : ''} />
-                            Sync
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => handleDeleteFile(file.id, 'courseMaterials')}>
+                            <Trash2 size={14} />
                           </Button>
                         </TableCell>
                       </TableRow>
