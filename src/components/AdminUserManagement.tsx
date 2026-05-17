@@ -894,13 +894,13 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
         {/* Floating Bulk Action Bar */}
         {selectedCount > 0 && (
-          <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-4rem)] max-w-[1100px] bg-indigo-900 rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-4 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl shadow-indigo-900/50">
+          <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-4rem)] max-w-[1100px] bg-[#2d1b69] rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-4 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl shadow-purple-900/50">
             <div className="flex items-center gap-3 px-3 border-r border-white/10 pr-6">
-              <div className="w-8 h-8 rounded-xl bg-indigo-500/30 flex items-center justify-center text-white font-black text-xs">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/30 flex items-center justify-center text-white font-black text-xs">
                 {selectedCount}
               </div>
               <div>
-                <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest leading-none">Selected</p>
+                <p className="text-[10px] font-black text-purple-300 uppercase tracking-widest leading-none">Selected</p>
                 <p className="text-[9px] text-white/60 font-medium mt-1">
                   {allFilteredSelected ? 'All matching users' : `${selectedCount} users chosen`}
                 </p>
@@ -920,7 +920,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     <SelectItem value="Admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeRole()}>Apply Role</Button>
+                <Button size="sm" className="h-8 bg-purple-600 hover:bg-purple-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeRole()}>Apply Role</Button>
               </div>
 
               <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
@@ -933,7 +933,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     <SelectItem value="Inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeStatus()}>Set Status</Button>
+                <Button size="sm" className="h-8 bg-purple-600 hover:bg-purple-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeStatus()}>Set Status</Button>
               </div>
 
               <div className="h-6 w-[1px] bg-white/10 mx-1"></div>
