@@ -213,6 +213,17 @@ export async function requestReassessmentForStudent(
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
+  // Write to auditLogs for admin panel visibility
+  await db.collection("auditLogs").add({
+    severity: "Info",
+    timestamp: new Date().toISOString().replace("T", " ").slice(0, 19),
+    timestampRaw: admin.firestore.FieldValue.serverTimestamp(),
+    user: { name: actorId === "system" ? "SYSTEM" : actorId, role: actorRole === "system" ? "System" : actorRole, avatar: null },
+    action: "Reassessment Requested",
+    category: "System",
+    details: `Student ${userId} reassessment triggered (source: ${source}, reasons: ${mergedReasonCodes.join(", ")})`,
+  });
+
   return {
     wasUpdated: true,
     reasonCodes: mergedReasonCodes as ReassessmentReasonCode[],
