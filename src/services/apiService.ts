@@ -824,6 +824,14 @@ export interface StudentAccountImportCommitResponse {
   warnings: string[];
 }
 
+export interface CreateStudentAccountApiResponse {
+  success: boolean;
+  uid: string;
+  email: string;
+  message?: string | null;
+  warnings?: string[];
+}
+
 export interface AdminCreateUserApiRequest {
   name: string;
   email: string;
@@ -2039,6 +2047,52 @@ export const apiService = {
     return apiFetch<StudentAccountImportCommitResponse>(
       '/api/import/student-accounts/commit',
       { method: 'POST', body: JSON.stringify(payload) },
+      DEFAULT_RETRY_OPTS,
+    );
+  },
+
+  /**
+   * Provision a single student account for a roster row that has no Firebase
+   * Auth user yet. Backend uses the Admin SDK to create the auth user, write
+   * the `users/{uid}` profile (`role: "student"`), and link the
+   * `managedStudents/{uid}` enrichment document. The teacher must be the
+   * adviser and must be authenticated; backend validates this.
+   */
+  async createStudentAccount(payload: {
+    name: string;
+    email: string;
+    temporaryPassword: string;
+    lrn?: string;
+    grade?: string;
+    section?: string;
+    classSectionId?: string;
+    adviserTeacherId: string;
+    adviserTeacherName?: string;
+    schoolYear?: string;
+  }): Promise<CreateStudentAccountApiResponse> {
+    validateRequired('/api/teacher/create-student-account', {
+      name: payload.name,
+      email: payload.email,
+      temporaryPassword: payload.temporaryPassword,
+      adviserTeacherId: payload.adviserTeacherId,
+    });
+
+    const body = {
+      name: payload.name,
+      email: payload.email,
+      temporary_password: payload.temporaryPassword,
+      lrn: payload.lrn ?? null,
+      grade: payload.grade ?? null,
+      section: payload.section ?? null,
+      class_section_id: payload.classSectionId ?? null,
+      adviser_teacher_id: payload.adviserTeacherId,
+      adviser_teacher_name: payload.adviserTeacherName ?? null,
+      school_year: payload.schoolYear ?? null,
+    };
+
+    return apiFetch<CreateStudentAccountApiResponse>(
+      '/api/teacher/create-student-account',
+      { method: 'POST', body: JSON.stringify(body) },
       DEFAULT_RETRY_OPTS,
     );
   },

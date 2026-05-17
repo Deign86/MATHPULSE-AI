@@ -21,6 +21,11 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   getClassroomsByTeacher,
   getStudentsByTeacher,
+  getAllRegisteredStudentsByTeacher,
+  mapRegisteredStudentToManaged,
+  markRosterStudentsWithoutAccounts,
+  normalizeStudentName,
+  reassignStudentSection,
   subscribeToActivityFeed,
   updateStudentRisk,
   assignStudentToClassSection,
@@ -36,6 +41,7 @@ import {
   resolveClassMetadata,
   type Classroom,
   type ManagedStudent,
+  type RegisteredStudentAccount,
   type TeacherDirectoryOption,
 } from '../services/studentService';
 import {
@@ -72,6 +78,9 @@ import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 import DataImportView from '../features/DataImport/DataImportView';
 import { subscribeToUserCalendarEvents } from '../services/calendarService';
 import type { CalendarEvent } from '../types/models';
+import CreateStudentAccountModal, {
+  type CreateStudentAccountSeed,
+} from './CreateStudentAccountModal';
 
 interface TeacherDashboardProps {
   onLogout: () => void;
@@ -134,6 +143,11 @@ export interface StudentView {
   engagementScore: number;
   attendance: number;
   assignmentCompletion: number;
+  // Registered-account linkage (registered-first merge pipeline).
+  hasRegisteredAccount?: boolean;
+  source?: 'registered' | 'import' | 'both';
+  accountUid?: string;
+  email?: string;
 }
 
 function toClassView(c: Classroom): ClassView {
@@ -222,6 +236,10 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
     engagementScore: s.engagementScore,
     attendance: s.attendance,
     assignmentCompletion: s.assignmentCompletion,
+    hasRegisteredAccount: s.hasRegisteredAccount,
+    source: s.source,
+    accountUid: s.accountUid,
+    email: s.email,
   };
 }
 
@@ -543,6 +561,19 @@ function mergeStudentViews(primary: StudentView[], imported: StudentView[]): Stu
       weakestTopic: existing.weakestTopic && existing.weakestTopic !== 'N/A' ? existing.weakestTopic : item.weakestTopic,
       riskLevel: chosenRisk,
       struggles: existing.struggles.length > 0 ? existing.struggles : item.struggles,
+      hasRegisteredAccount:
+        existing.hasRegisteredAccount === true || item.hasRegisteredAccount === true
+          ? true
+          : existing.hasRegisteredAccount ?? item.hasRegisteredAccount,
+      source:
+        (existing.source === 'registered' && item.source === 'import')
+        || (existing.source === 'import' && item.source === 'registered')
+        || existing.source === 'both'
+        || item.source === 'both'
+          ? 'both'
+          : existing.source || item.source,
+      accountUid: existing.accountUid || item.accountUid,
+      email: existing.email || item.email,
     });
   });
 
@@ -574,6 +605,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
   const [teacherDirectory, setTeacherDirectory] = useState<TeacherDirectoryOption[]>([]);
   const [managerUpdating, setManagerUpdating] = useState(false);
+  const [createAccountSeed, setCreateAccountSeed] = useState<CreateStudentAccountSeed | null>(null);
+  const [reassignBusyId, setReassignBusyId] = useState<string | null>(null);
+
+  const teacherName = userProfile?.name || 'Teacher';
   const interventionCacheRef = useRef<Map<string, {
     lessonPlan: LessonPlanResponse | null;
     learningPath: string;
@@ -692,15 +727,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           }
         });
 
-        const allStudents = await getStudentsByTeacher(teacherId);
-        const studentViews = allStudents.map((s) => {
-          const sectionLookupKey = normalizeClassSectionId(s.classSectionId || s.classroomId);
-          const resolvedClassName =
-            classNameLookup.get(s.classroomId)
-            || (sectionLookupKey ? classNameLookup.get(sectionLookupKey) : undefined)
-            || s.className
-            || 'Unknown';
-          const mapped = toStudentView(s, resolvedClassName);
+        // Apply the same class metadata lookup to a student-shaped record so
+        // that registered, managed, and roster rows all share the same
+        // class-name/strand/grade-level enrichment.
+        const enrichStudentClassMetadata = (mapped: StudentView): StudentView => {
+          const sectionLookupKey = normalizeClassSectionId(mapped.classSectionId || mapped.classroomId);
           if (!sectionLookupKey) return mapped;
           const matchedMetadata = classMetadataLookup.get(sectionLookupKey);
           if (!matchedMetadata) return mapped;
@@ -731,7 +762,146 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             managerId: classMetadata.managerId || mapped.managerId,
             managerName: classMetadata.managerName || mapped.managerName,
           };
+        };
+
+        const resolveClassNameFor = (classroomId: string, classSectionKey: string, fallback?: string) =>
+          classNameLookup.get(classroomId)
+          || (classSectionKey ? classNameLookup.get(classSectionKey) : undefined)
+          || fallback
+          || 'Unknown';
+
+        // Build the deduped list of class section ids the teacher can see —
+        // ownership + classroom rows. Registered student lookup keys off this.
+        const knownClassSectionIds = Array.from(
+          new Set(
+            [
+              ...ownershipRecords.map((record) => record.classSectionId),
+              ...classrooms.map((classroom) => classroom.classSectionId).filter(Boolean) as string[],
+              ...classViews.map((view) => view.classSectionId).filter(Boolean) as string[],
+            ]
+              .map((entry) => (entry || '').trim())
+              .filter((entry): entry is string => !!entry)
+          )
+        );
+
+        // ── PRIMARY DATA LOAD (registered users + managed-student enrichment) ──
+        // Both queries run in parallel; the dashboard does not finish loading
+        // until both resolve.
+        const [allManagedStudents, registeredStudents] = await Promise.all([
+          getStudentsByTeacher(teacherId).catch((error) => {
+            console.warn('[TeacherDashboard] managed-student fetch failed:', error);
+            return [] as ManagedStudent[];
+          }),
+          getAllRegisteredStudentsByTeacher(teacherId, knownClassSectionIds).catch((error) => {
+            console.warn('[TeacherDashboard] registered-student fetch failed:', error);
+            return [] as RegisteredStudentAccount[];
+          }),
+        ]);
+
+        // Index managed students for fast match-by-uid / LRN / name+section.
+        const managedById = new Map<string, ManagedStudent>();
+        const managedByLrn = new Map<string, ManagedStudent>();
+        const managedByNameSection = new Map<string, ManagedStudent>();
+        allManagedStudents.forEach((managed) => {
+          managedById.set(managed.id, managed);
+          if (managed.lrn) {
+            managedByLrn.set(managed.lrn.trim().toLowerCase(), managed);
+          }
+          const nameKey = normalizeStudentName(managed.name);
+          const sectionKey = normalizeClassSectionId(managed.classSectionId || managed.classroomId);
+          if (nameKey) {
+            managedByNameSection.set(`${nameKey}|${sectionKey}`, managed);
+          }
         });
+
+        // Track which managed records have been claimed by a registered base
+        // row so we can later identify the import-only orphans.
+        const consumedManagedIds = new Set<string>();
+
+        // (Step 1) Build the base list from registered accounts and enrich
+        // each one with the matching managed-student record (academic data).
+        const enrichedRegistered: StudentView[] = registeredStudents.map((account) => {
+          const baseManaged = mapRegisteredStudentToManaged(account);
+          const lrnKey = (account.lrn || '').trim().toLowerCase();
+          const nameKey = normalizeStudentName(account.name);
+          const sectionKey = normalizeClassSectionId(account.classSectionId);
+
+          let match: ManagedStudent | undefined;
+          if (managedById.has(account.uid)) {
+            match = managedById.get(account.uid);
+          } else if (lrnKey && managedByLrn.has(lrnKey)) {
+            match = managedByLrn.get(lrnKey);
+          } else if (nameKey) {
+            const composite = `${nameKey}|${sectionKey}`;
+            match = managedByNameSection.get(composite);
+          }
+
+          if (match) {
+            consumedManagedIds.add(match.id);
+            const merged: ManagedStudent = {
+              ...baseManaged,
+              // Identity from registered side wins.
+              id: account.uid,
+              accountUid: account.uid,
+              email: baseManaged.email || match.email,
+              lrn: baseManaged.lrn || match.lrn,
+              name: baseManaged.name || match.name,
+              avatar: baseManaged.avatar || match.avatar,
+              // Academic enrichment from managed side wins where present.
+              riskLevel: match.riskLevel || baseManaged.riskLevel,
+              avgQuizScore: match.avgQuizScore || baseManaged.avgQuizScore,
+              engagementScore: match.engagementScore || baseManaged.engagementScore,
+              attendance: match.attendance || baseManaged.attendance,
+              assignmentCompletion: match.assignmentCompletion || baseManaged.assignmentCompletion,
+              weakestTopic: match.weakestTopic || baseManaged.weakestTopic,
+              struggles: match.struggles || baseManaged.struggles,
+              lastActive: match.lastActive || baseManaged.lastActive,
+              wri: match.wri ?? null,
+              riskStatus: match.riskStatus ?? null,
+              riskUpdatedAt: match.riskUpdatedAt ?? null,
+              diagnosticScore: match.diagnosticScore ?? null,
+              externalGradesAvg: match.externalGradesAvg ?? null,
+              systemPerformanceAvg: match.systemPerformanceAvg ?? null,
+              riskHistory: match.riskHistory,
+              // Section/classroom: prefer registered's classSectionId so the
+              // section management UI follows the user profile, but fall back
+              // to managed's where registered is empty.
+              grade: baseManaged.grade || match.grade,
+              gradeLevel: baseManaged.gradeLevel || match.gradeLevel,
+              section: baseManaged.section || match.section,
+              classSectionId: baseManaged.classSectionId || match.classSectionId,
+              classroomId: baseManaged.classroomId || match.classroomId,
+              classMetadata: match.classMetadata || baseManaged.classMetadata,
+              hasRegisteredAccount: true,
+              source: 'both',
+            };
+            const sectionLookupKey = normalizeClassSectionId(merged.classSectionId || merged.classroomId);
+            const resolvedClassName = resolveClassNameFor(merged.classroomId || '', sectionLookupKey, merged.className);
+            return enrichStudentClassMetadata(toStudentView(merged, resolvedClassName));
+          }
+
+          // No managed match — pure registered row.
+          const sectionLookupKey = normalizeClassSectionId(baseManaged.classSectionId || baseManaged.classroomId);
+          const resolvedClassName = resolveClassNameFor(baseManaged.classroomId || '', sectionLookupKey, baseManaged.className);
+          return enrichStudentClassMetadata(toStudentView(baseManaged, resolvedClassName));
+        });
+
+        // (Step 2) Surface managed students that have no registered account —
+        // these are roster-only rows that need a "Create Account" CTA.
+        const importOnlyStudents: StudentView[] = allManagedStudents
+          .filter((managed) => !consumedManagedIds.has(managed.id))
+          .map((managed) => {
+            const taggedManaged: ManagedStudent = {
+              ...managed,
+              hasRegisteredAccount: false,
+              source: 'import',
+            };
+            const sectionLookupKey = normalizeClassSectionId(taggedManaged.classSectionId || taggedManaged.classroomId);
+            const resolvedClassName = resolveClassNameFor(taggedManaged.classroomId, sectionLookupKey, taggedManaged.className);
+            return enrichStudentClassMetadata(toStudentView(taggedManaged, resolvedClassName));
+          });
+
+        const studentViews: StudentView[] = [...enrichedRegistered, ...importOnlyStudents];
 
         if (!isActive) return;
         setClasses((prev) => {
@@ -748,6 +918,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         });
 
         // Load imported overview as a best-effort background merge so dashboard render is never blocked.
+        // Per the registered-first contract, this background pass MUST NOT
+        // introduce new student rows that bypass the registered/managed merge
+        // — it is restricted to enriching class metadata and patching
+        // already-known students.
         void apiService
           .getImportedClassOverview({
             limit: 3000,
@@ -759,7 +933,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               console.warn('Imported class overview warnings:', imported.warnings.join(' '));
             }
             setClasses((prev) => mergeClassViews(prev, imported.classrooms.map(toImportedClassView)));
-            setStudents((prev) => mergeStudentViews(prev, imported.students.map(toImportedStudentView)));
+            setStudents((prev) => {
+              if (prev.length === 0) return prev;
+              const importedViews = imported.students.map(toImportedStudentView);
+              // Build the set of dedupe keys present in the current
+              // (registered-first) state. Anything not already present is
+              // dropped so we never silently inject roster-only rows.
+              const existingKeys = new Set<string>();
+              prev.forEach((entry) => existingKeys.add(buildStudentMergeKey(entry)));
+              const enrichmentOnly = importedViews.filter((entry) =>
+                existingKeys.has(buildStudentMergeKey(entry))
+              );
+              if (enrichmentOnly.length === 0) return prev;
+              return mergeStudentViews(prev, enrichmentOnly);
+            });
           })
           .catch((importedErr) => {
             console.warn('Imported class overview merge unavailable:', importedErr);
@@ -1015,6 +1202,102 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     }
   };
 
+  const handleOpenCreateAccount = useCallback((student: StudentView) => {
+    setCreateAccountSeed({
+      rosterId: student.id,
+      name: student.name,
+      lrn: student.lrn,
+      email: student.email,
+      grade: student.grade,
+      section: student.section,
+      classSectionId: student.classSectionId,
+    });
+  }, []);
+
+  const handleAccountCreated = useCallback(
+    (result: { uid: string; email: string; temporaryPassword: string; rosterId: string }) => {
+      setStudents((prev) =>
+        prev.map((entry) =>
+          entry.id === result.rosterId
+            ? {
+                ...entry,
+                hasRegisteredAccount: true,
+                source: 'both',
+                accountUid: result.uid,
+                email: result.email || entry.email,
+              }
+            : entry,
+        ),
+      );
+      // Trigger a quiet background refresh so the new uid-keyed registered
+      // record replaces the import row on the next pass.
+      setDataRefreshNonce((nonce) => nonce + 1);
+    },
+    [],
+  );
+
+  const handleReassignSection = useCallback(
+    async (
+      student: StudentView,
+      target: { classSectionId: string; grade: string; section: string },
+    ) => {
+      if (!currentUser) {
+        toast.error('Cannot reassign section without an authenticated teacher.');
+        return;
+      }
+      const teacherId = currentUser.uid;
+      const targetSectionId = (target.classSectionId || '').trim();
+      if (!targetSectionId) {
+        toast.error('Pick a target section first.');
+        return;
+      }
+
+      setReassignBusyId(student.id);
+      try {
+        await reassignStudentSection({
+          studentId: student.accountUid || student.id,
+          isRegisteredAccount: !!student.hasRegisteredAccount,
+          newClassSectionId: targetSectionId,
+          newGrade: target.grade,
+          newSection: target.section,
+          previousClassSectionId: student.classSectionId,
+          teacherId,
+          teacherName,
+          schoolYear:
+            student.classMetadata?.schoolYear || String(new Date().getFullYear()),
+        });
+
+        setStudents((prev) =>
+          prev.map((entry) => {
+            if (entry.id !== student.id) return entry;
+            const refreshedMetadata = resolveClassMetadata({
+              metadata: entry.classMetadata,
+              classSectionId: targetSectionId,
+              className: entry.className,
+              grade: target.grade,
+              section: target.section,
+            });
+            return {
+              ...entry,
+              grade: target.grade,
+              section: target.section,
+              classSectionId: targetSectionId,
+              classroomId: targetSectionId,
+              classMetadata: refreshedMetadata,
+            };
+          }),
+        );
+        toast.success(`Moved ${student.name} to ${target.grade} - ${target.section}.`);
+      } catch (err) {
+        console.error('Section reassignment failed:', err);
+        toast.error(err instanceof Error ? err.message : 'Failed to reassign section.');
+      } finally {
+        setReassignBusyId(null);
+      }
+    },
+    [currentUser, teacherName],
+  );
+
   useEffect(() => {
     const updateViewport = () => {
       const nextIsMobile = window.innerWidth < 1024;
@@ -1042,7 +1325,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     setSelectedStudent(null);
   };
 
-  const teacherName = userProfile?.name || 'Teacher';
   const selectedClassSectionId = useMemo(() => {
     if (!selectedClass) return undefined;
     if (selectedClass.classMetadata?.classSectionId) return selectedClass.classMetadata.classSectionId || undefined;
@@ -1448,9 +1730,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 <AnalyticsView
                   selectedClass={effectiveAnalyticsClass}
                   students={filteredStudentsForAnalytics}
+                  allClasses={classes}
                   riskDistribution={riskDistribution}
                   topicPerformance={topicPerformance}
                   onViewStudent={handleViewStudent}
+                  onCreateAccount={handleOpenCreateAccount}
+                  onReassignSection={handleReassignSection}
+                  reassignBusyId={reassignBusyId}
                   onBack={() => setSelectedClass(null)}
                   teacherOptions={teacherDirectory}
                   managerUpdating={managerUpdating}
@@ -1755,6 +2041,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         confirmText="Logout"
         cancelText="Cancel"
       />
+
+      {/* Provision system account for a roster-only student */}
+      <CreateStudentAccountModal
+        isOpen={!!createAccountSeed}
+        onClose={() => setCreateAccountSeed(null)}
+        seed={createAccountSeed}
+        adviserTeacherId={currentUser?.uid || ''}
+        adviserTeacherName={teacherName}
+        schoolYear={
+          createAccountSeed
+            ? students.find((entry) => entry.id === createAccountSeed.rosterId)?.classMetadata?.schoolYear
+              || String(new Date().getFullYear())
+            : undefined
+        }
+        onCreated={handleAccountCreated}
+      />
     </div>
   );
 };
@@ -1979,7 +2281,15 @@ const DashboardView: React.FC<{
   );
 };
 
-const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentView; onViewStudent: (s: StudentView) => void }) => {
+const StudentCard = React.memo(({
+  student,
+  onViewStudent,
+  onCreateAccount,
+}: {
+  student: StudentView;
+  onViewStudent: (s: StudentView) => void;
+  onCreateAccount?: (s: StudentView) => void;
+}) => {
   const getTheme = () => {
     if (student.riskLevel === 'high') {
       return { borderLeft: 'border-l-rose-500', bgAvatar: 'bg-rose-50 text-rose-600 border-rose-100/50', badge: 'text-rose-600 bg-rose-50', progress: 'bg-rose-500' };
@@ -1991,6 +2301,8 @@ const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentVi
   };
 
   const theme = getTheme();
+  const isRosterOnly = student.hasRegisteredAccount === false && student.source === 'import';
+  const hasActiveAccount = student.hasRegisteredAccount === true;
 
   return (
     <div
@@ -2007,7 +2319,15 @@ const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentVi
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-[#1e293b] leading-tight truncate">{student.name}</p>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-[13px] font-semibold text-[#1e293b] leading-tight truncate">{student.name}</p>
+              {hasActiveAccount && (
+                <span
+                  title="Registered student account"
+                  className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"
+                />
+              )}
+            </div>
             <p className="text-[10px] text-[#64748b] flex items-center gap-[4px] mt-0.5 truncate">
               <Clock className="w-[10px] h-[10px] shrink-0" /> {student.lastActive || 'recently'}
             </p>
@@ -2015,6 +2335,25 @@ const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentVi
         </div>
         <span className={`font-semibold text-[11px] px-[6px] py-[2px] rounded-[14px] shrink-0 ${theme.badge}`}>{student.avgScore}%</span>
       </div>
+      {isRosterOnly && (
+        <div className="flex items-center justify-between gap-2 mb-2 px-2 py-1 rounded-[10px] bg-amber-50 border border-amber-100/80">
+          <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">No Account</span>
+          {onCreateAccount && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onCreateAccount(student);
+              }}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-amber-700 border border-amber-200 hover:bg-amber-100 text-[10px] font-semibold transition-colors"
+              aria-label={`Create system account for ${student.name}`}
+            >
+              <span aria-hidden>+</span>
+              Create
+            </button>
+          )}
+        </div>
+      )}
       <div className="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden mt-auto">
         <div className={`h-full rounded-full ${theme.progress}`} style={{ width: `${student.avgScore}%` }}></div>
       </div>
@@ -2022,13 +2361,210 @@ const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentVi
   );
 });
 
+// Section Management Panel — moves students between class sections.
+// Renders as a collapsible card below the analytics summary.
+const SectionManagementPanel: React.FC<{
+  students: StudentView[];
+  allClasses: ClassView[];
+  currentClass: ClassView;
+  onReassignSection: (
+    student: StudentView,
+    target: { classSectionId: string; grade: string; section: string },
+  ) => void | Promise<void>;
+  reassignBusyId: string | null;
+}> = ({ students, allClasses, currentClass, onReassignSection, reassignBusyId }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  const sectionTargets = useMemo(() => {
+    const seen = new Map<
+      string,
+      { classSectionId: string; grade: string; section: string; label: string }
+    >();
+    allClasses.forEach((classView) => {
+      const sectionId = (classView.classSectionId || classView.id || '').trim();
+      if (!sectionId) return;
+      const grade = (classView.classMetadata?.grade || '').trim();
+      const section = (classView.classMetadata?.section || '').trim();
+      if (!grade || !section) return;
+      const label = classView.name || `${grade} - ${section}`;
+      seen.set(sectionId, { classSectionId: sectionId, grade, section, label });
+    });
+    return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [allClasses]);
+
+  const grouped = useMemo(() => {
+    const buckets = new Map<string, { label: string; students: StudentView[] }>();
+    const unassigned: StudentView[] = [];
+    students.forEach((student) => {
+      const sectionId = (student.classSectionId || '').trim();
+      if (!sectionId) {
+        unassigned.push(student);
+        return;
+      }
+      const label = student.section || student.className || sectionId;
+      const bucket = buckets.get(sectionId) || { label, students: [] };
+      bucket.students = [...bucket.students, student];
+      buckets.set(sectionId, bucket);
+    });
+    return {
+      assigned: Array.from(buckets.entries())
+        .map(([sectionId, value]) => ({ sectionId, ...value }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+      unassigned,
+    };
+  }, [students]);
+
+  return (
+    <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        className="w-full flex items-center justify-between px-6 py-4 text-left"
+        aria-expanded={expanded}
+      >
+        <div>
+          <h3 className="text-[15px] font-semibold text-[#1e293b]">Section Management</h3>
+          <p className="text-[12px] text-[#64748b] mt-0.5">
+            Move students between sections. Showing {students.length} students across {grouped.assigned.length} section
+            {grouped.assigned.length === 1 ? '' : 's'}
+            {grouped.unassigned.length > 0 ? ` · ${grouped.unassigned.length} unassigned` : ''}.
+          </p>
+        </div>
+        <ChevronDown
+          className={`w-4 h-4 text-[#64748b] transition-transform ${expanded ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {expanded && (
+        <div className="border-t border-[#f1f5f9] divide-y divide-[#f1f5f9]">
+          {grouped.assigned.length === 0 && grouped.unassigned.length === 0 && (
+            <p className="text-[12px] text-[#64748b] px-6 py-5">
+              No students yet. Add students to this teacher to manage section assignments.
+            </p>
+          )}
+
+          {grouped.assigned.map((bucket) => (
+            <div key={bucket.sectionId} className="px-6 py-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b] mb-2">
+                {bucket.label}{' '}
+                <span className="text-[10px] font-normal text-[#94a3b8]">({bucket.students.length})</span>
+              </p>
+              <div className="space-y-1.5">
+                {bucket.students.map((student) => (
+                  <SectionAssignmentRow
+                    key={`section-row-${student.id}`}
+                    student={student}
+                    sectionTargets={sectionTargets}
+                    currentSectionId={currentClass.classSectionId}
+                    onReassign={onReassignSection}
+                    isBusy={reassignBusyId === student.id}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {grouped.unassigned.length > 0 && (
+            <div className="px-6 py-4 bg-amber-50/40">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 mb-2">
+                Unassigned <span className="text-[10px] font-normal text-amber-600/80">({grouped.unassigned.length})</span>
+              </p>
+              <div className="space-y-1.5">
+                {grouped.unassigned.map((student) => (
+                  <SectionAssignmentRow
+                    key={`section-row-${student.id}`}
+                    student={student}
+                    sectionTargets={sectionTargets}
+                    currentSectionId={currentClass.classSectionId}
+                    onReassign={onReassignSection}
+                    isBusy={reassignBusyId === student.id}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SectionAssignmentRow: React.FC<{
+  student: StudentView;
+  sectionTargets: { classSectionId: string; grade: string; section: string; label: string }[];
+  currentSectionId?: string;
+  onReassign: (
+    student: StudentView,
+    target: { classSectionId: string; grade: string; section: string },
+  ) => void | Promise<void>;
+  isBusy: boolean;
+}> = ({ student, sectionTargets, currentSectionId, onReassign, isBusy }) => {
+  const [draftSectionId, setDraftSectionId] = useState<string>(student.classSectionId || '');
+
+  useEffect(() => {
+    setDraftSectionId(student.classSectionId || '');
+  }, [student.classSectionId]);
+
+  const handleApply = () => {
+    const target = sectionTargets.find((entry) => entry.classSectionId === draftSectionId);
+    if (!target) return;
+    if (target.classSectionId === student.classSectionId) return;
+    void onReassign(student, target);
+  };
+
+  const isUnchanged = draftSectionId === (student.classSectionId || '');
+
+  return (
+    <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 px-3 py-2 rounded-[12px] bg-white border border-[#f1f5f9]">
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold text-[#1e293b] truncate">{student.name}</p>
+        <p className="text-[11px] text-[#64748b] truncate">
+          {student.lrn ? `LRN ${student.lrn} · ` : ''}
+          {student.classMetadata?.className || student.className || 'Unassigned section'}
+          {currentSectionId && student.classSectionId === currentSectionId ? ' · current' : ''}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <select
+          value={draftSectionId}
+          onChange={(event) => setDraftSectionId(event.target.value)}
+          disabled={isBusy || sectionTargets.length === 0}
+          className="text-[12px] rounded-xl border border-[#dde3eb] bg-white px-3 py-1.5 text-[#0a1628] focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:opacity-60"
+        >
+          <option value="">Select section…</option>
+          {sectionTargets.map((target) => (
+            <option key={target.classSectionId} value={target.classSectionId}>
+              {target.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={handleApply}
+          disabled={isBusy || isUnchanged || !draftSectionId}
+          className="text-[12px] font-semibold rounded-xl px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:hover:bg-indigo-600"
+        >
+          {isBusy ? 'Saving…' : 'Move'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Analytics View
 const AnalyticsView: React.FC<{
   selectedClass: ClassView;
   students: StudentView[];
+  allClasses: ClassView[];
   riskDistribution: { name: string; value: number; color: string }[];
   topicPerformance: { topic: string; score: number }[];
   onViewStudent: (student: StudentView) => void;
+  onCreateAccount: (student: StudentView) => void;
+  onReassignSection: (
+    student: StudentView,
+    target: { classSectionId: string; grade: string; section: string },
+  ) => void | Promise<void>;
+  reassignBusyId: string | null;
   onBack: () => void;
   teacherOptions: TeacherDirectoryOption[];
   managerUpdating: boolean;
@@ -2041,9 +2577,13 @@ const AnalyticsView: React.FC<{
 }> = ({
   selectedClass,
   students,
+  allClasses,
   riskDistribution,
   topicPerformance,
   onViewStudent,
+  onCreateAccount,
+  onReassignSection,
+  reassignBusyId,
   onBack,
   teacherOptions,
   managerUpdating,
@@ -2277,7 +2817,7 @@ const AnalyticsView: React.FC<{
                 className="no-scrollbar"
                 itemContent={(_, student) => (
                   <div className="py-[6px] px-[8px]">
-                    <StudentCard student={student} onViewStudent={onViewStudent} />
+                    <StudentCard student={student} onViewStudent={onViewStudent} onCreateAccount={onCreateAccount} />
                   </div>
                 )}
                 computeItemKey={(index, student) => buildStudentViewKey(student)}
@@ -2386,9 +2926,17 @@ const AnalyticsView: React.FC<{
             </div>
           </div>
         </div>
-      </motion.div>
-    );
-  };
+
+      <SectionManagementPanel
+        students={students}
+        allClasses={allClasses}
+        currentClass={selectedClass}
+        onReassignSection={onReassignSection}
+        reassignBusyId={reassignBusyId}
+      />
+    </motion.div>
+  );
+};
 
 // Intervention View
 const InterventionView: React.FC<{
