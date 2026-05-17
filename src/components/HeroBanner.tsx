@@ -1,4 +1,4 @@
-﻿import React, { lazy, Suspense, useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Hand, ArrowRight, Zap, Brain } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AvatarLayers } from './CompositeAvatar';
@@ -19,10 +19,10 @@ interface HeroBannerProps {
   assessmentCompleted?: boolean;
 }
 
-const HeroBanner: React.FC<HeroBannerProps> = ({ 
-  userName = 'Student', 
-  userLevel = 1, 
-  avatarLayers, 
+const HeroBanner: React.FC<HeroBannerProps> = ({
+  userName = 'Student',
+  userLevel = 1,
+  avatarLayers,
   onContinueLearning,
   showAssessmentTooltip,
   onOpenAssessment,
@@ -61,10 +61,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="relative w-full mt-0 rounded-[2rem] p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg"
+      className="relative w-full mt-0 rounded-2xl md:rounded-[2rem] p-5 md:p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg"
     >
       {/* Background elements wrapped in overflow-hidden */}
-      <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden rounded-2xl md:rounded-[2rem] pointer-events-none">
         {/* Gradient accent glow */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/50 to-transparent" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
@@ -74,29 +74,29 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         <div className="absolute inset-0 bg-dot-pattern opacity-40" />
       </div>
 
-      <div className="relative z-10 flex min-h-[140px] lg:min-h-[160px] items-center justify-between gap-6 pb-0">
-        <div className="flex-1 min-w-0 pr-40 lg:pr-[280px] py-1">
-          <div className="flex items-center gap-2 mb-2">
+      <div className="relative z-10 flex flex-col md:flex-row min-h-[140px] lg:min-h-[160px] items-start md:items-center justify-between gap-4 md:gap-6 pb-0">
+        <div className="flex-1 w-full md:w-auto min-w-0 pr-0 md:pr-40 lg:pr-[280px] pb-2 md:pb-0 py-1">
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 mb-3 md:mb-2">
             <div className="px-3 md:px-4 py-1.5 rounded-full bg-sky-100 border border-sky-200">
               <span className="text-xs md:text-sm font-body font-bold text-sky-700">Level {userLevel}</span>
             </div>
             <div className="px-3 md:px-4 py-1.5 rounded-full bg-rose-50 border border-rose-200">
-              <Zap size={14} className="inline -mt-0.5 text-rose-500 mr-1" />   
+              <Zap size={14} className="inline -mt-0.5 text-rose-500 mr-1" />
               <span className="text-xs md:text-sm font-body font-bold text-rose-700">Active</span>
             </div>
           </div>
 
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1.5 tracking-tight leading-[1.1]">
+          <h1 className="text-2xl md:text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1.5 tracking-tight leading-[1.1]">
             {getGreeting()}, {userName}! <Hand size={20} className="inline -mt-1 ml-1" />
           </h1>
-          <p className="text-slate-500 mb-1 text-xs md:text-sm font-body font-bold">Today is a great day to move one step forward in math mastery.</p>
-          <p className="text-[11px] md:text-xs text-slate-400 font-body mb-4">Focus on your next recommended lesson and keep your momentum.</p>
+          <p className="text-slate-500 mb-2 md:mb-1 text-sm md:text-sm font-body font-bold pr-[155px] md:pr-0">Today is a great day to move one step forward in math mastery.</p>
+          <p className="text-xs md:text-xs text-slate-400 font-body mb-5 md:mb-4 pr-[150px] md:pr-0">Focus on your next recommended lesson and keep your momentum.</p>
 
           <motion.button
             onClick={onContinueLearning}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-2 rounded-xl font-body font-bold text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex items-center gap-2 group"   
+            className="mt-2 md:mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-3 md:py-2 rounded-xl font-body font-bold text-base md:text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex justify-center md:justify-start items-center gap-2 group w-auto md:w-auto"
           >
             Continue Learning
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -119,7 +119,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
                 <Brain size={16} />
               </span>
               <p className="text-xs lg:text-sm font-bold text-amber-900 leading-tight">
-                Don't forget to take the<br/>Initial Assessment!
+                Don't forget to take the<br />Initial Assessment!
               </p>
             </div>
             {/* Speech bubble tail pointing right-down towards avatar */}
@@ -145,7 +145,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
                 </svg>
               </div>
               <p className="text-xs lg:text-sm font-bold text-teal-900 leading-tight">
-                Assessment Complete!<br/>
+                Assessment Complete!<br />
                 <span className="text-[10px] lg:text-[11px] font-normal text-teal-700">View results &amp; history</span>
               </p>
             </div>
@@ -165,14 +165,14 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       )}
 
       <div
-        className="hidden md:block absolute right-0 lg:right-10 bottom-0 w-[150px] lg:w-[270px] pointer-events-none z-20"
+        className="absolute right-0 bottom-0 lg:right-10 w-[160px] md:w-[150px] lg:w-[270px] pointer-events-none z-20"
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
       >
-         <div className="relative w-full aspect-[4/5] translate-y-[21%] lg:translate-y-[19%] drop-shadow-2xl">
-           <Suspense fallback={<div className="w-full h-full scale-[1.25] lg:scale-[1.3] origin-bottom" />}>
-             <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.25] lg:scale-[1.3] origin-bottom" />
-           </Suspense>
-         </div>
+        <div className="relative w-full aspect-[4/5] translate-y-[10%] md:translate-y-[21%] lg:translate-y-[19%] drop-shadow-2xl">
+          <Suspense fallback={<div className="w-full h-full scale-[1.15] md:scale-[1.25] lg:scale-[1.3] origin-bottom" />}>
+            <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.35] md:scale-[1.25] lg:scale-[1.3] origin-bottom" />
+          </Suspense>
+        </div>
       </div>
     </motion.div>
   );

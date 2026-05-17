@@ -417,9 +417,9 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   }
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-hide px-4 sm:px-6 xl:px-10 py-6 sm:py-8 relative">
+    <div className="h-full overflow-y-auto scrollbar-hide px-4 md:px-6 lg:px-10 py-4 md:py-6 lg:py-8 relative">
       {/* Header & Navigation */}
-      <div className="relative mb-6 xl:mb-8 w-full sm:w-max">
+      <div className="relative mb-4 lg:mb-6 xl:mb-8 w-full lg:w-max">
         <button
           onClick={onBack}
           className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/80 backdrop-blur-xl border border-slate-200/60 text-slate-600 hover:text-indigo-600 font-bold text-sm tracking-wide transition-all hover:-translate-x-1 shadow-sm hover:shadow-md"
@@ -440,7 +440,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         <div className="absolute inset-0 opacity-10 pointer-events-none module-detail-grid-pattern" />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="relative p-5 sm:p-7 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
+        <div className="relative p-4 md:p-7 lg:p-10 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-8">
           <div className="flex-1 text-white">
             <div className="flex flex-wrap items-center gap-3 mb-4 md:mb-5">
               <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[11px] font-black uppercase tracking-widest text-[#f8fafc] border border-white/20 shadow-sm flex items-center gap-1.5">
@@ -451,15 +451,20 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               </div>
             </div>
 
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-black text-white mb-3 md:mb-4 tracking-[-0.02em] leading-tight">
-              {module.title}
-            </h1>
+            <div className="flex items-center gap-3 mb-3 md:mb-4">
+              <span className="flex lg:hidden text-white/80 shrink-0">
+                <BookOpen size={22} strokeWidth={1.5} />
+              </span>
+              <h1 className="text-2xl md:text-4xl lg:text-5xl font-display font-black text-white tracking-[-0.02em] leading-tight">
+                {module.title}
+              </h1>
+            </div>
             <p className="text-slate-300 text-sm md:text-[15px] max-w-2xl font-medium leading-relaxed mb-6 md:mb-8">
               {module.description}
             </p>
 
             {/* Elegant Linear Progress instead of redundant circles/bars */}
-            <div className="bg-black/20 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/10 max-w-xl">
+            <div className="bg-black/20 backdrop-blur-md rounded-2xl p-3 md:p-4 lg:p-5 border border-white/10 max-w-xl">
               <div className="flex justify-between items-end mb-3">
                 <div className="flex items-center gap-2.5">
                   <Award size={20} className="text-emerald-400" />
@@ -522,7 +527,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             </div>
           </div>
 
-          <div className="relative z-10 px-4 sm:px-6 md:px-8 py-5 md:py-6 space-y-5">
+          <div className="relative z-10 px-3 md:px-6 lg:px-8 py-4 md:py-6 space-y-4 md:space-y-5">
             {module.lessons.map((lesson, index) => {
               const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
               const lessonPct = getLessonProgressPercent(lesson.id, isCompleted);
@@ -534,7 +539,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`relative rounded-[1.5rem] border overflow-hidden group transition-all duration-500 mb-6 ${
+                    className={`relative rounded-[1.5rem] border overflow-hidden group transition-all duration-500 mb-4 md:mb-6 ${
                       lesson.locked
                         ? 'border-slate-200 opacity-65 saturate-50'
                         : 'border-slate-200/80 hover:border-slate-300 hover:shadow-[0_16px_40px_-15px_rgba(0,0,0,0.12)] hover:-translate-y-0.5'
@@ -571,19 +576,19 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                     <div className="absolute right-4 top-4 opacity-10 pointer-events-none transition-all duration-500 group-hover:rotate-12 group-hover:scale-110 drop-shadow-sm" style={{ color: lessonAccentHex }}><Hash size={56} strokeWidth={1} /></div>
                     <div className="absolute right-16 bottom-5 opacity-10 pointer-events-none transition-all duration-500 group-hover:-rotate-6 group-hover:-translate-y-2 drop-shadow-sm" style={{ color: lessonAccentHex }}><BookOpen size={40} strokeWidth={1} /></div>
 
-                    <div className="relative z-10 p-4 md:p-5 pt-6 space-y-4">
+                    <div className="relative z-10 p-3 md:p-5 pt-5 md:pt-6 space-y-3 md:space-y-4">
                       <button
                         type="button"
                         onClick={() => !lesson.locked && setSelectedLesson({ lesson, type: 'lesson' })}
-                        className={`w-full text-left flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 transition shadow-sm ${
+                        className={`w-full text-left flex flex-wrap items-center justify-between gap-2 md:gap-3 rounded-2xl px-3 md:px-5 py-3 md:py-4 transition shadow-sm ${
                           lesson.locked
                             ? 'cursor-not-allowed border border-slate-200 bg-white/70'
                             : 'cursor-pointer bg-white hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex items-center gap-4 min-w-0">
+                        <div className="flex items-center gap-2 md:gap-4 min-w-0">
                           <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors shadow-sm ${
+                            className={`w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center shrink-0 transition-colors shadow-sm ${
                               lesson.locked
                                 ? 'bg-slate-100 text-slate-400'
                                 : isCompleted
@@ -592,29 +597,29 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                             }`}
                             style={!lesson.locked ? (isCompleted ? { backgroundColor: '#0ea5e9' } : { backgroundColor: lessonAccentHex }) : {}}
                           >
-                            {lesson.locked ? <Lock size={18} /> : isCompleted ? <CheckCircle2 size={24} /> : <Play size={20} className="ml-0.5" />}
+                            {lesson.locked ? <Lock size={16} /> : isCompleted ? <CheckCircle2 size={20} /> : <Play size={18} className="ml-0.5" />}
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-[11px] md:text-[12px] font-black uppercase tracking-wider text-slate-500 mb-0.5">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] md:text-[12px] font-black uppercase tracking-wider text-slate-500 mb-0.5">
                               Lesson {index + 1}
                             </p>
-                            <h3 className="font-bold text-[16px] md:text-[18px] text-[#0a1628] truncate">{lesson.title}</h3>
+                            <h3 className="font-bold text-[14px] md:text-[18px] text-[#0a1628] leading-tight line-clamp-2">{lesson.title}</h3>
                           </div>
                         </div>
-                        <div className="flex items-center justify-end">
-                          <span className="inline-flex items-center gap-1.5 text-slate-500 text-xs md:text-sm font-semibold bg-slate-100/80 px-3 py-1.5 rounded-xl">
-                            <Clock size={14} />
+                        <div className="flex items-center justify-end shrink-0">
+                          <span className="inline-flex items-center gap-1 text-slate-500 text-[11px] md:text-sm font-semibold bg-slate-100/80 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl">
+                            <Clock size={12} />
                             {lesson.duration}
                           </span>
                         </div>
                       </button>
 
-                      <div className="flex flex-wrap gap-3 px-1">
-                        <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
-                          <BookOpen size={14} /> Study Materials
+                      <div className="flex flex-wrap gap-2 md:gap-3 px-0.5 md:px-1">
+                        <button type="button" className="inline-flex items-center gap-1 rounded-full bg-white px-3 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                          <BookOpen size={12} /> Study Materials
                         </button>
-                        <button type="button" className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
-                          <Bookmark size={14} /> Quiz
+                        <button type="button" className="inline-flex items-center gap-1 rounded-full bg-white px-3 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
+                          <Bookmark size={12} /> Quiz
                         </button>
                       </div>
 
@@ -627,42 +632,42 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.15 + index * 0.03 }}
-                      className="mt-8 mb-6"
+                      className="mt-4 md:mt-6 mb-4 md:mb-6"
                     >
-                      <div className="flex items-center gap-4 mb-6">
+                      <div className="flex items-center gap-2 md:gap-4 mb-4 md:mb-6">
                         <div className="flex-1 h-px bg-slate-200" />
-                        <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest text-center">
+                        <span className="text-[10px] md:text-xs font-bold text-indigo-400 uppercase tracking-widest text-center">
                           mid-module checkpoint
                         </span>
                         <div className="flex-1 h-px bg-slate-200" />
                       </div>
 
-                      <div className="relative rounded-[1.5rem] bg-[#533ab6] p-5 shadow-lg overflow-hidden group transition-all hover:shadow-xl hover:-translate-y-1">
-                        <div className="absolute right-4 md:right-10 top-1/2 -translate-y-1/2 text-white/5 text-[140px] font-black font-display pointer-events-none group-hover:scale-110 transition-transform duration-500">?</div>
+                      <div className="relative rounded-[1.5rem] bg-[#533ab6] p-3 md:p-5 shadow-lg overflow-hidden group transition-all hover:shadow-xl hover:-translate-y-1">
+                        <div className="absolute right-2 md:right-10 top-1/2 -translate-y-1/2 text-white/5 text-[80px] md:text-[140px] font-black font-display pointer-events-none group-hover:scale-110 transition-transform duration-500">?</div>
 
-                        <div className="relative z-10 flex flex-wrap items-center gap-4 md:gap-5">
-                          <div className="w-14 h-14 rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
-                            <Target size={28} className="text-rose-400" />
+                        <div className="relative z-10 flex flex-wrap items-center gap-3 md:gap-5">
+                          <div className="w-12 h-12 md:w-14 md:h-14 rounded-[12px] md:rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
+                            <Target size={22} className="text-rose-400" />
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-1 drop-shadow-sm">
+                            <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-0.5 md:mb-1 drop-shadow-sm">
                               COMPETENCY CHECK · General Quiz
                             </p>
-                            <h3 className="font-display font-medium text-[20px] md:text-[22px] text-white leading-tight mb-2 tracking-tight">
+                            <h3 className="font-display font-medium text-[16px] md:text-[22px] text-white leading-tight mb-1 md:mb-2 tracking-tight">
                               {standaloneQuiz.title}
                             </h3>
-                            <p className="text-xs font-semibold text-white/80 flex items-center gap-3">
-                              <span className="inline-flex items-center gap-1"><PenTool size={12} /> {standaloneQuiz.questions} Qs</span>
-                              <span className="inline-flex items-center gap-1"><Clock size={12} /> {standaloneQuiz.duration}</span>
-                              <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={12} className="fill-amber-300" /> +50 XP</span>
+                            <p className="text-[11px] md:text-xs font-semibold text-white/80 flex flex-wrap items-center gap-2 md:gap-3">
+                              <span className="inline-flex items-center gap-1"><PenTool size={11} /> {standaloneQuiz.questions} Qs</span>
+                              <span className="inline-flex items-center gap-1"><Clock size={11} /> {standaloneQuiz.duration}</span>
+                              <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={11} className="fill-amber-300" /> +50 XP</span>
                             </p>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
-                            className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
+                            className={`px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[11px] md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
                               standaloneQuiz.locked
                                 ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
                                 : (iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))

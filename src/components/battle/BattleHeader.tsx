@@ -32,29 +32,31 @@ export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
   onTogglePause,
 }) => {
   return (
-    <header className="flex items-center justify-between shrink-0 h-16 relative gap-4">
+    <header className="flex items-center justify-between shrink-0 h-14 sm:h-16 relative gap-2 sm:gap-4">
+      {/* Left: Stat pills */}
       <div className="flex items-center min-w-0">
-        <div className="flex items-center gap-3 md:gap-4 px-4 py-2 md:px-5 md:py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md min-w-0">
-          <div className="flex items-center gap-1.5 text-amber-400 font-bold text-sm shrink-0">
-            <Flame className="w-4 h-4" /> {playerRoundStreak}
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-4 px-2.5 sm:px-4 py-1.5 sm:py-2 md:px-5 md:py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md min-w-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 text-amber-400 font-bold text-xs sm:text-sm shrink-0">
+            <Flame className="w-3 h-3 sm:w-4 sm:h-4" /> {playerRoundStreak}
           </div>
-          <div className="w-px h-4 bg-white/10 shrink-0" />
-          <div className="flex items-center gap-1.5 text-violet-300 font-bold text-sm shrink-0">
-            <Target className="w-4 h-4" /> {playerVisualMultiplier.toFixed(2)}x
+          <div className="w-px h-3 sm:h-4 bg-white/10 shrink-0" />
+          <div className="flex items-center gap-1 sm:gap-1.5 text-violet-300 font-bold text-xs sm:text-sm shrink-0">
+            <Target className="w-3 h-3 sm:w-4 sm:h-4" /> {playerVisualMultiplier.toFixed(2)}x
           </div>
-          <div className="w-px h-4 bg-white/10 shrink-0" />
+          <div className="w-px h-3 sm:h-4 bg-white/10 shrink-0" />
           <motion.div
             key={liveXpEarned}
             animate={liveXpEarned > 0 ? { scale: [1, 1.25, 1] } : {}}
             transition={{ duration: 0.35 }}
-            className="flex flex-col items-center text-emerald-400 bg-emerald-500/10 px-3 py-0.5 rounded-full border border-emerald-500/20 font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)] shrink-0"
+            className="flex flex-col items-center text-emerald-400 bg-emerald-500/10 px-2 sm:px-3 py-0.5 rounded-full border border-emerald-500/20 font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)] shrink-0"
           >
-            <span className="text-sm leading-none tabular-nums">{liveXpEarned} pts</span>
-            <span className="text-[8px] leading-none text-emerald-500/70 uppercase tracking-widest font-black whitespace-nowrap">Battle Score</span>
+            <span className="text-xs sm:text-sm leading-none tabular-nums">{liveXpEarned} pts</span>
+            <span className="hidden sm:block text-[8px] leading-none text-emerald-500/70 uppercase tracking-widest font-black whitespace-nowrap">Battle Score</span>
           </motion.div>
         </div>
       </div>
 
+      {/* Center: Topic title — hidden on mobile */}
       <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-3 bg-black/20 px-5 py-2 rounded-full border border-white/5 min-w-0 max-w-[48%]">
         <div className="w-3.5 h-3.5 rounded-sm bg-orange-400 shadow-[0_0_10px_rgba(251,146,60,0.5)] shrink-0" />
         <div className="flex flex-col items-start justify-center -space-y-0.5 min-w-0">
@@ -76,19 +78,20 @@ export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Right: Control buttons */}
+      <div className="flex items-center gap-1.5 sm:gap-3">
         <Button
           variant="outline"
           size="icon"
-          className="h-12 w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
+          className="h-9 w-9 sm:h-12 sm:w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
           onClick={onToggleSound}
         >
-          {battleSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+          {battleSoundEnabled ? <Volume2 className="h-4 w-4 sm:h-5 sm:w-5" /> : <VolumeX className="h-4 w-4 sm:h-5 sm:w-5" />}
         </Button>
         <Button
           variant="outline"
           size="icon"
-          className="h-12 w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
+          className="hidden sm:flex h-12 w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
           onClick={onToggleFullscreen}
         >
           {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
@@ -97,7 +100,7 @@ export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
           variant="outline"
           size="icon"
           className={cn(
-            'h-12 w-12 rounded-full border-white/20 text-white',
+            'h-9 w-9 sm:h-12 sm:w-12 rounded-full border-white/20 text-white',
             isDesignPauseAvailable
               ? 'bg-black/20 hover:bg-white/10'
               : 'bg-black/10 opacity-50 cursor-not-allowed',
@@ -105,7 +108,7 @@ export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
           onClick={onTogglePause}
           disabled={!isDesignPauseAvailable}
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
       </div>
     </header>

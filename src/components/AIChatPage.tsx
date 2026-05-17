@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Search, Plus, Trash2 } from 'lucide-react';
+import { Send, Search, Plus, Trash2, ChevronLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useChatContext } from '../contexts/ChatContext';
@@ -125,29 +125,31 @@ const AIChatPage = () => {
   );
 
   return (
-    <div className="h-full min-h-0 overflow-hidden flex gap-4 px-4 sm:px-6 xl:px-10 py-6">
+    <div className="h-full min-h-0 overflow-hidden flex md:gap-4 px-0 md:px-4 sm:px-6 xl:px-10 py-0 md:py-6">
       {/* Left Sidebar - Chat History (Fixed, Scrollable) */}
-      <div className="w-80 min-h-0 flex flex-col bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] overflow-hidden">
+      <div className={`${activeSessionId ? 'hidden md:flex' : 'flex'} w-full md:w-80 min-h-0 flex-col bg-[#f7f9fc] rounded-none md:rounded-3xl border-0 md:border border-[#dde3eb] overflow-hidden`}>
         {/* Header - Fixed */}
         <div className="p-4 border-b border-[#dde3eb] flex-shrink-0">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-2xl flex items-center justify-center">
-              <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-10 h-10 object-contain drop-shadow-md" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0">
+                <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
+              </div>
+              <div>
+                <h2 className="text-sm md:text-base font-bold font-display text-[#0a1628]">L.O.L.I.</h2>
+                <p className="text-[10px] text-[#5a6578]">Your AI Math Tutor</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-bold font-display text-[#0a1628]">L.O.L.I.</h2>
-              <p className="text-[10px] text-[#5a6578]">Your AI Math Tutor</p>
-            </div>
-          </div>
 
-          {/* New Chat Button */}
-          <button
-            onClick={handleNewChat}
-            className="w-full bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-          >
-            <Plus size={18} />
-            New Chat
-          </button>
+            {/* New Chat Button */}
+            <button
+              onClick={handleNewChat}
+              className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 shrink-0"
+            >
+              <Plus size={14} />
+              New Chat
+            </button>
+          </div>
           
           {/* Search */}
           <div className="relative mt-3">
@@ -223,14 +225,22 @@ const AIChatPage = () => {
       </div>
 
       {/* Main Chat Area - Fixed Viewport Layout */}
-      <div className="flex-1 min-h-0 flex flex-col bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] overflow-hidden">
+      <div className={`${!activeSessionId ? 'hidden md:flex' : 'flex'} flex-1 min-h-0 flex-col bg-[#f7f9fc] rounded-none md:rounded-3xl border-0 md:border border-[#dde3eb] overflow-hidden`}>
         {activeSessionId ? (
           <>
             {/* Chat Header - Fixed */}
-            <div className="p-4 border-b border-[#dde3eb] flex items-center justify-between flex-shrink-0">
-              <div>
-                <h2 className="font-bold font-display text-[#0a1628]">{activeSession?.title}</h2>
-                <p className="text-xs text-[#5a6578]">{activeSession?.date}</p>
+            <div className="p-3 md:p-4 border-b border-[#dde3eb] flex items-center justify-between flex-shrink-0 bg-white md:bg-transparent shadow-sm md:shadow-none z-10 relative">
+              <div className="flex items-center gap-2 md:gap-3">
+                <button 
+                  onClick={() => setActiveSessionId(null)}
+                  className="md:hidden p-1.5 -ml-1 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <div>
+                  <h2 className="font-bold font-display text-[#0a1628] text-sm md:text-base">{activeSession?.title}</h2>
+                  <p className="text-[10px] md:text-xs text-[#5a6578]">{activeSession?.date}</p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {activeSession?.topics.map((topic, i) => (
@@ -242,7 +252,7 @@ const AIChatPage = () => {
             </div>
 
             {/* Messages Container - Scrollable with Fixed Height */}
-            <div ref={messagesContainerRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-4 bg-[#edf1f7] min-h-0">
+            <div ref={messagesContainerRef} onScroll={handleMessagesScroll} className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-6 space-y-4 bg-[#edf1f7] min-h-0">
               <AnimatePresence>
                 {messages.map((message) => (
                   <motion.div
@@ -301,8 +311,8 @@ const AIChatPage = () => {
             </div>
 
             {/* Input Area - Sticky at Bottom */}
-            <div className="p-4 border-t border-[#dde3eb] bg-white flex-shrink-0">
-              <div className="flex gap-3">
+            <div className="p-3 md:p-4 border-t border-[#dde3eb] bg-white flex-shrink-0">
+              <div className="flex gap-2 md:gap-3">
                 <Input
                   type="text"
                   value={currentMessage}

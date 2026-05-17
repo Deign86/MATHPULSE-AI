@@ -22,14 +22,14 @@ const LearningPath: React.FC<LearningPathProps> = ({
 }) => {
   const { userProfile } = useAuth();
   const [progress, setProgress] = useState<UserProgress | null>(null);
-  
+
   const normalizedRiskTopics = React.useMemo<DiagnosticTopicKey[]>(() => {
     const primary =
       priorityTopics.length > 0
         ? priorityTopics
         : atRiskSubjects
-            .map((entry) => normalizeDiagnosticTopic(entry))
-            .filter((entry): entry is DiagnosticTopicKey => entry !== null);
+          .map((entry) => normalizeDiagnosticTopic(entry))
+          .filter((entry): entry is DiagnosticTopicKey => entry !== null);
 
     const seen = new Set<DiagnosticTopicKey>();
     return primary.filter((entry) => {
@@ -79,31 +79,32 @@ const LearningPath: React.FC<LearningPathProps> = ({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6 px-1">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
-            <BookOpen size={20} strokeWidth={2.5} />
+      <div className="flex justify-between items-center mb-4 md:mb-6 px-1">
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-xl md:rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
+            <BookOpen className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5} />
           </div>
-          <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">{learningPathHeading}</h2>
+          <h2 className="font-display font-black text-lg md:text-[24px] text-slate-800 tracking-tight whitespace-nowrap">{learningPathHeading}</h2>
         </div>
-        <button 
+        <button
           onClick={() => onNavigateToModules?.()}
-          className="text-primary font-bold text-sm flex items-center gap-1 hover:gap-2 transition-all bg-primary/10 px-4 py-2 rounded-xl hover:bg-primary/20"
+          className="text-primary font-bold text-xs md:text-sm flex shrink-0 items-center gap-1 hover:gap-2 transition-all bg-primary/10 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl hover:bg-primary/20 whitespace-nowrap"
         >
-          View All <ArrowRight size={16} />
+          View All <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+      <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-4 gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 md:gap-6 md:pb-0 md:mx-0 md:px-0 md:overflow-visible">
         {modulesWithProgress.map((module, idx) => (
-          <ModuleFolderCard 
-            key={module.id} 
-            module={module} 
-            index={idx}
-            onClick={() => onNavigateToModules?.(module.id)} 
-            isAtRisk={normalizedRiskTopics.length > 0}
-            badgeLabel={module.status !== 'Not Started' ? module.status : undefined}
-          />
+          <div key={module.id} className="w-[72vw] max-w-[260px] h-[220px] shrink-0 snap-center md:min-w-0 md:max-w-none md:w-auto md:shrink md:h-auto">
+            <ModuleFolderCard
+              module={module}
+              index={idx}
+              onClick={() => onNavigateToModules?.(module.id)}
+              isAtRisk={normalizedRiskTopics.length > 0}
+              badgeLabel={module.status !== 'Not Started' ? module.status : undefined}
+            />
+          </div>
         ))}
       </div>
     </div>

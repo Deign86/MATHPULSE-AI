@@ -159,7 +159,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-8">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -167,13 +167,13 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       ></div>
 
       {/* Modal */}
-      <div className="relative bg-[#f7f9fc] rounded-2xl shadow-2xl border border-[#dde3eb] w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="relative bg-[#f7f9fc] rounded-2xl shadow-2xl border border-[#dde3eb] w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] p-6 text-white relative flex-shrink-0">
+        <div className="bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] p-4 md:p-6 text-white relative flex-shrink-0">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(251,150,187,0.35),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(117,208,106,0.25),transparent_38%)]" />
           <div className="flex items-center justify-between mb-4 relative z-10">
             <div>
-              <h2 className="text-2xl font-display font-bold">Rewards & Achievements</h2>
+              <h2 className="text-xl md:text-2xl font-display font-bold">Rewards & Achievements</h2>
               <p className="text-white/90 text-sm font-body">
                 {unlockedCount} / {ACHIEVEMENTS.length} Achievements Unlocked
               </p>
@@ -187,27 +187,27 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-3 gap-3 relative z-10">
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/25">
-              <div className="flex items-center gap-2 mb-1">
-                <Crown size={18} className="text-[#FFB356]" />
-                <span className="text-xs font-medium text-white/90 font-body">Level</span>
+          <div className="grid grid-cols-3 gap-2 md:gap-3 relative z-10">
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 md:p-4 border border-white/25">
+              <div className="flex items-center gap-1 md:gap-2 mb-1">
+                <Crown size={16} className="text-[#FFB356]" />
+                <span className="text-[10px] md:text-xs font-medium text-white/90 font-body">Level</span>
               </div>
-              <p className="text-2xl font-bold">{userLevel}</p>
+              <p className="text-xl md:text-2xl font-bold">{userLevel}</p>
             </div>
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/25">
-              <div className="flex items-center gap-2 mb-1">
-                <Star size={18} className="text-[#6ED1CF]" />
-                <span className="text-xs font-medium text-white/90 font-body">Total XP</span>
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 md:p-4 border border-white/25">
+              <div className="flex items-center gap-1 md:gap-2 mb-1">
+                <Star size={16} className="text-[#6ED1CF]" />
+                <span className="text-[10px] md:text-xs font-medium text-white/90 font-body">Total XP</span>
               </div>
-              <p className="text-2xl font-bold">{totalXP.toLocaleString()}</p>
+              <p className="text-xl md:text-2xl font-bold">{totalXP.toLocaleString()}</p>
             </div>
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 border border-white/25">
-              <div className="flex items-center gap-2 mb-1">
-                <Flame size={18} className="text-[#FF8B8B]" />
-                <span className="text-xs font-medium text-white/90 font-body">Daily Rewards</span>
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 md:p-4 border border-white/25">
+              <div className="flex items-center gap-1 md:gap-2 mb-1">
+                <Flame size={16} className="text-[#FF8B8B]" />
+                <span className="text-[10px] md:text-xs font-medium text-white/90 font-body">Daily Rewards</span>
               </div>
-              <p className="text-2xl font-bold">Check-in</p>
+              <p className="text-xl md:text-2xl font-bold">Check-in</p>
             </div>
           </div>
 
@@ -232,7 +232,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-4 md:p-6 overflow-y-auto flex-1">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin w-8 h-8 border-2 border-[#9956DE] border-t-transparent rounded-full" />
@@ -242,7 +242,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
               {/* Achievements Grid */}
               <div className="mb-6">
                 <h3 className="text-lg font-display font-bold text-[#0a1628] mb-4">Achievements</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {achievementItems.map((achievement) => {
                     const Icon = achievement.icon;
                     return (
@@ -302,7 +302,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
                   </div>
                   <h3 className="text-base font-display font-bold text-[#0a1628]">How to Earn XP</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
                     { activity: 'Complete a video lesson', xp: 50 },
                     { activity: 'Complete exercises', xp: 100 },

@@ -1034,7 +1034,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           <div className="absolute inset-0 bg-math-pattern opacity-30 pointer-events-none mix-blend-multiply z-0" />
           
           {/* Header — compact with inline gamification stats */}
-          <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-3 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sticky top-0 z-30 shadow-sm">
+          <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-3 sm:px-6 py-2 sm:py-3 flex flex-row items-center justify-between gap-2 sm:gap-3 sticky top-0 z-30 shadow-sm">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 className="lg:hidden p-2 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-colors"
@@ -1044,8 +1044,10 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                 <Menu size={20} />
               </button>
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-display font-bold text-[#0a1628] leading-tight truncate">{activeTab}</h1>
-                <p className="text-xs text-[#5a6578] font-body truncate">Welcome back, {profileData.name.split(' ')[0]}!</p>
+                <h1 className="text-base sm:text-xl font-display font-bold text-[#0a1628] leading-tight truncate">
+                  {activeTab === 'Grades' ? 'Assessment' : activeTab === 'Leaderboard' ? 'Leadership Board' : activeTab}
+                </h1>
+                <p className="hidden sm:block text-xs text-[#5a6578] font-body truncate">Welcome back, {profileData.name.split(' ')[0]}!</p>
               </div>
               {/* Inline gamification badges — always visible */}
               <div className="hidden md:flex items-center gap-2 ml-2">
@@ -1076,7 +1078,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap md:flex-nowrap items-center gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
 
               {/* Calculator toggle */}
               <button
