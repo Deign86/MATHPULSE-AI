@@ -362,7 +362,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
         </div>
 
         <div className="flex flex-col xl:h-full min-h-0 relative z-10 w-full xl:w-[50%] mx-auto xl:mx-0 flex-1">
-          <div className="mb-6 flex flex-col gap-2 shrink-0">
+          <div className="mb-4 shrink-0">
             <div className="flex flex-wrap items-center justify-between xl:justify-start gap-4">
               
 
