@@ -304,6 +304,28 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
     };
   }
 
+  // 4. Last resort: user profile has initialAssessmentCompleted but no detailed data
+  const userSnap = await getDoc(doc(db, 'users', studentId)).catch(() => null);
+  if (userSnap?.exists()) {
+    const u = userSnap.data();
+    if (u.initialAssessmentCompleted || u.hasCompletedInitialAssessment) {
+      const atRisk: string[] = u.atRiskSubjects || [];
+      return {
+        status: 'ready',
+        headline: 'Assessment Complete! ✓',
+        summary: atRisk.length > 0
+          ? `Areas to focus on: ${atRisk.join(', ')}. Follow your personalized learning path to improve.`
+          : 'Your diagnostic assessment is complete. Your personalized learning path is ready.',
+        strengths: [],
+        weaknesses: atRisk,
+        recommendation: 'Continue with your recommended lessons to strengthen your skills.',
+        latestAssessmentId: '', latestScorePercent: 0,
+        latestRiskLevel: atRisk.length > 0 ? 'Moderate' : 'Low',
+        updatedAt: u.assessmentCompletedAt?.toDate?.() || new Date(),
+      };
+    }
+  }
+
   return null;
 }
 
@@ -351,7 +373,7 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
             const directSummary = await getHeroBannerModalSummary(studentId);
             if (directSummary) {
               setInternalHeroBannerSummary(directSummary);
-            } else if (!result) {
+            } else {
               // Fallback chain: try multiple data sources
               const summary = await buildFallbackSummary(studentId);
               if (summary) setInternalHeroBannerSummary(summary);
