@@ -3,6 +3,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -131,10 +132,23 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   await initializeUserProgress(uid);
   updatedDocs += 1;
 
+  // Preserve profile identity fields before reset
+  const userSnap = await getDoc(doc(db, 'users', uid));
+  let preservedFields: Record<string, any> = {};
+  if (userSnap.exists()) {
+    const data = userSnap.data();
+    preservedFields = {
+      ...(data.photo ? { photo: data.photo } : {}),
+      ...(data.avatarLayers ? { avatarLayers: data.avatarLayers } : {}),
+      ...(data.ownedAvatarItems ? { ownedAvatarItems: data.ownedAvatarItems } : {}),
+    };
+  }
+
   // Reset users/{uid} with all assessment fields cleared
   await setDoc(
     doc(db, 'users', uid),
     {
+      ...preservedFields,
       level: 1,
       currentXP: 0,
       totalXP: 0,
