@@ -618,7 +618,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         { key: 'quiz_battle', label: 'Quiz battle invites & results', icon: Swords },
                         { key: 'daily_reward', label: 'Daily reward reminders', icon: Gift },
                         { key: 'assignment', label: 'New assignments / deadlines', icon: ClipboardList },
-                        { key: 'grade_posted', label: 'Grades posted', icon: FileText },
                         { key: 'streak_reminder', label: 'Streak reminders', icon: Flame },
                         { key: 'leaderboard', label: 'Leaderboard updates', icon: BarChart3 },
                         { key: 'system', label: 'System announcements', icon: Megaphone },
@@ -644,6 +643,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         size="sm"
                         onClick={async () => {
                           try {
+                            const { requestPushPermissionAndRegister } = await import('../services/pushNotificationService');
+                            // Get current user UID from auth
+                            const { auth } = await import('../lib/firebase');
+                            const uid = auth.currentUser?.uid;
+                            if (!uid) {
+                              toast.error('You must be signed in to test push notifications.');
+                              return;
+                            }
+                            // Ensure token is registered before sending
+                            const token = await requestPushPermissionAndRegister(uid);
+                            if (!token) {
+                              toast.error('Push setup failed. Check that VITE_FIREBASE_VAPID_KEY is configured and notifications are allowed.');
+                              return;
+                            }
                             const { httpsCallable } = await import('firebase/functions');
                             const { cloudFunctions } = await import('../lib/firebase');
                             const fn = httpsCallable(cloudFunctions, 'sendTestPush');

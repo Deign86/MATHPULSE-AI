@@ -99,6 +99,7 @@ export const getUserNotifications = async (
 };
 
 export const markAsRead = async (userId: string, notificationId: string): Promise<void> => {
+  if (!requireAuth()) return;
   try {
     const notificationRef = doc(db, 'notifications', userId, 'items', notificationId);
     await updateDoc(notificationRef, { isRead: true });
@@ -109,6 +110,7 @@ export const markAsRead = async (userId: string, notificationId: string): Promis
 };
 
 export const markAllAsRead = async (userId: string): Promise<void> => {
+  if (!requireAuth()) return;
   try {
     const notificationsQuery = query(
       collection(db, 'notifications', userId, 'items'),
