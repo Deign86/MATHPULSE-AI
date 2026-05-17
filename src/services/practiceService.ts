@@ -1,4 +1,12 @@
 import { apiFetch } from './apiService';
+import { RetryFetchOptions } from './apiUtils';
+
+// Longer timeout for AI generation (DeepSeek can take 30-60s)
+const AI_GENERATE_OPTS: RetryFetchOptions = {
+  maxRetries: 2,
+  timeoutMs: 90_000,
+  baseBackoffMs: 2_000,
+};
 
 // Request types
 export interface GeneratePracticeRequest {
@@ -103,7 +111,7 @@ export const generatePracticeSession = async (
   return apiFetch<GeneratePracticeResponse>('/api/practice/generate', {
     method: 'POST',
     body: JSON.stringify(params),
-  });
+  }, AI_GENERATE_OPTS);
 };
 
 export const submitPracticeSession = async (

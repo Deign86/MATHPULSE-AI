@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
-import { Hand, ArrowRight, Zap, Brain } from 'lucide-react';
+import { ArrowRight, Zap, Brain } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { AvatarLayers } from './CompositeAvatar';
 import AssessmentResultsModal from './assessment/AssessmentResultsModal';
@@ -87,7 +87,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           </div>
 
           <h1 className="text-2xl md:text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1.5 tracking-tight leading-[1.1]">
-            {getGreeting()}, {userName}! <Hand size={20} className="inline -mt-1 ml-1" />
+            {getGreeting()}, {userName}!
           </h1>
           <p className="text-slate-500 mb-2 md:mb-1 text-sm md:text-sm font-body font-bold pr-[155px] md:pr-0">Today is a great day to move one step forward in math mastery.</p>
           <p className="text-xs md:text-xs text-slate-400 font-body mb-5 md:mb-4 pr-[150px] md:pr-0">Focus on your next recommended lesson and keep your momentum.</p>

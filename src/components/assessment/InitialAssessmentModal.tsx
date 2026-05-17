@@ -101,7 +101,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-[36rem] w-full flex flex-col overflow-hidden pointer-events-auto"
+        className="bg-white rounded-2xl shadow-2xl max-w-[44rem] w-full flex flex-col overflow-hidden pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
         style={{ willChange: 'transform, opacity' }}
       >
@@ -151,12 +151,12 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
             <h3 className="text-lg font-bold text-[#0a1628]">
               Welcome to MathPulse AI!
             </h3>
-            <p className="text-[13px] text-[#5a6578] max-w-[19rem] mx-auto leading-relaxed">
+            <p className="text-[13px] text-[#5a6578] max-w-[24rem] mx-auto leading-relaxed">
               To personalize your learning path, complete a DepEd competency-based
               SHS diagnostic (15 items, around 11.6 minutes).
             </p>
 
-            <div className="grid grid-cols-2 gap-2.5 max-w-[22rem] mx-auto text-left mt-4">
+            <div className="grid grid-cols-2 gap-2.5 max-w-[28rem] mx-auto text-left mt-4">
               <div className="bg-[#edf1f7] p-2.5 rounded-lg border border-[#dde3eb]">
                 <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0a1628] mb-1">
                   <CheckCircle size={14} className="text-teal-500" />
@@ -187,7 +187,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               <Button
                 onClick={handleStart}
                 disabled={loading}
-                className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-purple-200 w-full max-w-[320px] mx-auto"
+                className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-purple-200 w-full max-w-[380px] mx-auto"
               >
                 {loading ? (
                   <>
@@ -199,7 +199,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
                 )}
               </Button>
               {loading && (
-                <p className="text-[10px] text-slate-400 max-w-[18rem] mx-auto text-center leading-relaxed">
+                <p className="text-[10px] text-slate-400 max-w-[24rem] mx-auto text-center leading-relaxed">
                   This may take up to 90 seconds while AI generates your personalized test.
                 </p>
               )}

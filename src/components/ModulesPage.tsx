@@ -124,6 +124,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const [selectedModule, setSelectedModule] = useState<CurriculumModuleRuntime | null>(initialModule);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
+  const practiceQuizEndRef = React.useRef<((quiz: QuizExperienceQuiz, answers: QuizAnswerRecord[]) => void) | null>(null);
   const [learningPathContext, setLearningPathContext] = useState<string | null>(null);
   const [learningPathLoading, setLearningPathLoading] = useState(false);
 
@@ -418,8 +419,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     return (
       <QuizExperience
         quiz={selectedQuiz}
-        onClose={() => setSelectedQuiz(null)}
+        onClose={() => { practiceQuizEndRef.current = null; setSelectedQuiz(null); }}
         onComplete={handleQuizComplete}
+        onQuizEnd={practiceQuizEndRef.current ?? undefined}
         studentId={userProfile?.uid}
       />
     );
@@ -789,37 +791,36 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           {activeTab === 'practice' ? (
             <PracticeCenter
               userId={userProfile?.uid ?? ''}
-              onStartQuiz={setSelectedQuiz}
-              onQuizEnd={async (quiz, answers) => {
-                if (!userProfile?.uid || !quiz.generatedQuizId) return;
-                try {
-                  // Map answer text back to index for submission
-                  const questionMap = new Map(
-                    (quiz.loadedQuestions || []).map((q) => [q.id, q])
-                  );
-                  const submitAnswers = answers.map((a) => {
-                    const q = questionMap.get(a.questionId);
-                    const selectedIndex = q?.options?.findIndex(
-                      (opt) => opt.trim().toLowerCase() === a.answer.trim().toLowerCase()
-                    ) ?? 0;
-                    return { question_id: a.questionId, selected_index: selectedIndex };
-                  });
+              onStartQuiz={(quiz) => {
+                practiceQuizEndRef.current = async (q, answers) => {
+                  if (!userProfile?.uid || !q.generatedQuizId) return;
+                  try {
+                    const questionMap = new Map(
+                      (q.loadedQuestions || []).map((lq) => [lq.id, lq])
+                    );
+                    const submitAnswers = answers.map((a) => {
+                      const lq = questionMap.get(a.questionId);
+                      const selectedIndex = lq?.options?.findIndex(
+                        (opt) => opt.trim().toLowerCase() === a.answer.trim().toLowerCase()
+                      ) ?? 0;
+                      return { question_id: a.questionId, selected_index: selectedIndex };
+                    });
 
-                  const result = await submitPracticeSession({
-                    session_id: quiz.generatedQuizId,
-                    userId: userProfile.uid,
-                    answers: submitAnswers,
-                  });
+                    const result = await submitPracticeSession({
+                      session_id: q.generatedQuizId!,
+                      userId: userProfile.uid,
+                      answers: submitAnswers,
+                    });
 
-                  toast.success(
-                    `Score: ${result.score_percent}% | Correct: ${result.correct_count}/${result.total} | +${result.xp_earned} XP`
-                  );
-                  // Refresh stats by triggering re-render
-                  setSelectedQuiz(null);
-                } catch (e) {
-                  console.error(e);
-                  toast.error('Failed to submit quiz results');
-                }
+                    toast.success(
+                      `Score: ${result.score_percent}% | Correct: ${result.correct_count}/${result.total} | +${result.xp_earned} XP`
+                    );
+                  } catch (e) {
+                    console.error(e);
+                    toast.error('Failed to submit quiz results');
+                  }
+                };
+                setSelectedQuiz(quiz);
               }}
               searchQuery={searchQuery}
             />
