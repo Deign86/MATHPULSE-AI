@@ -5,6 +5,7 @@ import ConfirmModal from './ConfirmModal';
 import UserAvatar from './UserAvatar';
 import AdminPdfUpload from './admin/AdminPdfUpload';
 import AdminAuditLog from './AdminAuditLog';
+import AdminRagManager from './AdminRagManager';
 import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
 import AIMonitoringPage from '../pages/admin/AIMonitoringPage';
@@ -675,6 +676,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             </div>
           )}
           {activeTab === 'Content' && <AdminPdfUpload />}
+          {activeTab === 'RAG Manager' && <AdminRagManager />}
           {activeTab === 'Audit Log' && <AdminAuditLog />}
           {activeTab === 'User Management' && (
             <AdminUserManagement
