@@ -1712,16 +1712,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       onViewAll={() => setActiveView('notifications')}
                     />
                   </div>
-                  {/* Profile Pill - Hidden on Dashboard view since it has its own profile in the right sidebar */}
+                  {/* Profile Pill - Avatar only on mobile, full pill on desktop */}
                   {activeView !== 'dashboard' && (
                     <div
                       onClick={onOpenProfile}
-                      className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
+                      className="flex items-center bg-white/60 px-2 md:px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
                     >
                       <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
                         <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
                       </div>
-                      <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
+                      <span className="hidden md:inline text-[13px] font-semibold text-[#1e293b] ml-2">{teacherName || 'Test Teacher'}</span>
                     </div>
                   )}
                 </div>

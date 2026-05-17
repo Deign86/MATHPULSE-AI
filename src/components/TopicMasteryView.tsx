@@ -308,10 +308,10 @@ const TopicMasteryView: React.FC<{
   };
 
   const SortIcon: React.FC<{ field: SortField }> = ({ field }) => {
-    if (sortField !== field) return <ChevronDown size={14} className="text-white/40" />;
+    if (sortField !== field) return <ChevronDown size={10} className="text-white/40 md:text-white/40" />;
     return sortDir === 'asc'
-      ? <ChevronUp size={14} className="text-white font-bold" />
-      : <ChevronDown size={14} className="text-white font-bold" />;
+      ? <ChevronUp size={10} className="text-white font-bold md:text-white" />
+      : <ChevronDown size={10} className="text-white font-bold md:text-white" />;
   };
 
   // ─── Render ───────────────────────────────────────────────
@@ -333,7 +333,7 @@ const TopicMasteryView: React.FC<{
       className="w-full p-[24px] xl:p-[32px] space-y-[24px]"
     >
       {/* 4 Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px]">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-[16px]">
         {/* Total Topics */}
         <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col justify-between h-full group text-white">
           <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
@@ -463,41 +463,41 @@ const TopicMasteryView: React.FC<{
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
               {/* Header Row */}
-              <div className="bg-[#9956DE] grid grid-cols-12 gap-4 p-4 border-b border-[#8b5cf6] items-center text-[11px] font-bold text-white tracking-wider uppercase shadow-md relative z-10 h-12">
+              <div className="bg-[#9956DE] grid grid-cols-12 gap-2 md:gap-4 p-2 md:p-4 border-b border-[#8b5cf6] items-center text-[8px] md:text-[11px] font-bold text-white tracking-wider uppercase shadow-md relative z-10 h-10 md:h-12">
                 <div className="col-span-1 flex justify-center">
                   <input
                     type="checkbox"
                     checked={selectedTopics.size === filteredTopics.length && filteredTopics.length > 0}
                     onChange={toggleSelectAll}
-                    className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-4 h-4 border-white/30 bg-white/10 cursor-pointer"
+                    className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3 h-3 md:w-4 md:h-4 border-white/30 bg-white/10 cursor-pointer"
                   />
                 </div>
                 <div 
-                  className="col-span-3 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
+                  className="col-span-3 flex items-center gap-0.5 md:gap-1 cursor-pointer hover:text-white/80 select-none"
                   onClick={() => handleSort('topicName')}
                 >
-                  TOPIC NAME <SortIcon field="topicName" />
+                  <span className="truncate">TOPIC</span> <SortIcon field="topicName" />
                 </div>
-                <div className="col-span-2">UNIT</div>
+                <div className="col-span-2 hidden sm:block">UNIT</div>
                 <div 
-                  className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
+                  className="col-span-2 flex items-center gap-0.5 md:gap-1 cursor-pointer hover:text-white/80 select-none"
                   onClick={() => handleSort('classAverage')}
                 >
-                  CLASS AVG % <SortIcon field="classAverage" />
+                  <span className="hidden sm:inline">CLASS AVG</span><span className="sm:hidden">AVG</span> % <SortIcon field="classAverage" />
                 </div>
                 <div 
-                  className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
+                  className="col-span-2 flex items-center gap-0.5 md:gap-1 cursor-pointer hover:text-white/80 select-none"
                   onClick={() => handleSort('studentsAttempted')}
                 >
-                  STUDENTS <SortIcon field="studentsAttempted" />
+                  <span className="hidden sm:inline">STUDENTS</span><span className="sm:hidden">STUD</span> <SortIcon field="studentsAttempted" />
                 </div>
                 <div 
-                  className="col-span-1 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
+                  className="col-span-1 flex items-center gap-0.5 md:gap-1 cursor-pointer hover:text-white/80 select-none"
                   onClick={() => handleSort('masteryStatus')}
                 >
-                  STATUS <SortIcon field="masteryStatus" />
+                  <span className="hidden md:inline">STATUS</span><span className="md:hidden">STAT</span> <SortIcon field="masteryStatus" />
                 </div>
-                <div className="col-span-1 text-center">EXCLUDE</div>
+                <div className="col-span-1 text-center hidden md:block">EXCLUDE</div>
               </div>
 
               {/* Body Rows */}
@@ -532,9 +532,57 @@ const TopicMasteryView: React.FC<{
                     return (
                       <div
                         key={topic.topicName}
-                        className={`grid grid-cols-12 gap-4 p-4 border-b border-[#f1f5f9] items-center hover:bg-slate-50/80 transition-colors group ${rowBg} ${topic.isExcluded ? 'line-through decoration-slate-400' : ''}`}
+                        className={`md:grid md:grid-cols-12 md:gap-4 md:p-4 md:border-b md:border-[#f1f5f9] md:items-center md:hover:bg-slate-50/80 md:transition-colors md:group border-b border-[#f1f5f9] p-4 ${rowBg} ${topic.isExcluded ? 'line-through decoration-slate-400' : ''}`}
                       >
-                        <div className="col-span-1 flex justify-center">
+                        {/* Mobile Card Layout */}
+                        <div className="md:hidden flex flex-col gap-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-[#1e293b] text-[14px]">{topic.topicName}</span>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${subjectInfo.color}`}>
+                                  {subjectInfo.label}
+                                </span>
+                              </div>
+                              <div className="text-[12px] text-[#64748b] mt-1">{topic.unit}</div>
+                            </div>
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border shrink-0 ${statusInfo.color}`}>
+                              {statusInfo.label}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-[12px] text-[#64748b]">Class Avg:</span>
+                              <span className="font-bold text-[#1e293b] text-[14px] ml-1">{topic.classAverage}%</span>
+                            </div>
+                            <div className="text-[12px] text-[#64748b]">
+                              {topic.studentsAttempted}/{topic.totalStudents} students
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                const next = new Set(selectedTopics);
+                                if (isSelected) next.delete(topic.topicName);
+                                else next.add(topic.topicName);
+                                setSelectedTopics(next);
+                              }}
+                              className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-4 h-4 border-gray-300 cursor-pointer"
+                            />
+                            <span className="text-[11px] text-[#64748b]">Select</span>
+                            <button
+                              onClick={() => toggleExclude(topic.topicName)}
+                              className="ml-auto text-[11px] text-[#64748b] hover:text-[#4f46e5] transition-colors"
+                            >
+                              {topic.isExcluded ? 'Include' : 'Exclude'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Desktop Table Row */}
+                        <div className="hidden md:flex col-span-1 justify-center">
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -547,17 +595,17 @@ const TopicMasteryView: React.FC<{
                             className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-4 h-4 border-gray-300 cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-3 flex flex-col sm:flex-row sm:items-center gap-1.5 pr-2 min-w-0">
+                        <div className="hidden md:col-span-3 md:flex md:flex-row md:items-center md:gap-1.5 md:pr-2 md:min-w-0">
                           <span className="font-semibold text-[#1e293b] text-[13px] truncate">{topic.topicName}</span>
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${subjectInfo.color}`}>
                             {subjectInfo.label}
                           </span>
                         </div>
-                        <div className="col-span-2 text-[#475569] text-[13px] truncate pr-2">{topic.unit}</div>
-                        <div className="col-span-2">
+                        <div className="hidden md:col-span-2 md:block text-[#475569] text-[13px] truncate pr-2">{topic.unit}</div>
+                        <div className="hidden md:col-span-2 md:block">
                           <span className="font-bold text-[#1e293b] text-[14px]">{topic.classAverage}%</span>
                         </div>
-                        <div className="col-span-2 pr-4">
+                        <div className="hidden md:col-span-2 md:block pr-4">
                           <div className="flex justify-between items-center text-[11px] mb-1">
                             <span className="font-semibold text-[#1e293b]">{topic.studentsAttempted} / {topic.totalStudents}</span>
                           </div>
@@ -565,12 +613,12 @@ const TopicMasteryView: React.FC<{
                             <div className={`h-full rounded-full transition-all duration-500 ${avgColor}`} style={{ width: `${topic.classAverage}%` }} />
                           </div>
                         </div>
-                        <div className="col-span-1">
+                        <div className="hidden md:col-span-1 md:block">
                           <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${statusInfo.color}`}>
                             {statusInfo.label}
                           </span>
                         </div>
-                        <div className="col-span-1 flex justify-center relative">
+                        <div className="hidden md:col-span-1 md:flex md:justify-center md:relative">
                           <label className="relative inline-flex items-center cursor-pointer group/toggle">
                             <input
                               type="checkbox"
