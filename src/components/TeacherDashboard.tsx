@@ -1779,6 +1779,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   classColor={effectiveClassColor}
                   insightDismissed={insightDismissed}
                   onOpenInsightModal={() => setInsightModalOpen(true)}
+                  onAddStudents={() => setShowAddStudentsModal(true)}
                 />
               )}
               {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length > 0 && (
@@ -2638,6 +2639,7 @@ const AnalyticsView: React.FC<{
   classColor?: { hex: string; bg: string; border: string; borderLeft: string; text: string; groupHover: string };
   insightDismissed?: boolean;
   onOpenInsightModal?: () => void;
+  onAddStudents?: () => void;
 }> = ({
   selectedClass,
   students,
@@ -2657,6 +2659,7 @@ const AnalyticsView: React.FC<{
   classColor,
   insightDismissed,
   onOpenInsightModal,
+  onAddStudents,
 }) => {
     const { currentUser, userProfile } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
@@ -2856,7 +2859,7 @@ const AnalyticsView: React.FC<{
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[15px] font-semibold text-[#1e293b]">Students <span className="text-[#64748b] text-[13px]">({visibleStudents.length})</span></h2>
                 <button
-                  onClick={() => setShowAddStudentsModal(true)}
+                  onClick={() => onAddStudents?.()}
                   className="text-[11px] font-semibold text-[#9956DE] hover:text-[#7c3aed] bg-[#9956DE]/10 hover:bg-[#9956DE]/20 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   + Add
