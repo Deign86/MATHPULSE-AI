@@ -2096,7 +2096,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         grade={effectiveAnalyticsClass?.gradeLevel || effectiveAnalyticsClass?.classMetadata?.grade || 'Grade 11'}
         section={effectiveAnalyticsClass?.classMetadata?.section || effectiveAnalyticsClass?.name?.split(' - ')[1] || ''}
         teacherName={teacherName}
-        existingStudentUids={students.map((s) => s.id)}
+        existingStudentUids={filteredStudentsForAnalytics.map((s) => s.id)}
       />
 
       {/* Provision system account for a roster-only student */}
