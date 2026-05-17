@@ -173,6 +173,10 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
+  /* Font family tokens — generates font-display and font-body Tailwind utilities */
+  --font-family-display: var(--font-display);
+  --font-family-body: var(--font-body);
+
   /* ALIAS SKY TO VIOLET FOR UNIVERSAL PURPLE THEME */
   --color-sky-50: var(--color-violet-50);
   --color-sky-100: var(--color-violet-100);
@@ -340,6 +344,108 @@ html.smart-dark [data-preserve-color='true'] {
   background-color: var(--background);
   background-image: url("data:image/svg+xml,%3Csvg width='150' height='150' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='rgba(124, 58, 237, 0.05)' font-family='sans-serif' font-weight='bold' font-size='28'%3E%3Ctext x='20' y='40'%3E%2B%3C/text%3E%3Ctext x='90' y='60'%3E%3D%3C/text%3E%3Ctext x='40' y='110'%3E%25%3C/text%3E%3Ctext x='110' y='130'%3E%C3%97%3C/text%3E%3Ctext x='130' y='30'%3E%C3%B7%3C/text%3E%3C/g%3E%3C/svg%3E");
   background-size: 150px 150px;
+}
+
+/* ─── Lesson Content Typography ──────────────────────── */
+
+/* Welcome / intro hook card — large display text */
+.lesson-welcome-card {
+  font-family: var(--font-body);
+  position: relative;
+  overflow: hidden;
+}
+
+.lesson-welcome-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='rgba(26,133,164,0.06)' font-family='sans-serif' font-weight='900' font-size='36'%3E%3Ctext x='10' y='50'%3E%2B%3C/text%3E%3Ctext x='120' y='80'%3E%3D%3C/text%3E%3Ctext x='50' y='140'%3E%CF%80%3C/text%3E%3Ctext x='150' y='170'%3E%C3%97%3C/text%3E%3Ctext x='170' y='40'%3E%E2%88%91%3C/text%3E%3Ctext x='80' y='190'%3E%C3%B7%3C/text%3E%3C/g%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+.lesson-welcome-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Section heading — Poppins display font */
+.lesson-section-heading {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* Body text — Nunito, comfortable reading size */
+.lesson-body-text {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.75;
+  color: #334155;
+}
+
+/* Callout / alert box — "Heads Up" style */
+.lesson-callout-headsup {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 2px solid #f59e0b;
+  border-left-width: 5px;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.lesson-callout-headsup::after {
+  content: '⚠';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 3rem;
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+/* Formula display box */
+.lesson-formula-box {
+  font-family: 'Courier New', Courier, monospace;
+  background: linear-gradient(135deg, #fffbeb, #fef9ee);
+  border: 1.5px solid #fbbf24;
+  border-radius: 0.875rem;
+  padding: 0.875rem 1.25rem;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #92400e;
+  letter-spacing: 0.03em;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+}
+
+/* Key term highlight pill */
+.lesson-key-term {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  font-weight: 700;
+  padding: 0.1em 0.4em;
+  border-radius: 0.3em;
+  font-size: 0.95em;
+}
+
+/* Teal accent text for headers */
+.lesson-header-teal {
+  color: #1a85a4;
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+/* Orange accent text */
+.lesson-header-orange {
+  color: #fbab41;
+  font-family: var(--font-display);
+  font-weight: 800;
 }
 
 /* ─── Noise Texture Overlay ──────────────────────────── */
