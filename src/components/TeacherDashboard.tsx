@@ -16,8 +16,6 @@ import ConfirmModal from './ConfirmModal';
 import NotificationDropdown from './NotificationDropdown';
 import LogoutActionButton from './LogoutActionButton';
 import UserAvatar from './UserAvatar';
-import { getDefaultAvatar } from '../utils/avatarUtils';
-import { sanitizeDisplayName } from '../utils/profileValidation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -117,7 +115,6 @@ export interface StudentView {
   lrn?: string;
   name: string;
   avatar: string;
-  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   avgScore: number;
   riskLevel: 'high' | 'medium' | 'low';
   weakestTopic: string;
@@ -205,8 +202,7 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
     id: s.id,
     lrn: s.lrn,
     name: s.name,
-    avatar: (s.avatar && !s.avatar.includes('ui-avatars.com')) ? s.avatar : getDefaultAvatar(s.gender),
-    gender: s.gender,
+    avatar: s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`,
     avgScore: s.avgQuizScore,
     riskLevel,
     weakestTopic: s.weakestTopic || 'N/A',
@@ -282,8 +278,7 @@ function toImportedStudentView(s: ImportedClassOverviewResponse['students'][numb
     id: s.id,
     lrn: s.lrn || undefined,
     name: s.name,
-    avatar: getDefaultAvatar(s.gender),
-    gender: s.gender,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`,
     avgScore: s.avgQuizScore,
     riskLevel,
     weakestTopic: s.weakestTopic || 'Foundational Skills',
@@ -337,8 +332,7 @@ function toUploadedStudentView(
     id: `upload-${resolvedClassSectionId}-${identity}`,
     lrn: student.lrn,
     name: student.name,
-    avatar: getDefaultAvatar(null),
-    gender: null,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
     avgScore,
     riskLevel,
     weakestTopic,
@@ -568,6 +562,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [insightDismissed, setInsightDismissed] = useState(false);
   const [insightModalOpen, setInsightModalOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMobileCalendar, setShowMobileCalendar] = useState(false);
 
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
@@ -575,11 +570,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [liveActivity, setLiveActivity] = useState<{ id: string; student: string; action: string; topic: string; time: string; type: string }[]>([]);
   const [dailyInsight, setDailyInsight] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
-  // Imported overview loads asynchronously after the initial Firestore fetch
-  // settles. Hero stats are gated on this so we never display zero counts
-  // while data is still in-flight (was a perceived "Dashboard 0 vs Analytics 12"
-  // inconsistency caught in QA).
-  const [importedOverviewLoading, setImportedOverviewLoading] = useState(true);
   const [insightLoading, setInsightLoading] = useState(false);
   const [dataRefreshNonce, setDataRefreshNonce] = useState(0);
   const [teacherDirectory, setTeacherDirectory] = useState<TeacherDirectoryOption[]>([]);
@@ -591,6 +581,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     sectionDraft: string;
   }>>(new Map());
 
+  // Track mobile viewport (< 1024px = below lg breakpoint)
+  useEffect(() => {
+    const checkViewport = () => setIsMobileViewport(window.innerWidth < 1024);
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
+  }, []);
+
   // Fetch classrooms and students from Firebase
   useEffect(() => {
     if (!currentUser) return;
@@ -601,7 +599,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
     const fetchData = async () => {
       setDataLoading(true);
-      setImportedOverviewLoading(true);
       try {
         const classrooms = await getClassroomsByTeacher(teacherId);
         let classViews = classrooms.map(toClassView);
@@ -766,9 +763,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           })
           .catch((importedErr) => {
             console.warn('Imported class overview merge unavailable:', importedErr);
-          })
-          .finally(() => {
-            if (isActive) setImportedOverviewLoading(false);
           });
 
         // Subscribe to live activity
@@ -822,17 +816,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     };
   }, [currentUser]);
 
-  // Fetch AI daily insight when students data is available and the imported
-  // overview merge has settled. This deliberately waits for both data sources
-  // (Firestore + imported overview) to combine before issuing the request, so
-  // we don't fire a second POST when the merged dataset arrives a moment
-  // later (each call costs DeepSeek tokens — see QA Issue #7).
+  // Fetch AI daily insight when students data is available
   useEffect(() => {
-    if (importedOverviewLoading) return;
     if (students.length === 0) return;
-
-    const controller = new AbortController();
-    let isCancelled = false;
 
     const fetchInsight = async () => {
       setInsightLoading(true);
@@ -844,32 +830,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           attendance: s.attendance,
           riskLevel: s.riskLevel,
         }));
-        const response = await apiService.getDailyInsight(
-          { students: studentData },
-          { signal: controller.signal },
-        );
-        if (!isCancelled) {
-          setDailyInsight(response.insight);
-        }
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        if (!isCancelled) {
-          setDailyInsight(`${students.filter((s) => s.riskLevel === 'high').length} students are at high risk of falling behind. Review their progress in the analytics view.`);
-        }
+        const response = await apiService.getDailyInsight({ students: studentData });
+        setDailyInsight(response.insight);
+      } catch {
+        setDailyInsight(`${students.filter((s) => s.riskLevel === 'high').length} students are at high risk of falling behind. Review their progress in the analytics view.`);
       } finally {
-        if (!isCancelled) {
-          setInsightLoading(false);
-        }
+        setInsightLoading(false);
       }
     };
 
     fetchInsight();
-
-    return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [students, importedOverviewLoading]);
+  }, [students]);
 
   // Computed stats
   const totalStudents = classes.reduce((sum, c) => sum + c.studentCount, 0);
@@ -1071,7 +1042,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     setSelectedStudent(null);
   };
 
-  const teacherName = sanitizeDisplayName(userProfile?.name, 'Teacher');
+  const teacherName = userProfile?.name || 'Teacher';
   const selectedClassSectionId = useMemo(() => {
     if (!selectedClass) return undefined;
     if (selectedClass.classMetadata?.classSectionId) return selectedClass.classMetadata.classSectionId || undefined;
@@ -1161,7 +1132,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
-            <img src="/mathpulse_final_logo.png" alt="MathPulse AI" className="w-12 h-12 object-contain drop-shadow-md flex-shrink-0" />
+            <div className="w-12 h-12 bg-gradient-to-r from-[#7274ED] to-[#9956DE] rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
+              <img src="/avatar/avatar_icon.png" alt="MathPulse AI" className="w-10 h-10 object-contain drop-shadow-md" />
+            </div>
             {(!sidebarCollapsed || sidebarHovered) && (
               <div>
                 <h1 className="text-base font-semibold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h1>
@@ -1301,9 +1274,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           <motion.button
             whileHover={{ x: 2 }}
             whileTap={{ scale: 0.98 }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-semibold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${
-              sidebarCollapsed && !sidebarHovered ? 'justify-center' : ''
-            }`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-semibold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : ''
+              }`}
             onClick={onOpenSettings}
             title={sidebarCollapsed && !sidebarHovered ? 'Settings' : ''}
           >
@@ -1319,136 +1291,138 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
       {/* Main Content + Right Sidebar */}
       <div className="flex-1 flex overflow-hidden bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
-        
+
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery', 'calendar', 'notifications', 'question_bank', 'import', 'quiz_maker'].includes(activeView) && (
-          <header className="bg-transparent border-b border-[#e2e8f0]/40 px-[24px] xl:px-[32px] pt-[24px] pb-[16px] flex-shrink-0 z-30">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-0">
-              <div className="flex-1 flex items-start gap-3">
-                {isMobileViewport && (
-                  <button
-                    onClick={() => setMobileNavOpen(true)}
-                    className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
-                    aria-label="Open navigation"
-                  >
-                    <Menu size={18} />
-                  </button>
-                )}
-                <div>
-                  <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">
-                    {activeView === 'dashboard' && 'Teacher Dashboard'}
-                    {activeView === 'analytics' && 'Class Analytics'}
-                    {activeView === 'intervention' && 'Intervention Center'}
-                    {activeView === 'competency' && 'Student Competency'}
-                    {activeView === 'topic_mastery' && 'Topic Mastery'}
-                    {activeView === 'calendar' && 'Academic Calendar'}
-                    {activeView === 'notifications' && 'Notifications'}
-                    {activeView === 'question_bank' && 'Question Bank'}
-                    {activeView === 'import' && 'Data Import'}
-                    {activeView === 'quiz_maker' && 'AI Quiz Maker'}
-                  </h1>
-                  <p className="text-[13px] text-[#64748b] mt-1">
-                    {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
-                    {activeView === 'analytics' && 'Analyze performance and risk across your classes.'}
-                    {activeView === 'intervention' && 'Identify and support students who need immediate help.'}
-                    {activeView === 'competency' && 'Track individual student progress against learning goals.'}
-                    {activeView === 'topic_mastery' && 'Overview of student mastery levels across different math topics.'}
-                    {activeView === 'calendar' && 'Manage your schedules and academic events.'}
-                    {activeView === 'notifications' && 'Stay updated with student activity and system alerts.'}
-                    {activeView === 'question_bank' && 'Manage and create math questions for your quizzes.'}
-                    {activeView === 'import' && 'Upload class records and materials to power AI analytics.'}
-                    {activeView === 'quiz_maker' && 'Create AI-powered quizzes based on your curriculum.'}
-                  </p>
-                </div>
-                {/* Quick teacher stats */}
-                {activeView === 'dashboard' && (
-                  <div className="hidden xl:flex items-center gap-2 ml-4 mt-1" aria-live="polite">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
-                      <Users size={13} className="text-[#9956DE]" />
-                      <span className="text-xs font-display font-semibold text-[#9956DE]">
-                        {importedOverviewLoading
-                          ? <Skeleton className="h-3 w-14 inline-block align-middle bg-[#9956DE]/30" />
-                          : `${totalStudents} students`}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
-                      <AlertTriangle size={13} className="text-[#F08386]" />
-                      <span className="text-xs font-display font-semibold text-[#C65E63]">
-                        {importedOverviewLoading
-                          ? <Skeleton className="h-3 w-14 inline-block align-middle bg-[#F08386]/30" />
-                          : `${totalAtRisk} at risk`}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
-                      <TrendingUp size={13} className="text-[#75D06A]" />
-                      <span className="text-xs font-display font-semibold text-[#4D9F46]">
-                        {importedOverviewLoading
-                          ? <Skeleton className="h-3 w-14 inline-block align-middle bg-[#75D06A]/30" />
-                          : `${avgPerformance}% avg`}
-                      </span>
-                    </div>
+            <header className="bg-transparent border-b border-[#e2e8f0]/40 px-[24px] xl:px-[32px] pt-[24px] pb-[16px] flex-shrink-0 z-30">
+              <div className="flex flex-row items-center justify-between gap-2 mb-0">
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  {isMobileViewport && (
+                    <button
+                      onClick={() => setMobileNavOpen(true)}
+                      className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
+                      aria-label="Open navigation"
+                    >
+                      <Menu size={18} />
+                    </button>
+                  )}
+                  <div>
+                    <h1 className="text-lg sm:text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight truncate">
+                      {activeView === 'dashboard' && 'Teacher Dashboard'}
+                      {activeView === 'analytics' && 'Class Analytics'}
+                      {activeView === 'intervention' && 'Intervention Center'}
+                      {activeView === 'competency' && 'Student Competency'}
+                      {activeView === 'topic_mastery' && 'Topic Mastery'}
+                      {activeView === 'calendar' && 'Academic Calendar'}
+                      {activeView === 'notifications' && 'Notifications'}
+                      {activeView === 'question_bank' && 'Question Bank'}
+                      {activeView === 'import' && 'Data Import'}
+                      {activeView === 'quiz_maker' && 'AI Quiz Maker'}
+                    </h1>
+                    <p className="text-[13px] text-[#64748b] mt-1">
+                      {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
+                      {activeView === 'analytics' && 'Analyze performance and risk across your classes.'}
+                      {activeView === 'intervention' && 'Identify and support students who need immediate help.'}
+                      {activeView === 'competency' && 'Track individual student progress against learning goals.'}
+                      {activeView === 'topic_mastery' && 'Overview of student mastery levels across different math topics.'}
+                      {activeView === 'calendar' && 'Manage your schedules and academic events.'}
+                      {activeView === 'notifications' && 'Stay updated with student activity and system alerts.'}
+                      {activeView === 'question_bank' && 'Manage and create math questions for your quizzes.'}
+                      {activeView === 'import' && 'Upload class records and materials to power AI analytics.'}
+                      {activeView === 'quiz_maker' && 'Create AI-powered quizzes based on your curriculum.'}
+                    </p>
                   </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
-                {/* AI Insights Button */}
-                <div className="relative group">
-                  <button
-                    onClick={() => {
-                      setInsightModalOpen(true);
-                      setInsightDismissed(true);
-                    }}
-                    className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
-                    aria-label="View AI Insight"
-                  >
-                    <Sparkles size={18} />
-                    {!insightDismissed && (
-                      <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
-                    )}
-                  </button>
-                  <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
-                    AI Insight
-                  </span>
-                </div>
-                {/* Notification Bell */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowNotifications(!showNotifications)}
-                    className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
-                    aria-label="View notifications"
-                    title="Notifications"
-                  >
-                    <Bell size={18} />
-                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-                  </button>
-
-                  <NotificationDropdown 
-                    isOpen={showNotifications} 
-                    onClose={() => setShowNotifications(false)}
-                    onViewAll={() => setActiveView('notifications')}
-                  />
-                </div>
-                {/* Profile Pill - Hidden on Dashboard view since it has its own profile in the right sidebar */}
-                {activeView !== 'dashboard' && (
-                  <div
-                    onClick={onOpenProfile}
-                    className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
-                      <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
+                  {/* Quick teacher stats */}
+                  {activeView === 'dashboard' && (
+                    <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
+                        <Users size={13} className="text-[#9956DE]" />
+                        <span className="text-xs font-display font-semibold text-[#9956DE]">{totalStudents} students</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
+                        <AlertTriangle size={13} className="text-[#F08386]" />
+                        <span className="text-xs font-display font-semibold text-[#C65E63]">{totalAtRisk} at risk</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
+                        <TrendingUp size={13} className="text-[#75D06A]" />
+                        <span className="text-xs font-display font-semibold text-[#4D9F46]">{avgPerformance}% avg</span>
+                      </div>
                     </div>
-                    <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </header>
-        )}
+                  )}
+                </div>
 
-        {/* View Content */}
-        <main className={`flex-1 flex flex-col ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* AI Insights Button */}
+                  <div className="relative group">
+                    <button
+                      onClick={() => {
+                        setInsightModalOpen(true);
+                        setInsightDismissed(true);
+                      }}
+                      className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
+                      aria-label="View AI Insight"
+                    >
+                      <Sparkles size={18} />
+                      {!insightDismissed && (
+                        <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
+                      )}
+                    </button>
+                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                      AI Insight
+                    </span>
+                  </div>
+                  {/* Mobile Calendar Toggle — only visible on mobile when on dashboard */}
+                  {isMobileViewport && activeView === 'dashboard' && (
+                    <button
+                      onClick={() => setShowMobileCalendar(v => !v)}
+                      className={`relative w-10 h-10 flex items-center justify-center rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border transition-colors cursor-pointer hover:scale-[1.02] ${showMobileCalendar
+                        ? 'bg-[#818cf8] border-[#6366f1] text-white'
+                        : 'bg-white/60 hover:bg-white/80 border-white/50 text-[#64748b] hover:text-[#1e293b]'
+                        }`}
+                      aria-label={showMobileCalendar ? 'Close calendar panel' : 'Open calendar panel'}
+                      title={showMobileCalendar ? 'Close calendar' : 'View calendar'}
+                    >
+                      <Calendar size={18} />
+                    </button>
+                  )}
+                  {/* Notification Bell */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowNotifications(!showNotifications)}
+                      className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
+                      aria-label="View notifications"
+                      title="Notifications"
+                    >
+                      <Bell size={18} />
+                      <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                    </button>
+
+                    <NotificationDropdown
+                      isOpen={showNotifications}
+                      onClose={() => setShowNotifications(false)}
+                      onViewAll={() => setActiveView('notifications')}
+                    />
+                  </div>
+                  {/* Profile Pill - Hidden on Dashboard view since it has its own profile in the right sidebar */}
+                  {activeView !== 'dashboard' && (
+                    <div
+                      onClick={onOpenProfile}
+                      className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                        <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </header>
+          )}
+
+          {/* View Content */}
+          <main className={`flex-1 flex flex-col ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             <AnimatePresence mode="wait">
               {activeView === 'dashboard' && (
                 <DashboardView
@@ -1468,237 +1442,263 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   totalStudents={totalStudents}
                   totalAtRisk={totalAtRisk}
                   avgPerformance={avgPerformance}
-                  statsLoading={importedOverviewLoading}
                 />
               )}
-            {activeView === 'analytics' && effectiveAnalyticsClass && (
-              <AnalyticsView
-                selectedClass={effectiveAnalyticsClass}
-                students={filteredStudentsForAnalytics}
-                riskDistribution={riskDistribution}
-                topicPerformance={topicPerformance}
-                onViewStudent={handleViewStudent}
-                onBack={() => setSelectedClass(null)}
-                teacherOptions={teacherDirectory}
-                managerUpdating={managerUpdating}
-                onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
-                onOpenNotifications={() => setActiveView('notifications')}
-                onOpenProfile={onOpenProfile}
-                classColor={effectiveClassColor}
-                insightDismissed={insightDismissed}
-                onOpenInsightModal={() => setInsightModalOpen(true)}
-              />
-            )}
-            {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length > 0 && (
-              <ClassesOverviewMenu
-                classes={classes}
-                students={students.map((s) => ({
-                  classroomId: s.classroomId,
-                  attendance: s.attendance,
-                  weakestTopic: s.weakestTopic,
-                }))}
-                onSelectClass={handleViewClass}
-                onOpenNotifications={() => setActiveView('notifications')}
-                onOpenProfile={onOpenProfile}
-                insightDismissed={insightDismissed}
-                onOpenInsightModal={() => setInsightModalOpen(true)}
-              />
-            )}
-            {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length === 0 && (
-              <ToolsPlaceholderView
-                icon={BarChart3}
-                title="Class Analytics"
-                description="No classes available yet. Import class records to unlock analytics views."
-              />
-            )}
-            {activeView === 'intervention' && selectedStudent && (
-              <InterventionView
-                student={selectedStudent}
-                teacherId={currentUser?.uid || ''}
-                teacherName={teacherName}
-                initialCache={interventionCacheRef.current.get(selectedStudent.id)}
-                onCacheUpdate={(id, cache) => interventionCacheRef.current.set(id, cache)}
-                onStudentUpdated={(updatedStudent) => {
-                  const previousStudentKey = selectedStudent ? buildStudentViewKey(selectedStudent) : null;
-                  setSelectedStudent(updatedStudent);
-                  setStudents((prev) =>
-                    prev.map((item) => {
-                      const itemKey = buildStudentViewKey(item);
-                      const matchesPreviousKey = previousStudentKey ? itemKey === previousStudentKey : false;
-                      const matchesExactIdentity =
-                        item.id === updatedStudent.id
-                        && normalizeClassSectionId(item.classSectionId) === normalizeClassSectionId(updatedStudent.classSectionId);
-                      return matchesPreviousKey || matchesExactIdentity ? updatedStudent : item;
-                    })
-                  );
-                }}
-                onBack={handleBackToAnalytics}
-                onNavigateToQuizMaker={(tab) => {
-                  setActiveView('quiz_maker');
-                  // pass tab hint via sessionStorage so QuizMaker can pick it up
-                  if (tab) sessionStorage.setItem('quizMakerInitialTab', tab);
-                }}
-              />
-            )}
-            {activeView === 'topic_mastery' && (
-              <TopicMasteryView 
-                classSectionId={selectedClassSectionId}
-                onOpenNotifications={() => setActiveView('notifications')}
-                onOpenProfile={onOpenProfile}
-              />
-            )}
-            {activeView === 'competency' && effectiveAnalyticsClass && (
-              <StudentCompetencyTable
-                classSectionId={selectedClassSectionId}
-                className={selectedClass?.name}
-                fallbackStudents={students}
-                onBack={() => setSelectedClass(null)}
-                onOpenNotifications={() => setActiveView('notifications')}
-                onOpenProfile={onOpenProfile}
-                insightDismissed={insightDismissed}
-                onOpenInsightModal={() => setInsightModalOpen(true)}
-              />
-            )}
-            {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
-              <ClassesOverviewMenu
-                classes={classes}
-                students={students.map((s) => ({
-                  classroomId: s.classroomId,
-                  attendance: s.attendance,
-                  weakestTopic: s.weakestTopic,
-                }))}
-                onSelectClass={(cls) => setSelectedClass(cls)}
-                onOpenNotifications={() => setActiveView('notifications')}
-                onOpenProfile={onOpenProfile}
-                insightDismissed={insightDismissed}
-                onOpenInsightModal={() => setInsightModalOpen(true)}
-                viewType="competency"
-              />
-            )}
-            {activeView === 'competency' && !effectiveAnalyticsClass && classes.length === 0 && (
-              <ToolsPlaceholderView
-                icon={Users}
-                title="Student Competency"
-                description="No classes available yet. Import class records to view competency breakdowns."
-              />
-            )}
-            {activeView === 'import' && (
-              <DataImportView
-                classSectionId={selectedClassSectionId}
-                className={selectedClass?.name}
-                classMetadata={selectedClass?.classMetadata}
-                students={students}
-                teacherId={currentUser?.uid || ''}
-                teacherName={teacherName}
-                onStudentsUpdated={(updated) => setStudents(updated)}
-                onBackToClasses={() => setActiveView('dashboard')}
-                onOpenNotifications={() => setActiveView('notifications')}
-                onOpenProfile={onOpenProfile}
-                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                userPhoto={userProfile?.photo}
-                onImportedClassRecords={(payload) => {
-                  const uploadedStudents = payload.students.map((item) =>
-                    toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
-                  );
+              {activeView === 'analytics' && effectiveAnalyticsClass && (
+                <AnalyticsView
+                  selectedClass={effectiveAnalyticsClass}
+                  students={filteredStudentsForAnalytics}
+                  riskDistribution={riskDistribution}
+                  topicPerformance={topicPerformance}
+                  onViewStudent={handleViewStudent}
+                  onBack={() => setSelectedClass(null)}
+                  teacherOptions={teacherDirectory}
+                  managerUpdating={managerUpdating}
+                  onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
+                  onOpenNotifications={() => setActiveView('notifications')}
+                  onOpenProfile={onOpenProfile}
+                  classColor={effectiveClassColor}
+                  insightDismissed={insightDismissed}
+                  onOpenInsightModal={() => setInsightModalOpen(true)}
+                />
+              )}
+              {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length > 0 && (
+                <ClassesOverviewMenu
+                  classes={classes}
+                  onSelectClass={handleViewClass}
+                  onOpenNotifications={() => setActiveView('notifications')}
+                  onOpenProfile={onOpenProfile}
+                  insightDismissed={insightDismissed}
+                  onOpenInsightModal={() => setInsightModalOpen(true)}
+                />
+              )}
+              {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length === 0 && (
+                <ToolsPlaceholderView
+                  icon={BarChart3}
+                  title="Class Analytics"
+                  description="No classes available yet. Import class records to unlock analytics views."
+                />
+              )}
+              {activeView === 'intervention' && selectedStudent && (
+                <InterventionView
+                  student={selectedStudent}
+                  teacherId={currentUser?.uid || ''}
+                  teacherName={teacherName}
+                  initialCache={interventionCacheRef.current.get(selectedStudent.id)}
+                  onCacheUpdate={(id, cache) => interventionCacheRef.current.set(id, cache)}
+                  onStudentUpdated={(updatedStudent) => {
+                    const previousStudentKey = selectedStudent ? buildStudentViewKey(selectedStudent) : null;
+                    setSelectedStudent(updatedStudent);
+                    setStudents((prev) =>
+                      prev.map((item) => {
+                        const itemKey = buildStudentViewKey(item);
+                        const matchesPreviousKey = previousStudentKey ? itemKey === previousStudentKey : false;
+                        const matchesExactIdentity =
+                          item.id === updatedStudent.id
+                          && normalizeClassSectionId(item.classSectionId) === normalizeClassSectionId(updatedStudent.classSectionId);
+                        return matchesPreviousKey || matchesExactIdentity ? updatedStudent : item;
+                      })
+                    );
+                  }}
+                  onBack={handleBackToAnalytics}
+                  onNavigateToQuizMaker={(tab) => {
+                    setActiveView('quiz_maker');
+                    // pass tab hint via sessionStorage so QuizMaker can pick it up
+                    if (tab) sessionStorage.setItem('quizMakerInitialTab', tab);
+                  }}
+                />
+              )}
+              {activeView === 'topic_mastery' && (
+                <TopicMasteryView
+                  classSectionId={selectedClassSectionId}
+                  onOpenNotifications={() => setActiveView('notifications')}
+                  onOpenProfile={onOpenProfile}
+                />
+              )}
+              {activeView === 'competency' && effectiveAnalyticsClass && (
+                <StudentCompetencyTable
+                  classSectionId={selectedClassSectionId}
+                  className={selectedClass?.name}
+                  fallbackStudents={students}
+                  onBack={() => setSelectedClass(null)}
+                  onOpenNotifications={() => setActiveView('notifications')}
+                  onOpenProfile={onOpenProfile}
+                  insightDismissed={insightDismissed}
+                  onOpenInsightModal={() => setInsightModalOpen(true)}
+                />
+              )}
+              {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
+                <ClassesOverviewMenu
+                  classes={classes}
+                  onSelectClass={(cls) => setSelectedClass(cls)}
+                  onOpenNotifications={() => setActiveView('notifications')}
+                  onOpenProfile={onOpenProfile}
+                  insightDismissed={insightDismissed}
+                  onOpenInsightModal={() => setInsightModalOpen(true)}
+                  viewType="competency"
+                />
+              )}
+              {activeView === 'competency' && !effectiveAnalyticsClass && classes.length === 0 && (
+                <ToolsPlaceholderView
+                  icon={Users}
+                  title="Student Competency"
+                  description="No classes available yet. Import class records to view competency breakdowns."
+                />
+              )}
+              {activeView === 'import' && (
+                <DataImportView
+                  classSectionId={selectedClassSectionId}
+                  className={selectedClass?.name}
+                  classMetadata={selectedClass?.classMetadata}
+                  students={students}
+                  teacherId={currentUser?.uid || ''}
+                  teacherName={teacherName}
+                  onStudentsUpdated={(updated) => setStudents(updated)}
+                  onBackToClasses={() => setActiveView('dashboard')}
+                  onOpenNotifications={() => setActiveView('notifications')}
+                  onOpenProfile={onOpenProfile}
+                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                  userPhoto={userProfile?.photo}
+                  onImportedClassRecords={(payload) => {
+                    const uploadedStudents = payload.students.map((item) =>
+                      toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
+                    );
 
-                  const resolvedClassMetadata = resolveClassMetadata({
-                    metadata: payload.classMetadata,
-                    classSectionId: payload.classSectionId,
-                    className: payload.className,
-                  });
-                  const classSection = resolvedClassMetadata.classSectionId || 'imported_class';
-                  const resolvedClassName = resolvedClassMetadata.className || 'Imported Class';
-                  const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
-                  const avgScore = uploadedStudents.length > 0
-                    ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
-                    : 0;
+                    const resolvedClassMetadata = resolveClassMetadata({
+                      metadata: payload.classMetadata,
+                      classSectionId: payload.classSectionId,
+                      className: payload.className,
+                    });
+                    const classSection = resolvedClassMetadata.classSectionId || 'imported_class';
+                    const resolvedClassName = resolvedClassMetadata.className || 'Imported Class';
+                    const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
+                    const avgScore = uploadedStudents.length > 0
+                      ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
+                      : 0;
 
-                  const uploadedClass: ClassView = {
-                    id: classSection,
-                    name: resolvedClassName,
-                    classSectionId: classSection,
-                    classMetadata: {
-                      ...resolvedClassMetadata,
+                    const uploadedClass: ClassView = {
+                      id: classSection,
+                      name: resolvedClassName,
                       classSectionId: classSection,
-                      className: resolvedClassName,
-                    },
-                    schedule: 'Mon-Fri',
-                    studentCount: uploadedStudents.length,
-                    avgScore,
-                    atRiskCount,
-                    riskLevel: atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low',
-                  };
+                      classMetadata: {
+                        ...resolvedClassMetadata,
+                        classSectionId: classSection,
+                        className: resolvedClassName,
+                      },
+                      schedule: 'Mon-Fri',
+                      studentCount: uploadedStudents.length,
+                      avgScore,
+                      atRiskCount,
+                      riskLevel: atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low',
+                    };
 
-                  setStudents((prev) => mergeStudentViews(prev, uploadedStudents));
-                  setClasses((prev) => mergeClassViews(prev, [uploadedClass]));
-                }}
-                onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
-              />
-            )}
-            {activeView === 'notifications' && (
-              <TeacherNotificationsView
-                liveActivity={liveActivity}
-                atRiskStudents={students
-                  .filter(s => s.riskLevel === 'high')
-                  .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
-                onOpenNotifications={() => setActiveView('notifications')}
-                onOpenProfile={onOpenProfile}
-                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                userPhoto={userProfile?.photo}
-                teacherName={teacherName}
-              />
-            )}
-            {activeView === 'calendar' && (
-              <TeacherCalendarView 
-                classes={classes} 
-                teacherId={currentUser?.uid} 
-              />
-            )}
-            {/* Edit records view is now handled internally by DataImportView */}
-            {activeView === 'quiz_maker' && (
-              <QuizMaker
-                onBack={() => {
-                  const returnTo = sessionStorage.getItem('quizMakerReturnTo');
-                  sessionStorage.removeItem('quizMakerReturnTo');
-                  sessionStorage.removeItem('quizMakerInitialTab');
-                  setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
-                }}
-                onOpenNotifications={() => setActiveView('notifications')}
-                onOpenProfile={onOpenProfile}
-                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                userPhoto={userProfile?.photo}
-                teacherName={teacherName}
-              />
-            )}
-            {activeView === 'question_bank' && (
-              <QuestionBankPanel 
-                onOpenNotifications={() => setActiveView('notifications')}
-                onOpenProfile={onOpenProfile}
-                onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                userPhoto={userProfile?.photo}
-                teacherName={teacherName}
-              />
-            )}
-          </AnimatePresence>
+                    setStudents((prev) => mergeStudentViews(prev, uploadedStudents));
+                    setClasses((prev) => mergeClassViews(prev, [uploadedClass]));
+                  }}
+                  onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
+                />
+              )}
+              {activeView === 'notifications' && (
+                <TeacherNotificationsView
+                  liveActivity={liveActivity}
+                  atRiskStudents={students
+                    .filter(s => s.riskLevel === 'high')
+                    .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
+                  onOpenNotifications={() => setActiveView('notifications')}
+                  onOpenProfile={onOpenProfile}
+                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                  userPhoto={userProfile?.photo}
+                  teacherName={teacherName}
+                />
+              )}
+              {activeView === 'calendar' && (
+                <TeacherCalendarView
+                  classes={classes}
+                  teacherId={currentUser?.uid}
+                />
+              )}
+              {/* Edit records view is now handled internally by DataImportView */}
+              {activeView === 'quiz_maker' && (
+                <QuizMaker
+                  onBack={() => {
+                    const returnTo = sessionStorage.getItem('quizMakerReturnTo');
+                    sessionStorage.removeItem('quizMakerReturnTo');
+                    sessionStorage.removeItem('quizMakerInitialTab');
+                    setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
+                  }}
+                  onOpenNotifications={() => setActiveView('notifications')}
+                  onOpenProfile={onOpenProfile}
+                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                  userPhoto={userProfile?.photo}
+                  teacherName={teacherName}
+                />
+              )}
+              {activeView === 'question_bank' && (
+                <QuestionBankPanel
+                  onOpenNotifications={() => setActiveView('notifications')}
+                  onOpenProfile={onOpenProfile}
+                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                  userPhoto={userProfile?.photo}
+                  teacherName={teacherName}
+                />
+              )}
+            </AnimatePresence>
           </main>
         </div>
 
-        {activeView === 'dashboard' && (
-          <DashboardRightSidebar 
-            onViewCalendar={() => setActiveView('calendar')} 
-            onOpenProfile={onOpenProfile} 
-            userProfile={userProfile} 
+        {/* Desktop: right sidebar always visible alongside main content */}
+        {activeView === 'dashboard' && !isMobileViewport && (
+          <DashboardRightSidebar
+            onViewCalendar={() => setActiveView('calendar')}
+            onOpenProfile={onOpenProfile}
+            userProfile={userProfile}
             teacherName={teacherName}
             liveActivity={liveActivity}
           />
         )}
       </div>
 
+      {/* Mobile: calendar/profile panel as a fixed right-side drawer */}
+      <AnimatePresence>
+        {isMobileViewport && activeView === 'dashboard' && showMobileCalendar && (
+          <>
+            {/* Backdrop */}
+            <motion.button
+              key="cal-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[2px]"
+              aria-label="Close calendar panel"
+              onClick={() => setShowMobileCalendar(false)}
+            />
+            {/* Drawer panel */}
+            <motion.div
+              key="cal-drawer"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              className="fixed top-0 right-0 bottom-0 z-50 w-[300px] max-w-[85vw] shadow-2xl"
+            >
+              <DashboardRightSidebar
+                onViewCalendar={() => { setActiveView('calendar'); setShowMobileCalendar(false); }}
+                onOpenProfile={() => { onOpenProfile?.(); setShowMobileCalendar(false); }}
+                userProfile={userProfile}
+                teacherName={teacherName}
+                liveActivity={liveActivity}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Insight Modal */}
       <AnimatePresence>
         {insightModalOpen && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -1711,9 +1711,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   </div>
                   <h3 className="font-semibold text-slate-800">Detailed AI Insight</h3>
                 </div>
-                <button 
+                <button
                   onClick={() => { setInsightModalOpen(false); }}
-                  aria-label="Close AI insight"
                   className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
                 >
                   <X size={18} />
@@ -1734,7 +1733,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </BoneSkeleton>
               </div>
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
-                <button 
+                <button
                   onClick={() => { setInsightModalOpen(false); }}
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
                 >
@@ -1773,13 +1772,11 @@ const NavItem: React.FC<{
     onClick={onClick}
     whileHover={{ x: 2 }}
     whileTap={{ scale: 0.98 }}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 border whitespace-nowrap ${
-      collapsed && !forceExpanded ? 'justify-center' : ''
-    } ${
-      active
-        ? 'bg-[#9956DE]/12 border-[#9956DE]/30 shadow-sm text-[#6d28d9]'
+    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 border whitespace-nowrap ${collapsed && !forceExpanded ? 'justify-center' : ''
+      } ${active
+        ? 'bg-[#9956DE]/12 border-[#9956DE]/30 shadow-sm text-[#9956DE]'
         : 'bg-transparent border-transparent text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628]'
-    }`}
+      }`}
   >
     <Icon size={18} strokeWidth={active ? 2.5 : 2} className="flex-shrink-0" />
     {(!collapsed || forceExpanded) && <span className="font-body font-semibold text-xs">{label}</span>}
@@ -1829,8 +1826,7 @@ const DashboardView: React.FC<{
   totalStudents: number;
   totalAtRisk: number;
   avgPerformance: number;
-  statsLoading?: boolean;
-}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance, statsLoading = false }) => {
+}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance }) => {
   const riskPercentage = totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0;
   const engagementRate = totalStudents > 0 ? Math.round(((totalStudents - totalAtRisk) / totalStudents) * 100) : 0;
 
@@ -1839,98 +1835,96 @@ const DashboardView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6 space-y-4"
+      className="p-3 sm:p-6 space-y-4"
     >
       {/* AI Banner */}
       {!isInsightDismissed && (
-      <div 
-        onClick={onOpenInsightModal}
-        className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[18px_20px] flex items-center gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer hover:shadow-md transition-shadow group"
-      >
-        <div className="relative flex-shrink-0">
-          <div className="absolute -inset-[5px] rounded-full border-2 border-[#a5b4fc] opacity-50 animate-pulse" />
-          <div className="w-[46px] h-[46px] rounded-full bg-[#eef2ff] border-2 border-[#c7d2fe] flex items-center justify-center text-[#4f46e5] text-xl relative overflow-hidden group-hover:scale-[1.05] transition-transform">
-            <img src="/avatar/avatar_icon.png" alt="AI Mascot" className="w-[85%] h-[85%] object-contain" />
+        <div
+          onClick={onOpenInsightModal}
+          className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[14px_16px] sm:p-[18px_20px] flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer hover:shadow-md transition-shadow group"
+        >
+          <div className="relative flex-shrink-0">
+            <div className="absolute -inset-[5px] rounded-full border-2 border-[#a5b4fc] opacity-50 animate-pulse" />
+            <div className="w-[46px] h-[46px] rounded-full bg-[#eef2ff] border-2 border-[#c7d2fe] flex items-center justify-center text-[#4f46e5] text-xl relative overflow-hidden group-hover:scale-[1.05] transition-transform">
+              <img src="/avatar/avatar_icon.png" alt="AI Mascot" className="w-[85%] h-[85%] object-contain" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <div className="text-[13.5px] font-semibold text-[#1e1b4b] flex flex-wrap items-center gap-2 mb-1">
+              <Sparkles size={14} className="text-[#818cf8]" />
+              MathPulse AI insight
+              <span className="bg-[#fee2e2] text-[#b91c1c] text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#fca5a5]">Attention needed</span>
+            </div>
+            <div className="text-[12.5px] text-[#475569] leading-[1.55]">
+              I've noticed some students are currently showing a high risk of falling behind. Click to view detailed analysis...
+            </div>
+          </div>
+          <div className="flex gap-2 flex-shrink-0 self-end sm:self-auto">
+            <button onClick={(e) => { e.stopPropagation(); onDismissInsight(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors">Dismiss</button>
+            <button onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#4f46e5] bg-[#4f46e5] text-white shadow-[0_2px_8px_rgba(79,70,229,0.13)] hover:bg-[#4338ca] transition-colors">Review students</button>
           </div>
         </div>
-        <div className="flex-1">
-          <div className="text-[13.5px] font-semibold text-[#1e1b4b] flex items-center gap-2 mb-1">
-            <Sparkles size={14} className="text-[#818cf8]" />
-            MathPulse AI insight
-            <span className="bg-[#fee2e2] text-[#b91c1c] text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#fca5a5]">Attention needed</span>
-          </div>
-          <div className="text-[12.5px] text-[#475569] leading-[1.55]">
-            I've noticed some students are currently showing a high risk of falling behind. Click to view detailed analysis...
-          </div>
-        </div>
-        <div className="flex gap-2 flex-shrink-0">
-          <button onClick={(e) => { e.stopPropagation(); onDismissInsight(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors">Dismiss</button>
-          <button onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#4f46e5] bg-[#4f46e5] text-white shadow-[0_2px_8px_rgba(79,70,229,0.13)] hover:bg-[#4338ca] transition-colors">Review students</button>
-        </div>
-      </div>
       )}
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+        {/* Card 1 — Total Students */}
+        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-sm sm:rounded-lg p-[10px] sm:p-[15px] text-white flex flex-col gap-[6px] sm:gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px]">Total students</span>
-            <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={15} /></div>
+            <span className="text-[9px] sm:text-[11px] opacity-90 leading-tight">Total students</span>
+            <div className="hidden sm:flex bg-white/20 p-1.5 rounded-lg"><Users size={15} /></div>
           </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight" aria-live="polite">
-            {statsLoading ? <Skeleton className="h-7 w-12 bg-white/30" /> : totalStudents}
-          </div>
-          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px]">
-            <span>{classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
-          </div>
-        </div>
-        
-        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
-          <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px]">Class average</span>
-            <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={15} /></div>
-          </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight" aria-live="polite">
-            {statsLoading ? <Skeleton className="h-7 w-16 bg-white/30" /> : `${avgPerformance}%`}
-          </div>
-          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px]">
-            <span>Across {totalStudents} {totalStudents === 1 ? 'student' : 'students'}</span>
+          <div className="relative z-10 text-[18px] sm:text-[26px] font-semibold tracking-tight">{totalStudents}</div>
+          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
+            <span className="hidden sm:block">Added this year</span>
+            <span className="bg-black/15 px-[5px] sm:px-[7px] py-[2px] rounded font-semibold">{totalStudents > 0 ? '+1' : '0'}</span>
           </div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        {/* Card 2 — Class Average */}
+        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-sm sm:rounded-lg p-[10px] sm:p-[15px] text-white flex flex-col gap-[6px] sm:gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px]">Engagement rate</span>
-            <div className="bg-white/20 p-1.5 rounded-lg flex"><Activity size={15} /></div>
+            <span className="text-[9px] sm:text-[11px] opacity-90 leading-tight">Class average</span>
+            <div className="hidden sm:flex bg-white/20 p-1.5 rounded-lg"><Target size={15} /></div>
           </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight" aria-live="polite">
-            {statsLoading ? <Skeleton className="h-7 w-16 bg-white/30" /> : `${engagementRate}%`}
-          </div>
-          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px]">
-            <span>Active participants</span>
-            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{Math.round((engagementRate/100)*totalStudents)}</span>
+          <div className="relative z-10 text-[18px] sm:text-[26px] font-semibold tracking-tight">{avgPerformance}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
+            <span className="hidden sm:block">Vs. last month</span>
+            <span className="bg-black/15 px-[5px] sm:px-[7px] py-[2px] rounded font-semibold">+2.5%</span>
           </div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        {/* Card 3 — Engagement Rate */}
+        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-sm sm:rounded-lg p-[10px] sm:p-[15px] text-white flex flex-col gap-[6px] sm:gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px]">At risk</span>
-            <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertCircle size={15} /></div>
+            <span className="text-[9px] sm:text-[11px] opacity-90 leading-tight">Engage&shy;ment</span>
+            <div className="hidden sm:flex bg-white/20 p-1.5 rounded-lg"><Activity size={15} /></div>
           </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight" aria-live="polite">
-            {statsLoading ? <Skeleton className="h-7 w-12 bg-white/30" /> : totalAtRisk}
+          <div className="relative z-10 text-[18px] sm:text-[26px] font-semibold tracking-tight">{engagementRate}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
+            <span className="hidden sm:block">Active participants</span>
+            <span className="bg-black/15 px-[5px] sm:px-[7px] py-[2px] rounded font-semibold">{Math.round((engagementRate / 100) * totalStudents)}</span>
           </div>
-          <div className="relative z-10 border-t border-white/30 pt-2 flex justify-between items-center text-[10px]">
-            <span>Requires attention</span>
-            <span className="bg-black/15 px-[7px] py-[2px] rounded font-semibold">{riskPercentage}%</span>
+        </div>
+
+        {/* Card 4 — At Risk */}
+        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-sm sm:rounded-lg p-[10px] sm:p-[15px] text-white flex flex-col gap-[6px] sm:gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="relative z-10 flex justify-between items-start">
+            <span className="text-[9px] sm:text-[11px] opacity-90 leading-tight">At risk</span>
+            <div className="hidden sm:flex bg-white/20 p-1.5 rounded-lg"><AlertCircle size={15} /></div>
+          </div>
+          <div className="relative z-10 text-[18px] sm:text-[26px] font-semibold tracking-tight">{totalAtRisk}</div>
+          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
+            <span className="hidden sm:block">Requires attention</span>
+            <span className="bg-black/15 px-[5px] sm:px-[7px] py-[2px] rounded font-semibold">{riskPercentage}%</span>
           </div>
         </div>
       </div>
@@ -1957,26 +1951,26 @@ const DashboardView: React.FC<{
             const color = colors[idx % colors.length];
 
             return (
-            <div
-              key={classItem.id}
-              onClick={() => onViewClass(classItem)}
-              className={`relative overflow-hidden flex items-center gap-3 p-[12px_13px] pl-[16px] border border-[#f1f5f9] rounded-[14px] cursor-pointer ${color.borderHover} hover:shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:bg-[#fafbff] transition-all group`}
-            >
-              <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${color.stripe}`} />
-              <div className={`w-[38px] h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0 text-[17px] ${color.bg} ${color.text} group-hover:scale-110 transition-transform duration-300`}>
-                <BookOpen size={18} />
+              <div
+                key={classItem.id}
+                onClick={() => onViewClass(classItem)}
+                className={`relative overflow-hidden flex items-center gap-3 p-[12px_13px] pl-[16px] border border-[#f1f5f9] rounded-[14px] cursor-pointer ${color.borderHover} hover:shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:bg-[#fafbff] transition-all group`}
+              >
+                <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${color.stripe}`} />
+                <div className={`w-[38px] h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0 text-[17px] ${color.bg} ${color.text} group-hover:scale-110 transition-transform duration-300`}>
+                  <BookOpen size={18} />
+                </div>
+                <div className="flex-1">
+                  <div className="text-[12.5px] font-medium text-[#1e293b]">{classItem.name}</div>
+                  <div className="text-[11px] text-[#94a3b8] mt-[1px]">{classItem.classification || 'High School'}</div>
+                </div>
+                <div className="hidden sm:block text-[12px] text-[#64748b] min-w-[65px]">{classItem.schedule || 'Mon-Fri'}</div>
+                <div className="hidden sm:block text-[12px] text-[#64748b] min-w-[85px]">{classItem.studentCount} students</div>
+                <span className={`text-[10px] font-semibold px-[9px] py-[3px] rounded-[6px] ${classItem.riskLevel === 'high' ? 'bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]' : classItem.riskLevel === 'medium' ? 'bg-[#fffbeb] text-[#b45309] border border-[#fcd34d]' : 'bg-[#ecfdf5] text-[#065f46] border border-[#6ee7b7]'}`}>
+                  {classItem.riskLevel === 'high' ? 'High risk' : classItem.riskLevel === 'medium' ? 'Medium risk' : 'On track'}
+                </span>
+                <MoreHorizontal size={16} className="text-[#cbd5e1] ml-auto hover:text-[#64748b]" />
               </div>
-              <div className="flex-1">
-                <div className="text-[12.5px] font-medium text-[#1e293b]">{classItem.name}</div>
-                <div className="text-[11px] text-[#475569] mt-[1px]">{classItem.classification || 'High School'}</div>
-              </div>
-              <div className="text-[12px] text-[#64748b] min-w-[65px]">{classItem.schedule || 'Mon-Fri'}</div>
-              <div className="text-[12px] text-[#64748b] min-w-[85px]">{classItem.studentCount} students</div>
-              <span className={`text-[10px] font-semibold px-[9px] py-[3px] rounded-[6px] ${classItem.riskLevel === 'high' ? 'bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]' : classItem.riskLevel === 'medium' ? 'bg-[#fffbeb] text-[#b45309] border border-[#fcd34d]' : 'bg-[#ecfdf5] text-[#065f46] border border-[#6ee7b7]'}`}>
-                {classItem.riskLevel === 'high' ? 'High risk' : classItem.riskLevel === 'medium' ? 'Medium risk' : 'On track'}
-              </span>
-              <MoreHorizontal size={16} className="text-[#cbd5e1] ml-auto hover:text-[#64748b]" />
-            </div>
             );
           })}
         </div>
@@ -1997,7 +1991,7 @@ const StudentCard = React.memo(({ student, onViewStudent }: { student: StudentVi
   };
 
   const theme = getTheme();
-  
+
   return (
     <div
       onClick={() => onViewStudent(student)}
@@ -2060,341 +2054,341 @@ const AnalyticsView: React.FC<{
   insightDismissed,
   onOpenInsightModal,
 }) => {
-  const { currentUser, userProfile } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedManagerId, setSelectedManagerId] = useState('');
-  const [filterType, setFilterType] = useState('All');
+    const { currentUser, userProfile } = useAuth();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedManagerId, setSelectedManagerId] = useState('');
+    const [filterType, setFilterType] = useState('All');
 
-  useEffect(() => {
-    setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
-  }, [selectedClass]);
+    useEffect(() => {
+      setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
+    }, [selectedClass]);
 
-  const visibleStudents = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    let filtered = students;
-    if (query) {
-      filtered = filtered.filter((student) => {
-        return (
-          student.name.toLowerCase().includes(query)
-          || (student.lrn || '').toLowerCase().includes(query)
-          || (student.weakestTopic || '').toLowerCase().includes(query)
-        );
-      });
-    }
+    const visibleStudents = useMemo(() => {
+      const query = searchTerm.trim().toLowerCase();
+      let filtered = students;
+      if (query) {
+        filtered = filtered.filter((student) => {
+          return (
+            student.name.toLowerCase().includes(query)
+            || (student.lrn || '').toLowerCase().includes(query)
+            || (student.weakestTopic || '').toLowerCase().includes(query)
+          );
+        });
+      }
 
-    if (filterType === 'Good') {
-      filtered = filtered.filter(s => s.avgScore >= 85 && s.riskLevel !== 'high');
-    } else if (filterType === 'Risk') {
-      filtered = filtered.filter(s => s.riskLevel === 'high' || s.avgScore < 75);
-    }
-    return filtered;
-  }, [searchTerm, students, filterType]);
+      if (filterType === 'Good') {
+        filtered = filtered.filter(s => s.avgScore >= 85 && s.riskLevel !== 'high');
+      } else if (filterType === 'Risk') {
+        filtered = filtered.filter(s => s.riskLevel === 'high' || s.avgScore < 75);
+      }
+      return filtered;
+    }, [searchTerm, students, filterType]);
 
-  const averageCompletion = useMemo(() => {
-    if (students.length === 0) return 0;
-    const total = students.reduce((sum, student) => sum + (student.assignmentCompletion || 0), 0);
-    return Math.round(total / students.length);
-  }, [students]);
+    const averageCompletion = useMemo(() => {
+      if (students.length === 0) return 0;
+      const total = students.reduce((sum, student) => sum + (student.assignmentCompletion || 0), 0);
+      return Math.round(total / students.length);
+    }, [students]);
 
-  const participationRate = useMemo(() => {
-    if (students.length === 0) return 0;
-    const attendanceAverage = students.reduce((sum, student) => sum + (student.attendance || 0), 0) / students.length;
-    const engagementAverage = students.reduce((sum, student) => sum + (student.engagementScore || 0), 0) / students.length;
-    return Math.round((attendanceAverage * 0.6) + (engagementAverage * 0.4));
-  }, [students]);
+    const participationRate = useMemo(() => {
+      if (students.length === 0) return 0;
+      const attendanceAverage = students.reduce((sum, student) => sum + (student.attendance || 0), 0) / students.length;
+      const engagementAverage = students.reduce((sum, student) => sum + (student.engagementScore || 0), 0) / students.length;
+      return Math.round((attendanceAverage * 0.6) + (engagementAverage * 0.4));
+    }, [students]);
 
-  const topPerformers = useMemo(() => {
-    return [...students]
-      .sort((a, b) => b.avgScore - a.avgScore)
-      .slice(0, 5);
-  }, [students]);
+    const topPerformers = useMemo(() => {
+      return [...students]
+        .sort((a, b) => b.avgScore - a.avgScore)
+        .slice(0, 5);
+    }, [students]);
 
-  const attentionStudents = useMemo(() => {
-    return [...students].filter((student) => student.riskLevel === 'high' || student.avgScore < 70 || student.assignmentCompletion < 65);
-  }, [students]);
+    const attentionStudents = useMemo(() => {
+      return [...students].filter((student) => student.riskLevel === 'high' || student.avgScore < 70 || student.assignmentCompletion < 65);
+    }, [students]);
 
-  const selectedManager = useMemo(
-    () => teacherOptions.find((teacher) => teacher.uid === selectedManagerId),
-    [teacherOptions, selectedManagerId],
-  );
+    const selectedManager = useMemo(
+      () => teacherOptions.find((teacher) => teacher.uid === selectedManagerId),
+      [teacherOptions, selectedManagerId],
+    );
 
-  const handleAssignManager = () => {
-    if (!selectedManager) {
-      toast.error('Select a teacher manager first.');
-      return;
-    }
-    void onAssignManager(selectedManager);
-  };
+    const handleAssignManager = () => {
+      if (!selectedManager) {
+        toast.error('Select a teacher manager first.');
+        return;
+      }
+      void onAssignManager(selectedManager);
+    };
 
-  const classBadges = [
-    selectedClass.classMetadata?.gradeLevel || selectedClass.gradeLevel,
-    selectedClass.classMetadata?.classification || selectedClass.classification,
-    selectedClass.classMetadata?.strand || selectedClass.strand,
-  ].filter(Boolean) as string[];
+    const classBadges = [
+      selectedClass.classMetadata?.gradeLevel || selectedClass.gradeLevel,
+      selectedClass.classMetadata?.classification || selectedClass.classification,
+      selectedClass.classMetadata?.strand || selectedClass.strand,
+    ].filter(Boolean) as string[];
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="p-[24px] xl:p-[32px] space-y-[24px] h-full overflow-y-auto"
-    >
-      {/* Header handled by global dashboard header pattern if needed, but Analytics has a specialized sub-header */}
-      <div className="flex items-center justify-between mb-6">
-        <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="p-3 sm:p-[24px] xl:p-[32px] space-y-3 sm:space-y-[24px] h-full overflow-y-auto"
+      >
+        {/* Header handled by global dashboard header pattern if needed, but Analytics has a specialized sub-header */}
+        <div className="flex items-center justify-between mb-3 sm:mb-6">
+          <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
             <ChevronLeft className="w-4 h-4" />
             Back to Classes
-        </button>
-      </div>
+          </button>
+        </div>
 
-      {/* Header Card */}
-      <header 
-        style={{
-          backgroundColor: classColor?.hex || '#6366f1'
-        }}
-        className="rounded-[24px] p-[24px] lg:p-[32px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden group text-white"
-      >
+        {/* Header Card */}
+        <header
+          style={{
+            backgroundColor: classColor?.hex || '#6366f1'
+          }}
+          className="rounded-[24px] p-4 sm:p-[24px] lg:p-[32px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 relative overflow-hidden group text-white"
+        >
           {/* Decorative Circles */}
           <div className="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-white/10 group-hover:scale-[1.3] transition-transform duration-700 ease-out pointer-events-none" />
           <div className="absolute -left-10 -top-10 w-32 h-32 rounded-full bg-white/10 group-hover:scale-[1.2] transition-transform duration-700 delay-75 ease-out pointer-events-none" />
-          
+
           {/* Left Side Info */}
           <div className="shrink-0 relative z-10">
-              <h1 className="text-[28px] font-bold mb-3 tracking-tight">{selectedClass.name}</h1>
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {classBadges.map((badge, idx) => (
-                      <span key={badge} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-[12px] font-semibold rounded-full shadow-sm border border-white/20">{badge}</span>
-                  ))}
-              </div>
-              <p className="text-[13px] text-white/80 font-medium">Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}</p>
+            <h1 className="text-xl sm:text-[28px] font-bold mb-2 sm:mb-3 tracking-tight">{selectedClass.name}</h1>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              {classBadges.map((badge, idx) => (
+                <span key={badge} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-[12px] font-semibold rounded-full shadow-sm border border-white/20">{badge}</span>
+              ))}
+            </div>
+            <p className="text-[13px] text-white/80 font-medium">Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}</p>
           </div>
 
           {/* Right Side Section Manager */}
           <div className="bg-white/10 border border-white/20 rounded-[18px] p-[16px] backdrop-blur-md flex flex-col w-full md:w-auto shrink-0 relative z-10 shadow-inner">
-              <label className="text-[11px] font-bold text-white/90 uppercase tracking-wider mb-2 ml-1">Section Manager</label>
-              <div className="flex items-center gap-3">
-                  <div className="relative w-full md:w-[320px]">
-                      <select
-                        value={selectedManagerId || ''}
-                        onChange={(e) => setSelectedManagerId(e.target.value)}
-                        className="appearance-none bg-white/20 border border-white/30 text-white text-[13px] font-bold rounded-xl pl-4 pr-10 py-2.5 outline-none focus:border-white/50 focus:ring-2 focus:ring-white/20 w-full shadow-sm cursor-pointer [&>option]:text-[#1e293b]"
-                      >
-                          <option value="">Select teacher</option>
-                          {teacherOptions.map((teacher) => (
-                            <option key={teacher.uid} value={teacher.uid}>
-                              {teacher.name} ({teacher.email})
-                            </option>
-                          ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-white/70 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                  <button
-                    onClick={handleAssignManager}
-                    disabled={!selectedManagerId || managerUpdating}
-                    className="bg-white text-[#6366f1] hover:bg-white/90 text-[13px] font-bold rounded-full px-6 py-2.5 shadow-md transition-transform hover:scale-[1.02] whitespace-nowrap disabled:opacity-50 disabled:hover:scale-100"
-                    style={{ color: classColor?.hex || '#6366f1' }}
-                  >
-                      {managerUpdating ? 'Updating...' : 'Assign'}
-                  </button>
+            <label className="text-[11px] font-bold text-white/90 uppercase tracking-wider mb-2 ml-1">Section Manager</label>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+              <div className="relative w-full md:w-[320px]">
+                <select
+                  value={selectedManagerId || ''}
+                  onChange={(e) => setSelectedManagerId(e.target.value)}
+                  className="appearance-none bg-white/20 border border-white/30 text-white text-[13px] font-bold rounded-xl pl-4 pr-10 py-2.5 outline-none focus:border-white/50 focus:ring-2 focus:ring-white/20 w-full shadow-sm cursor-pointer [&>option]:text-[#1e293b]"
+                >
+                  <option value="">Select teacher</option>
+                  {teacherOptions.map((teacher) => (
+                    <option key={teacher.uid} value={teacher.uid}>
+                      {teacher.name} ({teacher.email})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-white/70 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
+              <button
+                onClick={handleAssignManager}
+                disabled={!selectedManagerId || managerUpdating}
+                className="bg-white text-[#6366f1] hover:bg-white/90 text-[13px] font-bold rounded-full px-6 py-2.5 shadow-md transition-transform hover:scale-[1.02] whitespace-nowrap disabled:opacity-50 disabled:hover:scale-100"
+                style={{ color: classColor?.hex || '#6366f1' }}
+              >
+                {managerUpdating ? 'Updating...' : 'Assign'}
+              </button>
+            </div>
           </div>
-      </header>
+        </header>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-[18px] w-full">
-        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
-          <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Class Average</span>
-            <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={15} /></div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-[18px] w-full">
+          <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+            <div className="relative z-10 flex justify-between items-start">
+              <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Class Average</span>
+              <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={14} /></div>
+            </div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{selectedClass.avgScore}%</div>
           </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{selectedClass.avgScore}%</div>
+
+          <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+            <div className="relative z-10 flex justify-between items-start">
+              <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Completion</span>
+              <div className="bg-white/20 p-1.5 rounded-lg flex"><CheckCircle size={14} /></div>
+            </div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{averageCompletion}%</div>
+          </div>
+
+          <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+            <div className="relative z-10 flex justify-between items-start">
+              <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Participation</span>
+              <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={14} /></div>
+            </div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{participationRate}%</div>
+          </div>
+
+          <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
+            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+            <div className="relative z-10 flex justify-between items-start">
+              <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Attention</span>
+              <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertTriangle size={14} /></div>
+            </div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">
+              {attentionStudents.length} <span className="text-[12px] opacity-90 font-medium">students</span>
+            </div>
+          </div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
-          <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Completion Rate</span>
-            <div className="bg-white/20 p-1.5 rounded-lg flex"><CheckCircle size={15} /></div>
-          </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{averageCompletion}%</div>
-        </div>
-
-        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
-          <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Participation</span>
-            <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={15} /></div>
-          </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight">{participationRate}%</div>
-        </div>
-
-        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
-          <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[11px] opacity-90 uppercase tracking-wider font-semibold">Needs Attention</span>
-            <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertTriangle size={15} /></div>
-          </div>
-          <div className="relative z-10 text-[26px] font-semibold tracking-tight">
-            {attentionStudents.length} <span className="text-[13px] opacity-90 font-medium">students</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-[24px] h-auto xl:h-[600px]">
-        {/* Left Column - Student List */}
-        <div className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[500px] xl:h-full">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-[24px] h-auto xl:h-[600px]">
+          {/* Left Column - Student List */}
+          <div className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[500px] xl:h-full">
             <div className="p-5 border-b border-[#f1f5f9] shrink-0">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-[15px] font-semibold text-[#1e293b]">Students <span className="text-[#64748b] text-[13px]">({visibleStudents.length})</span></h2>
-                </div>
-                <div className="flex items-center bg-white px-4 py-2 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] group">
-                    <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
-                    <input
-                      type="text"
-                      placeholder="Search students..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#64748b]"
-                    />
-                </div>
-                <div className="flex items-center gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
-                    <button
-                      onClick={() => setFilterType('All')}
-                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'All' ? 'bg-[#4f46e5] text-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#f1f5f9]'}`}
-                    >All Students</button>
-                    <button
-                      onClick={() => setFilterType('Good')}
-                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Good' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-emerald-50/40 text-emerald-600 border border-emerald-50 hover:bg-emerald-50'}`}
-                    >Top Performers</button>
-                    <button
-                      onClick={() => setFilterType('Risk')}
-                      className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Risk' ? 'bg-rose-50 text-rose-600 border border-rose-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-rose-50/40 text-rose-600 border border-rose-50 hover:bg-rose-50'}`}
-                    >Needs Attention</button>
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[15px] font-semibold text-[#1e293b]">Students <span className="text-[#64748b] text-[13px]">({visibleStudents.length})</span></h2>
+              </div>
+              <div className="flex items-center bg-white px-4 py-2 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] group">
+                <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Search students..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#64748b]"
+                />
+              </div>
+              <div className="flex items-center gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
+                <button
+                  onClick={() => setFilterType('All')}
+                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'All' ? 'bg-[#4f46e5] text-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#f1f5f9]'}`}
+                >All Students</button>
+                <button
+                  onClick={() => setFilterType('Good')}
+                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Good' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-emerald-50/40 text-emerald-600 border border-emerald-50 hover:bg-emerald-50'}`}
+                >Top Performers</button>
+                <button
+                  onClick={() => setFilterType('Risk')}
+                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Risk' ? 'bg-rose-50 text-rose-600 border border-rose-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-rose-50/40 text-rose-600 border border-rose-50 hover:bg-rose-50'}`}
+                >Needs Attention</button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col no-scrollbar">
-                <Virtuoso
-                  style={{ height: '100%' }}
-                  data={visibleStudents}
-                  className="no-scrollbar"
-                  itemContent={(_, student) => (
-                      <div className="py-[6px] px-[8px]">
-                          <StudentCard student={student} onViewStudent={onViewStudent} />
-                      </div>
-                  )}
-                  computeItemKey={(index, student) => buildStudentViewKey(student)}
-                />
+              <Virtuoso
+                style={{ height: '100%' }}
+                data={visibleStudents}
+                className="no-scrollbar"
+                itemContent={(_, student) => (
+                  <div className="py-[6px] px-[8px]">
+                    <StudentCard student={student} onViewStudent={onViewStudent} />
+                  </div>
+                )}
+                computeItemKey={(index, student) => buildStudentViewKey(student)}
+              />
             </div>
-        </div>
+          </div>
 
-        {/* Right Column - Charts & Lists */}
-        <div className="xl:col-span-2 flex flex-col gap-[24px] h-full overflow-y-auto no-scrollbar pb-10 xl:pb-0">
+          {/* Right Column - Charts & Lists */}
+          <div className="xl:col-span-2 flex flex-col gap-[24px] h-full overflow-y-auto no-scrollbar pb-10 xl:pb-0">
             {/* Top Row Charts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
-                {/* Visual Chart 1: Risk Distribution */}
-                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="font-semibold text-[15px] text-[#1e293b]">Risk Distribution</h3>
-                        <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
-                    </div>
-                    <div className="relative w-full flex-1 min-h-[180px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={riskDistribution}>
-                                <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
-                                <XAxis dataKey="name" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} />
-                                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={80}>
-                                    {riskDistribution.map((entry, index) => {
-                                        const mapping: Record<string, string> = { 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981' };
-                                        return <Cell key={`cell-${index}`} fill={mapping[entry.name] || entry.color} />;
-                                    })}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+              {/* Visual Chart 1: Risk Distribution */}
+              <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-semibold text-[15px] text-[#1e293b]">Risk Distribution</h3>
+                  <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
                 </div>
+                <div className="relative w-full flex-1 min-h-[180px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={riskDistribution}>
+                      <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="name" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#475569', fontSize: 11, fontWeight: 600 }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} />
+                      <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={80}>
+                        {riskDistribution.map((entry, index) => {
+                          const mapping: Record<string, string> = { 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981' };
+                          return <Cell key={`cell-${index}`} fill={mapping[entry.name] || entry.color} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
 
-                {/* Visual Chart 2: Topic Performance */}
-                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
-                    <div className="flex items-center justify-between mb-6">
-                        <h3 className="font-semibold text-[15px] text-[#1e293b]">Topic Performance</h3>
-                        <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
-                    </div>
-                    <div className="relative w-full flex-1 min-h-[180px] -ml-8">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={topicPerformance} layout="vertical" margin={{ top: 0, right: 10, left: 40, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" horizontal={false} />
-                                <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} tickFormatter={(val) => `${val}%`} />
-                                <YAxis dataKey="topic" type="category" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#1e293b', fontSize: 11, fontWeight: 600 }} dx={-10} />
-                                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={28}>
-                                    {topicPerformance.map((entry, index) => {
-                                        const colors = ['#6366f1', '#a855f7', '#10b981', '#f59e0b', '#ec4899'];
-                                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                                    })}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+              {/* Visual Chart 2: Topic Performance */}
+              <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-semibold text-[15px] text-[#1e293b]">Topic Performance</h3>
+                  <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
                 </div>
+                <div className="relative w-full flex-1 min-h-[180px] -ml-8">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topicPerformance} layout="vertical" margin={{ top: 0, right: 10, left: 40, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" horizontal={false} />
+                      <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} tickFormatter={(val) => `${val}%`} />
+                      <YAxis dataKey="topic" type="category" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#1e293b', fontSize: 11, fontWeight: 600 }} dx={-10} />
+                      <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={28}>
+                        {topicPerformance.map((entry, index) => {
+                          const colors = ['#6366f1', '#a855f7', '#10b981', '#f59e0b', '#ec4899'];
+                          return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
 
             {/* Bottom Row Lists */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
-                {/* Top Performers List */}
-                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-emerald-500" />
-                            Top Performers
-                        </h3>
-                    </div>
-                    <div className="space-y-[8px]">
-                        {topPerformers.map((student) => (
-                            <div key={`top-${student.id}`} onClick={() => onViewStudent(student)} className="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
-                                <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
-                                <span className="text-[13px] font-semibold text-emerald-600">{student.avgScore}%</span>
-                            </div>
-                        ))}
-                        {topPerformers.length === 0 && <p className="text-xs text-muted-foreground">No students available yet.</p>}
-                    </div>
+              {/* Top Performers List */}
+              <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-500" />
+                    Top Performers
+                  </h3>
                 </div>
+                <div className="space-y-[8px]">
+                  {topPerformers.map((student) => (
+                    <div key={`top-${student.id}`} onClick={() => onViewStudent(student)} className="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
+                      <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
+                      <span className="text-[13px] font-semibold text-emerald-600">{student.avgScore}%</span>
+                    </div>
+                  ))}
+                  {topPerformers.length === 0 && <p className="text-xs text-muted-foreground">No students available yet.</p>}
+                </div>
+              </div>
 
-                {/* Needs Attention List */}
-                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-rose-500" />
-                            Needs Attention
-                        </h3>
-                    </div>
-                    <div className="space-y-[8px]">
-                        {attentionStudents.slice(0, 4).map((student) => {
-                            const isHigh = student.riskLevel === 'high';
-                            const theme = isHigh ? 'bg-rose-50/40 border-rose-50' : 'bg-amber-50/40 border-amber-50';
-                            return (
-                                <div key={`attn-${student.id}`} onClick={() => onViewStudent(student)} className={`flex justify-between items-center p-3 rounded-[14px] border group hover:scale-[1.02] transition-transform cursor-pointer ${theme}`}>
-                                    <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
-                                    <span className={`text-[11px] font-semibold bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] ${isHigh ? 'text-rose-600' : 'text-amber-600'}`}>
-                                        {isHigh ? 'HIGH RISK' : 'MEDIUM RISK'}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                        {attentionStudents.length === 0 && <p className="text-xs text-muted-foreground">No urgent students.</p>}
-                    </div>
+              {/* Needs Attention List */}
+              <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-[15px] text-[#1e293b] flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-500" />
+                    Needs Attention
+                  </h3>
                 </div>
+                <div className="space-y-[8px]">
+                  {attentionStudents.slice(0, 4).map((student) => {
+                    const isHigh = student.riskLevel === 'high';
+                    const theme = isHigh ? 'bg-rose-50/40 border-rose-50' : 'bg-amber-50/40 border-amber-50';
+                    return (
+                      <div key={`attn-${student.id}`} onClick={() => onViewStudent(student)} className={`flex justify-between items-center p-3 rounded-[14px] border group hover:scale-[1.02] transition-transform cursor-pointer ${theme}`}>
+                        <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
+                        <span className={`text-[11px] font-semibold bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] ${isHigh ? 'text-rose-600' : 'text-amber-600'}`}>
+                          {isHigh ? 'HIGH RISK' : 'MEDIUM RISK'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {attentionStudents.length === 0 && <p className="text-xs text-muted-foreground">No urgent students.</p>}
+                </div>
+              </div>
             </div>
+          </div>
         </div>
-      </div>
-    </motion.div>
-  );
-};
+      </motion.div>
+    );
+  };
 
 // Intervention View
 const InterventionView: React.FC<{
@@ -2411,15 +2405,15 @@ const InterventionView: React.FC<{
   const isUrgentBarrier = normalizedRiskLevel === 'high' || normalizedRiskLevel === 'medium';
   const analysisTone = isUrgentBarrier
     ? {
-        card: 'bg-[#FF8B8B]/14 border-[#FF8B8B]/35',
-        icon: 'bg-red-600',
-        bullet: 'text-[#FF8B8B]',
-      }
+      card: 'bg-[#FF8B8B]/14 border-[#FF8B8B]/35',
+      icon: 'bg-red-600',
+      bullet: 'text-[#FF8B8B]',
+    }
     : {
-        card: 'bg-[#9956DE]/12 border-[#9956DE]/30',
-        icon: 'bg-[#9956DE]',
-        bullet: 'text-[#9956DE]',
-      };
+      card: 'bg-[#9956DE]/12 border-[#9956DE]/30',
+      icon: 'bg-[#9956DE]',
+      bullet: 'text-[#9956DE]',
+    };
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
   const [learningPath, setLearningPath] = useState<string>(initialCache?.learningPath || '');
   const [pathLoading, setPathLoading] = useState(true);
@@ -2783,7 +2777,7 @@ const InterventionView: React.FC<{
       {/* Center Scrollable Content: Insights & Tools */}
       <div className="flex-1 overflow-y-auto p-[24px] xl:p-[32px] no-scrollbar">
         <div className="max-w-[1000px] mx-auto space-y-[24px]">
-          
+
           {/* Top Navigation & Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-[8px]">
             <div>
@@ -2881,7 +2875,7 @@ const InterventionView: React.FC<{
                 <RefreshCw className="w-3 h-3" /> Regenerate
               </button>
             </div>
-            
+
             <BoneSkeleton
               name="teacher-intervention-learning-path"
               loading={pathLoading}
@@ -2988,7 +2982,7 @@ const InterventionView: React.FC<{
               </Button>
             </div>
             <p className="text-[13px] text-[#64748b] mb-6">Configure inputs and requirements for AI lesson generation.</p>
-            
+
             <div className="bg-[#f8fafc]/80 rounded-[14px] p-[20px] border border-[#f1f5f9] mb-6">
               <div className="flex items-start gap-3 mb-4">
                 <Info className="w-4 h-4 text-[#4f46e5] shrink-0 mt-0.5" />
@@ -2996,7 +2990,7 @@ const InterventionView: React.FC<{
                   Class records alone are not enough for import-grounded lesson plans. Ensure course materials are uploaded via <span className="text-[#4f46e5] font-semibold">Data Import</span>.
                 </p>
               </div>
-              
+
               <div className="space-y-4 border-t border-[#e2e8f0] pt-5 mt-5">
                 <label className="flex items-center justify-between cursor-pointer group">
                   <span className="text-[13px] font-medium text-[#1e293b] group-hover:text-[#4f46e5] transition-colors">Allow sources requiring manual review</span>
@@ -3134,7 +3128,7 @@ const InterventionView: React.FC<{
       {/* RIGHT SIDEBAR: Student Profile & Actions (Fixed) */}
       <aside className="w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex flex-col h-full shrink-0 overflow-y-auto z-10 no-scrollbar relative">
         <div className="p-[24px] space-y-[24px] flex flex-col items-center">
-          
+
           {/* Profile Block */}
           <div className="flex flex-col items-center text-center w-full">
             <img src={student.avatar} alt={student.name} className="w-[96px] h-[96px] rounded-full object-cover shadow-[0_8px_16px_rgba(0,0,0,0.1)] mb-4 border-4 border-white z-10 relative" />
@@ -3783,9 +3777,8 @@ const ImportView: React.FC<{
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Class Records */}
           <div
-            className={`bg-card border-4 border-dashed rounded-3xl p-6 transition-all ${
-              dragOver1 ? 'border-[#9956DE] bg-[#9956DE]/12' : 'border-border'
-            }`}
+            className={`bg-card border-4 border-dashed rounded-3xl p-6 transition-all ${dragOver1 ? 'border-[#9956DE] bg-[#9956DE]/12' : 'border-border'
+              }`}
           >
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
@@ -3818,10 +3811,10 @@ const ImportView: React.FC<{
                 ) : 'Upload student grades, attendance, and quiz scores'}
               </p>
               <p className="text-xs text-muted-foreground mb-4 flex items-center justify-center gap-2">
-                  <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.csv</span>
-                  <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xlsx</span>
-                  <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xls</span>
-                  <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.csv</span>
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xlsx</span>
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.xls</span>
+                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
               </p>
               <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#9956DE] hover:text-[#9956DE] font-semibold px-6 py-3 rounded-xl w-full transition-colors">
                 Click or drag & drop
@@ -3835,9 +3828,8 @@ const ImportView: React.FC<{
             onDragLeave={() => setDragOver2(false)}
             onDrop={handleCourseMaterialDrop}
             onClick={() => materialInputRef.current?.click()}
-            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#F08386]/60 hover:bg-[#F08386]/12 ${
-              dragOver2 ? 'border-[#F08386] bg-[#F08386]/12 scale-105' : 'border-border'
-            }`}
+            className={`bg-card border-4 border-dashed rounded-3xl p-12 text-center transition-all cursor-pointer hover:border-[#F08386]/60 hover:bg-[#F08386]/12 ${dragOver2 ? 'border-[#F08386] bg-[#F08386]/12 scale-105' : 'border-border'
+              }`}
           >
             <input
               ref={materialInputRef}
@@ -3863,9 +3855,9 @@ const ImportView: React.FC<{
               ) : 'Upload syllabus, lesson plans, and curriculum documents'}
             </p>
             <p className="text-xs text-slate-500 mb-4 flex items-center justify-center gap-2">
-                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
-                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.docx</span>
-                <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.txt</span>
+              <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.pdf</span>
+              <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.docx</span>
+              <span className="bg-muted px-2 py-1 rounded text-muted-foreground font-medium">.txt</span>
             </p>
             <Button className="bg-card border-2 border-border text-muted-foreground hover:border-[#F08386] hover:text-[#F08386] font-semibold px-6 py-3 rounded-xl w-full transition-colors">
               Click or drag & drop
@@ -3991,7 +3983,7 @@ const ImportView: React.FC<{
         {/* Manage Imported Data */}
         <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
           <h3 className="text-lg font-display font-semibold text-foreground mb-4">Manage Imported Data</h3>
-          <button 
+          <button
             onClick={onEditRecords}
             className="w-full bg-[#00a86b] hover:bg-[#008f5d] text-white rounded-xl p-5 flex items-center justify-between transition-all shadow-sm hover:shadow-md group"
           >
@@ -4137,15 +4129,15 @@ const EditRecordsView: React.FC<{
 
       <div className="bg-card border border-border rounded-2xl shadow-sm flex-1 overflow-hidden flex flex-col">
         <div className="p-4 border-b border-border bg-background flex items-center justify-between">
-           <div className="flex items-center gap-2 text-muted-foreground">
-             <Info size={18} />
-             <span className="text-sm">Click on any field to edit</span>
-           </div>
-           <div className="text-sm text-muted-foreground">
-             Showing {students.length} records
-           </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Info size={18} />
+            <span className="text-sm">Click on any field to edit</span>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Showing {students.length} records
+          </div>
         </div>
-        
+
         <div className="overflow-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead className="bg-background sticky top-0 z-10">
@@ -4204,10 +4196,9 @@ const EditRecordsView: React.FC<{
                       />
                     </td>
                     <td className="p-4">
-                      <span className={`font-semibold ${
-                        student.avgScore < 60 ? 'text-[#FF8B8B]' :
+                      <span className={`font-semibold ${student.avgScore < 60 ? 'text-[#FF8B8B]' :
                         student.avgScore < 80 ? 'text-[#F08386]' : 'text-green-600'
-                      }`}>{student.avgScore}%</span>
+                        }`}>{student.avgScore}%</span>
                     </td>
                     <td className="p-4">
                       <span className={`px-2 py-1 rounded text-xs font-semibold ${getRiskBadge(student.riskLevel)}`}>
@@ -4243,6 +4234,7 @@ const DashboardRightSidebar: React.FC<{
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'pulse' | 'reminders'>('pulse');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [calendarCollapsed, setCalendarCollapsed] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -4250,7 +4242,7 @@ const DashboardRightSidebar: React.FC<{
       currentUser.uid,
       { limitCount: 100 },
       (items) => setEvents(items),
-      () => {}
+      () => { }
     );
     return () => unsubscribe();
   }, [currentUser?.uid]);
@@ -4320,86 +4312,116 @@ const DashboardRightSidebar: React.FC<{
           <UserAvatar src={userProfile?.photo} name={teacherName} className="w-full h-full rounded-full" />
         </div>
         <div className="text-[13.5px] font-semibold text-[#1e293b] mt-1">{teacherName}</div>
-        <div className="text-[11px] text-[#475569]">Teacher</div>
-        <button onClick={onOpenProfile} className="mt-[4px] py-[6px] px-[22px] bg-[#4f46e5] hover:bg-[#4338ca] text-white rounded-full text-[11.5px] font-medium transition-colors">
+        <div className="text-[11px] text-[#94a3b8]">Teacher</div>
+        <button onClick={onOpenProfile} className="mt-[4px] py-[6px] px-[22px] bg-[#818cf8] hover:bg-[#6366f1] text-white rounded-full text-[11.5px] font-medium transition-colors">
           Profile
         </button>
       </div>
 
       {/* Calendar Section */}
-      <div 
-        className="p-[10px_16px] border-b border-[#f1f5f9] cursor-pointer hover:bg-slate-50 transition-colors group/cal"
-        onClick={onViewCalendar}
-      >
-        <div className="flex items-center justify-between mb-2">
+      <div className="border-b border-[#f1f5f9]">
+        {/* Calendar header row with minimize toggle */}
+        <div className="p-[10px_16px_8px] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); goToPrevMonth(); }}
+              className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span
+              className="text-[12px] font-semibold text-[#1e293b] hover:text-[#4f46e5] transition-colors cursor-pointer"
+              onClick={onViewCalendar}
+            >
+              {monthLabel()}
+            </span>
+            <button
+              onClick={(e) => { e.stopPropagation(); goToNextMonth(); }}
+              className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+          {/* Minimize / expand toggle */}
           <button
-            onClick={(e) => { e.stopPropagation(); goToPrevMonth(); }}
-            aria-label="Previous month"
-            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
+            onClick={() => setCalendarCollapsed(c => !c)}
+            className="w-6 h-6 flex items-center justify-center rounded-[7px] text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#64748b] transition-colors"
+            title={calendarCollapsed ? 'Show calendar' : 'Hide calendar'}
+            aria-label={calendarCollapsed ? 'Expand calendar' : 'Collapse calendar'}
           >
-            <ChevronLeft size={14} />
-          </button>
-          <span className="text-[12px] font-semibold text-[#1e293b] group-hover/cal:text-[#4f46e5] transition-colors">{monthLabel()}</span>
-          <button
-            onClick={(e) => { e.stopPropagation(); goToNextMonth(); }}
-            aria-label="Next month"
-            className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
-          >
-            <ChevronRight size={14} />
+            <ChevronDown
+              size={14}
+              className={`transition-transform duration-200 ${calendarCollapsed ? '' : 'rotate-180'}`}
+            />
           </button>
         </div>
 
-        {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-[2px] text-center mb-1">
-          {dayLabels.map((label) => (
-            <div key={label} className="text-[10px] font-semibold text-[#475569] p-[2px_0_4px]">
-              {label}
-            </div>
-          ))}
-          {days.map((day, idx) => (
-            <div
-              key={`${currentDate.getMonth()}-${idx}`}
-              className="relative flex flex-col items-center justify-center h-[28px]"
-              title={getEventTooltip(day)}
+        {/* Collapsible calendar grid */}
+        <AnimatePresence initial={false}>
+          {!calendarCollapsed && (
+            <motion.div
+              key="cal-grid"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22, ease: 'easeInOut' }}
+              className="overflow-hidden"
             >
               <div
-                className={`text-[11px] leading-[22px] w-[22px] h-[22px] flex items-center justify-center rounded-full transition-all ${
-                  day === null
-                    ? 'text-[#cbd5e1]'
-                    : isToday(day)
-                      ? 'bg-[#4f46e5] text-white font-semibold'
-                      : 'text-[#475569] group-hover/cal:bg-slate-100'
-                }`}
+                className="px-[16px] pb-[10px] cursor-pointer hover:bg-slate-50 transition-colors group/cal"
+                onClick={onViewCalendar}
               >
-                {day}
+                <div className="grid grid-cols-7 gap-[2px] text-center mb-1">
+                  {dayLabels.map((label) => (
+                    <div key={label} className="text-[10px] font-semibold text-[#94a3b8] p-[2px_0_4px]">
+                      {label}
+                    </div>
+                  ))}
+                  {days.map((day, idx) => (
+                    <div
+                      key={`${currentDate.getMonth()}-${idx}`}
+                      className="relative flex flex-col items-center justify-center h-[28px]"
+                      title={getEventTooltip(day)}
+                    >
+                      <div
+                        className={`text-[11px] leading-[22px] w-[22px] h-[22px] flex items-center justify-center rounded-full transition-all ${day === null
+                          ? 'text-[#cbd5e1]'
+                          : isToday(day)
+                            ? 'bg-[#818cf8] text-white font-semibold'
+                            : 'text-[#475569] group-hover/cal:bg-slate-100'
+                          }`}
+                      >
+                        {day}
+                      </div>
+                      {day !== null && hasEvent(day) && (
+                        <div className={`absolute bottom-0 w-1 h-1 rounded-full ${isToday(day) ? 'bg-white' : 'bg-[#a855f7]'}`} />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-              {day !== null && hasEvent(day) && (
-                <div className={`absolute bottom-0 w-1 h-1 rounded-full ${isToday(day) ? 'bg-white' : 'bg-[#a855f7]'}`} />
-              )}
-            </div>
-          ))}
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-[18px] p-[12px_16px_0] border-b border-[#f1f5f9] flex-shrink-0">
         <button
           onClick={() => setActiveTab('pulse')}
-          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${
-            activeTab === 'pulse'
-              ? 'text-[#047857] border-[#047857]'
-              : 'text-[#475569] border-transparent'
-          }`}
+          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${activeTab === 'pulse'
+            ? 'text-[#10b981] border-[#10b981]'
+            : 'text-[#94a3b8] border-transparent'
+            }`}
         >
           Live pulse
         </button>
         <button
           onClick={() => setActiveTab('reminders')}
-          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${
-            activeTab === 'reminders'
-              ? 'text-[#047857] border-[#047857]'
-              : 'text-[#475569] border-transparent'
-          }`}
+          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${activeTab === 'reminders'
+            ? 'text-[#10b981] border-[#10b981]'
+            : 'text-[#94a3b8] border-transparent'
+            }`}
         >
           Reminders
         </button>
@@ -4413,14 +4435,14 @@ const DashboardRightSidebar: React.FC<{
               <div className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Live Activity Stream</div>
               <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span className="text-[9px] font-bold text-emerald-700">LIVE</span>
+                <span className="text-[9px] font-bold text-emerald-600">LIVE</span>
               </div>
             </div>
-            
+
             {liveActivity.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
                 <Activity size={32} className="text-slate-300 mb-2" />
-                <p className="text-[11px] font-bold text-[#475569]">No recent activity</p>
+                <p className="text-[11px] font-bold text-[#1e293b]">No recent activity</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -4447,17 +4469,17 @@ const DashboardRightSidebar: React.FC<{
             {events
               .filter(ev => {
                 const today = new Date();
-                today.setHours(0,0,0,0);
+                today.setHours(0, 0, 0, 0);
                 const evDate = new Date(ev.startTime);
                 return evDate.getTime() >= today.getTime();
               })
-              .sort((a,b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+              .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
               .slice(0, 5)
               .map(ev => {
                 const isToday = new Date(ev.startTime).toDateString() === new Date().toDateString();
                 return (
-                  <div 
-                    key={ev.id} 
+                  <div
+                    key={ev.id}
                     onClick={onViewCalendar}
                     className="flex items-start gap-3 p-3 border border-[#f1f5f9] rounded-[14px] cursor-pointer hover:bg-slate-50 transition-colors group"
                   >
@@ -4474,7 +4496,7 @@ const DashboardRightSidebar: React.FC<{
                 );
               })
             }
-            {events.filter(ev => new Date(ev.startTime).getTime() >= new Date().setHours(0,0,0,0)).length === 0 && (
+            {events.filter(ev => new Date(ev.startTime).getTime() >= new Date().setHours(0, 0, 0, 0)).length === 0 && (
               <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
                 <Bell size={32} className="text-slate-300 mb-2" />
                 <p className="text-[11px] font-bold text-[#1e293b]">No upcoming tasks</p>

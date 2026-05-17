@@ -391,7 +391,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-full flex items-center justify-center px-6 overflow-hidden relative login-bg">
+    <div className="min-h-screen w-full flex items-center justify-center px-4 sm:px-6 py-8 overflow-y-auto relative login-bg">
       {/* ─── Video Background ─── */}
       <video
         ref={primaryVideoRef}
@@ -434,21 +434,21 @@ const LoginPage: React.FC = () => {
             initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col justify-center space-y-8"
+            className="flex flex-col items-center lg:items-start justify-center space-y-5 lg:space-y-8 text-center lg:text-left"
           >
             {/* Logo */}
-            <motion.div className="flex items-center gap-2.5">
+            <motion.div className="flex items-center justify-center lg:justify-start gap-2.5">
               <motion.div className="relative flex items-center justify-center drop-shadow-md">
                 <img 
                   src="/mathpulse_final_logo.png" 
                   alt="MathPulse AI Logo" 
-                  className="w-16 h-16 object-contain flex-shrink-0"
+                  className="w-10 h-10 lg:w-16 lg:h-16 object-contain flex-shrink-0"
                 />
               </motion.div>
               <div>
-                  <h1 className="text-3xl font-display font-black tracking-tight text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-600 to-sky-500">
-                    MathPulse
-                  </h1>
+                <h1 className="text-2xl lg:text-3xl font-display font-black tracking-tight text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-600 to-sky-500">
+                  MathPulse
+                </h1>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <Sparkles size={12} className="text-rose-500" />
                   <span className="text-xs text-slate-500 font-body font-medium tracking-wide">Powered by Machine Learning</span>
@@ -458,22 +458,22 @@ const LoginPage: React.FC = () => {
 
             {/* Hero Text */}
             <motion.div
-              className="space-y-5"
+              className="space-y-3 lg:space-y-5"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.8 }}
             >
-              <h2 className="text-4xl lg:text-5xl xl:text-[3.4rem] font-display font-extrabold leading-[1.1] tracking-tight text-slate-900">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-[3.4rem] font-display font-extrabold leading-[1.1] tracking-tight text-slate-900">
                 Transform Your<br />
                 <span className="bg-gradient-to-r from-sky-600 via-cyan-500 to-sky-500 bg-clip-text text-transparent">Math Journey</span>
               </h2>
-              <p className="text-base text-slate-500 leading-relaxed max-w-md font-body">
+              <p className="text-sm lg:text-base text-slate-500 leading-relaxed max-w-md mx-auto lg:mx-0 font-body">
                 AI-powered predictive system designed to identify at-risk students and provide personalized learning recommendations.
               </p>
             </motion.div>
 
-            {/* Feature Cards — Frosted glass on light */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Feature Cards */}
+            <div className="grid grid-cols-3 gap-2 lg:gap-3">
               {[
                 { icon: Brain, label: 'AI Predictions', desc: 'Smart detection', color: 'sky' },
                 { icon: TrendingUp, label: 'Analytics', desc: 'Real-time data', color: 'rose' },
@@ -498,17 +498,17 @@ const LoginPage: React.FC = () => {
                 return (
                   <motion.div
                     key={index}
-                    className={`bg-white/80 backdrop-blur-xl border ${borderMap[feature.color]} rounded-xl p-4 transition-all cursor-pointer group shadow-md shadow-slate-900/[0.04]`}
+                    className={`bg-white/80 backdrop-blur-xl border ${borderMap[feature.color]} rounded-xl p-3 lg:p-4 transition-all cursor-pointer group shadow-md shadow-slate-900/[0.04]`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 + index * 0.1 }}
                     whileHover={{ scale: 1.03, y: -4 }}
                   >
-                    <div className={`w-9 h-9 rounded-lg ${glowMap[feature.color]} flex items-center justify-center mb-3`}>
-                      <Icon size={18} className={iconColorMap[feature.color]} />
+                    <div className={`w-7 h-7 lg:w-9 lg:h-9 rounded-lg ${glowMap[feature.color]} flex items-center justify-center mx-auto lg:mx-0 mb-2 lg:mb-3`}>
+                      <Icon size={15} className={iconColorMap[feature.color]} />
                     </div>
-                    <h3 className="text-sm font-display font-semibold text-slate-800 mb-0.5">{feature.label}</h3>
-                    <p className="text-xs text-slate-400 font-body">{feature.desc}</p>
+                    <h3 className="text-xs lg:text-sm font-display font-semibold text-slate-800 mb-0.5">{feature.label}</h3>
+                    <p className="text-[10px] lg:text-xs text-slate-400 font-body">{feature.desc}</p>
                   </motion.div>
                 );
               })}
@@ -522,7 +522,7 @@ const LoginPage: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex justify-center lg:justify-end"
           >
-<div className="bg-white/85 backdrop-blur-2xl border border-slate-200/60 rounded-3xl p-7 w-full max-w-md relative overflow-hidden shadow-[0_20px_60px_-15px_rgba(168,85,247,0.15)] max-h-[90vh] overflow-y-auto">
+            <div className="bg-white/85 backdrop-blur-2xl border border-slate-200/60 rounded-3xl p-6 sm:p-7 w-full max-w-md relative overflow-hidden shadow-[0_20px_60px_-15px_rgba(168,85,247,0.15)] max-h-[85vh] overflow-y-auto">
                 {/* Top accent glow line */}
                 <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 via-pink-500 to-sky-500" />
                 {/* Subtle inner glow */}

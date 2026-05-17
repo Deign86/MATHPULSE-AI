@@ -948,31 +948,32 @@ return (
              <div className="absolute bottom-0 right-0 w-80 h-80 bg-white opacity-10 rounded-full translate-x-1/3 translate-y-1/3 blur-3xl"></div>
           </div>
 
-          <div className="w-full max-w-7xl flex items-start justify-between relative z-10 mb-4 sm:mb-6">
-            <div className="flex-1 flex items-center gap-2">
-               <div className="flex items-center gap-1 bg-white/20 px-3 py-1.5 rounded-full text-white text-sm font-bold">
-                 <Clock size={16} /> {formatTime(timeRemaining)}
+          <div className="w-full max-w-7xl flex items-center justify-between relative z-10 mb-3 sm:mb-4 md:mb-6">
+            <div className="flex-1 flex items-center gap-1 sm:gap-2">
+               <div className="flex items-center gap-1 bg-white/20 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-white text-xs sm:text-sm font-bold">
+                 <Clock size={14} className="shrink-0" /> {formatTime(timeRemaining)}
                </div>
             </div>
 
-            <div className="relative flex items-center justify-center bg-purple-900/40 backdrop-blur-md px-6 sm:px-8 py-3 rounded-full border border-white/10 gap-3 sm:gap-4 shadow-inner">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-yellow-400 shrink-0 shadow-[0_0_10px_rgba(250,204,21,0.6)]"></div>
+            <div className="relative flex items-center justify-center bg-purple-900/40 backdrop-blur-md px-2 sm:px-5 md:px-8 py-2 sm:py-3 rounded-full border border-white/10 gap-1.5 sm:gap-3 md:gap-4 shadow-inner">
+              <div className="hidden sm:block w-3 h-3 md:w-4 md:h-4 rounded-full bg-yellow-400 shrink-0 shadow-[0_0_10px_rgba(250,204,21,0.6)]"></div>
               <div className="flex flex-col items-start justify-center">
-                 <span className="text-[10px] sm:text-[11px] font-black text-purple-200 uppercase tracking-widest leading-none mb-1">Try It Yourself!</span>
-                 <span className="font-bold text-white tracking-wide text-base sm:text-lg leading-none truncate max-w-[200px] sm:max-w-[300px]">{quiz.title || quiz.subject}</span>
+                 <span className="hidden sm:block text-[9px] md:text-[11px] font-black text-purple-200 uppercase tracking-widest leading-none mb-0.5">Try It Yourself!</span>
+                 <span className="font-bold text-white tracking-wide text-xs sm:text-sm md:text-lg leading-none truncate max-w-[90px] sm:max-w-[180px] md:max-w-[300px]">{quiz.title || quiz.subject}</span>
               </div>
             </div>
 
-<div className="flex-1 flex justify-end gap-2 sm:gap-3 relative pointer-events-auto">
-               <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
-                 {isAudioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+            <div className="flex-1 flex justify-end gap-1 sm:gap-2 md:gap-3 relative pointer-events-auto">
+               <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+                 {isAudioEnabled ? <Volume2 size={16} className="sm:hidden" /> : <VolumeX size={16} className="sm:hidden" />}
+                 {isAudioEnabled ? <Volume2 size={20} className="hidden sm:block" /> : <VolumeX size={20} className="hidden sm:block" />}
                </button>
-                <button onClick={toggleFullscreen} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+                <button onClick={toggleFullscreen} className="hidden sm:flex w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                   {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
                 </button>
-
-               <button onClick={onClose} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
-                 <X size={20} />
+               <button onClick={onClose} className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+                 <X size={18} className="sm:hidden" />
+                 <X size={20} className="hidden sm:block" />
                </button>
             </div>
           </div>
@@ -988,27 +989,28 @@ return (
         </header>
 
         {/* Sticky Stats Bar with Nav Arrows */}
-        <div className="w-full max-w-[54rem] mx-auto shrink-0 flex items-center justify-between px-4 sm:px-6 py-2 sm:py-3 z-[50] relative mt-8">
+        <div className="w-full max-w-[54rem] mx-auto shrink-0 flex items-center justify-between px-2 sm:px-4 md:px-6 py-2 sm:py-3 z-[50] relative mt-4 sm:mt-6 md:mt-8">
            <button
              onClick={() => setViewIndex(prev => Math.max(0, prev - 1))}
              disabled={viewIndex === 0}
-             className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full flex items-center justify-center shadow-md border-2 transition-all ${viewIndex === 0 ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-purple-600 border-purple-100 hover:bg-purple-50 hover:border-purple-200 hover:scale-105 active:scale-95'}`}
+             className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 shrink-0 rounded-full flex items-center justify-center shadow-md border-2 transition-all ${viewIndex === 0 ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-purple-600 border-purple-100 hover:bg-purple-50 hover:border-purple-200 hover:scale-105 active:scale-95'}`}
            >
-             <ChevronLeft size={24} />
+             <ChevronLeft size={18} className="sm:hidden" />
+             <ChevronLeft size={24} className="hidden sm:block" />
            </button>
 
-           <div className="flex items-center justify-center gap-3 sm:gap-5 flex-1">
-              <div className="flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-rose-500 font-extrabold text-sm sm:text-base">
-                 <img src="/icons/quiz_heart.png" alt="Hearts" className="w-5 h-5 object-contain" /> {heartsCount}
+           <div className="flex items-center justify-center gap-1.5 sm:gap-3 md:gap-5 flex-1 mx-1 sm:mx-2">
+              <div className="flex items-center gap-1 sm:gap-2 md:gap-3 px-2.5 sm:px-5 md:px-10 py-1.5 sm:py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-rose-500 font-extrabold text-xs sm:text-sm md:text-base">
+                 <img src="/icons/quiz_heart.png" alt="Hearts" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" /> {heartsCount}
               </div>
-              <div className="flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-yellow-500 font-extrabold text-sm sm:text-base">
-                 <img src="/icons/quiz_key.png" alt="Keys" className="w-5 h-5 object-contain" /> {keysCount}
+              <div className="flex items-center gap-1 sm:gap-2 md:gap-3 px-2.5 sm:px-5 md:px-10 py-1.5 sm:py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-yellow-500 font-extrabold text-xs sm:text-sm md:text-base">
+                 <img src="/icons/quiz_key.png" alt="Keys" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" /> {keysCount}
               </div>
-              <div className="flex items-center gap-3 sm:gap-4 px-3 py-1.5 pl-5 sm:pl-6 rounded-full bg-white shadow-md border border-slate-200/60">
-                 <div className="flex items-center gap-1.5 text-orange-500 font-extrabold text-sm sm:text-base">
-                    <img src="/icons/quiz_streak.png" alt="Streak" className="w-5 h-5 object-contain" /> {streak}
+              <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 px-2 sm:px-3 py-1 sm:py-1.5 pl-2.5 sm:pl-4 md:pl-6 rounded-full bg-white shadow-md border border-slate-200/60">
+                 <div className="flex items-center gap-1 sm:gap-1.5 text-orange-500 font-extrabold text-xs sm:text-sm md:text-base">
+                    <img src="/icons/quiz_streak.png" alt="Streak" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" /> {streak}
                  </div>
-                 <div className="bg-emerald-100 text-emerald-800 px-4 py-1.5 rounded-full font-bold text-sm sm:text-base shadow-inner border border-emerald-200/50">
+                 <div className="bg-emerald-100 text-emerald-800 px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 rounded-full font-bold text-xs sm:text-sm md:text-base shadow-inner border border-emerald-200/50 whitespace-nowrap">
                     + {currentPoints} pts
                  </div>
               </div>
@@ -1017,9 +1019,10 @@ return (
            <button
              onClick={() => setViewIndex(prev => Math.min(currentQuestionIndex, prev + 1))}
              disabled={viewIndex >= currentQuestionIndex}
-             className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full flex items-center justify-center shadow-md border-2 transition-all ${viewIndex >= currentQuestionIndex ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-purple-600 border-purple-100 hover:bg-purple-50 hover:border-purple-200 hover:scale-105 active:scale-95'}`}
+             className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 shrink-0 rounded-full flex items-center justify-center shadow-md border-2 transition-all ${viewIndex >= currentQuestionIndex ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-purple-600 border-purple-100 hover:bg-purple-50 hover:border-purple-200 hover:scale-105 active:scale-95'}`}
            >
-             <ChevronRight size={24} />
+             <ChevronRight size={18} className="sm:hidden" />
+             <ChevronRight size={24} className="hidden sm:block" />
            </button>
         </div>
 
@@ -1031,11 +1034,11 @@ return (
              animate={shakeCard ? { x: [-10, 10, -10, 10, 0], scale: [1, 1.01, 1], opacity: 1 } : { opacity: 1, x: 0 }}
              className="w-full max-w-3xl flex flex-col mt-2"
            >
-             <div className="bg-white rounded-3xl shadow-lg border-t-[6px] border-purple-500 p-6 sm:p-8 text-center flex flex-col items-center mb-6 w-full relative overflow-hidden">
-                <div className="bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-black uppercase tracking-widest mb-4 flex items-center shadow-sm">
+             <div className="bg-white rounded-3xl shadow-lg border-t-[6px] border-purple-500 p-4 sm:p-6 md:p-8 text-center flex flex-col items-center mb-4 sm:mb-6 w-full relative overflow-hidden">
+                <div className="bg-slate-100 text-slate-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] md:text-xs font-black uppercase tracking-widest mb-3 sm:mb-4 flex items-center shadow-sm">
                    Q{viewIndex + 1} of {questions.length}
                 </div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-[#0a1628] leading-tight w-full">
+                <h2 className="text-base sm:text-xl md:text-2xl font-extrabold text-[#0a1628] leading-tight w-full">
                   {viewedQuestion.question.includes('___') ? (
                     <span>
                        {viewedQuestion.question.split('___').map((part, i, arr) => (
@@ -1060,7 +1063,7 @@ return (
 
              <div className="w-full flex flex-col items-center">
                 {viewedQuestion.questionType === 'multiple_choice' || !viewedQuestion.questionType ? (
-                  <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
+                  <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 md:gap-5">
                      {(viewedQuestion.options || []).map((opt, idx) => {
                         const eliminatedArr = eliminatedByHint[currentQuestionIndex] || [];
                         const isEliminated = eliminatedArr.includes(opt);
@@ -1107,7 +1110,7 @@ return (
                              key={idx}
                              disabled={isAllDisabled || isCurrentlyAnswered || isEliminated}
                              onClick={() => { if (isAllDisabled || isCurrentlyAnswered || isEliminated) return; handleAnswerSelect(idx); }}
-                             className={`p-4 sm:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-base sm:text-lg text-left transition-all flex items-center justify-between ${bgColor} ${isAllDisabled || isCurrentlyAnswered || isEliminated ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'}`}
+                             className={`p-3 sm:p-4 md:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-sm sm:text-base md:text-lg text-left transition-all flex items-center justify-between ${bgColor} ${isAllDisabled || isCurrentlyAnswered || isEliminated ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'}`}
                            >
                               <span className="truncate pr-4">{opt}</span>
                               {isEliminated && <XCircle size={20} className="text-slate-400 shrink-0" />}
@@ -1127,7 +1130,7 @@ return (
                           onChange={(e) => setTextAnswer(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter' && !showExplanation) handleSubmitAnswer(); }}
                           placeholder="Type your answer here..."
-                          className={`w-full p-4 sm:p-5 rounded-2xl border-[3px] font-extrabold text-lg text-center outline-none transition-colors ${
+                          className={`w-full p-3 sm:p-4 md:p-5 rounded-2xl border-[3px] font-extrabold text-base sm:text-lg text-center outline-none transition-colors ${
                              isCurrentlyAnswered ? (lastAnswerCorrect ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : 'border-rose-400 text-rose-700 bg-rose-50')
                              : 'border-slate-200 focus:border-[#7C3AED] bg-white text-slate-800'
                           }`}
@@ -1192,22 +1195,22 @@ return (
                       const showNextButton = allWrongEliminated || (isCurrentlyAnswered && !lastAnswerCorrect);
                       
                       return showNextButton ? (
-                        <button onClick={handleNextQuestion} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-lg px-8 py-4 rounded-full flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all w-full max-w-md mx-auto">
-                          {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'View Results'} <ChevronRight size={24} />
+                        <button onClick={handleNextQuestion} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-sm sm:text-base md:text-lg px-5 sm:px-8 py-3 sm:py-4 rounded-full flex items-center justify-center gap-2 sm:gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all w-full max-w-md mx-auto">
+                          {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'View Results'} <ChevronRight size={20} className="sm:hidden" /><ChevronRight size={24} className="hidden sm:block" />
                         </button>
                       ) : viewIndex === currentQuestionIndex && !showExplanation ? (
-                        <div className="relative z-10 flex flex-wrap justify-center gap-3 sm:gap-4">
+                        <div className="relative z-10 flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4">
                           {(() => {
                                 const canUseHint = effectiveKeysCount > 0 && !showExplanation && !allWrongEliminated;
                                return (
-                                 <button onClick={handleHintUse} disabled={!canUseHint} className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
-                                   <img src="/icons/quiz_key.png" alt="Key" className="w-5 h-5 object-contain" /> Hint
+                                 <button onClick={handleHintUse} disabled={!canUseHint} className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-full flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                                   <img src="/icons/quiz_key.png" alt="Key" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" /> Hint
                                  </button>
                                );
                             })()}
                           {isCurrentlyAnswered && (
-                            <button onClick={() => setUserRequestedExplanation(true)} className="bg-white hover:bg-slate-50 text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
-                               <BookOpen size={20} /> Explain
+                            <button onClick={() => setUserRequestedExplanation(true)} className="bg-white hover:bg-slate-50 text-slate-700 font-bold px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-full flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                               <BookOpen size={16} className="sm:hidden" /><BookOpen size={20} className="hidden sm:block" /> Explain
                             </button>
                           )}
                           <button onClick={() => setShowCalculator(prev => !prev)} className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200 ${showCalculator ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-white hover:bg-slate-50 text-slate-700'}`}>
@@ -1215,8 +1218,8 @@ return (
                          </button>
                         </div>
                       ) : viewIndex < currentQuestionIndex ? (
-                        <button onClick={() => setViewIndex(currentQuestionIndex)} className="bg-white text-slate-700 font-extrabold text-lg px-6 sm:px-8 py-3 sm:py-4 rounded-full inline-flex items-center gap-2 sm:gap-3 shadow-lg hover:bg-slate-50 transition-transform hover:scale-105 active:scale-95 border border-slate-200">
-                           <ChevronRight size={20} />
+                        <button onClick={() => setViewIndex(currentQuestionIndex)} className="bg-white text-slate-700 font-extrabold text-sm sm:text-base md:text-lg px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 rounded-full inline-flex items-center gap-1.5 sm:gap-2 md:gap-3 shadow-lg hover:bg-slate-50 transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                           <ChevronRight size={16} className="sm:hidden" /><ChevronRight size={20} className="hidden sm:block" />
                            Back to Current Question
                         </button>
                       ) : null;
