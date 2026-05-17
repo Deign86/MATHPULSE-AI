@@ -401,8 +401,8 @@ const QuizBattlePage: React.FC = () => {
   const [historyData, setHistoryData] = useState<QuizBattleMatchSummary[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<QuizBattleLeaderboardEntry[]>([]);
-  const [leaderboardNameMode, setLeaderboardNameMode] = useState<'alias' | 'initials' | 'full'>('alias');
-  const [showExactLeaderboardScores, setShowExactLeaderboardScores] = useState(false);
+  const [leaderboardNameMode, setLeaderboardNameMode] = useState<'alias' | 'initials' | 'full'>('full');
+  const [showExactLeaderboardScores, setShowExactLeaderboardScores] = useState(true);
 
   const [activeMatch, setActiveMatch] = useState<QuizBattleLiveMatchState | null>(null);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
@@ -3537,34 +3537,6 @@ const QuizBattlePage: React.FC = () => {
                         <p className="text-sm text-white/50">No leaderboard entries yet. Finish a battle to place on the board.</p>
                       ) : (
                         <div className="space-y-6">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 transition-colors hover:bg-white/10">
-                              <p className="text-[11px] font-black uppercase tracking-widest text-white/50 mb-3">Name display</p>
-                              <Select value={leaderboardNameMode} onValueChange={(value) => setLeaderboardNameMode(value as 'alias' | 'initials' | 'full')}>
-                                <SelectTrigger className="h-10 rounded-xl bg-black/20 border-white/10 text-white font-bold hover:bg-black/30">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border border-white/10 bg-[#161a25]/95 backdrop-blur-xl">
-                                  <SelectItem value="alias" className="text-white hover:bg-white/10 rounded-lg focus:bg-white/10 focus:text-white">Alias</SelectItem>
-                                  <SelectItem value="initials" className="text-white hover:bg-white/10 rounded-lg focus:bg-white/10 focus:text-white">Initials</SelectItem>
-                                  <SelectItem value="full" className="text-white hover:bg-white/10 rounded-lg focus:bg-white/10 focus:text-white">Full name</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <label className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-4 transition-colors hover:bg-white/10 cursor-pointer">
-                              <div>
-                                <p className="text-[11px] font-black uppercase tracking-widest text-white/50 mb-1">Score detail</p>
-                                <p className="text-sm font-bold text-white/90">Show exact score values</p>
-                              </div>
-                              <Switch checked={showExactLeaderboardScores} onCheckedChange={setShowExactLeaderboardScores} />
-                            </label>
-                          </div>
-
-                          <p className="text-[13px] font-semibold text-white/40 leading-relaxed px-1">
-                            Privacy mode keeps classmate identities and scores obfuscated by default while preserving your own exact rank and score.
-                          </p>
-
                           <div className="space-y-3">
                             {leaderboardRows.map((entry) => (
                               <div
