@@ -193,6 +193,14 @@ export interface Quiz {
   generatedQuizId?: string;
 }
 
+/** Answer record accumulated during the quiz session */
+export interface QuizAnswerRecord {
+  questionId: string;
+  answer: string;       // selected option text
+  correct: boolean;
+  timeSpent: number;     // milliseconds
+}
+
 interface QuizQuestion {
   id: string;
   question: string;
@@ -210,7 +218,10 @@ interface QuizQuestion {
 interface QuizExperienceProps {
   quiz: Quiz;
   onClose: () => void;
-  onComplete: (score: number, xpEarned: number) => void;
+  /** Called with (score percent, XP earned) when quiz session completes — used for static quizzes */
+  onComplete?: (score: number, xpEarned: number) => void;
+  /** Called with (quiz, answerRecords) when the user exits after completing — preferred for practice sessions */
+  onQuizEnd?: (quiz: Quiz, answers: QuizAnswerRecord[]) => void;
   studentId?: string;
   atRiskSubjects?: string[];
 }
@@ -308,7 +319,7 @@ function getPromptForType(questionType?: string): string {
   }
 }
 
-const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, studentId, atRiskSubjects = [] }) => {
+const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, onQuizEnd, studentId, atRiskSubjects = [] }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [textAnswer, setTextAnswer] = useState('');
@@ -486,6 +497,12 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const handleTimeUp = () => {
     setShowResults(true);
     calculateFinalScore();
+  };
+
+  /** Called when the user explicitly exits the results screen — fires onQuizEnd before closing */
+  const handleFinish = () => {
+    onQuizEnd?.(quiz, answerRecords);
+    onClose();
   };
 
   const handleHintUse = () => {
@@ -888,7 +905,7 @@ return (
                   - Recovery rate: 1 heart per 15 minutes, up to max (15 hearts).
                   - Until backend is ready, the countdown is UI-only and hearts don't actually recover. */}
               <div className="flex flex-col gap-2">
-                <Button onClick={onClose} className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-full">
+                <Button onClick={handleFinish} className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-full">
                   Exit Quiz
                 </Button>
                 <Button onClick={() => { setShowNoLivesModal(false); }} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full">

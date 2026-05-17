@@ -124,6 +124,20 @@ service cloud.firestore {
       allow write: if isSelf(userId) || isTeacherOrAdmin();
     }
 
+    // ── Practice Sessions (written by backend only via Admin SDK, read by backend for submission) ──
+    // Clients access this via /api/practice/* endpoints, not directly
+    match /practice_sessions/{docId} {
+      allow read: if isAdmin();  // Backend reads via Admin SDK
+      allow write: if false;    // Backend only via Admin SDK
+    }
+
+    // ── Practice Results subcollection (written by backend, read by backend for stats) ──
+    // practice_results/{userId}/sessions/{session_id}
+    match /practice_results/{userId}/sessions/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if false;  // Backend only via Admin SDK
+    }
+
     // ── Module Progress (subcollection under users) ──
     match /users/{userId}/moduleProgress/{docId} {
       allow read: if isSelf(userId) || isTeacherOrAdmin();

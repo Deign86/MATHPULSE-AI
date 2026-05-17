@@ -39,6 +39,7 @@ routing:
     verify_solution:       deepseek-reasoner
     lesson_generation:     deepseek-chat
     quiz_generation:       deepseek-chat
+    practice_generation:   deepseek-chat
     learning_path:         deepseek-chat
     daily_insight:         deepseek-chat
     risk_classification:   deepseek-chat
@@ -55,6 +56,8 @@ routing:
     lesson_generation:
       - deepseek-chat
     quiz_generation:
+      - deepseek-chat
+    practice_generation:
       - deepseek-chat
     learning_path:
       - deepseek-chat
@@ -76,6 +79,7 @@ routing:
     verify_solution:       deepseek
     lesson_generation:     deepseek
     quiz_generation:       deepseek
+    practice_generation:   deepseek
     learning_path:         deepseek
     daily_insight:         deepseek
     risk_classification:   deepseek

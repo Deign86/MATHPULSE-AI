@@ -18,6 +18,19 @@
 You have access to the Memory Bank MCP. You MUST follow these rules on every prompt without exception.
 Project root: C:\Users\Deign\Downloads\MATHPULSE-AI
 
+### AgentMemory MCP — Auto-Invoke (MANDATORY)
+
+**When ANY of these triggers occur, call `agentmemory_memory_recall` or `agentmemory_memory_smart_search` FIRST before proceeding:**
+
+| Trigger | Action |
+|---------|--------|
+| "what did we do", "previous session", "last time" | `agentmemory_memory_recall` with relevant query |
+| "find past", "remember", "was there a", "had we" | `agentmemory_memory_recall` with relevant query |
+| "context summary", "session summary", "handoff" | `agentmemory_memory_sessions` + `session_read` |
+| Any open question about what was decided/built/done | `agentmemory_memory_recall` first |
+
+**RULE: Never answer "what did we do in a previous session" or similar without checking agentmemory first.** The memory bank is the authoritative source of record.
+
 ### On EVERY session start (first prompt of a new session):
 - Call `get-memory-bank-info` immediately before doing anything else
 - Read `C:\Users\Deign\Downloads\MATHPULSE-AI\memory-bank\activeContext.md` and `C:\Users\Deign\Downloads\MATHPULSE-AI\memory-bank\progress.md`
