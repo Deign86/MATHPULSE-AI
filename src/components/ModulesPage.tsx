@@ -78,7 +78,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   hasCompletedDiagnostic = false,
 }) => {
   const { userProfile, currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<ModulesTab>('modules');
+  const [activeTab, setActiveTab] = useState<ModulesTab>(() => {
+    const stored = sessionStorage.getItem('mathpulse_modules_tab');
+    if (stored === 'practice' || stored === 'recommended' || stored === 'teacher_uploaded') {
+      sessionStorage.removeItem('mathpulse_modules_tab');
+      return stored;
+    }
+    return 'modules';
+  });
 
   const studentProfile = userProfile as StudentProfile | null;
   const studentGrade = studentProfile?.grade;

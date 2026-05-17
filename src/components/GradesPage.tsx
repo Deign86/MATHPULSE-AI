@@ -457,7 +457,12 @@ const subjectPerformance = Object.entries({})
               <p className="text-white/80 text-[13px] font-medium leading-relaxed mb-8 max-w-[90%]">
                 You've completed <span className="font-black text-white">{recentQuizzes.length}</span> activities recently. Try a practice session to boost your lowest scores.
               </p>
-              <Button className="w-full bg-white text-indigo-600 hover:bg-slate-50 border-0 font-black h-12 rounded-xl shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] hover:-translate-y-0.5 transition-all">
+              <Button
+                onClick={() => {
+                  sessionStorage.setItem('mathpulse_modules_tab', 'practice');
+                  window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
+                }}
+                className="w-full bg-white text-indigo-600 hover:bg-slate-50 border-0 font-black h-12 rounded-xl shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)] hover:-translate-y-0.5 transition-all">
                 Start Practice Session
               </Button>
             </div>
