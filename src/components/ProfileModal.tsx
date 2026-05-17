@@ -280,28 +280,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                           </SelectContent>
                         </Select>
                       </div>
-                      <div>
-                        <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">
-                          {editedData.role === 'student' ? 'School' : editedData.role === 'teacher' ? 'Department' : 'Office Location'}
-                        </label>
-                        <div className="relative">
-                          <Building size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                          <Input
-                            value={editedData.school || editedData.department || editedData.office || ''}
-                            onChange={(e) => {
-                              if (editedData.role === 'student') {
-                                setEditedData({ ...editedData, school: e.target.value });
-                              } else if (editedData.role === 'teacher') {
-                                setEditedData({ ...editedData, department: e.target.value });
-                              } else {
-                                setEditedData({ ...editedData, office: e.target.value });
-                              }
-                            }}
-                            disabled={!isEditing}
-                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
-                          />
-                        </div>
-                      </div>
                     </div>
                   </div>
 
