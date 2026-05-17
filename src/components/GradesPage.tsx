@@ -281,7 +281,7 @@ const subjectPerformance = Object.entries({})
         <div className="flex gap-3 w-full sm:w-auto">
           <Button variant="outline" className="flex-1 sm:flex-none border-slate-200 text-slate-500 font-bold rounded-xl h-11 px-5 hover:bg-slate-50 hover:text-slate-700">
             <Calendar className="w-4 h-4 mr-2 text-slate-400" />
-            This Semester
+            This Quarter
           </Button>
           <Button className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl h-11 px-5 shadow-[0_8px_20px_-8px_rgba(79,70,229,0.5)] hover:-translate-y-0.5 transition-all" onClick={handleExportReport}>
             <Download className="w-4 h-4 mr-2" />
