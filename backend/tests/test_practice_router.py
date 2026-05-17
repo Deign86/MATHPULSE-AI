@@ -15,10 +15,31 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from fastapi.testclient import TestClient
 
 # We import the app via main to get router registered
+import main as main_module
 from main import app
 
-
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _patch_firebase_auth():
+    """Ensure firebase_auth extracts uid from mock tokens for practice tests.
+
+    test_api.py sets a static uid mock at module level; this fixture overrides
+    it per-test so practice auth checks (uid == userId) pass.
+    """
+    def _verify(token, **kwargs):
+        if token and token.startswith("mock_token_"):
+            uid = token[len("mock_token_"):]
+            return {"uid": uid, "email": f"{uid}@test.mathpulse.ai", "role": "student"}
+        return {"uid": "unknown", "role": "student"}
+
+    original = main_module.firebase_auth
+    mock_auth = MagicMock()
+    mock_auth.verify_id_token = _verify
+    main_module.firebase_auth = mock_auth
+    yield
+    main_module.firebase_auth = original
 
 
 def _mock_user(uid: str):
