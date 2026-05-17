@@ -1,24 +1,36 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Award, Clock, Target, Zap, Trophy, Filter, TrendingUp, CheckCircle, Lock, Play, BookOpen, PenTool } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Award, Clock, Target, Zap, Trophy, Filter, TrendingUp, CheckCircle, Lock, Play, BookOpen, PenTool, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
-import { Quiz } from './QuizExperience';
+import { Quiz, QuizAnswerRecord } from './QuizExperience';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserProgress } from '../services/progressService';
 import { UserProgress } from '../types/models';
 import { subjects, type SubjectId } from '../data/subjects';
+import {
+  fetchPracticeStats,
+  generatePracticeSession,
+  submitPracticeSession,
+  type PracticeStatsResponse,
+} from '../services/practiceService';
 
 interface PracticeCenterProps {
+  userId: string;
   onStartQuiz?: (quiz: Quiz) => void;
+  onQuizEnd?: (quiz: Quiz, answers: QuizAnswerRecord[]) => void;
   searchQuery?: string;
   allowedSubjectIds?: SubjectId[];
 }
 
-const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuery = '', allowedSubjectIds }) => {
+const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, onQuizEnd, searchQuery = '', allowedSubjectIds }) => {
   const { userProfile } = useAuth();
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'practice' | 'challenge' | 'mastery'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
   const [progress, setProgress] = useState<UserProgress | null>(null);
+  const [practiceStats, setPracticeStats] = useState<PracticeStatsResponse | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const availableSubjects = useMemo(() => {
     if (!allowedSubjectIds || allowedSubjectIds.length === 0) {
@@ -42,10 +54,19 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
     }
   }, [availableSubjects, selectedSubject]);
 
-  // Derive stats from real Firebase data
-  const totalQuizzesCompleted = progress?.totalQuizzesCompleted || 0;
-  const totalXPEarned = (userProfile as any)?.totalXP || 0;
-  const avgScore = progress?.averageScore ? Math.round(progress.averageScore) : 0;
+  useEffect(() => {
+    if (!userId) return;
+    setStatsLoading(true);
+    fetchPracticeStats(userId)
+      .then(setPracticeStats)
+      .catch(console.error)
+      .finally(() => setStatsLoading(false));
+  }, [userId]);
+
+  // Derive stats from practice API response (primary) or progress fallback
+  const totalQuizzesCompleted = practiceStats?.quizzesCompleted ?? progress?.totalQuizzesCompleted ?? 0;
+  const totalXPEarned = practiceStats?.totalXPEarned ?? (userProfile as any)?.totalXP ?? 0;
+  const avgScore = practiceStats?.averageScore ?? (progress?.averageScore ? Math.round(progress.averageScore) : 0);
 
   // Build quizzes from subjects data + merge with progress
   const completedQuizIds = new Set(
@@ -133,6 +154,73 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
         return 'bg-[#edf1f7] text-[#0a1628]';
     }
   };
+
+  const handleStartQuiz = useCallback(async (quiz: Quiz, difficulty: 'Easy' | 'Medium' | 'Hard') => {
+    if (!userId) return;
+
+    setIsGenerating(true);
+    try {
+      // Map frontend difficulty to backend format
+      const difficultyMap: Record<string, 'Practice' | 'Challenge' | 'Mastery'> = {
+        'Easy': 'Practice',
+        'Medium': 'Challenge',
+        'Hard': 'Mastery',
+      };
+
+      const response = await generatePracticeSession({
+        userId,
+        subject: quiz.subject,
+        competency: quiz.title,
+        difficulty: difficultyMap[difficulty],
+        count: 5,
+      });
+
+      // Convert AI questions to QuizQuestion format for QuizExperience
+      const quizQuestions = response.questions.map((q) => ({
+        id: q.id,
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correct_index,
+        explanation: q.explanation,
+      }));
+
+      // Create a Quiz object for QuizExperience
+      const aiQuiz: Quiz = {
+        id: response.session_id,
+        title: `${quiz.title} (AI)`,
+        subject: quiz.subject,
+        difficulty,
+        questions: quizQuestions.length,
+        duration: "10 min",
+        xpReward: difficulty === 'Hard' ? 75 : difficulty === 'Medium' ? 50 : 25,
+        type: 'practice',
+        loadedQuestions: response.questions.map((q) => ({
+          id: q.id,
+          questionType: 'multiple_choice' as const,
+          question: q.question,
+          options: q.options,
+          correctAnswer: q.options[q.correct_index],
+          bloomLevel: 'understand' as const,
+          difficulty: difficulty.toLowerCase() as 'easy' | 'medium' | 'hard',
+          topic: quiz.title,
+          subject: quiz.subject,
+          points: 10,
+          explanation: q.explanation,
+        })),
+        generatedQuizId: response.session_id,
+        completed: false,
+        locked: false,
+      };
+
+      onStartQuiz?.(aiQuiz);
+    } catch (e) {
+      console.error(e);
+      // Fall back to original quiz if AI generation fails
+      onStartQuiz?.(quiz);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [userId, onStartQuiz]);
 
   return (
     <div className="px-4 sm:px-6 xl:px-10 py-4 sm:py-6">
@@ -237,6 +325,25 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
             <option key={subject.id} value={subject.title}>{subject.title}</option>
           ))}
         </select>
+
+        {/* Difficulty filter pills */}
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm">
+          <span className="px-2 text-xs font-bold text-slate-400">AI:</span>
+          {(['Easy', 'Medium', 'Hard'] as const).map((diff) => (
+            <button
+              key={diff}
+              onClick={() => setSelectedDifficulty(diff)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${selectedDifficulty === diff
+                ? diff === 'Easy' ? 'bg-green-500 text-white shadow-sm'
+                  : diff === 'Medium' ? 'bg-rose-500 text-white shadow-sm'
+                  : 'bg-red-500 text-white shadow-sm'
+                : 'text-[#5a6578] hover:bg-[#edf1f7]'
+              }`}
+            >
+              {diff}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Quizzes Grid */}
@@ -265,14 +372,16 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ onStartQuiz, searchQuer
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
-                onClick={() => !isLocked && onStartQuiz?.(quiz)}
+                onClick={() => !isLocked && !isGenerating && handleStartQuiz(quiz, selectedDifficulty)}
                 className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 border-2 relative select-none transition-all duration-300 ${isLocked
                   ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
-                  : quiz.completed
-                    ? 'border-teal-200 shadow-sm hover:border-teal-300 hover:shadow-md cursor-pointer'
-                    : isHard
-                      ? 'border-indigo-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
-                      : 'border-orange-200 shadow-sm hover:border-orange-300 hover:shadow-md cursor-pointer'
+                  : isGenerating
+                    ? 'border-slate-200 opacity-80 cursor-wait'
+                    : quiz.completed
+                      ? 'border-teal-200 shadow-sm hover:border-teal-300 hover:shadow-md cursor-pointer'
+                      : isHard
+                        ? 'border-indigo-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
+                        : 'border-orange-200 shadow-sm hover:border-orange-300 hover:shadow-md cursor-pointer'
                   } group`}
               >
                 <div className="flex items-center justify-between gap-3 md:gap-4">

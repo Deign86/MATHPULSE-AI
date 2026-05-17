@@ -27,7 +27,7 @@ import PracticeCenter from './PracticeCenter';
 import ModulesMascot from './ModulesMascot';
 import QuizExperience from './QuizExperience';
 import DailyCheckInModal from './DailyCheckInModal';
-import { Quiz as QuizExperienceQuiz } from './QuizExperience';
+import { Quiz as QuizExperienceQuiz, QuizAnswerRecord } from './QuizExperience';
 import { type Module } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 import { type StudentProfile } from '../types/models';
@@ -51,6 +51,7 @@ import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import { getStudentCompetencyProfile } from '../services/assessmentService';
 import type { CompetencyProfileDoc } from '../types/assessment';
 import { useCurriculum } from '../hooks/useCurriculum';
+import { submitPracticeSession } from '../services/practiceService';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -786,7 +787,42 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           className="pb-8 mt-4"
         >
           {activeTab === 'practice' ? (
-            <PracticeCenter onStartQuiz={setSelectedQuiz} searchQuery={searchQuery} />
+            <PracticeCenter
+              userId={userProfile?.uid ?? ''}
+              onStartQuiz={setSelectedQuiz}
+              onQuizEnd={async (quiz, answers) => {
+                if (!userProfile?.uid || !quiz.generatedQuizId) return;
+                try {
+                  // Map answer text back to index for submission
+                  const questionMap = new Map(
+                    (quiz.loadedQuestions || []).map((q) => [q.id, q])
+                  );
+                  const submitAnswers = answers.map((a) => {
+                    const q = questionMap.get(a.questionId);
+                    const selectedIndex = q?.options?.findIndex(
+                      (opt) => opt.trim().toLowerCase() === a.answer.trim().toLowerCase()
+                    ) ?? 0;
+                    return { question_id: a.questionId, selected_index: selectedIndex };
+                  });
+
+                  const result = await submitPracticeSession({
+                    session_id: quiz.generatedQuizId,
+                    userId: userProfile.uid,
+                    answers: submitAnswers,
+                  });
+
+                  toast.success(
+                    `Score: ${result.score_percent}% | Correct: ${result.correct_count}/${result.total} | +${result.xp_earned} XP`
+                  );
+                  // Refresh stats by triggering re-render
+                  setSelectedQuiz(null);
+                } catch (e) {
+                  console.error(e);
+                  toast.error('Failed to submit quiz results');
+                }
+              }}
+              searchQuery={searchQuery}
+            />
           ) : activeTab === 'teacher_uploaded' ? (
             teacherModulesLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">

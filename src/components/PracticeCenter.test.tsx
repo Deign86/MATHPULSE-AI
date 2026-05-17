@@ -16,6 +16,18 @@ vi.mock('../services/progressService', () => ({
   })),
 }));
 
+vi.mock('../services/practiceService', () => ({
+  fetchPracticeStats: vi.fn(() => Promise.resolve({
+    quizzesCompleted: 0,
+    totalXPEarned: 0,
+    averageScore: 0,
+    recentSessions: [],
+    competencyBreakdown: {},
+  })),
+  generatePracticeSession: vi.fn(),
+  submitPracticeSession: vi.fn(),
+}));
+
 vi.mock('../data/subjects', () => ({
   subjects: [
     {
@@ -34,7 +46,7 @@ vi.mock('../data/subjects', () => ({
 
 describe('PracticeCenter', () => {
   it('renders stats cards', () => {
-    render(<PracticeCenter />);
+    render(<PracticeCenter userId="user-1" />);
 
     expect(screen.getByText(/quizzes completed/i)).toBeInTheDocument();
     expect(screen.getByText(/total xp earned/i)).toBeInTheDocument();
