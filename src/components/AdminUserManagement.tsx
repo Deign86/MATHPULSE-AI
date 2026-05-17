@@ -894,7 +894,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
         {/* Floating Bulk Action Bar */}
         {selectedCount > 0 && (
-          <div className="sticky bottom-4 z-50 mt-3 bg-indigo-900 rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-4 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl shadow-indigo-900/30">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-3rem)] max-w-[1200px] bg-indigo-900 rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-4 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl shadow-indigo-900/30">
             <div className="flex items-center gap-3 px-3 border-r border-white/10 pr-6">
               <div className="w-8 h-8 rounded-xl bg-indigo-500/30 flex items-center justify-center text-white font-black text-xs">
                 {selectedCount}
