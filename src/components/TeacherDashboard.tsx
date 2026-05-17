@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { Virtuoso } from 'react-virtuoso';
+import AppLoadingScreen from './AppLoadingScreen';
 import {
   Users, TrendingUp, AlertTriangle, Calendar,
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
@@ -1411,14 +1412,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   }, [effectiveAnalyticsClass, students]);
 
   if (dataLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#f8fafc]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-[#9956DE] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-medium text-[#64748b]">Loading dashboard...</p>
-        </div>
-      </div>
-    );
+    return <AppLoadingScreen message="Loading dashboard..." />;
   }
 
   return (
