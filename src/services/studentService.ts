@@ -61,6 +61,55 @@ export interface ManagedStudent {
   systemPerformanceAvg?: number | null;
   riskHistory?: RiskHistoryEntry[];
   riskRecalcNeeded?: boolean;
+  // ── Registered-account linkage (used by teacher dashboard merge pipeline) ──
+  hasRegisteredAccount?: boolean;
+  source?: 'registered' | 'import' | 'both';
+  accountUid?: string;
+}
+
+export interface RegisteredStudentAccount {
+  uid: string;
+  name: string;
+  email: string;
+  lrn?: string;
+  photo?: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
+  adviserTeacherId?: string;
+  role: 'student';
+  createdAt?: Timestamp;
+}
+
+export interface CreateStudentFromRosterInput {
+  name: string;
+  lrn?: string;
+  email: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
+  adviserTeacherId: string;
+  adviserTeacherName?: string;
+  schoolYear?: string;
+  temporaryPassword: string;
+}
+
+export interface CreateStudentFromRosterResult {
+  uid: string;
+  email: string;
+  temporaryPassword: string;
+}
+
+export interface ReassignStudentSectionInput {
+  studentId: string;
+  isRegisteredAccount: boolean;
+  newClassSectionId: string;
+  newGrade: string;
+  newSection: string;
+  teacherId: string;
+  teacherName?: string;
+  schoolYear: string;
+  previousClassSectionId?: string;
 }
 
 export interface Classroom {
@@ -199,6 +248,407 @@ export async function getStudentsByClassroom(classroomId: string): Promise<Manag
     id: doc.id,
     ...doc.data(),
   })) as ManagedStudent[];
+}
+
+// ─── Registered Student Account Loading (NEW — primary source of students) ───
+
+/**
+ * Fetch every registered `users/{uid}` document where `role === 'student'` and
+ * the student is linked to this teacher — either via `adviserTeacherId` or via
+ * a `classSectionId` from one of the teacher's known sections. This is the
+ * **primary** source of students for the teacher dashboard. Imported records
+ * are only used to enrich these accounts (or surface "roster-only" rows
+ * without accounts).
+ */
+export async function getAllRegisteredStudentsByTeacher(
+  teacherId: string,
+  classSectionIds: string[] = []
+): Promise<RegisteredStudentAccount[]> {
+  if (!teacherId) return [];
+
+  const usersRef = collection(db, 'users');
+  const dedupedById = new Map<string, RegisteredStudentAccount>();
+
+  const mapDoc = (entryId: string, data: Record<string, unknown>): RegisteredStudentAccount | null => {
+    const role = String(data.role || '').toLowerCase();
+    if (role !== 'student') return null;
+
+    const account: RegisteredStudentAccount = {
+      uid: entryId,
+      name: String(data.name || data.displayName || '').trim() || 'Student',
+      email: String(data.email || '').trim(),
+      lrn: data.lrn ? String(data.lrn).trim() || undefined : undefined,
+      photo: data.photo
+        ? String(data.photo).trim() || undefined
+        : data.photoURL
+          ? String(data.photoURL).trim() || undefined
+          : undefined,
+      grade: data.grade ? String(data.grade).trim() || undefined : undefined,
+      section: data.section ? String(data.section).trim() || undefined : undefined,
+      classSectionId: data.classSectionId ? String(data.classSectionId).trim() || undefined : undefined,
+      adviserTeacherId: data.adviserTeacherId ? String(data.adviserTeacherId).trim() || undefined : undefined,
+      role: 'student',
+      createdAt: (data.createdAt as Timestamp) || undefined,
+    };
+    return account;
+  };
+
+  // (1) Students explicitly advised by this teacher.
+  try {
+    const adviserQuery = query(
+      usersRef,
+      where('role', '==', 'student'),
+      where('adviserTeacherId', '==', teacherId)
+    );
+    const adviserSnapshot = await getDocs(adviserQuery);
+    adviserSnapshot.docs.forEach((entry) => {
+      const account = mapDoc(entry.id, entry.data() as Record<string, unknown>);
+      if (account) dedupedById.set(entry.id, account);
+    });
+  } catch (error) {
+    console.warn('[studentService] adviser-scoped student query failed:', error);
+  }
+
+  // (2) Students whose `classSectionId` matches one of this teacher's owned sections.
+  // Firestore `in` is capped at 30 values; chunk just in case.
+  const validSectionIds = Array.from(
+    new Set(
+      (classSectionIds || [])
+        .map((id) => (id || '').trim())
+        .filter((id): id is string => !!id)
+    )
+  );
+
+  for (let cursor = 0; cursor < validSectionIds.length; cursor += 30) {
+    const chunk = validSectionIds.slice(cursor, cursor + 30);
+    if (chunk.length === 0) continue;
+    try {
+      const sectionQuery = query(
+        usersRef,
+        where('role', '==', 'student'),
+        where('classSectionId', 'in', chunk)
+      );
+      const sectionSnapshot = await getDocs(sectionQuery);
+      sectionSnapshot.docs.forEach((entry) => {
+        if (dedupedById.has(entry.id)) return;
+        const account = mapDoc(entry.id, entry.data() as Record<string, unknown>);
+        if (account) dedupedById.set(entry.id, account);
+      });
+    } catch (error) {
+      console.warn('[studentService] section-scoped student query failed:', error);
+    }
+  }
+
+  return Array.from(dedupedById.values()).sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+}
+
+/**
+ * Convert a registered account into a `ManagedStudent`-shaped record so it can
+ * flow through the existing teacher-dashboard merge pipeline. Defaults stand
+ * in for academic metrics until/unless they are enriched from
+ * `managedStudents/{accountUid}`.
+ */
+export function mapRegisteredStudentToManaged(account: RegisteredStudentAccount): ManagedStudent {
+  const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    account.name || 'Student'
+  )}&background=random`;
+  const nowTimestamp = Timestamp.now();
+
+  return {
+    id: account.uid,
+    accountUid: account.uid,
+    lrn: account.lrn,
+    name: account.name,
+    email: account.email,
+    avatar: account.photo || fallbackAvatar,
+    teacherId: account.adviserTeacherId,
+    grade: account.grade,
+    gradeLevel: normalizeGradeLevel(account.grade) || undefined,
+    section: account.section,
+    classSectionId: account.classSectionId,
+    riskLevel: 'Low',
+    engagementScore: 0,
+    avgQuizScore: 0,
+    weakestTopic: 'N/A',
+    classroomId: account.classSectionId || '',
+    attendance: 0,
+    assignmentCompletion: 0,
+    lastActive: null,
+    struggles: [],
+    createdAt: account.createdAt || nowTimestamp,
+    updatedAt: nowTimestamp,
+    hasRegisteredAccount: true,
+    source: 'registered',
+  };
+}
+
+/**
+ * Normalize a name for fuzzy matching between roster (import) and registered
+ * student rows. Lowercases, strips diacritics where possible via NFD, removes
+ * punctuation, and collapses whitespace.
+ */
+export function normalizeStudentName(value: string | null | undefined): string {
+  return (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Filter the import roster down to students that have **no** corresponding
+ * registered account. Match priority: LRN → exact id → normalized name within
+ * the same class section. Each returned record is tagged with
+ * `source: 'import'` and `hasRegisteredAccount: false` so the dashboard can
+ * surface a "Create Account" CTA on its card.
+ */
+export function markRosterStudentsWithoutAccounts(
+  rosterStudents: ManagedStudent[],
+  registeredStudents: RegisteredStudentAccount[]
+): ManagedStudent[] {
+  const lrnIndex = new Map<string, RegisteredStudentAccount>();
+  const idIndex = new Map<string, RegisteredStudentAccount>();
+  const nameSectionIndex = new Map<string, RegisteredStudentAccount>();
+
+  registeredStudents.forEach((account) => {
+    if (account.lrn) {
+      lrnIndex.set(account.lrn.trim().toLowerCase(), account);
+    }
+    idIndex.set(account.uid, account);
+    const nameKey = normalizeStudentName(account.name);
+    const sectionKey = (account.classSectionId || '').trim().toLowerCase();
+    if (nameKey) {
+      nameSectionIndex.set(`${nameKey}|${sectionKey}`, account);
+    }
+  });
+
+  const orphanRoster: ManagedStudent[] = [];
+
+  rosterStudents.forEach((roster) => {
+    const lrnKey = (roster.lrn || '').trim().toLowerCase();
+    if (lrnKey && lrnIndex.has(lrnKey)) return;
+
+    if (idIndex.has(roster.id)) return;
+
+    const nameKey = normalizeStudentName(roster.name);
+    const sectionKey = (roster.classSectionId || roster.classroomId || '').trim().toLowerCase();
+    if (nameKey && nameSectionIndex.has(`${nameKey}|${sectionKey}`)) return;
+
+    orphanRoster.push({
+      ...roster,
+      source: 'import',
+      hasRegisteredAccount: false,
+    });
+  });
+
+  return orphanRoster;
+}
+
+/**
+ * Reassign a student to a different class section. Updates the
+ * `managedStudents/{studentId}` row, optionally the `users/{studentId}` profile
+ * (when the student has a registered account), and adjusts the
+ * `classSectionOwnership` membership lists for both the new and previous
+ * section.
+ */
+export async function reassignStudentSection(input: ReassignStudentSectionInput): Promise<void> {
+  const studentId = (input.studentId || '').trim();
+  if (!studentId) {
+    throw new Error('Cannot reassign section: studentId is required.');
+  }
+
+  const newClassSectionId =
+    (input.newClassSectionId || '').trim()
+    || buildClassSectionId(input.newGrade, input.newSection);
+  if (!newClassSectionId) {
+    throw new Error('Cannot reassign section: a target class section is required.');
+  }
+
+  const teacherId = (input.teacherId || '').trim();
+  const teacherName = (input.teacherName || '').trim();
+  const schoolYear = (input.schoolYear || '').trim();
+  const previousSectionId = (input.previousClassSectionId || '').trim();
+
+  // (1) Update the managed-student record (primary teacher-side enrichment row).
+  try {
+    const managedRef = doc(db, 'managedStudents', studentId);
+    const managedSnap = await getDoc(managedRef);
+    if (managedSnap.exists()) {
+      await updateDoc(managedRef, {
+        grade: input.newGrade,
+        section: input.newSection,
+        classSectionId: newClassSectionId,
+        gradeLevel: normalizeGradeLevel(input.newGrade) || input.newGrade,
+        teacherId: teacherId || managedSnap.data()?.teacherId,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  } catch (error) {
+    console.warn('[studentService] reassignStudentSection: managedStudents update failed:', error);
+  }
+
+  // (2) Mirror the change onto the registered user profile.
+  if (input.isRegisteredAccount) {
+    try {
+      await setDoc(
+        doc(db, 'users', studentId),
+        {
+          grade: input.newGrade,
+          section: input.newSection,
+          classSectionId: newClassSectionId,
+          adviserTeacherId: teacherId || undefined,
+          adviserTeacherName: teacherName || undefined,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.warn('[studentService] reassignStudentSection: users profile update failed:', error);
+    }
+  }
+
+  // (3) Add to the new section's ownership roster.
+  try {
+    await upsertClassSectionOwnership({
+      classSectionId: newClassSectionId,
+      grade: input.newGrade,
+      section: input.newSection,
+      schoolYear,
+      ownerTeacherId: teacherId,
+      ownerTeacherName: teacherName,
+      studentUids: [studentId],
+    });
+  } catch (error) {
+    console.warn('[studentService] reassignStudentSection: ownership upsert failed:', error);
+  }
+
+  // (4) Remove the student from the previous section's roster (best-effort).
+  if (previousSectionId && previousSectionId !== newClassSectionId) {
+    try {
+      const previousRef = doc(db, 'classSectionOwnership', previousSectionId);
+      const previousSnap = await getDoc(previousRef);
+      if (previousSnap.exists()) {
+        const previousData = previousSnap.data() as { studentUids?: string[] };
+        const trimmed = (previousData.studentUids || []).filter((uid) => uid !== studentId);
+        await updateDoc(previousRef, {
+          studentUids: trimmed,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.warn('[studentService] reassignStudentSection: previous-section cleanup failed:', error);
+    }
+  }
+}
+
+/**
+ * Provision a brand-new student account for a roster row that has no
+ * registered user yet. Delegates Auth + Firestore user creation to the FastAPI
+ * backend (which uses the Firebase Admin SDK), then writes the matching
+ * `managedStudents/{uid}` enrichment row so the dashboard sees the new record
+ * via the registered-students path on the next refresh.
+ */
+export async function createStudentAccountFromRoster(
+  input: CreateStudentFromRosterInput
+): Promise<CreateStudentFromRosterResult> {
+  // Lazy import keeps the service tree-shake friendly and avoids a circular
+  // dependency between apiService and studentService.
+  const { apiService } = await import('./apiService');
+
+  const adviserTeacherId = (input.adviserTeacherId || '').trim();
+  if (!adviserTeacherId) {
+    throw new Error('createStudentAccountFromRoster requires adviserTeacherId.');
+  }
+
+  const trimmedEmail = (input.email || '').trim().toLowerCase();
+  if (!trimmedEmail) {
+    throw new Error('createStudentAccountFromRoster requires an email.');
+  }
+
+  const grade = (input.grade || '').trim();
+  const section = (input.section || '').trim();
+  const classSectionId =
+    (input.classSectionId || '').trim()
+    || (grade && section ? buildClassSectionId(grade, section) : '');
+
+  const apiResponse = await apiService.createStudentAccount({
+    name: (input.name || '').trim() || 'Student',
+    email: trimmedEmail,
+    temporaryPassword: input.temporaryPassword,
+    lrn: input.lrn?.trim() || undefined,
+    grade: grade || undefined,
+    section: section || undefined,
+    classSectionId: classSectionId || undefined,
+    adviserTeacherId,
+    adviserTeacherName: input.adviserTeacherName?.trim() || undefined,
+    schoolYear: input.schoolYear?.trim() || undefined,
+  });
+
+  const uid = (apiResponse.uid || '').trim();
+  if (!uid) {
+    throw new Error('Backend did not return a uid for the newly created student.');
+  }
+
+  // Write the enrichment row directly so the teacher's view reconciles
+  // immediately even before the next users-collection query.
+  try {
+    await setDoc(
+      doc(db, 'managedStudents', uid),
+      withoutUndefined({
+        accountUid: uid,
+        name: (input.name || '').trim() || 'Student',
+        email: trimmedEmail,
+        lrn: input.lrn?.trim() || null,
+        teacherId: adviserTeacherId,
+        grade: grade || null,
+        gradeLevel: normalizeGradeLevel(grade) || null,
+        section: section || null,
+        classSectionId: classSectionId || null,
+        classroomId: classSectionId || null,
+        riskLevel: 'Low',
+        avgQuizScore: 0,
+        engagementScore: 0,
+        attendance: 0,
+        assignmentCompletion: 0,
+        weakestTopic: '',
+        struggles: [],
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(input.name || 'Student')}&background=random`,
+        hasRegisteredAccount: true,
+        source: 'both',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+    );
+  } catch (error) {
+    console.warn('[studentService] createStudentAccountFromRoster: managed-student merge failed:', error);
+  }
+
+  // Best-effort: ensure the new uid is in the section's ownership roster.
+  if (classSectionId && grade && section) {
+    try {
+      await upsertClassSectionOwnership({
+        classSectionId,
+        grade,
+        section,
+        schoolYear: input.schoolYear || '',
+        ownerTeacherId: adviserTeacherId,
+        ownerTeacherName: input.adviserTeacherName,
+        studentUids: [uid],
+      });
+    } catch (error) {
+      console.warn('[studentService] createStudentAccountFromRoster: ownership upsert failed:', error);
+    }
+  }
+
+  return {
+    uid,
+    email: trimmedEmail,
+    temporaryPassword: input.temporaryPassword,
+  };
 }
 
 export async function updateStudentRisk(
