@@ -619,26 +619,8 @@ const LoginPage: React.FC = () => {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="grid grid-cols-2 gap-3"
+                    className="space-y-3"
                   >
-                    <div>
-                      <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                        Grade Level
-                      </label>
-                      <div className="relative">
-                        <GraduationCap size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <select
-                          value={selectedGrade}
-                          onChange={(e) => setSelectedGrade(e.target.value)}
-                          className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
-                          required
-                        >
-                          {GRADE_OPTIONS.map((grade) => (
-                            <option key={grade} value={grade}>{grade}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
                     <div>
                       <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
                         Section
