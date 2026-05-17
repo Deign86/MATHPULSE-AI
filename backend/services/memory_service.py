@@ -967,3 +967,126 @@ def clear_session(uid: str, session_id: str) -> None:
 def is_memory_available() -> bool:
     """Check if memory system is operational."""
     return _has_firestore()
+
+# ═══════════════════════════════════════════════════════════════
+# 9. TIMING & HEALTH MONITORING
+# ═══════════════════════════════════════════════════════════════
+
+_TIMING_LOG_ENABLED: bool = True
+
+
+def _time_ms() -> int:
+    """Return current monotonic time in milliseconds."""
+    return int(time.monotonic() * 1000)
+
+
+def log_timing(func_name: str, start_ms: int) -> None:
+    """Log the elapsed time of a function call if timing is enabled."""
+    if not _TIMING_LOG_ENABLED:
+        return
+    elapsed = _time_ms() - start_ms
+    logger.info(f"TIMING [{func_name}] {elapsed}ms")
+
+
+def check_memory_health(uid: str) -> dict:
+    """Verify that all three memory stores are writable and readable.
+    
+    Returns a dict with per-store results:
+    {
+        'firestore_available': bool,
+        'profile_writable': {'ok': bool, 'latency_ms': int, 'error': str | None},
+        'active_state_writable': {...},
+        'session_summary_writable': {...},
+    }
+    """
+    now = _time_ms()
+    result: dict = {
+        "firestore_available": _has_firestore(),
+        "profile_writable": {"ok": False, "latency_ms": 0, "error": None},
+        "active_state_writable": {"ok": False, "latency_ms": 0, "error": None},
+        "session_summary_writable": {"ok": False, "latency_ms": 0, "error": None},
+    }
+
+    if not result["firestore_available"]:
+        for key in ("profile_writable", "active_state_writable", "session_summary_writable"):
+            result[key]["error"] = "Firestore not initialized"
+        result["_elapsed_ms"] = _time_ms() - now
+        return result
+
+    db = firebase_admin.firestore.client()
+    test_prefix = f"_health_check_test_{int(time.time())}"
+    profile_ref = db.collection("users").document(uid).collection("tutorMemory").document("profile")
+    active_ref = db.collection("users").document(uid).collection("tutorMemory").document("working").collection("state").document("active_state")
+    session_ref = (
+        db.collection("users")
+        .document(uid)
+        .collection("tutorMemory")
+        .document("sessions")
+        .collection("items")
+        .document(f"{test_prefix}")
+    )
+
+    # Test profile write
+    try:
+        t0 = _time_ms()
+        profile_ref.set({"stable_facts": {"test_fact": "health_check_ok"}}, merge=True)
+        readback = profile_ref.get()
+        facts = readback.to_dict().get("stable_facts", {}) if readback.exists else {}
+        latency = _time_ms() - t0
+        if facts.get("test_fact") == "health_check_ok":
+            result["profile_writable"]["ok"] = True
+        else:
+            result["profile_writable"]["error"] = "Write verification failed"
+        result["profile_writable"]["latency_ms"] = latency
+        # Cleanup
+        profile_ref.update({"stable_facts.test_fact": firestore.DELETE_FIELD})
+    except Exception as e:
+        result["profile_writable"]["error"] = str(e)
+        result["profile_writable"]["latency_ms"] = _time_ms() - t0
+
+    # Test active state write
+    try:
+        t0 = _time_ms()
+        active_ref.set({"active_topic": "health_check_test", "turn_count": 0}, merge=True)
+        readback = active_ref.get()
+        data = readback.to_dict() if readback.exists else {}
+        latency = _time_ms() - t0
+        if data.get("active_topic") == "health_check_test":
+            result["active_state_writable"]["ok"] = True
+        else:
+            result["active_state_writable"]["error"] = "Write verification failed"
+        result["active_state_writable"]["latency_ms"] = latency
+        # Cleanup
+        active_ref.update({"active_topic": firestore.DELETE_FIELD, "turn_count": firestore.DELETE_FIELD})
+    except Exception as e:
+        result["active_state_writable"]["error"] = str(e)
+        result["active_state_writable"]["latency_ms"] = _time_ms() - t0
+
+    # Test session summary write
+    try:
+        t0 = _time_ms()
+        session_ref.set({
+            "concepts_covered": ["health_check_test"],
+            "key_insights": "health check",
+            "timestamp": firestore.SERVER_TIMESTAMP,
+        })
+        readback = session_ref.get()
+        data = readback.to_dict() if readback.exists else {}
+        latency = _time_ms() - t0
+        if data.get("key_insights") == "health check":
+            result["session_summary_writable"]["ok"] = True
+        else:
+            result["session_summary_writable"]["error"] = "Write verification failed"
+        result["session_summary_writable"]["latency_ms"] = latency
+        # Cleanup
+        session_ref.delete()
+    except Exception as e:
+        result["session_summary_writable"]["error"] = str(e)
+        result["session_summary_writable"]["latency_ms"] = _time_ms() - t0
+
+    result["_elapsed_ms"] = _time_ms() - now
+    logger.info(f"MEMORY_HEALTH check for uid={uid}: profile={result['profile_writable']['ok']}, "
+                f"active={result['active_state_writable']['ok']}, "
+                f"session={result['session_summary_writable']['ok']}, "
+                f"elapsed={result['_elapsed_ms']}ms")
+    return result

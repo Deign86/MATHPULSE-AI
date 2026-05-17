@@ -131,6 +131,8 @@ try:
         update_active_topic,
         load_profile,
         finalize_session,
+        check_memory_health,
+        log_timing,
     )
     HAS_MEMORY_SERVICE = True
 except ImportError:
@@ -143,6 +145,8 @@ except ImportError:
     update_active_topic = None
     load_profile = None
     finalize_session = None
+    check_memory_health = None
+    log_timing = None
 
 try:
     import firebase_admin  # type: ignore[import-not-found]
@@ -1521,61 +1525,238 @@ _NON_MATH_REDIRECT_RESPONSES: Tuple[str, ...] = (
 )
 
 _MATH_SCOPE_KEYWORDS: Set[str] = {
-    "math",
-    "mathematics",
-    "algebra",
+    # Core math subjects
+    "math", "mathematics",
+    "algebra", "arithmetic",
     "geometry",
-    "trigonometry",
+    "trigonometry", "trig",
     "calculus",
-    "statistics",
+    "statistics", "statistic",
     "probability",
-    "arithmetic",
-    "equation",
-    "inequality",
-    "function",
-    "graph",
-    "slope",
-    "derivative",
-    "integral",
-    "limit",
-    "matrix",
-    "determinant",
-    "fraction",
-    "percentage",
-    "ratio",
-    "polynomial",
-    "quadratic",
-    "logarithm",
-    "exponent",
-    "angle",
-    "triangle",
-    "circle",
-    "perimeter",
-    "area",
-    "volume",
-    "mean",
-    "median",
-    "mode",
-    "standard deviation",
-    "solve",
-    "simplify",
-    "factor",
-    "evaluate",
-    "compute",
-    "calculate",
-    "step by step",
-    "real life",
+    "precalculus", "pre-calculus",
+    "discrete math", "discrete mathematics",
+    "linear algebra",
+    "number theory",
+    "set theory",
+    # Geometry terms
+    "triangle", "triangles", "polygon", "polygons",
+    "circle", "circles", "sphere", "spheres",
+    "angle", "angles", "right angle", "acute angle", "obtuse angle",
+    "hypotenuse", "pythagorean", "pythagoras",
+    "theorem", "theorems",
+    "proof", "prove",
+    "congruent", "similar", "similarity",
+    "parallel", "perpendicular",
+    "diameter", "radius", "circumference",
+    "perimeter", "area", "volume",
+    "surface area", "surfacearea",
+    "prism", "cylinder", "cone", "pyramid",
+    "coordinate", "coordinates", "coordinate plane",
+    "transform", "transformation",
+    "rotation", "reflection", "translation", "dilation",
+    "scale factor",
+    "line segment", "ray", "midpoint", "bisector",
+    # Algebra terms
+    "equation", "equations",
+    "variable", "variables",
+    "expression", "expressions",
+    "expand", "expansion",
+    "linear", "linear equation",
+    "system of equations", "systems of equations",
+    "coefficient", "coefficients", "constant",
+    "binomial", "trinomial",
+    "rational", "rational expression",
+    "radical", "radicals", "square root",
+    "absolute value",
+    "sequence", "sequences",
+    "series", "summation",
+    "recursive", "explicit",
+    "domain", "range",
+    "asymptote", "asymptotes",
+    "intercept", "x-intercept", "y-intercept",
+    "vertex", "vertices",
+    "parabola", "ellipse", "hyperbola",
+    "inequality", "inequalities",
+    "polynomial", "polynomials",
+    "quadratic", "quadratics",
+    "function", "functions",
+    "graph", "graphs", "graphing",
+    "slope", "slopes",
+    "logarithm", "logarithms",
+    "exponent", "exponents",
+    "exponential", "logarithmic",
+    "fraction", "fractions",
+    "percentage", "percentages",
+    "ratio", "ratios", "proportion",
+    "solve", "solving", "solution",
+    "simplify", "simplification",
+    "factor", "factoring", "factorization",
+    "evaluate", "evaluating",
+    "compute", "computing",
+    "calculate", "calculation",
+    "substitute", "substitution",
+    "isolate", "manipulate",
+    # Calculus terms
+    "derivative", "derivatives",
+    "differentiate", "differentiation",
+    "integral", "integrals",
+    "integrate", "integration",
+    "antiderivative",
+    "limit", "limits",
+    "rate of change",
+    "differential",
+    "indefinite", "definite",
+    "area under", "are aunder",
+    "curve", "curves",
+    "tangent", "tangent line",
+    "normal line",
+    "optimization",
+    "related rates",
+    "implicit", "implicit differentiation",
+    "partial derivative", "partial derivatives",
+    "continuity", "continuous",
+    "discontinuity",
+    "converge", "convergence",
+    "diverge", "divergence",
+    "improper integral",
+    "series", "power series",
+    "taylor", "maclaurin",
+    # Trigonometry terms
+    "sine", "sin", "sinusoidal",
+    "cosine", "cos",
+    "tangent", "tan",
+    "cosecant", "csc",
+    "secant", "sec",
+    "cotangent", "cot",
+    "radian", "radians",
+    "degree", "degrees",
+    "unit circle",
+    "period", "periodic",
+    "amplitude",
+    "phase shift", "phase shift",
+    "frequency",
+    "identity", "identities",
+    "reciprocal",
+    "half-angle", "double-angle",
+    "sum and difference",
+    "law of sines",
+    "law of cosines",
+    "inverse trig", "inverse trigonometric",
+    "arcsin", "arccos", "arctan",
+    "trigonometric",
+    # Statistics & probability terms
+    "data", "dataset",
+    "distribution", "distributions",
+    "sample", "sampling",
+    "population",
+    "variance",
+    "standard deviation", "stdev",
+    "correlation",
+    "regression",
+    "z-score", "zscore",
+    "t-test", "chi-square", "chisquare",
+    "confidence interval",
+    "hypothesis", "hypotheses",
+    "null hypothesis",
+    "alternative hypothesis",
+    "p-value", "pvalue",
+    "significance", "significance level",
+    "normal distribution",
+    "binomial", "binomial distribution",
+    "poisson", "poisson distribution",
+    "uniform distribution",
+    "random", "randomly",
+    "random variable",
+    "expected value",
+    "outcome", "outcomes",
+    "event", "events",
+    "conditional", "conditional probability",
+    "bayes", "bayesian",
+    "permutation", "permutations",
+    "combination", "combinations",
+    "frequency", "frequencies",
+    "histogram", "histograms",
+    "box plot", "boxplot",
+    "scatter plot", "scatterplot",
+    "quartile", "quartiles",
+    "interquartile",
+    "outlier", "outliers",
+    "margin of error",
+    "census", "survey",
+    "mean", "median", "mode",
+    "average",
+    "weighted",
+    # Natural language framing
+    "explain", "explanation",
+    "what is", "what's", "whats",
+    "what are", "what do", "what does",
+    "how does", "how is", "how do",
+    "why do", "why does", "why is",
+    "where is", "where are",
+    "describe", "description",
+    "tell me about",
+    "can you explain",
+    "define", "definition",
+    "meaning of", "meaning",
+    "difference between",
+    "relationship between",
+    "compare", "contrast",
+    "who discovered", "who invented",
+    "history of",
+    "origin of",
+    "list",
+    # Real-world application signals
+    "real life", "real-life", "reallife",
+    "used in", "used for",
+    "application", "applications",
+    "use case", "use cases",
+    "practical", "practically",
+    "everyday", "daily life",
+    "when would", "where can",
+    "step by step", "step-by-step",
     "example",
-    "why",
-    "how",
-    "remember",
+    "problem solving",
+    "word problem", "word problems",
+    "how to",
+    # SHS Math topics
+    "stem", "stem math",
+    "business math",
+    "general math",
+    "basic calculus",
+    "pre-calculus",
+    "probability and statistics",
 }
 
 _MATH_SCOPE_PATTERNS: Tuple[re.Pattern[str], ...] = (
+    # Formula/expression patterns
     re.compile(r"\d+\s*[%+\-*/^=]\s*[-+]?\d*"),
-    re.compile(r"\b(?:sin|cos|tan|cot|sec|csc|log|ln|sqrt)\s*\(?"),
+    re.compile(r"\b(?:sin|cos|tan|cot|sec|csc|log|ln|sqrt)\s*\("),
     re.compile(r"\b(?:differentiate|integrate|derive|proof|prove)\b"),
     re.compile(r"\b(?:x|y|z)\s*[=+\-*/^]\s*[-+]?\d"),
+    re.compile(r"\b[xXyYzZ]\s*\^"),
+    # Theorem/concept names
+    re.compile(r"\b(?:pythagorean|pythagoras|pythagorean theorem)\b", re.IGNORECASE),
+    re.compile(r"\b(?:theorem|lemma|corollary|axiom|postulate)\b", re.IGNORECASE),
+    # Natural language framing
+    re.compile(r"^(?:explain|describe|tell me about|what is|what are|what's|whats|how does|how is|why do|why does|why is|can you explain|define|what does)\b", re.IGNORECASE),
+    # Application signals
+    re.compile(r"\b(?:used in|used for|application|real life|real-world|reallife|practical|use case)\b", re.IGNORECASE),
+    # Trig functions as words
+    re.compile(r"\b(?:sine|cosine|tangent|cosecant|secant|cotangent|sinusoidal|arcsin|arccos|arctan)\b", re.IGNORECASE),
+    # Calculus operations
+    re.compile(r"\b(?:differentiate|differentiation|integrate|integration|derivative|antiderivative|differentiation?|integration?)\b", re.IGNORECASE),
+    # Stats terms
+    re.compile(r"\b(?:mean|median|mode|variance|standard\s*deviation|correlation|regression|probability|distribution|hypothesis)\b", re.IGNORECASE),
+    # Algebra/geometry operations
+    re.compile(r"\b(?:solve\s+for|simplify|factor|expand|evaluate|compute|calculate)\b", re.IGNORECASE),
+    # Geometry properties
+    re.compile(r"\b(?:area of|perimeter of|volume of|surface area|circumference|diameter|radius)\b", re.IGNORECASE),
+    # Comparison/contrast
+    re.compile(r"\b(?:difference between|relationship between|compare|contrast)\s+(?:\w+\s+){0,3}(?:and|vs|versus|with)", re.IGNORECASE),
+    # Learning/understanding signals
+    re.compile(r"\b(?:i don't understand|i don't get|i'm confused|help me|can you help|struggle|confus|difficult|hard to)\b", re.IGNORECASE),
+    # Proof derivation
+    re.compile(r"\b(?:proof|prove|derivation|derive|show that)\b", re.IGNORECASE),
 )
 
 _CONTINUATION_FOLLOWUP_TOKENS: Set[str] = {
@@ -1604,15 +1785,70 @@ _CONTINUATION_CONTEXT_CLARIFY_RESPONSE = (
 )
 
 
+def _is_remember_storage_command(message: str) -> bool:
+    """Detect 'remember' as a storage/note-taking command, not math context.
+    
+    Matches patterns like:
+    - "Remember: my favorite number is 42"
+    - "Remember that I like..."
+    - "Remember my name is..."
+    - "Remember: ..."
+    
+    These should NOT be treated as math context.
+    """
+    normalized = (message or "").strip().lower()
+    # "remember" at the start followed by colon, "that", "my", "to", or "this"
+    if re.match(r"remember\s*[:]\s", normalized) or \
+       re.match(r"remember\s+that\s", normalized) or \
+       re.match(r"remember\s+my\s", normalized) or \
+       re.match(r"remember\s+this\s", normalized) or \
+       re.match(r"remember\s+to\s", normalized) or \
+       re.match(r"^remember\s", normalized):
+        return True
+    return False
+
+
 def is_math_related_query(message: str) -> bool:
+    """Determines if the message is related to math using a scoring approach.
+    
+    Returns True if any math signal is found, False otherwise.
+    
+    Uses scoring where:
+    - Each keyword match = 1 point
+    - Each regex pattern match = 2 points
+    - Score >= 1 = math-related
+    - Even a single clear signal is sufficient to pass through.
+    
+    Exception: 'remember' storage commands are always rejected.
+    """
     normalized = (message or "").strip().lower()
     if not normalized:
         return False
 
-    if any(keyword in normalized for keyword in _MATH_SCOPE_KEYWORDS):
+    # Special case: "remember" storage commands are never math
+    if _is_remember_storage_command(message):
+        return False
+
+    score = 0
+
+    # Score from keyword matches
+    for keyword in _MATH_SCOPE_KEYWORDS:
+        if keyword in normalized:
+            # Short keywords (< 4 chars) need word boundary check to avoid false positives
+            if len(keyword) >= 4 or keyword == "sin" or keyword == "cos" or keyword == "tan":
+                score += 1
+                if score >= 1:
+                    return True
+    
+    if score >= 1:
         return True
 
-    return any(pattern.search(normalized) for pattern in _MATH_SCOPE_PATTERNS)
+    # Score from regex pattern matches
+    for pattern in _MATH_SCOPE_PATTERNS:
+        if pattern.search(normalized):
+            return True
+
+    return False
 
 
 def _normalize_continuation_followup_token(message: str) -> str:
@@ -1958,6 +2194,18 @@ async def health_check():
     }
 
 
+@app.get("/api/memory/health")
+async def memory_health_check(uid: str = ""):
+    """Verify that all memory stores are writable and readable for a given uid."""
+    if not HAS_MEMORY_SERVICE or check_memory_health is None:
+        return {
+            "available": False,
+            "error": "Memory service not available",
+        }
+    result = check_memory_health(uid or "test_health_check_user")
+    return result
+
+
 @app.get("/debug/scope-info")
 async def debug_scope_info():
     """Reveal what scope check code is deployed and its current state."""
@@ -1969,8 +2217,8 @@ async def debug_scope_info():
     return {
         "git_commit": git_hash,
         "math_keywords": list(_MATH_SCOPE_KEYWORDS),
-        "pattern_names": list(_MATH_SCOPE_PATTERNS.keys()),
-        "has_history_check": "_has_math_context_in_history" in globals() or "_has_math_context_in_history" in dir(),
+        "pattern_count": len(_MATH_SCOPE_PATTERNS),
+        "has_history_check": "_has_math_context_in_history" in dir(),
         "thanks_pattern": _THANKS_PATTERN.pattern if hasattr(_THANKS_PATTERN, 'pattern') else str(_THANKS_PATTERN),
     }
 
@@ -2245,6 +2493,7 @@ def _build_stream_continuation_prompt(original_question: str, expected_end_marke
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
+    _start_ms = int(time.monotonic() * 1000)
     try:
         boundary_response = get_scope_boundary_response(request.message, request.history)
         if boundary_response is not None:
@@ -2253,6 +2502,7 @@ async def chat_tutor(request: ChatRequest):
         system_prompt = MATH_TUTOR_SYSTEM_PROMPT
 
         # ─── Memory Context Injection ────────────────────────────
+        _t0 = int(time.monotonic() * 1000)
         memory_context = ""
         _mem = collect_memory_context  # local alias for type safety
         if request.userId and request.sessionId and _mem is not None:
@@ -2266,6 +2516,7 @@ async def chat_tutor(request: ChatRequest):
                 logger.debug(f"Memory context injection skipped: {mem_err}")
         if memory_context:
             system_prompt = memory_context + "\n\n" + system_prompt
+        logger.info(f"TIMING [memory_context_injection] {int(time.monotonic() * 1000) - _t0}ms")
         # ─── End Memory Context ──────────────────────────────────
         
         if request.userId and HAS_FIREBASE_ADMIN and firebase_firestore:
@@ -2315,6 +2566,7 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
         messages.append({"role": "user", "content": request.message})
 
         # Call HF serverless with retry (handled inside call_hf_chat)
+        _t1 = int(time.monotonic() * 1000)
         try:
             answer = await call_hf_chat_async(
                 messages,
@@ -2329,6 +2581,7 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
                 status_code=502,
                 detail="AI model service is temporarily unavailable. Please try again.",
             )
+        logger.info(f"TIMING [model_call] {int(time.monotonic() * 1000) - _t1}ms | messages={len(messages)}")
 
         # ─── Background Memory Update (async, non-blocking) ─────
         if request.userId and request.sessionId and HAS_MEMORY_SERVICE:
@@ -2349,6 +2602,7 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
         if request.verify:
             logger.info("Running self-consistency verification for chat response")
             verification = await verify_math_response(request.message, messages)
+            logger.info(f"TIMING [chat_total] {int(time.monotonic() * 1000) - _start_ms}ms | verify=true")
             return ChatResponse(
                 response=verification["response"],
                 verified=verification["verified"],
@@ -2356,6 +2610,7 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
                 warning=verification.get("warning"),
             )
 
+        logger.info(f"TIMING [chat_total] {int(time.monotonic() * 1000) - _start_ms}ms | verify=false")
         return ChatResponse(response=answer)
 
     except HTTPException:
