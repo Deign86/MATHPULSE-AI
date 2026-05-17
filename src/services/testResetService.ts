@@ -223,6 +223,25 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
     await deleteDoc(doc(db, 'diagnosticResults', effectiveLrn)).then(() => { deletedDocs += 1; }).catch(() => undefined);
   }
 
+  // Delete XP activity history
+  deletedDocs += await tryDeleteByField('xpActivities', 'userId', uid);
+
+  // Delete quiz battle data
+  deletedDocs += await tryDeleteByField('quizBattleHistory', 'participantId', uid);
+  await deleteDoc(doc(db, 'studentBattleStats', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
+  await deleteDoc(doc(db, 'studentBattleLeaderboard', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
+
+  // Delete quiz results and submissions
+  deletedDocs += await tryDeleteByField('quizResults', 'studentId', uid);
+  deletedDocs += await tryDeleteByField('quizResults', 'lrn', uid);
+  deletedDocs += await tryDeleteByField('quizSubmissions', 'lrn', uid);
+
+  // Delete module progress subcollection
+  deletedDocs += await deleteSubcollectiondocs(`users/${uid}`, 'moduleProgress');
+
+  // Delete hero banner summary
+  await deleteDoc(doc(db, 'users', uid, 'dashboardSummary', 'heroBannerModal')).then(() => { deletedDocs += 1; }).catch(() => undefined);
+
   await setDoc(
     doc(db, 'achievements', uid),
     {
