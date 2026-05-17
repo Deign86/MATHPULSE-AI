@@ -478,7 +478,16 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
         ? data.timestamp
         : timestampToString(data.timestamp as { toDate?: () => Date }),
         user: { 
-          name: ((data.actorName as string) && (data.actorName as string) !== 'Unknown' ? (data.actorName as string) : null) || (data.actorEmail as string) || (data.teacherEmail as string) || (data.teacherId as string) || 'SYSTEM', 
+          name: (() => {
+            const raw = (data.actorName as string) || (data.actorEmail as string) || (data.teacherEmail as string) || (data.teacherId as string) || 'SYSTEM';
+            if (raw === 'Unknown' || !raw) return 'SYSTEM';
+            // If it's an email, extract a readable name from the local part
+            if (raw.includes('@')) {
+              const local = raw.split('@')[0];
+              return local.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            }
+            return raw;
+          })(),
           role: capitalizeRole((data.actorRole as string) || (data.role as string) || 'System'), 
           avatar: null 
         },
