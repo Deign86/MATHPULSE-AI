@@ -16,6 +16,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { getDefaultAvatar } from '../utils/avatarUtils';
 import { auth } from '../lib/firebase';
 import {
   ApiError,
@@ -33,6 +34,7 @@ export interface AdminUser {
   id: string;
   name: string;
   email: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   /** Capitalized: 'Student' | 'Teacher' | 'Admin' */
   role: string;
   status: string;
@@ -270,6 +272,7 @@ function mapAdminUserRecord(record: AdminUserApiRecord): AdminUser {
     classSectionId: record.classSectionId || undefined,
     classSection: computedClassSection,
     lrn: (record.lrn || '').trim(),
+    gender: record.gender || null,
     photo: (record.photo || '').trim(),
     lastLogin: formatLastLoginString(record.lastLogin),
     createdAt: record.createdAt || undefined,
@@ -691,7 +694,7 @@ export async function getTopPerformers(n = 3): Promise<TopPerformer[]> {
       avatar:
         (data.photo as string) ||
         (data.photoURL as string) ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent((data.name as string) || 'S')}&background=0d9488&color=fff`,
+        getDefaultAvatar((data.gender as 'male' | 'female' | 'prefer_not_to_say') || null),
       class: (data.grade as string) || 'Math',
       performance,
       level,

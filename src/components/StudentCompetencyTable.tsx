@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { getDefaultAvatar } from '../utils/avatarUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronDown, ChevronRight, ChevronUp, ChevronLeft, Loader2, Search,
@@ -58,6 +59,7 @@ interface FallbackStudentInput {
   name: string;
   email?: string;
   avatar?: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   classSectionId?: string | null;
   riskLevel: 'high' | 'medium' | 'low' | 'High' | 'Medium' | 'Low';
   engagementScore: number;
@@ -295,7 +297,7 @@ const StudentCompetencyTable: React.FC<{
     lrn: student.lrn || undefined,
     name: student.name,
     email: student.email || '',
-    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
+    avatar: getDefaultAvatar(student.gender),
     classSectionId: student.classSectionId ?? null,
     riskLevel: student.riskLevel || 'Low',
     engagementScore: student.engagementScore,
@@ -308,7 +310,7 @@ const StudentCompetencyTable: React.FC<{
     lrn: student.lrn,
     name: student.name,
     email: student.email || '',
-    avatar: student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
+    avatar: (student.avatar && !student.avatar.includes('ui-avatars.com')) ? student.avatar : getDefaultAvatar(student.gender),
     classSectionId: student.classSectionId ?? null,
     riskLevel: (String(student.riskLevel).charAt(0).toUpperCase() + String(student.riskLevel).slice(1).toLowerCase()) as 'High' | 'Medium' | 'Low',
     engagementScore: student.engagementScore,
@@ -371,7 +373,7 @@ const StudentCompetencyTable: React.FC<{
         id: student.id,
         name: student.name,
         email: student.email || '',
-        avatar: student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
+        avatar: (student.avatar && !student.avatar.includes('ui-avatars.com')) ? student.avatar : getDefaultAvatar(student.gender),
         classSectionId: student.classSectionId ?? null,
         riskLevel: student.riskLevel,
         engagementScore: student.engagementScore,

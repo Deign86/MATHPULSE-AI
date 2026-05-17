@@ -5,7 +5,7 @@
 export function getDefaultAvatar(
   gender?: 'male' | 'female' | 'prefer_not_to_say' | null,
 ): string {
-  if (gender === 'male') return '/avatars/default-male.png';
-  if (gender === 'female') return '/avatars/default-female.png';
-  return '/avatars/default-neutral.png';
+  if (gender === 'male') return '/icons/male-student.png';
+  if (gender === 'female') return '/icons/female-student.png';
+  return '/icons/neutral-student.png';
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { getDefaultAvatar } from '../utils/avatarUtils';
 import { 
   Search, Plus, Save,
   Edit, Trash2, Shield, Ban, Users, UserCheck,
@@ -1004,8 +1005,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                       className="rounded-md border-slate-300"
                     />
                     <div className="relative">
-                      <Avatar className="h-12 w-12 rounded-2xl border-2 border-white shadow-sm">
-                        <AvatarImage src={user.photo} className="object-cover" />
+                      <Avatar className="h-12 w-12 rounded-full border-2 border-white shadow-sm">
+                        <AvatarImage src={user.photo || getDefaultAvatar(user.gender)} className="object-cover" />
                         <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold">{user.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
@@ -1123,8 +1124,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
                         <div className="relative shrink-0">
-                          <Avatar className="h-11 w-11 rounded-2xl border-2 border-white shadow-sm ring-1 ring-slate-100">
-                            <AvatarImage src={user.photo} className="object-cover" />
+                          <Avatar className="h-11 w-11 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-100">
+                            <AvatarImage src={user.photo || getDefaultAvatar(user.gender)} className="object-cover" />
                             <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold text-sm">{user.name.charAt(0)}</AvatarFallback>
                           </Avatar>
                         </div>

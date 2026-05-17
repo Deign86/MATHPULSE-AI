@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { getDefaultAvatar } from '../utils/avatarUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Brain, Sparkles, BookOpen, BarChart3, Target, ChevronDown,
@@ -2035,7 +2036,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       }`}
                     >
                       <img
-                        src={s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random&size=32`}
+                        src={(s.avatar && !s.avatar.includes('ui-avatars.com')) ? s.avatar : getDefaultAvatar(s.gender)}
                         alt={s.name}
                         className="w-8 h-8 rounded-lg object-cover"
                       />
