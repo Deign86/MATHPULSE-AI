@@ -92,6 +92,31 @@ const App = () => {
   // Sidebar State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Maintenance Mode
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceChecked, setMaintenanceChecked] = useState(false);
+
+  useEffect(() => {
+    const checkMaintenance = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'settings', 'general'));
+        if (snap.exists() && snap.data()?.maintenanceMode === true) {
+          setMaintenanceMode(true);
+          // Sign out non-admin users
+          if (isLoggedIn && userRole !== 'admin') {
+            await signOutUser();
+          }
+        } else {
+          setMaintenanceMode(false);
+        }
+      } catch {
+        // If we can't read settings, don't block
+      }
+      setMaintenanceChecked(true);
+    };
+    checkMaintenance();
+  }, [isLoggedIn, userRole]);
   
   // Gamification State (derived from Firebase user profile)
   const studentProfile = userProfile as StudentProfile;
@@ -868,6 +893,26 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
 
   if (loading) {
     return <AppLoadingScreen />;
+  }
+
+  // Maintenance mode: block non-admin users
+  if (maintenanceMode && (!isLoggedIn || userRole !== 'admin')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f8fafc] to-[#eef2ff] p-6">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-5">
+            <AlertTriangle className="w-8 h-8 text-amber-600" />
+          </div>
+          <h1 className="text-xl font-bold text-[#1e293b] mb-2">System Under Maintenance</h1>
+          <p className="text-sm text-[#64748b] leading-relaxed mb-4">
+            MathPulse AI is currently undergoing scheduled maintenance. All user sessions have been paused and your progress has been saved.
+          </p>
+          <p className="text-xs text-[#94a3b8]">
+            Please check back shortly. We apologize for the inconvenience.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Show login page if not logged in

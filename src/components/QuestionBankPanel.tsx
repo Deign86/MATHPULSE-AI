@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch, ApiError } from '../services/apiService';
+import { collection, query, getDocs, limit, orderBy } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -12,7 +14,7 @@ import {
   TableRow,
 } from './ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Loader2, Upload, RefreshCw, BookOpen, FileText, Sparkles, Bell } from 'lucide-react';
+import { Loader2, Upload, RefreshCw, BookOpen, FileText, Sparkles, Bell, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PdfStatus {
@@ -46,6 +48,49 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
   const [storagePath, setStoragePath] = useState('');
   const [gradeLevel, setGradeLevel] = useState(11);
   const [topic, setTopic] = useState('general_mathematics');
+
+  // Browse questions state
+  interface QuestionItem {
+    id: string;
+    question: string;
+    choices: string[];
+    correct_answer: string;
+    explanation: string;
+    topic: string;
+    difficulty: string;
+    grade_level: number;
+  }
+  const [questions, setQuestions] = useState<QuestionItem[]>([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
+
+  const fetchQuestions = useCallback(async () => {
+    setQuestionsLoading(true);
+    try {
+      const q = query(collection(db, 'quizBattleQuestionBank'), limit(50));
+      const snap = await getDocs(q);
+      const items: QuestionItem[] = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          question: data.question || '',
+          choices: data.choices || [],
+          correct_answer: data.correct_answer || '',
+          explanation: data.explanation || '',
+          topic: data.topic || '',
+          difficulty: data.difficulty || 'medium',
+          grade_level: data.grade_level || 11,
+        };
+      });
+      setQuestions(items);
+    } catch (err) {
+      console.warn('[QuestionBankPanel] Failed to load questions:', err);
+    } finally {
+      setQuestionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
@@ -300,6 +345,76 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
               </table>
             </div>
           </div>
+        </div>
+
+        {/* Browse Questions Section */}
+        <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-[24px] sm:p-[32px]">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-[20px] font-bold text-[#1e293b] flex items-center gap-3">
+              <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-[#3b82f6] to-[#2563eb] flex items-center justify-center shadow-md shadow-blue-500/20">
+                <BookOpen className="w-4 h-4 text-white" />
+              </div>
+              Question Bank ({questions.length})
+            </h2>
+            <button
+              onClick={fetchQuestions}
+              disabled={questionsLoading}
+              className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${questionsLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {questionsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-[#9956DE]" />
+            </div>
+          ) : questions.length === 0 ? (
+            <div className="text-center py-12 text-[#64748b]">
+              <BookOpen className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+              <p className="text-[14px] font-bold text-[#1e293b] mb-1">No questions in the bank yet</p>
+              <p className="text-[13px]">Ingest a PDF above to populate the question bank.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              {questions.map((q) => (
+                <div
+                  key={q.id}
+                  className="border border-[#f1f5f9] rounded-xl p-4 hover:border-purple-200 transition-colors bg-white"
+                >
+                  <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={() => setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-[#1e293b] line-clamp-2">{q.question}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-semibold">Grade {q.grade_level}</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium">{q.topic}</span>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${
+                          q.difficulty === 'easy' ? 'bg-green-50 text-green-600' :
+                          q.difficulty === 'hard' ? 'bg-rose-50 text-rose-600' :
+                          'bg-amber-50 text-amber-600'
+                        }`}>{q.difficulty}</span>
+                      </div>
+                    </div>
+                    {expandedQuestion === q.id ? <ChevronUp size={16} className="text-[#94a3b8] shrink-0" /> : <ChevronDown size={16} className="text-[#94a3b8] shrink-0" />}
+                  </div>
+                  {expandedQuestion === q.id && (
+                    <div className="mt-3 pt-3 border-t border-[#f1f5f9] space-y-2">
+                      <div className="space-y-1">
+                        {q.choices.map((c, i) => (
+                          <p key={i} className={`text-[12px] px-3 py-1.5 rounded-lg ${c === q.correct_answer ? 'bg-green-50 text-green-700 font-semibold border border-green-200' : 'bg-slate-50 text-[#475569]'}`}>
+                            {String.fromCharCode(65 + i)}. {c}
+                          </p>
+                        ))}
+                      </div>
+                      {q.explanation && (
+                        <p className="text-[12px] text-[#64748b] italic mt-2">💡 {q.explanation}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

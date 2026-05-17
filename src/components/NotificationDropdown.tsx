@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, AlertCircle, CheckCircle2, Bell, Users, ArrowRight, CheckCheck, Clock } from 'lucide-react';
 import { useNotifications } from '@/features/notifications';
+import { useAuth } from '../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
+
+const STUDENT_ONLY_TYPES = ['streak_reminder', 'daily_checkin', 'streak_milestone', 'achievement_unlocked', 'level_up', 'xp_earned', 'quiz_result'];
 
 interface NotificationDropdownProps {
   isOpen: boolean;
@@ -11,9 +14,17 @@ interface NotificationDropdownProps {
 }
 
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose, onViewAll }) => {
-  const { notifications, markAsRead, markAllAsRead, unreadCount } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead, unreadCount: _rawUnreadCount } = useNotifications();
+  const { userProfile } = useAuth();
+  const role = userProfile?.role;
 
-  const latestNotifications = notifications.slice(0, 5);
+  const filteredNotifications = useMemo(() => {
+    if (role === 'student') return notifications;
+    return notifications.filter((n) => !STUDENT_ONLY_TYPES.includes(n.type));
+  }, [notifications, role]);
+
+  const unreadCount = filteredNotifications.filter((n) => !n.isRead).length;
+  const latestNotifications = filteredNotifications.slice(0, 5);
 
   const getIcon = (type: string) => {
     switch (type) {

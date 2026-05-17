@@ -6,14 +6,17 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import ConfirmModal from './ConfirmModal';
+import { CreateClassModal } from './CreateClassModal';
+import { AddStudentsModal } from './AddStudentsModal';
 import NotificationDropdown from './NotificationDropdown';
+import { useNotifications } from '@/features/notifications';
 import LogoutActionButton from './LogoutActionButton';
 import UserAvatar from './UserAvatar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
@@ -588,6 +591,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showCreateClassModal, setShowCreateClassModal] = useState(false);
+  const [showAddStudentsModal, setShowAddStudentsModal] = useState(false);
+
+  const STUDENT_ONLY_NOTIF_TYPES = ['streak_reminder', 'daily_checkin', 'streak_milestone', 'achievement_unlocked', 'level_up', 'xp_earned', 'quiz_result'];
+  const { notifications: allNotifications } = useNotifications();
+  const teacherUnreadCount = allNotifications.filter((n) => !n.isRead && !STUDENT_ONLY_NOTIF_TYPES.includes(n.type)).length;
   const [selectedClass, setSelectedClass] = useState<ClassView | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentView | null>(null);
   const [insightDismissed, setInsightDismissed] = useState(false);
@@ -798,6 +807,39 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           }),
         ]);
 
+        // Fallback: if no students found via teacher-scoped queries, load all
+        // registered students so the teacher can see and assign them to classes.
+        let finalRegisteredStudents = registeredStudents;
+        if (registeredStudents.length === 0 && allManagedStudents.length === 0) {
+          try {
+            const { collection: firestoreCollection, query: firestoreQuery, where: firestoreWhere, getDocs: firestoreGetDocs } = await import('firebase/firestore');
+            const { db: firestoreDb } = await import('../lib/firebase');
+            const allStudentsQuery = firestoreQuery(
+              firestoreCollection(firestoreDb, 'users'),
+              firestoreWhere('role', '==', 'student')
+            );
+            const allStudentsSnap = await firestoreGetDocs(allStudentsQuery);
+            finalRegisteredStudents = allStudentsSnap.docs.map((d) => {
+              const data = d.data();
+              return {
+                uid: d.id,
+                name: String(data.name || data.displayName || '').trim() || 'Student',
+                email: String(data.email || '').trim(),
+                lrn: data.lrn ? String(data.lrn).trim() : undefined,
+                photo: data.photo ? String(data.photo).trim() : data.photoURL ? String(data.photoURL).trim() : undefined,
+                grade: data.grade ? String(data.grade).trim() : undefined,
+                section: data.section ? String(data.section).trim() : undefined,
+                classSectionId: data.classSectionId ? String(data.classSectionId).trim() : undefined,
+                adviserTeacherId: data.adviserTeacherId ? String(data.adviserTeacherId).trim() : undefined,
+                role: 'student' as const,
+                createdAt: data.createdAt || undefined,
+              };
+            }).filter((s) => s.name !== 'Student' || s.email);
+          } catch (err) {
+            console.warn('[TeacherDashboard] fallback all-students fetch failed:', err);
+          }
+        }
+
         // Index managed students for fast match-by-uid / LRN / name+section.
         const managedById = new Map<string, ManagedStudent>();
         const managedByLrn = new Map<string, ManagedStudent>();
@@ -820,7 +862,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
         // (Step 1) Build the base list from registered accounts and enrich
         // each one with the matching managed-student record (academic data).
-        const enrichedRegistered: StudentView[] = registeredStudents.map((account) => {
+        const enrichedRegistered: StudentView[] = finalRegisteredStudents.map((account) => {
           const baseManaged = mapRegisteredStudentToManaged(account);
           const lrnKey = (account.lrn || '').trim().toLowerCase();
           const nameKey = normalizeStudentName(account.name);
@@ -1008,6 +1050,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     if (students.length === 0) return;
 
     const fetchInsight = async () => {
+      if (students.length === 0) {
+        setDailyInsight('');
+        return;
+      }
       setInsightLoading(true);
       try {
         const studentData = students.map((s) => ({
@@ -1035,9 +1081,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const avgPerformance = classes.length > 0 ? Math.round(classes.reduce((sum, c) => sum + c.avgScore, 0) / classes.length) : 0;
 
   const riskDistribution = [
-    { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
-    { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
-    { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
+    { name: 'High Risk', value: filteredStudentsForAnalytics.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
+    { name: 'Medium Risk', value: filteredStudentsForAnalytics.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
+    { name: 'Low Risk', value: filteredStudentsForAnalytics.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
   ];
 
   // Gather weakest topics as topic performance data
@@ -1366,24 +1412,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
   if (dataLoading) {
     return (
-      <div className="flex h-screen w-full bg-background p-6">
-        <div className="hidden lg:flex w-[280px] shrink-0 rounded-3xl border border-border bg-card p-5">
-          <div className="w-full space-y-4">
-            <Skeleton className="h-12 w-40" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </div>
-        <div className="flex-1 space-y-4 lg:pl-6">
-          <Skeleton className="h-20 w-full rounded-2xl" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Skeleton className="h-28 w-full rounded-2xl" />
-            <Skeleton className="h-28 w-full rounded-2xl" />
-            <Skeleton className="h-28 w-full rounded-2xl" />
-          </div>
-          <Skeleton className="h-[420px] w-full rounded-2xl" />
+      <div className="flex h-screen w-full items-center justify-center bg-[#f8fafc]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-[#9956DE] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-[#64748b]">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -1677,7 +1709,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       title="Notifications"
                     >
                       <Bell size={18} />
-                      <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
+                      {teacherUnreadCount > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>}
                     </button>
 
                     <NotificationDropdown
@@ -1724,6 +1756,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   totalStudents={totalStudents}
                   totalAtRisk={totalAtRisk}
                   avgPerformance={avgPerformance}
+                  onCreateClass={() => setShowCreateClassModal(true)}
                 />
               )}
               {activeView === 'analytics' && effectiveAnalyticsClass && (
@@ -1756,14 +1789,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   onOpenProfile={onOpenProfile}
                   insightDismissed={insightDismissed}
                   onOpenInsightModal={() => setInsightModalOpen(true)}
+                  onCreateClass={() => setShowCreateClassModal(true)}
                 />
               )}
               {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length === 0 && (
-                <ToolsPlaceholderView
-                  icon={BarChart3}
-                  title="Class Analytics"
-                  description="No classes available yet. Import class records to unlock analytics views."
-                />
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="p-6"
+                >
+                  <div className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
+                    <div className="w-12 h-12 rounded-xl bg-[#9956DE]/20 text-[#9956DE] flex items-center justify-center mb-4">
+                      <BarChart3 size={24} />
+                    </div>
+                    <h2 className="text-2xl font-display font-semibold text-foreground mb-2">Class Analytics</h2>
+                    <p className="text-sm text-muted-foreground font-body leading-relaxed mb-4">No classes available yet. Create a class or import class records to unlock analytics views.</p>
+                    <Button onClick={() => setShowCreateClassModal(true)} className="bg-[#9956DE] hover:bg-[#7c3aed] text-white">
+                      <Plus size={16} className="mr-1.5" />Create Class
+                    </Button>
+                  </div>
+                </motion.div>
               )}
               {activeView === 'intervention' && selectedStudent && (
                 <InterventionView
@@ -2005,18 +2051,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </button>
               </div>
               <div className="p-6">
-                <BoneSkeleton
-                  name="teacher-dashboard-ai-insight-modal"
-                  loading={insightLoading}
-                  fixture={<Skeleton className="h-32 w-full bg-slate-200" />}
-                  fallback={<Skeleton className="h-32 w-full bg-slate-200" />}
-                >
                   <div className="text-sm text-slate-600 leading-relaxed">
                     <ChatMarkdown>
                       {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `I've noticed **${totalAtRisk} students (${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%)** are currently showing a high risk of falling behind in recent topics. Shall I draft an intervention plan?`}
                     </ChatMarkdown>
                   </div>
-                </BoneSkeleton>
               </div>
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
                 <button
@@ -2040,6 +2079,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         message="Are you sure you want to logout?"
         confirmText="Logout"
         cancelText="Cancel"
+      />
+
+      <CreateClassModal
+        open={showCreateClassModal}
+        onClose={() => setShowCreateClassModal(false)}
+        onCreated={() => setDataRefreshNonce((n) => n + 1)}
+        teacherName={teacherName}
+      />
+
+      <AddStudentsModal
+        open={showAddStudentsModal}
+        onClose={() => setShowAddStudentsModal(false)}
+        onAdded={() => setDataRefreshNonce((n) => n + 1)}
+        grade={effectiveAnalyticsClass?.gradeLevel || effectiveAnalyticsClass?.classMetadata?.grade || 'Grade 11'}
+        section={effectiveAnalyticsClass?.classMetadata?.section || effectiveAnalyticsClass?.name?.split(' - ')[1] || ''}
+        teacherName={teacherName}
+        existingStudentUids={students.map((s) => s.id)}
       />
 
       {/* Provision system account for a roster-only student */}
@@ -2128,7 +2184,8 @@ const DashboardView: React.FC<{
   totalStudents: number;
   totalAtRisk: number;
   avgPerformance: number;
-}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance }) => {
+  onCreateClass?: () => void;
+}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance, onCreateClass }) => {
   const riskPercentage = totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0;
   const engagementRate = totalStudents > 0 ? Math.round(((totalStudents - totalAtRisk) / totalStudents) * 100) : 0;
 
@@ -2140,7 +2197,7 @@ const DashboardView: React.FC<{
       className="p-3 sm:p-6 space-y-4"
     >
       {/* AI Banner */}
-      {!isInsightDismissed && (
+      {!isInsightDismissed && dailyInsight && (
         <div
           onClick={onOpenInsightModal}
           className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[14px_16px] sm:p-[18px_20px] flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer hover:shadow-md transition-shadow group"
@@ -2240,7 +2297,14 @@ const DashboardView: React.FC<{
 
         <div className="space-y-[9px]">
           {classes.length === 0 && (
-            <p className="text-sm text-slate-500 text-center py-4">No classes imported yet.</p>
+            <div className="text-center py-4">
+              <p className="text-sm text-slate-500 mb-3">No classes imported yet.</p>
+              {onCreateClass && (
+                <button onClick={onCreateClass} className="text-sm text-[#9956DE] font-semibold hover:underline">
+                  + Create a class
+                </button>
+              )}
+            </div>
           )}
           {classes.map((classItem, idx) => {
             const colors = [
@@ -2784,6 +2848,12 @@ const AnalyticsView: React.FC<{
             <div className="p-5 border-b border-[#f1f5f9] shrink-0">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[15px] font-semibold text-[#1e293b]">Students <span className="text-[#64748b] text-[13px]">({visibleStudents.length})</span></h2>
+                <button
+                  onClick={() => setShowAddStudentsModal(true)}
+                  className="text-[11px] font-semibold text-[#9956DE] hover:text-[#7c3aed] bg-[#9956DE]/10 hover:bg-[#9956DE]/20 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  + Add
+                </button>
               </div>
               <div className="flex items-center bg-white px-4 py-2 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] group">
                 <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
@@ -3363,23 +3433,7 @@ const InterventionView: React.FC<{
               />
             )}
 
-            <BoneSkeleton
-              name="teacher-intervention-analysis"
-              loading={pathLoading}
-              fixture={
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
-                  <Skeleton className="h-24 w-full rounded-[14px]" />
-                  <Skeleton className="h-24 w-full rounded-[14px]" />
-                </div>
-              }
-              fallback={
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
-                  <Skeleton className="h-24 w-full rounded-[14px]" />
-                  <Skeleton className="h-24 w-full rounded-[14px]" />
-                </div>
-              }
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
                 {/* Learning Strengths */}
                 <div className="bg-white/70 backdrop-blur-sm rounded-[14px] p-4 border border-emerald-100/60 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden">
                   <div className="absolute left-0 top-0 w-1 h-full bg-emerald-400 rounded-l-[14px]" />
@@ -3412,7 +3466,6 @@ const InterventionView: React.FC<{
                   </ul>
                 </div>
               </div>
-            </BoneSkeleton>
           </div>
 
           {/* Learning Path Timeline */}
@@ -3426,23 +3479,9 @@ const InterventionView: React.FC<{
 
             <BoneSkeleton
               name="teacher-intervention-learning-path"
-              loading={pathLoading}
-              fixture={
-                <div className="space-y-4">
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                  <Skeleton className="h-20 w-full rounded-[14px]" />
-                  <Skeleton className="h-20 w-full rounded-[14px]" />
-                  <Skeleton className="h-20 w-full rounded-[14px]" />
-                </div>
-              }
-              fallback={
-                <div className="space-y-4">
-                  <Skeleton className="h-24 w-full rounded-xl" />
-                  <Skeleton className="h-20 w-full rounded-[14px]" />
-                  <Skeleton className="h-20 w-full rounded-[14px]" />
-                  <Skeleton className="h-20 w-full rounded-[14px]" />
-                </div>
-              }
+              loading={false}
+              fixture={null}
+              fallback={null}
             >
               {/* Raw markdown text removed as requested, using only visual steps below */}
               <div className="mb-8 flex flex-wrap items-center gap-2">
@@ -3526,7 +3565,7 @@ const InterventionView: React.FC<{
                 disabled={lessonLoading}
                 className="bg-[#4f46e5] hover:bg-[#3730a3] text-white h-8 text-[11px] rounded-full px-4"
               >
-                {lessonLoading ? <Skeleton className="h-3 w-16 bg-white/35" /> : 'Regenerate'}
+                {lessonLoading ? 'Loading...' : 'Regenerate'}
               </Button>
             </div>
             <p className="text-[13px] text-[#64748b] mb-6">Configure inputs and requirements for AI lesson generation.</p>
@@ -3559,27 +3598,9 @@ const InterventionView: React.FC<{
 
             <BoneSkeleton
               name="teacher-intervention-lesson-plan"
-              loading={lessonLoading}
-              fixture={
-                <div className="space-y-4">
-                  <Skeleton className="h-20 w-full rounded-xl" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                  </div>
-                  <Skeleton className="h-28 w-full rounded-xl" />
-                </div>
-              }
-              fallback={
-                <div className="space-y-4">
-                  <Skeleton className="h-20 w-full rounded-xl" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                  </div>
-                  <Skeleton className="h-28 w-full rounded-xl" />
-                </div>
-              }
+              loading={false}
+              fixture={null}
+              fallback={null}
             >
               {lessonError && (
                 <div className="bg-[#FF8B8B]/14 border border-[#FF8B8B]/35 rounded-xl p-3 text-sm text-[#D66A6A] mb-4">

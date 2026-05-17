@@ -250,12 +250,7 @@ service cloud.firestore {
     }
 
     match /classrooms/{classroomId} {
-      allow read: if isAdmin() || (isTeacher() && (
-        ownerInExisting('teacherId') ||
-        ownerInExisting('ownerTeacherId') ||
-        ownerInExisting('adviserTeacherId') ||
-        ownerInExisting('managerId')
-      ));
+      allow read: if isTeacherOrAdmin();
       allow create, update: if isAdmin() || (isTeacher() && (
         ownerInIncoming('teacherId') ||
         ownerInExisting('teacherId') ||
@@ -264,31 +259,43 @@ service cloud.firestore {
         ownerInIncoming('managerId') ||
         ownerInExisting('managerId')
       ));
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (isTeacher() && (
+        ownerInExisting('teacherId') ||
+        ownerInExisting('ownerTeacherId')
+      ));
     }
 
     match /classSectionOwnership/{classSectionId} {
-      allow read: if isAdmin() || (isTeacher() && (
-        ownerInExisting('ownerTeacherId') ||
-        ownerInExisting('managerId')
+      allow read: if isTeacherOrAdmin();
+      allow create: if isAdmin() || (isTeacher() && (
+        ownerInIncoming('ownerTeacherId') ||
+        ownerInIncoming('managerId')
       ));
-      allow create, update: if isAdmin() || (isTeacher() && (
+      allow update: if isAdmin() || (isTeacher() && (
         ownerInIncoming('ownerTeacherId') ||
         ownerInExisting('ownerTeacherId') ||
         ownerInIncoming('managerId') ||
         ownerInExisting('managerId')
       ));
+      allow delete: if isAdmin() || (isTeacher() && ownerInExisting('ownerTeacherId'));
+    }
+
+    match /courseMaterials/{materialId} {
+      allow read: if isAdmin() || (isTeacher() && ownerByField('teacherId'));
+      allow create, update: if false;
       allow delete: if isAdmin();
     }
 
     match /classRecordImports/{importId} {
       allow read: if isAdmin() || (isTeacher() && ownerByField('teacherId'));
-      allow create, update, delete: if false;
+      allow create, update: if false;
+      allow delete: if isAdmin();
     }
 
     match /normalizedClassRecords/{recordId} {
       allow read: if isAdmin() || (isTeacher() && ownerByField('teacherId'));
-      allow create, update, delete: if false;
+      allow create, update: if false;
+      allow delete: if isAdmin();
     }
 
     match /auditLogs/{docId} {
@@ -511,8 +518,9 @@ service cloud.firestore {
     }
 
     // ── Platform Settings (admin-managed, publicly readable) ──
+    // ── Platform Settings (admin-managed, publicly readable) ──
     match /settings/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }

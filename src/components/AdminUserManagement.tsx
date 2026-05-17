@@ -894,7 +894,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
         {/* Floating Bulk Action Bar */}
         {selectedCount > 0 && (
-          <div className="mt-3 bg-indigo-900 rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-4 animate-in slide-in-from-top-2 duration-300">
+          <div className="sticky bottom-4 z-50 mt-3 bg-indigo-900 rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-4 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl shadow-indigo-900/30">
             <div className="flex items-center gap-3 px-3 border-r border-white/10 pr-6">
               <div className="w-8 h-8 rounded-xl bg-indigo-500/30 flex items-center justify-center text-white font-black text-xs">
                 {selectedCount}
@@ -1009,11 +1009,13 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               return (
                 <div key={`mobile-${user.id}`} className="p-5 space-y-4 group hover:bg-slate-50/50 transition-colors">
                   <div className="flex items-center gap-4">
-                    <Checkbox
-                      checked={isUserSelected(user.id)}
-                      onCheckedChange={() => handleToggleUserSelection(user.id)}
-                      className="rounded-md border-slate-300"
-                    />
+                    <div className="flex items-center self-center">
+                      <Checkbox
+                        checked={isUserSelected(user.id)}
+                        onCheckedChange={() => handleToggleUserSelection(user.id)}
+                        className="rounded-md border-slate-300"
+                      />
+                    </div>
                     <div className="relative">
                       <Avatar className="h-12 w-12 rounded-full border-2 border-white shadow-sm">
                         <AvatarImage src={user.photo || getDefaultAvatar(user.gender)} className="object-cover" />
@@ -1124,7 +1126,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   const isPendingToggle = pendingRowActionUserId === user.id;
                   return (
                   <tr key={user.id} className="hover:bg-slate-50/50 transition-all group">
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-middle">
                       <Checkbox
                         checked={isUserSelected(user.id)}
                         onCheckedChange={() => handleToggleUserSelection(user.id)}

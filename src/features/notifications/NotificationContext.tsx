@@ -29,13 +29,13 @@ interface NotificationProviderProps {
 }
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const userId = currentUser?.uid ?? null;
 
-  // Fire daily check-in reminder (only inside provider, as required)
-  useDailyCheckInReminder(userId);
+  // Fire daily check-in reminder (students only)
+  useDailyCheckInReminder(userProfile?.role === 'student' ? userId : null);
 
   useEffect(() => {
     if (!userId) {

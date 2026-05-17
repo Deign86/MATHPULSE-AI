@@ -18,6 +18,14 @@ import {
   HelpCircle,
   Server,
   BookOpen,
+  Trophy,
+  Swords,
+  Gift,
+  ClipboardList,
+  FileText,
+  Flame,
+  BarChart3,
+  Megaphone,
 } from 'lucide-react';
 import {
   Select,
@@ -177,9 +185,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       { id: 'account', label: 'Account', icon: User },
       { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'appearance', label: 'Appearance', icon: Palette },
-      { id: 'privacy', label: 'Privacy & Security', icon: Shield },
     ];
     if (role === 'student') {
+      base.push({ id: 'privacy', label: 'Privacy & Security', icon: Shield });
       base.push({ id: 'learning', label: 'Learning', icon: Globe });
     }
     if (role === 'teacher') {
@@ -513,16 +521,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               {/* ─── Notifications Section ─── */}
               {activeSection === 'notifications' && (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
-                    <div>
-                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Email Notifications</h4>
-                      <p className="text-xs text-slate-500 mt-1">Receive updates via email</p>
-                    </div>
-                    <Switch
-                      checked={localSettings.notifications.emailNotifications}
-                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, notifications: { ...p.notifications, emailNotifications: v } }))}
-                    />
-                  </div>
+
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] font-body">Push Notifications</h4>
@@ -615,19 +614,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <div className="space-y-2">
                       {[
-                        { key: 'achievement', label: '🏆 Achievements unlocked' },
-                        { key: 'quiz_battle', label: '⚔️ Quiz battle invites & results' },
-                        { key: 'daily_reward', label: '🎁 Daily reward reminders' },
-                        { key: 'assignment', label: '📚 New assignments / deadlines' },
-                        { key: 'grade_posted', label: '📝 Grades posted' },
-                        { key: 'streak_reminder', label: '🔥 Streak reminders' },
-                        { key: 'leaderboard', label: '📊 Leaderboard updates' },
-                        { key: 'system', label: '🔔 System announcements' },
+                        { key: 'achievement', label: 'Achievements unlocked', icon: Trophy },
+                        { key: 'quiz_battle', label: 'Quiz battle invites & results', icon: Swords },
+                        { key: 'daily_reward', label: 'Daily reward reminders', icon: Gift },
+                        { key: 'assignment', label: 'New assignments / deadlines', icon: ClipboardList },
+                        { key: 'grade_posted', label: 'Grades posted', icon: FileText },
+                        { key: 'streak_reminder', label: 'Streak reminders', icon: Flame },
+                        { key: 'leaderboard', label: 'Leaderboard updates', icon: BarChart3 },
+                        { key: 'system', label: 'System announcements', icon: Megaphone },
                       ].map((item) => {
                         const k = item.key as keyof UserSettings['pushPreferences'];
+                        const Icon = item.icon;
                         return (
                           <label key={item.key} className="flex items-center justify-between py-1.5">
-                            <span className="text-sm text-[#0a1628] font-body">{item.label}</span>
+                            <span className="text-sm text-[#0a1628] font-body flex items-center gap-2"><Icon className="h-4 w-4 text-[#6c47ff]" />{item.label}</span>
                             <Switch
                               checked={Boolean(localSettings.pushPreferences[k])}
                               onCheckedChange={(v) => updateSettings((p) => ({ ...p, pushPreferences: { ...p.pushPreferences, [item.key]: v } }))}
@@ -888,28 +888,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <h4 className="text-sm font-bold text-[#0a1628] font-body pt-4">Class Preferences</h4>
-                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
-                    <div>
-                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Auto-Enroll Students</h4>
-                      <p className="text-xs text-slate-500 mt-1">Automatically enroll new students</p>
-                    </div>
-                    <Switch
-                      checked={localTeacherPrefs.classPreferences.autoEnroll}
-                      onCheckedChange={(v) => setLocalTeacherPrefs((p) => ({ ...p, classPreferences: { ...p.classPreferences, autoEnroll: v } }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-[#5a6578] block mb-1">Class Visibility</label>
-                    <select
-                      value={localTeacherPrefs.classPreferences.classVisibility}
-                      onChange={(e) => setLocalTeacherPrefs((p) => ({ ...p, classPreferences: { ...p.classPreferences, classVisibility: e.target.value as 'public' | 'private' | 'invite_only' } }))}
-                      className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm bg-white text-[#0a1628]"
-                    >
-                      <option value="public">Public</option>
-                      <option value="private">Private</option>
-                      <option value="invite_only">Invite Only</option>
-                    </select>
-                  </div>
 
                   <div className="flex items-center justify-between py-3 border-t border-[#dde3eb]">
                     <div>
@@ -942,14 +920,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="text-xs text-[#5a6578] block mb-1">Default Grade Level</label>
                       <Input
                         value={localAdminConfig.defaultGradeLevel}
-                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, defaultGradeLevel: e.target.value }))}
+                        disabled
                       />
                     </div>
                     <div>
                       <label className="text-xs text-[#5a6578] block mb-1">Default Curriculum</label>
                       <Input
                         value={localAdminConfig.defaultCurriculum}
-                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, defaultCurriculum: e.target.value }))}
+                        disabled
                       />
                     </div>
                     <div>
@@ -957,7 +935,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <Input
                         type="number"
                         value={localAdminConfig.maxClassSize}
-                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, maxClassSize: Number(e.target.value) }))}
+                        disabled
                       />
                     </div>
                   </div>
@@ -978,25 +956,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <label className="text-xs text-[#5a6578] block mb-1">Model Name</label>
                       <Input
                         value={localAdminConfig.aiConfig.modelName}
-                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, aiConfig: { ...p.aiConfig, modelName: e.target.value } }))}
+                        disabled
                       />
                     </div>
                     <div>
                       <label className="text-xs text-[#5a6578] block mb-1">Temperature</label>
                       <Input
                         type="number"
-                        step="0.1"
-                        min="0"
-                        max="2"
                         value={localAdminConfig.aiConfig.temperature}
-                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, aiConfig: { ...p.aiConfig, temperature: Number(e.target.value) } }))}
+                        disabled
                       />
                     </div>
                     <div className="col-span-2">
                       <label className="text-xs text-[#5a6578] block mb-1">API Endpoint</label>
                       <Input
                         value={localAdminConfig.aiConfig.endpoint}
-                        onChange={(e) => setLocalAdminConfig((p) => ({ ...p, aiConfig: { ...p.aiConfig, endpoint: e.target.value } }))}
+                        disabled
                       />
                     </div>
                   </div>

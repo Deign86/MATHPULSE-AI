@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Bell, Users, Target, AlertCircle, TrendingDown, FileText, BookOpen, Sparkles } from 'lucide-react';
+import { Search, Bell, Users, Target, AlertCircle, TrendingDown, FileText, BookOpen, Sparkles, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export interface ClassView {
@@ -22,6 +22,7 @@ interface ClassesOverviewMenuProps {
   insightDismissed?: boolean;
   onOpenInsightModal?: () => void;
   viewType?: 'analytics' | 'competency';
+  onCreateClass?: () => void;
 }
 
 export const CLASS_COLORS = [
@@ -40,6 +41,7 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
   insightDismissed,
   onOpenInsightModal,
   viewType = 'analytics',
+  onCreateClass,
 }) => {
   const { currentUser, userProfile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -223,10 +225,18 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
 
         {/* My Classes Grid Section */}
         <div className="bg-white/60 backdrop-blur-[12px] rounded-[24px] p-3 sm:p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white mt-3 sm:mt-[24px]">
-          <div className="mb-6 border-b border-[#f1f5f9] pb-4">
+          <div className="mb-6 border-b border-[#f1f5f9] pb-4 flex items-center justify-between">
             <h2 className="text-[18px] font-semibold text-[#1e293b]">
               {isCompetency ? 'Select a Class' : 'My Classes'}
             </h2>
+            {onCreateClass && !isCompetency && (
+              <button
+                onClick={onCreateClass}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#9956DE] bg-[#9956DE]/10 rounded-lg hover:bg-[#9956DE]/20 transition-colors"
+              >
+                <Plus size={14} />Create Class
+              </button>
+            )}
           </div>
 
           {/* Grid of Classes */}
