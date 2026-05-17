@@ -1081,9 +1081,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const avgPerformance = classes.length > 0 ? Math.round(classes.reduce((sum, c) => sum + c.avgScore, 0) / classes.length) : 0;
 
   const riskDistribution = [
-    { name: 'High Risk', value: filteredStudentsForAnalytics.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
-    { name: 'Medium Risk', value: filteredStudentsForAnalytics.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
-    { name: 'Low Risk', value: filteredStudentsForAnalytics.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
+    { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
+    { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
+    { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
   ];
 
   // Gather weakest topics as topic performance data
@@ -2642,7 +2642,7 @@ const AnalyticsView: React.FC<{
   selectedClass,
   students,
   allClasses,
-  riskDistribution,
+  riskDistribution: _parentRiskDist,
   topicPerformance,
   onViewStudent,
   onCreateAccount,
@@ -2662,6 +2662,13 @@ const AnalyticsView: React.FC<{
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedManagerId, setSelectedManagerId] = useState('');
     const [filterType, setFilterType] = useState('All');
+
+    // Compute risk distribution from this view's students (class-filtered)
+    const riskDistribution = [
+      { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
+      { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
+      { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
+    ];
 
     useEffect(() => {
       setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
