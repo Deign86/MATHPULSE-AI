@@ -2635,7 +2635,7 @@ const QuizBattlePage: React.FC = () => {
                             value={setupConfig.subjectId}
                             onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, subjectId: value }))}
                           >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                               setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
                               errorFor('subjectId') && 'border-rose-400')}>
                               <SelectValue placeholder="Select category" />
@@ -2658,7 +2658,7 @@ const QuizBattlePage: React.FC = () => {
                             value={setupConfig.topicId}
                             onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, topicId: value }))}
                           >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                               setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
                               errorFor('topicId') && 'border-rose-400')}>
                               <SelectValue placeholder="Select topic group" />
@@ -2695,7 +2695,7 @@ const QuizBattlePage: React.FC = () => {
                               )
                             }
                           >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                               setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50")}>
                               <SelectValue />
                             </SelectTrigger>
@@ -2718,7 +2718,7 @@ const QuizBattlePage: React.FC = () => {
                               value={String(setupConfig.rounds)}
                               onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
                             >
-                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                                 setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
                                 errorFor('rounds') && 'border-rose-400')}>
                                 <SelectValue />
@@ -2743,7 +2743,7 @@ const QuizBattlePage: React.FC = () => {
                                 setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
                               }
                             >
-                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 dark:bg-black/50 dark:border-white/10 transition-colors shadow-inner',
+                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                                 setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
                                 errorFor('timePerQuestionSec') && 'border-rose-400')}>
                                 <SelectValue />
