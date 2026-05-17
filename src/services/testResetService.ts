@@ -227,7 +227,7 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   deletedDocs += await tryDeleteByField('xpActivities', 'userId', uid);
 
   // Delete quiz battle data
-  deletedDocs += await tryDeleteByField('quizBattleHistory', 'participantId', uid);
+  deletedDocs += await tryDeleteByField('quizBattleHistory', 'studentId', uid);
   await deleteDoc(doc(db, 'studentBattleStats', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
   await deleteDoc(doc(db, 'studentBattleLeaderboard', uid)).then(() => { deletedDocs += 1; }).catch(() => undefined);
 
