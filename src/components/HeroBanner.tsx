@@ -134,7 +134,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           initial={{ opacity: 0, scale: 0.9, x: 10 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
           transition={{ delay: 0.5, type: 'spring' }}
-          onClick={() => studentId && setShowResultsModal(true)}
+          onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }))}
           className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group"
         >
           <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all group-hover:bg-teal-50 group-hover:border-teal-400 group-hover:-translate-y-1">
