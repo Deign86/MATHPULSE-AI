@@ -86,6 +86,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /users/{userId}/dashboardSummary/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isAdmin();
+      allow delete: if isSelf(userId) || isAdmin();
+    }
+
     // ── FCM Tokens (per-user, per-device — used by Cloud Functions to fan out push) ──
     // Each device writes its own token doc. Cloud Functions read with the
     // Admin SDK (bypasses rules), so we only need to scope client access here.

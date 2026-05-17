@@ -122,6 +122,9 @@ export function subscribeToHeroBannerModalSummary(
       latestRiskLevel: data.latestRiskLevel ?? '',
       updatedAt: _toDate(data.updatedAt),
     });
+  }, (err) => {
+    console.warn('[heroBannerSummaryService] Subscription error:', err);
+    callback(null);
   });
 }
 
