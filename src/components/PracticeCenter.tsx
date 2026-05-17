@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Award, Clock, Target, Zap, Trophy, Filter, TrendingUp, CheckCircle, Lock, Play, BookOpen, PenTool, Loader2 } from 'lucide-react';
+import { Award, Clock, Target, Zap, Trophy, BookOpen, PenTool, Loader2, TrendingUp, DollarSign, Brain, Dice5, BarChart3, Crosshair, FlaskConical, ScatterChart } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Button } from './ui/button';
 import { Quiz, QuizAnswerRecord } from './QuizExperience';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserProgress } from '../services/progressService';
-import { UserProgress } from '../types/models';
-import { subjects, type SubjectId } from '../data/subjects';
+import { SHS_MATH_SUBJECTS, type SubjectId } from '../data/subjects';
 import {
   fetchPracticeStats,
   generatePracticeSession,
-  submitPracticeSession,
   type PracticeStatsResponse,
 } from '../services/practiceService';
 
@@ -22,37 +18,67 @@ interface PracticeCenterProps {
   allowedSubjectIds?: SubjectId[];
 }
 
-const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, onQuizEnd, searchQuery = '', allowedSubjectIds }) => {
+// A spawnable topic card — each represents a competency the AI can generate quizzes for
+interface TopicCard {
+  id: string;
+  name: string;
+  unit: string;
+  subject: string;
+  subjectId: string;
+}
+
+const UNIT_STYLE: Record<string, { icon: React.ElementType; bg: string }> = {
+  'Patterns, Relations, and Functions': { icon: TrendingUp, bg: 'bg-indigo-500' },
+  'Financial Mathematics': { icon: DollarSign, bg: 'bg-emerald-500' },
+  'Logic and Mathematical Reasoning': { icon: Brain, bg: 'bg-purple-500' },
+  'Random Variables': { icon: Dice5, bg: 'bg-orange-500' },
+  'Normal Distribution': { icon: BarChart3, bg: 'bg-sky-500' },
+  'Sampling and Estimation': { icon: Crosshair, bg: 'bg-teal-500' },
+  'Hypothesis Testing': { icon: FlaskConical, bg: 'bg-rose-500' },
+  'Correlation and Regression': { icon: ScatterChart, bg: 'bg-amber-500' },
+};
+
+function getUnitStyle(unit: string) {
+  return UNIT_STYLE[unit] || { icon: PenTool, bg: 'bg-slate-500' };
+}
+
+const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, searchQuery = '', allowedSubjectIds }) => {
   const { userProfile } = useAuth();
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'practice' | 'challenge' | 'mastery'>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
-  const [progress, setProgress] = useState<UserProgress | null>(null);
   const [practiceStats, setPracticeStats] = useState<PracticeStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingTopic, setGeneratingTopic] = useState<string | null>(null);
 
   const availableSubjects = useMemo(() => {
-    if (!allowedSubjectIds || allowedSubjectIds.length === 0) {
-      return subjects;
-    }
-
-    return subjects.filter((subject) => allowedSubjectIds.includes(subject.id as SubjectId));
+    if (!allowedSubjectIds || allowedSubjectIds.length === 0) return SHS_MATH_SUBJECTS;
+    return SHS_MATH_SUBJECTS.filter((s) => allowedSubjectIds.includes(s.id as SubjectId));
   }, [allowedSubjectIds]);
 
-  useEffect(() => {
-    if (!userProfile?.uid) return;
-    getUserProgress(userProfile.uid).then(setProgress).catch(console.error);
-  }, [userProfile?.uid]);
+  // Build dynamic topic cards from curriculum
+  const topicCards: TopicCard[] = useMemo(() => {
+    return availableSubjects.flatMap((subject) =>
+      subject.topics.map((topic) => ({
+        id: topic.id,
+        name: topic.name,
+        unit: topic.unit,
+        subject: subject.name,
+        subjectId: subject.id,
+      }))
+    );
+  }, [availableSubjects]);
 
-  useEffect(() => {
-    if (selectedSubject === 'all') return;
-
-    const selectedStillVisible = availableSubjects.some((subject) => subject.title === selectedSubject);
-    if (!selectedStillVisible) {
-      setSelectedSubject('all');
-    }
-  }, [availableSubjects, selectedSubject]);
+  // Filter topics
+  const filteredTopics = useMemo(() => {
+    return topicCards.filter((topic) => {
+      const subjectMatch = selectedSubject === 'all' || topic.subject === selectedSubject;
+      const searchMatch = !searchQuery ||
+        topic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        topic.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        topic.subject.toLowerCase().includes(searchQuery.toLowerCase());
+      return subjectMatch && searchMatch;
+    });
+  }, [topicCards, selectedSubject, searchQuery]);
 
   useEffect(() => {
     if (!userId) return;
@@ -63,104 +89,16 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, on
       .finally(() => setStatsLoading(false));
   }, [userId]);
 
-  // Derive stats from practice API response (primary) or progress fallback
-  const totalQuizzesCompleted = practiceStats?.quizzesCompleted ?? progress?.totalQuizzesCompleted ?? 0;
+  // Derive stats
+  const totalQuizzesCompleted = practiceStats?.quizzesCompleted ?? 0;
   const totalXPEarned = practiceStats?.totalXPEarned ?? (userProfile as any)?.totalXP ?? 0;
-  const avgScore = practiceStats?.averageScore ?? (progress?.averageScore ? Math.round(progress.averageScore) : 0);
+  const avgScore = practiceStats?.averageScore ?? 0;
 
-  // Build quizzes from subjects data + merge with progress
-  const completedQuizIds = new Set(
-    progress?.quizAttempts?.map(a => a.quizId) || []
-  );
-  const bestScores: Record<string, number> = {};
-  if (progress?.quizAttempts) {
-    for (const attempt of progress.quizAttempts) {
-      if (!bestScores[attempt.quizId] || attempt.score > bestScores[attempt.quizId]) {
-        bestScores[attempt.quizId] = attempt.score;
-      }
-    }
-  }
+  const handleStartQuiz = useCallback(async (topic: TopicCard) => {
+    if (!userId || generatingTopic) return;
 
-  const quizzes: Quiz[] = availableSubjects.flatMap((subject) =>
-    subject.modules.flatMap((mod) =>
-      mod.quizzes.map((q) => ({
-        id: q.id,
-        title: q.title,
-        subject: subject.title,
-        difficulty: (q.type === 'module' ? 'Medium' : 'Easy') as 'Easy' | 'Medium' | 'Hard',
-        questions: q.questions,
-        duration: q.duration,
-        xpReward: q.questions * 5,
-        type: (q.type === 'module' ? 'challenge' : 'practice') as Quiz['type'],
-        completed: completedQuizIds.has(q.id),
-        bestScore: bestScores[q.id],
-        locked: q.locked,
-      }))
-    )
-  );
-
-  const filteredQuizzes = quizzes.filter(quiz => {
-    const typeMatch = selectedFilter === 'all' || quiz.type === selectedFilter;
-    const subjectMatch = selectedSubject === 'all' || quiz.subject === selectedSubject;
-    const searchMatch = !searchQuery ||
-      quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      quiz.subject.toLowerCase().includes(searchQuery.toLowerCase());
-
-    return typeMatch && subjectMatch && searchMatch;
-  });
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'practice':
-        return {
-          bg: 'bg-sky-50',
-          text: 'text-sky-700',
-          border: 'border-sky-200',
-          accent: 'bg-sky-500'
-        };
-      case 'challenge':
-        return {
-          bg: 'bg-orange-50',
-          text: 'text-orange-700',
-          border: 'border-orange-200',
-          accent: 'bg-orange-500'
-        };
-      case 'mastery':
-        return {
-          bg: 'bg-sky-50',
-          text: 'text-sky-700',
-          border: 'border-sky-200',
-          accent: 'bg-sky-500'
-        };
-      default:
-        return {
-          bg: 'bg-[#edf1f7]',
-          text: 'text-[#0a1628]',
-          border: 'border-[#dde3eb]',
-          accent: 'bg-[#5a6578]'
-        };
-    }
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Easy':
-        return 'bg-green-100 text-green-700';
-      case 'Medium':
-        return 'bg-rose-100 text-rose-700';
-      case 'Hard':
-        return 'bg-red-100 text-red-700';
-      default:
-        return 'bg-[#edf1f7] text-[#0a1628]';
-    }
-  };
-
-  const handleStartQuiz = useCallback(async (quiz: Quiz, difficulty: 'Easy' | 'Medium' | 'Hard') => {
-    if (!userId) return;
-
-    setIsGenerating(true);
+    setGeneratingTopic(topic.id);
     try {
-      // Map frontend difficulty to backend format
       const difficultyMap: Record<string, 'Practice' | 'Challenge' | 'Mastery'> = {
         'Easy': 'Practice',
         'Medium': 'Challenge',
@@ -169,30 +107,20 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, on
 
       const response = await generatePracticeSession({
         userId,
-        subject: quiz.subject,
-        competency: quiz.title,
-        difficulty: difficultyMap[difficulty],
+        subject: topic.subject,
+        competency: topic.name,
+        difficulty: difficultyMap[selectedDifficulty],
         count: 5,
       });
 
-      // Convert AI questions to QuizQuestion format for QuizExperience
-      const quizQuestions = response.questions.map((q) => ({
-        id: q.id,
-        question: q.question,
-        options: q.options,
-        correctAnswer: q.correct_index,
-        explanation: q.explanation,
-      }));
-
-      // Create a Quiz object for QuizExperience
       const aiQuiz: Quiz = {
         id: response.session_id,
-        title: `${quiz.title} (AI)`,
-        subject: quiz.subject,
-        difficulty,
-        questions: quizQuestions.length,
+        title: `Practice Quiz: ${topic.name} (AI)`,
+        subject: topic.subject,
+        difficulty: selectedDifficulty,
+        questions: response.questions.length,
         duration: "10 min",
-        xpReward: difficulty === 'Hard' ? 75 : difficulty === 'Medium' ? 50 : 25,
+        xpReward: selectedDifficulty === 'Hard' ? 75 : selectedDifficulty === 'Medium' ? 50 : 25,
         type: 'practice',
         loadedQuestions: response.questions.map((q) => ({
           id: q.id,
@@ -200,27 +128,26 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, on
           question: q.question,
           options: q.options,
           correctAnswer: q.options[q.correct_index],
-          bloomLevel: 'understand' as const,
-          difficulty: difficulty.toLowerCase() as 'easy' | 'medium' | 'hard',
-          topic: quiz.title,
-          subject: quiz.subject,
+          bloomLevel: (['remember', 'understand', 'apply', 'analyze'].includes(q.bloomsLevel?.toLowerCase() || '') ? q.bloomsLevel!.toLowerCase() : 'understand') as 'remember' | 'understand' | 'apply' | 'analyze',
+          difficulty: selectedDifficulty.toLowerCase() as 'easy' | 'medium' | 'hard',
+          topic: topic.name,
+          subject: topic.subject,
           points: 10,
           explanation: q.explanation,
         })),
         generatedQuizId: response.session_id,
+        source: 'ai_generated',
         completed: false,
         locked: false,
       };
 
       onStartQuiz?.(aiQuiz);
     } catch (e) {
-      console.error(e);
-      // Fall back to original quiz if AI generation fails
-      onStartQuiz?.(quiz);
+      console.error('Failed to generate practice quiz:', e);
     } finally {
-      setIsGenerating(false);
+      setGeneratingTopic(null);
     }
-  }, [userId, onStartQuiz]);
+  }, [userId, selectedDifficulty, generatingTopic, onStartQuiz]);
 
   return (
     <div className="px-4 sm:px-6 xl:px-10 py-4 sm:py-6">
@@ -264,7 +191,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, on
               <Target size={16} className="sm:hidden" />
               <Target size={24} className="hidden sm:block" />
             </div>
-            <span className="text-xl sm:text-3xl font-bold">{avgScore}%</span>
+            <span className="text-xl sm:text-3xl font-bold">{Math.round(avgScore)}%</span>
           </div>
           <p className="text-[10px] sm:text-sm font-medium text-sky-100 leading-tight">Average Score</p>
         </motion.div>
@@ -272,49 +199,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, on
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-6">
-        {/* Type filter pills - scrollable on mobile, centered */}
-        <div className="overflow-x-auto scrollbar-hide flex justify-center">
-          <div className="flex items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm w-max">
-            <button
-              onClick={() => setSelectedFilter('all')}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${selectedFilter === 'all'
-                ? 'bg-sky-600 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-                }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setSelectedFilter('practice')}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${selectedFilter === 'practice'
-                ? 'bg-sky-500 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-                }`}
-            >
-              Practice
-            </button>
-            <button
-              onClick={() => setSelectedFilter('challenge')}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${selectedFilter === 'challenge'
-                ? 'bg-orange-500 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-                }`}
-            >
-              Challenge
-            </button>
-            <button
-              onClick={() => setSelectedFilter('mastery')}
-              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${selectedFilter === 'mastery'
-                ? 'bg-sky-500 text-white shadow-md'
-                : 'text-[#5a6578] hover:bg-[#edf1f7]'
-                }`}
-            >
-              Mastery
-            </button>
-          </div>
-        </div>
-
-        {/* Subject select - full width on mobile, auto on desktop */}
+        {/* Subject select */}
         <select
           value={selectedSubject}
           onChange={(e) => setSelectedSubject(e.target.value)}
@@ -322,20 +207,20 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, on
         >
           <option value="all">All Subjects</option>
           {availableSubjects.map((subject) => (
-            <option key={subject.id} value={subject.title}>{subject.title}</option>
+            <option key={subject.id} value={subject.name}>{subject.name}</option>
           ))}
         </select>
 
         {/* Difficulty filter pills */}
         <div className="flex items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm">
-          <span className="px-2 text-xs font-bold text-slate-400">AI:</span>
+          <span className="px-2 text-xs font-bold text-slate-400">Difficulty:</span>
           {(['Easy', 'Medium', 'Hard'] as const).map((diff) => (
             <button
               key={diff}
               onClick={() => setSelectedDifficulty(diff)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${selectedDifficulty === diff
                 ? diff === 'Easy' ? 'bg-green-500 text-white shadow-sm'
-                  : diff === 'Medium' ? 'bg-rose-500 text-white shadow-sm'
+                  : diff === 'Medium' ? 'bg-orange-500 text-white shadow-sm'
                   : 'bg-red-500 text-white shadow-sm'
                 : 'text-[#5a6578] hover:bg-[#edf1f7]'
               }`}
@@ -346,7 +231,18 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, on
         </div>
       </div>
 
-      {/* Quizzes Grid */}
+      {/* Loading Overlay */}
+      {generatingTopic && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl">
+            <Loader2 size={36} className="animate-spin text-indigo-600" />
+            <p className="font-bold text-slate-700">Generating Quiz...</p>
+            <p className="text-sm text-slate-500">AI is crafting questions from curriculum</p>
+          </div>
+        </div>
+      )}
+
+      {/* Topics Grid */}
       <div
         className="pr-2 pb-4 rounded-[2rem] border border-slate-200 shadow-inner relative"
         style={{
@@ -356,99 +252,78 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, on
           backgroundColor: '#FAFAFA'
         }}
       >
-        {/* Notebook binding / margin line */}
         <div className="absolute left-12 top-0 bottom-0 w-0.5 bg-rose-200/60 pointer-events-none z-0"></div>
         <div className="absolute left-[54px] top-0 bottom-0 w-px bg-rose-100/40 pointer-events-none z-0"></div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 p-4 md:p-6 relative z-10">
-          {filteredQuizzes.map((quiz, index) => {
-            const isLocked = quiz.locked;
-            const isHard = quiz.difficulty === 'Hard';
-            const isChallenge = quiz.type === 'challenge';
+          {filteredTopics.map((topic, index) => (
+            <motion.div
+              key={topic.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.03 }}
+              onClick={() => handleStartQuiz(topic)}
+              className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 border-2 relative select-none transition-all duration-300 ${
+                generatingTopic === topic.id
+                  ? 'border-indigo-300 opacity-80 cursor-wait'
+                  : generatingTopic
+                    ? 'border-slate-200 opacity-60 cursor-not-allowed'
+                    : 'border-slate-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
+              } group`}
+            >
+              <div className="flex items-center justify-between gap-3 md:gap-4">
+                <div className="flex items-center gap-3 md:gap-4 flex-1">
+                  {(() => { const { icon: UnitIcon, bg } = getUnitStyle(topic.unit); return (
+                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${bg} text-white`}>
+                      <UnitIcon size={18} />
+                    </div>
+                  ); })()}
 
-            return (
-              <motion.div
-                key={quiz.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => !isLocked && !isGenerating && handleStartQuiz(quiz, selectedDifficulty)}
-                className={`bg-white/90 backdrop-blur-sm rounded-2xl p-4 md:p-5 border-2 relative select-none transition-all duration-300 ${isLocked
-                  ? 'border-slate-200 opacity-60 saturate-50 cursor-not-allowed'
-                  : isGenerating
-                    ? 'border-slate-200 opacity-80 cursor-wait'
-                    : quiz.completed
-                      ? 'border-teal-200 shadow-sm hover:border-teal-300 hover:shadow-md cursor-pointer'
-                      : isHard
-                        ? 'border-indigo-200 shadow-sm hover:border-indigo-300 hover:shadow-md cursor-pointer'
-                        : 'border-orange-200 shadow-sm hover:border-orange-300 hover:shadow-md cursor-pointer'
-                  } group`}
-              >
-                <div className="flex items-center justify-between gap-3 md:gap-4">
-                  <div className="flex items-center gap-3 md:gap-4 flex-1">
-                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${isLocked ? 'bg-slate-100 text-slate-400' :
-                      quiz.completed ? 'bg-teal-500 text-white' :
-                        isHard ? 'bg-indigo-500 text-white' : 'bg-orange-500 text-white'
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className={`px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider ${
+                        selectedDifficulty === 'Easy' ? 'bg-green-100 text-green-700' :
+                        selectedDifficulty === 'Medium' ? 'bg-orange-100 text-orange-700' :
+                        'bg-red-100 text-red-700'
                       }`}>
-                      {isLocked ? <Lock size={18} /> :
-                        quiz.completed ? <Trophy size={18} /> :
-                          <PenTool size={18} />}
+                        AI {"\u2022"} {selectedDifficulty}
+                      </span>
+                      <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     </div>
-
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className={`px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider ${isHard ? 'bg-indigo-100 text-indigo-700' :
-                          isChallenge ? 'bg-orange-100 text-orange-700' :
-                            'bg-sky-100 text-sky-700'
-                          }`}>
-                          {quiz.type} Î“Ã‡Ã³ {quiz.difficulty}
-                        </span>
-                        {!isLocked && !quiz.completed && (
-                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-rose-500 animate-pulse"></span>
-                        )}
-                      </div>
-                      <h3 className={`font-bold text-[14px] md:text-[16px] leading-tight mb-1 md:mb-1.5 transition-colors ${isLocked ? 'text-slate-600' : 'text-[#0a1628]'
-                        }`}>
-                        {quiz.title}
-                      </h3>
-                      <p className="text-[11px] md:text-[12px] text-slate-500 mb-1.5 line-clamp-1">{quiz.subject}</p>
-                      <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[11px] md:text-[12px] font-bold text-slate-400">
-                        <span className="flex items-center gap-1"><BookOpen size={12} /> {quiz.questions} Qs</span>
-                        <span className="hidden sm:inline">Î“Ã‡Ã³</span>
-                        <span className="flex items-center gap-1"><Clock size={12} /> {quiz.duration}</span>
-                        <span className="hidden sm:inline">Î“Ã‡Ã³</span>
-                        <span className="flex items-center gap-1 text-rose-500"><Trophy size={12} /> +{quiz.xpReward} XP</span>
-                      </div>
+                    <h3 className="font-bold text-[14px] md:text-[16px] leading-tight mb-1 md:mb-1.5 text-[#0a1628] transition-colors">
+                      {topic.name}
+                    </h3>
+                    <p className="text-[11px] md:text-[12px] text-slate-500 mb-1.5 line-clamp-1">{topic.subject} — {topic.unit}</p>
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[11px] md:text-[12px] font-bold text-slate-400">
+                      <span className="flex items-center gap-1"><BookOpen size={12} /> 5 Qs</span>
+                      <span className="hidden sm:inline">{"\u2022"}</span>
+                      <span className="flex items-center gap-1"><Clock size={12} /> 10 min</span>
+                      <span className="hidden sm:inline">{"\u2022"}</span>
+                      <span className="flex items-center gap-1 text-rose-500">
+                        <Trophy size={12} /> +{selectedDifficulty === 'Hard' ? 75 : selectedDifficulty === 'Medium' ? 50 : 25} XP
+                      </span>
                     </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    {quiz.bestScore !== undefined && (
-                      <div className="text-right">
-                        <div className={`text-xl md:text-2xl font-black leading-none ${quiz.bestScore >= 80 ? 'text-teal-600' : 'text-orange-500'}`}>{quiz.bestScore}%</div>
-                        <div className="text-[9px] uppercase tracking-wide text-slate-400 font-bold mt-1">Best Score</div>
-                      </div>
-                    )}
-
-                    {!isLocked && (
-                      <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] md:text-[12px] font-black uppercase tracking-wider shadow-sm transition-all ${quiz.completed
-                        ? 'bg-white border border-teal-500 text-slate-600 group-hover:bg-slate-50'
-                        : 'bg-teal-500 text-white group-hover:bg-teal-600 shadow-teal-200'
-                        }`}>
-                        {quiz.completed ? 'Review' : 'Start'}
-                      </div>
-                    )}
                   </div>
                 </div>
-              </motion.div>
-            );
-          })}
+
+                <div className="shrink-0">
+                  <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] md:text-[12px] font-black uppercase tracking-wider shadow-sm transition-all ${
+                    generatingTopic === topic.id
+                      ? 'bg-indigo-100 text-indigo-600'
+                      : 'bg-indigo-500 text-white group-hover:bg-indigo-600 shadow-indigo-200'
+                  }`}>
+                    {generatingTopic === topic.id ? 'Loading...' : 'Start'}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </div>
 
-        {filteredQuizzes.length === 0 && (
+        {filteredTopics.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 text-slate-500 relative z-10">
             <Target size={48} className="mb-3" />
-            <p className="font-medium">No quizzes found</p>
+            <p className="font-medium">No topics found</p>
             <p className="text-sm">Try adjusting your filters or search query</p>
           </div>
         )}
