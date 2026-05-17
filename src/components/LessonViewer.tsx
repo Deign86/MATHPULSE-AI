@@ -1,11 +1,266 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import {
   ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb,
-  Calculator, Award, RefreshCw, AlertTriangle, Eye, EyeOff, PlayCircle, NotebookPen,
-  Clock, Key, ClipboardCheck, Target, Zap
+  Calculator, Award, RefreshCw, AlertTriangle, NotebookPen,
+  Clock, Key, ClipboardCheck, Target, Zap, PlayCircle
 } from 'lucide-react';
+
+// ---------------------------------------------------------------------------
+// Rich text formatter — breaks plain paragraphs into formatted JSX.
+//
+// Handles explicit markdown:
+//   **bold**, *italic*, `code`, ==highlight==
+//   - / • / * bullet lines, 1. / 1) numbered lists
+//   Formula lines containing math symbols
+//   Heading-like lines (short, ends with colon)
+//
+// Also auto-detects plain-text patterns common in AI-generated lesson content:
+//   • "Definition:" / "Formula:" / "Note:" / "Example:" prefixes → callout cards
+//   • Standalone formula-only lines (e.g. "A = P(1 + rt)") → formula box
+//   • Long paragraphs (>200 chars) → split at sentence boundaries for readability
+//   • Key term auto-bolding: first occurrence of terms followed by "is", "are",
+//     "refers to", "defined as", or wrapped in quotes
+// ---------------------------------------------------------------------------
+
+/** Math symbols that signal a formula line */
+const MATH_RE = /[=×÷±√∑∫π²³%]/;
+
+/** Callout prefix patterns — "Definition:", "Formula:", "Note:", etc. */
+const CALLOUT_PREFIX_RE = /^(Definition|Formula|Note|Reminder|Important|Example|Key Concept|Concept|Rule|Theorem|Property|Step)s?\s*:/i;
+
+/** Auto-bold: term followed by "is/are/refers to/defined as" or in quotes */
+function autoHighlightTerms(text: string): string {
+  // "X is ..." → **X** is ...  (only first word-group before "is/are")
+  return text
+    .replace(/\b([A-Z][a-zA-Z\s]{2,30}?)\s+(is|are|refers to|defined as|means)\b/g, (_, term, verb) =>
+      `**${term.trim()}** ${verb}`
+    )
+    // "term" in quotes → **term**
+    .replace(/"([^"]{3,40})"/g, (_, t) => `**${t}**`);
+}
+
+function formatContent(raw: string): React.ReactNode {
+  if (!raw?.trim()) return null;
+
+  const lines = raw.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let paraBuffer: string[] = [];
+  let listBuffer: string[] = [];
+  let numberedBuffer: string[] = [];
+  let key = 0;
+
+  const flushPara = () => {
+    if (paraBuffer.length === 0) return;
+    const text = paraBuffer.join(' ').trim();
+    if (!text) { paraBuffer = []; return; }
+
+    // Split very long paragraphs at sentence boundaries for readability
+    const sentences = text.match(/[^.!?]+[.!?]+["']?/g) || [text];
+    const chunks: string[][] = [];
+    let current: string[] = [];
+    let len = 0;
+    for (const s of sentences) {
+      current.push(s);
+      len += s.length;
+      if (len > 220) { chunks.push(current); current = []; len = 0; }
+    }
+    if (current.length) chunks.push(current);
+
+    for (const chunk of chunks) {
+      const chunkText = autoHighlightTerms(chunk.join(' ').trim());
+      nodes.push(
+        <p key={key++} className="lesson-body-text text-slate-700 leading-[1.8] text-[1rem] font-body">
+          {inlineFormat(chunkText)}
+        </p>
+      );
+    }
+    paraBuffer = [];
+  };
+
+  const flushList = () => {
+    if (listBuffer.length === 0) return;
+    nodes.push(
+      <ul key={key++} className="space-y-2.5 my-1 pl-1">
+        {listBuffer.map((item, i) => (
+          <li key={i} className="flex items-start gap-3 text-slate-700 text-[0.95rem] leading-[1.75] font-body">
+            <span className="mt-[0.5rem] w-2 h-2 rounded-full bg-[#1a85a4] flex-shrink-0" />
+            <span>{inlineFormat(autoHighlightTerms(item))}</span>
+          </li>
+        ))}
+      </ul>
+    );
+    listBuffer = [];
+  };
+
+  const flushNumbered = () => {
+    if (numberedBuffer.length === 0) return;
+    nodes.push(
+      <ol key={key++} className="space-y-2.5 my-1 list-none pl-1">
+        {numberedBuffer.map((item, i) => (
+          <li key={i} className="flex items-start gap-3 text-slate-700 text-[0.95rem] leading-[1.75] font-body">
+            <span className="mt-0.5 min-w-[1.5rem] h-[1.5rem] rounded-full bg-[#1a85a4] text-white text-[0.7rem] font-bold flex items-center justify-center flex-shrink-0">
+              {i + 1}
+            </span>
+            <span>{inlineFormat(autoHighlightTerms(item))}</span>
+          </li>
+        ))}
+      </ol>
+    );
+    numberedBuffer = [];
+  };
+
+  const isBullet   = (l: string) => /^[\-•\*]\s+/.test(l.trim());
+  const isNumbered = (l: string) => /^\d+[\.\)]\s+/.test(l.trim());
+  const isFormula  = (l: string) => MATH_RE.test(l) && l.trim().length < 120;
+
+  // Callout type → color scheme
+  const calloutScheme = (prefix: string): { bg: string; border: string; text: string; label: string } => {
+    const p = prefix.toLowerCase();
+    if (/formula|theorem|property|rule/.test(p))
+      return { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', label: '📐' };
+    if (/definition|concept|key/.test(p))
+      return { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-900', label: '📖' };
+    if (/note|reminder|important/.test(p))
+      return { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-900', label: '⚠️' };
+    if (/example|step/.test(p))
+      return { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', label: '✏️' };
+    return { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-800', label: '💡' };
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const trimmed = line.trim();
+
+    if (trimmed === '') {
+      flushList();
+      flushNumbered();
+      flushPara();
+      continue;
+    }
+
+    // Callout card: "Definition: ..." or "Formula: ..."
+    const calloutMatch = trimmed.match(CALLOUT_PREFIX_RE);
+    if (calloutMatch) {
+      flushList();
+      flushNumbered();
+      flushPara();
+      const prefix = calloutMatch[1];
+      const body = trimmed.slice(calloutMatch[0].length).trim();
+      const scheme = calloutScheme(prefix);
+      nodes.push(
+        <div key={key++} className={`rounded-xl px-4 py-3.5 border-l-4 ${scheme.bg} ${scheme.border} my-1`}>
+          <p className={`text-[0.75rem] font-black uppercase tracking-widest mb-1.5 ${scheme.text} opacity-80 font-display`}>
+            {scheme.label} {prefix}
+          </p>
+          <p className={`text-[0.95rem] leading-[1.75] font-semibold font-body ${scheme.text}`}>
+            {inlineFormat(body)}
+          </p>
+        </div>
+      );
+      continue;
+    }
+
+    if (isBullet(trimmed)) {
+      flushPara();
+      flushNumbered();
+      listBuffer.push(trimmed.replace(/^[\-•\*]\s+/, ''));
+      continue;
+    }
+
+    if (isNumbered(trimmed)) {
+      flushPara();
+      flushList();
+      numberedBuffer.push(trimmed.replace(/^\d+[\.\)]\s+/, ''));
+      continue;
+    }
+
+    // Standalone formula line (short, math-heavy, no sentence structure)
+    if (isFormula(trimmed) && !/[a-z]{5,}/.test(trimmed)) {
+      flushList();
+      flushNumbered();
+      flushPara();
+      nodes.push(
+        <div key={key++} className="lesson-formula-box my-3">
+          {trimmed}
+        </div>
+      );
+      continue;
+    }
+
+    // Heading-like line: short, ends with colon, not a sentence
+    if (trimmed.endsWith(':') && trimmed.length < 80 && !trimmed.startsWith(' ')) {
+      flushList();
+      flushNumbered();
+      flushPara();
+      nodes.push(
+        <p key={key++} className="lesson-section-heading text-[#1a85a4] text-[1.05rem] mt-5 mb-1 border-b-2 border-[#1a85a4]/20 pb-1.5">
+          {inlineFormat(trimmed)}
+        </p>
+      );
+      continue;
+    }
+
+    flushList();
+    flushNumbered();
+    paraBuffer.push(line);
+  }
+
+  flushList();
+  flushNumbered();
+  flushPara();
+
+  return <div className="space-y-3">{nodes}</div>;
+}
+
+// ---------------------------------------------------------------------------
+// Inline formatter: **bold**, *italic*, `code`, ==highlight==
+// ---------------------------------------------------------------------------
+function inlineFormat(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  // Order matters: bold before italic
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|==(.+?)==)/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  let k = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) {
+      parts.push(<React.Fragment key={k++}>{text.slice(last, match.index)}</React.Fragment>);
+    }
+    if (match[2]) {
+      // **bold** — vibrant teal highlight pill for key terms
+      parts.push(
+        <strong key={k++} className="font-extrabold text-[#1a85a4] bg-[#e0f4fa] px-1 py-0.5 rounded-md font-body">
+          {match[2]}
+        </strong>
+      );
+    } else if (match[3]) {
+      parts.push(<em key={k++} className="italic text-slate-500 font-body">{match[3]}</em>);
+    } else if (match[4]) {
+      parts.push(
+        <code key={k++} className="px-1.5 py-0.5 bg-slate-100 rounded text-[0.85em] font-mono text-[#e66a5e] border border-slate-200 font-semibold">
+          {match[4]}
+        </code>
+      );
+    } else if (match[5]) {
+      parts.push(
+        <mark key={k++} className="bg-[#fff3cd] text-[#92400e] px-1 py-0.5 rounded-md font-bold border-b-2 border-[#fbbf24]">
+          {match[5]}
+        </mark>
+      );
+    }
+    last = match.index + match[0].length;
+  }
+
+  if (last < text.length) {
+    parts.push(<React.Fragment key={k++}>{text.slice(last)}</React.Fragment>);
+  }
+
+  return parts.length > 0 ? <>{parts}</> : text;
+}
 import { VideoLessonSection } from './notebook/VideoLessonSection';
-import { TryItYourselfQuiz } from './notebook/TryItYourselfQuiz';
+import TryItYourselfPage from './TryItYourselfPage';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { cn } from './ui/utils';
@@ -32,6 +287,67 @@ interface LessonViewerProps {
   /** Fires when user clicks Continue Learning in the Try It Yourself quiz overlay — advances to next lesson */
   onContinueLearning?: () => void;
 }
+
+// ---------------------------------------------------------------------------
+// parseIntroContent — splits intro content into:
+//   { welcome: string, objectives: { text: string; example?: string }[] }
+//
+// Objectives are detected as:
+//   • Numbered lines: "1. Identify and use variables..."
+//   • Bullet lines:   "- Write equations..."
+//   • Lines starting with a verb (Identify, Write, Set, Use, Apply, Solve…)
+// An "example" sub-line is a short line immediately after an objective that
+// starts with "Example:" or "e.g." or is wrapped in parentheses.
+// ---------------------------------------------------------------------------
+function parseIntroContent(raw: string): {
+  welcome: string;
+  objectives: { text: string; example?: string }[];
+} {
+  if (!raw?.trim()) return { welcome: '', objectives: [] };
+
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const OBJECTIVE_RE = /^(\d+[\.\)]\s+|[-•*]\s+|(Identify|Write|Set|Use|Apply|Solve|Compute|Calculate|Determine|Understand|Describe|Explain|Analyze|Evaluate|Create|Define|Distinguish|Compare|Illustrate|Demonstrate|Perform|Simplify|Represent|Model|Interpret|Recognize|Classify|Construct|Derive|Formulate|Graph|Sketch|Verify|Prove|Estimate|Approximate|Convert|Translate|Predict|Justify|Generalize|Extend|Develop|Explore|Investigate|Discover|Observe|Measure|Record|Report|Present|Communicate|Collaborate|Reflect|Review|Summarize|Conclude|Infer|Hypothesize|Test|Experiment|Design|Plan|Implement|Evaluate|Assess|Monitor|Adjust|Improve|Optimize|Innovate|Create|Produce|Publish|Share|Teach|Learn|Practice|Apply|Transfer|Connect|Integrate|Synthesize|Analyze|Evaluate|Create)\b)/i;
+  const EXAMPLE_RE = /^(Example:|e\.g\.|For example:|Sample:|\()/i;
+
+  const welcomeLines: string[] = [];
+  const objectives: { text: string; example?: string }[] = [];
+  let inObjectives = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (OBJECTIVE_RE.test(line)) {
+      inObjectives = true;
+      const text = line.replace(/^(\d+[\.\)]\s+|[-•*]\s+)/, '').trim();
+      // Check next line for an example sub-line
+      const next = lines[i + 1];
+      if (next && EXAMPLE_RE.test(next)) {
+        objectives.push({ text, example: next });
+        i++; // skip the example line
+      } else {
+        objectives.push({ text });
+      }
+    } else if (!inObjectives) {
+      welcomeLines.push(line);
+    }
+    // Lines after objectives that aren't objectives themselves are ignored
+    // (they're usually trailing filler)
+  }
+
+  return {
+    welcome: welcomeLines.join(' ').trim(),
+    objectives,
+  };
+}
+
+/** Objective card accent colors — cycles through a palette */
+const OBJECTIVE_COLORS = [
+  { bg: 'bg-purple-50',  border: 'border-purple-200', num: 'bg-purple-500',  text: 'text-purple-700',  ex: 'text-purple-500'  },
+  { bg: 'bg-sky-50',     border: 'border-sky-200',    num: 'bg-sky-500',     text: 'text-sky-700',     ex: 'text-sky-500'     },
+  { bg: 'bg-emerald-50', border: 'border-emerald-200',num: 'bg-emerald-500', text: 'text-emerald-700', ex: 'text-emerald-500' },
+  { bg: 'bg-amber-50',   border: 'border-amber-200',  num: 'bg-amber-500',   text: 'text-amber-700',   ex: 'text-amber-500'   },
+  { bg: 'bg-rose-50',    border: 'border-rose-200',   num: 'bg-rose-500',    text: 'text-rose-700',    ex: 'text-rose-500'    },
+];
 
 function LoadingSkeleton() {
   return (
@@ -102,8 +418,7 @@ function SectionRenderer({
   practiceQuizScore,
   onStartPractice,
   lessonSpecificTopic,
-  onTryItQuizComplete,
-  onContinueLearning,
+  onStartTryItQuiz,
 }: {
   section: RagLessonSection;
   sectionIndex: number;
@@ -115,56 +430,151 @@ function SectionRenderer({
   practiceQuizScore?: number;
   onStartPractice?: () => void;
   lessonSpecificTopic?: string | null;
-  onTryItQuizComplete?: (scorePercent: number) => void;
-  onContinueLearning?: () => void;
+  onStartTryItQuiz?: () => void;
 }) {
   switch (section.type) {
-    case 'introduction':
+    case 'introduction': {
+      const { welcome, objectives } = parseIntroContent(section.content || '');
+      // Count total sections for the "Heads Up" banner
+      const totalSectionCount = 7; // standard RAG lesson always has 7 sections
+
       return (
-        <div className="space-y-4">
-          {section.content?.trim() ? (
-            <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line">
-              {section.content}
-            </p>
-          ) : (
+        <div className="space-y-5">
+          {/* Welcome paragraph — large hook card with math pattern bg */}
+          {welcome ? (
+            <div className="lesson-welcome-card rounded-2xl border-2 border-[#1a85a4]/30 bg-gradient-to-br from-[#e8f7fc] to-[#f0fbff] px-6 py-5 shadow-md">
+              {/* Decorative label */}
+              <p className="lesson-section-heading text-[#1a85a4] text-[0.7rem] uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
+                <span className="inline-block w-4 h-0.5 bg-[#1a85a4] rounded-full" />
+                Welcome to the Lesson
+              </p>
+              <p className="font-body text-slate-700 text-[1.05rem] leading-[1.85] font-medium">
+                {inlineFormat(autoHighlightTerms(welcome))}
+              </p>
+            </div>
+          ) : !section.content?.trim() ? (
             <p className="text-slate-400 text-sm italic">Introduction content is being prepared. Please proceed to the next section or try refreshing the lesson.</p>
+          ) : (
+            <div className="lesson-welcome-card rounded-2xl border-2 border-[#1a85a4]/30 bg-gradient-to-br from-[#e8f7fc] to-[#f0fbff] px-6 py-5 shadow-md">
+              {formatContent(section.content)}
+            </div>
+          )}
+
+          {/* Callouts — "Heads Up" style banners */}
+          {section.callouts && section.callouts.length > 0 && section.callouts.map((callout, i) => (
+            <div
+              key={i}
+              className={`lesson-callout-headsup flex items-start gap-3.5 ${
+                callout.type === 'tip'
+                  ? '!bg-gradient-to-r !from-emerald-50 !to-teal-50 !border-emerald-400'
+                  : ''
+              }`}
+            >
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${
+                callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
+              }`}>
+                <Lightbulb size={16} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
+                  callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
+                }`}>
+                  {callout.type === 'tip' ? '✨ Tip' : callout.type === 'important' ? '⚠️ Heads Up' : '📌 Note'}
+                </p>
+                <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{callout.text}</p>
+              </div>
+            </div>
+          ))}
+
+          {/* Auto "Heads Up" banner if no callouts */}
+          {(!section.callouts || section.callouts.length === 0) && (
+            <div className="lesson-callout-headsup flex items-start gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                <Lightbulb size={16} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 text-amber-600">
+                  ⚠️ Heads Up
+                </p>
+                <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">
+                  This lesson has {totalSectionCount} sections and takes about 20 minutes to complete. Grab a pen — you might want to take notes along the way!
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* "What you'll learn" objectives */}
+          {objectives.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle size={20} className="text-violet-500" />
+                <h3 className="lesson-section-heading text-[1.05rem]" style={{ color: '#7c3aed' }}>What you'll learn</h3>
+              </div>
+              <div className="space-y-2.5">
+                {objectives.map((obj, i) => {
+                  const color = OBJECTIVE_COLORS[i % OBJECTIVE_COLORS.length];
+                  return (
+                    <div
+                      key={i}
+                      className={`rounded-xl border-2 px-4 py-3.5 flex items-start gap-3.5 ${color.bg} ${color.border} shadow-sm`}
+                    >
+                      <span className={`mt-0.5 min-w-[1.75rem] h-7 rounded-full ${color.num} text-white text-[0.7rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                        {i + 1}
+                      </span>
+                      <div>
+                        <p className={`font-body text-[0.95rem] font-semibold leading-snug ${color.text}`}>
+                          {inlineFormat(autoHighlightTerms(obj.text))}
+                        </p>
+                        {obj.example && (
+                          <p className={`text-xs mt-1 ${color.ex} font-mono font-semibold`}>
+                            {obj.example}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       );
+    }
 
     case 'key_concepts':
       return (
         <div className="space-y-4">
           {section.content?.trim() ? (
-            <p className="text-slate-700 leading-relaxed text-base whitespace-pre-line mb-4">
-              {section.content}
-            </p>
+            <div className="mb-4">{formatContent(section.content)}</div>
           ) : (
             <p className="text-slate-400 text-sm italic mb-4">Key concepts are being compiled. Review the curriculum sources below for reference material.</p>
           )}
           {section.callouts && section.callouts.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {section.callouts.map((callout, i) => (
                 <div
                   key={i}
-                  className={`rounded-xl p-4 border-l-4 flex items-start gap-3 ${callout.type === 'important'
-                    ? 'bg-rose-50 border-rose-400'
-                    : callout.type === 'tip'
-                      ? 'bg-emerald-50 border-emerald-400'
-                      : 'bg-amber-50 border-amber-400'
-                    }`}
+                  className={`rounded-xl border-2 px-5 py-4 flex items-start gap-3.5 shadow-sm ${
+                    callout.type === 'important'
+                      ? 'bg-rose-50 border-rose-300'
+                      : callout.type === 'tip'
+                      ? 'bg-emerald-50 border-emerald-300'
+                      : 'bg-amber-50 border-amber-300'
+                  }`}
                 >
-                  <Lightbulb
-                    size={18}
-                    className={
-                      callout.type === 'important'
-                        ? 'text-rose-500 mt-0.5'
-                        : callout.type === 'tip'
-                          ? 'text-emerald-500 mt-0.5'
-                          : 'text-amber-500 mt-0.5'
-                    }
-                  />
-                  <p className="text-sm text-slate-700">{callout.text}</p>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${
+                    callout.type === 'important' ? 'bg-rose-500' : callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`}>
+                    <Lightbulb size={16} className="text-white" />
+                  </div>
+                  <div>
+                    <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
+                      callout.type === 'important' ? 'text-rose-500' : callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
+                    }`}>
+                      {callout.type === 'important' ? '🔑 Important' : callout.type === 'tip' ? '✨ Tip' : '📌 Note'}
+                    </p>
+                    <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{inlineFormat(callout.text)}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -189,31 +599,57 @@ function SectionRenderer({
 
     case 'worked_examples':
       return (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {section.examples && section.examples.length > 0 ? (
             section.examples.map((example, i) => (
               <div
                 key={i}
-                className="bg-gradient-to-br from-rose-50 to-orange-50 rounded-2xl p-5 border border-rose-100"
+                className="bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50 rounded-2xl p-5 border-2 border-rose-200 shadow-md"
               >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-8 h-8 bg-rose-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Calculator size={16} className="text-white" />
+                {/* Problem header */}
+                <div className="flex items-start gap-3.5 mb-4">
+                  <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                    <Calculator size={18} className="text-white" />
                   </div>
-                  <p className="font-semibold text-slate-800 text-sm pt-1">{example.problem}</p>
-                </div>
-                <div className="space-y-1.5 ml-11">
-                  {example.steps.map((step, si) => (
-                    <p key={si} className="text-slate-600 text-sm">
-                      {si + 1}. {step}
+                  <div>
+                    <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] text-rose-400 mb-1">
+                      Example {i + 1}
                     </p>
-                  ))}
-                  {example.answer && (
-                    <p className="text-slate-800 text-sm font-semibold mt-2 pt-2 border-t border-rose-100">
-                      Answer: {example.answer}
-                    </p>
-                  )}
+                    <p className="font-body font-bold text-slate-800 text-[1rem] leading-snug">{example.problem}</p>
+                  </div>
                 </div>
+
+                {/* Solution steps */}
+                {example.steps.length > 0 && (
+                  <div className="ml-14 space-y-2.5 mb-3">
+                    <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] text-slate-400 mb-1.5">Solution</p>
+                    {example.steps.map((step, si) => {
+                      const isFormulaStep = MATH_RE.test(step) && step.length < 100 && !/[a-z]{6,}/.test(step);
+                      return isFormulaStep ? (
+                        <div key={si} className="lesson-formula-box">
+                          {step}
+                        </div>
+                      ) : (
+                        <div key={si} className="flex items-start gap-3">
+                          <span className="mt-0.5 min-w-[1.5rem] h-[1.5rem] rounded-full bg-white border-2 border-rose-300 text-rose-500 text-[0.65rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm">
+                            {si + 1}
+                          </span>
+                          <p className="font-body text-slate-700 text-[0.95rem] leading-[1.75]">{inlineFormat(step)}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Answer box */}
+                {example.answer && (
+                  <div className="ml-14 flex items-center gap-3 mt-3 pt-3 border-t-2 border-rose-200">
+                    <div className="px-3.5 py-1.5 bg-gradient-to-r from-rose-500 to-orange-500 rounded-lg text-white text-[0.65rem] font-black uppercase tracking-widest flex-shrink-0 shadow-sm">
+                      Answer
+                    </div>
+                    <p className="font-body text-slate-800 text-[0.95rem] font-bold">{example.answer}</p>
+                  </div>
+                )}
               </div>
             ))
           ) : (
@@ -224,14 +660,33 @@ function SectionRenderer({
 
     case 'important_notes':
       return (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {section.bulletPoints && section.bulletPoints.length > 0 ? (
-            section.bulletPoints.map((point, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="w-2 h-2 rounded-full bg-rose-400 mt-2 flex-shrink-0" />
-                <p className="text-slate-700 text-sm leading-relaxed">{point}</p>
-              </div>
-            ))
+            section.bulletPoints.map((point, i) => {
+              const calloutMatch = point.match(/^(Note|Important|Remember|Warning|Tip|Key|Formula|Rule)\s*:/i);
+              if (calloutMatch) {
+                const label = calloutMatch[1];
+                const body = point.slice(calloutMatch[0].length).trim();
+                const isWarning = /note|important|warning|remember/i.test(label);
+                return (
+                  <div key={i} className={`rounded-xl px-5 py-4 border-l-4 flex items-start gap-3.5 shadow-sm ${isWarning ? 'bg-rose-50 border-rose-400' : 'bg-amber-50 border-amber-400'}`}>
+                    <Lightbulb size={18} className={`mt-0.5 flex-shrink-0 ${isWarning ? 'text-rose-500' : 'text-amber-500'}`} />
+                    <div>
+                      <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${isWarning ? 'text-rose-500' : 'text-amber-600'}`}>{label}</p>
+                      <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{inlineFormat(autoHighlightTerms(body))}</p>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={i} className="flex items-start gap-3.5 p-4 rounded-xl bg-slate-50 border-2 border-slate-200 hover:border-[#1a85a4]/40 hover:bg-[#f0fbff] transition-colors">
+                  <div className="mt-0.5 w-6 h-6 rounded-full bg-[#1a85a4] flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <span className="text-white text-[0.65rem] font-black">{i + 1}</span>
+                  </div>
+                  <p className="font-body text-slate-700 text-[0.95rem] leading-[1.75] font-medium">{inlineFormat(autoHighlightTerms(point))}</p>
+                </div>
+              );
+            })
           ) : (
             <p className="text-slate-400 text-sm italic">No notes available for this lesson.</p>
           )}
@@ -240,8 +695,27 @@ function SectionRenderer({
 
     case 'try_it_yourself':
       return (
-        <div className="space-y-4">
-          {/* Practice Quiz Button / Completion Badge */}
+        <div className="space-y-5">
+          {/* Hero icon + heading */}
+          <div className="flex flex-col items-center text-center gap-3 py-4">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg" style={{ background: '#9956DE' }}>
+              <CheckCircle size={32} className="text-white" />
+            </div>
+            <h3 className="text-xl font-black" style={{ color: '#9956DE' }}>Try It Yourself</h3>
+            <p className="text-slate-500 text-sm max-w-xs leading-relaxed">
+              Now it's your turn! Try applying what you've learned. You can practice with the exercises at the end of this module.
+            </p>
+          </div>
+
+          {/* Tip callout */}
+          <div className="flex items-start gap-2 rounded-xl px-4 py-3 border" style={{ background: '#f5eeff', borderColor: '#d4aaff' }}>
+            <Lightbulb size={16} className="mt-0.5 shrink-0" style={{ color: '#9956DE' }} />
+            <p className="text-sm" style={{ color: '#7a3db8' }}>
+              <span className="font-bold">Tip:</span> Complete the practice quizzes after this lesson to reinforce your learning!
+            </p>
+          </div>
+
+          {/* Practice Quiz CTA card */}
           {practiceQuiz && (
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
               {practiceQuizCompleted ? (
@@ -253,55 +727,51 @@ function SectionRenderer({
                     <p className="text-sm font-bold text-emerald-700">
                       Quiz Complete
                       {typeof practiceQuizScore === 'number' && (
-                        <span className="ml-2 text-emerald-600">
-                          {practiceQuizScore}%
-                        </span>
+                        <span className="ml-2 text-emerald-600">{practiceQuizScore}%</span>
                       )}
                     </p>
-                    <p className="text-xs text-emerald-600/80">
-                      Great job! You can now complete this lesson.
-                    </p>
+                    <p className="text-xs text-emerald-600/80">Great job! You can now complete this lesson.</p>
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-rose-400 to-orange-400 rounded-xl flex items-center justify-center">
-                      <Zap size={20} className="text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">Practice Quiz</p>
-                      <p className="text-xs text-slate-500">
-                        {practiceQuiz.questions} questions · {practiceQuiz.duration}
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: '#9956DE' }}>Practice Quiz</p>
+                    <p className="font-bold text-slate-800 text-sm">{practiceQuiz.title}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {practiceQuiz.questions} questions · {practiceQuiz.duration}
+                    </p>
                   </div>
                   <button
                     onClick={onStartPractice}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-400 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-md flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#1a85a4] text-white text-sm font-black hover:bg-[#126b84] transition-colors shadow-md uppercase tracking-wide"
                   >
-                    <ClipboardCheck size={16} />
-                    Start Practice Quiz
+                    Start Practice
                   </button>
                 </div>
               )}
             </div>
           )}
 
-          {/* Inline 10-Item Try It Yourself Quiz */}
-          <TryItYourselfQuiz
-            lessonId={lesson.id?.toString() || 'unknown'}
-            lessonTitle={lesson.title}
-            topic={lessonSpecificTopic || section.title || lesson.title}
-            subjectId={lesson.subjectId}
-            competencyCode={lesson.competencyCode}
-            onComplete={(score, total) => {
-              // [TryItYourselfQuiz] Completed
-            }}
-            onQuizComplete={onTryItQuizComplete}
-            onClose={onContinueLearning}
-            onContinueLearning={onContinueLearning}
-          />
+          {/* Try It Yourself Quiz CTA */}
+          <button
+            onClick={onStartTryItQuiz}
+            className="w-full flex items-center justify-between gap-4 text-white rounded-2xl px-6 py-4 shadow-lg transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] group"
+            style={{ background: '#9956DE' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#8744cc')}
+            onMouseLeave={e => (e.currentTarget.style.background = '#9956DE')}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                <PlayCircle size={22} className="text-white" />
+              </div>
+              <div className="text-left">
+                <p className="font-black text-sm uppercase tracking-wide">Start Practice Quiz</p>
+                <p className="text-white/80 text-xs mt-0.5">10 questions · AI-generated</p>
+              </div>
+            </div>
+            <ArrowRight size={20} className="text-white/80 group-hover:translate-x-1 transition-transform" />
+          </button>
         </div>
       );
 
@@ -309,9 +779,7 @@ function SectionRenderer({
       return (
         <div className="space-y-3">
           {section.content?.trim() ? (
-            <p className="text-slate-700 text-base leading-relaxed whitespace-pre-line">
-              {section.content}
-            </p>
+            formatContent(section.content)
           ) : (
             <p className="text-slate-400 text-sm italic">Summary is being prepared. Review the lesson sections above to reinforce your understanding.</p>
           )}
@@ -430,6 +898,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const [direction, setDirection] = useState(1);
   const [showCompletion, setShowCompletion] = useState(false);
   const [expandedProblem, setExpandedProblem] = useState<number | null>(null);
+  const [showTryItPage, setShowTryItPage] = useState(false);
+  const [tryItQuizCompleted, setTryItQuizCompleted] = useState(false);
 
   const request = {
     topic: lesson.title,
@@ -512,7 +982,28 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     return <ErrorPanel message={error} onRetry={retry} isOffline={isOffline} />;
   }
 
-  const currentSectionData = sections[currentSection] || {
+  // Derive lesson number from lessonId for the TryItYourselfPage title
+  const lessonNumMatch = String(lesson.id || '').match(/\d+/);
+  const lessonNumber = lessonNumMatch ? lessonNumMatch[0] : '1';
+
+  if (showTryItPage) {
+    return (
+      <TryItYourselfPage
+        lessonId={lesson.id?.toString() || 'unknown'}
+        lessonTitle={lesson.title}
+        lessonNumber={lessonNumber}
+        topic={lessonSpecificTopic || lesson.title}
+        subjectId={lesson.subjectId}
+        competencyCode={lesson.competencyCode}
+        onClose={() => setShowTryItPage(false)}
+        onComplete={(scorePercent) => {
+          onTryItQuizComplete?.(scorePercent);
+          setTryItQuizCompleted(true);
+          setShowTryItPage(false);
+        }}
+      />
+    );
+  }  const currentSectionData = sections[currentSection] || {
     type: 'introduction',
     title: 'Loading...',
     content: 'Lesson content is loading. Please wait a moment.',
@@ -538,15 +1029,18 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     onComplete(undefined, undefined, goToNext);
   };
 
-  const isPracticeRequired = Boolean(practiceQuiz && !practiceQuizCompleted);
+  // Block completion if either the external practice quiz OR the Try It Yourself quiz is unfinished
+  const isPracticeRequired = Boolean(
+    (practiceQuiz && !practiceQuizCompleted) || !tryItQuizCompleted
+  );
   const currentTab = SECTION_TABS[currentSection] || SECTION_TABS[0];
   const CurrentTabIcon = currentTab.icon;
 
-  return (
+  const content = (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 overflow-hidden font-sans">
-      <header className="flex-none bg-transparent px-3 sm:px-8 pt-10 md:pt-0 pb-3 sm:py-6 relative z-40">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+      <header className="flex-none bg-transparent px-3 sm:px-6 pt-2 sm:pt-3 md:pt-4 pb-2 sm:pb-3 sm:py-4 relative z-40">
+        <div className="max-w-[90rem] mx-auto flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
             <button
               onClick={onBack}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors flex-shrink-0 shadow-sm"
@@ -554,8 +1048,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             >
               <ArrowLeft size={16} />
             </button>
-            <div className="min-w-0 flex flex-col justify-center">
-              <div className="flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">
+            <div className="min-w-0 flex flex-col justify-center flex-1">
+              {/* Badges row — hidden on mobile, visible sm+ */}
+              <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">
                 <BookOpen size={10} />
                 <span>NOTEBOOK</span>
                 {activeModel && (
@@ -569,7 +1064,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   </span>
                 )}
               </div>
-              <h1 className="font-bold text-slate-800 text-sm truncate">{lesson.title}</h1>
+              {/* Mobile: compact single-line label */}
+              <div className="flex sm:hidden items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
+                <BookOpen size={9} />
+                <span>Notebook</span>
+                {retrievalBand === 'high' && (
+                  <span className="text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded text-[8px] font-semibold border border-emerald-200 leading-none">
+                    DepEd
+                  </span>
+                )}
+              </div>
+              <h1 className="font-bold text-slate-800 text-xs sm:text-sm truncate">{lesson.title}</h1>
             </div>
           </div>
 
@@ -580,7 +1085,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 {Math.round(((currentSection + 1) / totalSections) * 100)}%
               </p>
             </div>
-            <div className="w-16 sm:w-24 md:w-32 h-1.5 sm:h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div className="w-12 sm:w-24 md:w-32 h-1.5 sm:h-2 bg-slate-200 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-[#7ec16d] rounded-full"
                 animate={{ width: `${((currentSection + 1) / totalSections) * 100}%` }}
@@ -591,8 +1096,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 overflow-hidden px-4 sm:px-8 pb-8 relative flex justify-center">
-        <div className="w-full max-w-5xl h-full relative flex md:pl-16 pt-5 md:pt-0">
+      <main className="flex-1 overflow-hidden px-2 sm:px-5 pb-2 relative flex justify-center min-h-0">
+        <div className="w-full max-w-[90rem] h-full relative flex md:pl-16 pt-10 sm:pt-10 md:pt-0">
 
           {/* Tabs - Stick out on left */}
           <div className="hidden md:flex absolute left-0 top-8 bottom-8 w-20 flex-col justify-between z-0 py-2">
@@ -631,8 +1136,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           </div>
 
           {/* Mobile Folder Tabs - OUTSIDE colored section */}
-          <div className="md:hidden absolute left-0 right-0 top-0 z-30 px-2 bg-slate-100/95 backdrop-blur-sm">
-            <div className="flex gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="md:hidden absolute left-0 right-0 top-0 z-30 bg-slate-100/95 backdrop-blur-sm">
+            <div className="flex gap-0.8 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1">
               {SECTION_TABS.map((tab, idx) => {
                 const active = idx === currentSection;
                 const Icon = tab.icon;
@@ -644,13 +1149,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                       setCurrentSection(idx);
                     }}
                     className={cn(
-                      'flex items-center gap-1 px-2.5 py-1.5 rounded-t-lg transition-all duration-200 shrink-0 text-[10px] font-bold',
+                      'flex items-center gap-1.5 px-3 py-2 rounded-t-lg transition-all duration-200 shrink-0 text-[11px] font-bold touch-manipulation min-h-[2.5rem]',
                       active
                         ? `${tab.tabBg} text-white shadow-md`
                         : 'bg-slate-200/80 text-slate-500'
                     )}
                   >
-                    <Icon size={12} />
+                    <Icon size={14} />
                     <span>{tab.label}</span>
                   </button>
                 );
@@ -659,24 +1164,24 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           </div>
 
           {/* Main Notebook Container */}
-          <div className={cn("flex-1 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden relative z-10 transition-colors duration-500", currentTab.tabBg)}>
+          <div className={cn("flex-1 min-w-0 rounded-none sm:rounded-lg shadow-2xl flex flex-col overflow-visible relative z-10 transition-colors duration-500", currentTab.tabBg)}>
             {/* Header inside notebook */}
-            <div className="px-4 sm:px-8 py-3 sm:py-5 flex items-center gap-3 sm:gap-4 text-white">
-              <div className="bg-white/20 p-2 sm:p-2.5 rounded-xl shrink-0">
-                <CurrentTabIcon size={22} className="text-white" />
+            <div className="px-3 sm:px-6 py-2 sm:py-3.5 flex items-center gap-2 sm:gap-4 text-white">
+              <div className="bg-white/20 p-1 sm:p-2 rounded-lg sm:rounded-xl shrink-0">
+                <CurrentTabIcon size={16} className="text-white" />
               </div>
               <div className="flex flex-col min-w-0">
-                <h2 className="text-lg sm:text-2xl md:text-3xl font-bold truncate" title={currentSectionData.title}>
+                <h2 className="lesson-section-heading text-sm sm:text-xl md:text-2xl truncate" title={currentSectionData.title}>
                   {currentSectionData.title}
                 </h2>
-                <p className="text-white/90 text-xs sm:text-sm font-medium truncate mt-0.5" title={lesson.title}>
+                <p className="text-white/90 text-[10px] sm:text-xs font-medium truncate mt-0.5 font-body" title={lesson.title}>
                   {lesson.title}
                 </p>
               </div>
             </div>
 
             {/* Inner Paper Area */}
-            <div className="flex-1 bg-[#fdfdfd] rounded-[1.5rem] m-1 sm:m-2 mt-0 relative overflow-hidden shadow-inner flex flex-col">
+            <div className="flex-1 min-h-0 bg-[#fdfdfd] rounded-lg sm:rounded-[1.5rem] m-1 mt-0 relative overflow-hidden shadow-inner flex flex-col">
               {/* Notebook lines background */}
               <div
                 className="absolute inset-0 pointer-events-none opacity-30"
@@ -687,10 +1192,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 }}
               />
               {/* Red margin line */}
-              <div className="absolute top-0 bottom-0 left-10 sm:left-12 md:left-16 w-[2px] bg-rose-300/60 pointer-events-none z-0" />
+              <div className="absolute top-0 bottom-0 left-8 sm:left-12 md:left-16 w-[2px] bg-rose-300/60 pointer-events-none z-0" />
 
               {/* Scrollable Content */}
-              <div className="relative z-10 flex-1 overflow-y-auto px-4 sm:px-6 md:pl-24 md:pr-12 py-4 sm:py-8" key={currentSection}>
+              <div className="relative z-10 flex-1 min-h-0 overflow-y-auto px-3 sm:px-5 md:pl-20 md:pr-10 py-2 sm:py-6" key={currentSection}>
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentSection}
@@ -698,9 +1203,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="space-y-6"
+                    className="space-y-4 sm:space-y-6"
                   >
-                    <div className="bg-white/90 backdrop-blur-sm rounded-[1.5rem] p-4 sm:p-6 md:p-8 shadow-sm border border-slate-100/50">
+                    <div className="bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-[1.5rem] p-4 sm:p-6 md:p-8 shadow-sm border border-slate-100/50 font-body">
                       <SectionRenderer
                         section={currentSectionData}
                         sectionIndex={currentSection}
@@ -709,9 +1214,12 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         }
                         expandedIndex={expandedProblem}
                         lesson={lesson}
+                        practiceQuiz={practiceQuiz}
+                        practiceQuizCompleted={practiceQuizCompleted}
+                        practiceQuizScore={practiceQuizScore}
+                        onStartPractice={onStartPractice}
                         lessonSpecificTopic={lessonSpecificTopic}
-                        onTryItQuizComplete={onTryItQuizComplete}
-                        onContinueLearning={onContinueLearning}
+                        onStartTryItQuiz={() => setShowTryItPage(true)}
                       />
                     </div>
 
@@ -737,14 +1245,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         </div>
       </main>
 
-      <footer className="bg-transparent px-3 sm:px-8 flex-shrink-0 relative z-40 w-full flex justify-center items-center h-16 sm:h-20">
-        <div className="w-full max-w-5xl flex flex-col items-center">
+      <footer className="bg-slate-50 border-t border-slate-100 px-3 sm:px-6 flex-shrink-0 relative z-50 w-full flex justify-center items-center py-1.5 sm:py-3">
+        <div className="w-full max-w-[90rem] flex flex-col items-center">
           <div className="flex items-center justify-center gap-4 sm:gap-8 w-full md:ml-16">
             <Button
               onClick={handlePrevious}
               disabled={currentSection === 0}
               variant="outline"
-              className="px-4 sm:px-6 py-2 sm:py-3 rounded-full font-bold text-xs sm:text-sm bg-white border-slate-200 text-slate-600 shadow-sm disabled:opacity-40 hover:bg-slate-50 transition-colors flex items-center gap-1 sm:gap-2"
+              className="px-4 sm:px-5 py-2 sm:py-2 rounded-full font-bold text-xs sm:text-sm bg-white border-slate-200 text-slate-600 shadow-sm disabled:opacity-40 hover:bg-slate-50 transition-colors flex items-center gap-1 sm:gap-2 min-w-[2.5rem] min-h-[2.5rem] touch-manipulation"
             >
               <ArrowLeft size={14} />
               <span className="hidden sm:inline">Previous</span>
@@ -757,7 +1265,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             <Button
               onClick={handleNext}
               disabled={currentSection === totalSections - 1 && isPracticeRequired}
-              className="px-5 sm:px-8 py-2 sm:py-3 rounded-full font-bold text-xs sm:text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center gap-1 sm:gap-2"
+              className="px-5 sm:px-7 py-2 sm:py-2 rounded-full font-bold text-xs sm:text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center gap-1 sm:gap-2 min-w-[2.5rem] min-h-[2.5rem] touch-manipulation"
             >
               {currentSection === totalSections - 1 ? (
                 <>
@@ -774,7 +1282,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           </div>
           {currentSection === totalSections - 1 && isPracticeRequired && (
             <p className="text-center text-[10px] sm:text-xs font-semibold text-amber-600 mt-2 sm:mt-3 md:ml-16">
-              Complete the practice quiz first to unlock lesson completion.
+              {!tryItQuizCompleted
+                ? 'Complete the Try It Yourself quiz first to unlock lesson completion.'
+                : 'Complete the practice quiz first to unlock lesson completion.'}
             </p>
           )}
         </div>
@@ -828,6 +1338,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       </AnimatePresence>
     </div>
   );
+
+  const portalTarget = document.getElementById('modal-root') || document.body;
+  return ReactDOM.createPortal(content, portalTarget);
 };
 
 export default LessonViewer;

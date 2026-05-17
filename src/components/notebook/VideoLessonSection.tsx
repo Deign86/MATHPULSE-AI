@@ -10,9 +10,9 @@ interface VideoLessonSectionProps {
 
 function LoadingSkeleton() {
   return (
-    <div className="rounded-2xl overflow-hidden bg-slate-900 shadow-lg">
-      <div className="relative w-full aspect-video bg-slate-800 animate-pulse" />
-      <div className="px-4 py-3 bg-slate-800 space-y-2">
+    <div className="rounded-2xl bg-slate-900 shadow-lg">
+      <div className="w-full rounded-t-2xl bg-slate-800 animate-pulse" style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }} />
+      <div className="px-4 py-3 bg-slate-800 rounded-b-2xl space-y-2">
         <div className="h-4 bg-slate-700 rounded w-3/4 animate-pulse" />
         <div className="h-3 bg-slate-700 rounded w-1/2 animate-pulse" />
       </div>
@@ -43,18 +43,25 @@ export const VideoLessonSection: React.FC<VideoLessonSectionProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="rounded-2xl overflow-hidden bg-slate-900 shadow-lg"
+          className="rounded-2xl bg-slate-900 shadow-lg"
+          style={{ overflow: 'visible' }}
         >
-          <div className="relative w-full aspect-video">
+          {/* Padding-bottom ratio trick — works in any flex/grid context.
+              Change the paddingBottom percentage to adjust the video height:
+              56.25% = 16:9  |  75% = 4:3  |  62.5% = 16:10  |  50% = 2:1  */}
+          <div
+            className="w-full rounded-t-xl"
+            style={{ position: 'relative', paddingBottom: '40%', height: 0, overflow: 'hidden' }}
+          >
             <iframe
               src={`https://www.youtube.com/embed/${mainVideo.videoId}?rel=0&modestbranding=1`}
               title={mainVideo.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
-              className="absolute inset-0 w-full h-full border-0"
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
             />
           </div>
-          <div className="px-4 py-3 bg-slate-800">
+          <div className="px-4 py-3 bg-slate-800 rounded-b-2xl">
             <p className="text-slate-200 text-sm font-medium truncate">
               {mainVideo.title}
             </p>
