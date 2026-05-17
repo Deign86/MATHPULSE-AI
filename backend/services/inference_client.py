@@ -188,6 +188,7 @@ def get_model_for_task(task_type: str) -> str:
     task_key_map = {
         "chat": "INFERENCE_CHAT_MODEL_ID",
         "quiz_generation": "HF_QUIZ_MODEL_ID",
+        "practice_generation": "HF_QUIZ_MODEL_ID",
         "rag_lesson": "HF_RAG_MODEL_ID",
         "rag_problem": "HF_RAG_MODEL_ID",
         "rag_analysis_context": "HF_RAG_MODEL_ID",
