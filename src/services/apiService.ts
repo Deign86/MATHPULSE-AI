@@ -187,6 +187,7 @@ export interface ImportedStudentOverviewItem {
   lrn?: string | null;
   name: string;
   email?: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   classSectionId?: string | null;
   className: string;
   grade?: string;
@@ -864,6 +865,7 @@ export interface AdminUserApiRecord {
   uid: string;
   name: string;
   email: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   role: string;
   status: string;
   department: string;

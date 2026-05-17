@@ -440,7 +440,7 @@ const LoginPage: React.FC = () => {
             <motion.div className="flex items-center gap-2.5">
               <motion.div className="relative flex items-center justify-center drop-shadow-md">
                 <img 
-                  src="/mathpulse_logo.png" 
+                  src="/mathpulse_final_logo.png" 
                   alt="MathPulse AI Logo" 
                   className="w-16 h-16 object-contain flex-shrink-0"
                 />
@@ -522,14 +522,14 @@ const LoginPage: React.FC = () => {
             transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
             className="relative flex justify-center lg:justify-end"
           >
-<div className="bg-white/85 backdrop-blur-2xl border border-slate-200/60 rounded-3xl p-7 w-full max-w-md relative overflow-hidden shadow-[0_20px_60px_-15px_rgba(168,85,247,0.15)]">
+<div className="bg-white/85 backdrop-blur-2xl border border-slate-200/60 rounded-3xl p-7 w-full max-w-md relative overflow-hidden shadow-[0_20px_60px_-15px_rgba(168,85,247,0.15)] max-h-[90vh] overflow-y-auto">
                 {/* Top accent glow line */}
                 <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 via-pink-500 to-sky-500" />
                 {/* Subtle inner glow */}
                 <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-[60px] pointer-events-none" />
 
               {/* Form Header */}
-              <div className="text-center mb-6 relative">
+              <div className="text-center mb-4 relative">
                 <motion.h3
                   className="text-2xl font-display font-bold text-slate-900 mb-2"
                   initial={{ opacity: 0 }}
@@ -549,7 +549,7 @@ const LoginPage: React.FC = () => {
               </div>
 
               {/* Login Form */}
-              <form onSubmit={handleSubmit} className="space-y-4 mb-5 relative">
+              <form onSubmit={handleSubmit} className="space-y-3 mb-4 relative">
                 {error && !isPasswordRequirementError && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
@@ -604,7 +604,7 @@ const LoginPage: React.FC = () => {
                             key={roleOption.role}
                             type="button"
                             onClick={() => setSelectedRole(roleOption.role)}
-                            className={`rounded-lg border px-3 py-2 text-xs font-body font-semibold transition-all ${isActive ? 'border-sky-400 bg-sky-50 text-sky-700' : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'}`}
+                            className={`rounded-lg border px-3 py-2.5 text-sm font-body font-semibold transition-all ${isActive ? 'border-sky-400 bg-sky-50 text-sky-700' : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'}`}
                           >
                             {roleOption.label}
                           </button>
@@ -619,47 +619,43 @@ const LoginPage: React.FC = () => {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
+                    className="grid grid-cols-2 gap-3"
                   >
-                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                      Grade Level
-                    </label>
-                    <div className="relative">
-                      <GraduationCap size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <select
-                        value={selectedGrade}
-                        onChange={(e) => setSelectedGrade(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
-                        required
-                      >
-                        {GRADE_OPTIONS.map((grade) => (
-                          <option key={grade} value={grade}>{grade}</option>
-                        ))}
-                      </select>
+                    <div>
+                      <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                        Grade Level
+                      </label>
+                      <div className="relative">
+                        <GraduationCap size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <select
+                          value={selectedGrade}
+                          onChange={(e) => setSelectedGrade(e.target.value)}
+                          className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
+                          required
+                        >
+                          {GRADE_OPTIONS.map((grade) => (
+                            <option key={grade} value={grade}>{grade}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                  </motion.div>
-                )}
-
-                {isSignUp && selectedRole === 'student' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                  >
-                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                      Section
-                    </label>
-                    <div className="relative">
-                      <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <select
-                        value={selectedSection}
-                        onChange={(e) => setSelectedSection(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
-                        required
-                      >
-                        {(SECTION_OPTIONS[selectedGrade] || []).map((section) => (
-                          <option key={section} value={section}>{section}</option>
-                        ))}
-                      </select>
+                    <div>
+                      <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
+                        Section
+                      </label>
+                      <div className="relative">
+                        <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <select
+                          value={selectedSection}
+                          onChange={(e) => setSelectedSection(e.target.value)}
+                          className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
+                          required
+                        >
+                          {(SECTION_OPTIONS[selectedGrade] || []).map((section) => (
+                            <option key={section} value={section}>{section}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -678,7 +674,7 @@ const LoginPage: React.FC = () => {
                       <select
                         value={selectedDepartment}
                         onChange={(e) => setSelectedDepartment(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
+                        className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
                         required
                       >
                         {DEPARTMENT_OPTIONS.teacher.map((department) => (
@@ -740,7 +736,7 @@ const LoginPage: React.FC = () => {
                       {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                     </motion.button>
                   </div>
-                  {isSignUp && (
+                  {isSignUp && password.length > 0 && !passwordMeetsSignupRequirements && (
                     <div className="mt-2 rounded-lg border border-sky-100/80 bg-sky-50/70 px-3 py-2">
                       <p className="text-[11px] font-body font-semibold uppercase tracking-wider text-slate-600">
                         Password requirements
@@ -759,11 +755,7 @@ const LoginPage: React.FC = () => {
                         ))}
                       </ul>
 
-                      {isPasswordRequirementError && (
-                        <p className="mt-2 text-[11px] font-body font-semibold text-rose-600">
-                          Password does not meet signup requirements.
-                        </p>
-                      )}
+
                     </div>
                   )}
                 </motion.div>

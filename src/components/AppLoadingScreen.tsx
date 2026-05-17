@@ -29,7 +29,7 @@ const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading 
           className="app-loader-avatar-shell"
         >
           <img 
-            src="/avatar/avatar_icon.png" 
+            src="/mathpulse_final_logo.png" 
             alt="Loading..." 
             className={`app-loader-avatar ${showFallbackIcon ? 'hidden' : 'block'}`}
             onError={() => {

@@ -28,6 +28,7 @@ export interface ManagedStudent {
   name: string;
   email: string;
   avatar: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   teacherId?: string;
   className?: string;
   grade?: string;

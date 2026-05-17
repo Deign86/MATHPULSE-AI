@@ -16,6 +16,7 @@ import ConfirmModal from './ConfirmModal';
 import NotificationDropdown from './NotificationDropdown';
 import LogoutActionButton from './LogoutActionButton';
 import UserAvatar from './UserAvatar';
+import { getDefaultAvatar } from '../utils/avatarUtils';
 import { sanitizeDisplayName } from '../utils/profileValidation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
@@ -116,6 +117,7 @@ export interface StudentView {
   lrn?: string;
   name: string;
   avatar: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   avgScore: number;
   riskLevel: 'high' | 'medium' | 'low';
   weakestTopic: string;
@@ -203,7 +205,8 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
     id: s.id,
     lrn: s.lrn,
     name: s.name,
-    avatar: s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`,
+    avatar: (s.avatar && !s.avatar.includes('ui-avatars.com')) ? s.avatar : getDefaultAvatar(s.gender),
+    gender: s.gender,
     avgScore: s.avgQuizScore,
     riskLevel,
     weakestTopic: s.weakestTopic || 'N/A',
@@ -279,7 +282,8 @@ function toImportedStudentView(s: ImportedClassOverviewResponse['students'][numb
     id: s.id,
     lrn: s.lrn || undefined,
     name: s.name,
-    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`,
+    avatar: getDefaultAvatar(s.gender),
+    gender: s.gender,
     avgScore: s.avgQuizScore,
     riskLevel,
     weakestTopic: s.weakestTopic || 'Foundational Skills',
@@ -333,7 +337,8 @@ function toUploadedStudentView(
     id: `upload-${resolvedClassSectionId}-${identity}`,
     lrn: student.lrn,
     name: student.name,
-    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=random`,
+    avatar: getDefaultAvatar(null),
+    gender: null,
     avgScore,
     riskLevel,
     weakestTopic,
@@ -1156,9 +1161,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-r from-[#7274ED] to-[#9956DE] rounded-2xl flex items-center justify-center shadow-md flex-shrink-0">
-              <img src="/avatar/avatar_icon.png" alt="MathPulse AI" className="w-10 h-10 object-contain drop-shadow-md" />
-            </div>
+            <img src="/mathpulse_final_logo.png" alt="MathPulse AI" className="w-12 h-12 object-contain drop-shadow-md flex-shrink-0" />
             {(!sidebarCollapsed || sidebarHovered) && (
               <div>
                 <h1 className="text-base font-semibold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h1>
