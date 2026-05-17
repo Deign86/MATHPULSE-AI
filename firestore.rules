@@ -341,9 +341,15 @@ service cloud.firestore {
     }
 
     match /quizResults/{docId} {
-      // Allow students to read their own by document ID
       allow read: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
-      allow create, update: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /quizSubmissions/{docId} {
+      allow read: if isSignedIn() && (resource.data.lrn == request.auth.uid || isTeacherOrAdmin());
+      allow create: if isSignedIn();
       allow delete: if isAdmin();
     }
 
