@@ -53,10 +53,11 @@ service cloud.firestore {
     }
 
     // ── Tutor Memory (profile, sessions, working state — written by backend, read by self) ──
-    // Backend writes via Firebase Admin SDK (bypasses rules); students can also read their own
+    // Backend writes via Firebase Admin SDK (bypasses rules); students can read their own
+    // Write restricted to teachers/admins — backend Admin SDK bypasses rules, so it still works
     match /users/{userId}/tutorMemory/{memoryPath=**} {
       allow read: if isSelf(userId) || isTeacherOrAdmin();
-      allow write: if isSelf(userId) || isTeacherOrAdmin();  // Students can write (backend also writes via Admin SDK)
+      allow write: if isTeacherOrAdmin();
     }
 
     // ── User Assessments (subcollection — written by student, read self + teachers/admins) ──
