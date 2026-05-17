@@ -494,8 +494,8 @@ html.smart-dark [data-preserve-color='true'] {
 /* App loader components (moved from inline styles) */
 .app-loader-screen { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; background: #f7f9fc; }
 .app-loader-card { width: min(100%, 24rem); padding: 2rem; border-radius: 2rem; border: 1px solid #dde3eb; background: #ffffff; box-shadow: 0 24px 40px rgba(56, 189, 248, 0.12); display: flex; flex-direction: column; align-items: center; gap: 1.5rem; }
-.app-loader-avatar-shell { width: 6rem; height: 6rem; border-radius: 1.5rem; border: 2px solid #ffffff; background: linear-gradient(135deg, #e0f2fe 0%, #e0e7ff 100%); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12); display: flex; align-items: center; justify-content: center; }
-.app-loader-avatar { width: 4rem; height: 4rem; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(15, 23, 42, 0.2)); }
+.app-loader-avatar-shell { width: 8rem; height: 8rem; border-radius: 1.5rem; border: 2px solid #ffffff; background: linear-gradient(135deg, #e0f2fe 0%, #e0e7ff 100%); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12); display: flex; align-items: center; justify-content: center; }
+.app-loader-avatar { width: 5.5rem; height: 5.5rem; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(15, 23, 42, 0.2)); }
 .app-loader-bot-icon { width: 4rem; height: 4rem; }
 .app-loader-title { margin: 0; font-size: 1.25rem; font-weight: 700; color: #0a1628; }
 .app-loader-message-row { margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }

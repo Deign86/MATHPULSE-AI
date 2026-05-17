@@ -6,7 +6,7 @@ interface AppLoadingScreenProps {
   message?: string;
 }
 
-const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading MathPulse AI...' }) => {
+const AppLoadingScreen: React.FC<AppLoadingScreenProps> = ({ message = 'Loading...' }) => {
   const [showFallbackIcon, setShowFallbackIcon] = useState(false);
 
   return (
