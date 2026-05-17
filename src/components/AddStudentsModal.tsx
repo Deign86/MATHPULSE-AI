@@ -81,18 +81,29 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 max-h-[70vh] flex flex-col">
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
           <div className="flex items-center justify-between p-5 border-b border-[#f1f5f9]">
             <h2 className="text-base font-semibold text-[#1e293b]">Add Students to {grade} - {section}</h2>
             <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#f1f5f9]"><X size={18} className="text-[#64748b]" /></button>
           </div>
           <div className="p-4 space-y-3 flex-1 overflow-hidden flex flex-col">
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
-              <Input placeholder="Search students..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
+                <Input placeholder="Search students..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8 h-9 text-sm" />
+              </div>
+              <button
+                onClick={() => {
+                  if (selected.size === filtered.length) setSelected(new Set());
+                  else setSelected(new Set(filtered.map((s) => s.uid)));
+                }}
+                className="text-[11px] font-semibold text-[#9956DE] hover:text-[#7c3aed] bg-[#9956DE]/10 hover:bg-[#9956DE]/20 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+              >
+                {selected.size === filtered.length && filtered.length > 0 ? 'Deselect All' : 'Select All'}
+              </button>
             </div>
-            <p className="text-xs text-[#64748b]">{selected.size} selected</p>
-            <div className="flex-1 overflow-y-auto space-y-1">
+            <p className="text-xs text-[#64748b]">{selected.size} of {filtered.length} selected</p>
+            <div className="flex-1 overflow-y-auto space-y-1 min-h-[300px]">
               {loading ? (
                 <p className="text-sm text-center text-[#64748b] py-6">Loading...</p>
               ) : filtered.length === 0 ? (
