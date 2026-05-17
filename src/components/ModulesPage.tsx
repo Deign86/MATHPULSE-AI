@@ -411,11 +411,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       onEarnXP(xpEarned, `Quiz Completed! +${xpEarned} XP`);
     }
     setSelectedQuiz(null);
-    if (setIsInQuizMode) setIsInQuizMode(false);
   };
 
+  // Sync quiz mode state with parent
+  useEffect(() => {
+    if (setIsInQuizMode) setIsInQuizMode(!!selectedQuiz);
+  }, [selectedQuiz, setIsInQuizMode]);
+
   if (selectedQuiz) {
-    if (setIsInQuizMode) setIsInQuizMode(true);
     return (
       <QuizExperience
         quiz={selectedQuiz}
