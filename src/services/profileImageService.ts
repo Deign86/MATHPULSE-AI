@@ -251,6 +251,20 @@ export const uploadProfilePicture = async ({
         '[PROFILE UPLOAD] Photo was uploaded but the database record may be stale. It will refresh on next login.',
       );
     }
+
+    // Also sync photo to leaderboard collection so it shows immediately
+    try {
+      const { doc: firestoreDoc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      await updateDoc(firestoreDoc(db, 'leaderboard', profileUid), { photo: downloadURL }).catch(() => {
+        // Leaderboard doc may not exist yet — create it via setDoc
+        return import('firebase/firestore').then(({ setDoc }) =>
+          setDoc(firestoreDoc(db, 'leaderboard', profileUid), { photo: downloadURL }, { merge: true })
+        );
+      });
+    } catch {
+      // Non-critical — leaderboard will sync on next XP change
+    }
   }
 
   return downloadURL;

@@ -224,10 +224,10 @@ export const onStudentProfileUpdated = functions.firestore
       afterData,
     });
 
-    // Update leaderboard collection when XP changes
+    // Update leaderboard collection when XP, name, or photo changes
     const beforeXP = beforeData.totalXP as number || 0;
     const afterXP = afterData.totalXP as number || 0;
-    if (beforeXP !== afterXP || beforeData.name !== afterData.name || beforeData.level !== afterData.level) {
+    if (beforeXP !== afterXP || beforeData.name !== afterData.name || beforeData.level !== afterData.level || beforeData.photo !== afterData.photo) {
       const leaderboardRef = db.collection("leaderboard").doc(userId);
       await leaderboardRef.set({
         name: afterData.name || 'Unknown',
