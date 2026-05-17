@@ -304,7 +304,30 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
     };
   }
 
-  // 4. Last resort: user profile has initialAssessmentCompleted but no detailed data
+  // 4. users/{uid}/assessments subcollection (from gradesService.saveAssessmentResult)
+  const gradesSnap = await getDocs(
+    query(collection(db, 'users', studentId, 'assessments'), orderBy('completedAt', 'desc'), limit(5))
+  ).catch(() => null);
+  if (gradesSnap && !gradesSnap.empty) {
+    const entries = gradesSnap.docs.map(d => d.data());
+    const latest = entries[0];
+    const score = latest.score || latest.scorePercent || 0;
+    const totalAttempts = entries.length;
+    const avgScore = Math.round(entries.reduce((sum, e) => sum + (e.score || e.scorePercent || 0), 0) / totalAttempts);
+    return {
+      status: 'ready',
+      headline: score >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
+      summary: `You've completed ${totalAttempts} diagnostic assessment${totalAttempts > 1 ? 's' : ''}. Your latest score is ${score}% (average: ${avgScore}%).`,
+      strengths: [],
+      weaknesses: latest.risk === 'At Risk' || latest.risk === 'High' ? [latest.subject || 'General Mathematics'] : [],
+      recommendation: 'Continue with your personalized learning path to strengthen weak areas.',
+      latestAssessmentId: latest.testId || '', latestScorePercent: score,
+      latestRiskLevel: latest.risk || (score >= 70 ? 'Low' : score >= 50 ? 'Moderate' : 'High'),
+      updatedAt: latest.completedAt?.toDate?.() || new Date(),
+    };
+  }
+
+  // 5. Last resort: user profile has initialAssessmentCompleted but no detailed data
   const userSnap = await getDoc(doc(db, 'users', studentId)).catch(() => null);
   if (userSnap?.exists()) {
     const u = userSnap.data();

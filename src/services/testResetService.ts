@@ -154,6 +154,8 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
       totalXP: 0,
       streak: 0,
       streakHistory: [],
+      quizzesCompleted: 0,
+      averageScore: 0,
       atRiskSubjects: [],
       hasTakenDiagnostic: false,
       iarAssessmentState: 'not_started',
@@ -210,6 +212,11 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   deletedDocs += await deleteSubcollectiondocs(`assessments/${uid}`, 'attempts');
   deletedDocs += await deleteSubcollectiondocs(`studentProgress/${uid}`, 'diagnostics');
   deletedDocs += await deleteSubcollectiondocs(`assessmentQuestionHistory/${uid}`, 'questions');
+  deletedDocs += await deleteSubcollectiondocs(`practice_results/${uid}`, 'sessions');
+
+  // Delete grade summary and assessment history
+  await deleteDoc(doc(db, 'users', uid, 'gradeSummary', 'current')).then(() => { deletedDocs += 1; }).catch(() => undefined);
+  deletedDocs += await deleteSubcollectiondocs(`users/${uid}`, 'assessments');
 
   if (effectiveLrn !== uid) {
     deletedDocs += await tryDeleteByField('notifications', 'userId', effectiveLrn);

@@ -192,7 +192,7 @@ def _parse_questions_response(raw: str, count: int) -> List[Dict[str, Any]]:
 
 def _build_question_prompt(subject: str, competency: str, difficulty: str, count: int) -> tuple[str, str]:
     system_prompt = (
-        "You are an expert Filipino math educator. "
+        "You are an expert math educator for Filipino Senior High School students. "
         "Generate exactly " + str(count) + " multiple-choice math questions "
         "for the subject \"" + subject + "\" focused on competency: \"" + competency + "\". "
         "Difficulty level: " + difficulty + ". "
@@ -202,7 +202,7 @@ def _build_question_prompt(subject: str, competency: str, difficulty: str, count
         "\"correct_index\": 0-3, \"explanation\": \"...\", "
         "\"competency\": \"...\", \"difficulty\": \"...\", "
         "\"bloomsLevel\": \"Remember|Understand|Apply|Analyze|Evaluate|Create\" }] }. "
-        "Use Filipino context where appropriate. Make questions clear and unambiguous."
+        "All questions and options MUST be written in English. Make questions clear and unambiguous."
     )
     user_message = (
         f"Generate {count} multiple-choice math questions for {subject}, "

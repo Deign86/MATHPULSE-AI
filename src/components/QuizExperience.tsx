@@ -724,6 +724,9 @@ timeSpent,
     }
 
 playSound('complete');
+
+    // Notify parent of completion with score and XP
+    onComplete?.(percentage, xpEarned);
     };
 
   const isCurrentlyAnswered = viewIndex < currentQuestionIndex || (viewIndex === currentQuestionIndex && showExplanation);
