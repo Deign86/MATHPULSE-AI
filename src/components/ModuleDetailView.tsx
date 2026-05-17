@@ -440,42 +440,42 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         <div className="absolute inset-0 opacity-10 pointer-events-none module-detail-grid-pattern" />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="relative p-4 md:p-7 lg:p-10 flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-8">
+        <div className="relative p-3 md:p-4 lg:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-5">
           <div className="flex-1 text-white">
-            <div className="flex flex-wrap items-center gap-3 mb-4 md:mb-5">
-              <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[11px] font-black uppercase tracking-widest text-[#f8fafc] border border-white/20 shadow-sm flex items-center gap-1.5">
-                <Bookmark size={14} /> Chapter {module.id.split('-').pop() || '1'}
+            <div className="flex flex-wrap items-center gap-2 mb-2 md:mb-2.5">
+              <div className="px-2.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-[#f8fafc] border border-white/20 shadow-sm flex items-center gap-1">
+                <Bookmark size={12} /> Chapter {module.id.split('-').pop() || '1'}
               </div>
-              <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[11px] font-black uppercase tracking-widest text-emerald-400 border border-emerald-400/30">
+              <div className="px-2.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-400 border border-emerald-400/30">
                 Lv {moduleLevel}
               </div>
             </div>
 
-            <div className="flex items-center gap-3 mb-3 md:mb-4">
+            <div className="flex items-center gap-2 mb-2">
               <span className="flex lg:hidden text-white/80 shrink-0">
-                <BookOpen size={22} strokeWidth={1.5} />
+                <BookOpen size={18} strokeWidth={1.5} />
               </span>
-              <h1 className="text-2xl md:text-4xl lg:text-5xl font-display font-black text-white tracking-[-0.02em] leading-tight">
+              <h1 className="text-lg md:text-2xl lg:text-3xl font-display font-black text-white tracking-[-0.02em] leading-tight">
                 {module.title}
               </h1>
             </div>
-            <p className="text-slate-300 text-sm md:text-[15px] max-w-2xl font-medium leading-relaxed mb-6 md:mb-8">
+            <p className="text-slate-300 text-xs md:text-sm max-w-2xl font-medium leading-relaxed mb-3">
               {module.description}
             </p>
 
             {/* Elegant Linear Progress instead of redundant circles/bars */}
-            <div className="bg-black/20 backdrop-blur-md rounded-2xl p-3 md:p-4 lg:p-5 border border-white/10 max-w-xl">
-              <div className="flex justify-between items-end mb-3">
-                <div className="flex items-center gap-2.5">
-                  <Award size={20} className="text-emerald-400" />
-                  <span className="text-[12px] md:text-[13px] font-black text-white uppercase tracking-wider">Module Mastery</span>
+            <div className="bg-black/20 backdrop-blur-md rounded-xl p-2 md:p-3 border border-white/10 max-w-xl">
+              <div className="flex justify-between items-end gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Award size={16} className="text-emerald-400" />
+                  <span className="text-[11px] md:text-xs font-black text-white uppercase tracking-wider">Module Mastery</span>
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[12px] md:text-[13px] font-bold text-slate-400 mb-0.5">{completedItems}/{totalItems} steps</span>
-                  <span className="text-xl md:text-2xl font-black text-white shrink-0 leading-none">{Math.round(moduleProgressPercent)}%</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[10px] md:text-xs font-bold text-slate-400">{completedItems}/{totalItems}</span>
+                  <span className="text-base md:text-lg font-black text-white shrink-0 leading-none">{Math.round(moduleProgressPercent)}%</span>
                 </div>
               </div>
-              <div className="h-3 bg-black/40 rounded-full overflow-hidden shadow-inner ring-1 ring-white/10 p-0.5">
+              <div className="h-2 bg-black/40 rounded-full overflow-hidden shadow-inner ring-1 ring-white/10 p-0.5 mt-2">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${moduleProgressPercent}%` }}
@@ -488,20 +488,20 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             </div>
           </div>
 
-          <div className="hidden lg:flex w-48 h-48 bg-white/5 rounded-[2rem] border border-white/10 backdrop-blur-md items-center justify-center transform rotate-[-3deg] shadow-2xl relative group hover:rotate-0 transition-all duration-500 shrink-0">
-            <div className={`absolute inset-0 opacity-40 rounded-[2rem] ${module.progress === 100 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : module.accentColor}`} />
+          <div className="hidden lg:flex w-32 h-32 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md items-center justify-center transform rotate-[-3deg] shadow-2xl relative group hover:rotate-0 transition-all duration-500 shrink-0">
+            <div className={`absolute inset-0 opacity-40 rounded-2xl ${module.progress === 100 ? 'bg-gradient-to-br from-emerald-400 to-teal-600' : module.accentColor}`} />
 
             {moduleProgressPercent === 100 ? (
-              <Trophy size={80} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
+              <Trophy size={56} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
             ) : (
-              <BookOpen size={80} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
+              <BookOpen size={56} className="text-white drop-shadow-xl z-10 scale-100 group-hover:scale-110 transition-transform duration-500" strokeWidth={1} />
             )}
 
-            <motion.div animate={{ y: [-5, 5, -5], rotate: [-10, 10, -10] }} transition={{ duration: 4, repeat: Infinity }} className="absolute top-6 left-6 text-emerald-300 z-20">
-              <Star size={20} fill="currentColor" />
+            <motion.div animate={{ y: [-5, 5, -5], rotate: [-10, 10, -10] }} transition={{ duration: 4, repeat: Infinity }} className="absolute top-4 left-4 text-emerald-300 z-20">
+              <Star size={16} fill="currentColor" />
             </motion.div>
-            <motion.div animate={{ y: [5, -5, 5], rotate: [10, -10, 10] }} transition={{ duration: 3.5, repeat: Infinity }} className="absolute bottom-8 right-6 text-sky-300 z-20">
-              <Hash size={24} />
+            <motion.div animate={{ y: [5, -5, 5], rotate: [10, -10, 10] }} transition={{ duration: 3.5, repeat: Infinity }} className="absolute bottom-6 right-4 text-sky-300 z-20">
+              <Hash size={18} />
             </motion.div>
           </div>
         </div>
