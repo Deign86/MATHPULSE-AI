@@ -1872,7 +1872,7 @@ const DashboardView: React.FC<{
 
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-3">
-        <div className="group relative overflow-hidden bg-[#047857] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -1887,7 +1887,7 @@ const DashboardView: React.FC<{
           </div>
         </div>
         
-        <div className="group relative overflow-hidden bg-[#0369a1] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -1902,7 +1902,7 @@ const DashboardView: React.FC<{
           </div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#7e22ce] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -1918,7 +1918,7 @@ const DashboardView: React.FC<{
           </div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#c2410c] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -2201,7 +2201,7 @@ const AnalyticsView: React.FC<{
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-[18px] w-full">
-        <div className="group relative overflow-hidden bg-[#0369a1] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -2211,7 +2211,7 @@ const AnalyticsView: React.FC<{
           <div className="relative z-10 text-[26px] font-semibold tracking-tight">{selectedClass.avgScore}%</div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#047857] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -2221,7 +2221,7 @@ const AnalyticsView: React.FC<{
           <div className="relative z-10 text-[26px] font-semibold tracking-tight">{averageCompletion}%</div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#7e22ce] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
@@ -2231,7 +2231,7 @@ const AnalyticsView: React.FC<{
           <div className="relative z-10 text-[26px] font-semibold tracking-tight">{participationRate}%</div>
         </div>
 
-        <div className="group relative overflow-hidden bg-[#c2410c] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-2xl p-[15px] text-white flex flex-col gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
