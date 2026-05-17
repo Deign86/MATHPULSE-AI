@@ -192,7 +192,8 @@ def _parse_questions_response(raw: str, count: int) -> List[Dict[str, Any]]:
 
 def _build_question_prompt(subject: str, competency: str, difficulty: str, count: int) -> tuple[str, str]:
     system_prompt = (
-        "You are an expert math educator for Filipino Senior High School students. "
+        "You are a math question generator. "
+        "IMPORTANT: Write EVERYTHING in English. Do NOT use Tagalog, Filipino, or any other language. "
         "Generate exactly " + str(count) + " multiple-choice math questions "
         "for the subject \"" + subject + "\" focused on competency: \"" + competency + "\". "
         "Difficulty level: " + difficulty + ". "
@@ -202,12 +203,12 @@ def _build_question_prompt(subject: str, competency: str, difficulty: str, count
         "\"correct_index\": 0-3, \"explanation\": \"...\", "
         "\"competency\": \"...\", \"difficulty\": \"...\", "
         "\"bloomsLevel\": \"Remember|Understand|Apply|Analyze|Evaluate|Create\" }] }. "
-        "All questions and options MUST be written in English. Make questions clear and unambiguous."
+        "All text must be in English only."
     )
     user_message = (
-        f"Generate {count} multiple-choice math questions for {subject}, "
+        f"Generate {count} multiple-choice math questions in English for {subject}, "
         f"competency: {competency}, difficulty: {difficulty}. "
-        f"Return only the JSON, no explanation."
+        f"Write all questions, options, and explanations in English. Return only the JSON."
     )
     return system_prompt, user_message
 
