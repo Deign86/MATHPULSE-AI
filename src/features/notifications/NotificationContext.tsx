@@ -68,6 +68,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   const markAllAsRead = useCallback(async () => {
     if (!userId) return;
+    // Optimistic update — mark all as read locally before Firestore confirms
+    setNotifications((prev) => prev.map((n) => (n.isRead ? n : { ...n, isRead: true })));
     await firestoreMarkAllAsRead(userId);
   }, [userId]);
 
