@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer } from 'lucide-react';
+import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RewardDefinition } from '../types/rewards';
 
@@ -179,11 +179,11 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                     >
                       {/* Outer glow ring for extra visibility */}
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-full bg-rose-200/50" />
+                        <div className="w-12 h-12 rounded-full bg-emerald-200/50" />
                       </div>
-                      <div className="relative w-14 h-14 rounded-full border-[3px] border-rose-500 bg-rose-100 flex items-center justify-center transform -rotate-12 shadow-lg">
-                        <img src="/avatar/avatar_icon.png" alt="Claimed" className="w-10 h-10 object-contain drop-shadow-md" />
-                        <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-rose-500 rounded-md px-2 py-0.5 border-2 border-rose-300 shadow-md">
+                      <div className="relative w-14 h-14 rounded-full border-[3px] border-emerald-500 bg-emerald-100 flex items-center justify-center transform -rotate-12 shadow-lg">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                        <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 rounded-md px-2 py-0.5 border-2 border-emerald-300 shadow-md">
                           <span className="text-[9px] font-black text-white uppercase tracking-wider leading-none whitespace-nowrap">Claimed</span>
                         </div>
                       </div>
