@@ -14,6 +14,16 @@ import { applySettingsFromCache } from './services/settingsService.ts';
 // Apply cached theme/font before React renders to prevent flash
 applySettingsFromCache();
 
+// Clear the ErrorBoundary's stale-chunk reload flag on each fresh load. If
+// the new bundle loaded successfully (we made it this far in main.tsx), the
+// flag from the previous reload is no longer needed — clearing it now lets a
+// future stale-chunk failure also auto-recover.
+try {
+  sessionStorage.removeItem('mathpulse_chunk_reload_attempted');
+} catch {
+  /* ignore */
+}
+
 // Global error handlers — catch unhandled errors and promise rejections
 // that would otherwise result in silent failures or blank screens.
 if (typeof window !== 'undefined') {

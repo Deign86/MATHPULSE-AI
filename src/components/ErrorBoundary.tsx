@@ -2,8 +2,28 @@
  * @file ErrorBoundary.tsx
  * React Error Boundary — catches render errors (including React Minified Error #31)
  * and displays a fallback UI instead of a blank white screen.
+ *
+ * Also auto-recovers from Vite/Webpack dynamic-import failures (stale chunk
+ * after dev server restart, or hash mismatch after a deploy). The first such
+ * failure triggers a single hard reload — a sessionStorage flag prevents an
+ * infinite reload loop if the underlying module is genuinely broken.
  */
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
+
+const CHUNK_RELOAD_FLAG = 'mathpulse_chunk_reload_attempted';
+
+/** Match Vite's dynamic-import failure plus Webpack's chunk-load failure. */
+const CHUNK_LOAD_PATTERNS = [
+  /Failed to fetch dynamically imported module/i,
+  /Loading chunk \d+ failed/i,
+  /Importing a module script failed/i,
+  /error loading dynamically imported module/i,
+];
+
+function isChunkLoadError(error: Error | null): boolean {
+  if (!error?.message) return false;
+  return CHUNK_LOAD_PATTERNS.some((pattern) => pattern.test(error.message));
+}
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -27,14 +47,52 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error('[ErrorBoundary] Caught render error:', error.message, errorInfo.componentStack);
+
+    // Auto-reload once on stale dynamic-import errors. Common after a Vite
+    // dev server restart or a fresh deploy invalidates the chunk hash that
+    // the in-memory React tree still references.
+    if (isChunkLoadError(error)) {
+      try {
+        const alreadyTried = sessionStorage.getItem(CHUNK_RELOAD_FLAG);
+        if (!alreadyTried) {
+          sessionStorage.setItem(CHUNK_RELOAD_FLAG, String(Date.now()));
+          console.warn('[ErrorBoundary] Stale chunk detected — reloading to recover.');
+          window.location.reload();
+        }
+      } catch {
+        // sessionStorage unavailable — skip auto-recovery
+      }
+    }
   }
 
   handleReset = (): void => {
+    // Clear the chunk-reload flag so a fresh failure can recover next time.
+    try {
+      sessionStorage.removeItem(CHUNK_RELOAD_FLAG);
+    } catch {
+      /* ignore */
+    }
     this.setState({ hasError: false, error: null });
   };
 
   render(): ReactNode {
     if (this.state.hasError) {
+      // Stale-chunk auto-recovery: the reload is already firing in
+      // componentDidCatch. Render null briefly so we don't flash the error UI
+      // before the page reloads. If the reload was already attempted this
+      // session, fall through to the manual recovery UI.
+      if (isChunkLoadError(this.state.error)) {
+        let alreadyTried = false;
+        try {
+          alreadyTried = Boolean(sessionStorage.getItem(CHUNK_RELOAD_FLAG));
+        } catch {
+          /* ignore */
+        }
+        if (!alreadyTried) {
+          return null;
+        }
+      }
+
       if (this.props.fallback) {
         return this.props.fallback;
       }
