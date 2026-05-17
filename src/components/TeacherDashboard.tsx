@@ -1678,7 +1678,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       aria-label="View AI Insight"
                     >
                       <Sparkles size={18} />
-                      {!insightDismissed && (
+                      {!insightDismissed && dailyInsight && (
                         <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
                       )}
                     </button>
