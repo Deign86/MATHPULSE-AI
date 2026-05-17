@@ -13,6 +13,9 @@ import { db } from '../lib/firebase';
 import { getQuestionCountForQuiz } from '../services/lessonQuizService';
 import type { UserProgress } from '../types/models';
 
+import { generatePracticeSession } from '../services/practiceService';
+import { Loader2 } from 'lucide-react';
+
 interface ModuleDetailViewProps {
   module: Module;
   onBack: () => void;
@@ -21,40 +24,13 @@ interface ModuleDetailViewProps {
   setIsInQuizMode?: (value: boolean) => void;
 }
 
-// Question banks per module/quiz topic
-const quizQuestionBanks: Record<string, Question[]> = {};
-
-// Get questions for a quiz based on its ID
-const getQuestionsForLesson = (quizId: string, type: 'practice' | 'quiz'): Question[] => {
-  // Return preloaded bank if available
-  if (quizQuestionBanks[quizId] && quizQuestionBanks[quizId].length) return quizQuestionBanks[quizId];
-
-  // Fallback: generate lightweight sample questions so the UI is interactive
-  const count = type === 'quiz' ? 8 : 6;
-  const generated: Question[] = Array.from({ length: count }).map((_, i) => {
-    const a = i + 2;
-    const b = i + 3;
-    const correct = (a + b).toString();
-    return {
-      id: i + 1,
-      type: 'multiple-choice',
-      question: `Compute: ${a} + ${b}`,
-      options: [correct, (a * b).toString(), Math.abs(a - b).toString(), (a + b + 1).toString()],
-      correctAnswer: correct,
-      explanation: `Add ${a} and ${b} to get ${correct}.`
-    };
-  });
-
-  quizQuestionBanks[quizId] = generated;
-  return generated;
-};
-
 const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP, isInQuizMode = false, setIsInQuizMode }) => {
   const STANDARD_LESSON_XP = 10;
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [iarCompleted, setIarCompleted] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState<Question[] | null>(null);
 
   // Check if the Initial Assessment has been completed before showing REVIEW markers
   useEffect(() => {
@@ -144,6 +120,61 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     if (!userProfile?.uid) return;
     return subscribeToUserProgress(userProfile.uid, setUserProgress);
   }, [userProfile?.uid]);
+
+  // Generate AI quiz questions when a quiz is selected
+  useEffect(() => {
+    if (!selectedLesson || selectedLesson.type !== 'quiz' || !userProfile?.uid) return;
+    let cancelled = false;
+
+    const parentSubject = subjects.find((s) => s.modules.some((m) => m.id === module.id));
+    const subjectTitle = parentSubject?.title ?? 'General Mathematics';
+
+    (async () => {
+      try {
+        const response = await generatePracticeSession({
+          userId: userProfile.uid,
+          subject: subjectTitle,
+          competency: selectedLesson.quiz.title.replace(/^(Practice Quiz|Module Quiz):\s*/i, ''),
+          difficulty: selectedLesson.quiz.type === 'module' ? 'Challenge' : 'Practice',
+          count: selectedLesson.quiz.questions || 5,
+        });
+
+        if (cancelled) return;
+
+        // Convert backend response to Question[] format for InteractiveLesson
+        const questions: Question[] = response.questions.map((q, i) => ({
+          id: i + 1,
+          type: 'multiple-choice' as const,
+          question: q.question,
+          options: q.options,
+          correctAnswer: q.options[q.correct_index],
+          explanation: q.explanation,
+        }));
+
+        setQuizQuestions(questions);
+      } catch (err) {
+        console.error('[ModuleDetailView] Quiz generation failed:', err);
+        // Fallback: generate basic questions so the quiz isn't stuck
+        const count = selectedLesson.quiz.questions || 5;
+        const fallback: Question[] = Array.from({ length: count }).map((_, i) => {
+          const a = Math.floor(Math.random() * 20) + 2;
+          const b = Math.floor(Math.random() * 20) + 2;
+          const correct = (a + b).toString();
+          return {
+            id: i + 1,
+            type: 'multiple-choice' as const,
+            question: `Compute: ${a} + ${b}`,
+            options: [correct, (a * b).toString(), Math.abs(a - b).toString(), (a + b + 1).toString()],
+            correctAnswer: correct,
+            explanation: `${a} + ${b} = ${correct}`,
+          };
+        });
+        if (!cancelled) setQuizQuestions(fallback);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [selectedLesson, userProfile?.uid, module.id]);
 
   const dbModuleProgress = useMemo(() => {
     if (!subjectId) return null;
@@ -346,8 +377,18 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         />
       );
     } else {
-      // Show the quiz interface
-      const questions = getQuestionsForLesson(selectedLesson.quiz.id, 'quiz');
+      // Show the quiz interface — questions loaded via quizQuestions state
+      if (!quizQuestions) {
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl">
+              <Loader2 size={36} className="animate-spin text-indigo-600" />
+              <p className="font-bold text-slate-700">Generating Quiz...</p>
+              <p className="text-sm text-slate-500">AI is crafting questions for {selectedLesson.quiz.title}</p>
+            </div>
+          </div>
+        );
+      }
       return (
         <InteractiveLesson
           lesson={{
@@ -358,7 +399,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             completed: selectedLesson.quiz.completed,
             locked: selectedLesson.quiz.locked
           }}
-          questions={questions}
+          questions={quizQuestions}
           onBack={() => {
             if (returningToLesson) {
               setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
@@ -366,11 +407,10 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             } else {
               setSelectedLesson(null);
             }
+            setQuizQuestions(null);
             if (setIsInQuizMode) setIsInQuizMode(false);
           }}
           onComplete={(score, totalXP) => {
-            // [QuizComplete] Score logged
-
             // Persist progress — completeQuiz is the single XP authority
             if (userProfile?.uid && subjectId) {
               void (async () => {
@@ -403,6 +443,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               })();
             }
 
+            setQuizQuestions(null);
             if (returningToLesson) {
               setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
               setReturningToLesson(null);
