@@ -27,7 +27,7 @@ from rag.curriculum_rag import (
     retrieve_lesson_pdf_context,
     summarize_retrieval_confidence,
 )
-from rag.vectorstore_loader import get_vectorstore_health, reset_vectorstore_singleton
+from rag.vectorstore_loader import get_vectorstore_health, reset_vectorstore_singleton, get_vectorstore_components
 
 try:
     from firebase_admin import firestore as firebase_firestore
@@ -512,3 +512,84 @@ async def rag_analysis_context(request: Request, payload: RagAnalysisContextRequ
     )
 
     return {"curriculumContext": "\n".join(lines)}
+
+
+# ─── RAG Management Endpoints (Admin) ─────────────────────────────────────────
+
+@router.get("/documents")
+async def list_rag_documents():
+    """List all documents in the vectorstore grouped by source file."""
+    try:
+        _, collection, _ = get_vectorstore_components()
+        payload = collection.get(include=["metadatas"])
+        metadatas = payload.get("metadatas") or []
+        ids = payload.get("ids") or []
+
+        # Group by source_file
+        sources: Dict[str, Dict[str, Any]] = {}
+        for i, md in enumerate(metadatas):
+            if not isinstance(md, dict):
+                continue
+            source = md.get("source_file") or md.get("storage_path") or "unknown"
+            subject = md.get("subject") or "unknown"
+            if source not in sources:
+                sources[source] = {"source_file": source, "subject": subject, "chunk_count": 0, "chunk_ids": []}
+            sources[source]["chunk_count"] += 1
+            sources[source]["chunk_ids"].append(ids[i])
+
+        documents = sorted(sources.values(), key=lambda x: x["subject"])
+        # Don't send all chunk_ids to frontend (too large), just count
+        for doc in documents:
+            del doc["chunk_ids"]
+
+        return {"documents": documents, "total_chunks": len(ids)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list RAG documents: {exc}")
+
+
+@router.delete("/documents/by-subject/{subject}")
+async def delete_rag_by_subject(subject: str):
+    """Delete all chunks for a given subject from the vectorstore."""
+    try:
+        _, collection, _ = get_vectorstore_components()
+        payload = collection.get(include=["metadatas"], where={"subject": subject})
+        ids = payload.get("ids") or []
+        if not ids:
+            return {"deleted": 0, "message": f"No chunks found for subject '{subject}'."}
+        collection.delete(ids=ids)
+        return {"deleted": len(ids), "message": f"Deleted {len(ids)} chunks for subject '{subject}'."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete: {exc}")
+
+
+@router.delete("/documents/by-source")
+async def delete_rag_by_source(source_file: str):
+    """Delete all chunks from a specific source file."""
+    try:
+        _, collection, _ = get_vectorstore_components()
+        payload = collection.get(include=["metadatas"], where={"source_file": source_file})
+        ids = payload.get("ids") or []
+        if not ids:
+            # Try storage_path as fallback
+            payload = collection.get(include=["metadatas"], where={"storage_path": source_file})
+            ids = payload.get("ids") or []
+        if not ids:
+            return {"deleted": 0, "message": f"No chunks found for source '{source_file}'."}
+        collection.delete(ids=ids)
+        return {"deleted": len(ids), "message": f"Deleted {len(ids)} chunks from '{source_file}'."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete: {exc}")
+
+
+@router.delete("/documents/all")
+async def purge_all_rag():
+    """Purge ALL chunks from the vectorstore. Requires re-ingestion after."""
+    try:
+        client, collection, _ = get_vectorstore_components()
+        # Delete the collection and recreate it empty
+        client.delete_collection("curriculum_chunks")
+        client.get_or_create_collection(name="curriculum_chunks", metadata={"hnsw:space": "cosine"})
+        reset_vectorstore_singleton()
+        return {"message": "All RAG content purged. Re-ingestion required."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to purge: {exc}")
