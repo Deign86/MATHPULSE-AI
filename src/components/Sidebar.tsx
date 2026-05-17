@@ -148,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-3">
-            <img src="/mathpulse_logo.png" alt="MathPulse AI" className="w-12 h-12 object-contain drop-shadow-md flex-shrink-0" />
+            <img src="/mathpulse_final_logo.png" alt="MathPulse AI" className="w-12 h-12 object-contain drop-shadow-md flex-shrink-0" />
             {(!isCollapsed || isHoverExpanded) && (
               <div>
                 <h2 className="text-base font-bold font-display text-[#0a1628] whitespace-nowrap">MathPulse AI</h2>
