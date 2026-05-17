@@ -154,7 +154,7 @@ service cloud.firestore {
     match /xpActivities/{docId} {
       allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
       allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow delete: if isAdmin();
+      allow delete: if isSignedIn() && ownerByField('userId') || isAdmin();
     }
 
     match /achievements/{docId} {
