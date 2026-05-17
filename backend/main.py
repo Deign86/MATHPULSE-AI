@@ -383,6 +383,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/import/student-accounts/commit": TEACHER_OR_ADMIN,
     "/api/admin/users": ADMIN_ONLY,
     "/api/admin/users/bulk-action": ADMIN_ONLY,
+    "/api/teacher/create-student-account": TEACHER_OR_ADMIN,
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
     "/api/teacher-materials/upload": TEACHER_OR_ADMIN,
@@ -5151,6 +5152,40 @@ class AdminDeleteUserResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class CreateStudentAccountRequest(BaseModel):
+    name: str
+    email: str
+    temporary_password: str
+    lrn: Optional[str] = None
+    grade: Optional[str] = None
+    section: Optional[str] = None
+    class_section_id: Optional[str] = None
+    adviser_teacher_id: str
+    adviser_teacher_name: Optional[str] = None
+    school_year: Optional[str] = None
+
+    @field_validator("name", "email", "temporary_password", "adviser_teacher_id")
+    @classmethod
+    def _strip_required(cls, value: str) -> str:
+        return str(value or "").strip()
+
+    @field_validator("lrn", "grade", "section", "class_section_id", "adviser_teacher_name", "school_year")
+    @classmethod
+    def _strip_optional(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+
+class CreateStudentAccountResponse(BaseModel):
+    success: bool
+    uid: str
+    email: str
+    message: Optional[str] = None
+    warnings: List[str] = Field(default_factory=list)
+
+
 class AdminUserListItem(BaseModel):
     uid: str
     name: str
@@ -6771,6 +6806,265 @@ async def create_admin_user_and_notify(
             },
         )
         raise HTTPException(status_code=500, detail="Failed to create user account")
+
+
+@app.post("/api/teacher/create-student-account", response_model=CreateStudentAccountResponse)
+async def create_student_account_for_teacher(
+    request: Request,
+    payload: CreateStudentAccountRequest,
+):
+    """Provision a `role: 'student'` account on behalf of a teacher.
+
+    Used by the registered-first dashboard pipeline to convert a roster-only
+    student (a row from an imported class record that has no Firebase Auth
+    user) into a full system account. The teacher must be authenticated, and
+    the request's `adviser_teacher_id` must match the caller's uid (admins may
+    create accounts on behalf of any teacher).
+    """
+    user = get_current_user(request)
+    if user.role not in {"teacher", "admin"}:
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
+
+    adviser_teacher_id = (payload.adviser_teacher_id or "").strip()
+    if not adviser_teacher_id:
+        raise HTTPException(status_code=400, detail="adviser_teacher_id is required")
+    if user.role == "teacher" and adviser_teacher_id != user.uid:
+        raise HTTPException(
+            status_code=403,
+            detail="Teachers may only create accounts where they are the adviser.",
+        )
+
+    if not _firebase_ready or firebase_auth is None or firebase_firestore is None:
+        raise HTTPException(status_code=503, detail="Authentication service unavailable")
+
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Student name is required")
+
+    email = (payload.email or "").strip().lower()
+    if not email or not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):
+        raise HTTPException(status_code=400, detail="A valid email address is required")
+
+    temporary_password = (payload.temporary_password or "").strip()
+    if len(temporary_password) < 8:
+        raise HTTPException(status_code=400, detail="Temporary password must be at least 8 characters")
+
+    grade = (payload.grade or "").strip()
+    section = (payload.section or "").strip()
+    class_section_id = (payload.class_section_id or "").strip()
+    if not class_section_id and grade and section:
+        class_section_id = re.sub(r"\s+", "_", f"{grade}_{section}".lower())
+
+    lrn = (payload.lrn or "").strip()
+    school_year = (payload.school_year or "").strip()
+    adviser_name = (payload.adviser_teacher_name or "").strip()
+
+    warnings: List[str] = []
+    auth_uid: Optional[str] = None
+
+    try:
+        # Reject duplicates up-front to surface a friendly error message.
+        try:
+            existing_auth_user = cast(Any, firebase_auth).get_user_by_email(email)
+            existing_uid = str(getattr(existing_auth_user, "uid", "") or "").strip()
+            if existing_uid:
+                raise HTTPException(
+                    status_code=409,
+                    detail="An account with this email already exists.",
+                )
+        except HTTPException:
+            raise
+        except Exception as auth_lookup_error:
+            if not _is_auth_user_not_found_error(auth_lookup_error):
+                logger.warning(
+                    "Auth duplicate-check failed for %s: %s", email, auth_lookup_error
+                )
+                warnings.append("Auth duplicate-check could not be completed; proceeding cautiously.")
+
+        try:
+            created_auth_user = cast(Any, firebase_auth).create_user(
+                email=email,
+                password=temporary_password,
+                display_name=name,
+            )
+            auth_uid = str(getattr(created_auth_user, "uid", "") or "").strip() or None
+        except Exception as create_auth_error:
+            error_text = str(create_auth_error).lower()
+            if "email already exists" in error_text or "email_exists" in error_text:
+                raise HTTPException(
+                    status_code=409,
+                    detail="An account with this email already exists.",
+                )
+            logger.error("Auth user creation failed for %s: %s", email, create_auth_error)
+            raise HTTPException(status_code=500, detail="Failed to create authentication account.")
+
+        if not auth_uid:
+            raise HTTPException(status_code=500, detail="Authentication account did not return a uid.")
+
+        firestore_client = cast(Any, firebase_firestore).client()
+
+        avatar_url = (
+            f"https://ui-avatars.com/api/?name={urllib.parse.quote_plus(name)}&background=0d9488&color=fff"
+        )
+
+        user_doc: Dict[str, Any] = {
+            "name": name,
+            "email": email,
+            "role": "student",
+            "status": "Active",
+            "photo": avatar_url,
+            "forcePasswordChange": True,
+            "level": 1,
+            "currentXP": 0,
+            "totalXP": 0,
+            "atRiskSubjects": [],
+            "hasTakenDiagnostic": False,
+            "adviserTeacherId": adviser_teacher_id,
+            "createdAt": FIRESTORE_SERVER_TIMESTAMP,
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+        }
+        if lrn:
+            user_doc["lrn"] = lrn
+        if grade:
+            user_doc["grade"] = grade
+        if section:
+            user_doc["section"] = section
+        if class_section_id:
+            user_doc["classSectionId"] = class_section_id
+        if adviser_name:
+            user_doc["adviserTeacherName"] = adviser_name
+
+        try:
+            firestore_client.collection("users").document(auth_uid).set(user_doc, merge=True)
+        except Exception as user_doc_error:
+            logger.error(
+                "Failed to write users/%s after Auth creation: %s", auth_uid, user_doc_error
+            )
+            warnings.append(
+                "User profile write failed; the auth account exists but the dashboard may not see it yet."
+            )
+
+        managed_doc: Dict[str, Any] = {
+            "accountUid": auth_uid,
+            "name": name,
+            "email": email,
+            "teacherId": adviser_teacher_id,
+            "avatar": avatar_url,
+            "riskLevel": "Low",
+            "avgQuizScore": 0,
+            "engagementScore": 0,
+            "attendance": 0,
+            "assignmentCompletion": 0,
+            "weakestTopic": "",
+            "struggles": [],
+            "hasRegisteredAccount": True,
+            "source": "both",
+            "lastActive": None,
+            "createdAt": FIRESTORE_SERVER_TIMESTAMP,
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+        }
+        if lrn:
+            managed_doc["lrn"] = lrn
+        if grade:
+            managed_doc["grade"] = grade
+        if section:
+            managed_doc["section"] = section
+        if class_section_id:
+            managed_doc["classSectionId"] = class_section_id
+            managed_doc["classroomId"] = class_section_id
+        if school_year:
+            managed_doc["schoolYear"] = school_year
+
+        try:
+            firestore_client.collection("managedStudents").document(auth_uid).set(
+                managed_doc, merge=True
+            )
+        except Exception as managed_error:
+            logger.warning(
+                "Failed to merge managedStudents/%s: %s", auth_uid, managed_error
+            )
+            warnings.append("Managed-student enrichment row write failed; will retry on next dashboard refresh.")
+
+        # Attach the new uid to the section's ownership roster (best-effort).
+        if class_section_id:
+            try:
+                ownership_ref = firestore_client.collection("classSectionOwnership").document(class_section_id)
+                ownership_snap = ownership_ref.get()
+                ownership_payload: Dict[str, Any] = {
+                    "classSectionId": class_section_id,
+                    "ownerTeacherId": adviser_teacher_id,
+                    "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+                }
+                if grade:
+                    ownership_payload["grade"] = grade
+                if section:
+                    ownership_payload["section"] = section
+                if school_year:
+                    ownership_payload["schoolYear"] = school_year
+                if adviser_name:
+                    ownership_payload["ownerTeacherName"] = adviser_name
+
+                if ownership_snap.exists:
+                    existing_uids: List[str] = list(
+                        (ownership_snap.to_dict() or {}).get("studentUids", [])
+                    )
+                    if auth_uid not in existing_uids:
+                        existing_uids.append(auth_uid)
+                    ownership_payload["studentUids"] = existing_uids
+                    ownership_ref.update(ownership_payload)
+                else:
+                    ownership_payload["studentUids"] = [auth_uid]
+                    ownership_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+                    ownership_ref.set(ownership_payload, merge=True)
+            except Exception as ownership_error:
+                logger.warning(
+                    "classSectionOwnership/%s update failed: %s", class_section_id, ownership_error
+                )
+                warnings.append("Section ownership roster could not be updated; this is non-fatal.")
+
+        _write_access_audit_log(
+            request,
+            action="teacher_create_student_account",
+            status="success",
+            metadata={
+                "uid": auth_uid,
+                "email": email,
+                "adviserTeacherId": adviser_teacher_id,
+                "classSectionId": class_section_id or None,
+            },
+        )
+
+        return CreateStudentAccountResponse(
+            success=True,
+            uid=auth_uid,
+            email=email,
+            message="Student account created.",
+            warnings=warnings,
+        )
+    except HTTPException:
+        _write_access_audit_log(
+            request,
+            action="teacher_create_student_account",
+            status="failed",
+            metadata={
+                "email": email,
+                "adviserTeacherId": adviser_teacher_id,
+            },
+        )
+        raise
+    except Exception as exc:
+        logger.error("Unexpected teacher_create_student_account error: %s", exc)
+        _write_access_audit_log(
+            request,
+            action="teacher_create_student_account",
+            status="failed",
+            metadata={
+                "email": email,
+                "adviserTeacherId": adviser_teacher_id,
+                "errorCode": "unexpected_error",
+            },
+        )
+        raise HTTPException(status_code=500, detail="Failed to create student account.")
 
 
 @app.delete("/api/admin/users", response_model=AdminDeleteUserResponse)
