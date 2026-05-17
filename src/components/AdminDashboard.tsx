@@ -7,7 +7,7 @@ import AdminPdfUpload from './admin/AdminPdfUpload';
 import AdminAuditLog from './AdminAuditLog';
 import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
-import AdminAIMonitoring from './AdminAIMonitoring';
+import AIMonitoringPage from '../pages/admin/AIMonitoringPage';
 import AdminSubjects from './admin/AdminSubjects';
 import SubjectsHelpModal from './admin/SubjectsHelpModal';
 import MasteryHeatmap from './MasteryHeatmap';
@@ -683,7 +683,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             />
           )}
           {activeTab === 'Analytics' && <AdminAnalytics />}
-          {activeTab === 'AI Monitoring' && <AdminAIMonitoring />}
+          {activeTab === 'AI Monitoring' && <AIMonitoringPage />}
           
           {activeTab === 'Subjects' && <AdminSubjects />}
         </main>
