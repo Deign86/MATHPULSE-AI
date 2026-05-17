@@ -1,85 +1,64 @@
-import { db } from '../lib/firebase';
-import {
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  query,
-  where,
-  serverTimestamp,
-  increment,
-  Timestamp,
-} from 'firebase/firestore';
-import type { AIUsageLog } from '../types/hfMonitoring';
+// src/services/aiMonitoringService.ts
+// TODO: Review pricing after 2026-05-31
+import { apiFetch } from './apiService';
 
-const COLLECTION_NAME = 'aiUsageLogs';
-
-export async function getAIUsageStats(month?: string): Promise<AIUsageLog[]> {
-  try {
-    const targetMonth = month || new Date().toISOString().slice(0, 7); // e.g., "2026-05"
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('month', '==', targetMonth)
-    );
-    
-    const snapshot = await getDocs(q);
-    const logs: AIUsageLog[] = [];
-    
-    snapshot.forEach((docSnap) => {
-      logs.push(docSnap.data() as AIUsageLog);
-    });
-    
-    return logs;
-  } catch (error) {
-    console.error('[aiMonitoringService] getAIUsageStats error:', error);
-    return [];
-  }
+export interface AIFeatureMetric {
+  featureId: string;
+  featureName: string;
+  modelId: string;
+  monthlyCost: number;
+  costShare: number;
+  totalRequests: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  cacheHitRate: number;
+  isMostActive: boolean;
+  isTopSpending: boolean;
+  icon: string;
 }
 
-export function getSystemHealth(stats: AIUsageLog[]): "Healthy" | "Degraded" | "Down" {
-  if (!stats || stats.length === 0) return "Healthy";
-  
-  if (stats.some(s => s.status === 'Down')) return "Down";
-  if (stats.some(s => s.status === 'Degraded')) return "Degraded";
-  
-  return "Healthy";
+export interface PricingMeta {
+  activeModel: string;
+  isPromotional: boolean;
+  promoExpiresUtc: string | null;
+  daysUntilPromoEnds: number;
+  currentInputCacheMissRate: number;
+  currentOutputRate: number;
+  fullPriceInputRate: number;
+  fullPriceOutputRate: number;
 }
 
-export function getTotalSpend(stats: AIUsageLog[]): number {
-  return stats.reduce((sum, s) => sum + (s.estimatedCostUSD || 0), 0);
+export interface AIMonitoringSummary {
+  systemStatus: 'healthy' | 'issues_found' | 'degraded';
+  actionRequired: boolean;
+  hasPerformanceIssues: boolean;
+  monthlyCost: number;
+  projectedMonthlyCost: number;
+  billingCycleLabel: string;
+  costBreakdown: {
+    cacheHitCost: number;
+    cacheMissCost: number;
+    outputCost: number;
+  };
+  totalUsage: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  cacheHitRate: number;
+  activeEngine: string;
+  activeEngineModelId: string;
+  engineTier: string;
+  promotionalPricingActive: boolean;
+  promotionalPriceExpiresUtc: string;
+  estimatedCostAfterPromo: number;
+  lastUpdated: string;
+  features: AIFeatureMetric[];
+  pricingMeta: PricingMeta;
 }
 
-export function getHighestCostFeature(stats: AIUsageLog[]): AIUsageLog | null {
-  if (!stats || stats.length === 0) return null;
-  return stats.reduce((prev, current) => 
-    (prev.estimatedCostUSD > current.estimatedCostUSD) ? prev : current
-  );
+export async function fetchAIMonitoringSummary(): Promise<AIMonitoringSummary> {
+  return apiFetch<AIMonitoringSummary>('/api/admin/ai-monitoring/summary');
 }
 
-export function getMostActiveFeature(stats: AIUsageLog[]): AIUsageLog | null {
-  if (!stats || stats.length === 0) return null;
-  return stats.reduce((prev, current) => 
-    (prev.requestCount > current.requestCount) ? prev : current
-  );
-}
-
-export async function logAIRequest(featureId: string, costUSD: number, featureName: string = featureId): Promise<void> {
-  try {
-    const targetMonth = new Date().toISOString().slice(0, 7);
-    const docId = `${targetMonth}_${featureId}`;
-    const docRef = doc(db, COLLECTION_NAME, docId);
-    
-    await setDoc(docRef, {
-      featureId,
-      featureName,
-      month: targetMonth,
-      requestCount: increment(1),
-      estimatedCostUSD: increment(costUSD),
-      lastUpdated: serverTimestamp(),
-      priority: "Medium", // Default, could be customized
-      status: "Healthy",
-    }, { merge: true });
-  } catch (error) {
-    console.error('[aiMonitoringService] logAIRequest error:', error);
-  }
+export async function triggerMonitoringRefresh(): Promise<{ success: boolean; updatedAt: string; pricingUsed: Record<string, unknown> }> {
+  return apiFetch('/api/admin/ai-monitoring/refresh', { method: 'POST' });
 }
