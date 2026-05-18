@@ -2,7 +2,7 @@
  * @file NotificationContext.tsx
  * Notification Provider and hook.
  */
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Notification } from './types';
 import {
   subscribeToNotifications,
@@ -34,6 +34,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [isLoading, setIsLoading] = useState(true);
   const userId = currentUser?.uid ?? null;
 
+  // Ref to always access current notifications state — avoids stale closure in revert
+  const notificationsRef = useRef<Notification[]>([]);
+
   // Fire daily check-in reminder (students only)
   useDailyCheckInReminder(userProfile?.role === 'student' ? userId : null);
 
@@ -53,6 +56,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     return () => unsubscribe();
   }, [userId]);
 
+  // Keep ref in sync with current notifications state
+  useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
+
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.isRead).length,
     [notifications]
@@ -68,16 +76,18 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   const markAllAsRead = useCallback(async () => {
     if (!userId) return;
-    // Optimistic update — mark all as read locally before Firestore confirms
-    const prev = notifications;
+    const prev = notificationsRef.current;
+    console.log('[markAllAsRead] prev count:', prev.filter(n => !n.isRead).length, 'notifications:', prev.length);
     setNotifications((curr) => curr.map((n) => (n.isRead ? n : { ...n, isRead: true })));
+    console.log('[markAllAsRead] optimistic update applied, new count should be 0');
     try {
       await firestoreMarkAllAsRead(userId);
-    } catch {
-      // Revert on failure
+      console.log('[markAllAsRead] Firestore update succeeded');
+    } catch (err) {
+      console.error('[markAllAsRead] Firestore update failed:', err);
       setNotifications(prev);
     }
-  }, [userId, notifications]);
+  }, [userId]);
 
   const deleteNotification = useCallback(
     async (notificationId: string) => {

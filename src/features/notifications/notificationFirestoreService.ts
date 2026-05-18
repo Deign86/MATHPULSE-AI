@@ -101,8 +101,19 @@ export const getUserNotifications = async (
 export const markAsRead = async (userId: string, notificationId: string): Promise<void> => {
   if (!requireAuth()) return;
   try {
-    const notificationRef = doc(db, 'notifications', userId, 'items', notificationId);
-    await updateDoc(notificationRef, { isRead: true });
+    // Update subcollection (new structure) — uses isRead field
+    const subRef = doc(db, 'notifications', userId, 'items', notificationId);
+    const subUpdate = updateDoc(subRef, { isRead: true }).catch((e) =>
+      console.warn('[firestore] markAsRead subcollection skipped:', e)
+    );
+
+    // Also update top-level (legacy structure) — uses read field
+    const topRef = doc(db, 'notifications', notificationId);
+    const topUpdate = updateDoc(topRef, { isRead: true, read: true }).catch((e) =>
+      console.warn('[firestore] markAsRead top-level skipped:', e)
+    );
+
+    await Promise.all([subUpdate, topUpdate]);
   } catch (error) {
     console.error('[notificationFirestoreService] Error marking as read:', error);
     throw error;
@@ -112,27 +123,32 @@ export const markAsRead = async (userId: string, notificationId: string): Promis
 export const markAllAsRead = async (userId: string): Promise<void> => {
   if (!requireAuth()) return;
   try {
-    // Query subcollection (new structure)
+    // Query subcollection (new structure) — uses isRead field
     const subcollectionQuery = query(
       collection(db, 'notifications', userId, 'items'),
       where('isRead', '==', false)
     );
     const subcollectionSnap = await getDocs(subcollectionQuery);
 
-    // Also query top-level notifications collection (legacy structure)
-    const topLevelQuery = query(
-      collection(db, 'notifications'),
-      where('userId', '==', userId)
+    const updates: Promise<void>[] = subcollectionSnap.docs.map((docSnap) =>
+      updateDoc(docSnap.ref, { isRead: true })
     );
-    const topLevelSnap = await getDocs(topLevelQuery);
 
-    const updates: Promise<void>[] = [
-      ...subcollectionSnap.docs.map((docSnap) => updateDoc(docSnap.ref, { isRead: true })),
-      ...topLevelSnap.docs.filter((docSnap) => {
-        const d = docSnap.data();
-        return !(d.isRead || d.read);
-      }).map((docSnap) => updateDoc(docSnap.ref, { isRead: true, read: true })),
-    ];
+    // Also query top-level notifications collection (legacy structure) — uses read field
+    try {
+      const topLevelQuery = query(
+        collection(db, 'notifications'),
+        where('userId', '==', userId),
+        where('read', '==', false)
+      );
+      const topLevelSnap = await getDocs(topLevelQuery);
+      for (const docSnap of topLevelSnap.docs) {
+        updates.push(updateDoc(docSnap.ref, { isRead: true, read: true }));
+      }
+    } catch (topLevelErr) {
+      // Top-level collection may fail due to permissions — don't block subcollection updates
+      console.warn('[notificationFirestoreService] Top-level markAllAsRead skipped:', topLevelErr);
+    }
 
     await Promise.all(updates);
   } catch (error) {
@@ -143,8 +159,19 @@ export const markAllAsRead = async (userId: string): Promise<void> => {
 
 export const deleteNotification = async (userId: string, notificationId: string): Promise<void> => {
   try {
-    const notificationRef = doc(db, 'notifications', userId, 'items', notificationId);
-    await deleteDoc(notificationRef);
+    // Delete from subcollection (new structure)
+    const subRef = doc(db, 'notifications', userId, 'items', notificationId);
+    const subDelete = deleteDoc(subRef).catch((e) =>
+      console.warn('[firestore] deleteNotification subcollection skipped:', e)
+    );
+
+    // Also delete from top-level (legacy structure)
+    const topRef = doc(db, 'notifications', notificationId);
+    const topDelete = deleteDoc(topRef).catch((e) =>
+      console.warn('[firestore] deleteNotification top-level skipped:', e)
+    );
+
+    await Promise.all([subDelete, topDelete]);
   } catch (error) {
     console.error('[notificationFirestoreService] Error deleting notification:', error);
     throw error;

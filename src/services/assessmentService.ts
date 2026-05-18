@@ -225,6 +225,9 @@ export const subscribeToCompetencyProfile = (
     } else {
       callback(null);
     }
+  }, (error) => {
+    console.error('[assessmentService] subscribeToCompetencyProfile error:', error);
+    callback(null);
   });
 };
 

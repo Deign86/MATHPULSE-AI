@@ -170,9 +170,10 @@ service cloud.firestore {
     }
 
     match /notifications/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid || isTeacherOrAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid || isTeacherOrAdmin();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid || isTeacherOrAdmin();
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid || isAdmin();
     }
 
     // ── Notifications subcollection (new structure) ─────────────────
@@ -455,9 +456,15 @@ service cloud.firestore {
     }
 
     // ── Question bank (read for all authenticated users) ──
-    match /question_bank/{gradeLevel}/{topic}/{questionId} {
+    match /question_bank/{path=**} {
       allow read: if isSignedIn();
       allow write: if false; // Backend-only via firebase-admin
+    }
+
+    // ── Quiz Battle Question Bank (legacy) ──
+    match /quizBattleQuestionBank/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
     }
 
     // ── PDF processing status (read for teachers/admins) ──
