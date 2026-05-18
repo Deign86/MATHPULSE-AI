@@ -4364,16 +4364,17 @@ const InterventionView: React.FC<{
                                 doc.setTextColor(100, 116, 139);
                                 doc.text(meta, margin + 14, y + 6);
                                 doc.setTextColor(0, 0, 0);
+                                y += 8;
                                 if (step.description) {
                                   doc.setFontSize(9);
                                   const descLines = doc.splitTextToSize(step.description, contentW - 16);
                                   for (const line of descLines.slice(0, 2)) {
                                     y += 5;
                                     checkPage(5);
-                                    doc.text(line, margin + 14, y + 2);
+                                    doc.text(line, margin + 14, y);
                                   }
                                 }
-                                y += 12;
+                                y += 10;
                               }
                             }
 
