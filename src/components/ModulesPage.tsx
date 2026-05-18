@@ -417,7 +417,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     if (onEarnXP) {
       onEarnXP(xpEarned, `Quiz Completed! +${xpEarned} XP`);
     }
-    setSelectedQuiz(null);
+    // Don't unmount here - let user see results modal first
   };
 
   // Sync quiz mode state with parent
