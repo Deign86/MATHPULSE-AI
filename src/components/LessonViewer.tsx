@@ -260,7 +260,8 @@ function inlineFormat(text: string): React.ReactNode {
   return parts.length > 0 ? <>{parts}</> : text;
 }
 import { VideoLessonSection } from './notebook/VideoLessonSection';
-import TryItYourselfPage from './TryItYourselfPage';
+import InteractiveLesson, { Question } from './InteractiveLesson';
+import { generateLessonQuiz } from '../services/lessonQuizService';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { cn } from './ui/utils';
@@ -753,8 +754,8 @@ function SectionRenderer({
             </div>
           )}
 
-          {/* Try It Yourself Quiz CTA */}
-          <button
+          {/* Try It Yourself Quiz CTA - only show if no separate practice quiz */}
+          {!practiceQuiz && (<button
             onClick={onStartTryItQuiz}
             className="w-full flex items-center justify-between gap-4 text-white rounded-2xl px-6 py-4 shadow-lg transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] group"
             style={{ background: '#9956DE' }}
@@ -771,7 +772,7 @@ function SectionRenderer({
               </div>
             </div>
             <ArrowRight size={20} className="text-white/80 group-hover:translate-x-1 transition-transform" />
-          </button>
+          </button>)}
         </div>
       );
 
@@ -899,6 +900,19 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const [showCompletion, setShowCompletion] = useState(false);
   const [expandedProblem, setExpandedProblem] = useState<number | null>(null);
   const [showTryItPage, setShowTryItPage] = useState(false);
+  const [tryItQuestions, setTryItQuestions] = useState<Question[] | null>(null);
+  const [tryItLoading, setTryItLoading] = useState(false);
+
+  // Generate questions when Try It Yourself is opened
+  useEffect(() => {
+    if (!showTryItPage || tryItQuestions) return;
+    setTryItLoading(true);
+    generateLessonQuiz({ lessonId: lesson.id?.toString() || 'unknown', lessonTitle: lesson.title, topic: lesson.title, subjectId: lesson.subjectId, competencyCode: lesson.competencyCode, questionCount: 10 })
+      .then(qs => setTryItQuestions(qs))
+      .catch(err => { console.error('[LessonViewer] Quiz generation failed:', err); setShowTryItPage(false); })
+      .finally(() => setTryItLoading(false));
+  }, [showTryItPage, tryItQuestions, lesson]);
+
   const [tryItQuizCompleted, setTryItQuizCompleted] = useState(false);
 
   const request = {
@@ -986,28 +1000,28 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const lessonNumMatch = String(lesson.id || '').match(/\d+/);
   const lessonNumber = lessonNumMatch ? lessonNumMatch[0] : '1';
 
+
   if (showTryItPage) {
+    if (tryItLoading || !tryItQuestions) {
+      return (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"><div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /><p className="font-bold text-slate-700">Generating Quiz...</p></div></div>);
+    }
     return (
-      <TryItYourselfPage
-        lessonId={lesson.id?.toString() || 'unknown'}
-        lessonTitle={lesson.title}
-        lessonNumber={lessonNumber}
-        topic={lessonSpecificTopic || lesson.title}
-        subjectId={lesson.subjectId}
-        competencyCode={lesson.competencyCode}
-        onClose={() => setShowTryItPage(false)}
-        onComplete={(scorePercent) => {
+      <InteractiveLesson
+        lesson={{ id: parseInt(String(lesson.id || '1').replace(/\D/g, '') || '1'), title: lesson.title, duration: '15 min', type: 'quiz', completed: false, locked: false }}
+        questions={tryItQuestions}
+        onBack={() => { setShowTryItPage(false); setTryItQuestions(null); }}
+        onComplete={(score) => {
+          const scorePercent = Math.round((score / (tryItQuestions?.length || 10)) * 100);
           onTryItQuizComplete?.(scorePercent);
           setTryItQuizCompleted(true);
           setShowTryItPage(false);
+          setTryItQuestions(null);
         }}
       />
     );
-  }  const currentSectionData = sections[currentSection] || {
-    type: 'introduction',
-    title: 'Loading...',
-    content: 'Lesson content is loading. Please wait a moment.',
-  };
+  }
+
+  const currentSectionData = sections[currentSection] || { type: 'introduction', title: 'Loading...', content: 'Lesson content is loading. Please wait a moment.' };
 
   const handleNext = () => {
     if (currentSection < totalSections - 1) {
