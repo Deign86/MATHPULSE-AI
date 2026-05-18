@@ -1350,7 +1350,7 @@
       "source_file": "backend/main.py",
       "source_location": "L599",
       "id": "backend_main_init_firebase_admin",
-      "community": 124,
+      "community": 15,
       "norm_label": "_init_firebase_admin()"
     },
     {
@@ -1359,7 +1359,7 @@
       "source_file": "backend/main.py",
       "source_location": "L672",
       "id": "backend_main_get_role_from_firestore",
-      "community": 168,
+      "community": 15,
       "norm_label": "_get_role_from_firestore()"
     },
     {
@@ -1368,7 +1368,7 @@
       "source_file": "backend/main.py",
       "source_location": "L694",
       "id": "backend_main_warn_firestore_role_lookup_once",
-      "community": 168,
+      "community": 15,
       "norm_label": "_warn_firestore_role_lookup_once()"
     },
     {
@@ -1386,7 +1386,7 @@
       "source_file": "backend/main.py",
       "source_location": "L710",
       "id": "backend_main_warn_firestore_topics_lookup_once",
-      "community": 115,
+      "community": 15,
       "norm_label": "_warn_firestore_topics_lookup_once()"
     },
     {
@@ -1395,7 +1395,7 @@
       "source_file": "backend/main.py",
       "source_location": "L718",
       "id": "backend_main_extract_role_from_firestore_rest_payload",
-      "community": 124,
+      "community": 15,
       "norm_label": "_extract_role_from_firestore_rest_payload()"
     },
     {
@@ -1404,7 +1404,7 @@
       "source_file": "backend/main.py",
       "source_location": "L735",
       "id": "backend_main_get_role_from_firestore_rest",
-      "community": 124,
+      "community": 15,
       "norm_label": "_get_role_from_firestore_rest()"
     },
     {
@@ -1413,7 +1413,7 @@
       "source_file": "backend/main.py",
       "source_location": "L766",
       "id": "backend_main_resolve_user_role",
-      "community": 124,
+      "community": 15,
       "norm_label": "_resolve_user_role()"
     },
     {
@@ -1431,7 +1431,7 @@
       "source_file": "backend/main.py",
       "source_location": "L799",
       "id": "backend_main_parse_bearer_token",
-      "community": 124,
+      "community": 15,
       "norm_label": "_parse_bearer_token()"
     },
     {
@@ -1440,7 +1440,7 @@
       "source_file": "backend/main.py",
       "source_location": "L808",
       "id": "backend_main_verify_token_with_fallback",
-      "community": 124,
+      "community": 336,
       "norm_label": "_verify_token_with_fallback()"
     },
     {
@@ -1467,7 +1467,7 @@
       "source_file": "backend/main.py",
       "source_location": "L860",
       "id": "backend_main_enforce_rate_limit",
-      "community": 119,
+      "community": 29,
       "norm_label": "enforce_rate_limit()"
     },
     {
@@ -1548,7 +1548,7 @@
       "source_file": "backend/main.py",
       "source_location": "L1022",
       "id": "backend_main_authmiddleware_dispatch",
-      "community": 124,
+      "community": 15,
       "norm_label": ".dispatch()"
     },
     {
@@ -2178,7 +2178,7 @@
       "source_file": "backend/main.py",
       "source_location": "L2865",
       "id": "backend_main_extract_final_answer",
-      "community": 105,
+      "community": 63,
       "norm_label": "_extract_final_answer()"
     },
     {
@@ -2187,7 +2187,7 @@
       "source_file": "backend/main.py",
       "source_location": "L2886",
       "id": "backend_main_verify_math_response",
-      "community": 105,
+      "community": 63,
       "norm_label": "verify_math_response()"
     },
     {
@@ -2286,7 +2286,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3652",
       "id": "backend_main_daily_insight",
-      "community": 101,
+      "community": 83,
       "norm_label": "daily_insight()"
     },
     {
@@ -2295,7 +2295,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3796",
       "id": "backend_main_is_empty_cell",
-      "community": 15,
+      "community": 67,
       "norm_label": "_is_empty_cell()"
     },
     {
@@ -2304,7 +2304,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3806",
       "id": "backend_main_stringify_cell",
-      "community": 15,
+      "community": 67,
       "norm_label": "_stringify_cell()"
     },
     {
@@ -2313,7 +2313,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3812",
       "id": "backend_main_normalize_unknown_key",
-      "community": 15,
+      "community": 67,
       "norm_label": "_normalize_unknown_key()"
     },
     {
@@ -2322,7 +2322,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3819",
       "id": "backend_main_safe_numeric",
-      "community": 15,
+      "community": 67,
       "norm_label": "_safe_numeric()"
     },
     {
@@ -2349,7 +2349,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3849",
       "id": "backend_main_build_column_interpretations",
-      "community": 15,
+      "community": 67,
       "norm_label": "_build_column_interpretations()"
     },
     {
@@ -2358,7 +2358,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3899",
       "id": "backend_main_validate_class_record_mapping",
-      "community": 15,
+      "community": 67,
       "norm_label": "_validate_class_record_mapping()"
     },
     {
@@ -2376,7 +2376,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3923",
       "id": "backend_main_fallback_column_mapping",
-      "community": 15,
+      "community": 67,
       "norm_label": "_fallback_column_mapping()"
     },
     {
@@ -2394,7 +2394,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3957",
       "id": "backend_main_build_record_identity",
-      "community": 15,
+      "community": 67,
       "norm_label": "_build_record_identity()"
     },
     {
@@ -2412,7 +2412,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4125",
       "id": "backend_main_normalize_class_records",
-      "community": 15,
+      "community": 67,
       "norm_label": "_normalize_class_records()"
     },
     {
@@ -2421,7 +2421,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4250",
       "id": "backend_main_slugify_class_token",
-      "community": 231,
+      "community": 141,
       "norm_label": "_slugify_class_token()"
     },
     {
@@ -2430,7 +2430,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4255",
       "id": "backend_main_normalize_grade_level",
-      "community": 15,
+      "community": 141,
       "norm_label": "_normalize_grade_level()"
     },
     {
@@ -2439,7 +2439,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4270",
       "id": "backend_main_infer_classification",
-      "community": 15,
+      "community": 141,
       "norm_label": "_infer_classification()"
     },
     {
@@ -2448,7 +2448,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4279",
       "id": "backend_main_infer_strand",
-      "community": 15,
+      "community": 141,
       "norm_label": "_infer_strand()"
     },
     {
@@ -2457,7 +2457,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4291",
       "id": "backend_main_build_class_metadata",
-      "community": 15,
+      "community": 141,
       "norm_label": "_build_class_metadata()"
     },
     {
@@ -2466,7 +2466,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4332",
       "id": "backend_main_resolve_import_class_context",
-      "community": 231,
+      "community": 141,
       "norm_label": "_resolve_import_class_context()"
     },
     {
@@ -2475,7 +2475,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4373",
       "id": "backend_main_derive_risk_level",
-      "community": 15,
+      "community": 141,
       "norm_label": "_derive_risk_level()"
     },
     {
@@ -2484,7 +2484,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4381",
       "id": "backend_main_infer_student_state",
-      "community": 15,
+      "community": 141,
       "norm_label": "_infer_student_state()"
     },
     {
@@ -2502,7 +2502,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4447",
       "id": "backend_main_sync_imported_students_to_teacher_dashboard",
-      "community": 168,
+      "community": 141,
       "norm_label": "_sync_imported_students_to_teacher_dashboard()"
     },
     {
@@ -2529,7 +2529,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4745",
       "id": "backend_main_is_artifact_expired",
-      "community": 115,
+      "community": 15,
       "norm_label": "_is_artifact_expired()"
     },
     {
@@ -2547,7 +2547,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4790",
       "id": "backend_main_record_risk_refresh_event",
-      "community": 67,
+      "community": 329,
       "norm_label": "_record_risk_refresh_event()"
     },
     {
@@ -2565,7 +2565,7 @@
       "source_file": "backend/main.py",
       "source_location": "L5007",
       "id": "backend_main_prune_account_import_previews",
-      "community": 231,
+      "community": 141,
       "norm_label": "_prune_account_import_previews()"
     },
     {
@@ -2574,7 +2574,7 @@
       "source_file": "backend/main.py",
       "source_location": "L5018",
       "id": "backend_main_auth_user_not_found",
-      "community": 231,
+      "community": 141,
       "norm_label": "_auth_user_not_found()"
     },
     {
@@ -2583,7 +2583,7 @@
       "source_file": "backend/main.py",
       "source_location": "L5023",
       "id": "backend_main_generate_temporary_password",
-      "community": 231,
+      "community": 168,
       "norm_label": "_generate_temporary_password()"
     },
     {
@@ -2592,7 +2592,7 @@
       "source_file": "backend/main.py",
       "source_location": "L5031",
       "id": "backend_main_parse_provisioning_dataframe",
-      "community": 231,
+      "community": 141,
       "norm_label": "_parse_provisioning_dataframe()"
     },
     {
@@ -2889,7 +2889,7 @@
       "source_file": "backend/main.py",
       "source_location": "L5685",
       "id": "backend_main_preview_student_account_import",
-      "community": 231,
+      "community": 141,
       "norm_label": "preview_student_account_import()"
     },
     {
@@ -2898,7 +2898,7 @@
       "source_file": "backend/main.py",
       "source_location": "L5878",
       "id": "backend_main_commit_student_account_import",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit_student_account_import()"
     },
     {
@@ -2952,7 +2952,7 @@
       "source_file": "backend/main.py",
       "source_location": "L6724",
       "id": "backend_main_create_admin_user_and_notify",
-      "community": 29,
+      "community": 81,
       "norm_label": "create_admin_user_and_notify()"
     },
     {
@@ -2997,7 +2997,7 @@
       "source_file": "backend/main.py",
       "source_location": "L7347",
       "id": "backend_main_upload_class_records",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload_class_records()"
     },
     {
@@ -3033,7 +3033,7 @@
       "source_file": "backend/main.py",
       "source_location": "L7913",
       "id": "backend_main_evaluate_lesson_source_legitimacy",
-      "community": 83,
+      "community": 15,
       "norm_label": "_evaluate_lesson_source_legitimacy()"
     },
     {
@@ -3051,7 +3051,7 @@
       "source_file": "backend/main.py",
       "source_location": "L8041",
       "id": "backend_main_load_persisted_course_material_topics",
-      "community": 115,
+      "community": 15,
       "norm_label": "_load_persisted_course_material_topics()"
     },
     {
@@ -3078,7 +3078,7 @@
       "source_file": "backend/main.py",
       "source_location": "L8554",
       "id": "backend_main_get_course_material_topics",
-      "community": 115,
+      "community": 118,
       "norm_label": "get_course_material_topics()"
     },
     {
@@ -3564,7 +3564,7 @@
       "source_file": "backend/main.py",
       "source_location": "L9334",
       "id": "backend_main_resolve_grade_level_key",
-      "community": 83,
+      "community": 15,
       "norm_label": "_resolve_grade_level_key()"
     },
     {
@@ -3573,7 +3573,7 @@
       "source_file": "backend/main.py",
       "source_location": "L9352",
       "id": "backend_main_fallback_topics_for_grade",
-      "community": 83,
+      "community": 15,
       "norm_label": "_fallback_topics_for_grade()"
     },
     {
@@ -3582,7 +3582,7 @@
       "source_file": "backend/main.py",
       "source_location": "L9374",
       "id": "backend_main_load_class_performance_artifacts",
-      "community": 83,
+      "community": 15,
       "norm_label": "_load_class_performance_artifacts()"
     },
     {
@@ -3591,7 +3591,7 @@
       "source_file": "backend/main.py",
       "source_location": "L9444",
       "id": "backend_main_parse_lesson_plan_json",
-      "community": 83,
+      "community": 15,
       "norm_label": "_parse_lesson_plan_json()"
     },
     {
@@ -3609,7 +3609,7 @@
       "source_file": "backend/main.py",
       "source_location": "L9524",
       "id": "backend_main_ai_validate_lesson_plan",
-      "community": 83,
+      "community": 15,
       "norm_label": "_ai_validate_lesson_plan()"
     },
     {
@@ -3618,7 +3618,7 @@
       "source_file": "backend/main.py",
       "source_location": "L9613",
       "id": "backend_main_validate_generated_lesson_plan",
-      "community": 83,
+      "community": 15,
       "norm_label": "_validate_generated_lesson_plan()"
     },
     {
@@ -3645,7 +3645,7 @@
       "source_file": "backend/main.py",
       "source_location": "L9778",
       "id": "backend_main_build_lesson_generation_blocks",
-      "community": 83,
+      "community": 15,
       "norm_label": "_build_lesson_generation_blocks()"
     },
     {
@@ -3654,7 +3654,7 @@
       "source_file": "backend/main.py",
       "source_location": "L9893",
       "id": "backend_main_generate_lesson_plan",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate_lesson_plan()"
     },
     {
@@ -3672,7 +3672,7 @@
       "source_file": "backend/main.py",
       "source_location": "L10220",
       "id": "backend_main_record_import_grounded_feedback",
-      "community": 119,
+      "community": 29,
       "norm_label": "record_import_grounded_feedback()"
     },
     {
@@ -3753,7 +3753,7 @@
       "source_file": "backend/main.py",
       "source_location": "L11374",
       "id": "backend_main_preview_quiz",
-      "community": 285,
+      "community": 323,
       "norm_label": "preview_quiz()"
     },
     {
@@ -3816,7 +3816,7 @@
       "source_file": "backend/main.py",
       "source_location": "L11652",
       "id": "backend_main_get_quiz_topics",
-      "community": 83,
+      "community": 204,
       "norm_label": "get_quiz_topics()"
     },
     {
@@ -3834,7 +3834,7 @@
       "source_file": "backend/main.py",
       "source_location": "L11797",
       "id": "backend_main_get_sympy_safe_dict",
-      "community": 285,
+      "community": 231,
       "norm_label": "_get_sympy_safe_dict()"
     },
     {
@@ -3843,7 +3843,7 @@
       "source_file": "backend/main.py",
       "source_location": "L11865",
       "id": "backend_main_calculator_evaluate",
-      "community": 285,
+      "community": 333,
       "norm_label": "calculator_evaluate()"
     },
     {
@@ -3987,7 +3987,7 @@
       "source_file": "backend/main.py",
       "source_location": "L12225",
       "id": "backend_main_testing_reset_try_delete_subcollection",
-      "community": 205,
+      "community": 334,
       "norm_label": "_testing_reset_try_delete_subcollection()"
     },
     {
@@ -4392,7 +4392,7 @@
       "source_file": "backend/main.py",
       "source_location": "L809",
       "id": "backend_main_rationale_809",
-      "community": 124,
+      "community": 336,
       "norm_label": "verify firebase id token via firebase-admin, then google-auth as fallback."
     },
     {
@@ -4401,7 +4401,7 @@
       "source_file": "backend/main.py",
       "source_location": "L861",
       "id": "backend_main_rationale_861",
-      "community": 119,
+      "community": 29,
       "norm_label": "deprecated: rate limiting is now handled by slowapi middleware.     this functi"
     },
     {
@@ -4563,7 +4563,7 @@
       "source_file": "backend/main.py",
       "source_location": "L2866",
       "id": "backend_main_rationale_2866",
-      "community": 105,
+      "community": 63,
       "norm_label": "extract the final numeric/symbolic answer from a math response."
     },
     {
@@ -4572,7 +4572,7 @@
       "source_file": "backend/main.py",
       "source_location": "L2889",
       "id": "backend_main_rationale_2889",
-      "community": 105,
+      "community": 63,
       "norm_label": "self-consistency verification: generate multiple responses to the same     math"
     },
     {
@@ -4635,7 +4635,7 @@
       "source_file": "backend/main.py",
       "source_location": "L3653",
       "id": "backend_main_rationale_3653",
-      "community": 101,
+      "community": 83,
       "norm_label": "generate daily ai insights for teacher dashboard"
     },
     {
@@ -4653,7 +4653,7 @@
       "source_file": "backend/main.py",
       "source_location": "L4804",
       "id": "backend_main_rationale_4804",
-      "community": 67,
+      "community": 329,
       "norm_label": "persist lightweight monitoring artifacts for queued risk refresh jobs."
     },
     {
@@ -4671,7 +4671,7 @@
       "source_file": "backend/main.py",
       "source_location": "L5693",
       "id": "backend_main_rationale_5693",
-      "community": 231,
+      "community": 141,
       "norm_label": "parse and validate student account import rows before provisioning."
     },
     {
@@ -4680,7 +4680,7 @@
       "source_file": "backend/main.py",
       "source_location": "L5882",
       "id": "backend_main_rationale_5882",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit previously validated student-account preview rows into auth + firestore."
     },
     {
@@ -4698,7 +4698,7 @@
       "source_file": "backend/main.py",
       "source_location": "L6728",
       "id": "backend_main_rationale_6728",
-      "community": 29,
+      "community": 81,
       "norm_label": "create a single user account (auth + firestore) and send welcome credentials ema"
     },
     {
@@ -4743,7 +4743,7 @@
       "source_file": "backend/main.py",
       "source_location": "L7355",
       "id": "backend_main_rationale_7355",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload and parse class records (csv, excel, pdf) with ai column detection"
     },
     {
@@ -4770,7 +4770,7 @@
       "source_file": "backend/main.py",
       "source_location": "L8560",
       "id": "backend_main_rationale_8560",
-      "community": 115,
+      "community": 118,
       "norm_label": "return persisted course-material topic map for the authenticated teacher/admin."
     },
     {
@@ -4788,7 +4788,7 @@
       "source_file": "backend/main.py",
       "source_location": "L9894",
       "id": "backend_main_rationale_9894",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate a class lesson plan grounded on imported course-material topics and"
     },
     {
@@ -4797,7 +4797,7 @@
       "source_file": "backend/main.py",
       "source_location": "L10221",
       "id": "backend_main_rationale_10221",
-      "community": 119,
+      "community": 29,
       "norm_label": "capture lightweight pilot feedback telemetry for import-grounded quiz and lesson"
     },
     {
@@ -4878,7 +4878,7 @@
       "source_file": "backend/main.py",
       "source_location": "L11375",
       "id": "backend_main_rationale_11375",
-      "community": 285,
+      "community": 323,
       "norm_label": "generate a 3-question preview quiz for teachers to verify ai question     quali"
     },
     {
@@ -4896,7 +4896,7 @@
       "source_file": "backend/main.py",
       "source_location": "L11653",
       "id": "backend_main_rationale_11653",
-      "community": 83,
+      "community": 204,
       "norm_label": "return structured list of shs math topics organised by grade level.     only gr"
     },
     {
@@ -4914,7 +4914,7 @@
       "source_file": "backend/main.py",
       "source_location": "L11798",
       "id": "backend_main_rationale_11798",
-      "community": 285,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval."
     },
     {
@@ -4923,7 +4923,7 @@
       "source_file": "backend/main.py",
       "source_location": "L11866",
       "id": "backend_main_rationale_11866",
-      "community": 285,
+      "community": 333,
       "norm_label": "evaluate a mathematical expression symbolically using sympy.     supports arith"
     },
     {
@@ -5022,7 +5022,7 @@
       "source_file": "backend/main.py",
       "source_location": "L12228",
       "id": "backend_main_rationale_12228",
-      "community": 205,
+      "community": 334,
       "norm_label": "delete all documents in a subcollection. returns count of deleted docs."
     },
     {
@@ -10305,7 +10305,7 @@
       "source_file": "backend/tests/test_api.py",
       "source_location": "L1462",
       "id": "tests_test_api_query",
-      "community": 96,
+      "community": 313,
       "norm_label": "query"
     },
     {
@@ -12303,7 +12303,7 @@
       "source_file": "backend/tests/test_rag_pipeline.py",
       "source_location": "L48",
       "id": "tests_test_rag_pipeline_testdistancetoscore",
-      "community": 73,
+      "community": 165,
       "norm_label": "testdistancetoscore"
     },
     {
@@ -12312,7 +12312,7 @@
       "source_file": "backend/tests/test_rag_pipeline.py",
       "source_location": "L49",
       "id": "tests_test_rag_pipeline_testdistancetoscore_test_zero_distance_returns_one",
-      "community": 73,
+      "community": 165,
       "norm_label": ".test_zero_distance_returns_one()"
     },
     {
@@ -12321,7 +12321,7 @@
       "source_file": "backend/tests/test_rag_pipeline.py",
       "source_location": "L52",
       "id": "tests_test_rag_pipeline_testdistancetoscore_test_never_returns_zero_or_negative",
-      "community": 73,
+      "community": 165,
       "norm_label": ".test_never_returns_zero_or_negative()"
     },
     {
@@ -12330,7 +12330,7 @@
       "source_file": "backend/tests/test_rag_pipeline.py",
       "source_location": "L59",
       "id": "tests_test_rag_pipeline_testbuildlessonprompt",
-      "community": 165,
+      "community": 73,
       "norm_label": "testbuildlessonprompt"
     },
     {
@@ -12339,7 +12339,7 @@
       "source_file": "backend/tests/test_rag_pipeline.py",
       "source_location": "L60",
       "id": "tests_test_rag_pipeline_testbuildlessonprompt_test_contains_json_and_required_keys",
-      "community": 165,
+      "community": 73,
       "norm_label": ".test_contains_json_and_required_keys()"
     },
     {
@@ -12348,7 +12348,7 @@
       "source_file": "backend/tests/test_rag_pipeline.py",
       "source_location": "L86",
       "id": "tests_test_rag_pipeline_testbuildlessonprompt_test_contains_required_sections_in_prompt",
-      "community": 165,
+      "community": 73,
       "norm_label": ".test_contains_required_sections_in_prompt()"
     },
     {
@@ -16830,7 +16830,7 @@
       "source_file": "functions/lib/triggers/onStudentProfileUpdated.test.js",
       "source_location": "L35",
       "id": "triggers_onstudentprofileupdated_test_fakeusersquery_orderby",
-      "community": 96,
+      "community": 313,
       "norm_label": ".orderby()"
     },
     {
@@ -21249,7 +21249,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L1",
       "id": "src_app_tsx",
-      "community": 14,
+      "community": 159,
       "norm_label": "app.tsx"
     },
     {
@@ -21258,7 +21258,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L27",
       "id": "src_app_profilesavedata",
-      "community": 14,
+      "community": 159,
       "norm_label": "profilesavedata"
     },
     {
@@ -21267,7 +21267,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L32",
       "id": "src_app_loginpage",
-      "community": 14,
+      "community": 159,
       "norm_label": "loginpage"
     },
     {
@@ -21276,7 +21276,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L33",
       "id": "src_app_teacherdashboard",
-      "community": 14,
+      "community": 159,
       "norm_label": "teacherdashboard"
     },
     {
@@ -21285,7 +21285,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L34",
       "id": "src_app_admindashboard",
-      "community": 14,
+      "community": 159,
       "norm_label": "admindashboard"
     },
     {
@@ -21294,7 +21294,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L35",
       "id": "src_app_sidebar",
-      "community": 14,
+      "community": 159,
       "norm_label": "sidebar"
     },
     {
@@ -21303,7 +21303,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L36",
       "id": "src_app_herobanner",
-      "community": 14,
+      "community": 159,
       "norm_label": "herobanner"
     },
     {
@@ -21312,7 +21312,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L37",
       "id": "src_app_rightsidebar",
-      "community": 14,
+      "community": 159,
       "norm_label": "rightsidebar"
     },
     {
@@ -21321,7 +21321,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L38",
       "id": "src_app_xpnotification",
-      "community": 14,
+      "community": 159,
       "norm_label": "xpnotification"
     },
     {
@@ -21330,7 +21330,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L39",
       "id": "src_app_notificationbell",
-      "community": 14,
+      "community": 159,
       "norm_label": "notificationbell"
     },
     {
@@ -21339,7 +21339,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L41",
       "id": "src_app_supplementalbanner",
-      "community": 14,
+      "community": 159,
       "norm_label": "supplementalbanner"
     },
     {
@@ -21348,7 +21348,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L42",
       "id": "src_app_supplementalpillcarousel",
-      "community": 14,
+      "community": 159,
       "norm_label": "supplementalpillcarousel"
     },
     {
@@ -21357,7 +21357,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L43",
       "id": "src_app_learningpath",
-      "community": 14,
+      "community": 159,
       "norm_label": "learningpath"
     },
     {
@@ -21366,7 +21366,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L44",
       "id": "src_app_competencyradarchart",
-      "community": 14,
+      "community": 159,
       "norm_label": "competencyradarchart"
     },
     {
@@ -21375,7 +21375,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L49",
       "id": "src_app_modulespage",
-      "community": 14,
+      "community": 159,
       "norm_label": "modulespage"
     },
     {
@@ -21384,7 +21384,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L50",
       "id": "src_app_aichatpage",
-      "community": 14,
+      "community": 159,
       "norm_label": "aichatpage"
     },
     {
@@ -21393,7 +21393,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L51",
       "id": "src_app_gradespage",
-      "community": 14,
+      "community": 159,
       "norm_label": "gradespage"
     },
     {
@@ -21402,7 +21402,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L52",
       "id": "src_app_leaderboardpage",
-      "community": 14,
+      "community": 159,
       "norm_label": "leaderboardpage"
     },
     {
@@ -21411,7 +21411,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L53",
       "id": "src_app_quizbattlepage",
-      "community": 14,
+      "community": 159,
       "norm_label": "quizbattlepage"
     },
     {
@@ -21420,7 +21420,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L54",
       "id": "src_app_avatarshop",
-      "community": 14,
+      "community": 159,
       "norm_label": "avatarshop"
     },
     {
@@ -21429,7 +21429,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L55",
       "id": "src_app_floatingaitutor",
-      "community": 14,
+      "community": 159,
       "norm_label": "floatingaitutor"
     },
     {
@@ -21438,7 +21438,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L56",
       "id": "src_app_rewardsmodal",
-      "community": 14,
+      "community": 159,
       "norm_label": "rewardsmodal"
     },
     {
@@ -21447,7 +21447,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L57",
       "id": "src_app_profilemodal",
-      "community": 14,
+      "community": 159,
       "norm_label": "profilemodal"
     },
     {
@@ -21456,7 +21456,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L58",
       "id": "src_app_confirmmodal",
-      "community": 14,
+      "community": 159,
       "norm_label": "confirmmodal"
     },
     {
@@ -21465,7 +21465,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L59",
       "id": "src_app_settingsmodal",
-      "community": 14,
+      "community": 159,
       "norm_label": "settingsmodal"
     },
     {
@@ -21474,7 +21474,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L60",
       "id": "src_app_scientificcalculator",
-      "community": 14,
+      "community": 159,
       "norm_label": "scientificcalculator"
     },
     {
@@ -21483,7 +21483,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L61",
       "id": "src_app_initialassessmentmodal",
-      "community": 14,
+      "community": 159,
       "norm_label": "initialassessmentmodal"
     },
     {
@@ -21492,7 +21492,7 @@
       "source_file": "src/App.tsx",
       "source_location": "L62",
       "id": "src_app_assessmentpage",
-      "community": 14,
+      "community": 159,
       "norm_label": "assessmentpage"
     },
     {
@@ -21600,7 +21600,7 @@
       "source_file": "src/components/AddStudentsModal.tsx",
       "source_location": "L1",
       "id": "src_components_addstudentsmodal_tsx",
-      "community": 159,
+      "community": 2,
       "norm_label": "addstudentsmodal.tsx"
     },
     {
@@ -21609,7 +21609,7 @@
       "source_file": "src/components/AddStudentsModal.tsx",
       "source_location": "L12",
       "id": "components_addstudentsmodal_addstudentsmodalprops",
-      "community": 159,
+      "community": 2,
       "norm_label": "addstudentsmodalprops"
     },
     {
@@ -21627,7 +21627,7 @@
       "source_file": "src/components/AdminAnalytics.tsx",
       "source_location": "L1",
       "id": "src_components_adminanalytics_tsx",
-      "community": 25,
+      "community": 2,
       "norm_label": "adminanalytics.tsx"
     },
     {
@@ -21636,7 +21636,7 @@
       "source_file": "src/components/AdminAnalytics.tsx",
       "source_location": "L13",
       "id": "components_adminanalytics_timerange",
-      "community": 25,
+      "community": 2,
       "norm_label": "timerange"
     },
     {
@@ -21645,7 +21645,7 @@
       "source_file": "src/components/AdminAnalytics.tsx",
       "source_location": "L15",
       "id": "components_adminanalytics_emptysection",
-      "community": 25,
+      "community": 2,
       "norm_label": "emptysection()"
     },
     {
@@ -21654,7 +21654,7 @@
       "source_file": "src/components/AdminAnalytics.tsx",
       "source_location": "L29",
       "id": "components_adminanalytics_adminanalytics",
-      "community": 25,
+      "community": 2,
       "norm_label": "adminanalytics()"
     },
     {
@@ -21726,7 +21726,7 @@
       "source_file": "src/components/AdminDashboard.tsx",
       "source_location": "L1",
       "id": "src_components_admindashboard_tsx",
-      "community": 159,
+      "community": 2,
       "norm_label": "admindashboard.tsx"
     },
     {
@@ -21735,7 +21735,7 @@
       "source_file": "src/components/AdminDashboard.tsx",
       "source_location": "L33",
       "id": "components_admindashboard_admindashboardprops",
-      "community": 159,
+      "community": 2,
       "norm_label": "admindashboardprops"
     },
     {
@@ -21753,7 +21753,7 @@
       "source_file": "src/components/AdminPriorityModules.tsx",
       "source_location": "L1",
       "id": "src_components_adminprioritymodules_tsx",
-      "community": 159,
+      "community": 349,
       "norm_label": "adminprioritymodules.tsx"
     },
     {
@@ -21762,7 +21762,7 @@
       "source_file": "src/components/AdminPriorityModules.tsx",
       "source_location": "L4",
       "id": "components_adminprioritymodules_mockmodules",
-      "community": 159,
+      "community": 349,
       "norm_label": "mockmodules"
     },
     {
@@ -21771,7 +21771,7 @@
       "source_file": "src/components/AdminPriorityModules.tsx",
       "source_location": "L12",
       "id": "components_adminprioritymodules_adminprioritymodules",
-      "community": 159,
+      "community": 349,
       "norm_label": "adminprioritymodules()"
     },
     {
@@ -21780,7 +21780,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L1",
       "id": "src_components_adminragmanager_tsx",
-      "community": 25,
+      "community": 2,
       "norm_label": "adminragmanager.tsx"
     },
     {
@@ -21789,7 +21789,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L8",
       "id": "components_adminragmanager_ragdocument",
-      "community": 25,
+      "community": 2,
       "norm_label": "ragdocument"
     },
     {
@@ -21798,7 +21798,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L14",
       "id": "components_adminragmanager_raghealthresponse",
-      "community": 25,
+      "community": 2,
       "norm_label": "raghealthresponse"
     },
     {
@@ -21807,7 +21807,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L19",
       "id": "components_adminragmanager_subjectgroup",
-      "community": 25,
+      "community": 2,
       "norm_label": "subjectgroup"
     },
     {
@@ -21816,7 +21816,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L25",
       "id": "components_adminragmanager_adminragmanager",
-      "community": 25,
+      "community": 2,
       "norm_label": "adminragmanager()"
     },
     {
@@ -21825,7 +21825,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L1",
       "id": "src_components_adminsettings_tsx",
-      "community": 63,
+      "community": 2,
       "norm_label": "adminsettings.tsx"
     },
     {
@@ -21834,7 +21834,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L38",
       "id": "components_adminsettings_generalsettings",
-      "community": 63,
+      "community": 2,
       "norm_label": "generalsettings"
     },
     {
@@ -21843,7 +21843,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L45",
       "id": "components_adminsettings_notificationsettings",
-      "community": 63,
+      "community": 2,
       "norm_label": "notificationsettings"
     },
     {
@@ -21852,7 +21852,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L53",
       "id": "components_adminsettings_gamificationsettings",
-      "community": 63,
+      "community": 2,
       "norm_label": "gamificationsettings"
     },
     {
@@ -21861,7 +21861,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L60",
       "id": "components_adminsettings_contentsettings",
-      "community": 63,
+      "community": 2,
       "norm_label": "contentsettings"
     },
     {
@@ -21870,7 +21870,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L68",
       "id": "components_adminsettings_defaultgeneral",
-      "community": 63,
+      "community": 2,
       "norm_label": "defaultgeneral"
     },
     {
@@ -21879,7 +21879,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L75",
       "id": "components_adminsettings_defaultnotifications",
-      "community": 63,
+      "community": 2,
       "norm_label": "defaultnotifications"
     },
     {
@@ -21888,7 +21888,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L83",
       "id": "components_adminsettings_defaultgamification",
-      "community": 63,
+      "community": 2,
       "norm_label": "defaultgamification"
     },
     {
@@ -21897,7 +21897,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L90",
       "id": "components_adminsettings_defaultcontent",
-      "community": 63,
+      "community": 2,
       "norm_label": "defaultcontent"
     },
     {
@@ -21906,7 +21906,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L100",
       "id": "components_adminsettings_loadsection",
-      "community": 63,
+      "community": 2,
       "norm_label": "loadsection()"
     },
     {
@@ -21915,7 +21915,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L114",
       "id": "components_adminsettings_savesection",
-      "community": 63,
+      "community": 2,
       "norm_label": "savesection()"
     },
     {
@@ -21924,7 +21924,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L132",
       "id": "components_adminsettings_menuitems",
-      "community": 63,
+      "community": 2,
       "norm_label": "menuitems"
     },
     {
@@ -21933,7 +21933,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L143",
       "id": "components_adminsettings_adminsettingsprops",
-      "community": 63,
+      "community": 2,
       "norm_label": "adminsettingsprops"
     },
     {
@@ -21942,7 +21942,7 @@
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L147",
       "id": "components_adminsettings_adminsettings",
-      "community": 63,
+      "community": 2,
       "norm_label": "adminsettings()"
     },
     {
@@ -22023,7 +22023,7 @@
       "source_file": "src/components/AIChatPage.tsx",
       "source_location": "L1",
       "id": "src_components_aichatpage_tsx",
-      "community": 159,
+      "community": 2,
       "norm_label": "aichatpage.tsx"
     },
     {
@@ -22032,7 +22032,7 @@
       "source_file": "src/components/AIChatPage.tsx",
       "source_location": "L12",
       "id": "components_aichatpage_safetimestamp",
-      "community": 159,
+      "community": 2,
       "norm_label": "safetimestamp()"
     },
     {
@@ -22050,7 +22050,7 @@
       "source_file": "src/components/AppLoadingScreen.tsx",
       "source_location": "L1",
       "id": "src_components_apploadingscreen_tsx",
-      "community": 14,
+      "community": 159,
       "norm_label": "apploadingscreen.tsx"
     },
     {
@@ -22059,7 +22059,7 @@
       "source_file": "src/components/AppLoadingScreen.tsx",
       "source_location": "L5",
       "id": "components_apploadingscreen_apploadingscreenprops",
-      "community": 14,
+      "community": 159,
       "norm_label": "apploadingscreenprops"
     },
     {
@@ -22068,7 +22068,7 @@
       "source_file": "src/components/AppLoadingScreen.tsx",
       "source_location": "L9",
       "id": "components_apploadingscreen_apploadingscreen",
-      "community": 14,
+      "community": 159,
       "norm_label": "apploadingscreen()"
     },
     {
@@ -22329,7 +22329,7 @@
       "source_file": "src/components/ConfirmModal.tsx",
       "source_location": "L1",
       "id": "src_components_confirmmodal_tsx",
-      "community": 25,
+      "community": 2,
       "norm_label": "confirmmodal.tsx"
     },
     {
@@ -22338,7 +22338,7 @@
       "source_file": "src/components/ConfirmModal.tsx",
       "source_location": "L6",
       "id": "components_confirmmodal_confirmmodalprops",
-      "community": 25,
+      "community": 2,
       "norm_label": "confirmmodalprops"
     },
     {
@@ -22347,7 +22347,7 @@
       "source_file": "src/components/ConfirmModal.tsx",
       "source_location": "L19",
       "id": "components_confirmmodal_confirmmodal",
-      "community": 25,
+      "community": 2,
       "norm_label": "confirmmodal()"
     },
     {
@@ -22356,7 +22356,7 @@
       "source_file": "src/components/CreateClassModal.tsx",
       "source_location": "L1",
       "id": "src_components_createclassmodal_tsx",
-      "community": 159,
+      "community": 25,
       "norm_label": "createclassmodal.tsx"
     },
     {
@@ -22365,7 +22365,7 @@
       "source_file": "src/components/CreateClassModal.tsx",
       "source_location": "L12",
       "id": "components_createclassmodal_studentoption",
-      "community": 159,
+      "community": 25,
       "norm_label": "studentoption"
     },
     {
@@ -22374,7 +22374,7 @@
       "source_file": "src/components/CreateClassModal.tsx",
       "source_location": "L20",
       "id": "components_createclassmodal_createclassmodalprops",
-      "community": 159,
+      "community": 25,
       "norm_label": "createclassmodalprops"
     },
     {
@@ -22383,7 +22383,7 @@
       "source_file": "src/components/CreateClassModal.tsx",
       "source_location": "L27",
       "id": "components_createclassmodal_createclassmodal",
-      "community": 159,
+      "community": 25,
       "norm_label": "createclassmodal()"
     },
     {
@@ -23256,7 +23256,7 @@
       "source_file": "src/components/LoginPage.tsx",
       "source_location": "L1",
       "id": "src_components_loginpage_tsx",
-      "community": 25,
+      "community": 20,
       "norm_label": "loginpage.tsx"
     },
     {
@@ -23265,7 +23265,7 @@
       "source_file": "src/components/LoginPage.tsx",
       "source_location": "L10",
       "id": "components_loginpage_passwordrule",
-      "community": 25,
+      "community": 20,
       "norm_label": "passwordrule"
     },
     {
@@ -23274,7 +23274,7 @@
       "source_file": "src/components/LoginPage.tsx",
       "source_location": "L16",
       "id": "components_loginpage_signup_password_rules",
-      "community": 25,
+      "community": 20,
       "norm_label": "signup_password_rules"
     },
     {
@@ -23283,7 +23283,7 @@
       "source_file": "src/components/LoginPage.tsx",
       "source_location": "L42",
       "id": "components_loginpage_extractautherrordetails",
-      "community": 25,
+      "community": 20,
       "norm_label": "extractautherrordetails()"
     },
     {
@@ -23292,7 +23292,7 @@
       "source_file": "src/components/LoginPage.tsx",
       "source_location": "L57",
       "id": "components_loginpage_cleanfirebasemessage",
-      "community": 25,
+      "community": 20,
       "norm_label": "cleanfirebasemessage()"
     },
     {
@@ -23301,7 +23301,7 @@
       "source_file": "src/components/LoginPage.tsx",
       "source_location": "L64",
       "id": "components_loginpage_getfriendlyerrormessage",
-      "community": 25,
+      "community": 20,
       "norm_label": "getfriendlyerrormessage()"
     },
     {
@@ -23310,7 +23310,7 @@
       "source_file": "src/components/LoginPage.tsx",
       "source_location": "L98",
       "id": "components_loginpage_loginpage",
-      "community": 25,
+      "community": 20,
       "norm_label": "loginpage()"
     },
     {
@@ -23346,7 +23346,7 @@
       "source_file": "src/components/MasteryHeatmap.tsx",
       "source_location": "L1",
       "id": "src_components_masteryheatmap_tsx",
-      "community": 204,
+      "community": 135,
       "norm_label": "masteryheatmap.tsx"
     },
     {
@@ -23355,7 +23355,7 @@
       "source_file": "src/components/MasteryHeatmap.tsx",
       "source_location": "L11",
       "id": "components_masteryheatmap_heatmapcell",
-      "community": 204,
+      "community": 135,
       "norm_label": "heatmapcell"
     },
     {
@@ -23364,7 +23364,7 @@
       "source_file": "src/components/MasteryHeatmap.tsx",
       "source_location": "L18",
       "id": "components_masteryheatmap_masteryheatmapprops",
-      "community": 204,
+      "community": 135,
       "norm_label": "masteryheatmapprops"
     },
     {
@@ -23373,7 +23373,7 @@
       "source_file": "src/components/MasteryHeatmap.tsx",
       "source_location": "L25",
       "id": "components_masteryheatmap_subjects",
-      "community": 204,
+      "community": 135,
       "norm_label": "subjects"
     },
     {
@@ -23382,7 +23382,7 @@
       "source_file": "src/components/MasteryHeatmap.tsx",
       "source_location": "L32",
       "id": "components_masteryheatmap_topics_by_subject",
-      "community": 204,
+      "community": 135,
       "norm_label": "topics_by_subject"
     },
     {
@@ -23391,7 +23391,7 @@
       "source_file": "src/components/MasteryHeatmap.tsx",
       "source_location": "L81",
       "id": "components_masteryheatmap_getmasterycolor",
-      "community": 204,
+      "community": 135,
       "norm_label": "getmasterycolor()"
     },
     {
@@ -23400,7 +23400,7 @@
       "source_file": "src/components/MasteryHeatmap.tsx",
       "source_location": "L90",
       "id": "components_masteryheatmap_getmasterytextcolor",
-      "community": 204,
+      "community": 135,
       "norm_label": "getmasterytextcolor()"
     },
     {
@@ -23409,7 +23409,7 @@
       "source_file": "src/components/MasteryHeatmap.tsx",
       "source_location": "L98",
       "id": "components_masteryheatmap_masteryheatmap",
-      "community": 204,
+      "community": 135,
       "norm_label": "masteryheatmap()"
     },
     {
@@ -23418,7 +23418,7 @@
       "source_file": "src/components/MathAnswerInput.tsx",
       "source_location": "L1",
       "id": "src_components_mathanswerinput_tsx",
-      "community": 336,
+      "community": 85,
       "norm_label": "mathanswerinput.tsx"
     },
     {
@@ -23427,7 +23427,7 @@
       "source_file": "src/components/MathAnswerInput.tsx",
       "source_location": "L8",
       "id": "components_mathanswerinput_mathanswerinputprops",
-      "community": 336,
+      "community": 85,
       "norm_label": "mathanswerinputprops"
     },
     {
@@ -23436,7 +23436,7 @@
       "source_file": "src/components/MathAnswerInput.tsx",
       "source_location": "L20",
       "id": "components_mathanswerinput_superscriptmap",
-      "community": 336,
+      "community": 85,
       "norm_label": "superscriptmap"
     },
     {
@@ -23445,7 +23445,7 @@
       "source_file": "src/components/MathAnswerInput.tsx",
       "source_location": "L29",
       "id": "components_mathanswerinput_buildpreview",
-      "community": 336,
+      "community": 85,
       "norm_label": "buildpreview()"
     },
     {
@@ -23454,7 +23454,7 @@
       "source_file": "src/components/MathAnswerInput.tsx",
       "source_location": "L59",
       "id": "components_mathanswerinput_mathanswerinput",
-      "community": 336,
+      "community": 85,
       "norm_label": "mathanswerinput()"
     },
     {
@@ -23463,7 +23463,7 @@
       "source_file": "src/components/ModuleDetailView.tsx",
       "source_location": "L1",
       "id": "src_components_moduledetailview_tsx",
-      "community": 14,
+      "community": 135,
       "norm_label": "moduledetailview.tsx"
     },
     {
@@ -23472,7 +23472,7 @@
       "source_file": "src/components/ModuleDetailView.tsx",
       "source_location": "L19",
       "id": "components_moduledetailview_moduledetailviewprops",
-      "community": 14,
+      "community": 135,
       "norm_label": "moduledetailviewprops"
     },
     {
@@ -23481,7 +23481,7 @@
       "source_file": "src/components/ModuleDetailView.tsx",
       "source_location": "L27",
       "id": "components_moduledetailview_moduledetailview",
-      "community": 14,
+      "community": 135,
       "norm_label": "moduledetailview()"
     },
     {
@@ -23706,7 +23706,7 @@
       "source_file": "src/components/PracticeCenter.test.tsx",
       "source_location": "L1",
       "id": "src_components_practicecenter_test_tsx",
-      "community": 14,
+      "community": 85,
       "norm_label": "practicecenter.test.tsx"
     },
     {
@@ -23715,7 +23715,7 @@
       "source_file": "src/components/PracticeCenter.tsx",
       "source_location": "L1",
       "id": "src_components_practicecenter_tsx",
-      "community": 14,
+      "community": 85,
       "norm_label": "practicecenter.tsx"
     },
     {
@@ -23724,7 +23724,7 @@
       "source_file": "src/components/PracticeCenter.tsx",
       "source_location": "L13",
       "id": "components_practicecenter_practicecenterprops",
-      "community": 14,
+      "community": 85,
       "norm_label": "practicecenterprops"
     },
     {
@@ -23733,7 +23733,7 @@
       "source_file": "src/components/PracticeCenter.tsx",
       "source_location": "L22",
       "id": "components_practicecenter_topiccard",
-      "community": 14,
+      "community": 85,
       "norm_label": "topiccard"
     },
     {
@@ -23742,7 +23742,7 @@
       "source_file": "src/components/PracticeCenter.tsx",
       "source_location": "L30",
       "id": "components_practicecenter_unit_style",
-      "community": 14,
+      "community": 85,
       "norm_label": "unit_style"
     },
     {
@@ -23751,7 +23751,7 @@
       "source_file": "src/components/PracticeCenter.tsx",
       "source_location": "L41",
       "id": "components_practicecenter_getunitstyle",
-      "community": 14,
+      "community": 85,
       "norm_label": "getunitstyle()"
     },
     {
@@ -23760,7 +23760,7 @@
       "source_file": "src/components/PracticeCenter.tsx",
       "source_location": "L45",
       "id": "components_practicecenter_practicecenter",
-      "community": 14,
+      "community": 85,
       "norm_label": "practicecenter()"
     },
     {
@@ -23949,7 +23949,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L1",
       "id": "src_components_quizbattlepage_tsx",
-      "community": 81,
+      "community": 36,
       "norm_label": "quizbattlepage.tsx"
     },
     {
@@ -23958,7 +23958,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L88",
       "id": "components_quizbattlepage_default_viewport_size",
-      "community": 81,
+      "community": 36,
       "norm_label": "default_viewport_size"
     },
     {
@@ -23967,7 +23967,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L187",
       "id": "components_quizbattlepage_rainstorm",
-      "community": 81,
+      "community": 36,
       "norm_label": "rainstorm()"
     },
     {
@@ -23976,7 +23976,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L210",
       "id": "components_quizbattlepage_drawsparks",
-      "community": 81,
+      "community": 36,
       "norm_label": "drawsparks()"
     },
     {
@@ -23985,7 +23985,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L244",
       "id": "components_quizbattlepage_animatedcounter",
-      "community": 81,
+      "community": 36,
       "norm_label": "animatedcounter()"
     },
     {
@@ -23994,7 +23994,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L290",
       "id": "components_quizbattlepage_battlepagetab",
-      "community": 81,
+      "community": 36,
       "norm_label": "battlepagetab"
     },
     {
@@ -24003,7 +24003,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L292",
       "id": "components_quizbattlepage_launchstate",
-      "community": 81,
+      "community": 36,
       "norm_label": "launchstate"
     },
     {
@@ -24012,7 +24012,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L301",
       "id": "components_quizbattlepage_formatresponsetime",
-      "community": 81,
+      "community": 36,
       "norm_label": "formatresponsetime()"
     },
     {
@@ -24021,7 +24021,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L306",
       "id": "components_quizbattlepage_formatoutcomechip",
-      "community": 81,
+      "community": 36,
       "norm_label": "formatoutcomechip()"
     },
     {
@@ -24030,7 +24030,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L312",
       "id": "components_quizbattlepage_clampnumber",
-      "community": 81,
+      "community": 36,
       "norm_label": "clampnumber()"
     },
     {
@@ -24039,7 +24039,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L316",
       "id": "components_quizbattlepage_formatwaitclock",
-      "community": 81,
+      "community": 36,
       "norm_label": "formatwaitclock()"
     },
     {
@@ -24048,7 +24048,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L322",
       "id": "components_quizbattlepage_toinitials",
-      "community": 81,
+      "community": 36,
       "norm_label": "toinitials()"
     },
     {
@@ -24057,7 +24057,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L336",
       "id": "components_quizbattlepage_describelifecycleevent",
-      "community": 81,
+      "community": 36,
       "norm_label": "describelifecycleevent()"
     },
     {
@@ -24066,7 +24066,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L362",
       "id": "components_quizbattlepage_getaudiocontext",
-      "community": 81,
+      "community": 36,
       "norm_label": "getaudiocontext()"
     },
     {
@@ -24075,7 +24075,7 @@
       "source_file": "src/components/QuizBattlePage.tsx",
       "source_location": "L373",
       "id": "components_quizbattlepage_quizbattlepage",
-      "community": 81,
+      "community": 36,
       "norm_label": "quizbattlepage()"
     },
     {
@@ -24129,7 +24129,7 @@
       "source_file": "src/components/QuizExperience.tsx",
       "source_location": "L178",
       "id": "components_quizexperience_quiz",
-      "community": 14,
+      "community": 85,
       "norm_label": "quiz"
     },
     {
@@ -24138,7 +24138,7 @@
       "source_file": "src/components/QuizExperience.tsx",
       "source_location": "L197",
       "id": "components_quizexperience_quizanswerrecord",
-      "community": 14,
+      "community": 85,
       "norm_label": "quizanswerrecord"
     },
     {
@@ -24642,7 +24642,7 @@
       "source_file": "src/components/SettingsModal.tsx",
       "source_location": "L1",
       "id": "src_components_settingsmodal_tsx",
-      "community": 118,
+      "community": 2,
       "norm_label": "settingsmodal.tsx"
     },
     {
@@ -24651,7 +24651,7 @@
       "source_file": "src/components/SettingsModal.tsx",
       "source_location": "L54",
       "id": "components_settingsmodal_profiledata",
-      "community": 118,
+      "community": 2,
       "norm_label": "profiledata"
     },
     {
@@ -24660,7 +24660,7 @@
       "source_file": "src/components/SettingsModal.tsx",
       "source_location": "L74",
       "id": "components_settingsmodal_settingsmodalprops",
-      "community": 118,
+      "community": 2,
       "norm_label": "settingsmodalprops"
     },
     {
@@ -24669,7 +24669,7 @@
       "source_file": "src/components/SettingsModal.tsx",
       "source_location": "L87",
       "id": "components_settingsmodal_clonedefaultsettings",
-      "community": 118,
+      "community": 2,
       "norm_label": "clonedefaultsettings()"
     },
     {
@@ -24678,7 +24678,7 @@
       "source_file": "src/components/SettingsModal.tsx",
       "source_location": "L89",
       "id": "components_settingsmodal_settingsmodal",
-      "community": 118,
+      "community": 2,
       "norm_label": "settingsmodal()"
     },
     {
@@ -25920,7 +25920,7 @@
       "source_file": "src/components/admin/ModelConfigPanel.tsx",
       "source_location": "L1",
       "id": "src_components_admin_modelconfigpanel_tsx",
-      "community": 63,
+      "community": 25,
       "norm_label": "modelconfigpanel.tsx"
     },
     {
@@ -25929,7 +25929,7 @@
       "source_file": "src/components/admin/ModelConfigPanel.tsx",
       "source_location": "L8",
       "id": "admin_modelconfigpanel_modelconfigdata",
-      "community": 63,
+      "community": 25,
       "norm_label": "modelconfigdata"
     },
     {
@@ -25938,7 +25938,7 @@
       "source_file": "src/components/admin/ModelConfigPanel.tsx",
       "source_location": "L21",
       "id": "admin_modelconfigpanel_formatvalue",
-      "community": 63,
+      "community": 25,
       "norm_label": "formatvalue()"
     },
     {
@@ -25947,7 +25947,7 @@
       "source_file": "src/components/admin/ModelConfigPanel.tsx",
       "source_location": "L26",
       "id": "admin_modelconfigpanel_formatdate",
-      "community": 63,
+      "community": 25,
       "norm_label": "formatdate()"
     },
     {
@@ -25956,7 +25956,7 @@
       "source_file": "src/components/admin/ModelConfigPanel.tsx",
       "source_location": "L33",
       "id": "admin_modelconfigpanel_infocardprops",
-      "community": 63,
+      "community": 25,
       "norm_label": "infocardprops"
     },
     {
@@ -25965,7 +25965,7 @@
       "source_file": "src/components/admin/ModelConfigPanel.tsx",
       "source_location": "L39",
       "id": "admin_modelconfigpanel_infocard",
-      "community": 63,
+      "community": 25,
       "norm_label": "infocard()"
     },
     {
@@ -25974,7 +25974,7 @@
       "source_file": "src/components/admin/ModelConfigPanel.tsx",
       "source_location": "L62",
       "id": "admin_modelconfigpanel_modelconfigpanel",
-      "community": 63,
+      "community": 25,
       "norm_label": "modelconfigpanel()"
     },
     {
@@ -25983,7 +25983,7 @@
       "source_file": "src/components/admin/SubjectsHelpModal.tsx",
       "source_location": "L1",
       "id": "src_components_admin_subjectshelpmodal_tsx",
-      "community": 159,
+      "community": 348,
       "norm_label": "subjectshelpmodal.tsx"
     },
     {
@@ -25992,7 +25992,7 @@
       "source_file": "src/components/admin/SubjectsHelpModal.tsx",
       "source_location": "L4",
       "id": "admin_subjectshelpmodal_subjectshelpmodalprops",
-      "community": 159,
+      "community": 348,
       "norm_label": "subjectshelpmodalprops"
     },
     {
@@ -26001,7 +26001,7 @@
       "source_file": "src/components/admin/SubjectsHelpModal.tsx",
       "source_location": "L9",
       "id": "admin_subjectshelpmodal_subjectshelpmodal",
-      "community": 159,
+      "community": 348,
       "norm_label": "subjectshelpmodal()"
     },
     {
@@ -26289,7 +26289,7 @@
       "source_file": "src/components/assessment/AssessmentQuestionCard.tsx",
       "source_location": "L1",
       "id": "src_components_assessment_assessmentquestioncard_tsx",
-      "community": 48,
+      "community": 344,
       "norm_label": "assessmentquestioncard.tsx"
     },
     {
@@ -26298,7 +26298,7 @@
       "source_file": "src/components/assessment/AssessmentQuestionCard.tsx",
       "source_location": "L3",
       "id": "assessment_assessmentquestioncard_assessmentquestioncardprops",
-      "community": 48,
+      "community": 344,
       "norm_label": "assessmentquestioncardprops"
     },
     {
@@ -26307,7 +26307,7 @@
       "source_file": "src/components/assessment/AssessmentQuestionCard.tsx",
       "source_location": "L11",
       "id": "assessment_assessmentquestioncard_difficultycolors",
-      "community": 48,
+      "community": 344,
       "norm_label": "difficultycolors"
     },
     {
@@ -26316,7 +26316,7 @@
       "source_file": "src/components/assessment/AssessmentQuestionCard.tsx",
       "source_location": "L17",
       "id": "assessment_assessmentquestioncard_assessmentquestioncard",
-      "community": 48,
+      "community": 344,
       "norm_label": "assessmentquestioncard()"
     },
     {
@@ -26388,7 +26388,7 @@
       "source_file": "src/components/assessment/AssessmentResultsModal.tsx",
       "source_location": "L243",
       "id": "assessment_assessmentresultsmodal_buildfallbacksummary",
-      "community": 96,
+      "community": 313,
       "norm_label": "buildfallbacksummary()"
     },
     {
@@ -26496,7 +26496,7 @@
       "source_file": "src/components/battle/BattleFooter.tsx",
       "source_location": "L1",
       "id": "src_components_battle_battlefooter_tsx",
-      "community": 81,
+      "community": 36,
       "norm_label": "battlefooter.tsx"
     },
     {
@@ -26505,7 +26505,7 @@
       "source_file": "src/components/battle/BattleFooter.tsx",
       "source_location": "L6",
       "id": "battle_battlefooter_battlefooterprops",
-      "community": 81,
+      "community": 36,
       "norm_label": "battlefooterprops"
     },
     {
@@ -26514,7 +26514,7 @@
       "source_file": "src/components/battle/BattleFooter.tsx",
       "source_location": "L13",
       "id": "battle_battlefooter_battlefooter",
-      "community": 81,
+      "community": 36,
       "norm_label": "battlefooter"
     },
     {
@@ -26523,7 +26523,7 @@
       "source_file": "src/components/battle/BattleHeader.tsx",
       "source_location": "L1",
       "id": "src_components_battle_battleheader_tsx",
-      "community": 81,
+      "community": 36,
       "norm_label": "battleheader.tsx"
     },
     {
@@ -26532,7 +26532,7 @@
       "source_file": "src/components/battle/BattleHeader.tsx",
       "source_location": "L7",
       "id": "battle_battleheader_battleheaderprops",
-      "community": 81,
+      "community": 36,
       "norm_label": "battleheaderprops"
     },
     {
@@ -26541,7 +26541,7 @@
       "source_file": "src/components/battle/BattleHeader.tsx",
       "source_location": "L21",
       "id": "battle_battleheader_battleheader",
-      "community": 81,
+      "community": 36,
       "norm_label": "battleheader"
     },
     {
@@ -27144,7 +27144,7 @@
       "source_file": "src/components/ui/button.tsx",
       "source_location": "L1",
       "id": "src_components_ui_button_tsx",
-      "community": 25,
+      "community": 2,
       "norm_label": "button.tsx"
     },
     {
@@ -27162,7 +27162,7 @@
       "source_file": "src/components/ui/button.tsx",
       "source_location": "L37",
       "id": "ui_button_button",
-      "community": 25,
+      "community": 2,
       "norm_label": "button()"
     },
     {
@@ -30780,7 +30780,7 @@
       "source_file": "src/data/subjects.ts",
       "source_location": "L5",
       "id": "data_subjects_shs_math_subjects",
-      "community": 2,
+      "community": 135,
       "norm_label": "shs_math_subjects"
     },
     {
@@ -30906,7 +30906,7 @@
       "source_file": "src/data/subjects.ts",
       "source_location": "L137",
       "id": "data_subjects_quiz",
-      "community": 91,
+      "community": 135,
       "norm_label": "quiz"
     },
     {
@@ -30915,7 +30915,7 @@
       "source_file": "src/data/subjects.ts",
       "source_location": "L148",
       "id": "data_subjects_module",
-      "community": 14,
+      "community": 135,
       "norm_label": "module"
     },
     {
@@ -30933,7 +30933,7 @@
       "source_file": "src/data/subjects.ts",
       "source_location": "L178",
       "id": "data_subjects_subjects",
-      "community": 14,
+      "community": 135,
       "norm_label": "subjects"
     },
     {
@@ -30969,7 +30969,7 @@
       "source_file": "src/data/curriculum/types.ts",
       "source_location": "L1",
       "id": "src_data_curriculum_types_ts",
-      "community": 135,
+      "community": 14,
       "norm_label": "types.ts"
     },
     {
@@ -30978,7 +30978,7 @@
       "source_file": "src/data/curriculum/types.ts",
       "source_location": "L1",
       "id": "curriculum_types_gradelevel",
-      "community": 135,
+      "community": 14,
       "norm_label": "gradelevel"
     },
     {
@@ -30987,7 +30987,7 @@
       "source_file": "src/data/curriculum/types.ts",
       "source_location": "L2",
       "id": "curriculum_types_curriculumquarter",
-      "community": 135,
+      "community": 14,
       "norm_label": "curriculumquarter"
     },
     {
@@ -30996,7 +30996,7 @@
       "source_file": "src/data/curriculum/types.ts",
       "source_location": "L4",
       "id": "curriculum_types_curriculumsourcemeta",
-      "community": 135,
+      "community": 14,
       "norm_label": "curriculumsourcemeta"
     },
     {
@@ -31005,7 +31005,7 @@
       "source_file": "src/data/curriculum/types.ts",
       "source_location": "L11",
       "id": "curriculum_types_curriculumlesson",
-      "community": 135,
+      "community": 14,
       "norm_label": "curriculumlesson"
     },
     {
@@ -31014,7 +31014,7 @@
       "source_file": "src/data/curriculum/types.ts",
       "source_location": "L24",
       "id": "curriculum_types_curriculummodule",
-      "community": 135,
+      "community": 14,
       "norm_label": "curriculummodule"
     },
     {
@@ -31023,7 +31023,7 @@
       "source_file": "src/data/curriculum/types.ts",
       "source_location": "L43",
       "id": "curriculum_types_curriculum_lessons",
-      "community": 135,
+      "community": 14,
       "norm_label": "curriculum_lessons"
     },
     {
@@ -31041,7 +31041,7 @@
       "source_file": "src/data/curriculum/types.ts",
       "source_location": "L149",
       "id": "curriculum_types_getlessonsbymodule",
-      "community": 135,
+      "community": 14,
       "norm_label": "getlessonsbymodule()"
     },
     {
@@ -31050,7 +31050,7 @@
       "source_file": "src/data/curriculum/types.ts",
       "source_location": "L153",
       "id": "curriculum_types_getlessonsbysubject",
-      "community": 135,
+      "community": 14,
       "norm_label": "getlessonsbysubject()"
     },
     {
@@ -31212,7 +31212,7 @@
       "source_file": "src/features/notifications/NotificationBell.test.tsx",
       "source_location": "L1",
       "id": "src_features_notifications_notificationbell_test_tsx",
-      "community": 313,
+      "community": 301,
       "norm_label": "notificationbell.test.tsx"
     },
     {
@@ -31221,7 +31221,7 @@
       "source_file": "src/features/notifications/NotificationBell.tsx",
       "source_location": "L1",
       "id": "src_features_notifications_notificationbell_tsx",
-      "community": 313,
+      "community": 301,
       "norm_label": "notificationbell.tsx"
     },
     {
@@ -31230,7 +31230,7 @@
       "source_file": "src/features/notifications/NotificationBell.tsx",
       "source_location": "L10",
       "id": "notifications_notificationbell_notificationbell",
-      "community": 313,
+      "community": 301,
       "norm_label": "notificationbell()"
     },
     {
@@ -31257,7 +31257,7 @@
       "source_file": "src/features/notifications/NotificationContext.test.tsx",
       "source_location": "L49",
       "id": "notifications_notificationcontext_test_testcomponent",
-      "community": 313,
+      "community": 301,
       "norm_label": "testcomponent()"
     },
     {
@@ -31318,9 +31318,9 @@
       "label": "useNotifications()",
       "file_type": "code",
       "source_file": "src/features/notifications/NotificationContext.tsx",
-      "source_location": "L99",
+      "source_location": "L105",
       "id": "notifications_notificationcontext_usenotifications",
-      "community": 313,
+      "community": 301,
       "norm_label": "usenotifications()"
     },
     {
@@ -31450,10 +31450,28 @@
       "norm_label": "getdocsmock2"
     },
     {
+      "label": "mockSubcollectionDocs",
+      "file_type": "code",
+      "source_file": "src/features/notifications/notificationFirestoreService.test.ts",
+      "source_location": "L204",
+      "id": "notifications_notificationfirestoreservice_test_mocksubcollectiondocs",
+      "community": 96,
+      "norm_label": "mocksubcollectiondocs"
+    },
+    {
+      "label": "mockTopLevelDocs",
+      "file_type": "code",
+      "source_file": "src/features/notifications/notificationFirestoreService.test.ts",
+      "source_location": "L208",
+      "id": "notifications_notificationfirestoreservice_test_mocktopleveldocs",
+      "community": 96,
+      "norm_label": "mocktopleveldocs"
+    },
+    {
       "label": "mockUnsubscribe",
       "file_type": "code",
       "source_file": "src/features/notifications/notificationFirestoreService.test.ts",
-      "source_location": "L228",
+      "source_location": "L232",
       "id": "notifications_notificationfirestoreservice_test_mockunsubscribe",
       "community": 96,
       "norm_label": "mockunsubscribe"
@@ -31462,7 +31480,7 @@
       "label": "callback",
       "file_type": "code",
       "source_file": "src/features/notifications/notificationFirestoreService.test.ts",
-      "source_location": "L235",
+      "source_location": "L239",
       "id": "notifications_notificationfirestoreservice_test_callback",
       "community": 96,
       "norm_label": "callback"
@@ -31471,7 +31489,7 @@
       "label": "unsubscribe",
       "file_type": "code",
       "source_file": "src/features/notifications/notificationFirestoreService.test.ts",
-      "source_location": "L236",
+      "source_location": "L240",
       "id": "notifications_notificationfirestoreservice_test_unsubscribe",
       "community": 96,
       "norm_label": "unsubscribe"
@@ -31482,7 +31500,7 @@
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
       "source_location": "L1",
       "id": "src_features_notifications_notificationfirestoreservice_ts",
-      "community": 330,
+      "community": 313,
       "norm_label": "notificationfirestoreservice.ts"
     },
     {
@@ -31491,7 +31509,7 @@
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
       "source_location": "L28",
       "id": "notifications_notificationfirestoreservice_requireauth",
-      "community": 330,
+      "community": 313,
       "norm_label": "requireauth()"
     },
     {
@@ -31500,7 +31518,7 @@
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
       "source_location": "L36",
       "id": "notifications_notificationfirestoreservice_mapnotificationdoc",
-      "community": 330,
+      "community": 313,
       "norm_label": "mapnotificationdoc()"
     },
     {
@@ -31518,7 +31536,7 @@
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
       "source_location": "L82",
       "id": "notifications_notificationfirestoreservice_getusernotifications",
-      "community": 96,
+      "community": 313,
       "norm_label": "getusernotifications()"
     },
     {
@@ -31527,7 +31545,7 @@
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
       "source_location": "L101",
       "id": "notifications_notificationfirestoreservice_markasread",
-      "community": 330,
+      "community": 313,
       "norm_label": "markasread()"
     },
     {
@@ -31543,7 +31561,7 @@
       "label": "deleteNotification()",
       "file_type": "code",
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
-      "source_location": "L142",
+      "source_location": "L144",
       "id": "notifications_notificationfirestoreservice_deletenotification",
       "community": 313,
       "norm_label": "deletenotification()"
@@ -31552,27 +31570,27 @@
       "label": "subscribeToNotifications()",
       "file_type": "code",
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
-      "source_location": "L152",
+      "source_location": "L154",
       "id": "notifications_notificationfirestoreservice_subscribetonotifications",
-      "community": 96,
+      "community": 313,
       "norm_label": "subscribetonotifications()"
     },
     {
       "label": "hasCheckedInToday()",
       "file_type": "code",
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
-      "source_location": "L218",
+      "source_location": "L220",
       "id": "notifications_notificationfirestoreservice_hascheckedintoday",
-      "community": 96,
+      "community": 313,
       "norm_label": "hascheckedintoday()"
     },
     {
       "label": "hasRemindedToday()",
       "file_type": "code",
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
-      "source_location": "L242",
+      "source_location": "L244",
       "id": "notifications_notificationfirestoreservice_hasremindedtoday",
-      "community": 330,
+      "community": 313,
       "norm_label": "hasremindedtoday()"
     },
     {
@@ -31644,7 +31662,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L1",
       "id": "src_features_notifications_notificationitem_tsx",
-      "community": 313,
+      "community": 121,
       "norm_label": "notificationitem.tsx"
     },
     {
@@ -31653,7 +31671,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L23",
       "id": "notifications_notificationitem_iconmap",
-      "community": 313,
+      "community": 121,
       "norm_label": "iconmap"
     },
     {
@@ -31662,7 +31680,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L36",
       "id": "notifications_notificationitem_badgefortype",
-      "community": 313,
+      "community": 121,
       "norm_label": "badgefortype()"
     },
     {
@@ -31671,7 +31689,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L63",
       "id": "notifications_notificationitem_notificationitemprops",
-      "community": 313,
+      "community": 121,
       "norm_label": "notificationitemprops"
     },
     {
@@ -31680,7 +31698,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L67",
       "id": "notifications_notificationitem_notificationitem",
-      "community": 313,
+      "community": 121,
       "norm_label": "notificationitem()"
     },
     {
@@ -31734,7 +31752,7 @@
       "source_file": "src/features/notifications/NotificationPanel.tsx",
       "source_location": "L1",
       "id": "src_features_notifications_notificationpanel_tsx",
-      "community": 313,
+      "community": 301,
       "norm_label": "notificationpanel.tsx"
     },
     {
@@ -31743,7 +31761,7 @@
       "source_file": "src/features/notifications/NotificationPanel.tsx",
       "source_location": "L11",
       "id": "notifications_notificationpanel_notificationpanelprops",
-      "community": 313,
+      "community": 301,
       "norm_label": "notificationpanelprops"
     },
     {
@@ -31752,7 +31770,7 @@
       "source_file": "src/features/notifications/NotificationPanel.tsx",
       "source_location": "L15",
       "id": "notifications_notificationpanel_notificationpanel",
-      "community": 313,
+      "community": 301,
       "norm_label": "notificationpanel()"
     },
     {
@@ -31824,7 +31842,7 @@
       "source_file": "src/features/notifications/types.ts",
       "source_location": "L21",
       "id": "notifications_types_notification",
-      "community": 313,
+      "community": 121,
       "norm_label": "notification"
     },
     {
@@ -31869,7 +31887,7 @@
       "source_file": "src/hooks/useAIMonitoring.ts",
       "source_location": "L6",
       "id": "hooks_useaimonitoring_useaimonitoring",
-      "community": 38,
+      "community": 123,
       "norm_label": "useaimonitoring()"
     },
     {
@@ -32004,7 +32022,7 @@
       "source_file": "src/hooks/useExtraHints.ts",
       "source_location": "L1",
       "id": "src_hooks_useextrahints_ts",
-      "community": 85,
+      "community": 25,
       "norm_label": "useextrahints.ts"
     },
     {
@@ -32013,7 +32031,7 @@
       "source_file": "src/hooks/useExtraHints.ts",
       "source_location": "L8",
       "id": "hooks_useextrahints_extrahintsstate",
-      "community": 85,
+      "community": 25,
       "norm_label": "extrahintsstate"
     },
     {
@@ -32301,7 +32319,7 @@
       "source_file": "src/hooks/useUserSettings.ts",
       "source_location": "L1",
       "id": "src_hooks_useusersettings_ts",
-      "community": 118,
+      "community": 159,
       "norm_label": "useusersettings.ts"
     },
     {
@@ -32310,7 +32328,7 @@
       "source_file": "src/hooks/useUserSettings.ts",
       "source_location": "L11",
       "id": "hooks_useusersettings_useusersettingsreturn",
-      "community": 118,
+      "community": 159,
       "norm_label": "useusersettingsreturn"
     },
     {
@@ -32319,7 +32337,7 @@
       "source_file": "src/hooks/useUserSettings.ts",
       "source_location": "L20",
       "id": "hooks_useusersettings_useusersettings",
-      "community": 118,
+      "community": 2,
       "norm_label": "useusersettings()"
     },
     {
@@ -32427,7 +32445,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L1",
       "id": "src_lib_firebase_ts",
-      "community": 159,
+      "community": 25,
       "norm_label": "firebase.ts"
     },
     {
@@ -32436,7 +32454,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L9",
       "id": "lib_firebase_isvalidrealtimedatabaseurl",
-      "community": 159,
+      "community": 25,
       "norm_label": "isvalidrealtimedatabaseurl()"
     },
     {
@@ -32445,7 +32463,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L30",
       "id": "lib_firebase_rawdatabaseurl",
-      "community": 159,
+      "community": 25,
       "norm_label": "rawdatabaseurl"
     },
     {
@@ -32454,7 +32472,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L42",
       "id": "lib_firebase_firebaseconfig",
-      "community": 159,
+      "community": 25,
       "norm_label": "firebaseconfig"
     },
     {
@@ -32463,7 +32481,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L60",
       "id": "lib_firebase_app",
-      "community": 159,
+      "community": 25,
       "norm_label": "app"
     },
     {
@@ -32472,7 +32490,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L72",
       "id": "lib_firebase_buildauthinstance",
-      "community": 159,
+      "community": 25,
       "norm_label": "buildauthinstance()"
     },
     {
@@ -32481,7 +32499,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L88",
       "id": "lib_firebase_auth",
-      "community": 159,
+      "community": 110,
       "norm_label": "auth"
     },
     {
@@ -32490,7 +32508,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L89",
       "id": "lib_firebase_builddbinstance",
-      "community": 159,
+      "community": 25,
       "norm_label": "builddbinstance()"
     },
     {
@@ -32499,7 +32517,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L100",
       "id": "lib_firebase_db",
-      "community": 14,
+      "community": 25,
       "norm_label": "db"
     },
     {
@@ -32508,7 +32526,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L101",
       "id": "lib_firebase_storage",
-      "community": 159,
+      "community": 25,
       "norm_label": "storage"
     },
     {
@@ -32517,7 +32535,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L102",
       "id": "lib_firebase_cloudfunctions",
-      "community": 159,
+      "community": 25,
       "norm_label": "cloudfunctions"
     },
     {
@@ -32526,7 +32544,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L111",
       "id": "lib_firebase_emulatorportraw",
-      "community": 159,
+      "community": 25,
       "norm_label": "emulatorportraw"
     },
     {
@@ -32535,7 +32553,7 @@
       "source_file": "src/lib/firebase.ts",
       "source_location": "L120",
       "id": "lib_firebase_isrealtimedbenabled",
-      "community": 159,
+      "community": 25,
       "norm_label": "isrealtimedbenabled"
     },
     {
@@ -32571,7 +32589,7 @@
       "source_file": "src/pages/AssessmentPage.tsx",
       "source_location": "L1",
       "id": "src_pages_assessmentpage_tsx",
-      "community": 25,
+      "community": 2,
       "norm_label": "assessmentpage.tsx"
     },
     {
@@ -32580,7 +32598,7 @@
       "source_file": "src/pages/AssessmentPage.tsx",
       "source_location": "L22",
       "id": "pages_assessmentpage_assessmentpageprops",
-      "community": 25,
+      "community": 2,
       "norm_label": "assessmentpageprops"
     },
     {
@@ -32589,7 +32607,7 @@
       "source_file": "src/pages/AssessmentPage.tsx",
       "source_location": "L36",
       "id": "pages_assessmentpage_step",
-      "community": 25,
+      "community": 2,
       "norm_label": "step"
     },
     {
@@ -32598,7 +32616,7 @@
       "source_file": "src/pages/AssessmentPage.tsx",
       "source_location": "L38",
       "id": "pages_assessmentpage_assessmentpage",
-      "community": 25,
+      "community": 2,
       "norm_label": "assessmentpage()"
     },
     {
@@ -32616,7 +32634,7 @@
       "source_file": "src/pages/admin/AIMonitoringPage.tsx",
       "source_location": "L14",
       "id": "admin_aimonitoringpage_aimonitoringpage",
-      "community": 38,
+      "community": 123,
       "norm_label": "aimonitoringpage()"
     },
     {
@@ -32679,7 +32697,7 @@
       "source_file": "src/pages/teacher/AtRiskDashboard.tsx",
       "source_location": "L67",
       "id": "teacher_atriskdashboard_atriskdashboard",
-      "community": 6,
+      "community": 25,
       "norm_label": "atriskdashboard()"
     },
     {
@@ -33183,7 +33201,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L2",
       "id": "types_models_userrole",
-      "community": 25,
+      "community": 20,
       "norm_label": "userrole"
     },
     {
@@ -33237,7 +33255,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L152",
       "id": "types_models_profilevisibility",
-      "community": 118,
+      "community": 2,
       "norm_label": "profilevisibility"
     },
     {
@@ -33246,7 +33264,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L153",
       "id": "types_models_studytimepreference",
-      "community": 118,
+      "community": 2,
       "norm_label": "studytimepreference"
     },
     {
@@ -33255,7 +33273,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L154",
       "id": "types_models_quizdifficultypreference",
-      "community": 118,
+      "community": 2,
       "norm_label": "quizdifficultypreference"
     },
     {
@@ -33264,7 +33282,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L156",
       "id": "types_models_usersettings",
-      "community": 118,
+      "community": 2,
       "norm_label": "usersettings"
     },
     {
@@ -33273,7 +33291,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L229",
       "id": "types_models_default_user_settings",
-      "community": 118,
+      "community": 2,
       "norm_label": "default_user_settings"
     },
     {
@@ -33372,7 +33390,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L397",
       "id": "types_models_quizbattlemode",
-      "community": 81,
+      "community": 36,
       "norm_label": "quizbattlemode"
     },
     {
@@ -33381,7 +33399,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L398",
       "id": "types_models_quizbattlequeuetype",
-      "community": 81,
+      "community": 36,
       "norm_label": "quizbattlequeuetype"
     },
     {
@@ -33444,7 +33462,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L430",
       "id": "types_models_quizbattlesetupconfig",
-      "community": 81,
+      "community": 36,
       "norm_label": "quizbattlesetupconfig"
     },
     {
@@ -33462,7 +33480,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L452",
       "id": "types_models_quizbattlematchsummary",
-      "community": 81,
+      "community": 36,
       "norm_label": "quizbattlematchsummary"
     },
     {
@@ -33471,7 +33489,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L474",
       "id": "types_models_studentbattlestats",
-      "community": 81,
+      "community": 36,
       "norm_label": "studentbattlestats"
     },
     {
@@ -33480,7 +33498,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L490",
       "id": "types_models_quizbattleleaderboardentry",
-      "community": 81,
+      "community": 36,
       "norm_label": "quizbattleleaderboardentry"
     },
     {
@@ -33957,7 +33975,7 @@
       "source_file": "src/types/settings.ts",
       "source_location": "L1",
       "id": "src_types_settings_ts",
-      "community": 118,
+      "community": 159,
       "norm_label": "settings.ts"
     },
     {
@@ -33966,7 +33984,7 @@
       "source_file": "src/types/settings.ts",
       "source_location": "L6",
       "id": "types_settings_teacherpreferences",
-      "community": 118,
+      "community": 159,
       "norm_label": "teacherpreferences"
     },
     {
@@ -33975,7 +33993,7 @@
       "source_file": "src/types/settings.ts",
       "source_location": "L21",
       "id": "types_settings_adminsystemconfig",
-      "community": 118,
+      "community": 159,
       "norm_label": "adminsystemconfig"
     },
     {
@@ -33984,7 +34002,7 @@
       "source_file": "src/types/settings.ts",
       "source_location": "L34",
       "id": "types_settings_default_teacher_preferences",
-      "community": 118,
+      "community": 159,
       "norm_label": "default_teacher_preferences"
     },
     {
@@ -33993,7 +34011,7 @@
       "source_file": "src/types/settings.ts",
       "source_location": "L49",
       "id": "types_settings_default_admin_system_config",
-      "community": 118,
+      "community": 159,
       "norm_label": "default_admin_system_config"
     },
     {
@@ -34074,7 +34092,7 @@
       "source_file": "src/utils/cacheKeys.ts",
       "source_location": "L1",
       "id": "src_utils_cachekeys_ts",
-      "community": 65,
+      "community": 135,
       "norm_label": "cachekeys.ts"
     },
     {
@@ -34101,7 +34119,7 @@
       "source_file": "src/utils/cacheKeys.ts",
       "source_location": "L16",
       "id": "utils_cachekeys_cachekeys",
-      "community": 65,
+      "community": 135,
       "norm_label": "cachekeys"
     },
     {
@@ -34236,7 +34254,7 @@
       "source_file": "src/utils/chatPreview.test.ts",
       "source_location": "L1",
       "id": "src_utils_chatpreview_test_ts",
-      "community": 53,
+      "community": 343,
       "norm_label": "chatpreview.test.ts"
     },
     {
@@ -34245,7 +34263,7 @@
       "source_file": "src/utils/chatPreview.test.ts",
       "source_location": "L40",
       "id": "utils_chatpreview_test_input",
-      "community": 53,
+      "community": 343,
       "norm_label": "input"
     },
     {
@@ -34254,7 +34272,7 @@
       "source_file": "src/utils/chatPreview.test.ts",
       "source_location": "L41",
       "id": "utils_chatpreview_test_output",
-      "community": 53,
+      "community": 343,
       "norm_label": "output"
     },
     {
@@ -34263,7 +34281,7 @@
       "source_file": "src/utils/chatPreview.ts",
       "source_location": "L1",
       "id": "src_utils_chatpreview_ts",
-      "community": 53,
+      "community": 343,
       "norm_label": "chatpreview.ts"
     },
     {
@@ -34272,7 +34290,7 @@
       "source_file": "src/utils/chatPreview.ts",
       "source_location": "L8",
       "id": "utils_chatpreview_tochatpreviewtext",
-      "community": 53,
+      "community": 343,
       "norm_label": "tochatpreviewtext()"
     },
     {
@@ -34668,7 +34686,7 @@
       "source_file": "src/utils/profileValidation.ts",
       "source_location": "L1",
       "id": "src_utils_profilevalidation_ts",
-      "community": 118,
+      "community": 6,
       "norm_label": "profilevalidation.ts"
     },
     {
@@ -34686,7 +34704,7 @@
       "source_file": "src/utils/profileValidation.ts",
       "source_location": "L41",
       "id": "utils_profilevalidation_nameschema",
-      "community": 118,
+      "community": 6,
       "norm_label": "nameschema"
     },
     {
@@ -34695,7 +34713,7 @@
       "source_file": "src/utils/profileValidation.ts",
       "source_location": "L50",
       "id": "utils_profilevalidation_phoneschema",
-      "community": 118,
+      "community": 6,
       "norm_label": "phoneschema"
     },
     {
@@ -34704,7 +34722,7 @@
       "source_file": "src/utils/profileValidation.ts",
       "source_location": "L59",
       "id": "utils_profilevalidation_profileeditschema",
-      "community": 118,
+      "community": 6,
       "norm_label": "profileeditschema"
     },
     {
@@ -34713,7 +34731,7 @@
       "source_file": "src/utils/profileValidation.ts",
       "source_location": "L64",
       "id": "utils_profilevalidation_profileeditinput",
-      "community": 118,
+      "community": 6,
       "norm_label": "profileeditinput"
     },
     {
@@ -34722,7 +34740,7 @@
       "source_file": "src/utils/profileValidation.ts",
       "source_location": "L70",
       "id": "utils_profilevalidation_validateprofiledraft",
-      "community": 118,
+      "community": 6,
       "norm_label": "validateprofiledraft()"
     },
     {
@@ -44819,7 +44837,7 @@
       "file_type": "code",
       "source_file": "src/components/ModuleDetailView.tsx",
       "source_location": "L25",
-      "community": 14,
+      "community": 135,
       "norm_label": "quizquestionbanks",
       "id": "components_moduledetailview_quizquestionbanks"
     },
@@ -44828,7 +44846,7 @@
       "file_type": "code",
       "source_file": "src/components/ModuleDetailView.tsx",
       "source_location": "L28",
-      "community": 14,
+      "community": 135,
       "norm_label": "getquestionsforlesson()",
       "id": "components_moduledetailview_getquestionsforlesson"
     },
@@ -44909,7 +44927,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L808",
-      "community": 124,
+      "community": 336,
       "norm_label": "verify firebase id token via firebase-admin, then google-auth as fallback.",
       "id": "backend_main_rationale_808"
     },
@@ -44918,7 +44936,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L860",
-      "community": 119,
+      "community": 29,
       "norm_label": "deprecated: rate limiting is now handled by slowapi middleware.     this functi",
       "id": "backend_main_rationale_860"
     },
@@ -45080,7 +45098,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2864",
-      "community": 105,
+      "community": 63,
       "norm_label": "extract the final numeric/symbolic answer from a math response.",
       "id": "backend_main_rationale_2864"
     },
@@ -45089,7 +45107,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2887",
-      "community": 105,
+      "community": 63,
       "norm_label": "self-consistency verification: generate multiple responses to the same     math",
       "id": "backend_main_rationale_2887"
     },
@@ -45152,7 +45170,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L3651",
-      "community": 101,
+      "community": 83,
       "norm_label": "generate daily ai insights for teacher dashboard",
       "id": "backend_main_rationale_3651"
     },
@@ -45170,7 +45188,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L4802",
-      "community": 67,
+      "community": 329,
       "norm_label": "persist lightweight monitoring artifacts for queued risk refresh jobs.",
       "id": "backend_main_rationale_4802"
     },
@@ -45188,7 +45206,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5691",
-      "community": 231,
+      "community": 141,
       "norm_label": "parse and validate student account import rows before provisioning.",
       "id": "backend_main_rationale_5691"
     },
@@ -45197,7 +45215,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5880",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit previously validated student-account preview rows into auth + firestore.",
       "id": "backend_main_rationale_5880"
     },
@@ -45215,7 +45233,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6726",
-      "community": 29,
+      "community": 81,
       "norm_label": "create a single user account (auth + firestore) and send welcome credentials ema",
       "id": "backend_main_rationale_6726"
     },
@@ -45260,7 +45278,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L7353",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload and parse class records (csv, excel, pdf) with ai column detection",
       "id": "backend_main_rationale_7353"
     },
@@ -45287,7 +45305,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L8558",
-      "community": 115,
+      "community": 118,
       "norm_label": "return persisted course-material topic map for the authenticated teacher/admin.",
       "id": "backend_main_rationale_8558"
     },
@@ -45305,7 +45323,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9892",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate a class lesson plan grounded on imported course-material topics and",
       "id": "backend_main_rationale_9892"
     },
@@ -45314,7 +45332,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10219",
-      "community": 119,
+      "community": 29,
       "norm_label": "capture lightweight pilot feedback telemetry for import-grounded quiz and lesson",
       "id": "backend_main_rationale_10219"
     },
@@ -45395,7 +45413,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11373",
-      "community": 285,
+      "community": 323,
       "norm_label": "generate a 3-question preview quiz for teachers to verify ai question     quali",
       "id": "backend_main_rationale_11373"
     },
@@ -45413,7 +45431,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11651",
-      "community": 83,
+      "community": 204,
       "norm_label": "return structured list of shs math topics organised by grade level.     only gr",
       "id": "backend_main_rationale_11651"
     },
@@ -45431,7 +45449,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11796",
-      "community": 285,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval.",
       "id": "backend_main_rationale_11796"
     },
@@ -45440,7 +45458,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11864",
-      "community": 285,
+      "community": 333,
       "norm_label": "evaluate a mathematical expression symbolically using sympy.     supports arith",
       "id": "backend_main_rationale_11864"
     },
@@ -45539,7 +45557,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L12226",
-      "community": 205,
+      "community": 334,
       "norm_label": "delete all documents in a subcollection. returns count of deleted docs.",
       "id": "backend_main_rationale_12226"
     },
@@ -45890,7 +45908,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L805",
-      "community": 124,
+      "community": 336,
       "norm_label": "verify firebase id token via firebase-admin, then google-auth as fallback.",
       "id": "backend_main_rationale_805"
     },
@@ -45899,7 +45917,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L857",
-      "community": 119,
+      "community": 29,
       "norm_label": "deprecated: rate limiting is now handled by slowapi middleware.     this functi",
       "id": "backend_main_rationale_857"
     },
@@ -46061,7 +46079,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2860",
-      "community": 105,
+      "community": 63,
       "norm_label": "extract the final numeric/symbolic answer from a math response.",
       "id": "backend_main_rationale_2860"
     },
@@ -46070,7 +46088,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2883",
-      "community": 105,
+      "community": 63,
       "norm_label": "self-consistency verification: generate multiple responses to the same     math",
       "id": "backend_main_rationale_2883"
     },
@@ -46133,7 +46151,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L3647",
-      "community": 101,
+      "community": 83,
       "norm_label": "generate daily ai insights for teacher dashboard",
       "id": "backend_main_rationale_3647"
     },
@@ -46151,7 +46169,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L4798",
-      "community": 67,
+      "community": 329,
       "norm_label": "persist lightweight monitoring artifacts for queued risk refresh jobs.",
       "id": "backend_main_rationale_4798"
     },
@@ -46169,7 +46187,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5687",
-      "community": 231,
+      "community": 141,
       "norm_label": "parse and validate student account import rows before provisioning.",
       "id": "backend_main_rationale_5687"
     },
@@ -46178,7 +46196,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5876",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit previously validated student-account preview rows into auth + firestore.",
       "id": "backend_main_rationale_5876"
     },
@@ -46196,7 +46214,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6722",
-      "community": 29,
+      "community": 81,
       "norm_label": "create a single user account (auth + firestore) and send welcome credentials ema",
       "id": "backend_main_rationale_6722"
     },
@@ -46232,7 +46250,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L7290",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload and parse class records (csv, excel, pdf) with ai column detection",
       "id": "backend_main_rationale_7290"
     },
@@ -46259,7 +46277,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L8495",
-      "community": 115,
+      "community": 118,
       "norm_label": "return persisted course-material topic map for the authenticated teacher/admin.",
       "id": "backend_main_rationale_8495"
     },
@@ -46277,7 +46295,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9829",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate a class lesson plan grounded on imported course-material topics and",
       "id": "backend_main_rationale_9829"
     },
@@ -46286,7 +46304,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10156",
-      "community": 119,
+      "community": 29,
       "norm_label": "capture lightweight pilot feedback telemetry for import-grounded quiz and lesson",
       "id": "backend_main_rationale_10156"
     },
@@ -46340,7 +46358,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10862",
-      "community": 83,
+      "community": 204,
       "norm_label": "regenerate quiz questions using a strict json-only prompt path.",
       "id": "backend_main_rationale_10862"
     },
@@ -46367,7 +46385,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11310",
-      "community": 285,
+      "community": 323,
       "norm_label": "generate a 3-question preview quiz for teachers to verify ai question     quali",
       "id": "backend_main_rationale_11310"
     },
@@ -46385,7 +46403,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11588",
-      "community": 83,
+      "community": 204,
       "norm_label": "return structured list of shs math topics organised by grade level.     only gr",
       "id": "backend_main_rationale_11588"
     },
@@ -46403,7 +46421,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11733",
-      "community": 285,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval.",
       "id": "backend_main_rationale_11733"
     },
@@ -46412,7 +46430,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11801",
-      "community": 285,
+      "community": 333,
       "norm_label": "evaluate a mathematical expression symbolically using sympy.     supports arith",
       "id": "backend_main_rationale_11801"
     },
@@ -46502,7 +46520,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L12163",
-      "community": 205,
+      "community": 334,
       "norm_label": "delete all documents in a subcollection. returns count of deleted docs.",
       "id": "backend_main_rationale_12163"
     },
@@ -46880,7 +46898,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L803",
-      "community": 124,
+      "community": 336,
       "norm_label": "verify firebase id token via firebase-admin, then google-auth as fallback.",
       "id": "backend_main_rationale_803"
     },
@@ -46889,7 +46907,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L855",
-      "community": 119,
+      "community": 29,
       "norm_label": "deprecated: rate limiting is now handled by slowapi middleware.     this functi",
       "id": "backend_main_rationale_855"
     },
@@ -47051,7 +47069,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2857",
-      "community": 105,
+      "community": 63,
       "norm_label": "extract the final numeric/symbolic answer from a math response.",
       "id": "backend_main_rationale_2857"
     },
@@ -47060,7 +47078,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2880",
-      "community": 105,
+      "community": 63,
       "norm_label": "self-consistency verification: generate multiple responses to the same     math",
       "id": "backend_main_rationale_2880"
     },
@@ -47123,7 +47141,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L3644",
-      "community": 101,
+      "community": 83,
       "norm_label": "generate daily ai insights for teacher dashboard",
       "id": "backend_main_rationale_3644"
     },
@@ -47141,7 +47159,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L4795",
-      "community": 67,
+      "community": 329,
       "norm_label": "persist lightweight monitoring artifacts for queued risk refresh jobs.",
       "id": "backend_main_rationale_4795"
     },
@@ -47159,7 +47177,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5650",
-      "community": 231,
+      "community": 141,
       "norm_label": "parse and validate student account import rows before provisioning.",
       "id": "backend_main_rationale_5650"
     },
@@ -47168,7 +47186,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5839",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit previously validated student-account preview rows into auth + firestore.",
       "id": "backend_main_rationale_5839"
     },
@@ -47186,7 +47204,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6685",
-      "community": 29,
+      "community": 81,
       "norm_label": "create a single user account (auth + firestore) and send welcome credentials ema",
       "id": "backend_main_rationale_6685"
     },
@@ -47213,7 +47231,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6994",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload and parse class records (csv, excel, pdf) with ai column detection",
       "id": "backend_main_rationale_6994"
     },
@@ -47240,7 +47258,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L8199",
-      "community": 115,
+      "community": 118,
       "norm_label": "return persisted course-material topic map for the authenticated teacher/admin.",
       "id": "backend_main_rationale_8199"
     },
@@ -47258,7 +47276,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9533",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate a class lesson plan grounded on imported course-material topics and",
       "id": "backend_main_rationale_9533"
     },
@@ -47267,7 +47285,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9860",
-      "community": 119,
+      "community": 29,
       "norm_label": "capture lightweight pilot feedback telemetry for import-grounded quiz and lesson",
       "id": "backend_main_rationale_9860"
     },
@@ -47339,7 +47357,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11014",
-      "community": 285,
+      "community": 323,
       "norm_label": "generate a 3-question preview quiz for teachers to verify ai question     quali",
       "id": "backend_main_rationale_11014"
     },
@@ -47357,7 +47375,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11292",
-      "community": 83,
+      "community": 204,
       "norm_label": "return structured list of shs math topics organised by grade level.     only gr",
       "id": "backend_main_rationale_11292"
     },
@@ -47375,7 +47393,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11437",
-      "community": 285,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval.",
       "id": "backend_main_rationale_11437"
     },
@@ -47384,7 +47402,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11505",
-      "community": 285,
+      "community": 333,
       "norm_label": "evaluate a mathematical expression symbolically using sympy.     supports arith",
       "id": "backend_main_rationale_11505"
     },
@@ -47474,7 +47492,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11867",
-      "community": 205,
+      "community": 334,
       "norm_label": "delete all documents in a subcollection. returns count of deleted docs.",
       "id": "backend_main_rationale_11867"
     },
@@ -47699,7 +47717,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L804",
-      "community": 124,
+      "community": 336,
       "norm_label": "verify firebase id token via firebase-admin, then google-auth as fallback.",
       "id": "backend_main_rationale_804"
     },
@@ -47708,7 +47726,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L856",
-      "community": 119,
+      "community": 29,
       "norm_label": "deprecated: rate limiting is now handled by slowapi middleware.     this functi",
       "id": "backend_main_rationale_856"
     },
@@ -47870,7 +47888,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2858",
-      "community": 105,
+      "community": 63,
       "norm_label": "extract the final numeric/symbolic answer from a math response.",
       "id": "backend_main_rationale_2858"
     },
@@ -47879,7 +47897,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2881",
-      "community": 105,
+      "community": 63,
       "norm_label": "self-consistency verification: generate multiple responses to the same     math",
       "id": "backend_main_rationale_2881"
     },
@@ -47942,7 +47960,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L3645",
-      "community": 101,
+      "community": 83,
       "norm_label": "generate daily ai insights for teacher dashboard",
       "id": "backend_main_rationale_3645"
     },
@@ -47960,7 +47978,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L4796",
-      "community": 67,
+      "community": 329,
       "norm_label": "persist lightweight monitoring artifacts for queued risk refresh jobs.",
       "id": "backend_main_rationale_4796"
     },
@@ -47978,7 +47996,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5685",
-      "community": 231,
+      "community": 141,
       "norm_label": "parse and validate student account import rows before provisioning.",
       "id": "backend_main_rationale_5685"
     },
@@ -47987,7 +48005,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5874",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit previously validated student-account preview rows into auth + firestore.",
       "id": "backend_main_rationale_5874"
     },
@@ -48005,7 +48023,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6720",
-      "community": 29,
+      "community": 81,
       "norm_label": "create a single user account (auth + firestore) and send welcome credentials ema",
       "id": "backend_main_rationale_6720"
     },
@@ -48041,7 +48059,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L7288",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload and parse class records (csv, excel, pdf) with ai column detection",
       "id": "backend_main_rationale_7288"
     },
@@ -48068,7 +48086,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L8493",
-      "community": 115,
+      "community": 118,
       "norm_label": "return persisted course-material topic map for the authenticated teacher/admin.",
       "id": "backend_main_rationale_8493"
     },
@@ -48086,7 +48104,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9827",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate a class lesson plan grounded on imported course-material topics and",
       "id": "backend_main_rationale_9827"
     },
@@ -48095,7 +48113,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10154",
-      "community": 119,
+      "community": 29,
       "norm_label": "capture lightweight pilot feedback telemetry for import-grounded quiz and lesson",
       "id": "backend_main_rationale_10154"
     },
@@ -48176,7 +48194,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11308",
-      "community": 285,
+      "community": 323,
       "norm_label": "generate a 3-question preview quiz for teachers to verify ai question     quali",
       "id": "backend_main_rationale_11308"
     },
@@ -48194,7 +48212,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11586",
-      "community": 83,
+      "community": 204,
       "norm_label": "return structured list of shs math topics organised by grade level.     only gr",
       "id": "backend_main_rationale_11586"
     },
@@ -48212,7 +48230,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11731",
-      "community": 285,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval.",
       "id": "backend_main_rationale_11731"
     },
@@ -48221,7 +48239,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11799",
-      "community": 285,
+      "community": 333,
       "norm_label": "evaluate a mathematical expression symbolically using sympy.     supports arith",
       "id": "backend_main_rationale_11799"
     },
@@ -48311,7 +48329,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L12161",
-      "community": 205,
+      "community": 334,
       "norm_label": "delete all documents in a subcollection. returns count of deleted docs.",
       "id": "backend_main_rationale_12161"
     },
@@ -48572,7 +48590,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L799",
-      "community": 124,
+      "community": 336,
       "norm_label": "verify firebase id token via firebase-admin, then google-auth as fallback.",
       "id": "backend_main_rationale_799"
     },
@@ -48581,7 +48599,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L851",
-      "community": 119,
+      "community": 29,
       "norm_label": "deprecated: rate limiting is now handled by slowapi middleware.     this functi",
       "id": "backend_main_rationale_851"
     },
@@ -48716,7 +48734,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2602",
-      "community": 105,
+      "community": 63,
       "norm_label": "extract the final numeric/symbolic answer from a math response.",
       "id": "backend_main_rationale_2602"
     },
@@ -48725,7 +48743,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2625",
-      "community": 105,
+      "community": 63,
       "norm_label": "self-consistency verification: generate multiple responses to the same     math",
       "id": "backend_main_rationale_2625"
     },
@@ -48788,7 +48806,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L3389",
-      "community": 101,
+      "community": 83,
       "norm_label": "generate daily ai insights for teacher dashboard",
       "id": "backend_main_rationale_3389"
     },
@@ -48806,7 +48824,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L4540",
-      "community": 67,
+      "community": 329,
       "norm_label": "persist lightweight monitoring artifacts for queued risk refresh jobs.",
       "id": "backend_main_rationale_4540"
     },
@@ -48824,7 +48842,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5395",
-      "community": 231,
+      "community": 141,
       "norm_label": "parse and validate student account import rows before provisioning.",
       "id": "backend_main_rationale_5395"
     },
@@ -48833,7 +48851,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5584",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit previously validated student-account preview rows into auth + firestore.",
       "id": "backend_main_rationale_5584"
     },
@@ -48851,7 +48869,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6430",
-      "community": 29,
+      "community": 81,
       "norm_label": "create a single user account (auth + firestore) and send welcome credentials ema",
       "id": "backend_main_rationale_6430"
     },
@@ -48878,7 +48896,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6739",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload and parse class records (csv, excel, pdf) with ai column detection",
       "id": "backend_main_rationale_6739"
     },
@@ -48905,7 +48923,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L7944",
-      "community": 115,
+      "community": 118,
       "norm_label": "return persisted course-material topic map for the authenticated teacher/admin.",
       "id": "backend_main_rationale_7944"
     },
@@ -48923,7 +48941,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9278",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate a class lesson plan grounded on imported course-material topics and",
       "id": "backend_main_rationale_9278"
     },
@@ -48932,7 +48950,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9605",
-      "community": 119,
+      "community": 29,
       "norm_label": "capture lightweight pilot feedback telemetry for import-grounded quiz and lesson",
       "id": "backend_main_rationale_9605"
     },
@@ -49004,7 +49022,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10759",
-      "community": 285,
+      "community": 323,
       "norm_label": "generate a 3-question preview quiz for teachers to verify ai question     quali",
       "id": "backend_main_rationale_10759"
     },
@@ -49022,7 +49040,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11037",
-      "community": 83,
+      "community": 204,
       "norm_label": "return structured list of shs math topics organised by grade level.     only gr",
       "id": "backend_main_rationale_11037"
     },
@@ -49040,7 +49058,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11182",
-      "community": 285,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval.",
       "id": "backend_main_rationale_11182"
     },
@@ -49076,7 +49094,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11377",
-      "community": 205,
+      "community": 334,
       "norm_label": "enhanced student risk prediction using trained ml model with shap explanations.",
       "id": "backend_main_rationale_11377"
     },
@@ -49148,7 +49166,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11612",
-      "community": 205,
+      "community": 334,
       "norm_label": "delete all documents in a subcollection. returns count of deleted docs.",
       "id": "backend_main_rationale_11612"
     },
@@ -49373,7 +49391,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2563",
-      "community": 105,
+      "community": 63,
       "norm_label": "extract the final numeric/symbolic answer from a math response.",
       "id": "backend_main_rationale_2563"
     },
@@ -49382,7 +49400,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2586",
-      "community": 105,
+      "community": 63,
       "norm_label": "self-consistency verification: generate multiple responses to the same     math",
       "id": "backend_main_rationale_2586"
     },
@@ -49445,7 +49463,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L3350",
-      "community": 101,
+      "community": 83,
       "norm_label": "generate daily ai insights for teacher dashboard",
       "id": "backend_main_rationale_3350"
     },
@@ -49463,7 +49481,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L4501",
-      "community": 67,
+      "community": 329,
       "norm_label": "persist lightweight monitoring artifacts for queued risk refresh jobs.",
       "id": "backend_main_rationale_4501"
     },
@@ -49481,7 +49499,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5356",
-      "community": 231,
+      "community": 141,
       "norm_label": "parse and validate student account import rows before provisioning.",
       "id": "backend_main_rationale_5356"
     },
@@ -49490,7 +49508,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5545",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit previously validated student-account preview rows into auth + firestore.",
       "id": "backend_main_rationale_5545"
     },
@@ -49508,7 +49526,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6391",
-      "community": 29,
+      "community": 81,
       "norm_label": "create a single user account (auth + firestore) and send welcome credentials ema",
       "id": "backend_main_rationale_6391"
     },
@@ -49535,7 +49553,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6700",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload and parse class records (csv, excel, pdf) with ai column detection",
       "id": "backend_main_rationale_6700"
     },
@@ -49562,7 +49580,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L7905",
-      "community": 115,
+      "community": 118,
       "norm_label": "return persisted course-material topic map for the authenticated teacher/admin.",
       "id": "backend_main_rationale_7905"
     },
@@ -49580,7 +49598,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9239",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate a class lesson plan grounded on imported course-material topics and",
       "id": "backend_main_rationale_9239"
     },
@@ -49589,7 +49607,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9566",
-      "community": 119,
+      "community": 29,
       "norm_label": "capture lightweight pilot feedback telemetry for import-grounded quiz and lesson",
       "id": "backend_main_rationale_9566"
     },
@@ -49670,7 +49688,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10720",
-      "community": 285,
+      "community": 323,
       "norm_label": "generate a 3-question preview quiz for teachers to verify ai question     quali",
       "id": "backend_main_rationale_10720"
     },
@@ -49688,7 +49706,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10998",
-      "community": 83,
+      "community": 204,
       "norm_label": "return structured list of shs math topics organised by grade level.     only gr",
       "id": "backend_main_rationale_10998"
     },
@@ -49706,7 +49724,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11143",
-      "community": 285,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval.",
       "id": "backend_main_rationale_11143"
     },
@@ -49715,7 +49733,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11211",
-      "community": 285,
+      "community": 333,
       "norm_label": "evaluate a mathematical expression symbolically using sympy.     supports arith",
       "id": "backend_main_rationale_11211"
     },
@@ -49814,7 +49832,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11573",
-      "community": 205,
+      "community": 334,
       "norm_label": "delete all documents in a subcollection. returns count of deleted docs.",
       "id": "backend_main_rationale_11573"
     },
@@ -50039,7 +50057,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L758",
-      "community": 124,
+      "community": 336,
       "norm_label": "verify firebase id token via firebase-admin, then google-auth as fallback.",
       "id": "backend_main_rationale_758"
     },
@@ -50048,7 +50066,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L810",
-      "community": 119,
+      "community": 29,
       "norm_label": "deprecated: rate limiting is now handled by slowapi middleware.     this functi",
       "id": "backend_main_rationale_810"
     },
@@ -50156,7 +50174,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2427",
-      "community": 105,
+      "community": 63,
       "norm_label": "extract the final numeric/symbolic answer from a math response.",
       "id": "backend_main_rationale_2427"
     },
@@ -50165,7 +50183,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2450",
-      "community": 105,
+      "community": 63,
       "norm_label": "self-consistency verification: generate multiple responses to the same     math",
       "id": "backend_main_rationale_2450"
     },
@@ -50228,7 +50246,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L3214",
-      "community": 101,
+      "community": 83,
       "norm_label": "generate daily ai insights for teacher dashboard",
       "id": "backend_main_rationale_3214"
     },
@@ -50246,7 +50264,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L4365",
-      "community": 67,
+      "community": 329,
       "norm_label": "persist lightweight monitoring artifacts for queued risk refresh jobs.",
       "id": "backend_main_rationale_4365"
     },
@@ -50264,7 +50282,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5220",
-      "community": 231,
+      "community": 141,
       "norm_label": "parse and validate student account import rows before provisioning.",
       "id": "backend_main_rationale_5220"
     },
@@ -50273,7 +50291,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5409",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit previously validated student-account preview rows into auth + firestore.",
       "id": "backend_main_rationale_5409"
     },
@@ -50291,7 +50309,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6255",
-      "community": 29,
+      "community": 81,
       "norm_label": "create a single user account (auth + firestore) and send welcome credentials ema",
       "id": "backend_main_rationale_6255"
     },
@@ -50318,7 +50336,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6564",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload and parse class records (csv, excel, pdf) with ai column detection",
       "id": "backend_main_rationale_6564"
     },
@@ -50345,7 +50363,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L7769",
-      "community": 115,
+      "community": 118,
       "norm_label": "return persisted course-material topic map for the authenticated teacher/admin.",
       "id": "backend_main_rationale_7769"
     },
@@ -50363,7 +50381,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9103",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate a class lesson plan grounded on imported course-material topics and",
       "id": "backend_main_rationale_9103"
     },
@@ -50372,7 +50390,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9430",
-      "community": 119,
+      "community": 29,
       "norm_label": "capture lightweight pilot feedback telemetry for import-grounded quiz and lesson",
       "id": "backend_main_rationale_9430"
     },
@@ -50453,7 +50471,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10584",
-      "community": 285,
+      "community": 323,
       "norm_label": "generate a 3-question preview quiz for teachers to verify ai question     quali",
       "id": "backend_main_rationale_10584"
     },
@@ -50480,7 +50498,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11007",
-      "community": 285,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval.",
       "id": "backend_main_rationale_11007"
     },
@@ -50489,7 +50507,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11075",
-      "community": 285,
+      "community": 333,
       "norm_label": "evaluate a mathematical expression symbolically using sympy.     supports arith",
       "id": "backend_main_rationale_11075"
     },
@@ -51173,7 +51191,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L737",
-      "community": 124,
+      "community": 336,
       "norm_label": "verify firebase id token via firebase-admin, then google-auth as fallback.",
       "id": "backend_main_rationale_737"
     },
@@ -51281,7 +51299,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2402",
-      "community": 105,
+      "community": 63,
       "norm_label": "extract the final numeric/symbolic answer from a math response.",
       "id": "backend_main_rationale_2402"
     },
@@ -51290,7 +51308,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L2425",
-      "community": 105,
+      "community": 63,
       "norm_label": "self-consistency verification: generate multiple responses to the same     math",
       "id": "backend_main_rationale_2425"
     },
@@ -51335,7 +51353,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L3189",
-      "community": 101,
+      "community": 83,
       "norm_label": "generate daily ai insights for teacher dashboard",
       "id": "backend_main_rationale_3189"
     },
@@ -51353,7 +51371,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L4345",
-      "community": 67,
+      "community": 329,
       "norm_label": "persist lightweight monitoring artifacts for queued risk refresh jobs.",
       "id": "backend_main_rationale_4345"
     },
@@ -51371,7 +51389,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5200",
-      "community": 231,
+      "community": 141,
       "norm_label": "parse and validate student account import rows before provisioning.",
       "id": "backend_main_rationale_5200"
     },
@@ -51380,7 +51398,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L5389",
-      "community": 231,
+      "community": 168,
       "norm_label": "commit previously validated student-account preview rows into auth + firestore.",
       "id": "backend_main_rationale_5389"
     },
@@ -51389,7 +51407,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6195",
-      "community": 29,
+      "community": 81,
       "norm_label": "create a single user account (auth + firestore) and send welcome credentials ema",
       "id": "backend_main_rationale_6195"
     },
@@ -51416,7 +51434,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L6504",
-      "community": 15,
+      "community": 67,
       "norm_label": "upload and parse class records (csv, excel, pdf) with ai column detection",
       "id": "backend_main_rationale_6504"
     },
@@ -51443,7 +51461,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L7709",
-      "community": 115,
+      "community": 118,
       "norm_label": "return persisted course-material topic map for the authenticated teacher/admin.",
       "id": "backend_main_rationale_7709"
     },
@@ -51461,7 +51479,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9043",
-      "community": 83,
+      "community": 15,
       "norm_label": "generate a class lesson plan grounded on imported course-material topics and",
       "id": "backend_main_rationale_9043"
     },
@@ -51470,7 +51488,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L9370",
-      "community": 119,
+      "community": 29,
       "norm_label": "capture lightweight pilot feedback telemetry for import-grounded quiz and lesson",
       "id": "backend_main_rationale_9370"
     },
@@ -51551,7 +51569,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10524",
-      "community": 285,
+      "community": 323,
       "norm_label": "generate a 3-question preview quiz for teachers to verify ai question     quali",
       "id": "backend_main_rationale_10524"
     },
@@ -51569,7 +51587,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10802",
-      "community": 83,
+      "community": 204,
       "norm_label": "return structured list of shs math topics organised by grade level.     only gr",
       "id": "backend_main_rationale_10802"
     },
@@ -51587,7 +51605,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L10947",
-      "community": 285,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval.",
       "id": "backend_main_rationale_10947"
     },
@@ -51596,7 +51614,7 @@
       "file_type": "rationale",
       "source_file": "backend/main.py",
       "source_location": "L11015",
-      "community": 285,
+      "community": 333,
       "norm_label": "evaluate a mathematical expression symbolically using sympy.     supports arith",
       "id": "backend_main_rationale_11015"
     },
@@ -56852,7 +56870,7 @@
       "file_type": "code",
       "source_file": "src/components/AdminSettings.tsx",
       "source_location": "L32",
-      "community": 63,
+      "community": 2,
       "norm_label": "clonedefaultsettings()",
       "id": "components_adminsettings_clonedefaultsettings"
     },
@@ -56861,7 +56879,7 @@
       "file_type": "code",
       "source_file": "src/components/admin/ModelConfigPanel.tsx",
       "source_location": "L5",
-      "community": 63,
+      "community": 25,
       "norm_label": "modelconfig",
       "id": "admin_modelconfigpanel_modelconfig"
     },
@@ -56870,7 +56888,7 @@
       "file_type": "code",
       "source_file": "src/components/admin/ModelConfigPanel.tsx",
       "source_location": "L13",
-      "community": 63,
+      "community": 25,
       "norm_label": "profile_badge_colors",
       "id": "admin_modelconfigpanel_profile_badge_colors"
     },
@@ -161047,9 +161065,9 @@
       "source_file": "src/components/admin/AdminPdfUpload.tsx",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_admin_adminpdfupload_tsx",
-      "target": "src_lib_firebase_ts",
-      "confidence_score": 1.0
+      "target": "src_lib_firebase_ts"
     },
     {
       "relation": "imports",
@@ -161058,9 +161076,9 @@
       "source_file": "src/components/admin/AdminPdfUpload.tsx",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_admin_adminpdfupload_tsx",
-      "target": "lib_firebase_db",
-      "confidence_score": 1.0
+      "target": "lib_firebase_db"
     },
     {
       "relation": "contains",
@@ -161068,9 +161086,9 @@
       "source_file": "src/components/admin/AdminPdfUpload.tsx",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_admin_adminpdfupload_tsx",
-      "target": "admin_adminpdfupload_uploadedfile",
-      "confidence_score": 1.0
+      "target": "admin_adminpdfupload_uploadedfile"
     },
     {
       "relation": "contains",
@@ -172801,6 +172819,26 @@
       "confidence_score": 1.0,
       "source": "src_features_notifications_notificationfirestoreservice_test_ts",
       "target": "notifications_notificationfirestoreservice_test_getdocsmock2"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/features/notifications/notificationFirestoreService.test.ts",
+      "source_location": "L204",
+      "weight": 1.0,
+      "source": "src_features_notifications_notificationfirestoreservice_test_ts",
+      "target": "notifications_notificationfirestoreservice_test_mocksubcollectiondocs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/features/notifications/notificationFirestoreService.test.ts",
+      "source_location": "L208",
+      "weight": 1.0,
+      "source": "src_features_notifications_notificationfirestoreservice_test_ts",
+      "target": "notifications_notificationfirestoreservice_test_mocktopleveldocs",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -214252,5 +214290,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c48b24766cd89855d3de5d241029f705953b2175"
+  "built_at_commit": "8b8e9b7aa5abf6ca8d1ae429595ea55168da6d46"
 }
