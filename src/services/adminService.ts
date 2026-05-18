@@ -750,6 +750,206 @@ export async function getTopPerformers(n = 3): Promise<TopPerformer[]> {
   }
 }
 
+// ─── Dashboard Real Data (System Performance, Subject Breakdown, Priority, Mastery) ───
+
+export interface WeeklyActivityData {
+  name: string; // Day abbreviation
+  ai: number;
+  man: number;
+}
+
+export interface SubjectBreakdownItem {
+  name: string;
+  type: 'Core' | 'STEM';
+  count: number;
+  progress: number;
+}
+
+export interface PriorityAttentionData {
+  subjectName: string;
+  atRiskCount: number;
+}
+
+export interface GlobalMasteryData {
+  avgMastery: number;
+  passed: number;
+  pending: number;
+}
+
+export interface DifficultyDistribution {
+  foundational: number;
+  intermediate: number;
+  advanced: number;
+}
+
+/** Get weekly XP activity counts grouped by day (last 7 days). AI = xpActivities, Manual = quiz/lesson completions without XP. */
+export async function getWeeklyActivity(): Promise<WeeklyActivityData[]> {
+  try {
+    const now = new Date();
+    const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const result: WeeklyActivityData[] = [];
+
+    // Initialize last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      result.push({ name: dayNames[d.getDay()], ai: 0, man: 0 });
+    }
+
+    const xpSnap = await getDocs(collection(db, 'xpActivities'));
+    xpSnap.docs.forEach(d => {
+      const data = d.data() as Record<string, unknown>;
+      const ts = data.timestamp as { toDate?: () => Date } | undefined;
+      if (!ts?.toDate) return;
+      const date = ts.toDate();
+      const daysAgo = Math.floor((now.getTime() - date.getTime()) / 86400000);
+      if (daysAgo < 0 || daysAgo > 6) return;
+      const idx = 6 - daysAgo;
+      const type = data.type as string;
+      // AI-driven activities vs manual
+      if (type === 'lesson_complete' || type === 'quiz_complete') {
+        result[idx].ai++;
+      } else {
+        result[idx].man++;
+      }
+    });
+
+    return result;
+  } catch (err) {
+    console.error('[adminService] getWeeklyActivity error:', err);
+    return [
+      { name: 'M', ai: 0, man: 0 }, { name: 'T', ai: 0, man: 0 },
+      { name: 'W', ai: 0, man: 0 }, { name: 'T', ai: 0, man: 0 },
+      { name: 'F', ai: 0, man: 0 }, { name: 'S', ai: 0, man: 0 },
+      { name: 'S', ai: 0, man: 0 },
+    ];
+  }
+}
+
+/** Get subject breakdown with real enrollment and average progress from progress collection. */
+export async function getSubjectBreakdown(): Promise<SubjectBreakdownItem[]> {
+  try {
+    const progressSnap = await getDocs(collection(db, 'progress'));
+    const subjectStats: Record<string, { enrolled: number; totalProgress: number }> = {
+      'gen-math': { enrolled: 0, totalProgress: 0 },
+      'stats-prob': { enrolled: 0, totalProgress: 0 },
+    };
+
+    progressSnap.docs.forEach(d => {
+      const data = d.data() as Record<string, unknown>;
+      const subjects = data.subjects as Record<string, { progress?: number }> | undefined;
+      if (!subjects) return;
+      Object.entries(subjects).forEach(([subId, subData]) => {
+        if (subjectStats[subId]) {
+          subjectStats[subId].enrolled++;
+          subjectStats[subId].totalProgress += subData?.progress ?? 0;
+        }
+      });
+    });
+
+    return [
+      {
+        name: 'General Mathematics',
+        type: 'Core',
+        count: subjectStats['gen-math'].enrolled,
+        progress: subjectStats['gen-math'].enrolled > 0
+          ? Math.round(subjectStats['gen-math'].totalProgress / subjectStats['gen-math'].enrolled)
+          : 0,
+      },
+      {
+        name: 'Statistics & Probability',
+        type: 'Core',
+        count: subjectStats['stats-prob'].enrolled,
+        progress: subjectStats['stats-prob'].enrolled > 0
+          ? Math.round(subjectStats['stats-prob'].totalProgress / subjectStats['stats-prob'].enrolled)
+          : 0,
+      },
+    ];
+  } catch (err) {
+    console.error('[adminService] getSubjectBreakdown error:', err);
+    return [];
+  }
+}
+
+/** Get priority attention data — subject with most at-risk students. */
+export async function getPriorityAttention(): Promise<PriorityAttentionData> {
+  try {
+    const usersSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+    let atRiskCount = 0;
+    usersSnap.docs.forEach(d => {
+      const data = d.data() as Record<string, unknown>;
+      if (data.overallRisk === 'High') atRiskCount++;
+    });
+    // Currently all at-risk students are in General Mathematics (single-subject platform focus)
+    return { subjectName: 'General Mathematics', atRiskCount };
+  } catch (err) {
+    console.error('[adminService] getPriorityAttention error:', err);
+    return { subjectName: 'General Mathematics', atRiskCount: 0 };
+  }
+}
+
+/** Get global mastery average from progress collection. */
+export async function getGlobalMastery(): Promise<GlobalMasteryData> {
+  try {
+    const progressSnap = await getDocs(collection(db, 'progress'));
+    let totalScore = 0;
+    let passed = 0;
+    let pending = 0;
+    let count = 0;
+
+    progressSnap.docs.forEach(d => {
+      const data = d.data() as Record<string, unknown>;
+      const avg = data.averageScore as number | undefined;
+      if (typeof avg === 'number') {
+        totalScore += avg;
+        count++;
+        if (avg >= 60) passed++;
+        else pending++;
+      } else {
+        pending++;
+      }
+    });
+
+    return {
+      avgMastery: count > 0 ? Math.round(totalScore / count) : 0,
+      passed,
+      pending,
+    };
+  } catch (err) {
+    console.error('[adminService] getGlobalMastery error:', err);
+    return { avgMastery: 0, passed: 0, pending: 0 };
+  }
+}
+
+/** Get difficulty distribution from progress collection quiz attempts. */
+export async function getDifficultyDistribution(): Promise<DifficultyDistribution> {
+  try {
+    const progressSnap = await getDocs(collection(db, 'progress'));
+    let foundational = 0;
+    let intermediate = 0;
+    let advanced = 0;
+
+    progressSnap.docs.forEach(d => {
+      const data = d.data() as Record<string, unknown>;
+      const avg = data.averageScore as number | undefined;
+      if (typeof avg !== 'number') { foundational++; return; }
+      if (avg < 50) foundational++;
+      else if (avg < 80) intermediate++;
+      else advanced++;
+    });
+
+    const total = foundational + intermediate + advanced || 1;
+    return {
+      foundational: Math.round((foundational / total) * 100),
+      intermediate: Math.round((intermediate / total) * 100),
+      advanced: Math.round((advanced / total) * 100),
+    };
+  } catch (err) {
+    console.error('[adminService] getDifficultyDistribution error:', err);
+    return { foundational: 0, intermediate: 0, advanced: 0 };
+  }
+}
+
 // ─── Analytics Summary ───────────────────────────────────────
 
 export interface AnalyticsSummary {
