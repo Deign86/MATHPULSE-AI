@@ -338,6 +338,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 1280, height: 720 });
@@ -991,7 +992,7 @@ return (
                 <button onClick={toggleFullscreen} className="hidden sm:flex w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                   {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
                 </button>
-               <button onClick={onClose} className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+               <button onClick={() => setShowLeaveConfirm(true)} className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                  <X size={18} className="sm:hidden" />
                  <X size={20} className="hidden sm:block" />
                </button>
