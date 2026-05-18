@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import InteractiveLesson, { Question } from './InteractiveLesson';
+import QuizExperience from './QuizExperience';
 import LessonViewer from './LessonViewer';
 import { subjects, Module, Lesson, Quiz } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +13,7 @@ import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subsc
 import { db } from '../lib/firebase';
 import { getQuestionCountForQuiz } from '../services/lessonQuizService';
 import type { UserProgress } from '../types/models';
+import type { AIQuizQuestion } from '../types/models';
 
 import { generatePracticeSession } from '../services/practiceService';
 import { Loader2 } from 'lucide-react';
@@ -30,7 +32,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [iarCompleted, setIarCompleted] = useState(false);
-  const [quizQuestions, setQuizQuestions] = useState<Question[] | null>(null);
+  const [quizQuestions, setQuizQuestions] = useState<AIQuizQuestion[] | null>(null);
 
   // Check if the Initial Assessment has been completed before showing REVIEW markers
   useEffect(() => {
@@ -140,32 +142,43 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         });
 
         if (cancelled) return;
-
-        // Convert backend response to Question[] format for InteractiveLesson
-        const questions: Question[] = response.questions.map((q, i) => ({
-          id: i + 1,
-          type: 'multiple-choice' as const,
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.options[q.correct_index],
-          explanation: q.explanation,
-        }));
+        // Convert backend response to AIQuizQuestion[] format for QuizExperience
+        const questions: AIQuizQuestion[] = response.questions
+          .filter((q: any) => q.options?.length && q.correct_index >= 0 && q.correct_index < q.options.length)
+          .map((q: any, i: number) => ({
+            id: q.id || 'q-' + i,
+            questionType: 'multiple_choice' as const,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.options[q.correct_index],
+            bloomLevel: (q.bloomsLevel?.toLowerCase() || 'understand') as 'remember' | 'understand' | 'apply' | 'analyze',
+            difficulty: 'medium' as const,
+            topic: selectedLesson.quiz.title,
+            subject: subjectTitle,
+            points: 10,
+            explanation: q.explanation || '',
+          }));
 
         setQuizQuestions(questions);
       } catch (err) {
         console.error('[ModuleDetailView] Quiz generation failed:', err);
-        // Fallback: generate basic questions so the quiz isn't stuck
+        // Fallback: generate basic questions in AIQuizQuestion shape
         const count = selectedLesson.quiz.questions || 5;
-        const fallback: Question[] = Array.from({ length: count }).map((_, i) => {
+        const fallback: AIQuizQuestion[] = Array.from({ length: count }).map((_, i) => {
           const a = Math.floor(Math.random() * 20) + 2;
           const b = Math.floor(Math.random() * 20) + 2;
           const correct = (a + b).toString();
           return {
-            id: i + 1,
-            type: 'multiple-choice' as const,
+            id: 'fallback-' + i,
+            questionType: 'multiple_choice' as const,
             question: `Compute: ${a} + ${b}`,
             options: [correct, (a * b).toString(), Math.abs(a - b).toString(), (a + b + 1).toString()],
             correctAnswer: correct,
+            bloomLevel: 'remember' as const,
+            difficulty: 'easy' as const,
+            topic: selectedLesson.quiz.title,
+            subject: subjectTitle,
+            points: 10,
             explanation: `${a} + ${b} = ${correct}`,
           };
         });
@@ -390,68 +403,44 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         );
       }
       return (
-        <InteractiveLesson
-          lesson={{
-            id: parseInt(selectedLesson.quiz.id.split('-').pop() || '1'),
+        <QuizExperience
+          quiz={{
+            id: selectedLesson.quiz.id,
             title: selectedLesson.quiz.title,
-            duration: selectedLesson.quiz.duration,
-            type: 'quiz',
+            subject: subjects.find(s => s.modules.some(m => m.id === module.id))?.title || 'Mathematics',
+            difficulty: 'Medium',
+            questions: quizQuestions.length,
+            duration: selectedLesson.quiz.duration || '15 min',
+            xpReward: 50,
+            type: 'practice',
             completed: selectedLesson.quiz.completed,
-            locked: selectedLesson.quiz.locked
+            locked: false,
+            loadedQuestions: quizQuestions as any,
+            source: 'ai_generated',
           }}
-          questions={quizQuestions}
-          onBack={() => {
+          onClose={() => {
+            setQuizQuestions(null);
             if (returningToLesson) {
               setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
               setReturningToLesson(null);
             } else {
               setSelectedLesson(null);
             }
-            setQuizQuestions(null);
             if (setIsInQuizMode) setIsInQuizMode(false);
           }}
-          onComplete={(score, totalXP) => {
-            // Persist progress — completeQuiz is the single XP authority
+          onComplete={(score, xpEarned) => {
             if (userProfile?.uid && subjectId) {
               void (async () => {
                 try {
-                  await completeQuiz(
-                    userProfile.uid,
-                    subjectId,
-                    module.id,
-                    selectedLesson.quiz.id,
-                    score,
-                    [],
-                    0,
-                    totalXP
-                  );
-                  await recalculateAndUpdateModuleProgress(
-                    userProfile.uid,
-                    subjectId,
-                    module.id,
-                    module.lessons.length,
-                    module.quizzes.length
-                  );
+                  await completeQuiz(userProfile.uid, subjectId, module.id, selectedLesson.quiz.id, score, [], 0, xpEarned);
+                  await recalculateAndUpdateModuleProgress(userProfile.uid, subjectId, module.id, module.lessons.length, module.quizzes.length);
                   await subscribeToUserProgress(userProfile.uid, setUserProgress);
-                } catch (err) {
-                  console.warn('[Quiz] Progress persist failed:', err);
-                }
-
-                if (onEarnXP) {
-                  onEarnXP(totalXP ?? 0, `Quiz Complete! +${totalXP ?? 0} XP`);
-                }
+                } catch (err) { console.warn('[Quiz] Progress persist failed:', err); }
+                if (onEarnXP) onEarnXP(xpEarned ?? 0, 'Quiz Complete! +' + (xpEarned ?? 0) + ' XP');
               })();
             }
-
-            setQuizQuestions(null);
-            if (returningToLesson) {
-              setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
-              setReturningToLesson(null);
-            } else {
-              setSelectedLesson(null);
-            }
-            if (setIsInQuizMode) setIsInQuizMode(false);
           }}
+          studentId={userProfile?.uid}
         />
       );
     }
@@ -481,7 +470,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         <div className="absolute inset-0 opacity-10 pointer-events-none module-detail-grid-pattern" />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-sky-500/20 blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="relative p-3 md:p-4 lg:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-5">
+        <div className="relative p-5 md:p-6 lg:p-8 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-5">
           <div className="flex-1 text-white">
             <div className="flex flex-wrap items-center gap-2 mb-2 md:mb-2.5">
               <div className="px-2.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-[#f8fafc] border border-white/20 shadow-sm flex items-center gap-1">

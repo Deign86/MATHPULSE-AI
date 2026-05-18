@@ -338,6 +338,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 1280, height: 720 });
@@ -794,7 +795,7 @@ const resultModal = (
                 <h3 className="text-slate-400 text-[9px] font-black uppercase tracking-widest text-left mb-1.5 ml-1">Performance Details</h3>
                 <div className="space-y-1.5">
                   <AnimatedCounter value={score} label="Correct Answers" delay={500} icon={<Check className="h-3 w-3 text-emerald-500" />} />
-                  <AnimatedCounter value={currentPoints} label="Total XP Earned" delay={800} icon={<Zap className="h-3 w-3 text-amber-500" />} />
+                  <AnimatedCounter value={totalXP} label="Total XP Earned" delay={800} icon={<Zap className="h-3 w-3 text-amber-500" />} />
                   
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -842,7 +843,7 @@ onClick={() => {
                  onClick={onClose}
                  className="w-full h-10 sm:h-11 rounded-2xl text-xs font-black bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200"
                >
-                 BACK TO PRACTICE CENTER
+                 FINISH
                </Button>
             </div>
          </motion.div>
@@ -991,7 +992,7 @@ return (
                 <button onClick={toggleFullscreen} className="hidden sm:flex w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                   {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
                 </button>
-               <button onClick={onClose} className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+               <button onClick={() => setShowLeaveConfirm(true)} className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                  <X size={18} className="sm:hidden" />
                  <X size={20} className="hidden sm:block" />
                </button>
@@ -1246,6 +1247,21 @@ return (
                     })()}
         </footer>
       </div>
+
+      {/* Leave Quiz Confirmation */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl p-6 w-full max-w-[320px] shadow-2xl border border-slate-200 flex flex-col items-center gap-4">
+            
+            <h3 className="text-lg font-bold text-slate-900 text-center">Leave this quiz?</h3>
+            <p className="text-sm text-slate-500 text-center">Your progress will be reset and you'll need to start over.</p>
+            <div className="w-full flex flex-col gap-2">
+              <button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold rounded-full transition-colors">Stay</button>
+              <button onClick={() => { setShowLeaveConfirm(false); onClose(); }} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-colors">Leave Quiz</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </>
   );
 };
