@@ -155,6 +155,25 @@ class StudentIntelligencePipeline:
                 # 6. Write to managedStudents (update P, WRI, riskStatus)
                 self._update_managed_student(db, event.student_id, wri_result, new_p)
 
+            # 6b. Proactive tutor nudge (fire-and-forget, non-blocking)
+            new_status = profile.get("risk_status", "safe")
+            if new_status in ("watch", "intervene", "critical", "at_risk"):
+                weak_topics = (
+                    profile.get("quiz_performance", {}).get("lowest_accuracy_topics", [])
+                    or profile.get("diagnostic", {}).get("weak_topics", [])
+                )
+                if weak_topics:
+                    try:
+                        from services.tutor_nudge_service import generate_tutor_nudge_for_student
+                        await generate_tutor_nudge_for_student(
+                            student_id=event.student_id,
+                            weak_topics=weak_topics[:3],
+                            grade_level=profile.get("grade_level", "Grade 11"),
+                            recent_score=profile.get("system_performance_avg"),
+                        )
+                    except Exception as e:
+                        logger.warning(f"Nudge generation failed (non-critical): {e}")
+
             # 7. AI context generation (cost-controlled)
             if self._should_regenerate_ai(event, profile, result):
                 ai_ctx = await self._generate_ai_context(profile, event)

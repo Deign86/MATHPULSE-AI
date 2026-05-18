@@ -182,6 +182,12 @@ service cloud.firestore {
       allow create: if request.auth != null;
     }
 
+    // ── Tutor Nudges (proactive AI nudges per student) ───────────────
+    match /tutorNudges/{studentId}/nudges/{nudgeId} {
+      allow read, update: if request.auth != null && request.auth.uid == studentId;
+      allow create, delete: if false; // Only backend writes nudges
+    }
+
     match /tasks/{docId} {
       allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
       allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
