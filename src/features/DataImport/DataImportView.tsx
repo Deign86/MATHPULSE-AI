@@ -593,7 +593,15 @@ export default function DataImportView({
                       </div>
                   {/* Editable Rows */}
                   <div className="flex flex-col w-full pb-4">
-                    {filteredStudents.map((student, i) => {
+                    {filteredStudents.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+                          <Info className="w-7 h-7 text-slate-400" />
+                        </div>
+                        <h3 className="text-[16px] font-bold text-slate-700 mb-2">No managed classes found</h3>
+                        <p className="text-[13px] text-slate-500 max-w-sm">You don't currently manage any classes. Ask your administrator to assign you as a section manager, or create a new class from the Dashboard.</p>
+                      </div>
+                    ) : filteredStudents.map((student, i) => {
                       const rowKey = buildStudentViewKey(student);
                       
                       // Derive Initials
