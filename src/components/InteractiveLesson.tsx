@@ -4,7 +4,7 @@ import {
   Calculator, Sigma, Divide, Percent, Triangle, Circle, Square, Box, Ruler,
   Binary, FunctionSquare, Scaling, Braces, Star, Award, Target, TrendingUp, Flame,
   Sparkles, Volume2, VolumeX, Maximize, Minimize, Menu, ChevronLeft, ChevronRight
-, RefreshCw, BookOpen } from 'lucide-react';
+, RefreshCw, BookOpen, HeartCrack } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { Button } from './ui/button';
@@ -781,7 +781,7 @@ setIsCorrect(false);
               transition={{ duration: 1, repeat: Infinity }}
               className="text-6xl mb-4"
             >
-              💔
+              <HeartCrack className="w-10 h-10 text-rose-500" />
             </motion.div>
             <h2 className="text-2xl font-black text-slate-800 mb-3">Out of Lives!</h2>
             <p className="text-slate-500 text-sm mb-4">

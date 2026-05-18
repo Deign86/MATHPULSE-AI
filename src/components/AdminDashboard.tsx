@@ -20,7 +20,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, 
   ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie 
 } from 'recharts';
-import { Zap, Activity, TrendingUp, ArrowUpRight, CheckCircle2, Sparkles, Bell, HelpCircle } from 'lucide-react';
+import { Zap, Activity, TrendingUp, ArrowUpRight, CheckCircle2, Sparkles, Bell, HelpCircle, Medal } from 'lucide-react';
 import {
   getDashboardStats,
   getAuditLogs,
@@ -491,7 +491,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                             <div className={`absolute -top-2 -right-2 w-6 h-6 text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-md ${
                               idx === 0 ? 'bg-emerald-500 text-white' : 'bg-indigo-500 text-white'
                             }`}>
-                              {idx === 0 ? '🥇' : '🥈'}
+                              {idx === 0 ? <Medal size={16} className="text-amber-500" /> : <Medal size={16} className="text-slate-400" />}
                             </div>
                           </div>
                           

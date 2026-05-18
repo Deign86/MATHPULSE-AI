@@ -89,7 +89,7 @@ const ModulesMascot: React.FC<ModulesMascotProps> = ({
             onClick={handleReminderClick}
           >
             <p className="text-[11px] font-bold text-[#0a1628] leading-snug">
-              Psst! Complete your assessment for a personalized path! ✨
+              Psst! Complete your assessment for a personalized path!
             </p>
             <div className="mt-1.5 flex items-center gap-1">
               <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />

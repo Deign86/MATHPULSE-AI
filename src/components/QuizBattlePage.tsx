@@ -25,6 +25,7 @@ import {
   Volume2,
   VolumeX,
   Star,
+  Flag,
 } from 'lucide-react';
 import { WarpBackground } from './ui/warp-background';
 import CompositeAvatar from './CompositeAvatar';
@@ -1856,14 +1857,14 @@ const QuizBattlePage: React.FC = () => {
                       transition={{ delay: 0.4, type: 'spring', stiffness: 300 }}
                       className="absolute -top-2 left-full ml-2 bg-white text-slate-900 text-xs font-black px-3 py-1.5 rounded-2xl rounded-bl-none whitespace-nowrap shadow-lg"
                     >
-                      I give up! 🏳️
+                      I give up!
                     </motion.div>
                   </div>
 
                   <div className="text-center">
                     <h2 className="text-2xl font-black text-white mb-1">Opponent Surrendered</h2>
                     <p className="text-white/50 text-sm">
-                      <span className="font-bold text-white/70">{activeMatch.opponentName || 'Your opponent'}</span> left the match. You win! 🏆
+                      <span className="font-bold text-white/70">{activeMatch.opponentName || 'Your opponent'}</span> left the match. You win!
                     </p>
                   </div>
 
@@ -1881,7 +1882,7 @@ const QuizBattlePage: React.FC = () => {
                         void refreshBattleInsights();
                       }}
                     >
-                      🏆 Claim Victory
+                      <Trophy size={14} className="inline mr-1" />Claim Victory
                     </Button>
                     <Button
                       size="lg"
@@ -2051,7 +2052,7 @@ const QuizBattlePage: React.FC = () => {
                           className="flex items-center justify-between"
                         >
                           <span className="text-white/70 text-sm font-bold">
-                            {activeMatch.outcome === 'win' ? '🏆 Victory Reward' : activeMatch.outcome === 'draw' ? '🤝 Draw Reward' : '📘 Participation Reward'}
+                            {activeMatch.outcome === 'win' ? 'Victory Reward' : activeMatch.outcome === 'draw' ? 'Draw Reward' : 'Participation Reward'}
                           </span>
                           <span className="text-2xl font-black text-amber-400 drop-shadow-md">+{activeMatch.xpEarned || (activeMatch.outcome === 'win' ? 80 : activeMatch.outcome === 'draw' ? 55 : 35)} XP</span>
                         </motion.div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Clock, AlertTriangle, Link2, Lock, Hourglass, Info, GraduationCap } from 'lucide-react';
+import { BookOpen, Clock, AlertTriangle, Link2, Lock, Hourglass, Info, GraduationCap, Bell } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import type { ModuleStatus } from '../data/curriculumModules';
@@ -221,9 +221,9 @@ const ModuleStatusOverlay: React.FC<ModuleStatusOverlayProps> = ({ moduleStatus,
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onNotifyMe(moduleId); }}
-              className="mt-1 px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-white text-[10px] md:text-xs font-bold transition-colors shadow-md"
+              className="mt-1 px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-white text-[10px] md:text-xs font-bold transition-colors shadow-md flex items-center gap-1"
             >
-              🔔 Notify Me
+              <Bell size={12} /> Notify Me
             </button>
           )}
         </div>

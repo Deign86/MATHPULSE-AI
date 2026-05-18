@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
-import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, Award, Flame, ChevronRight, Edit3, Sparkles, Volume2, VolumeX, Maximize, Minimize, ChevronLeft, Heart, Key, Check, HelpCircle, RefreshCw, BookOpen } from 'lucide-react';
+import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, Award, Flame, ChevronRight, Edit3, Sparkles, Volume2, VolumeX, Maximize, Minimize, ChevronLeft, Heart, Key, Check, HelpCircle, RefreshCw, BookOpen, HeartCrack } from 'lucide-react';
 import { Button } from './ui/button';
 import confetti from 'canvas-confetti';
 import { triggerQuizSubmitted } from '../services/automationService';
@@ -887,7 +887,7 @@ return (
                 transition={{ duration: 1, repeat: Infinity }}
                 className="text-6xl mb-4"
               >
-                💔
+                <HeartCrack className="w-10 h-10 text-rose-500" />
               </motion.div>
               <h2 className="text-2xl font-black text-slate-800 mb-3">Out of Lives!</h2>
               <p className="text-slate-500 text-sm mb-4">
