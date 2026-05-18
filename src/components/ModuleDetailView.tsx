@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import InteractiveLesson, { Question } from './InteractiveLesson';
-import QuizExperience, { Quiz as QuizExperienceQuiz } from './QuizExperience';
+import QuizExperience from './QuizExperience';
 import LessonViewer from './LessonViewer';
 import { subjects, Module, Lesson, Quiz } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +13,7 @@ import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subsc
 import { db } from '../lib/firebase';
 import { getQuestionCountForQuiz } from '../services/lessonQuizService';
 import type { UserProgress } from '../types/models';
+import type { AIQuizQuestion } from '../types/models';
 
 import { generatePracticeSession } from '../services/practiceService';
 import { Loader2 } from 'lucide-react';
@@ -31,7 +32,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [iarCompleted, setIarCompleted] = useState(false);
-  const [quizQuestions, setQuizQuestions] = useState<any[] | null>(null);
+  const [quizQuestions, setQuizQuestions] = useState<AIQuizQuestion[] | null>(null);
 
   // Check if the Initial Assessment has been completed before showing REVIEW markers
   useEffect(() => {
@@ -142,36 +143,42 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
         if (cancelled) return;
         // Convert backend response to AIQuizQuestion[] format for QuizExperience
-        const questions = response.questions.map((q: any, i: number) => ({
-          id: q.id || 'q-' + i,
-          questionType: 'multiple_choice' as const,
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.options[q.correct_index],
-          bloomLevel: (q.bloomsLevel?.toLowerCase() || 'understand') as 'remember' | 'understand' | 'apply' | 'analyze',
-          difficulty: 'medium' as const,
-          topic: selectedLesson.quiz.title,
-          subject: subjectTitle,
-          points: 10,
-          explanation: q.explanation || '',
-        }));
+        const questions: AIQuizQuestion[] = response.questions
+          .filter((q: any) => q.options?.length && q.correct_index >= 0 && q.correct_index < q.options.length)
+          .map((q: any, i: number) => ({
+            id: q.id || 'q-' + i,
+            questionType: 'multiple_choice' as const,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.options[q.correct_index],
+            bloomLevel: (q.bloomsLevel?.toLowerCase() || 'understand') as 'remember' | 'understand' | 'apply' | 'analyze',
+            difficulty: 'medium' as const,
+            topic: selectedLesson.quiz.title,
+            subject: subjectTitle,
+            points: 10,
+            explanation: q.explanation || '',
+          }));
 
-        setQuizQuestions(questions);
         setQuizQuestions(questions);
       } catch (err) {
         console.error('[ModuleDetailView] Quiz generation failed:', err);
-        // Fallback: generate basic questions so the quiz isn't stuck
+        // Fallback: generate basic questions in AIQuizQuestion shape
         const count = selectedLesson.quiz.questions || 5;
-        const fallback: Question[] = Array.from({ length: count }).map((_, i) => {
+        const fallback: AIQuizQuestion[] = Array.from({ length: count }).map((_, i) => {
           const a = Math.floor(Math.random() * 20) + 2;
           const b = Math.floor(Math.random() * 20) + 2;
           const correct = (a + b).toString();
           return {
-            id: i + 1,
-            type: 'multiple-choice' as const,
+            id: 'fallback-' + i,
+            questionType: 'multiple_choice' as const,
             question: `Compute: ${a} + ${b}`,
             options: [correct, (a * b).toString(), Math.abs(a - b).toString(), (a + b + 1).toString()],
             correctAnswer: correct,
+            bloomLevel: 'remember' as const,
+            difficulty: 'easy' as const,
+            topic: selectedLesson.quiz.title,
+            subject: subjectTitle,
+            points: 10,
             explanation: `${a} + ${b} = ${correct}`,
           };
         });

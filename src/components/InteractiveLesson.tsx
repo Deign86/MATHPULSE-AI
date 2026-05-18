@@ -266,7 +266,6 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   const [failedOptions, setFailedOptions] = useState<Record<number, string[]>>({});
   const [shakeCard, setShakeCard] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
-  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [achievementPill, setAchievementPill] = useState<'streak' | 'multiplier2' | 'multiplier3' | null>(null);
 
   // Background floating orbs logic
