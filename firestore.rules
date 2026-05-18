@@ -48,7 +48,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow create: if isSelf(userId);
       allow read: if isSelf(userId) || isTeacherOrAdmin();
-      allow update: if isSelf(userId) || isAdmin();
+      allow update: if isSelf(userId) || isTeacherOrAdmin();
       allow delete: if isAdmin();
     }
 
@@ -642,6 +642,44 @@ service cloud.firestore {
     // Working memory: active session state (current topic, problem, turns)
     match /users/{uid}/tutorMemory/working/{docId} {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ─── Student Intelligence Pipeline Collections ────────────────────────
+
+    // student_profiles/{student_id} — backend-only writes, students read own, teachers read their class
+    match /student_profiles/{studentId} {
+      allow read: if isSignedIn() && (request.auth.uid == studentId || isTeacherOrAdmin());
+      allow write: if false; // Backend service account only
+    }
+
+    // class_analytics/{class_id} — backend-only writes, teachers read
+    match /class_analytics/{classId} {
+      allow read: if isTeacherOrAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // classes/{class_id}/student_summaries/{student_id} — denormalized for Teacher Dashboard
+    match /classes/{classId}/student_summaries/{studentId} {
+      allow read: if isTeacherOrAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // intervention_plans/{student_id} — backend writes, teachers read, students read own
+    match /intervention_plans/{studentId} {
+      allow read: if isSignedIn() && (request.auth.uid == studentId || isTeacherOrAdmin());
+      allow write: if false; // Backend service account only
+    }
+
+    // pipeline_events/{event_id} — audit log, admin read only
+    match /pipeline_events/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // pipeline_jobs/{job_id} — backfill job tracking, admin read only
+    match /pipeline_jobs/{jobId} {
+      allow read: if isAdmin();
+      allow write: if false; // Backend service account only
     }
 
     // Deny-by-default for unknown collections.
