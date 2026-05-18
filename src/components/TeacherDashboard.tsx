@@ -4651,6 +4651,7 @@ const InterventionView: React.FC<{
           step={selectedStep}
           studentId={student.id}
           studentName={student.name}
+          teacherId={teacherId}
           totalSteps={interventionPlan?.learning_path?.steps?.length || 3}
           onClose={() => setSelectedStep(null)}
           onStepCompleted={() => {

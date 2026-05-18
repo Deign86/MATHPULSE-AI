@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { X, CheckCircle, Clock, Video, PenTool, MessageCircle, RefreshCw, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { completeStep } from '../services/interventionService';
+import { assignStepAsModule } from '../services/interventionService';
 import type { LearningStep } from '../services/interventionService';
 import { InterventionVideoStep } from './intervention/InterventionVideoStep';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ interface Props {
   step: LearningStep;
   studentId: string;
   studentName: string;
+  teacherId: string;
   totalSteps: number;
   onClose: () => void;
   onStepCompleted: (stepNumber: number) => void;
@@ -36,6 +37,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
   step,
   studentId,
   studentName,
+  teacherId,
   totalSteps,
   onClose,
   onStepCompleted,
@@ -46,16 +48,15 @@ export const InterventionStepGuide: React.FC<Props> = ({
   ]);
   const [chatInput, setChatInput] = useState('');
 
-  const handleComplete = async () => {
+  const handleAssign = async () => {
     setCompleting(true);
     try {
-      // Score is null — actual score comes from practice/assessment results, not this modal
-      await completeStep(studentId, step.step_number, 0, step.duration_minutes);
+      await assignStepAsModule(step, studentId, teacherId);
       onStepCompleted(step.step_number);
-      toast.success(`Step ${step.step_number} completed!`);
+      toast.success(`Step ${step.step_number} assigned to student!`);
       onClose();
     } catch (err) {
-      toast.error('Failed to mark step as complete.');
+      toast.error('Failed to assign step.');
     } finally {
       setCompleting(false);
     }
@@ -186,12 +187,12 @@ export const InterventionStepGuide: React.FC<Props> = ({
               <span className="text-[11px] text-slate-500">{step.step_number}/{totalSteps}</span>
             </div>
             <button
-              onClick={handleComplete}
+              onClick={handleAssign}
               disabled={completing || step.is_completed}
-              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[13px] font-semibold rounded-full transition-colors disabled:opacity-50 shadow-sm"
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-[13px] font-semibold rounded-full transition-colors disabled:opacity-50 shadow-sm"
             >
               <CheckCircle className="w-4 h-4" />
-              {step.is_completed ? 'Completed ✓' : completing ? 'Saving...' : 'Mark as Complete'}
+              {step.is_completed ? 'Assigned ✓' : completing ? 'Assigning...' : 'Assign'}
             </button>
           </div>
         </motion.div>

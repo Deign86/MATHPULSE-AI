@@ -149,3 +149,29 @@ export async function assignLearningPathAsModule(
   });
   return docRef.id;
 }
+
+/** Assign a single intervention step as a teacher-uploaded module to the student */
+export async function assignStepAsModule(
+  step: LearningStep,
+  studentId: string,
+  teacherId: string,
+): Promise<string> {
+  const docRef = await addDoc(collection(db, 'modules'), {
+    title: step.title,
+    gradeLevel: 'Grade 11',
+    subject: 'General Mathematics',
+    quarter: 'Q1',
+    strandOrTrack: null,
+    competencyTags: [step.competency_tag].filter(Boolean),
+    moduleType: 'teacher_uploaded',
+    sourceLabel: 'Teacher Upload',
+    summary: step.description || `${step.topic} (${step.difficulty})`,
+    learningObjectives: [step.description].filter(Boolean),
+    sections: [{ title: step.title, content: step.description || step.topic }],
+    practice: [],
+    teacherId,
+    assignedTo: studentId,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
+}
