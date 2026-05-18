@@ -608,6 +608,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
   const [students, setStudents] = useState<StudentView[]>([]);
+
+  // Only classes this teacher manages (managerId matches current user)
+  const managedClasses = useMemo(() => {
+    if (!currentUser?.uid) return classes;
+    return classes.filter(c => c.managerId === currentUser.uid || c.classMetadata?.managerId === currentUser.uid);
+  }, [classes, currentUser?.uid]);
   const [liveActivity, setLiveActivity] = useState<{ id: string; student: string; action: string; topic: string; time: string; type: string }[]>([]);
   const [dailyInsight, setDailyInsight] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
@@ -1734,7 +1740,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             <AnimatePresence mode="wait">
               {activeView === 'dashboard' && (
                 <DashboardView
-                  classes={classes}
+                  classes={managedClasses}
                   liveActivity={liveActivity}
                   onViewClass={handleViewClass}
                   onViewAllClasses={() => setActiveView('analytics')}
@@ -1776,9 +1782,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   onAddStudents={() => setShowAddStudentsModal(true)}
                 />
               )}
-              {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length > 0 && (
+              {activeView === 'analytics' && !effectiveAnalyticsClass && managedClasses.length > 0 && (
                 <ClassesOverviewMenu
-                  classes={classes}
+                  classes={managedClasses}
                   onSelectClass={handleViewClass}
                   onOpenNotifications={() => setActiveView('notifications')}
                   onOpenProfile={onOpenProfile}
@@ -1787,7 +1793,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   onCreateClass={() => setShowCreateClassModal(true)}
                 />
               )}
-              {activeView === 'analytics' && !effectiveAnalyticsClass && classes.length === 0 && (
+              {activeView === 'analytics' && !effectiveAnalyticsClass && managedClasses.length === 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1856,7 +1862,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               )}
               {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
                 <ClassesOverviewMenu
-                  classes={classes}
+                  classes={managedClasses}
                   onSelectClass={(cls) => setSelectedClass(cls)}
                   onOpenNotifications={() => setActiveView('notifications')}
                   onOpenProfile={onOpenProfile}
@@ -1878,7 +1884,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   className={selectedClass?.name}
                   classMetadata={selectedClass?.classMetadata}
                   students={students}
-                  classes={classes.filter(c => c.managerId === currentUser?.uid || c.classMetadata?.managerId === currentUser?.uid).map(c => ({ id: c.id, name: c.name, classSectionId: c.classSectionId }))}
+                  classes={managedClasses.map(c => ({ id: c.id, name: c.name, classSectionId: c.classSectionId }))}
                   teacherId={currentUser?.uid || ''}
                   teacherName={teacherName}
                   onStudentsUpdated={(updated) => setStudents(updated)}
