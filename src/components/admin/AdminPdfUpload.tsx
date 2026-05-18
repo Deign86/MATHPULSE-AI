@@ -33,6 +33,7 @@ interface UploadedFile {
   fileType: string;
   className?: string;
   createdAt: Date;
+  collection: string;
 }
 
 interface RagHealthSubject {
@@ -77,11 +78,11 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
       const files: UploadedFile[] = [
         ...materialsSnap.docs.map(d => {
           const data = d.data();
-          return { id: d.id, fileName: data.fileName || 'Untitled', teacherEmail: data.teacherEmail || '', fileType: data.fileType || 'PDF', className: data.className, createdAt: data.createdAt?.toDate?.() || new Date() };
+          return { id: d.id, fileName: data.fileName || 'Untitled', teacherEmail: data.teacherEmail || '', fileType: data.fileType || 'PDF', className: data.className, createdAt: data.createdAt?.toDate?.() || new Date(), collection: 'courseMaterials' };
         }),
         ...recordsSnap.docs.map(d => {
           const data = d.data();
-          return { id: d.id, fileName: data.fileName || 'Untitled', teacherEmail: data.teacherEmail || '', fileType: data.fileType || 'CSV', className: data.className, createdAt: data.createdAt?.toDate?.() || new Date() };
+          return { id: d.id, fileName: data.fileName || 'Untitled', teacherEmail: data.teacherEmail || '', fileType: data.fileType || 'CSV', className: data.className, createdAt: data.createdAt?.toDate?.() || new Date(), collection: 'classRecordImports' };
         }),
       ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       setUploadedFiles(files);
@@ -94,10 +95,18 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
 
   const handleDeleteFile = async (fileId: string, collectionName: string) => {
     try {
-      await deleteDoc(doc(db, collectionName, fileId));
+      // Call backend to delete file + associated data
+      await apiService.adminDeleteFile(fileId, collectionName);
       toast.success('File removed');
       loadUploadedFiles();
-    } catch { toast.error('Failed to delete file'); }
+    } catch {
+      // Fallback: try direct Firestore delete
+      try {
+        await deleteDoc(doc(db, collectionName, fileId));
+        toast.success('File removed');
+        loadUploadedFiles();
+      } catch { toast.error('Failed to delete file'); }
+    }
   };
 
   React.useEffect(() => { loadUploadedFiles(); }, [loadUploadedFiles]);
@@ -491,7 +500,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                         </TableCell>
                         <TableCell className="px-6 py-4 text-[12px] text-slate-500">{file.createdAt.toLocaleDateString()}</TableCell>
                         <TableCell className="px-6 py-4 text-right">
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => handleDeleteFile(file.id, 'courseMaterials')}>
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-400 hover:text-red-500 hover:bg-red-50" onClick={() => handleDeleteFile(file.id, file.collection)}>
                             <Trash2 size={14} />
                           </Button>
                         </TableCell>

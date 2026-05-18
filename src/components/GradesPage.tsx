@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { TrendingUp, Award, Target, Calendar, Download, Filter, Brain, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,8 @@ import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '
 import { useCurriculum } from '../hooks/useCurriculum';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+
+const DiagnosticBreakdown = lazy(() => import('./assessment/DiagnosticBreakdown'));
 
 interface DiagnosticSummary {
   score: number;
@@ -24,6 +26,7 @@ const GradesPage = () => {
   const [gradeSummary, setGradeSummary] = useState<GradeSummary | null>(null);
   const [assessments, setAssessments] = useState<AssessmentRecord[]>([]);
   const [diagnosticSummary, setDiagnosticSummary] = useState<DiagnosticSummary | null>(null);
+  const [showBreakdownModal, setShowBreakdownModal] = useState(false);
 
 // Safely cast userProfile to StudentProfile to access grade
 const studentGrade = (userProfile as StudentProfile | null)?.grade;
@@ -343,7 +346,13 @@ const subjectPerformance = Object.entries({})
 
       {/* Diagnostic Assessment Results */}
       {diagnosticSummary && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+        <div
+          className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm cursor-pointer hover:shadow-md hover:border-indigo-200 transition-all"
+          onClick={() => setShowBreakdownModal(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter') setShowBreakdownModal(true); }}
+        >
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
@@ -557,6 +566,18 @@ const subjectPerformance = Object.entries({})
 
         </div>
       </div>
+
+      {/* Diagnostic Breakdown Modal */}
+      {showBreakdownModal && currentUser?.uid && (
+        <Suspense fallback={null}>
+          <DiagnosticBreakdown
+            userId={currentUser.uid}
+            mode="modal"
+            isOpen={showBreakdownModal}
+            onClose={() => setShowBreakdownModal(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

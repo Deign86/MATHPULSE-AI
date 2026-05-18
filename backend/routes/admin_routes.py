@@ -124,3 +124,83 @@ async def reingest_pdf(
     except Exception as e:
         logger.error(f"Failed to reingest: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to reingest: {e}")
+
+
+class DeleteFileRequest(BaseModel):
+    fileId: str
+    collection: str  # 'courseMaterials' or 'classRecordImports'
+
+
+@router.post("/delete-file")
+async def delete_uploaded_file(
+    req: DeleteFileRequest,
+    request: Request,
+    _admin=Depends(require_admin),
+):
+    """Delete an uploaded file and its associated data."""
+    import firebase_admin
+    from firebase_admin import firestore as fs
+
+    if req.collection not in ("courseMaterials", "classRecordImports"):
+        raise HTTPException(status_code=400, detail="Invalid collection")
+
+    try:
+        client = fs.client()
+        doc_ref = client.collection(req.collection).document(req.fileId)
+        doc_snap = doc_ref.get()
+
+        if not doc_snap.exists:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        doc_data = doc_snap.to_dict() or {}
+
+        # Delete associated normalizedClassRecords for class record imports
+        if req.collection == "classRecordImports":
+            teacher_id = doc_data.get("teacherId", "")
+            class_section_id = doc_data.get("classSectionId", "")
+            if teacher_id:
+                norm_query = client.collection("normalizedClassRecords").where(
+                    "teacherId", "==", teacher_id
+                )
+                if class_section_id:
+                    norm_query = norm_query.where("classSectionId", "==", class_section_id)
+                norm_docs = norm_query.stream()
+                batch = client.batch()
+                count = 0
+                for norm_doc in norm_docs:
+                    batch.delete(norm_doc.reference)
+                    count += 1
+                    if count >= 400:
+                        batch.commit()
+                        batch = client.batch()
+                        count = 0
+                if count > 0:
+                    batch.commit()
+
+        # Delete the main document
+        doc_ref.delete()
+
+        # Audit log
+        audit_fn = _get_audit_logger()
+        if audit_fn:
+            try:
+                import asyncio
+                asyncio.create_task(audit_fn(
+                    action="DELETE_UPLOADED_FILE",
+                    actor_uid=_admin.uid,
+                    actor_name=getattr(_admin, "name", "Unknown"),
+                    actor_email=getattr(_admin, "email", ""),
+                    actor_role=_admin.role,
+                    description=f"Deleted {req.collection}/{req.fileId} ({doc_data.get('fileName', 'unknown')})",
+                    route="/api/admin/delete-file",
+                    module="admin",
+                ))
+            except Exception:
+                pass
+
+        return {"success": True, "message": "File and associated data deleted."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete file: {e}")

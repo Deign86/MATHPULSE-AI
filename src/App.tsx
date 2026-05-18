@@ -60,6 +60,7 @@ const SettingsModal = lazy(() => import('./components/SettingsModal.tsx'));
 const ScientificCalculator = lazy(() => import('./components/ScientificCalculator.tsx'));
 const InitialAssessmentModal = lazy(() => import('./components/assessment/InitialAssessmentModal.tsx'));
 const AssessmentPage = lazy(() => import('./pages/AssessmentPage.tsx'));
+const DiagnosticBreakdown = lazy(() => import('./components/assessment/DiagnosticBreakdown.tsx'));
 
 const App = () => {
   // Get authentication state from context
@@ -234,6 +235,7 @@ const App = () => {
   const [initialAssessmentCompleted, setInitialAssessmentCompleted] = useState(false);
   const [diagnosticCheckVersion, setDiagnosticCheckVersion] = useState(0);
   const [showAssessmentPage, setShowAssessmentPage] = useState(false);
+  const [showDiagnosticBreakdown, setShowDiagnosticBreakdown] = useState(false);
   const [assessmentTestId, setAssessmentTestId] = useState<string>('');
   const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([]);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>(studentProfile?.atRiskSubjects || []);
@@ -505,7 +507,7 @@ const App = () => {
   }) => {
     setShowAssessmentPage(false);
     setHasCompletedDiagnostic(true);
-    setActiveTab('Dashboard');
+    setShowDiagnosticBreakdown(true);
 
     if (result.xpEarned > 0 && userProfile?.uid) {
       try {
@@ -1449,6 +1451,20 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                 onComplete={handleAssessmentComplete}
                 onCancel={() => {
                   setShowAssessmentPage(false);
+                  setActiveTab('Dashboard');
+                }}
+              />
+            </Suspense>
+          )}
+
+          {/* Diagnostic Breakdown (full-screen after completion) */}
+          {showDiagnosticBreakdown && userProfile?.uid && (
+            <Suspense fallback={null}>
+              <DiagnosticBreakdown
+                userId={userProfile.uid}
+                mode="fullscreen"
+                onClose={() => {
+                  setShowDiagnosticBreakdown(false);
                   setActiveTab('Dashboard');
                 }}
               />
