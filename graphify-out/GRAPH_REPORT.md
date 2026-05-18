@@ -1,16 +1,16 @@
 # Graph Report - MATHPULSE-AI  (2026-05-18)
 
 ## Corpus Check
-- 411 files · ~531,334 words
+- 411 files · ~531,562 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6436 nodes · 15512 edges · 348 communities (298 shown, 50 thin omitted)
+- 6436 nodes · 15512 edges · 347 communities (297 shown, 50 thin omitted)
 - Extraction: 64% EXTRACTED · 36% INFERRED · 0% AMBIGUOUS · INFERRED: 5600 edges (avg confidence: 0.51)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1831ff3c`
+- Built from commit: `4de744c3`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -301,7 +301,6 @@
 - [[_COMMUNITY_Community 298|Community 298]]
 - [[_COMMUNITY_Community 299|Community 299]]
 - [[_COMMUNITY_Community 300|Community 300]]
-- [[_COMMUNITY_Community 301|Community 301]]
 - [[_COMMUNITY_Community 302|Community 302]]
 - [[_COMMUNITY_Community 303|Community 303]]
 - [[_COMMUNITY_Community 304|Community 304]]
@@ -372,7 +371,7 @@
 - `AuthenticatedUser` --uses--> `ContentUpdatePayload`  [INFERRED]
   backend/main.py → hf_space_deploy/automation_engine.py
 
-## Communities (348 total, 50 thin omitted)
+## Communities (347 total, 50 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.2
@@ -859,8 +858,8 @@ Cohesion: 0.1
 Nodes (17): AlertDialogAction(), AlertDialogCancel(), AlertDialogContent(), AlertDialogDescription(), AlertDialogFooter(), AlertDialogHeader(), AlertDialogOverlay(), AlertDialogTitle() (+9 more)
 
 ### Community 121 - "Community 121"
-Cohesion: 0.19
-Nodes (9): badgeForType(), iconMap, NotificationItem(), NotificationItemProps, deleteButton, mockDeleteNotification, mockMarkAsRead, notification (+1 more)
+Cohesion: 0.12
+Nodes (17): NotificationBell(), useNotifications(), badgeForType(), iconMap, NotificationItem(), NotificationItemProps, deleteButton, mockDeleteNotification (+9 more)
 
 ### Community 122 - "Community 122"
 Cohesion: 0.26
@@ -1377,10 +1376,6 @@ Nodes (27): call_hf_chat_async(), chat_tutor(), daily_insight(), _extract_final_
 ### Community 300 - "Community 300"
 Cohesion: 0.18
 Nodes (11): generate_learning_path(), Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results. (+3 more)
-
-### Community 301 - "Community 301"
-Cohesion: 0.26
-Nodes (8): NotificationBell(), useNotifications(), NotificationPanel(), NotificationPanelProps, markAllButton, mockOnClose, notificationsValue, skeletons
 
 ### Community 302 - "Community 302"
 Cohesion: 0.4
