@@ -136,6 +136,11 @@ export async function searchVideos(payload: VideoSearchRequest): Promise<VideoSe
   });
 }
 
+export async function fetchYouTubeVideos(query: string): Promise<VideoResult[]> {
+  const res = await searchVideos({ topic: query });
+  return res.videos;
+}
+
 export async function getRagLessonHealth() {
   return apiFetch<{
     status: 'ok' | 'degraded';

@@ -51,6 +51,7 @@ interface CompetencyStudent {
   engagementScore: number;
   avgQuizScore: number;
   weakestTopic: string;
+  accountUid?: string;
 }
 
 interface FallbackStudentInput {
@@ -66,6 +67,7 @@ interface FallbackStudentInput {
   avgScore?: number;
   avgQuizScore?: number;
   weakestTopic: string;
+  accountUid?: string;
 }
 
 function normalizeClassSectionId(value?: string | null): string {
@@ -313,13 +315,15 @@ const StudentCompetencyTable: React.FC<{
     avatar: (student.avatar && !student.avatar.includes('ui-avatars.com')) ? student.avatar : getDefaultAvatar(student.gender),
     classSectionId: student.classSectionId ?? null,
     riskLevel: (String(student.riskLevel).charAt(0).toUpperCase() + String(student.riskLevel).slice(1).toLowerCase()) as 'High' | 'Medium' | 'Low',
-    engagementScore: student.engagementScore,
-    avgQuizScore: Number(student.avgQuizScore ?? student.avgScore ?? 0),
+    engagementScore: Number(student.engagementScore) || 0,
+    avgQuizScore: Number(student.avgQuizScore ?? student.avgScore ?? 0) || 0,
     weakestTopic: student.weakestTopic || 'Foundational Skills',
+    accountUid: student.accountUid,
   }), []);
 
   const loadCompetencyMatrices = useCallback(async (students: CompetencyStudent[], loadId: number) => {
     const summaryByStudentId = new Map<string, CompetencyMatrixSummary | null>();
+    const scoreByStudentId = new Map<string, number>();
     students.forEach((student) => summaryByStudentId.set(student.id, null));
     const COMPETENCY_MATRIX_BATCH_SIZE = 25;
 
@@ -329,11 +333,14 @@ const StudentCompetencyTable: React.FC<{
       const batch = students.slice(index, index + COMPETENCY_MATRIX_BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(async (student) => {
+          // Use accountUid (Firebase Auth UID) for progress lookup when available
+          const progressId = student.accountUid || student.id;
           try {
-            const progress = await getUserProgress(student.id);
-            return { studentId: student.id, summary: computeCompetencyMatrixSummary(progress) };
+            const progress = await getUserProgress(progressId);
+            const avgScore = progress?.averageScore || 0;
+            return { studentId: student.id, summary: computeCompetencyMatrixSummary(progress), avgScore };
           } catch {
-            return { studentId: student.id, summary: null };
+            return { studentId: student.id, summary: null, avgScore: 0 };
           }
         }),
       );
@@ -343,6 +350,7 @@ const StudentCompetencyTable: React.FC<{
         if (!studentId) return;
         if (result.status === 'fulfilled') {
           summaryByStudentId.set(studentId, result.value.summary);
+          if (result.value.avgScore > 0) scoreByStudentId.set(studentId, result.value.avgScore);
         } else {
           summaryByStudentId.set(studentId, null);
         }
@@ -353,8 +361,12 @@ const StudentCompetencyTable: React.FC<{
 
     setRows((prev) => prev.map((row) => {
       if (!summaryByStudentId.has(row.student.id)) return row;
+      const enrichedScore = scoreByStudentId.get(row.student.id);
       return {
         ...row,
+        student: enrichedScore != null && enrichedScore > row.student.avgQuizScore
+          ? { ...row.student, avgQuizScore: Math.round(enrichedScore) }
+          : row.student,
         competencyMatrix: summaryByStudentId.get(row.student.id) ?? null,
         competencyMatrixLoading: false,
       };
@@ -376,9 +388,10 @@ const StudentCompetencyTable: React.FC<{
         avatar: (student.avatar && !student.avatar.includes('ui-avatars.com')) ? student.avatar : getDefaultAvatar(student.gender),
         classSectionId: student.classSectionId ?? null,
         riskLevel: student.riskLevel,
-        engagementScore: student.engagementScore,
-        avgQuizScore: student.avgQuizScore,
+        engagementScore: Number(student.engagementScore) || 0,
+        avgQuizScore: Number(student.avgQuizScore) || 0,
         weakestTopic: student.weakestTopic || 'Foundational Skills',
+        accountUid: student.accountUid,
       }));
 
       if (fallbackStudents.length > 0) {
@@ -587,8 +600,8 @@ const StudentCompetencyTable: React.FC<{
 
   const totalStudents = rows.length;
   const highRisk = rows.filter(r => r.student.riskLevel === 'High').length;
-  const avgScore = totalStudents > 0 ? Math.round(rows.reduce((s, r) => s + r.student.avgQuizScore, 0) / totalStudents) : 0;
-  const avgEngagement = totalStudents > 0 ? Math.round(rows.reduce((s, r) => s + r.student.engagementScore, 0) / totalStudents) : 0;
+  const avgScore = totalStudents > 0 ? Math.round(rows.reduce((s, r) => s + (Number(r.student.avgQuizScore) || 0), 0) / totalStudents) : 0;
+  const avgEngagement = totalStudents > 0 ? Math.round(rows.reduce((s, r) => s + (Number(r.student.engagementScore) || 0), 0) / totalStudents) : 0;
   const importedTopicTitles = Array.from(new Set(importedTopics.map((topic) => topic.title).filter(Boolean))).slice(0, 10);
 
   const SortIcon = ({ field }: { field: SortField }) => {

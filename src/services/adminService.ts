@@ -995,6 +995,8 @@ export interface AnalyticsSummary {
   totalXPEarned: number;
   activeStreaks: number;
   aiTutorSessions: number;
+  totalQuizzesTaken: number;
+  avgQuizScore: number;
 }
 
 /** Aggregate analytics KPIs from Firestore. */
@@ -1044,6 +1046,22 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       aiTutorSessions = chatSnap.size;
     } catch { /* optional */ }
 
+    let totalQuizzesTaken = 0;
+    let avgQuizScore = 0;
+    try {
+      const progressSnap = await getDocs(collection(db, 'progress'));
+      const scores: number[] = [];
+      progressSnap.docs.forEach(d => {
+        const data = d.data() as Record<string, unknown>;
+        const attempts = data.quizAttempts as Array<{ score?: number }> | undefined;
+        if (attempts?.length) {
+          totalQuizzesTaken += attempts.length;
+          attempts.forEach(a => { if (typeof a.score === 'number') scores.push(a.score); });
+        }
+      });
+      avgQuizScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    } catch { /* optional */ }
+
     return {
       totalActiveUsers: totalStudents + totalTeachers,
       totalStudents,
@@ -1053,6 +1071,8 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       totalXPEarned,
       activeStreaks,
       aiTutorSessions,
+      totalQuizzesTaken,
+      avgQuizScore,
     };
   } catch (err) {
     console.error('[adminService] getAnalyticsSummary error:', err);
@@ -1065,6 +1085,8 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       totalXPEarned: 0,
       activeStreaks: 0,
       aiTutorSessions: 0,
+      totalQuizzesTaken: 0,
+      avgQuizScore: 0,
     };
   }
 }

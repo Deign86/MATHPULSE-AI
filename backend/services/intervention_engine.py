@@ -48,6 +48,7 @@ class LearningStep(BaseModel):
     difficulty: Literal["easy", "medium", "hard"] = "easy"
     is_completed: bool = False
     completion_score: Optional[float] = None
+    youtube_query: Optional[str] = None
 
 
 class LearningPath(BaseModel):
@@ -404,6 +405,7 @@ Create a 4-6 step learning path that:
 2. Uses varied methodology: video → practice → assessment → review cycle
 3. Scales difficulty: start easy, progress to grade-level
 4. Total estimated time: {estimated_days} days
+5. For video_lesson steps, include a youtube_query field with a specific YouTube search query targeting Filipino DepEd math content. Format: "{{topic}} Grade {{level}} {{subtopic}} tutorial Philippines"
 
 Return ONLY valid JSON:
 {{
@@ -420,7 +422,8 @@ Return ONLY valid JSON:
       "num_items": null,
       "topic": "Topic Name",
       "competency_tag": "M11GM-Ia-1",
-      "difficulty": "easy"
+      "difficulty": "easy",
+      "youtube_query": "Topic Name Grade Level basics tutorial Philippines DepEd"
     }}
   ]
 }}"""
@@ -453,6 +456,7 @@ Return ONLY valid JSON:
                     topic=s.get("topic", weakest_topic),
                     competency_tag=s.get("competency_tag", ""),
                     difficulty=s.get("difficulty", "easy"),
+                    youtube_query=s.get("youtube_query"),
                 ))
 
             return LearningPath(
@@ -474,7 +478,8 @@ Return ONLY valid JSON:
         """Generate a basic learning path without AI."""
         steps = [
             LearningStep(step_number=1, type="video_lesson", title=f"{weakest_topic} - Fundamentals",
-                         description="Review core concepts", duration_minutes=8, topic=weakest_topic, difficulty="easy"),
+                         description="Review core concepts", duration_minutes=8, topic=weakest_topic, difficulty="easy",
+                         youtube_query=f"{weakest_topic} Grade 11 basics tutorial Philippines DepEd"),
             LearningStep(step_number=2, type="practice", title=f"{weakest_topic} - Guided Practice",
                          description="Work through examples", duration_minutes=12, num_items=10, topic=weakest_topic, difficulty="easy"),
             LearningStep(step_number=3, type="practice", title=f"{weakest_topic} - Independent Practice",

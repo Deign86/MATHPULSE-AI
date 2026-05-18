@@ -724,6 +724,25 @@ timeSpent,
       ).catch((err) => console.error('[WARN] Practice quiz persist failed:', err));
     }
 
+    // Persist to assessments subcollection for GradesPage visibility
+    if (studentId) {
+      import('../services/gradesService').then(({ saveAssessmentResult }) => {
+        saveAssessmentResult({
+          uid: studentId,
+          testId: quiz.id,
+          title: quiz.title || quiz.id,
+          subject: quiz.subject || 'General Mathematics',
+          type: quiz.source === 'ai_generated' ? 'quiz' : 'practice',
+          score: percentage,
+          totalQuestions: questions.length,
+          risk: percentage < 60 ? 'High' : 'Low',
+          intervention: '',
+          xpEarned,
+          badgeUnlocked: '',
+        }).catch((err) => console.error('[WARN] Assessment record save failed:', err));
+      });
+    }
+
 playSound('complete');
 
     // Notify parent of completion with score and XP

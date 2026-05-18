@@ -92,6 +92,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (profile) {
           setResolvedRole(profile.role);
           setUserProfile(profile);
+          // Update lastActive timestamp on login (fire-and-forget)
+          import('firebase/firestore').then(({ doc, updateDoc, serverTimestamp }) => {
+            import('../lib/firebase').then(({ db }) => {
+              updateDoc(doc(db, 'users', user.uid), { lastActive: serverTimestamp() }).catch(() => {});
+            });
+          });
           // Wire pipeline context for student event emissions
           if (profile.role === 'student') {
             const classId = (profile as any).classSectionId as string || '';

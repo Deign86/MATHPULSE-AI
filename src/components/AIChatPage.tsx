@@ -28,7 +28,8 @@ const AIChatPage = () => {
     createNewSession, 
     sendMessage,
     deleteSession,
-    getActiveSession 
+    getActiveSession,
+    sessionsLoaded
   } = useChatContext();
 
   const { userProfile } = useAuth();
@@ -76,6 +77,19 @@ const AIChatPage = () => {
       });
   }, []);
 
+  // Auto-create a session with welcome message when no sessions exist
+  useEffect(() => {
+    if (sessionsLoaded && sessions.length === 0) {
+      const welcomeMessage = {
+        id: 'welcome-' + Date.now(),
+        sender: 'ai' as const,
+        text: "Hi! I'm your AI math tutor. What would you like to learn about today?",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      const newSessionId = createNewSession(welcomeMessage);
+      setActiveSessionId(newSessionId);
+    }
+  }, [sessionsLoaded]);
   useEffect(() => {
     if (!shouldAutoScrollRef.current) return;
     const frame = window.requestAnimationFrame(() => scrollToBottom('auto'));
@@ -110,7 +124,13 @@ const AIChatPage = () => {
   };
 
   const handleNewChat = () => {
-    const newSessionId = createNewSession();
+    const welcomeMessage = {
+      id: 'welcome-' + Date.now(),
+      sender: 'ai' as const,
+      text: "Hi! I'm your AI math tutor. What would you like to learn about today?",
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    const newSessionId = createNewSession(welcomeMessage);
     setActiveSessionId(newSessionId);
   };
 

@@ -1,11 +1,11 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { TrendingUp, Award, Target, Calendar, Download, Filter, Brain, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToGradeSummary, subscribeToAssessments, type GradeSummary, type AssessmentRecord } from '../services/gradesService';
 import { type StudentProfile, type UserProgress } from '../types/models';
 import { subscribeToUserProgress } from '../services/progressService';
-import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
+import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId, subjects } from '../data/subjects';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -129,8 +129,9 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
   }, [currentUser?.uid]);
 
   // Compute stats safely
-  const averageScore = gradeSummary?.averageScore ? Math.round(gradeSummary.averageScore) : 0;
-  const totalQuizzes = gradeSummary?.quizzesCompleted ?? 0;
+  const averageScore = gradeSummary?.averageScore ? Math.round(gradeSummary.averageScore)
+    : userProgress?.averageScore ? Math.round(userProgress.averageScore) : 0;
+  const totalQuizzes = Math.max(gradeSummary?.quizzesCompleted ?? 0, userProgress?.quizAttempts?.length ?? 0);
   
   // DepEd SHS General Average (percentage-based, 75 passing)
   const generalAverage = averageScore > 0 ? averageScore.toString() : '—';
@@ -199,27 +200,61 @@ const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
 
   const displaySubjectPerformance = subjectPerformance.length > 0 ? subjectPerformance : defaultSubjectPerformance;
 
-  // Recent Quizzes mapping
-  const recentQuizzes = assessments
-    .slice()
-    .sort((a, b) => {
-      const aTime = a.completedAt?.toDate?.()?.getTime() ?? 0;
-      const bTime = b.completedAt?.toDate?.()?.getTime() ?? 0;
-      return bTime - aTime;
-    })
-    .slice(0, 10)
-    .map((record, i) => {
+  // Recent Quizzes mapping — merge assessments subcollection + progress.quizAttempts
+  const progressQuizEntries = useMemo(() => {
+    if (!userProgress?.quizAttempts?.length) return [];
+    // Build a lookup: quizId → { title, subject }
+    const quizLookup = new Map<string, { title: string; subject: string }>();
+    subjects.forEach((subj) => {
+      const shsMatch = SHS_MATH_SUBJECTS.find((s) => s.id === subj.id);
+      const subjectName = shsMatch?.name || subj.title;
+      subj.modules.forEach((mod) => {
+        mod.quizzes.forEach((q) => {
+          quizLookup.set(q.id, { title: q.title, subject: subjectName });
+        });
+      });
+    });
+    return userProgress.quizAttempts.map((attempt, i) => {
+      const lookup = quizLookup.get(attempt.quizId);
+      const completedDate = attempt.completedAt instanceof Date
+        ? attempt.completedAt
+        : new Date(attempt.completedAt as unknown as string);
       return {
+        id: 10000 + i,
+        title: lookup?.title || attempt.quizId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        subject: lookup?.subject || 'General Mathematics',
+        score: Math.round(attempt.score),
+        date: formatDateOnly(completedDate),
+        type: 'quiz' as const,
+        status: attempt.score >= 80 ? 'Excellent' : attempt.score >= 60 ? 'Passing' : 'Needs Review',
+        _timestamp: completedDate.getTime(),
+      };
+    });
+  }, [userProgress?.quizAttempts]);
+
+  const recentQuizzes = useMemo(() => {
+    const fromAssessments = assessments
+      .slice()
+      .map((record, i) => ({
         id: i + 1,
         title: record.title || `Assessment ${i + 1}`,
         subject: record.subject || 'General',
         score: record.score,
         date: record.completedAt ? formatDateOnly(record.completedAt.toDate()) : 'N/A',
-        type: record.type === 'practice' ? 'practice' as const : record.type === 'diagnostic' ? 'module' as const : 'module' as const,
-        status: record.score >= 80 ? 'Excellent' : record.score >= 60 ? 'Passing' : 'Needs Review'
-      };
-    })
-    .filter((quiz) => allowedSubjectLabels.includes(quiz.subject)); // Enforce grade filter
+        type: (record.type === 'practice' ? 'practice' : record.type === 'diagnostic' ? 'quiz' : 'quiz') as 'quiz' | 'practice',
+        status: record.score >= 80 ? 'Excellent' : record.score >= 60 ? 'Passing' : 'Needs Review',
+        _timestamp: record.completedAt?.toDate?.()?.getTime() ?? 0,
+      }));
+
+    // Merge and deduplicate (assessments take priority by title match)
+    const assessmentTitles = new Set(fromAssessments.map(a => a.title.toLowerCase()));
+    const uniqueProgress = progressQuizEntries.filter(p => !assessmentTitles.has(p.title.toLowerCase()));
+
+    return [...fromAssessments, ...uniqueProgress]
+      .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
+      .slice(0, 20)
+      .filter((quiz) => allowedSubjectLabels.includes(quiz.subject));
+  }, [assessments, progressQuizEntries, allowedSubjectLabels]);
 
   // Filter quizzes based on active selections
   const filteredQuizzes = recentQuizzes.filter(quiz => {
@@ -468,7 +503,7 @@ const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
                     className="appearance-none w-full pl-3 pr-8 py-2.5 border-none bg-slate-50 rounded-xl text-xs sm:text-sm font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer min-w-0 sm:min-w-[120px] shadow-sm"
                   >
                     <option value="all">All Types</option>
-                    <option value="module">Module Quiz</option>
+                    <option value="quiz">Quiz</option>
                     <option value="practice">Practice</option>
                   </select>
                   <Filter className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />

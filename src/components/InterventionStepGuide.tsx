@@ -6,6 +6,7 @@ import { X, CheckCircle, Clock, Video, PenTool, MessageCircle, RefreshCw, Send }
 import { motion, AnimatePresence } from 'motion/react';
 import { completeStep } from '../services/interventionService';
 import type { LearningStep } from '../services/interventionService';
+import { InterventionVideoStep } from './intervention/InterventionVideoStep';
 import { toast } from 'sonner';
 
 interface Props {
@@ -129,11 +130,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
               </div>
 
               {step.type === 'video_lesson' && (
-                <div className="bg-indigo-50/50 rounded-[14px] p-6 border border-indigo-100 flex flex-col items-center justify-center min-h-[160px]">
-                  <Video className="w-10 h-10 text-indigo-400 mb-3" />
-                  <p className="text-[13px] font-semibold text-indigo-700">Video Lesson</p>
-                  <p className="text-[11px] text-indigo-500 mt-1">Content for: {step.topic}</p>
-                </div>
+                <InterventionVideoStep step={step} isActive={true} />
               )}
 
               {(step.type === 'practice' || step.type === 'assessment') && (

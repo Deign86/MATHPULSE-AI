@@ -155,13 +155,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     const unsubscribe = onSnapshot(
       query(collection(db, 'modules'), where('moduleType', '==', 'teacher_uploaded')),
       (snapshot) => {
-        const modules = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            ...data,
-            moduleId: doc.id,
-          } as TeacherUploadedModule;
-        });
+        const uid = currentUser?.uid;
+        const modules = snapshot.docs
+          .map((doc) => ({ ...doc.data(), moduleId: doc.id } as TeacherUploadedModule & { assignedTo?: string }))
+          .filter((mod) => !mod.assignedTo || mod.assignedTo === uid);
         setTeacherModules(modules);
         setTeacherModulesLoading(false);
       },
@@ -172,7 +169,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     );
     
     return () => unsubscribe();
-  }, [activeTab]);
+  }, [activeTab, currentUser?.uid]);
 
 
   // Daily Rewards (new weekly shuffle system)
