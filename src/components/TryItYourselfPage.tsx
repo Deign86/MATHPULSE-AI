@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft, ChevronRight, Volume2, VolumeX, Maximize, Minimize,
   Menu, Key, HelpCircle, Bot, Trophy, X, Star, CheckCircle, XCircle,
+  Heart, Flame,
 } from 'lucide-react';
 import { generateLessonQuiz } from '../services/lessonQuizService';
 import type { Question } from './InteractiveLesson';
@@ -101,16 +102,16 @@ function StatsBar({ hearts, keys, streak, points, viewIndex, currentIndex, onPre
       <div className="flex items-center justify-center gap-2 sm:gap-3 flex-1 mx-2">
         {/* Hearts */}
         <div className="flex items-center gap-1.5 px-3 sm:px-5 py-1.5 sm:py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-rose-500 font-extrabold text-xs sm:text-sm">
-          <span className="text-base">❤️</span> {hearts}
+          <span className="text-base"><Heart size={16} className="fill-current" /></span> {hearts}
         </div>
         {/* Keys */}
         <div className="flex items-center gap-1.5 px-3 sm:px-5 py-1.5 sm:py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-yellow-500 font-extrabold text-xs sm:text-sm">
-          <span className="text-base">🔑</span> {keys}
+          <span className="text-base"><Key size={16} /></span> {keys}
         </div>
         {/* Streak + Points */}
         <div className="flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-1 sm:py-1.5 pl-3 sm:pl-4 rounded-full bg-white shadow-md border border-slate-200/60">
           <div className="flex items-center gap-1 text-orange-500 font-extrabold text-xs sm:text-sm">
-            <span className="text-base">🔥</span> {streak}
+            <span className="text-base"><Flame size={16} /></span> {streak}
           </div>
           <div className="bg-emerald-100 text-emerald-800 px-2 sm:px-3 py-1 rounded-full font-bold text-xs sm:text-sm shadow-inner border border-emerald-200/50 whitespace-nowrap">
             + {points} pts
