@@ -369,6 +369,18 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       // Show the actual lesson content viewer
       const practiceQuizCompleted = associatedQuiz ? (completedQuizIds.has(associatedQuiz.id) || associatedQuiz.completed) : false;
 
+      // Determine what comes next after this lesson
+      const currentIdx = module.lessons.findIndex(l => l.id === selectedLesson.lesson.id);
+      let nextContentLabel: string | undefined;
+      if (currentIdx !== -1 && currentIdx < module.lessons.length - 1) {
+        nextContentLabel = 'Continue to Next Lesson';
+      } else if (currentIdx === module.lessons.length - 1 && module.quizzes.length > 0) {
+        const nextQuiz = module.quizzes[0];
+        if (nextQuiz.type === 'module') nextContentLabel = 'Take Mid-Module Checkpoint';
+        else if (nextQuiz.type === 'final') nextContentLabel = 'Take Final Assessment';
+        else nextContentLabel = 'Start Practice Quiz';
+      }
+
       return (
         <LessonViewer
           lesson={selectedLesson.lesson}
@@ -376,6 +388,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           practiceQuiz={associatedQuiz}
           practiceQuizCompleted={practiceQuizCompleted}
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
+          nextContentLabel={nextContentLabel}
           onBack={handleBack}
           onStartPractice={handleStartPractice}
           onProgressUpdate={handleProgressUpdate}

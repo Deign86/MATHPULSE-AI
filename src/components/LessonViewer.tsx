@@ -261,6 +261,7 @@ function inlineFormat(text: string): React.ReactNode {
 }
 import { VideoLessonSection } from './notebook/VideoLessonSection';
 import InteractiveLesson, { Question } from './InteractiveLesson';
+import TryItYourselfEngine from './TryItYourselfEngine';
 import { generateLessonQuiz } from '../services/lessonQuizService';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -279,6 +280,8 @@ interface LessonViewerProps {
   practiceQuizCompleted?: boolean;
   practiceQuizScore?: number;
   initialSection?: number;
+  /** Label for the "Continue" button in the completion modal (e.g. "Continue to Next Lesson", "Take Mid-Module Checkpoint") */
+  nextContentLabel?: string;
   onStartPractice?: () => void;
   onBack: () => void;
   onComplete: (score?: number, totalXP?: number, goToNext?: boolean) => void;
@@ -887,6 +890,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   practiceQuizCompleted = false,
   practiceQuizScore,
   initialSection = 0,
+  nextContentLabel,
   onStartPractice,
   onBack,
   onComplete,
@@ -902,12 +906,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const [showTryItPage, setShowTryItPage] = useState(false);
   const [tryItQuestions, setTryItQuestions] = useState<Question[] | null>(null);
   const [tryItLoading, setTryItLoading] = useState(false);
+  const [tryItSessionId] = useState(() => `tiy-${Date.now()}`);
 
   // Generate questions when Try It Yourself is opened
   useEffect(() => {
     if (!showTryItPage || tryItQuestions) return;
     setTryItLoading(true);
-    generateLessonQuiz({ lessonId: lesson.id?.toString() || 'unknown', lessonTitle: lesson.title, topic: lesson.title, subjectId: lesson.subjectId, competencyCode: lesson.competencyCode, questionCount: 10 })
+    generateLessonQuiz({ lessonId: lesson.id?.toString() || 'unknown', lessonTitle: lesson.title, topic: lesson.title, subjectId: lesson.subjectId, competencyCode: lesson.competencyCode, questionCount: 15 })
       .then(qs => setTryItQuestions(qs))
       .catch(err => { console.error('[LessonViewer] Quiz generation failed:', err); setShowTryItPage(false); })
       .finally(() => setTryItLoading(false));
@@ -1006,12 +1011,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       return (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"><div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /><p className="font-bold text-slate-700">Generating Quiz...</p></div></div>);
     }
     return (
-      <InteractiveLesson
-        lesson={{ id: parseInt(String(lesson.id || '1').replace(/\D/g, '') || '1'), title: lesson.title, duration: '15 min', type: 'quiz', completed: false, locked: false }}
+      <TryItYourselfEngine
         questions={tryItQuestions}
+        lessonTitle={lesson.title}
+        subject={(lesson as any).subject || 'General Mathematics'}
+        sessionId={tryItSessionId}
+        userId={userProfile?.uid}
         onBack={() => { setShowTryItPage(false); setTryItQuestions(null); }}
-        onComplete={(score) => {
-          const scorePercent = Math.round((score / (tryItQuestions?.length || 10)) * 100);
+        onComplete={(scorePercent, totalXP) => {
           onTryItQuizComplete?.(scorePercent);
           setTryItQuizCompleted(true);
           setShowTryItPage(false);
@@ -1040,6 +1047,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   };
 
   const handleComplete = (goToNext: boolean) => {
+    setShowCompletion(false);
     onComplete(undefined, undefined, goToNext);
   };
 
@@ -1337,7 +1345,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   disabled={isPracticeRequired}
                   className="w-full py-3 rounded-xl font-bold text-sm bg-[#1a85a4] text-white hover:bg-[#126b84] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Continue to Next Lesson
+                  {nextContentLabel || 'Continue to Next Lesson'}
                 </button>
                 <button
                   onClick={() => handleComplete(false)}
