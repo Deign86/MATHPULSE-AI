@@ -270,6 +270,9 @@ export const completeLesson = async (
     // Award XP
     await awardXP(userId, xpReward, 'lesson_complete', `Completed lesson: ${lessonId}`);
 
+    // Recalculate aggregates (averageScore, subject progress, overallRisk)
+    await recalculateProgressAggregates(userId);
+
     // Pipeline: emit lesson event (fire-and-forget)
     try {
       const { emitPipelineEvent, getStudentContext } = await import('./pipelineService');
@@ -326,6 +329,9 @@ export const recordPracticeQuiz = async (
       ...(isNewQuiz && { totalQuizzesCompleted: increment(1) }),
       updatedAt: serverTimestamp(),
     });
+
+    // Recalculate aggregates (averageScore, subject progress, overallRisk)
+    await recalculateProgressAggregates(userId);
   } catch (error) {
     console.error('Error recording practice quiz:', error);
     throw error;
@@ -409,6 +415,9 @@ export const completeQuiz = async (
 
     // Award XP
     await awardXP(userId, xpReward, 'quiz_complete', `Completed quiz: ${quizId} (Score: ${score}%)`);
+
+    // Recalculate aggregates (averageScore, subject progress, overallRisk)
+    await recalculateProgressAggregates(userId);
 
     // Pipeline: emit quiz event (fire-and-forget)
     try {
@@ -520,6 +529,82 @@ export const awardXP = async (
     });
   } catch (error) {
     console.error('Error awarding XP:', error);
+  }
+};
+
+// ─── Aggregation: keep averageScore and overallRisk in sync ───────────────
+
+/**
+ * Recalculate averageScore on the progress document from all quiz attempts.
+ * Also updates `progress.subjects.{subjectId}.progress` from module completions.
+ * Called after every quiz/lesson completion.
+ */
+export const recalculateProgressAggregates = async (userId: string): Promise<void> => {
+  try {
+    const progressRef = doc(db, 'progress', userId);
+    const progressSnap = await getDoc(progressRef);
+    if (!progressSnap.exists()) return;
+
+    const data = progressSnap.data() as UserProgress;
+    const quizAttempts = data.quizAttempts || [];
+
+    // Compute averageScore from all quiz attempts
+    const averageScore = quizAttempts.length > 0
+      ? Math.round(quizAttempts.reduce((sum, q) => sum + q.score, 0) / quizAttempts.length)
+      : 0;
+
+    // Compute per-subject progress from module completions
+    const subjectUpdates: Record<string, number> = {};
+    const subjects = data.subjects || {};
+    for (const [subjectId, subjectData] of Object.entries(subjects)) {
+      const modules = subjectData.modulesProgress || {};
+      const moduleProgresses = Object.values(modules);
+      if (moduleProgresses.length > 0) {
+        const avgProgress = Math.round(
+          moduleProgresses.reduce((sum, m) => sum + (m.progress || 0), 0) / moduleProgresses.length
+        );
+        subjectUpdates[`subjects.${subjectId}.progress`] = avgProgress;
+      }
+    }
+
+    await setDoc(progressRef, { averageScore, ...subjectUpdates, updatedAt: serverTimestamp() }, { merge: true });
+
+    // Sync overallRisk to users collection for admin dashboard
+    await syncOverallRisk(userId, averageScore);
+  } catch (error) {
+    console.error('Error recalculating progress aggregates:', error);
+  }
+};
+
+/**
+ * Sync the `overallRisk` field on the `users/{userId}` document.
+ * Admin dashboard reads this field to count at-risk students.
+ * Checks both score-based risk AND WRI riskStatus from managedStudents.
+ */
+const syncOverallRisk = async (userId: string, averageScore: number): Promise<void> => {
+  try {
+    const { isAtRiskByScore } = await import('../utils/riskEngine');
+    let isAtRisk = isAtRiskByScore(averageScore);
+
+    // Also check WRI riskStatus from managedStudents (PR 110 pipeline)
+    if (!isAtRisk) {
+      try {
+        const managedRef = doc(db, 'managedStudents', userId);
+        const managedSnap = await getDoc(managedRef);
+        if (managedSnap.exists()) {
+          const rs = managedSnap.data()?.riskStatus as string | undefined;
+          if (rs && ['intervene', 'critical', 'at_risk'].includes(rs)) {
+            isAtRisk = true;
+          }
+        }
+      } catch { /* managedStudents doc may not exist */ }
+    }
+
+    const overallRisk = isAtRisk ? 'High' : 'Low';
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, { overallRisk, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (error) {
+    console.error('Error syncing overallRisk:', error);
   }
 };
 

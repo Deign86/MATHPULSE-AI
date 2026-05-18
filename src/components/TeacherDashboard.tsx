@@ -206,7 +206,11 @@ function toClassView(c: Classroom): ClassView {
 }
 
 function toStudentView(s: ManagedStudent, className: string): StudentView {
-  const riskLevel = s.riskLevel.toLowerCase() as 'high' | 'medium' | 'low';
+  // Prefer WRI riskStatus (PR 110) over legacy riskLevel field
+  const riskLevel: 'high' | 'medium' | 'low' = s.riskStatus
+    ? (['intervene', 'critical', 'at_risk'].includes(s.riskStatus) ? 'high'
+      : s.riskStatus === 'watch' ? 'medium' : 'low')
+    : (s.riskLevel || 'Low').toLowerCase() as 'high' | 'medium' | 'low';
   const lastActiveStr = s.lastActive
     ? formatRelativeTime(s.lastActive.toDate())
     : 'Unknown';
@@ -1097,8 +1101,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
   // Computed stats
   const totalStudents = classes.reduce((sum, c) => sum + c.studentCount, 0);
-  const totalAtRisk = classes.reduce((sum, c) => sum + c.atRiskCount, 0);
-  const avgPerformance = classes.length > 0 ? Math.round(classes.reduce((sum, c) => sum + c.avgScore, 0) / classes.length) : 0;
+  // Compute at-risk from actual student data (WRI-aware) instead of stale classrooms doc
+  const totalAtRisk = students.filter(s => s.riskLevel === 'high').length;
+  const avgPerformance = (() => {
+    const scores = students.map(s => s.avgScore).filter(s => s > 0);
+    return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+  })();
 
   const riskDistribution = [
     { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
@@ -2763,8 +2771,14 @@ const AnalyticsView: React.FC<{
       return () => { unsubscribe?.(); if (debounceTimer) clearTimeout(debounceTimer); };
     }, [selectedClass.id]);
 
-    // Use backend data when available, fall back to local computation
-    const classAverage = backendReport?.class_average ?? selectedClass.avgScore;
+    // Use backend data when available, fall back to local computation from students
+    const classAverage = backendReport?.class_average ?? (() => {
+      if (selectedClass.avgScore > 0) return selectedClass.avgScore;
+      // Compute from managed students' avgQuizScore when classrooms doc is stale
+      if (students.length === 0) return 0;
+      const scores = students.map(s => s.avgScore).filter(s => s > 0);
+      return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    })();
     const completionRate = backendReport?.completion_rate ?? (() => {
       if (students.length === 0) return 0;
       const total = students.reduce((sum, student) => sum + (student.assignmentCompletion || 0), 0);
