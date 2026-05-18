@@ -169,6 +169,22 @@ export const updateLessonQuizCompletion = async (
       },
       { merge: true },
     );
+
+    // Pipeline: emit lesson quiz event (fire-and-forget)
+    try {
+      const { emitPipelineEvent, getStudentContext } = await import('./pipelineService');
+      const ctx = getStudentContext();
+      if (ctx) {
+        emitPipelineEvent({
+          student_id: userId,
+          event_type: 'quiz',
+          event_data: { quiz_id: lessonId, score: quizScore, source: 'lesson_quiz' },
+          occurred_at: new Date().toISOString(),
+          class_id: ctx.classId,
+          teacher_id: ctx.teacherId,
+        });
+      }
+    } catch { /* non-critical */ }
   } catch (error) {
     console.error('Error updating lesson quiz completion:', error);
     throw error;
@@ -253,6 +269,22 @@ export const completeLesson = async (
 
     // Award XP
     await awardXP(userId, xpReward, 'lesson_complete', `Completed lesson: ${lessonId}`);
+
+    // Pipeline: emit lesson event (fire-and-forget)
+    try {
+      const { emitPipelineEvent, getStudentContext } = await import('./pipelineService');
+      const ctx = getStudentContext();
+      if (ctx) {
+        emitPipelineEvent({
+          student_id: userId,
+          event_type: 'lesson',
+          event_data: { lesson_id: lessonId, is_completed: true, time_spent_seconds: timeSpent },
+          occurred_at: new Date().toISOString(),
+          class_id: ctx.classId,
+          teacher_id: ctx.teacherId,
+        });
+      }
+    } catch { /* non-critical */ }
   } catch (error) {
     console.error('Error completing lesson:', error);
     throw error;
@@ -377,6 +409,22 @@ export const completeQuiz = async (
 
     // Award XP
     await awardXP(userId, xpReward, 'quiz_complete', `Completed quiz: ${quizId} (Score: ${score}%)`);
+
+    // Pipeline: emit quiz event (fire-and-forget)
+    try {
+      const { emitPipelineEvent, getStudentContext } = await import('./pipelineService');
+      const ctx = getStudentContext();
+      if (ctx) {
+        emitPipelineEvent({
+          student_id: userId,
+          event_type: 'quiz',
+          event_data: { quiz_id: quizId, score, source: 'module_quiz', total_questions: answers.length, correct_answers: answers.filter(a => a.isCorrect).length },
+          occurred_at: new Date().toISOString(),
+          class_id: ctx.classId,
+          teacher_id: ctx.teacherId,
+        });
+      }
+    } catch { /* non-critical */ }
   } catch (error) {
     console.error('Error completing quiz:', error);
     throw error;

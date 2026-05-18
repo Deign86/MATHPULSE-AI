@@ -104,6 +104,9 @@ from routes.risk_router import router as risk_router
 from routes.tutor_checkin import router as tutor_checkin_router
 from routes.practice import router as practice_router
 from routes.ai_monitoring import router as ai_monitoring_router
+from routes.class_analytics_routes import router as class_analytics_router
+from routes.intervention_routes import router as intervention_router
+from routes.pipeline_routes import router as pipeline_router
 
 # Rate limiting (slowapi)
 try:
@@ -379,6 +382,19 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/predict-risk/batch": TEACHER_OR_ADMIN,
     "/api/learning-path": ALL_APP_ROLES,
     "/api/analytics/daily-insight": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}/students": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}/topics": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}/refresh-insights": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}/invalidate-cache": ALL_APP_ROLES,
+    "/api/intervention/generate": TEACHER_OR_ADMIN,
+    "/api/intervention/{student_id}": TEACHER_OR_ADMIN,
+    "/api/intervention/{student_id}/step/{step_number}/complete": ALL_APP_ROLES,
+    "/api/intervention/{student_id}/export-pdf": TEACHER_OR_ADMIN,
+    "/api/pipeline/event": ALL_APP_ROLES,
+    "/api/pipeline/profile/{student_id}": ALL_APP_ROLES,
+    "/api/pipeline/profile/{student_id}/recompute": TEACHER_OR_ADMIN,
+    "/api/pipeline/admin/backfill": ADMIN_ONLY,
     "/api/upload/class-records": TEACHER_OR_ADMIN,
     "/api/class-section/{class_section_id}": TEACHER_OR_ADMIN,
     "/api/upload/class-records/risk-refresh/recent": TEACHER_OR_ADMIN,
@@ -386,6 +402,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/import/student-accounts/commit": TEACHER_OR_ADMIN,
     "/api/admin/users": ADMIN_ONLY,
     "/api/admin/users/bulk-action": ADMIN_ONLY,
+    "/api/admin/school-analytics": ADMIN_ONLY,
     "/api/teacher/create-student-account": TEACHER_OR_ADMIN,
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
@@ -1149,6 +1166,9 @@ app.include_router(risk_router)
 app.include_router(tutor_checkin_router)
 app.include_router(practice_router)
 app.include_router(ai_monitoring_router)
+app.include_router(class_analytics_router)
+app.include_router(intervention_router)
+app.include_router(pipeline_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────

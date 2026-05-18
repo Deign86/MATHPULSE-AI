@@ -447,6 +447,30 @@ const persistSimulatedBotResult = (
     queueStatus: 'idle',
   });
 
+  // Pipeline: emit battle event (fire-and-forget)
+  try {
+    import('./pipelineService').then(({ emitPipelineEvent, getStudentContext }) => {
+      const ctx = getStudentContext();
+      if (ctx) {
+        emitPipelineEvent({
+          student_id: studentId,
+          event_type: 'battle',
+          event_data: {
+            battle_id: matchId,
+            topic: setup.topicId,
+            score: scoring.accuracy,
+            won: outcome === 'win',
+            total_questions: setup.rounds,
+            correct_answers: scoring.scoreFor,
+          },
+          occurred_at: new Date().toISOString(),
+          class_id: ctx.classId,
+          teacher_id: ctx.teacherId,
+        });
+      }
+    }).catch(() => {});
+  } catch { /* non-critical */ }
+
   return {
     success: true,
     matchId,
