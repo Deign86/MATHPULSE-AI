@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import {
   Sparkles, Bell, Layers, ChevronDown, Table, FileText, ScanLine, TrendingDown,
@@ -255,6 +255,21 @@ export default function DataImportView({
   // Logic for Edit Records
   const [localStudents, setLocalStudents] = useState<StudentView[]>(initialStudents);
   const [saving, setSaving] = useState(false);
+  const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
+
+  // Filter students by current class context
+  const filteredStudents = useMemo(() => {
+    if (!classSectionId && !className) return localStudents;
+    return localStudents.filter(s => {
+      if (classSectionId && s.classSectionId) {
+        return normalizeClassSectionId(s.classSectionId) === normalizeClassSectionId(classSectionId);
+      }
+      if (className && s.className) {
+        return s.className.toLowerCase().includes(className.toLowerCase());
+      }
+      return true;
+    });
+  }, [localStudents, classSectionId, className]);
 
   useEffect(() => {
     setLocalStudents(initialStudents);
@@ -267,25 +282,23 @@ export default function DataImportView({
 
   const handleSaveEditRecords = async () => {
     setSaving(true);
+    let savedCount = 0;
+    let errorCount = 0;
     try {
-      for (const student of localStudents) {
+      for (const student of filteredStudents) {
         const draft = sectionDrafts[buildStudentViewKey(student)];
         const updatedGrade = draft?.grade || student.grade;
         const updatedSection = draft?.section || student.section;
 
-        if (teacherId && (updatedGrade !== student.grade || updatedSection !== student.section)) {
-          await assignStudentToClassSection(student.id, updatedGrade, updatedSection, teacherId, new Date().getFullYear().toString(), teacherName);
-          await updateManagedStudentSectionAssignment(student.id, updatedGrade, updatedSection);
-        }
-
         try {
-          const prediction = await apiService.predictRisk({
-            engagementScore: student.engagementScore, avgQuizScore: student.avgScore,
-            attendance: student.attendance, assignmentCompletion: student.assignmentCompletion,
-          });
-          await updateStudentRisk(student.id, prediction.riskLevel, prediction.confidence);
+          if (teacherId && (updatedGrade !== student.grade || updatedSection !== student.section)) {
+            await assignStudentToClassSection(student.id, updatedGrade, updatedSection, teacherId, new Date().getFullYear().toString(), teacherName);
+            await updateManagedStudentSectionAssignment(student.id, updatedGrade, updatedSection);
+            savedCount++;
+          }
         } catch (err) {
-          console.error('Failed to update risk:', err);
+          console.warn(`[EditRecords] Failed to save ${student.name}:`, err);
+          errorCount++;
         }
       }
 
@@ -306,7 +319,11 @@ export default function DataImportView({
       });
       setLocalStudents(updatedLocal);
       onStudentsUpdated?.(updatedLocal);
-      toast.success('Records saved and risk levels updated');
+      if (errorCount > 0) {
+        toast.warning(`Saved ${savedCount} records, ${errorCount} failed`);
+      } else {
+        toast.success('Records saved successfully');
+      }
       setCurrentImportView('main');
     } catch (err) {
       toast.error('Failed to save changes');
@@ -544,7 +561,7 @@ export default function DataImportView({
                 <span className="flex items-center gap-2 font-medium">
                   <Info className="w-4 h-4" /> Click on any field to edit
                 </span>
-                <span>Showing {localStudents.length} records</span>
+                <span>Showing {filteredStudents.length} records</span>
               </div>
               
               <div className="overflow-auto flex-1 table-scrollbar bg-white relative">
@@ -564,7 +581,7 @@ export default function DataImportView({
                       </div>
                   {/* Editable Rows */}
                   <div className="flex flex-col w-full pb-4">
-                    {localStudents.map((student, i) => {
+                    {filteredStudents.map((student, i) => {
                       const rowKey = buildStudentViewKey(student);
                       
                       // Derive Initials
@@ -601,7 +618,8 @@ export default function DataImportView({
                               type="text" 
                               value={sectionDrafts[rowKey]?.grade || student.grade || ''} 
                               onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], grade: e.target.value } }))}
-                              className="bg-slate-100 focus:bg-white outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all border border-transparent focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 text-center"
+                              readOnly={editingRowKey !== rowKey}
+                              className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
                             />
                           </div>
                           <div className="w-[140px] shrink-0 px-4 flex justify-center">
@@ -609,7 +627,8 @@ export default function DataImportView({
                               type="text" 
                               value={sectionDrafts[rowKey]?.section || student.section || ''} 
                               onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], section: e.target.value } }))}
-                              className="bg-slate-100 focus:bg-white outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all border border-transparent focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 text-center"
+                              readOnly={editingRowKey !== rowKey}
+                              className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
                             />
                           </div>
                           <div className="w-[100px] shrink-0 px-4 flex justify-center">
@@ -624,8 +643,11 @@ export default function DataImportView({
                               {student.weakestTopic || 'Foundational Skills'}
                             </div>
                             <div className="w-[80px] shrink-0 px-4 flex justify-center border-r border-transparent">
-                            <button className="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition-colors">
-                              <Edit2 className="w-4 h-4 text-slate-400" />
+                            <button
+                              onClick={() => setEditingRowKey(editingRowKey === rowKey ? null : rowKey)}
+                              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${editingRowKey === rowKey ? 'bg-purple-100 text-purple-600' : 'hover:bg-slate-200 text-slate-400'}`}
+                            >
+                              <Edit2 className="w-4 h-4" />
                             </button>
                           </div>
                         </div>
