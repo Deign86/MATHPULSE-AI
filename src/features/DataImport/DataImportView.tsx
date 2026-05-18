@@ -257,19 +257,25 @@ export default function DataImportView({
   const [saving, setSaving] = useState(false);
   const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
 
-  // Filter students by current class context
+  // Filter students by current class context (or teacher's classes if no class selected)
   const filteredStudents = useMemo(() => {
-    if (!classSectionId && !className) return localStudents;
-    return localStudents.filter(s => {
-      if (classSectionId && s.classSectionId) {
-        return normalizeClassSectionId(s.classSectionId) === normalizeClassSectionId(classSectionId);
-      }
-      if (className && s.className) {
-        return s.className.toLowerCase().includes(className.toLowerCase());
-      }
-      return true;
-    });
-  }, [localStudents, classSectionId, className]);
+    // If a specific class is selected, filter by it
+    if (classSectionId) {
+      return localStudents.filter(s =>
+        normalizeClassSectionId(s.classSectionId) === normalizeClassSectionId(classSectionId) ||
+        normalizeClassSectionId(s.classroomId) === normalizeClassSectionId(classSectionId)
+      );
+    }
+    // Otherwise filter to only students in teacher's known classes
+    if (availableClasses.length > 0) {
+      const classIds = new Set(availableClasses.map(c => normalizeClassSectionId(c.classSectionId || c.id)));
+      return localStudents.filter(s =>
+        classIds.has(normalizeClassSectionId(s.classSectionId)) ||
+        classIds.has(normalizeClassSectionId(s.classroomId))
+      );
+    }
+    return localStudents;
+  }, [localStudents, classSectionId, availableClasses]);
 
   useEffect(() => {
     setLocalStudents(initialStudents);
