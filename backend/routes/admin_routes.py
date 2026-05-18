@@ -204,3 +204,112 @@ async def delete_uploaded_file(
     except Exception as e:
         logger.error(f"Failed to delete file: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete file: {e}")
+
+
+
+# ─── School-Wide Analytics ─────────────────────────────────────────────────
+
+@router.get("/school-analytics")
+def get_school_analytics(request: Request):
+    """School-wide WRI aggregation for admin dashboard."""
+    require_admin(request)
+
+    try:
+        import firebase_admin
+        from firebase_admin import firestore as fs
+        db = fs.client()
+    except Exception:
+        raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+    from datetime import datetime, timezone, timedelta
+    from collections import defaultdict
+
+    # Read all student_profiles
+    profiles = list(db.collection("student_profiles").stream())
+
+    total = len(profiles)
+    if total == 0:
+        # Fallback: read from managedStudents
+        profiles = list(db.collection("managedStudents").stream())
+        total = len(profiles)
+
+    wri_dist = {"safe": 0, "watch": 0, "intervene": 0, "critical": 0, "at_risk": 0, "pending_assessment": 0}
+    wri_values = []
+    grade_wri: dict = defaultdict(list)
+    class_wri: dict = defaultdict(list)
+    weak_topics_counter: dict = defaultdict(int)
+    recent_escalations = []
+    pending_count = 0
+    now = datetime.now(timezone.utc)
+
+    for doc in profiles:
+        data = doc.to_dict()
+        status = data.get("risk_status") or data.get("riskStatus") or "pending_assessment"
+
+        # Normalize status
+        if status in wri_dist:
+            wri_dist[status] += 1
+        else:
+            wri_dist["pending_assessment"] += 1
+
+        wri = data.get("wri")
+        if wri is not None:
+            wri_values.append(wri)
+            grade = str(data.get("grade_level") or data.get("gradeLevel") or data.get("grade", "?"))
+            grade_wri[grade].append(wri)
+            class_id = data.get("class_id") or data.get("classroomId") or ""
+            if class_id:
+                class_wri[class_id].append(wri)
+
+        if status == "pending_assessment" or data.get("diagnosticScore") is None:
+            pending_count += 1
+
+        # Weak topics
+        weak = data.get("quiz_performance", {}).get("lowest_accuracy_topics") or []
+        if not weak:
+            weak = [data.get("weakestTopic")] if data.get("weakestTopic") and data.get("weakestTopic") != "N/A" else []
+        for t in weak[:2]:
+            if t:
+                weak_topics_counter[t] += 1
+
+        # Recent escalations (last 24h)
+        updated = data.get("wri_updated_at") or data.get("riskUpdatedAt")
+        if updated and status in ("critical", "at_risk"):
+            try:
+                if hasattr(updated, "seconds"):
+                    dt = datetime.fromtimestamp(updated.seconds, tz=timezone.utc)
+                elif isinstance(updated, str):
+                    dt = datetime.fromisoformat(updated.replace("Z", "+00:00"))
+                else:
+                    dt = None
+                if dt and (now - dt).total_seconds() < 86400:
+                    recent_escalations.append({
+                        "student_id": doc.id,
+                        "student_name": data.get("display_name") or data.get("name", "Unknown"),
+                        "risk_status": status,
+                        "wri": wri,
+                        "teacher_id": data.get("teacher_id") or data.get("teacherId", ""),
+                        "escalated_at": dt.isoformat(),
+                    })
+            except Exception:
+                pass
+
+    school_avg = round(sum(wri_values) / len(wri_values), 1) if wri_values else 0.0
+    avg_by_grade = {g: round(sum(v) / len(v), 1) for g, v in grade_wri.items() if v}
+    classes_ranked = sorted(
+        [{"class_id": c, "avg_wri": round(sum(v) / len(v), 1), "student_count": len(v)} for c, v in class_wri.items() if v],
+        key=lambda x: x["avg_wri"]
+    )
+    top_weak = sorted(weak_topics_counter.items(), key=lambda x: -x[1])[:10]
+
+    return {
+        "total_students": total,
+        "wri_distribution": wri_dist,
+        "school_avg_wri": school_avg,
+        "avg_wri_by_grade": avg_by_grade,
+        "classes_ranked": classes_ranked[:20],
+        "top_weak_topics_school": [t for t, _ in top_weak],
+        "recent_escalations": recent_escalations[:20],
+        "pending_assessment_count": pending_count,
+        "generated_at": now.isoformat(),
+    }

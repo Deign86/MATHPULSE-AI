@@ -96,6 +96,22 @@ export const logLessonView = async (
       topicId,
       timestamp: serverTimestamp(),
     });
+
+    // Pipeline: emit session event for engagement tracking (fire-and-forget)
+    try {
+      const { emitPipelineEvent, getStudentContext } = await import('./pipelineService');
+      const ctx = getStudentContext();
+      if (ctx) {
+        emitPipelineEvent({
+          student_id: userId,
+          event_type: 'session',
+          event_data: { event: 'lesson_view', module_id: moduleId, topic_id: topicId },
+          occurred_at: new Date().toISOString(),
+          class_id: ctx.classId,
+          teacher_id: ctx.teacherId,
+        });
+      }
+    } catch { /* non-critical */ }
   } catch (error) {
     console.error('Error logging lesson view:', error);
     throw error;

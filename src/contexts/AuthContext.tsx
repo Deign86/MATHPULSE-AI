@@ -92,6 +92,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (profile) {
           setResolvedRole(profile.role);
           setUserProfile(profile);
+          // Wire pipeline context for student event emissions
+          if (profile.role === 'student') {
+            const classId = (profile as any).classSectionId as string || '';
+            const teacherId = (profile as any).adviserTeacherId as string || '';
+            if (classId || teacherId) {
+              import('../services/pipelineService').then(({ setStudentContext }) => {
+                setStudentContext(classId, teacherId);
+              }).catch(() => {});
+            }
+          }
         } else {
           setResolvedRole(safeRequestedRole);
           // Keep login functional when profile storage is temporarily unavailable.

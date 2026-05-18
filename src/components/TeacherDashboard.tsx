@@ -23,6 +23,17 @@ import UserAvatar from './UserAvatar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
+  getClassAnalytics,
+  refreshClassInsights,
+  type ClassAnalyticsReport,
+} from '../services/classAnalyticsService';
+import {
+  getInterventionPlan,
+  generateInterventionPlan,
+  type InterventionPlan,
+} from '../services/interventionService';
+import { InterventionStepGuide } from './InterventionStepGuide';
+import {
   getClassroomsByTeacher,
   getStudentsByTeacher,
   getAllRegisteredStudentsByTeacher,
@@ -30,6 +41,7 @@ import {
   markRosterStudentsWithoutAccounts,
   normalizeStudentName,
   reassignStudentSection,
+  removeStudentFromClass,
   subscribeToActivityFeed,
   updateStudentRisk,
   assignStudentToClassSection,
@@ -1351,6 +1363,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     [currentUser, teacherName],
   );
 
+  const handleRemoveStudent = useCallback(
+    async (student: StudentView) => {
+      if (!currentUser) return;
+      if (!window.confirm(`Remove ${student.name} from this class? This cannot be undone.`)) return;
+      const classSectionId = student.classSectionId || student.classroomId || '';
+      if (!classSectionId) {
+        toast.error('Cannot determine class section for this student.');
+        return;
+      }
+      try {
+        await removeStudentFromClass(student.accountUid || student.id, classSectionId);
+        setStudents((prev) => prev.filter((s) => s.id !== student.id));
+        toast.success(`Removed ${student.name} from class.`);
+      } catch (err) {
+        console.error('Remove student failed:', err);
+        toast.error('Failed to remove student.');
+      }
+    },
+    [currentUser],
+  );
+
   useEffect(() => {
     const updateViewport = () => {
       const nextIsMobile = window.innerWidth < 1024;
@@ -1780,6 +1813,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   insightDismissed={insightDismissed}
                   onOpenInsightModal={() => setInsightModalOpen(true)}
                   onAddStudents={() => setShowAddStudentsModal(true)}
+                  onRemoveStudent={handleRemoveStudent}
                 />
               )}
               {activeView === 'analytics' && !effectiveAnalyticsClass && managedClasses.length > 0 && (
@@ -2351,10 +2385,12 @@ const StudentCard = React.memo(({
   student,
   onViewStudent,
   onCreateAccount,
+  onRemoveStudent,
 }: {
   student: StudentView;
   onViewStudent: (s: StudentView) => void;
   onCreateAccount?: (s: StudentView) => void;
+  onRemoveStudent?: (s: StudentView) => void;
 }) => {
   const getTheme = () => {
     if (student.riskLevel === 'high') {
@@ -2400,6 +2436,17 @@ const StudentCard = React.memo(({
           </div>
         </div>
         <span className={`font-semibold text-[11px] px-[6px] py-[2px] rounded-[14px] shrink-0 ${theme.badge}`}>{student.avgScore}%</span>
+        {onRemoveStudent && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onRemoveStudent(student); }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 p-1 rounded shrink-0"
+            aria-label={`Remove ${student.name} from class`}
+            title="Remove from class"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
       {isRosterOnly && (
         <div className="flex items-center justify-between gap-2 mb-2 px-2 py-1 rounded-[10px] bg-amber-50 border border-amber-100/80">
@@ -2641,6 +2688,7 @@ const AnalyticsView: React.FC<{
   insightDismissed?: boolean;
   onOpenInsightModal?: () => void;
   onAddStudents?: () => void;
+  onRemoveStudent?: (student: StudentView) => void;
 }> = ({
   selectedClass,
   students,
@@ -2661,18 +2709,82 @@ const AnalyticsView: React.FC<{
   insightDismissed,
   onOpenInsightModal,
   onAddStudents,
+  onRemoveStudent,
 }) => {
     const { currentUser, userProfile } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedManagerId, setSelectedManagerId] = useState('');
     const [filterType, setFilterType] = useState('All');
+    const [backendReport, setBackendReport] = useState<ClassAnalyticsReport | null>(null);
+    const [backendLoading, setBackendLoading] = useState(true);
+    const [insightsRefreshing, setInsightsRefreshing] = useState(false);
+    const [showInsights, setShowInsights] = useState(true);
 
-    // Compute risk distribution from this view's students (class-filtered)
-    const riskDistribution = [
-      { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
-      { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
-      { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
-    ];
+    // Fetch real analytics from backend
+    useEffect(() => {
+      let cancelled = false;
+      setBackendLoading(true);
+      getClassAnalytics(selectedClass.id)
+        .then((report) => { if (!cancelled) setBackendReport(report); })
+        .catch((err) => console.warn('[AnalyticsView] Backend fetch failed, using local data:', err))
+        .finally(() => { if (!cancelled) setBackendLoading(false); });
+      return () => { cancelled = true; };
+    }, [selectedClass.id]);
+
+    // Real-time listener: refetch when student_summaries change (debounced)
+    useEffect(() => {
+      let unsubscribe: (() => void) | undefined;
+      let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+      (async () => {
+        try {
+          const { collection: firestoreCollection, onSnapshot: firestoreOnSnapshot } = await import('firebase/firestore');
+          const { db: firestoreDb } = await import('../lib/firebase');
+          const summariesRef = firestoreCollection(firestoreDb, 'classes', selectedClass.id, 'student_summaries');
+          let firstSnapshot = true;
+          unsubscribe = firestoreOnSnapshot(summariesRef, () => {
+            // Skip the initial snapshot (we already fetched above)
+            if (firstSnapshot) { firstSnapshot = false; return; }
+            // Debounce: coalesce rapid writes into a single refetch
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+              getClassAnalytics(selectedClass.id)
+                .then(setBackendReport)
+                .catch(() => {});
+            }, 2000);
+          });
+        } catch { /* Firestore listener non-critical */ }
+      })();
+      return () => { unsubscribe?.(); if (debounceTimer) clearTimeout(debounceTimer); };
+    }, [selectedClass.id]);
+
+    // Use backend data when available, fall back to local computation
+    const classAverage = backendReport?.class_average ?? selectedClass.avgScore;
+    const completionRate = backendReport?.completion_rate ?? (() => {
+      if (students.length === 0) return 0;
+      const total = students.reduce((sum, student) => sum + (student.assignmentCompletion || 0), 0);
+      return Math.round(total / students.length);
+    })();
+    const participationRate = backendReport?.participation_rate ?? (() => {
+      if (students.length === 0) return 0;
+      const attendanceAverage = students.reduce((sum, student) => sum + (student.attendance || 0), 0) / students.length;
+      const engagementAverage = students.reduce((sum, student) => sum + (student.engagementScore || 0), 0) / students.length;
+      return Math.round((attendanceAverage * 0.6) + (engagementAverage * 0.4));
+    })();
+
+    // Compute risk distribution with Unassessed + Critical categories
+    const riskDistribution = backendReport?.insights?.risk_distribution
+      ? [
+          { name: 'Critical', value: backendReport.insights.risk_distribution['Critical'] || 0, color: '#dc2626' },
+          { name: 'High Risk', value: backendReport.insights.risk_distribution['High Risk'] || 0, color: '#f43f5e' },
+          { name: 'Medium Risk', value: backendReport.insights.risk_distribution['Medium Risk'] || 0, color: '#f59e0b' },
+          { name: 'Low Risk', value: backendReport.insights.risk_distribution['Low Risk'] || 0, color: '#10b981' },
+          { name: 'Unassessed', value: backendReport.insights.risk_distribution['Unassessed'] || 0, color: '#94a3b8' },
+        ].filter(d => d.value > 0)
+      : [
+          { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
+          { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
+          { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
+        ];
 
     useEffect(() => {
       setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
@@ -2692,35 +2804,99 @@ const AnalyticsView: React.FC<{
       }
 
       if (filterType === 'Good') {
-        filtered = filtered.filter(s => s.avgScore >= 85 && s.riskLevel !== 'high');
+        // Use backend data for accurate filtering
+        if (backendReport) {
+          const topIds = new Set(
+            backendReport.students
+              .filter(s => s.quiz_attempt_count > 0 && s.avg_score >= 75)
+              .map(s => s.student_id)
+          );
+          filtered = filtered.filter(s => topIds.has(s.id));
+        } else {
+          filtered = filtered.filter(s => s.avgScore >= 85 && s.riskLevel !== 'high');
+        }
       } else if (filterType === 'Risk') {
-        filtered = filtered.filter(s => s.riskLevel === 'high' || s.avgScore < 75);
+        if (backendReport) {
+          const riskIds = new Set(
+            backendReport.students
+              .filter(s => ['High Risk', 'Critical', 'Unassessed'].includes(s.risk_level))
+              .map(s => s.student_id)
+          );
+          filtered = filtered.filter(s => riskIds.has(s.id));
+        } else {
+          filtered = filtered.filter(s => s.riskLevel === 'high' || s.avgScore < 75);
+        }
       }
       return filtered;
-    }, [searchTerm, students, filterType]);
-
-    const averageCompletion = useMemo(() => {
-      if (students.length === 0) return 0;
-      const total = students.reduce((sum, student) => sum + (student.assignmentCompletion || 0), 0);
-      return Math.round(total / students.length);
-    }, [students]);
-
-    const participationRate = useMemo(() => {
-      if (students.length === 0) return 0;
-      const attendanceAverage = students.reduce((sum, student) => sum + (student.attendance || 0), 0) / students.length;
-      const engagementAverage = students.reduce((sum, student) => sum + (student.engagementScore || 0), 0) / students.length;
-      return Math.round((attendanceAverage * 0.6) + (engagementAverage * 0.4));
-    }, [students]);
+    }, [searchTerm, students, filterType, backendReport]);
 
     const topPerformers = useMemo(() => {
+      if (backendReport) {
+        return backendReport.students
+          .filter(s => s.quiz_attempt_count > 0)
+          .sort((a, b) => b.avg_score - a.avg_score)
+          .slice(0, 5)
+          .map(bs => {
+            const match = students.find(s => s.id === bs.student_id);
+            return match ? { ...match, avgScore: bs.avg_score } : null;
+          })
+          .filter(Boolean) as StudentView[];
+      }
       return [...students]
         .sort((a, b) => b.avgScore - a.avgScore)
         .slice(0, 5);
-    }, [students]);
+    }, [students, backendReport]);
 
     const attentionStudents = useMemo(() => {
+      if (backendReport) {
+        return backendReport.students
+          .filter(s => ['High Risk', 'Critical'].includes(s.risk_level))
+          .sort((a, b) => a.avg_score - b.avg_score)
+          .map(bs => {
+            const match = students.find(s => s.id === bs.student_id);
+            return match ? { ...match, avgScore: bs.avg_score, _backendRisk: bs.risk_level } : null;
+          })
+          .filter(Boolean) as (StudentView & { _backendRisk?: string })[];
+      }
       return [...students].filter((student) => student.riskLevel === 'high' || student.avgScore < 70 || student.assignmentCompletion < 65);
-    }, [students]);
+    }, [students, backendReport]);
+
+    // Topic performance from backend
+    const effectiveTopicPerformance = useMemo(() => {
+      if (backendReport?.insights?.topic_performance?.length) {
+        return backendReport.insights.topic_performance.map(t => ({
+          topic: t.topic,
+          score: t.class_accuracy,
+        }));
+      }
+      return topicPerformance;
+    }, [backendReport, topicPerformance]);
+
+    // Helper to get backend score for a student
+    const getStudentScore = (studentId: string): number | null => {
+      if (!backendReport) return null;
+      const bs = backendReport.students.find(s => s.student_id === studentId);
+      return bs ? bs.avg_score : null;
+    };
+
+    // Helper to get backend risk level for a student
+    const getStudentRisk = (studentId: string): string | null => {
+      if (!backendReport) return null;
+      const bs = backendReport.students.find(s => s.student_id === studentId);
+      return bs ? bs.risk_level : null;
+    };
+
+    const handleRefreshInsights = async () => {
+      setInsightsRefreshing(true);
+      try {
+        const newInsights = await refreshClassInsights(selectedClass.id);
+        setBackendReport(prev => prev ? { ...prev, insights: newInsights } : prev);
+      } catch (err: any) {
+        console.warn('[AnalyticsView] Refresh insights failed:', err?.message);
+      } finally {
+        setInsightsRefreshing(false);
+      }
+    };
 
     const selectedManager = useMemo(
       () => teacherOptions.find((teacher) => teacher.uid === selectedManagerId),
@@ -2788,7 +2964,7 @@ const AnalyticsView: React.FC<{
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Class Average</span>
               <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{selectedClass.avgScore}%</div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{Math.round(classAverage)}%</div>
           </div>
 
           <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
@@ -2798,7 +2974,7 @@ const AnalyticsView: React.FC<{
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Completion</span>
               <div className="bg-white/20 p-1.5 rounded-lg flex"><CheckCircle size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{averageCompletion}%</div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{Math.round(completionRate)}%</div>
           </div>
 
           <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
@@ -2808,7 +2984,7 @@ const AnalyticsView: React.FC<{
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Participation</span>
               <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{participationRate}%</div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{Math.round(participationRate)}%</div>
           </div>
 
           <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
@@ -2867,11 +3043,15 @@ const AnalyticsView: React.FC<{
                 style={{ height: '100%' }}
                 data={visibleStudents}
                 className="no-scrollbar"
-                itemContent={(_, student) => (
-                  <div className="py-[6px] px-[8px]">
-                    <StudentCard student={student} onViewStudent={onViewStudent} onCreateAccount={onCreateAccount} />
-                  </div>
-                )}
+                itemContent={(_, student) => {
+                  const backendScore = getStudentScore(student.id);
+                  const enrichedStudent = backendScore !== null ? { ...student, avgScore: backendScore } : student;
+                  return (
+                    <div className="py-[6px] px-[8px]">
+                      <StudentCard student={enrichedStudent} onViewStudent={onViewStudent} onCreateAccount={onCreateAccount} onRemoveStudent={onRemoveStudent} />
+                    </div>
+                  );
+                }}
                 computeItemKey={(index, student) => buildStudentViewKey(student)}
               />
             </div>
@@ -2896,7 +3076,7 @@ const AnalyticsView: React.FC<{
                       <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                       <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={80}>
                         {riskDistribution.map((entry, index) => {
-                          const mapping: Record<string, string> = { 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981' };
+                          const mapping: Record<string, string> = { 'Critical': '#dc2626', 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981', 'Unassessed': '#94a3b8' };
                           return <Cell key={`cell-${index}`} fill={mapping[entry.name] || entry.color} />;
                         })}
                       </Bar>
@@ -2913,15 +3093,15 @@ const AnalyticsView: React.FC<{
                 </div>
                 <div className="relative w-full flex-1 min-h-[180px] -ml-8">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topicPerformance} layout="vertical" margin={{ top: 0, right: 10, left: 40, bottom: 0 }}>
+                    <BarChart data={effectiveTopicPerformance} layout="vertical" margin={{ top: 0, right: 10, left: 40, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" horizontal={false} />
                       <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} tickFormatter={(val) => `${val}%`} />
                       <YAxis dataKey="topic" type="category" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#1e293b', fontSize: 11, fontWeight: 600 }} dx={-10} />
                       <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                       <Bar dataKey="score" radius={[0, 6, 6, 0]} barSize={28}>
-                        {topicPerformance.map((entry, index) => {
-                          const colors = ['#6366f1', '#a855f7', '#10b981', '#f59e0b', '#ec4899'];
-                          return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                        {effectiveTopicPerformance.map((entry, index) => {
+                          const color = entry.score >= 75 ? '#10b981' : entry.score >= 60 ? '#f59e0b' : '#f43f5e';
+                          return <Cell key={`cell-${index}`} fill={color} />;
                         })}
                       </Bar>
                     </BarChart>
@@ -2944,7 +3124,7 @@ const AnalyticsView: React.FC<{
                   {topPerformers.map((student) => (
                     <div key={`top-${student.id}`} onClick={() => onViewStudent(student)} className="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
                       <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
-                      <span className="text-[13px] font-semibold text-emerald-600">{student.avgScore}%</span>
+                      <span className="text-[13px] font-semibold text-emerald-600">{getStudentScore(student.id) ?? student.avgScore}%</span>
                     </div>
                   ))}
                   {topPerformers.length === 0 && <p className="text-xs text-muted-foreground">No students available yet.</p>}
@@ -2961,13 +3141,17 @@ const AnalyticsView: React.FC<{
                 </div>
                 <div className="space-y-[8px]">
                   {attentionStudents.slice(0, 4).map((student) => {
-                    const isHigh = student.riskLevel === 'high';
-                    const theme = isHigh ? 'bg-rose-50/40 border-rose-50' : 'bg-amber-50/40 border-amber-50';
+                    const backendRisk = getStudentRisk(student.id);
+                    const riskLabel = backendRisk || (student.riskLevel === 'high' ? 'HIGH RISK' : 'MEDIUM RISK');
+                    const isCritical = backendRisk === 'Critical' || (student.avgScore === 0 && student.riskLevel === 'high');
+                    const isHigh = backendRisk === 'High Risk' || student.riskLevel === 'high';
+                    const theme = isCritical ? 'bg-red-50/60 border-red-100' : isHigh ? 'bg-rose-50/40 border-rose-50' : 'bg-amber-50/40 border-amber-50';
+                    const labelColor = isCritical ? 'text-red-700' : isHigh ? 'text-rose-600' : 'text-amber-600';
                     return (
                       <div key={`attn-${student.id}`} onClick={() => onViewStudent(student)} className={`flex justify-between items-center p-3 rounded-[14px] border group hover:scale-[1.02] transition-transform cursor-pointer ${theme}`}>
                         <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
-                        <span className={`text-[11px] font-semibold bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] ${isHigh ? 'text-rose-600' : 'text-amber-600'}`}>
-                          {isHigh ? 'HIGH RISK' : 'MEDIUM RISK'}
+                        <span className={`text-[11px] font-semibold bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] ${labelColor}`}>
+                          {riskLabel.toUpperCase()}
                         </span>
                       </div>
                     );
@@ -2978,6 +3162,62 @@ const AnalyticsView: React.FC<{
             </div>
           </div>
         </div>
+
+        {/* AI Class Insights Panel */}
+        {backendReport?.insights && (
+          <div className="bg-gradient-to-br from-indigo-50/80 to-purple-50/60 backdrop-blur-[12px] rounded-[18px] p-5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-indigo-100/50">
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => setShowInsights(!showInsights)}
+                className="flex items-center gap-2 text-[15px] font-semibold text-[#1e293b]"
+              >
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+                AI Class Insights
+                <ChevronDown className={`w-4 h-4 text-[#64748b] transition-transform ${showInsights ? '' : '-rotate-90'}`} />
+              </button>
+              <button
+                onClick={handleRefreshInsights}
+                disabled={insightsRefreshing}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 bg-white/70 hover:bg-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${insightsRefreshing ? 'animate-spin' : ''}`} />
+                {insightsRefreshing ? 'Refreshing...' : 'Refresh AI Analysis'}
+              </button>
+            </div>
+            {showInsights && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white/70 rounded-[14px] p-4 border border-white">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">📊</span>
+                    <h4 className="text-[13px] font-semibold text-[#1e293b]">Class Overview</h4>
+                  </div>
+                  <p className="text-[12px] text-[#475569] leading-relaxed">{backendReport.insights.class_summary}</p>
+                </div>
+                <div className="bg-white/70 rounded-[14px] p-4 border border-white">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">💪</span>
+                    <h4 className="text-[13px] font-semibold text-[#1e293b]">What's Working</h4>
+                  </div>
+                  <p className="text-[12px] text-[#475569] leading-relaxed">{backendReport.insights.class_strengths}</p>
+                </div>
+                <div className="bg-white/70 rounded-[14px] p-4 border border-white">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">🎯</span>
+                    <h4 className="text-[13px] font-semibold text-[#1e293b]">Recommended Actions</h4>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {backendReport.insights.recommended_actions.map((action, i) => (
+                      <li key={i} className="text-[12px] text-[#475569] leading-relaxed flex items-start gap-1.5">
+                        <span className="text-indigo-500 mt-0.5 shrink-0">•</span>
+                        {action}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
       <SectionManagementPanel
         students={students}
@@ -3015,6 +3255,9 @@ const InterventionView: React.FC<{
       bullet: 'text-[#9956DE]',
     };
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
+  const [interventionPlan, setInterventionPlan] = useState<InterventionPlan | null>(null);
+  const [interventionLoading, setInterventionLoading] = useState(true);
+  const [selectedStep, setSelectedStep] = useState<import('../services/interventionService').LearningStep | null>(null);
   const [learningPath, setLearningPath] = useState<string>(initialCache?.learningPath || '');
   const [pathLoading, setPathLoading] = useState(true);
   const [gradeDraft, setGradeDraft] = useState(initialCache?.gradeDraft || student.grade || 'Grade 11');
@@ -3046,6 +3289,17 @@ const InterventionView: React.FC<{
     setGradeDraft(student.grade || 'Grade 11');
     setSectionDraft(student.section || 'Section A');
   }, [student.grade, student.section]);
+
+  // Fetch intervention plan from backend
+  useEffect(() => {
+    let cancelled = false;
+    setInterventionLoading(true);
+    getInterventionPlan(student.id)
+      .then((plan) => { if (!cancelled) setInterventionPlan(plan); })
+      .catch((err) => console.warn('[InterventionView] Backend fetch failed:', err))
+      .finally(() => { if (!cancelled) setInterventionLoading(false); });
+    return () => { cancelled = true; };
+  }, [student.id]);
 
   // Escape key closes drawer (with confirm if dirty), Escape also closes export modal
   useEffect(() => {
@@ -3325,11 +3579,26 @@ const InterventionView: React.FC<{
     });
   }, [lessonPlan, lessonSourceFilter, lessonMaterialFilter]);
 
-  const remedialSteps = [
-    { id: 1, type: 'video', title: `${student.weakestTopic} Fundamentals`, duration: '8 mins', icon: Video },
-    { id: 2, type: 'quiz', title: `${student.weakestTopic} Practice`, questions: 10, icon: ClipboardCheck },
-    { id: 3, type: 'assessment', title: 'Final Check', questions: 5, icon: CheckCircle }
-  ];
+  const remedialSteps = useMemo(() => {
+    if (interventionPlan?.learning_path?.steps?.length) {
+      return interventionPlan.learning_path.steps.map((s) => ({
+        id: s.step_number,
+        type: s.type === 'video_lesson' ? 'video' : s.type === 'assessment' ? 'assessment' : 'quiz',
+        title: s.title,
+        duration: `${s.duration_minutes} mins`,
+        questions: s.num_items || undefined,
+        icon: s.type === 'video_lesson' ? Video : s.type === 'assessment' ? CheckCircle2 : s.type === 'review' ? RefreshCw : ClipboardCheck,
+        competency: s.competency_tag,
+        difficulty: s.difficulty,
+        is_completed: s.is_completed,
+      }));
+    }
+    return [
+      { id: 1, type: 'video', title: `${student.weakestTopic} Fundamentals`, duration: '8 mins', questions: undefined, icon: Video, competency: '', difficulty: 'easy' as const, is_completed: false },
+      { id: 2, type: 'quiz', title: `${student.weakestTopic} Practice`, duration: '12 mins', questions: 10, icon: ClipboardCheck, competency: '', difficulty: 'easy' as const, is_completed: false },
+      { id: 3, type: 'assessment', title: 'Final Check', duration: '10 mins', questions: 5, icon: CheckCircle2, competency: '', difficulty: 'medium' as const, is_completed: false },
+    ];
+  }, [interventionPlan, student.weakestTopic]);
 
   const handleSaveSectionAssignment = async () => {
     if (!teacherId) {
@@ -3423,10 +3692,10 @@ const InterventionView: React.FC<{
                     <TrendingUp className="w-3.5 h-3.5" /> Learning Strengths
                   </h4>
                   <p className="text-[13px] text-[#475569] leading-relaxed pl-2">
-                    {!isUrgentBarrier ? (
-                      <>Excels in <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
-                    ) : (
-                      <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
+                    {interventionPlan?.learning_strengths || (
+                      !isUrgentBarrier
+                        ? <>Excels in <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
+                        : <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
                     )}
                   </p>
                 </div>
@@ -3438,7 +3707,9 @@ const InterventionView: React.FC<{
                     <Target className="w-3.5 h-3.5" /> Next Steps
                   </h4>
                   <ul className="text-[13px] text-[#475569] leading-relaxed list-none p-0 m-0 space-y-1 pl-2">
-                    {student.struggles.length > 0 ? (
+                    {interventionPlan?.next_steps_summary ? (
+                      <li>{interventionPlan.next_steps_summary}</li>
+                    ) : student.struggles.length > 0 ? (
                       student.struggles.map((s, i) => (
                         <li key={i}>Must continue strengthening <span className="font-semibold text-[#1e293b]">{s}</span>.</li>
                       ))
@@ -3454,8 +3725,19 @@ const InterventionView: React.FC<{
           <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
             <div className="flex items-center justify-between mb-6 border-b border-[#f1f5f9] pb-4">
               <h3 className="text-[15px] font-semibold text-[#1e293b]">Generated Learning Path</h3>
-              <button disabled={pathLoading} onClick={() => setLessonTrigger(n => n + 1)} className="bg-[#f8fafc] hover:bg-white text-[#4f46e5] border border-[#e0e7ff] text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
-                <RefreshCw className="w-3 h-3" /> Regenerate
+              <button disabled={pathLoading || interventionLoading} onClick={async () => {
+                setInterventionLoading(true);
+                try {
+                  const plan = await generateInterventionPlan(student.id);
+                  setInterventionPlan(plan);
+                } catch (err) {
+                  console.warn('[InterventionView] Regenerate failed:', err);
+                } finally {
+                  setInterventionLoading(false);
+                }
+                setLessonTrigger(n => n + 1);
+              }} className="bg-[#f8fafc] hover:bg-white text-[#4f46e5] border border-[#e0e7ff] text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
+                <RefreshCw className={`w-3 h-3 ${interventionLoading ? 'animate-spin' : ''}`} /> {interventionLoading ? 'Analyzing...' : 'Regenerate'}
               </button>
             </div>
 
@@ -3468,10 +3750,9 @@ const InterventionView: React.FC<{
               {/* Raw markdown text removed as requested, using only visual steps below */}
               <div className="mb-8 flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mr-2">Methodology:</span>
-                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Interactive</span>
-                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Video</span>
-                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Practice</span>
-                <span className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">Quiz</span>
+                {(interventionPlan?.learning_path?.methodology_tags || ['Interactive', 'Video', 'Practice', 'Quiz']).map((tag) => (
+                  <span key={tag} className="px-3 py-1 bg-[#f8fafc] text-[#475569] text-[11px] font-semibold rounded-full border border-[#e2e8f0]">{tag}</span>
+                ))}
               </div>
 
               <div className="relative border-l-2 border-[#e2e8f0] ml-[20px] space-y-[28px] pb-4">
@@ -3511,16 +3792,21 @@ const InterventionView: React.FC<{
                       </div>
 
                       {/* Step Content */}
-                      <div className={`${step.type === 'assessment' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-[#f1f5f9]'} rounded-[14px] p-[18px] border shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex justify-between items-center transition-colors ${cardHover}`}>
+                      <div onClick={() => {
+                        if (interventionPlan?.learning_path?.steps?.[index]) {
+                          setSelectedStep(interventionPlan.learning_path.steps[index]);
+                        }
+                      }} className={`${step.type === 'assessment' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-white border-[#f1f5f9]'} rounded-[14px] p-[18px] border shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex justify-between items-center transition-colors cursor-pointer ${cardHover}`}>
                         <div>
                           <span className={`text-[10px] font-semibold uppercase tracking-wider mb-1 block ${tagClass}`}>
                             Step {index + 1} • {step.type === 'video' ? 'Video Lesson' : step.type === 'quiz' ? 'Practice' : 'Assessment'}
                           </span>
                           <p className="font-semibold text-[#1e293b] text-[13px] mb-0.5">{step.title}</p>
                           <p className="text-[#64748b] text-[11px] flex items-center gap-1.5">
-                            {step.type === 'video' && <><Clock className="w-3 h-3" /> {(step as { duration?: string }).duration}</>}
-                            {step.type === 'quiz' && <><ListChecks className="w-3 h-3" /> {(step as { questions?: number }).questions} questions</>}
-                            {step.type === 'assessment' && <><Target className="w-3 h-3" /> {(step as { questions?: number }).questions} assessment questions</>}
+                            {step.type === 'video' && <><Clock className="w-3 h-3" /> {step.duration}</>}
+                            {step.type === 'quiz' && <><ListChecks className="w-3 h-3" /> {step.questions ? `${step.questions} questions` : step.duration}</>}
+                            {step.type === 'assessment' && <><Target className="w-3 h-3" /> {step.questions ? `${step.questions} assessment questions` : step.duration}</>}
+                            {step.competency && <span className="ml-2 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-mono rounded">{step.competency}</span>}
                           </p>
                         </div>
                         {step.type === 'assessment' ? (
@@ -3685,8 +3971,8 @@ const InterventionView: React.FC<{
             <img src={student.avatar} alt={student.name} className="w-[96px] h-[96px] rounded-full object-cover shadow-[0_8px_16px_rgba(0,0,0,0.1)] mb-4 border-4 border-white z-10 relative" />
             <h2 className="text-[20px] font-semibold text-[#1e293b] mb-1">{student.name}</h2>
             <p className="text-[11px] font-semibold text-[#64748b] mb-3 uppercase tracking-wider">ID: {student.id.substring(0, 8)}</p>
-            <span className={`text-[11px] font-semibold px-3 py-1 rounded-[14px] border ${student.riskLevel === 'high' ? 'text-rose-600 bg-rose-50 border-rose-100' : student.riskLevel === 'medium' ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
-              {student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk'}
+            <span className={`text-[11px] font-semibold px-3 py-1 rounded-[14px] border ${(interventionPlan?.risk_level || '').includes('Critical') ? 'text-red-700 bg-red-50 border-red-200 animate-pulse' : student.riskLevel === 'high' || (interventionPlan?.risk_level || '').includes('High') ? 'text-rose-600 bg-rose-50 border-rose-100' : student.riskLevel === 'medium' || (interventionPlan?.risk_level || '').includes('Medium') ? 'text-amber-600 bg-amber-50 border-amber-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+              {interventionPlan?.risk_level || (student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk')}
             </span>
           </div>
 
@@ -3694,19 +3980,19 @@ const InterventionView: React.FC<{
           <div className="w-full grid grid-cols-2 gap-[12px]">
             <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Avg Score</p>
-              <p className="text-[20px] font-bold text-[#4f46e5]">{student.avgScore}%</p>
+              <p className="text-[20px] font-bold text-[#4f46e5]">{interventionPlan?.avg_score ?? student.avgScore}%</p>
             </div>
             <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Engagement</p>
-              <p className="text-[20px] font-bold text-[#1e293b]">{student.avgScore > 80 ? 'High' : student.avgScore > 50 ? 'Medium' : 'Low'}</p>
+              <p className="text-[20px] font-bold text-[#1e293b]">{interventionPlan?.engagement_level || (student.avgScore > 80 ? 'High' : student.avgScore > 50 ? 'Medium' : 'Low')}</p>
             </div>
             <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Last Active</p>
-              <p className="text-[13px] font-semibold text-[#1e293b] mt-1">{student.lastActive}</p>
+              <p className="text-[13px] font-semibold text-[#1e293b] mt-1">{interventionPlan?.last_active ? new Date(interventionPlan.last_active).toLocaleDateString() : student.lastActive}</p>
             </div>
             <div className="bg-rose-50/60 rounded-[14px] p-4 border border-rose-100 text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider mb-1">Weakest Topic</p>
-              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={student.weakestTopic}>{student.weakestTopic}</p>
+              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={interventionPlan?.weakest_topic || student.weakestTopic}>{interventionPlan?.weakest_topic || student.weakestTopic}</p>
             </div>
           </div>
 
@@ -3777,6 +4063,80 @@ const InterventionView: React.FC<{
                   {exportModalStep === 'choose' ? (
                     <>
                       <p className="text-[13px] text-[#64748b] mb-5 font-medium">How would you like to proceed?</p>
+
+                      {/* Option 0 — PDF Report */}
+                      <button
+                        onClick={async () => {
+                          setShowExportModal(false);
+                          toast.info('Generating PDF report...');
+                          try {
+                            const { getExportPDFData } = await import('../services/interventionService');
+                            const data = await getExportPDFData(student.id);
+                            const { default: jsPDF } = await import('jspdf');
+                            const doc = new jsPDF();
+                            let y = 20;
+                            doc.setFontSize(18);
+                            doc.text('MathPulse AI - Intervention Report', 20, y); y += 12;
+                            doc.setFontSize(11);
+                            doc.text(`Student: ${data.student_name}`, 20, y); y += 7;
+                            doc.text(`Grade: ${data.grade_level} | Section: ${data.section}`, 20, y); y += 7;
+                            doc.text(`Risk Level: ${data.risk_level} | Avg Score: ${data.avg_score}%`, 20, y); y += 7;
+                            doc.text(`Engagement: ${data.engagement_level} | Generated: ${new Date().toLocaleDateString()}`, 20, y); y += 12;
+                            doc.setFontSize(13);
+                            doc.text('AI Analysis', 20, y); y += 8;
+                            doc.setFontSize(10);
+                            const maxW = 170;
+                            const writeWrapped = (text: string) => {
+                              const lines = doc.splitTextToSize(text, maxW);
+                              for (const line of lines) {
+                                if (y > 270) { doc.addPage(); y = 20; }
+                                doc.text(line, 20, y); y += 5;
+                              }
+                              y += 2;
+                            };
+                            writeWrapped(`Strengths: ${data.learning_strengths}`);
+                            writeWrapped(`Next Steps: ${data.next_steps_summary}`);
+                            y += 4;
+                            if (data.learning_path?.steps?.length) {
+                              doc.setFontSize(13);
+                              doc.text('Learning Path', 20, y); y += 8;
+                              doc.setFontSize(10);
+                              for (const step of data.learning_path.steps) {
+                                if (y > 270) { doc.addPage(); y = 20; }
+                                writeWrapped(`${step.step_number}. [${step.type}] ${step.title} (${step.duration_minutes} min, ${step.difficulty})`);
+                                if (step.competency_tag) { doc.text(`   Competency: ${step.competency_tag}`, 20, y); y += 6; }
+                              }
+                              y += 6;
+                            }
+                            if (data.teacher_recommendations?.length) {
+                              if (y > 250) { doc.addPage(); y = 20; }
+                              doc.setFontSize(13);
+                              doc.text('Teacher Recommendations', 20, y); y += 8;
+                              doc.setFontSize(10);
+                              for (const rec of data.teacher_recommendations) {
+                                if (y > 270) { doc.addPage(); y = 20; }
+                                writeWrapped(`• ${rec}`);
+                              }
+                            }
+                            doc.setFontSize(8);
+                            doc.text('Generated by MathPulse AI | Confidential - For Teacher Use Only', 20, 285);
+                            doc.save(`intervention-report-${data.student_name.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`);
+                            toast.success('PDF report downloaded!');
+                          } catch (err) {
+                            console.error('PDF export failed:', err);
+                            toast.error('Failed to generate PDF report.');
+                          }
+                        }}
+                        className="w-full flex items-start gap-4 p-4 rounded-[16px] border border-slate-200 hover:border-[#a855f7] hover:shadow-[0_4px_12px_rgba(168,85,247,0.08)] hover:bg-purple-50/30 transition-all group mb-3 text-left"
+                      >
+                        <div className="w-10 h-10 rounded-[10px] bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 group-hover:bg-purple-100 transition-colors">
+                          <Printer className="w-5 h-5 text-[#a855f7]" />
+                        </div>
+                        <div>
+                          <p className="text-[14px] font-bold text-[#1e293b] mb-0.5">Download PDF Report</p>
+                          <p className="text-[12px] text-[#64748b] font-medium">Full intervention report with AI insights and learning path.</p>
+                        </div>
+                      </button>
 
                       {/* Option 1 — Quiz Bank */}
                       <button
@@ -4009,6 +4369,22 @@ const InterventionView: React.FC<{
           </div>
         </div>
       </aside>
+
+      {/* Step Guide Modal */}
+      {selectedStep && (
+        <InterventionStepGuide
+          step={selectedStep}
+          studentId={student.id}
+          studentName={student.name}
+          totalSteps={interventionPlan?.learning_path?.steps?.length || 3}
+          onClose={() => setSelectedStep(null)}
+          onStepCompleted={() => {
+            setSelectedStep(null);
+            // Refresh intervention plan
+            getInterventionPlan(student.id).then(setInterventionPlan).catch(() => {});
+          }}
+        />
+      )}
     </motion.div>
   );
 

@@ -208,6 +208,26 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
       sessionStorage.removeItem('mathpulse_diagnostic_responses');
       setStep('results');
 
+      // Pipeline: emit diagnostic event (fire-and-forget)
+      try {
+        const { emitPipelineEvent, getStudentContext } = await import('../services/pipelineService');
+        const { auth } = await import('../lib/firebase');
+        const ctx = getStudentContext();
+        if (ctx && auth.currentUser) {
+          emitPipelineEvent({
+            student_id: auth.currentUser.uid,
+            event_type: 'diagnostic',
+            event_data: {
+              overall_score: result.overall_score_percent,
+              mastery_summary: result.mastery_summary,
+            },
+            occurred_at: new Date().toISOString(),
+            class_id: ctx.classId,
+            teacher_id: ctx.teacherId,
+          });
+        }
+      } catch { /* non-critical */ }
+
       setTimeout(() => {
         onComplete({
           overallRisk: result.overall_risk,
