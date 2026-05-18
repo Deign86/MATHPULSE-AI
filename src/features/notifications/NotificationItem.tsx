@@ -15,6 +15,7 @@ import {
   BookOpen,
   Zap,
   AlertCircle,
+  AlertTriangle,
   Trash2,
 } from 'lucide-react';
 import type { Notification } from './types';
@@ -31,6 +32,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
   new_assignment: BookOpen,
   xp_earned: Zap,
   system_alert: AlertCircle,
+  risk_alert: AlertTriangle,
 };
 
 const badgeForType = (type: string): string => {
@@ -55,6 +57,8 @@ const badgeForType = (type: string): string => {
       return 'bg-indigo-500/10 text-indigo-600';
     case 'system_alert':
       return 'bg-red-500/10 text-red-600';
+    case 'risk_alert':
+      return 'bg-amber-500/10 text-amber-700';
     default:
       return 'bg-[#edf1f7] text-[#5a6578]';
   }
