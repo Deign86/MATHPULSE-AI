@@ -1878,6 +1878,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   className={selectedClass?.name}
                   classMetadata={selectedClass?.classMetadata}
                   students={students}
+                  classes={classes.map(c => ({ id: c.id, name: c.name, classSectionId: c.classSectionId }))}
                   teacherId={currentUser?.uid || ''}
                   teacherName={teacherName}
                   onStudentsUpdated={(updated) => setStudents(updated)}

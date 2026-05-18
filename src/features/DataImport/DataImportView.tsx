@@ -38,6 +38,7 @@ export interface DataImportViewProps {
   className?: string;
   classMetadata?: ClassSectionMetadata;
   students?: StudentView[];
+  classes?: { id: string; name: string; classSectionId?: string }[];
   teacherId?: string;
   teacherName?: string;
   onImportedClassRecords?: (payload: {
@@ -60,6 +61,7 @@ export default function DataImportView({
   className,
   classMetadata,
   students: initialStudents = [],
+  classes: availableClasses = [],
   teacherId = '',
   teacherName = 'Teacher',
   onImportedClassRecords,
@@ -257,7 +259,7 @@ export default function DataImportView({
   useEffect(() => {
     setLocalStudents(initialStudents);
     setSectionDrafts(Object.fromEntries(
-      initialStudents.map((student) => [buildStudentViewKey(student), { grade: student.grade || 'Grade 11', section: student.section || 'Section A' }])
+      initialStudents.map((student) => [buildStudentViewKey(student), { grade: student.grade || '', section: student.section || '' }])
     ));
   }, [initialStudents]);
 
@@ -336,9 +338,10 @@ export default function DataImportView({
                   value={className || classSectionId || 'All Classes'}
                   onChange={() => {}}
                 >
-                  <option value={className || classSectionId || 'All Classes'}>{className || classSectionId ? `${className} ${classSectionId ? `(${classSectionId})` : ''}` : 'All Classes'}</option>
-                  <option value="Grade 11 - Section A">Grade 11 - Section A</option>
-                  <option value="Grade 11 - Section B">Grade 11 - Section B</option>
+                  <option value="All Classes">All Classes</option>
+                  {availableClasses.map(c => (
+                    <option key={c.id} value={c.classSectionId || c.id}>{c.name}</option>
+                  ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
