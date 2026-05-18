@@ -43,10 +43,10 @@ type SortField = 'topicName' | 'classAverage' | 'studentsAttempted' | 'masterySt
 type SortDir = 'asc' | 'desc';
 
 const SUBJECT_BADGES: Record<string, { label: string; color: string }> = {
-  'gen-math': { label: 'GEN MATH', color: 'bg-sky-100 text-sky-700' },
-  'stats-prob': { label: 'STAT&PROB', color: 'bg-sky-100 text-sky-700' },
-  'pre-calc': { label: 'PRE-CALC', color: 'bg-orange-100 text-orange-700' },
-  'basic-calc': { label: 'BASIC CALC', color: 'bg-red-100 text-red-700' },
+  'gen-math': { label: 'General Mathematics', color: 'bg-sky-100 text-sky-700' },
+  'stats-prob': { label: 'Statistics & Probability', color: 'bg-sky-100 text-sky-700' },
+  'pre-calc': { label: 'Pre-Calculus', color: 'bg-orange-100 text-orange-700' },
+  'basic-calc': { label: 'Basic Calculus', color: 'bg-red-100 text-red-700' },
 };
 
 const STATUS_BADGES: Record<string, { label: string; color: string }> = {
