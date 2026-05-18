@@ -2116,6 +2116,7 @@ const QuizBattlePage: React.FC = () => {
               activeMatch={activeMatch}
               scorePulseTarget={scorePulseTarget}
               quizBattleAvatar={quizBattleAvatar}
+              opponentId={activeRoom?.participantIds?.find(id => id !== userProfile?.uid) || null}
             />
 
           </div>

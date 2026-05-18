@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bot, Users } from 'lucide-react';
-import CompositeAvatar from '../CompositeAvatar';
+import { Bot } from 'lucide-react';
+import CompositeAvatar, { type AvatarLayers } from '../CompositeAvatar';
+import { getUserProfile } from '../../services/authService';
 
 interface BattleFooterProps {
   studentProfile: any;
   activeMatch: any;
   scorePulseTarget: 'player' | 'opponent' | null;
   quizBattleAvatar: string;
+  opponentId?: string | null;
 }
 
 export const BattleFooter: React.FC<BattleFooterProps> = React.memo(({
@@ -15,7 +17,22 @@ export const BattleFooter: React.FC<BattleFooterProps> = React.memo(({
   activeMatch,
   scorePulseTarget,
   quizBattleAvatar,
+  opponentId,
 }) => {
+  const [opponentLayers, setOpponentLayers] = useState<AvatarLayers | null>(null);
+
+  // Fetch opponent avatar layers when opponentId is available
+  useEffect(() => {
+    if (!opponentId) return;
+    let cancelled = false;
+    getUserProfile(opponentId).then((profile) => {
+      if (!cancelled && profile?.avatarLayers) {
+        setOpponentLayers(profile.avatarLayers as AvatarLayers);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [opponentId]);
+
   return (
     <div className="absolute bottom-0 left-0 right-0 w-full xl:max-w-[1400px] mx-auto px-2 sm:px-4 md:px-8 shrink-0 h-28 sm:h-32 md:h-48 flex justify-between items-end pb-0 pointer-events-none z-30">
       {/* Left: Player Avatar */}
@@ -44,11 +61,13 @@ export const BattleFooter: React.FC<BattleFooterProps> = React.memo(({
 
       {/* Right: Opponent */}
       <div className="flex items-end gap-1.5 sm:gap-3 md:gap-6 relative flex-row-reverse pointer-events-auto">
-          <div className="relative w-16 h-16 sm:w-28 sm:h-28 md:w-40 md:h-40 bg-[#1a2030] rounded-t-[40px] flex items-end justify-center border-t-4 border-slate-700/50 shadow-inner">
+          <div className="relative w-16 h-16 sm:w-28 sm:h-28 md:w-40 md:h-40 rounded-t-[40px] flex items-end justify-center">
             {activeMatch.mode === 'bot' ? (
               <Bot className="h-8 w-8 sm:h-16 sm:w-16 md:h-20 md:w-20 text-rose-400 mb-3 sm:mb-6 drop-shadow-xl" strokeWidth={1.5} />
+            ) : opponentLayers ? (
+              <CompositeAvatar layers={opponentLayers} className="w-full h-full object-contain origin-bottom scale-[1.15]" />
             ) : (
-              <Users className="h-8 w-8 sm:h-16 sm:w-16 md:h-20 md:w-20 text-slate-500 mb-3 sm:mb-6 drop-shadow-xl" strokeWidth={1.5} />
+              <CompositeAvatar layers={{}} className="w-full h-full object-contain origin-bottom scale-[1.15]" />
             )}
          </div>
          <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-xl sm:rounded-2xl px-2 sm:px-4 py-2 sm:py-3 md:px-5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center gap-1.5 sm:gap-3 md:gap-4 mb-2 sm:mb-4 flex-row-reverse text-right max-w-[130px] sm:max-w-[220px] md:max-w-[280px]">
