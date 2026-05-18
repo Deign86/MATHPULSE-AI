@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import ScientificCalculator from './ScientificCalculator';
+import MathText from './MathText';
 import { resolveQuestion, useHint, completeSession, fetchShadowRetries } from '../services/tryItYourselfService';
 import type { Question } from './InteractiveLesson';
 
@@ -862,7 +863,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
             {/* Question Card */}
             <div className="bg-white rounded-3xl shadow-lg border-t-[6px] border-purple-500 p-6 sm:p-8 text-center flex flex-col items-center mb-6 w-full relative overflow-hidden">
               <h2 className="text-xl sm:text-2xl font-extrabold text-[#0a1628] leading-tight w-full">
-                {currentQuestion.question}
+                <MathText>{currentQuestion.question}</MathText>
               </h2>
               {/* Fill-in-blank inline input */}
               {currentQuestion.type === 'fill-in-blank' && !qs?.resolved && (
@@ -916,7 +917,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                         }}
                         className={`p-4 sm:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-base sm:text-lg text-left transition-all flex items-center justify-between ${bgColor} ${qs?.resolved ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'}`}
                       >
-                        <span className="truncate pr-4">{optionText}</span>
+                        <span className="truncate pr-4"><MathText>{optionText}</MathText></span>
                         {(isRevealed || isAnsweredCorrect) && isCorrectOption && <Check size={24} className="text-emerald-500 shrink-0" />}
                         {isFailed && <X size={24} className="text-rose-500 shrink-0" />}
                       </button>

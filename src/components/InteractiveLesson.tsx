@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { Button } from './ui/button';
 import ScientificCalculator from './ScientificCalculator';
+import MathText from './MathText';
 
 const AnimatedCounter: React.FC<{ value: number; label: string; delay?: number; icon?: React.ReactNode }> = ({ value, label, delay = 0, icon }) => {
   const [count, setCount] = React.useState(0);
@@ -1026,7 +1027,7 @@ setIsCorrect(false);
                        ))}
                     </span>
                   ) : (
-                    currentQuestion.question
+                    <MathText>{currentQuestion.question}</MathText>
                   )}
                 </h2>
              </div>
@@ -1091,7 +1092,7 @@ setIsCorrect(false);
                              }}
                              className={`p-4 sm:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-base sm:text-lg text-left transition-all flex items-center justify-between ${bgColor} ${isCurrentlyAnswered || isRevealed || isEliminated ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'}`}
                            >
-                              <span className="truncate pr-4">{optionText}</span>
+                              <span className="truncate pr-4"><MathText>{optionText}</MathText></span>
                               {isEliminated && <X size={20} className="text-slate-400 shrink-0" />}
                               {isRevealed && optionText === currentQuestion.correctAnswer && <Check size={24} className="text-emerald-500 shrink-0" />}
                               {isCurrentlyAnswered && optionText === currentQuestion.correctAnswer && !isRevealed && <Check size={24} className="text-emerald-500 shrink-0" />}
