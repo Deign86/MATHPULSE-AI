@@ -682,6 +682,19 @@ service cloud.firestore {
       allow write: if false; // Backend service account only
     }
 
+    // modules/{moduleId} — module status, written by teachers/admins
+    match /modules/{moduleId} {
+      allow read: if isSignedIn();
+      allow write: if isTeacherOrAdmin();
+    }
+
+    // module_watch_requests/{docId} — students subscribe to module availability
+    match /module_watch_requests/{docId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isTeacherOrAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;

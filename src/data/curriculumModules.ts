@@ -73,6 +73,8 @@ export interface TeacherUploadedModule {
   createdAt: any; // using any or timestamp, since Firebase is not imported here natively. Better to just use any or import Timestamp if available. Wait, FirebaseFirestore.Timestamp is in the instructions, but we can't easily import it without bringing in firebase-admin or firebase/firestore. Let's use `any` or `{ seconds: number; nanoseconds: number } | null` or just `Date | any`. I will use `any` or `Date | null | { seconds: number, nanoseconds: number }` for safety without imports.
 }
 
+export type ModuleStatus = 'available' | 'coming_soon' | 'teacher_uploaded' | 'unavailable';
+
 export type CurriculumModuleRuntime = Module & {
   subjectId: CurriculumSubjectId;
   subject: string;
@@ -94,6 +96,8 @@ export type CurriculumModuleRuntime = Module & {
   module_sources: CurriculumSourceMeta[];
   module_assessments: CurriculumAssessmentMeta[];
   isAvailable: boolean;
+  /** Granular content availability status */
+  moduleStatus: ModuleStatus;
 };
 
 interface SubjectMeta {
@@ -384,6 +388,7 @@ export function getCurriculumModulesForLearner(
       // Check if module has PDF-backed lessons for RAG availability
       const hasPdfBackedLessons = lessons.some((lesson) => lesson.storagePath && lesson.storagePath.length > 0);
       const isAvailable = module.isAvailable ?? hasPdfBackedLessons ?? true;
+      const moduleStatus: ModuleStatus = isAvailable ? 'available' : 'coming_soon';
 
       return {
         id: module.id,
@@ -415,6 +420,7 @@ export function getCurriculumModulesForLearner(
         module_sources: module.sources,
         module_assessments: assessments,
         isAvailable,
+        moduleStatus,
       };
     });
 }
