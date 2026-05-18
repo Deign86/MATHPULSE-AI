@@ -794,7 +794,7 @@ const resultModal = (
                 <h3 className="text-slate-400 text-[9px] font-black uppercase tracking-widest text-left mb-1.5 ml-1">Performance Details</h3>
                 <div className="space-y-1.5">
                   <AnimatedCounter value={score} label="Correct Answers" delay={500} icon={<Check className="h-3 w-3 text-emerald-500" />} />
-                  <AnimatedCounter value={currentPoints} label="Total XP Earned" delay={800} icon={<Zap className="h-3 w-3 text-amber-500" />} />
+                  <AnimatedCounter value={totalXP} label="Total XP Earned" delay={800} icon={<Zap className="h-3 w-3 text-amber-500" />} />
                   
                   <motion.div
                     initial={{ opacity: 0 }}
