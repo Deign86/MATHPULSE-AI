@@ -112,27 +112,32 @@ export const markAsRead = async (userId: string, notificationId: string): Promis
 export const markAllAsRead = async (userId: string): Promise<void> => {
   if (!requireAuth()) return;
   try {
-    // Query subcollection (new structure)
+    // Query subcollection (new structure) — uses isRead field
     const subcollectionQuery = query(
       collection(db, 'notifications', userId, 'items'),
       where('isRead', '==', false)
     );
     const subcollectionSnap = await getDocs(subcollectionQuery);
 
-    // Also query top-level notifications collection (legacy structure)
-    const topLevelQuery = query(
-      collection(db, 'notifications'),
-      where('userId', '==', userId)
+    const updates: Promise<void>[] = subcollectionSnap.docs.map((docSnap) =>
+      updateDoc(docSnap.ref, { isRead: true })
     );
-    const topLevelSnap = await getDocs(topLevelQuery);
 
-    const updates: Promise<void>[] = [
-      ...subcollectionSnap.docs.map((docSnap) => updateDoc(docSnap.ref, { isRead: true })),
-      ...topLevelSnap.docs.filter((docSnap) => {
-        const d = docSnap.data();
-        return !(d.isRead || d.read);
-      }).map((docSnap) => updateDoc(docSnap.ref, { isRead: true, read: true })),
-    ];
+    // Also query top-level notifications collection (legacy structure) — uses read field
+    try {
+      const topLevelQuery = query(
+        collection(db, 'notifications'),
+        where('userId', '==', userId),
+        where('read', '==', false)
+      );
+      const topLevelSnap = await getDocs(topLevelQuery);
+      for (const docSnap of topLevelSnap.docs) {
+        updates.push(updateDoc(docSnap.ref, { isRead: true, read: true }));
+      }
+    } catch (topLevelErr) {
+      // Top-level collection may fail due to permissions — don't block subcollection updates
+      console.warn('[notificationFirestoreService] Top-level markAllAsRead skipped:', topLevelErr);
+    }
 
     await Promise.all(updates);
   } catch (error) {
