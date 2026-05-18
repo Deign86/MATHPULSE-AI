@@ -113,3 +113,53 @@ async def generate_tutor_nudge_for_student(
         return None
 
     return {"message": message, "topic": topic, "created_at": nudge_data["createdAt"].isoformat()}
+
+
+async def check_and_generate_nudge(student_id: str) -> dict | None:
+    """
+    Check if a student already has risk data warranting a nudge,
+    and generate one if no recent unconsumed nudge exists.
+    Used for students who completed diagnostics but have no new pipeline events.
+    """
+    db = _get_db()
+    if not db:
+        return None
+
+    # Read existing risk profile from managedStudents
+    managed_ref = db.collection("managedStudents").document(student_id)
+    managed_snap = managed_ref.get()
+    if not managed_snap.exists:
+        return None
+
+    data = managed_snap.to_dict() or {}
+    risk_status = data.get("riskStatus")
+    if risk_status not in ("watch", "intervene", "critical", "at_risk"):
+        return None
+
+    # Get weak topics from student_profiles
+    profile_ref = db.collection("student_profiles").document(student_id)
+    profile_snap = profile_ref.get()
+    weak_topics: list[str] = []
+    if profile_snap.exists:
+        profile = profile_snap.to_dict() or {}
+        weak_topics = (
+            profile.get("quiz_performance", {}).get("lowest_accuracy_topics", [])
+            or profile.get("diagnostic", {}).get("weak_topics", [])
+        )
+
+    if not weak_topics:
+        # Fallback: use atRiskSubjects from user doc
+        user_ref = db.collection("users").document(student_id)
+        user_snap = user_ref.get()
+        if user_snap.exists:
+            weak_topics = (user_snap.to_dict() or {}).get("atRiskSubjects", [])
+
+    if not weak_topics:
+        return None
+
+    return await generate_tutor_nudge_for_student(
+        student_id=student_id,
+        weak_topics=weak_topics[:3],
+        grade_level=data.get("grade", "Grade 11"),
+        recent_score=data.get("systemPerformanceAvg") or data.get("diagnosticScore"),
+    )

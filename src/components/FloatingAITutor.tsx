@@ -3,7 +3,7 @@ import { Bot, X, Send, Maximize2, Minus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useChatContext, Message } from '../contexts/ChatContext';
 import { useAuth } from '../contexts/AuthContext';
-import { subscribeToTutorNudges, consumeNudge, type TutorNudge } from '../services/tutorNudgeService';
+import { subscribeToTutorNudges, consumeNudge, requestNudgeCheck, type TutorNudge } from '../services/tutorNudgeService';
 
 const ChatMarkdown = lazy(() => import('./ChatMarkdown.tsx'));
 
@@ -38,11 +38,17 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
   // Subscribe to tutor nudges for students
   useEffect(() => {
     if (!currentUser?.uid || userRole !== 'student') return;
+    let checkedOnce = false;
     return subscribeToTutorNudges(currentUser.uid, (nudge) => {
       if (nudge && nudge.id !== nudgeConsumedRef.current) {
         setPendingNudge(nudge);
       } else {
         setPendingNudge(null);
+        // If no nudge exists on first check, ask backend to generate one
+        if (!checkedOnce) {
+          checkedOnce = true;
+          requestNudgeCheck(currentUser.uid);
+        }
       }
     });
   }, [currentUser?.uid, userRole]);
