@@ -118,14 +118,14 @@ function formatContent(raw: string): React.ReactNode {
   const calloutScheme = (prefix: string): { bg: string; border: string; text: string; label: string } => {
     const p = prefix.toLowerCase();
     if (/formula|theorem|property|rule/.test(p))
-      return { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', label: '📐' };
+      return { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', label: 'FORMULA' };
     if (/definition|concept|key/.test(p))
-      return { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-900', label: '📖' };
+      return { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-900', label: 'DEFINITION' };
     if (/note|reminder|important/.test(p))
-      return { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-900', label: '⚠️' };
+      return { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-900', label: 'NOTE' };
     if (/example|step/.test(p))
-      return { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', label: '✏️' };
-    return { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-800', label: '💡' };
+      return { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', label: 'EXAMPLE' };
+    return { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-800', label: 'TIP' };
   };
 
   for (const rawLine of lines) {
@@ -480,7 +480,7 @@ function SectionRenderer({
                 <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
                   callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
                 }`}>
-                  {callout.type === 'tip' ? '✨ Tip' : callout.type === 'important' ? '⚠️ Heads Up' : '📌 Note'}
+                  {callout.type === 'tip' ? 'Tip' : callout.type === 'important' ? 'Heads Up' : 'Note'}
                 </p>
                 <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{callout.text}</p>
               </div>
@@ -495,7 +495,7 @@ function SectionRenderer({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 text-amber-600">
-                  ⚠️ Heads Up
+                  Heads Up
                 </p>
                 <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">
                   This lesson has {totalSectionCount} sections and takes about 20 minutes to complete. Grab a pen — you might want to take notes along the way!
@@ -572,7 +572,7 @@ function SectionRenderer({
                     <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
                       callout.type === 'important' ? 'text-rose-500' : callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
                     }`}>
-                      {callout.type === 'important' ? '🔑 Important' : callout.type === 'tip' ? '✨ Tip' : '📌 Note'}
+                      {callout.type === 'important' ? 'Important' : callout.type === 'tip' ? 'Tip' : 'Note'}
                     </p>
                     <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{inlineFormat(callout.text)}</p>
                   </div>

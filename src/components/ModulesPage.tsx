@@ -15,6 +15,7 @@ import {
   RotateCcw,
   GraduationCap,
   BookUser,
+  Flame,
 } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -236,7 +237,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         // Avatar unlock for epic rewards
         if (lastClaimResult.reward.rarity === 'epic') {
           unlockAvatarItem(userProfile.uid, 'acc_crown')
-            .then(() => toast.success("👑 Epic reward unlocked!"))
+            .then(() => toast.success("Epic reward unlocked!"))
             .catch(console.error);
         }
       }
@@ -1066,8 +1067,8 @@ const RecommendedModulesView: React.FC<{
 
       {learningPathContext && !learningPathLoading && (
         <div className="mb-6 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 px-5 py-4 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-wide text-indigo-700 mb-2">
-            📚 Your Personalized Learning Path
+          <p className="text-xs font-black uppercase tracking-wide text-indigo-700 mb-2 flex items-center gap-1.5">
+            <BookOpen size={14} /> Your Personalized Learning Path
           </p>
           <pre className="whitespace-pre-wrap text-sm text-indigo-900 font-medium leading-relaxed font-sans">
             {learningPathContext}
@@ -1078,7 +1079,7 @@ const RecommendedModulesView: React.FC<{
       {inProgress.length > 0 && (
         <div>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-[14px] bg-[#FF8B8B]/10 flex items-center justify-center text-[20px] shadow-inner">🔥</div>
+            <div className="w-10 h-10 rounded-[14px] bg-[#FF8B8B]/10 flex items-center justify-center shadow-inner"><Flame size={20} className="text-[#FF8B8B]" /></div>
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Continue This Module</h2>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">

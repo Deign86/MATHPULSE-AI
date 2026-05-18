@@ -14,7 +14,7 @@ import {
   TableRow,
 } from './ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Loader2, Upload, RefreshCw, BookOpen, FileText, Sparkles, Bell, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Upload, RefreshCw, BookOpen, FileText, Sparkles, Bell, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PdfStatus {
@@ -429,7 +429,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                         ))}
                       </div>
                       {q.explanation && (
-                        <p className="text-[12px] text-[#64748b] italic mt-2">💡 {q.explanation}</p>
+                        <p className="text-[12px] text-[#64748b] italic mt-2 flex items-center gap-1"><Lightbulb size={12} /> {q.explanation}</p>
                       )}
                     </div>
                   )}

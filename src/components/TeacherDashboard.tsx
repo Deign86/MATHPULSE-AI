@@ -3194,21 +3194,21 @@ const AnalyticsView: React.FC<{
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white/70 rounded-[14px] p-4 border border-white">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">📊</span>
+                    <BarChart3 size={18} className="text-indigo-600" />
                     <h4 className="text-[13px] font-semibold text-[#1e293b]">Class Overview</h4>
                   </div>
                   <p className="text-[12px] text-[#475569] leading-relaxed">{backendReport.insights.class_summary}</p>
                 </div>
                 <div className="bg-white/70 rounded-[14px] p-4 border border-white">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">💪</span>
+                    <TrendingUp size={18} className="text-emerald-600" />
                     <h4 className="text-[13px] font-semibold text-[#1e293b]">What's Working</h4>
                   </div>
                   <p className="text-[12px] text-[#475569] leading-relaxed">{backendReport.insights.class_strengths}</p>
                 </div>
                 <div className="bg-white/70 rounded-[14px] p-4 border border-white">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">🎯</span>
+                    <Target size={18} className="text-amber-600" />
                     <h4 className="text-[13px] font-semibold text-[#1e293b]">Recommended Actions</h4>
                   </div>
                   <ul className="space-y-1.5">

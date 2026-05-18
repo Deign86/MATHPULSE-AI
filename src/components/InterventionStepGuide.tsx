@@ -51,7 +51,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
       // Score is null — actual score comes from practice/assessment results, not this modal
       await completeStep(studentId, step.step_number, 0, step.duration_minutes);
       onStepCompleted(step.step_number);
-      toast.success(`Step ${step.step_number} completed! 🎉`);
+      toast.success(`Step ${step.step_number} completed!`);
       onClose();
     } catch (err) {
       toast.error('Failed to mark step as complete.');

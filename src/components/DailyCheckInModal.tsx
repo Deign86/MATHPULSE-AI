@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer, CheckCircle2 } from 'lucide-react';
+import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer, CheckCircle2, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RewardDefinition } from '../types/rewards';
 
@@ -280,7 +280,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                   {day7.rarity === 'epic' && (
                     <div className="relative mt-1">
                       <div className="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center border-2 border-purple-200 shadow-sm">
-                        <span className="text-3xl drop-shadow-md">🎁</span>
+                        <Gift className="w-8 h-8 text-purple-500 drop-shadow-md" />
                       </div>
                       <div className="absolute -right-5 -bottom-4 w-14 h-14 bg-white rounded-xl p-1 border-2 border-amber-300 shadow-lg transform rotate-[-5deg]">
                         <img src="/avatar/crown_thumbnail.png" alt="Crown" className="w-full h-full object-contain drop-shadow-md" />
