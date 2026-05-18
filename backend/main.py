@@ -1927,13 +1927,21 @@ def is_continuation_reply(user_message: str, active_state: Any, recent_turns: Op
     if not msg:
         return False
 
-    # Check Filipino/Taglish continuation signals (exact or substring match)
+    # Check Filipino/Taglish continuation signals
+    words = msg.split()
+    word_count = len(words)
+    word_set = set(words)
     for phrase in _FILIPINO_CONTINUATION_PHRASES:
-        if phrase in msg:
-            return True
+        if ' ' in phrase:
+            # Multi-word: substring match
+            if phrase in msg:
+                return True
+        else:
+            # Single-word: only match if message is short (≤3 words)
+            if word_count <= 3 and phrase in word_set:
+                return True
 
     # Short messages (under 8 words) with active math context are continuations
-    word_count = len(msg.split())
     has_active_context = active_state and (
         getattr(active_state, "active_topic", "") or
         getattr(active_state, "current_problem", "")
