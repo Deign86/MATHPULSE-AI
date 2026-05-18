@@ -3951,7 +3951,14 @@ const InterventionView: React.FC<{
           </div>
 
           {/* Targeted Lesson Generator Settings */}
-          <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
+          <div className="relative bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white overflow-hidden">
+            {/* Locked overlay */}
+            <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-[2px] flex items-center justify-center rounded-[18px]">
+              <div className="text-center">
+                <span className="inline-block px-4 py-2 bg-slate-100 border border-slate-200 rounded-full text-[13px] font-semibold text-slate-500">🔒 Coming Soon</span>
+                <p className="text-[11px] text-slate-400 mt-2">This feature is temporarily locked.</p>
+              </div>
+            </div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[15px] font-semibold text-[#1e293b]">Targeted Lesson Generation</h3>
               <Button
