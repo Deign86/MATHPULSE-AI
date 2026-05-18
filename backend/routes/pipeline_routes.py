@@ -48,6 +48,24 @@ async def receive_event(payload: PipelineEventPayload, background_tasks: Backgro
     return {"status": "accepted", "student_id": payload.student_id}
 
 
+@router.post("/nudge/{student_id}", status_code=200)
+async def request_nudge(student_id: str, background_tasks: BackgroundTasks, request: Request):
+    """Check if a nudge should be generated for an existing at-risk student."""
+    user = _require_auth(request)
+    if user.role == "student" and student_id != user.uid:
+        raise HTTPException(status_code=403, detail="Students can only request nudges for themselves")
+
+    async def _generate():
+        try:
+            from services.tutor_nudge_service import check_and_generate_nudge
+            await check_and_generate_nudge(student_id)
+        except Exception as e:
+            logger.warning(f"Nudge check failed for {student_id}: {e}")
+
+    background_tasks.add_task(_generate)
+    return {"status": "accepted"}
+
+
 @router.get("/profile/{student_id}")
 async def get_profile(student_id: str, request: Request):
     """Get full student profile."""
