@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { assignStepAsModule } from '../services/interventionService';
 import type { LearningStep } from '../services/interventionService';
 import { InterventionVideoStep } from './intervention/InterventionVideoStep';
+import { normalizeTopicDisplay } from '../config/subjects';
 import { toast } from 'sonner';
 
 interface Props {
@@ -44,7 +45,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
 }) => {
   const [completing, setCompleting] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
-    { role: 'assistant', content: `Hi ${studentName}! Let's work on "${step.title}". ${step.description || `This covers ${step.topic}.`} Ready to start?` },
+    { role: 'assistant', content: `Hi ${studentName}! Let's work on "${normalizeTopicDisplay(step.title)}". ${step.description || `This covers ${normalizeTopicDisplay(step.topic)}.`} Ready to start?` },
   ]);
   const [chatInput, setChatInput] = useState('');
 
@@ -100,7 +101,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
                 {STEP_ICONS[step.type] || <PenTool className="w-5 h-5" />}
               </div>
               <div>
-                <h2 className="text-[15px] font-bold text-[#1e293b]">{step.title}</h2>
+                <h2 className="text-[15px] font-bold text-[#1e293b]">{normalizeTopicDisplay(step.title)}</h2>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[11px] text-[#64748b]">Step {step.step_number} of {totalSteps}</span>
                   {step.competency_tag && (

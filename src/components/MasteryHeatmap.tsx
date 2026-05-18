@@ -23,10 +23,10 @@ interface MasteryHeatmapProps {
 // ─── SHS Math Curriculum Data ───────────────────────────────
 
 const SUBJECTS = [
-  { id: 'gen-math', name: 'Gen Math', shortName: 'GM', color: '#3B82F6' },
-  { id: 'stats-prob', name: 'Stats & Prob', shortName: 'SP', color: '#0ea5e9' },
-  { id: 'pre-calc', name: 'Pre-Calc', shortName: 'PC', color: '#F97316' },
-  { id: 'basic-calc', name: 'Basic Calc', shortName: 'BC', color: '#EF4444' },
+  { id: 'gen-math', name: 'General Mathematics', shortName: 'GM', color: '#3B82F6' },
+  { id: 'stats-prob', name: 'Statistics & Probability', shortName: 'SP', color: '#0ea5e9' },
+  { id: 'pre-calc', name: 'Pre-Calculus', shortName: 'PC', color: '#F97316' },
+  { id: 'basic-calc', name: 'Basic Calculus', shortName: 'BC', color: '#EF4444' },
 ];
 
 const TOPICS_BY_SUBJECT: Record<string, { name: string; unit: string }[]> = {

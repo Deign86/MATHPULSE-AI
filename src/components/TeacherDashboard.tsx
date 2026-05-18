@@ -35,6 +35,7 @@ import {
   type InterventionPlan,
 } from '../services/interventionService';
 import { InterventionStepGuide } from './InterventionStepGuide';
+import { normalizeTopicDisplay } from '../config/subjects';
 import {
   getClassroomsByTeacher,
   getStudentsByTeacher,
@@ -3927,7 +3928,7 @@ const InterventionView: React.FC<{
                           <span className={`text-[10px] font-semibold uppercase tracking-wider mb-1 block ${tagClass}`}>
                             Step {index + 1} • {step.type === 'video' ? 'Video Lesson' : step.type === 'quiz' ? 'Practice' : 'Assessment'}
                           </span>
-                          <p className="font-semibold text-[#1e293b] text-[13px] mb-0.5">{step.title}</p>
+                          <p className="font-semibold text-[#1e293b] text-[13px] mb-0.5">{normalizeTopicDisplay(step.title)}</p>
                           <p className="text-[#64748b] text-[11px] flex items-center gap-1.5">
                             {step.type === 'video' && <><Clock className="w-3 h-3" /> {step.duration}</>}
                             {step.type === 'quiz' && <><ListChecks className="w-3 h-3" /> {step.questions ? `${step.questions} questions` : step.duration}</>}
@@ -4125,7 +4126,7 @@ const InterventionView: React.FC<{
             </div>
             <div className="bg-rose-50/60 rounded-[14px] p-4 border border-rose-100 text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider mb-1">Weakest Topic</p>
-              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={interventionPlan?.weakest_topic || student.weakestTopic}>{interventionPlan?.weakest_topic || student.weakestTopic}</p>
+              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={interventionPlan?.weakest_topic || student.weakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || student.weakestTopic || '')}</p>
             </div>
           </div>
 
@@ -4269,7 +4270,7 @@ const InterventionView: React.FC<{
                               ['Risk Level', data.risk_level],
                               ['Average Score', `${data.avg_score}%`],
                               ['Engagement', data.engagement_level],
-                              ['Weakest Topic', data.weakest_topic || 'N/A'],
+                              ['Weakest Topic', normalizeTopicDisplay(data.weakest_topic || 'N/A')],
                               ['Last Active', data.last_active ? new Date(data.last_active).toLocaleDateString() : 'Unknown'],
                             ];
                             for (const [label, value] of profileRows) {
@@ -4292,7 +4293,7 @@ const InterventionView: React.FC<{
                                 doc.setFont('helvetica', 'normal');
                                 for (const topic of data.weak_topics) {
                                   checkPage(6);
-                                  doc.text(`  •  ${topic}`, margin + 4, y); y += 5;
+                                  doc.text(`  •  ${normalizeTopicDisplay(topic)}`, margin + 4, y); y += 5;
                                 }
                                 y += 3;
                               }
@@ -4342,7 +4343,7 @@ const InterventionView: React.FC<{
                               sectionHeader('Personalized Learning Path');
                               doc.setFontSize(9);
                               doc.setFont('helvetica', 'italic');
-                              doc.text(`Estimated Duration: ${data.learning_path.estimated_duration_days} days | Primary Focus: ${data.learning_path.primary_weak_topic}`, margin + 2, y);
+                              doc.text(`Estimated Duration: ${data.learning_path.estimated_duration_days} days | Primary Focus: ${normalizeTopicDisplay(data.learning_path.primary_weak_topic)}`, margin + 2, y);
                               y += 8;
                               doc.setFont('helvetica', 'normal');
                               doc.setFontSize(10);
@@ -4357,7 +4358,7 @@ const InterventionView: React.FC<{
                                 doc.setTextColor(0, 0, 0);
                                 doc.setFontSize(10);
                                 doc.setFont('helvetica', 'bold');
-                                doc.text(step.title, margin + 14, y + 1);
+                                doc.text(normalizeTopicDisplay(step.title), margin + 14, y + 1);
                                 doc.setFont('helvetica', 'normal');
                                 doc.setFontSize(9);
                                 const meta = `${step.type.replace('_', ' ')} • ${step.duration_minutes} min • ${step.difficulty}${step.competency_tag ? ` • ${step.competency_tag}` : ''}`;
