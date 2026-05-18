@@ -105,3 +105,31 @@ export async function fetchShadowRetries(params: ShadowRetryParams): Promise<Sha
     body: JSON.stringify(params),
   });
 }
+
+
+// --- Generate Round (Adaptive Phase Progression) ---
+
+interface GenerateRoundParams {
+  userId: string;
+  sessionId: string;
+  questionIds: string[];
+}
+
+interface PhaseGroup {
+  phase: number;
+  label: string; // "Foundation" | "Application" | "Complexity" | "Gauntlet"
+  questionIds: string[];
+}
+
+export interface GenerateRoundResult {
+  phases: PhaseGroup[];
+  questionStatuses: Record<string, string>; // questionId -> "New" | "Retry" | "Learning" | "Mastered"
+}
+
+export async function generateRound(params: GenerateRoundParams): Promise<GenerateRoundResult> {
+  return apiFetch<GenerateRoundResult>('/api/try-it-yourself/generate-round', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+}

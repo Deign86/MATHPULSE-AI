@@ -19,6 +19,7 @@ interface QuizGenerationResponse {
     correctAnswer: string;
     explanation: string;
     hints?: string[];
+    bloomLevel?: string;
   }>;
   retrievalConfidence: Record<string, unknown>;
   sourceChunks: number;
@@ -127,6 +128,7 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
       correctAnswer: q.correctAnswer,
       explanation: q.explanation,
       hints: q.hints || [],
+      bloomLevel: (q.bloomLevel || 'remember') as Question['bloomLevel'],
     }));
   } catch (error) {
     console.error('[lessonQuizService] Failed to generate quiz via API:', error);

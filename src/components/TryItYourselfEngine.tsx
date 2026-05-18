@@ -82,24 +82,55 @@ function calculateLocalXP(hintsUsed: number, resolution: 'correct' | 'revealed')
 
 function splitIntoPhases(questions: Question[]): Question[][] {
   const total = questions.length;
-  if (total <= 7) return [questions];
-  if (total <= 12) {
-    const half = Math.ceil(total / 2);
-    return [questions.slice(0, half), questions.slice(half)];
+  const MIN_PER_PHASE = 4;
+
+  // Check if questions have bloom levels tagged
+  const tagged = questions.filter(q => q.bloomLevel);
+  
+  // If less than half are tagged, distribute dynamically
+  if (tagged.length < total / 2) {
+    if (total < MIN_PER_PHASE * 2) return [questions];
+    // Dynamic: aim for 4 phases but ensure minimum per phase
+    const numPhases = Math.min(4, Math.floor(total / MIN_PER_PHASE));
+    const perPhase = Math.ceil(total / numPhases);
+    const phases: Question[][] = [];
+    for (let i = 0; i < numPhases; i++) {
+      const slice = questions.slice(i * perPhase, (i + 1) * perPhase);
+      if (slice.length > 0) phases.push(slice);
+    }
+    return phases;
   }
-  // 13-18: 3 phases (~5-6 each)
-  if (total <= 18) {
-    const third = Math.ceil(total / 3);
-    return [questions.slice(0, third), questions.slice(third, third * 2), questions.slice(third * 2)];
+
+  // Group questions by Bloom's taxonomy level
+  const remember = questions.filter(q => q.bloomLevel === 'remember' || q.bloomLevel === 'understand');
+  const apply = questions.filter(q => q.bloomLevel === 'apply');
+  const analyze = questions.filter(q => q.bloomLevel === 'analyze');
+  const evaluate = questions.filter(q => q.bloomLevel === 'evaluate');
+  const untagged = questions.filter(q => !q.bloomLevel);
+
+  const phases: Question[][] = [];
+  const phase1 = [...remember, ...untagged];
+  if (phase1.length > 0) phases.push(phase1);
+  if (apply.length > 0) phases.push(apply);
+  if (analyze.length > 0) phases.push(analyze);
+  if (evaluate.length > 0) phases.push(evaluate);
+
+  // Merge tiny phases (< MIN_PER_PHASE) into adjacent ones
+  const merged: Question[][] = [];
+  let buffer: Question[] = [];
+  for (const phase of phases) {
+    buffer = [...buffer, ...phase];
+    if (buffer.length >= MIN_PER_PHASE) {
+      merged.push(buffer);
+      buffer = [];
+    }
   }
-  // 19+: 4 phases
-  const quarter = Math.ceil(total / 4);
-  return [
-    questions.slice(0, quarter),
-    questions.slice(quarter, quarter * 2),
-    questions.slice(quarter * 2, quarter * 3),
-    questions.slice(quarter * 3),
-  ];
+  if (buffer.length > 0) {
+    if (merged.length > 0) merged[merged.length - 1] = [...merged[merged.length - 1], ...buffer];
+    else merged.push(buffer);
+  }
+
+  return merged.length > 0 ? merged : [questions];
 }
 
 function getRevealThreshold(type: Question['type']): number | null {
@@ -434,8 +465,18 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
     const nextPhaseIdx = currentPhaseIdx + 1;
     if (nextPhaseIdx >= totalPhases) { setQuizState('complete'); return; }
     setQuizState('loading-next');
+
+    // Collect retry questions from current phase (revealed = retry in next phase)
+    const currentPhaseQs = phaseGroups[currentPhaseIdx] || [];
+    const retryQuestions = currentPhaseQs.filter(q => {
+      const qs = questionStates[q.id];
+      return qs?.resolution === 'revealed';
+    });
+
+    let nextQuestions = [...phaseGroups[nextPhaseIdx], ...retryQuestions];
+
+    // Shadow retry injection for struggle topics
     const struggles = currentRoundResult?.struggleTopics || [];
-    let nextQuestions = [...phaseGroups[nextPhaseIdx]];
     if (struggles.length > 0 && userId) {
       try {
         const result = await fetchShadowRetries({ userId, sessionId, struggleTopics: struggles, subject, count: Math.min(2, struggles.length) });
@@ -447,11 +488,16 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
         }
       } catch {}
     }
+
     setCurrentPhaseIdx(nextPhaseIdx);
     setQueue(nextQuestions);
     setQueueIndex(0);
+    // Reset question states for retry questions so they can be answered again
+    const resetStates = { ...questionStates };
+    retryQuestions.forEach(q => { delete resetStates[q.id]; });
+    setQuestionStates(resetStates);
     setQuizState('playing');
-  }, [currentPhaseIdx, totalPhases, phaseGroups, currentRoundResult, userId, sessionId, subject]);
+  }, [currentPhaseIdx, totalPhases, phaseGroups, currentRoundResult, questionStates, userId, sessionId, subject]);
 
   // ─── COMPLETE SESSION ─────────────────────────────────────────────────────
   const handleCompleteSession = useCallback(async () => {

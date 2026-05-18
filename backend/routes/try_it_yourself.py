@@ -100,15 +100,33 @@ def _calculate_xp(hints_used: int, attempts: int, resolution: str) -> int:
     return max(xp, BRUTE_FORCE_FLOOR_XP)
 
 
-def _determine_status(attempts: int, hints_used: int, resolution: str) -> str:
-    """Determine question mastery status based on performance."""
+def _determine_status(attempts: int, hints_used: int, resolution: str, previous_status: str = "New") -> str:
+    """
+    Determine question mastery status based on performance AND previous status.
+    Follows Bloom's taxonomy phase progression:
+      New → Learning (correct in Phase 1)
+      Learning → Mastered (correct in Phase 2+)
+      Any → Retry (revealed or excessive attempts)
+      Retry → Learning (correct on retry)
+    """
     if resolution == "revealed":
         return "Retry"
-    if hints_used == 0 and attempts == 1:
-        return "Mastered"
-    if hints_used <= 1 and attempts <= 2:
-        return "Learning"
-    return "Retry"
+    
+    # Correct answer — promote based on previous status
+    if previous_status == "New":
+        if hints_used == 0 and attempts == 1:
+            return "Learning"  # Clean pass → skip to Learning
+        return "Learning"  # Any correct from New → Learning
+    elif previous_status == "Retry":
+        return "Learning"  # Correct retry → back to Learning
+    elif previous_status == "Learning":
+        if hints_used <= 1 and attempts <= 2:
+            return "Mastered"  # Clean-ish pass → Mastered
+        return "Learning"  # Struggled but correct → stay Learning
+    elif previous_status == "Mastered":
+        return "Mastered"  # Already mastered, stays mastered
+    
+    return "Learning"
 
 
 def _authenticate(request: Request, userId: str) -> None:
@@ -131,8 +149,21 @@ async def resolve_question(request: Request, body: ResolveQuestionRequest):
     _authenticate(request, body.userId)
 
     xp = _calculate_xp(body.hintsUsed, body.attempts, body.resolution)
-    status = _determine_status(body.attempts, body.hintsUsed, body.resolution)
     struggle_flag = body.attempts >= STRUGGLE_THRESHOLD
+
+    # Fetch previous status for proper state transition
+    previous_status = "New"
+    db = _get_firestore()
+    if db:
+        try:
+            state_ref = db.collection("user_question_states").document(f"{body.userId}_{body.questionId}")
+            existing = state_ref.get()
+            if existing.exists:
+                previous_status = existing.to_dict().get("status", "New")
+        except Exception as e:
+            logger.warning("Firestore read failed for previous status: %s", e)
+
+    status = _determine_status(body.attempts, body.hintsUsed, body.resolution, previous_status)
 
     db = _get_firestore()
     if db:
@@ -260,6 +291,96 @@ class ShadowRetryRequest(BaseModel):
 class ShadowRetryResponse(BaseModel):
     variants: List[Dict[str, Any]]
     generated: bool
+
+
+# --- Generate Round Models ---
+
+class GenerateRoundRequest(BaseModel):
+    userId: str
+    sessionId: str
+    questionIds: List[str] = Field(..., description="All question IDs available for this quiz")
+
+
+class PhaseQuestions(BaseModel):
+    phase: int
+    label: str  # "Foundation", "Application", "Complexity", "Gauntlet"
+    questionIds: List[str]
+
+
+class GenerateRoundResponse(BaseModel):
+    phases: List[PhaseQuestions]
+    questionStatuses: Dict[str, str]  # questionId -> status (New/Retry/Learning/Mastered)
+
+
+@router.post("/generate-round", response_model=GenerateRoundResponse)
+async def generate_round(request: Request, body: GenerateRoundRequest):
+    """
+    Queries user_question_states for all provided question IDs and groups them
+    into Bloom's taxonomy phases based on their mastery status:
+      Phase 1 (Foundation): New + Retry questions (Remembering & Understanding)
+      Phase 2 (Application): Learning questions (Applying)
+      Phase 3 (Complexity): Learning questions via spaced repetition
+      Phase 4 (Gauntlet): Mastered questions (Analyzing)
+    
+    Returns phase-grouped question IDs so the frontend can build the quiz flow.
+    """
+    _authenticate(request, body.userId)
+
+    # Fetch all user_question_states for these questions
+    statuses: Dict[str, str] = {}
+    db = _get_firestore()
+    
+    if db and body.questionIds:
+        try:
+            # Batch fetch all question states for this user
+            for qid in body.questionIds:
+                doc_ref = db.collection("user_question_states").document(f"{body.userId}_{qid}")
+                doc = doc_ref.get()
+                if doc.exists:
+                    statuses[qid] = doc.to_dict().get("status", "New")
+                else:
+                    statuses[qid] = "New"
+        except Exception as e:
+            logger.warning("Firestore batch read failed: %s", e)
+            # Default all to New if read fails
+            for qid in body.questionIds:
+                statuses[qid] = "New"
+    else:
+        for qid in body.questionIds:
+            statuses[qid] = "New"
+
+    # Group questions by status
+    new_questions = [qid for qid, s in statuses.items() if s == "New"]
+    retry_questions = [qid for qid, s in statuses.items() if s == "Retry"]
+    learning_questions = [qid for qid, s in statuses.items() if s == "Learning"]
+    mastered_questions = [qid for qid, s in statuses.items() if s == "Mastered"]
+
+    # Build phases per spec v7
+    phases: List[PhaseQuestions] = []
+
+    # Phase 1 (Foundation): New + Retry
+    phase1_ids = new_questions + retry_questions
+    if phase1_ids:
+        phases.append(PhaseQuestions(phase=1, label="Foundation", questionIds=phase1_ids))
+
+    # Phase 2 (Application): Learning
+    if learning_questions:
+        phases.append(PhaseQuestions(phase=2, label="Application", questionIds=learning_questions))
+
+    # Phase 3 (Complexity): Learning spaced repetition (re-include learning if enough)
+    # Only activate if there are learning questions AND we already have a Phase 1
+    if learning_questions and phase1_ids:
+        phases.append(PhaseQuestions(phase=3, label="Complexity", questionIds=learning_questions))
+
+    # Phase 4 (Gauntlet): Mastered questions
+    if mastered_questions:
+        phases.append(PhaseQuestions(phase=4, label="Gauntlet", questionIds=mastered_questions))
+
+    # If no phases were built (all questions are new), put everything in Phase 1
+    if not phases:
+        phases.append(PhaseQuestions(phase=1, label="Foundation", questionIds=body.questionIds))
+
+    return GenerateRoundResponse(phases=phases, questionStatuses=statuses)
 
 
 @router.post("/shadow-retry", response_model=ShadowRetryResponse)

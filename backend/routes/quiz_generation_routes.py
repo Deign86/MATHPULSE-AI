@@ -139,14 +139,17 @@ Generate a "Try It Yourself" quiz for the following lesson.
 ## Instructions
 1. Generate EXACTLY {question_count} questions covering the topic above.
 2. Question types to use: {qt_str}
-3. DISTRIBUTION (for {question_count} questions):
-   - Include at least 1 "remember" (recall, definitions, fundamental facts)
-   - Include at least 1 "understand" (explain concepts)
-   - Include at least 1 "apply" (real-world context: pesos, jeepney, sari-sari store, barangay)
-   - Difficulty: {difficulty} — appropriate for {grade_level} Filipino STEM students.
+3. BLOOM'S TAXONOMY DISTRIBUTION (for {question_count} questions):
+   - "remember" (recall, definitions, fundamental facts): ~33% of questions
+   - "understand" (explain concepts, interpret meaning): included in remember group
+   - "apply" (solve problems, real-world context: pesos, jeepney, sari-sari store, barangay): ~33% of questions
+   - "analyze" (compare, contrast, break down complex problems): ~20% of questions
+   - "evaluate" (judge, justify, determine best approach): ~14% of questions
+   Tag each question with its bloom_level field.
 4. Use Filipino-localized context where possible (pesos, jeepney, barangay, sari-sari store, etc.).
 5. Each question must be mathematically accurate and curriculum-aligned.
-6. Provide clear explanations for the correct answer.{variance_instruction}
+6. Provide clear explanations for the correct answer.
+7. Questions at higher Bloom's levels should be genuinely harder — not just rephrased recall.{variance_instruction}
 
 ## Question Type Rules
 - multiple-choice: 4 options as array of objects with "key" and "text" fields, exactly one correct
@@ -213,7 +216,9 @@ IMPORTANT:
 - correct_answer must be the KEY ("A","B","C","D") that matches the correct option
 - For fill-in-blank, correct_answer is the exact text that fills the blank
 - Generate FRESH, VARIED questions — no two questions should be identical or nearly identical
-- Spread Bloom's taxonomy: include "remember", "understand", and "apply" level questions"""
+- Spread Bloom's taxonomy: include "remember", "understand", "apply", "analyze", and "evaluate" level questions
+- bloom_level MUST be one of: "remember", "understand", "apply", "analyze", "evaluate"
+"""
 
 
 # ── Response Parser ────────────────────────────────────────────────────
@@ -399,7 +404,7 @@ async def generate_quiz(request: QuizGenerationRequest):
                 {"role": "user", "content": prompt},
             ],
             task_type="quiz_generation",
-            max_new_tokens=3000,
+            max_new_tokens=6000,
             temperature=0.7,  # Higher temp for variance
             top_p=0.9,
         )

@@ -67,6 +67,7 @@ export interface Question {
   explanation?: string; // Explanation for the correct answer
   optionExplanations?: { [key: string]: string }; // Explanations for each option (for multiple choice)
   hints?: string[]; // 3-tier progressive scaffolding hints
+  bloomLevel?: 'remember' | 'understand' | 'apply' | 'analyze' | 'evaluate'; // Bloom's taxonomy level
 }
 
 interface Lesson {
