@@ -842,7 +842,7 @@ onClick={() => {
                  onClick={onClose}
                  className="w-full h-10 sm:h-11 rounded-2xl text-xs font-black bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200"
                >
-                 BACK TO PRACTICE CENTER
+                 FINISH
                </Button>
             </div>
          </motion.div>
