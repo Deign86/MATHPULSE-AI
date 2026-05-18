@@ -1238,6 +1238,9 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                               onTopicClick={(moduleId) => {
                                 handleStudentNavigation('Modules', moduleId);
                               }}
+                              onNavigateToPrerequisite={(moduleId) => {
+                                handleStudentNavigation('Modules', moduleId);
+                              }}
                             />
                           </Suspense>
                         )}
