@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
+import { initializeFirestore, memoryLocalCache } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
@@ -88,10 +88,7 @@ function buildAuthInstance() {
 export const auth = buildAuthInstance();
 function buildDbInstance() {
   try {
-    if (typeof window !== 'undefined' && typeof persistentLocalCache !== 'undefined') {
-      return initializeFirestore(app, { localCache: persistentLocalCache() });
-    }
-    return initializeFirestore(app, {});
+    return initializeFirestore(app, { localCache: memoryLocalCache() });
   } catch {
     // Test environment or partially-mocked firebase/firestore — return a safe stub
     return {} as ReturnType<typeof initializeFirestore>;
