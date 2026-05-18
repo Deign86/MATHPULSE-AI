@@ -342,6 +342,29 @@ export async function saveQuizResults(
       // non-critical
     }
   }
+
+  // Pipeline: emit quiz completion event (fire-and-forget)
+  try {
+    const { emitPipelineEvent, getStudentContext } = await import('./pipelineService');
+    const ctx = getStudentContext();
+    if (ctx) {
+      emitPipelineEvent({
+        student_id: lrn,
+        event_type: 'quiz',
+        event_data: {
+          quiz_id: quizId,
+          topic: questionsMeta[0]?.topic ?? subject,
+          score,
+          total_questions: answers.length,
+          correct_answers: answers.filter(a => a.correct).length,
+          source,
+        },
+        occurred_at: new Date().toISOString(),
+        class_id: ctx.classId,
+        teacher_id: ctx.teacherId,
+      });
+    }
+  } catch { /* non-critical */ }
 }
 
 // ─── GET STUDENT COMPETENCY ─────────────────────────────────
