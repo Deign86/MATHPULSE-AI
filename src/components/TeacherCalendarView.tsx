@@ -388,16 +388,16 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col px-[24px] xl:px-[32px] py-[24px] xl:py-[32px] overflow-hidden">
+    <div className="w-full h-full flex flex-col px-4 py-3 md:px-[24px] md:py-[24px] xl:px-[32px] xl:py-[32px] overflow-hidden">
       {/* Layout Grid */}
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 w-full max-w-[1400px] mx-auto">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 min-h-0 w-full max-w-[1400px] mx-auto">
         
         {/* Main Calendar Area */}
         <div className={`flex flex-col flex-1 min-w-0 transition-all duration-500 ${showSidebar ? 'lg:w-[65%] xl:w-[70%]' : 'lg:w-full'}`}>
           <div className="bg-white/90 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-full">
             
             {/* Solid Calendar Header */}
-            <div className="p-6 border-b border-[#a855f7] bg-[#a855f7] shrink-0 flex justify-between items-center rounded-t-[24px] relative overflow-hidden group">
+            <div className="p-3 md:p-6 border-b border-[#a855f7] bg-[#a855f7] shrink-0 flex justify-between items-center rounded-t-[24px] relative overflow-hidden group">
               {/* Subtle background decoration resembling the provided screenshot */}
               <div className="absolute -bottom-24 -right-12 w-64 h-64 bg-white/10 rounded-full"></div>
               <div className="absolute -top-20 left-1/4 w-40 h-40 bg-white/5 rounded-full"></div>
@@ -410,7 +410,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <h2 className="text-[22px] font-bold text-white w-44 text-center tracking-tight">{monthLabel(month)}</h2>
+                <h2 className="text-base md:text-[22px] font-bold text-white w-32 md:w-44 text-center tracking-tight">{monthLabel(month)}</h2>
                 <button
                   onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
                   aria-label="Next month"
@@ -440,14 +440,14 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
             {/* Grid Wrapper - Scrollable */}
             <div className="flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
               {/* Weekdays */}
-              <div className="grid grid-cols-7 text-center border-b border-slate-200/60 pb-5 shrink-0 sticky top-0 bg-white z-20 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.05)] px-4 pt-6">
+              <div className="grid grid-cols-7 text-center border-b border-slate-200/60 pb-2 md:pb-5 shrink-0 sticky top-0 bg-white z-20 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.05)] px-2 md:px-4 pt-4 md:pt-6">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-[12px] font-bold text-[#475569] uppercase tracking-widest">{day}</div>
+                  <div key={day} className="text-[9px] md:text-[12px] font-bold text-[#475569] uppercase tracking-widest">{day}</div>
                 ))}
               </div>
 
               {/* Days Grid - removed grid-rows to allow height expansion */}
-              <div className="grid grid-cols-7 gap-2 pb-6 px-4">
+              <div className="grid grid-cols-7 gap-1 md:gap-2 pb-3 md:pb-6 px-2 md:px-4">
                 {gridDays.map((day) => {
                   const key = toDateKey(day);
                   const dayEvs = eventsByDay.get(key) || [];
@@ -459,16 +459,16 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
                     <div
                       key={key}
                       onClick={() => setSelectedDay(new Date(day))}
-                      className={`group p-2 rounded-lg transition-all cursor-pointer border-2 flex flex-col relative min-h-[100px] xl:min-h-[120px] ${
+                      className={`group p-1 md:p-2 rounded-lg transition-all cursor-pointer border-2 flex flex-col relative min-h-[70px] md:min-h-[100px] xl:min-h-[120px] ${
                         selected
                           ? 'bg-purple-50/50 border-[#a855f7] shadow-sm z-10'
-                          : today 
+                          : today
                             ? 'bg-purple-50/20 border-purple-300 shadow-[inset_0_0_20px_rgba(168,85,247,0.05)] hover:bg-purple-50/40 hover:border-purple-400'
                             : 'border-transparent hover:bg-slate-50 hover:border-slate-200'
                       } ${!inMonth ? 'opacity-30 grayscale' : ''}`}
                     >
                       <div className="flex justify-between items-start">
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[14px] transition-all ${
+                        <span className={`w-5 h-5 md:w-7 md:h-7 rounded-full flex items-center justify-center font-bold text-xs md:text-[14px] transition-all ${
                           today
                             ? 'bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-white shadow-md'
                             : selected ? 'text-[#9333ea]' : 'text-[#1e293b]'
@@ -515,12 +515,12 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
               className="lg:w-[35%] xl:w-[30%] h-full shrink-0"
             >
               <div className="bg-white/90 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-full">
-                <div className="p-6 border-b border-[#f1f5f9] bg-white shrink-0 flex justify-between items-center relative overflow-hidden group">
+                <div className="p-4 md:p-6 border-b border-[#f1f5f9] bg-white shrink-0 flex justify-between items-center relative overflow-hidden group">
                   <div className="absolute top-[-30px] right-[-30px] w-24 h-24 bg-purple-50 rounded-full mix-blend-multiply filter blur-2xl opacity-50 transition-transform duration-700 group-hover:scale-150"></div>
-                  
+
                   <div className="relative z-10">
-                    <h2 className="text-[20px] font-bold text-[#1e293b]">{selectedDay.toLocaleDateString(undefined, { weekday: 'long' })}</h2>
-                    <p className="text-[13px] font-medium text-[#64748b]">{selectedDay.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                    <h2 className="text-base md:text-[20px] font-bold text-[#1e293b]">{selectedDay.toLocaleDateString(undefined, { weekday: 'long' })}</h2>
+                    <p className="text-[11px] md:text-[13px] font-medium text-[#64748b]">{selectedDay.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   </div>
                   <button 
                     onClick={() => openAdd(selectedDay)}
