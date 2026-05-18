@@ -122,14 +122,16 @@ export const markAllAsRead = async (userId: string): Promise<void> => {
     // Also query top-level notifications collection (legacy structure)
     const topLevelQuery = query(
       collection(db, 'notifications'),
-      where('userId', '==', userId),
-      where('read', '==', false)
+      where('userId', '==', userId)
     );
     const topLevelSnap = await getDocs(topLevelQuery);
 
     const updates: Promise<void>[] = [
       ...subcollectionSnap.docs.map((docSnap) => updateDoc(docSnap.ref, { isRead: true })),
-      ...topLevelSnap.docs.map((docSnap) => updateDoc(docSnap.ref, { read: true })),
+      ...topLevelSnap.docs.filter((docSnap) => {
+        const d = docSnap.data();
+        return !(d.isRead || d.read);
+      }).map((docSnap) => updateDoc(docSnap.ref, { isRead: true, read: true })),
     ];
 
     await Promise.all(updates);
