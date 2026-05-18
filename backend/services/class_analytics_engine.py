@@ -90,16 +90,19 @@ class ClassAnalyticsReport(BaseModel):
 # ─── Risk & Engagement Classification ─────────────────────────────────────
 
 def classify_risk(avg_score: float, quiz_count: int, days_since_active: Optional[int]) -> str:
+    """Map to WRI status bands. When no WRI is available, estimate from avg_score."""
     if quiz_count == 0:
-        return "Unassessed"
-    engagement_low = (days_since_active is None or days_since_active > 7) or quiz_count < 3
-    if avg_score < 50 and engagement_low:
-        return "Critical"
-    if avg_score < 60 or (avg_score < 75 and engagement_low):
-        return "High Risk"
-    if avg_score < 75:
-        return "Medium Risk"
-    return "Low Risk"
+        return "pending_assessment"
+    # Approximate WRI bands from avg_score (actual WRI uses D, G, P weights)
+    if avg_score >= 88:
+        return "safe"
+    if avg_score >= 80:
+        return "watch"
+    if avg_score >= 75:
+        return "intervene"
+    if avg_score >= 68:
+        return "critical"
+    return "at_risk"
 
 
 def classify_engagement(days_since_active: Optional[int], recent_quiz_count: int) -> str:
@@ -132,6 +135,10 @@ class ClassAnalyticsEngine:
         if not db:
             logger.error("Firestore client unavailable")
             return ClassAnalyticsReport(class_id=class_id, teacher_id=teacher_id, generated_at=_now_iso())
+
+        # Fast path: try reading from denormalized student_summaries (written by pipeline)
+        summaries_snap = list(db.collection("classes").document(class_id).collection("student_summaries").stream())
+        use_fast_path = len(summaries_snap) > 0 and not force_refresh
 
         # Fetch class info
         class_doc = db.collection("classrooms").document(class_id).get()
@@ -174,16 +181,25 @@ class ClassAnalyticsEngine:
         active_count = sum(1 for s in student_summaries if s.last_active and _days_since(s.last_active) <= 7)
         participation_rate = (active_count / student_count * 100) if student_count > 0 else 0.0
 
-        # Attention = High Risk + Critical
-        attention_count = sum(1 for s in student_summaries if s.risk_level in ("High Risk", "Critical"))
+        # Attention = intervene + critical + at_risk
+        attention_count = sum(1 for s in student_summaries if s.risk_level in ("intervene", "critical", "at_risk"))
 
         # Topic performance
         topic_perf = self._compute_topic_performance(student_summaries)
 
         # Risk distribution
-        risk_dist = {"Low Risk": 0, "Medium Risk": 0, "High Risk": 0, "Critical": 0, "Unassessed": 0}
+        risk_dist = {"safe": 0, "watch": 0, "intervene": 0, "critical": 0, "at_risk": 0, "pending_assessment": 0}
         for s in student_summaries:
-            risk_dist[s.risk_level] = risk_dist.get(s.risk_level, 0) + 1
+            # Prefer stored WRI status from managedStudents if available
+            stored_status = None
+            try:
+                ms_doc = db.collection("managedStudents").document(s.student_id).get()
+                if ms_doc.exists:
+                    stored_status = ms_doc.to_dict().get("riskStatus")
+            except Exception:
+                pass
+            status = stored_status if stored_status in risk_dist else s.risk_level
+            risk_dist[status] = risk_dist.get(status, 0) + 1
 
         # Generate AI insights
         insights = await self._generate_insights(

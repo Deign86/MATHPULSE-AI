@@ -26,13 +26,11 @@ import {
   getClassAnalytics,
   refreshClassInsights,
   type ClassAnalyticsReport,
-  type ClassInsights as BackendClassInsights,
 } from '../services/classAnalyticsService';
 import {
   getInterventionPlan,
   generateInterventionPlan,
   type InterventionPlan,
-  type LearningStep as BackendLearningStep,
 } from '../services/interventionService';
 import { InterventionStepGuide } from './InterventionStepGuide';
 import {
@@ -2726,23 +2724,30 @@ const AnalyticsView: React.FC<{
       return () => { cancelled = true; };
     }, [selectedClass.id]);
 
-    // Real-time listener: refetch when student_summaries change
+    // Real-time listener: refetch when student_summaries change (debounced)
     useEffect(() => {
       let unsubscribe: (() => void) | undefined;
+      let debounceTimer: ReturnType<typeof setTimeout> | undefined;
       (async () => {
         try {
           const { collection: firestoreCollection, onSnapshot: firestoreOnSnapshot } = await import('firebase/firestore');
           const { db: firestoreDb } = await import('../lib/firebase');
           const summariesRef = firestoreCollection(firestoreDb, 'classes', selectedClass.id, 'student_summaries');
+          let firstSnapshot = true;
           unsubscribe = firestoreOnSnapshot(summariesRef, () => {
-            // Summaries changed — refetch analytics from backend
-            getClassAnalytics(selectedClass.id)
-              .then(setBackendReport)
-              .catch(() => {});
+            // Skip the initial snapshot (we already fetched above)
+            if (firstSnapshot) { firstSnapshot = false; return; }
+            // Debounce: coalesce rapid writes into a single refetch
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+              getClassAnalytics(selectedClass.id)
+                .then(setBackendReport)
+                .catch(() => {});
+            }, 2000);
           });
         } catch { /* Firestore listener non-critical */ }
       })();
-      return () => { unsubscribe?.(); };
+      return () => { unsubscribe?.(); if (debounceTimer) clearTimeout(debounceTimer); };
     }, [selectedClass.id]);
 
     // Use backend data when available, fall back to local computation
@@ -3274,7 +3279,7 @@ const InterventionView: React.FC<{
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
   const [interventionPlan, setInterventionPlan] = useState<InterventionPlan | null>(null);
   const [interventionLoading, setInterventionLoading] = useState(true);
-  const [selectedStep, setSelectedStep] = useState<BackendLearningStep | null>(null);
+  const [selectedStep, setSelectedStep] = useState<import('../services/interventionService').LearningStep | null>(null);
   const [learningPath, setLearningPath] = useState<string>(initialCache?.learningPath || '');
   const [pathLoading, setPathLoading] = useState(true);
   const [gradeDraft, setGradeDraft] = useState(initialCache?.gradeDraft || student.grade || 'Grade 11');
@@ -4102,15 +4107,25 @@ const InterventionView: React.FC<{
                             doc.setFontSize(13);
                             doc.text('AI Analysis', 20, y); y += 8;
                             doc.setFontSize(10);
-                            doc.text(`Strengths: ${data.learning_strengths}`, 20, y); y += 7;
-                            doc.text(`Next Steps: ${data.next_steps_summary}`, 20, y); y += 12;
+                            const maxW = 170;
+                            const writeWrapped = (text: string) => {
+                              const lines = doc.splitTextToSize(text, maxW);
+                              for (const line of lines) {
+                                if (y > 270) { doc.addPage(); y = 20; }
+                                doc.text(line, 20, y); y += 5;
+                              }
+                              y += 2;
+                            };
+                            writeWrapped(`Strengths: ${data.learning_strengths}`);
+                            writeWrapped(`Next Steps: ${data.next_steps_summary}`);
+                            y += 4;
                             if (data.learning_path?.steps?.length) {
                               doc.setFontSize(13);
                               doc.text('Learning Path', 20, y); y += 8;
                               doc.setFontSize(10);
                               for (const step of data.learning_path.steps) {
                                 if (y > 270) { doc.addPage(); y = 20; }
-                                doc.text(`${step.step_number}. [${step.type}] ${step.title} (${step.duration_minutes} min, ${step.difficulty})`, 20, y); y += 6;
+                                writeWrapped(`${step.step_number}. [${step.type}] ${step.title} (${step.duration_minutes} min, ${step.difficulty})`);
                                 if (step.competency_tag) { doc.text(`   Competency: ${step.competency_tag}`, 20, y); y += 6; }
                               }
                               y += 6;
@@ -4122,7 +4137,7 @@ const InterventionView: React.FC<{
                               doc.setFontSize(10);
                               for (const rec of data.teacher_recommendations) {
                                 if (y > 270) { doc.addPage(); y = 20; }
-                                doc.text(`• ${rec}`, 20, y); y += 6;
+                                writeWrapped(`• ${rec}`);
                               }
                             }
                             doc.setFontSize(8);
@@ -4385,7 +4400,7 @@ const InterventionView: React.FC<{
           studentName={student.name}
           totalSteps={interventionPlan?.learning_path?.steps?.length || 3}
           onClose={() => setSelectedStep(null)}
-          onStepCompleted={(stepNum) => {
+          onStepCompleted={() => {
             setSelectedStep(null);
             // Refresh intervention plan
             getInterventionPlan(student.id).then(setInterventionPlan).catch(() => {});

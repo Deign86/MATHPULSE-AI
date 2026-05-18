@@ -40,7 +40,10 @@ async def _run_pipeline(payload: PipelineEventPayload):
 @router.post("/event", status_code=202)
 async def receive_event(payload: PipelineEventPayload, background_tasks: BackgroundTasks, request: Request):
     """Universal intake endpoint. Returns 202 immediately, processes async."""
-    _require_auth(request)
+    user = _require_auth(request)
+    # Students can only emit events for themselves
+    if user.role == "student" and payload.student_id != user.uid:
+        raise HTTPException(status_code=403, detail="Students can only emit events for their own ID")
     background_tasks.add_task(_run_pipeline, payload)
     return {"status": "accepted", "student_id": payload.student_id}
 

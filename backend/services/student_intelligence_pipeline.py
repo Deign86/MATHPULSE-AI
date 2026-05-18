@@ -111,7 +111,8 @@ class StudentIntelligencePipeline:
 
             # 4. Compute P from all activity (skip for session events)
             if event.event_type != "session":
-                new_p = self._compute_system_performance_avg(db, event.student_id, event)
+                d_score = managed.get("diagnosticScore") or profile.get("diagnostic", {}).get("overall_score")
+                new_p = self._compute_system_performance_avg(db, event.student_id, event, diagnostic_score=d_score)
                 profile["system_performance_avg"] = new_p
                 result.p_updated = True
                 result.new_p = new_p
@@ -297,7 +298,7 @@ class StudentIntelligencePipeline:
     # ─── P computation ─────────────────────────────────────────────────────
 
     def _compute_system_performance_avg(
-        self, db, student_id: str, current_event: StudentActivityEvent
+        self, db, student_id: str, current_event: StudentActivityEvent, diagnostic_score: Optional[float] = None
     ) -> float:
         """Compute P from ALL in-platform scores with source weights and recency."""
         scores = []
@@ -349,8 +350,8 @@ class StudentIntelligencePipeline:
             scores.append((event_score, source, dt))
 
         if not scores:
-            # Fallback to D
-            return self._load_profile(_get_db(), student_id).get("diagnostic_score") or 0.0
+            # Fallback to D (diagnostic score)
+            return float(diagnostic_score) if diagnostic_score is not None else 0.0
 
         # Weighted average
         weighted_sum = 0.0
@@ -385,9 +386,28 @@ class StudentIntelligencePipeline:
     def _compute_risk_trend(self, profile: Dict) -> str:
         qp = profile.get("quiz_performance", {})
         avg_all = qp.get("avg_score_all_time")
-        avg_7d = qp.get("avg_score_last_7_days")
-        if avg_all is None or avg_7d is None:
+        if avg_all is None:
             return "insufficient_data"
+        # Compute 7-day avg from recent_attempts
+        recent = qp.get("recent_attempts", [])
+        now = datetime.now(timezone.utc)
+        scores_7d = []
+        for a in recent:
+            try:
+                at = a.get("attempted_at", "")
+                if isinstance(at, str):
+                    dt = datetime.fromisoformat(at.replace("Z", "+00:00"))
+                elif hasattr(at, "seconds"):
+                    dt = datetime.fromtimestamp(at.seconds, tz=timezone.utc)
+                else:
+                    continue
+                if (now - dt).days <= 7:
+                    scores_7d.append(a.get("score", 0))
+            except Exception:
+                continue
+        if len(scores_7d) < 2:
+            return "insufficient_data"
+        avg_7d = sum(scores_7d) / len(scores_7d)
         if avg_7d > avg_all + 5:
             return "improving"
         if avg_7d < avg_all - 5:

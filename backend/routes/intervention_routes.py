@@ -39,9 +39,20 @@ async def generate_intervention(body: GenerateRequest, request: Request):
 
 @router.get("/{student_id}")
 async def get_intervention(student_id: str, request: Request):
-    """Get latest intervention plan. Auto-generates if missing or stale."""
+    """Get latest intervention plan. Returns persisted doc if exists, otherwise generates."""
     user = _require_auth(request)
 
+    # Try to return persisted plan first (fast, no AI cost)
+    try:
+        from firebase_admin import firestore as fs
+        db = fs.client()
+        doc = db.collection("intervention_plans").document(student_id).get()
+        if doc.exists:
+            return doc.to_dict()
+    except Exception:
+        pass
+
+    # No persisted plan — generate one
     from services.intervention_engine import get_intervention_engine
     engine = get_intervention_engine()
     plan = await engine.generate_full_intervention(student_id, force=False)

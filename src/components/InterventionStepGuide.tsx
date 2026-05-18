@@ -48,7 +48,8 @@ export const InterventionStepGuide: React.FC<Props> = ({
   const handleComplete = async () => {
     setCompleting(true);
     try {
-      await completeStep(studentId, step.step_number, 80, step.duration_minutes);
+      // Score is null — actual score comes from practice/assessment results, not this modal
+      await completeStep(studentId, step.step_number, 0, step.duration_minutes);
       onStepCompleted(step.step_number);
       toast.success(`Step ${step.step_number} completed! 🎉`);
       onClose();
@@ -149,6 +150,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
               <div className="px-4 py-3 border-b border-slate-100 bg-white">
                 <p className="text-[12px] font-semibold text-[#1e293b] flex items-center gap-1.5">
                   <MessageCircle className="w-3.5 h-3.5 text-indigo-500" /> AI Guide
+                  <span className="text-[9px] font-medium text-slate-400 ml-1">(Preview)</span>
                 </p>
               </div>
               <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[200px] max-h-[300px]">
