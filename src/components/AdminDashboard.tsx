@@ -24,10 +24,21 @@ import {
   getDashboardStats,
   getAuditLogs,
   getTopPerformers,
+  getWeeklyActivity,
+  getSubjectBreakdown,
+  getPriorityAttention,
+  getGlobalMastery,
+  getDifficultyDistribution,
   type DashboardStats,
   type AuditLogEntry,
   type TopPerformer,
+  type WeeklyActivityData,
+  type SubjectBreakdownItem,
+  type PriorityAttentionData,
+  type GlobalMasteryData,
+  type DifficultyDistribution,
 } from '../services/adminService';
+import { apiService, type InferenceMetricsResponse } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface AdminDashboardProps {
@@ -47,6 +58,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const [recentActivity, setRecentActivity] = useState<AuditLogEntry[]>([]);
   const [topPerformers, setTopPerformers] = useState<TopPerformer[]>([]);
   const [loadingOverview, setLoadingOverview] = useState(true);
+  const [weeklyActivity, setWeeklyActivity] = useState<WeeklyActivityData[]>([]);
+  const [inferenceMetrics, setInferenceMetrics] = useState<InferenceMetricsResponse['metrics'] | null>(null);
+  const [subjectBreakdown, setSubjectBreakdown] = useState<SubjectBreakdownItem[]>([]);
+  const [priorityAttention, setPriorityAttention] = useState<PriorityAttentionData | null>(null);
+  const [globalMastery, setGlobalMastery] = useState<GlobalMasteryData | null>(null);
+  const [difficultyDist, setDifficultyDist] = useState<DifficultyDistribution | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const { unreadCount } = useNotifications();
   const [isSubjectsHelpModalOpen, setIsSubjectsHelpModalOpen] = useState(false);
@@ -85,7 +102,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   useEffect(() => {
     if (activeTab !== 'Overview') return;
     if (!userProfile) return;
-    // Only query audit logs if user has admin/teacher role
     const normalizedRole = String(userProfile.role || '').toLowerCase();
     const canReadAuditLogs = normalizedRole === 'admin' || normalizedRole === 'teacher';
 
@@ -95,11 +111,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       getDashboardStats(),
       canReadAuditLogs ? getAuditLogs() : Promise.resolve([]),
       getTopPerformers(3),
-    ]).then(([stats, logs, performers]) => {
+      getWeeklyActivity(),
+      getSubjectBreakdown(),
+      getPriorityAttention(),
+      getGlobalMastery(),
+      getDifficultyDistribution(),
+      apiService.getInferenceMetrics().catch(() => null),
+    ]).then(([stats, logs, performers, weekly, subjects, priority, mastery, difficulty, inference]) => {
       if (cancelled) return;
       setDashStats(stats);
       setRecentActivity(logs.slice(0, 4));
       setTopPerformers(performers);
+      setWeeklyActivity(weekly);
+      setSubjectBreakdown(subjects);
+      setPriorityAttention(priority);
+      setGlobalMastery(mastery);
+      setDifficultyDist(difficulty);
+      if (inference) setInferenceMetrics(inference.metrics);
     }).catch(console.error).finally(() => {
       if (!cancelled) setLoadingOverview(false);
     });
@@ -122,7 +150,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       iconColor: 'text-indigo-600',
     },
     {
-      label: 'AI Inferences',
+      label: 'XP Events',
       value: (dashStats?.aiPredictions ?? 0).toLocaleString(),
       icon: Zap,
       color: 'bg-amber-100',
@@ -233,7 +261,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                     <Zap size={13} className="text-amber-600" />
-                    <span className="text-xs font-display font-semibold text-amber-600">{(dashStats?.aiPredictions ?? 0).toLocaleString()} inferences</span>
+                    <span className="text-xs font-display font-semibold text-amber-600">{(dashStats?.aiPredictions ?? 0).toLocaleString()} XP events</span>
                   </div>
                 </div>
               )}
@@ -316,7 +344,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                     </div>
                     <div className="flex items-center gap-2 py-1 px-3 bg-white/10 backdrop-blur-md rounded-full w-fit border border-white/10">
                       <TrendingUp size={12} className="text-emerald-400" />
-                      <span className="text-white text-[10px] font-bold tracking-wide">+12.5% increase</span>
+                      <span className="text-white text-[10px] font-bold tracking-wide">{dashStats?.activeTeachers ?? 0} teachers · {dashStats?.totalClasses ?? 0} classes</span>
                     </div>
                   </div>
                   <div className="absolute -bottom-6 -right-6 opacity-10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 pointer-events-none">
@@ -364,15 +392,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   </div>
                   <div className="flex-1 w-full min-h-[200px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[
-                        { name: 'M', ai: 400, man: 240 },
-                        { name: 'T', ai: 300, man: 139 },
-                        { name: 'W', ai: 520, man: 280 },
-                        { name: 'T', ai: 480, man: 390 },
-                        { name: 'F', ai: 600, man: 480 },
-                        { name: 'S', ai: 200, man: 100 },
-                        { name: 'S', ai: 150, man: 90 },
-                      ]} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                      <BarChart data={weeklyActivity} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 800, fill: '#cbd5e1' }} dy={10} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 800, fill: '#cbd5e1' }} />
@@ -392,30 +412,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   <div className="flex items-start justify-between mb-1">
                     <div>
                       <h3 className="text-[16px] font-bold text-[#1e293b]">AI Model Status</h3>
-                      <p className="text-[11px] text-slate-400 font-medium">Inference Tracking</p>
+                      <p className="text-[11px] text-slate-400 font-medium">Success Rate</p>
                     </div>
                     <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
                       <Activity size={16} className="text-indigo-600" />
                     </div>
                   </div>
                   <div className="flex items-baseline gap-2 mb-4">
-                    <span className="text-[38px] font-display font-black text-indigo-600 tracking-tighter leading-none">160</span>
-                    <span className="text-[10px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider">Optimal</span>
+                    {inferenceMetrics ? (() => {
+                      const completed = inferenceMetrics.requests_ok + inferenceMetrics.requests_error;
+                      const rate = completed > 0
+                        ? Math.round((inferenceMetrics.requests_ok / completed) * 100)
+                        : 100;
+                      const healthy = rate >= 90;
+                      return (<>
+                        <span className="text-[38px] font-display font-black text-indigo-600 tracking-tighter leading-none">{rate}%</span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${healthy ? 'text-emerald-500 bg-emerald-50' : 'text-amber-500 bg-amber-50'}`}>
+                          {healthy ? 'Optimal' : `${inferenceMetrics.requests_error} errors`}
+                        </span>
+                      </>);
+                    })() : <span className="text-[38px] font-display font-black text-indigo-600 tracking-tighter leading-none">...</span>}
                   </div>
-                  <div className="flex-1 min-h-[120px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={[
-                        { v: 10 }, { v: 15 }, { v: 12 }, { v: 25 }, { v: 18 }, { v: 35 }, { v: 28 }, { v: 45 }
-                      ]}>
-                        <defs>
-                          <linearGradient id="colorStatus" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15}/>
-                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <Area type="monotone" dataKey="v" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorStatus)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                  <div className="flex-1 flex flex-col justify-center gap-3">
+                    {inferenceMetrics && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.round((inferenceMetrics.requests_ok / (inferenceMetrics.requests_ok + inferenceMetrics.requests_error || 1)) * 100)}%` }}></div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                          <span>{inferenceMetrics.requests_ok.toLocaleString()} OK</span>
+                          <span>{inferenceMetrics.requests_error.toLocaleString()} failed</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400">{inferenceMetrics.requests_total.toLocaleString()} total attempts · {inferenceMetrics.retries_total.toLocaleString()} retries</p>
+                      </>
+                    )}
                   </div>
                   <button onClick={() => setActiveTab('AI Monitoring')} className="w-full mt-4 py-3 bg-slate-50 text-[#1e293b] text-[11px] font-black uppercase tracking-[0.15em] rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2.5 group/btn">
                     Health Check <ArrowUpRight size={14} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
@@ -494,24 +526,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   {/* Priority Attention Card */}
                   <div className="bg-[#1e293b] rounded-[28px] p-6 text-white shadow-sm shadow-slate-900/10 relative overflow-hidden group min-h-[190px] flex flex-col justify-between shrink-0">
                     <div className="absolute -bottom-10 -right-10 opacity-5 group-hover:scale-110 group-hover:-rotate-12 transition-all duration-700 pointer-events-none">
-                      <AlertCircle size={200} />
+                      {(priorityAttention?.atRiskCount ?? 0) > 0 ? <AlertCircle size={200} /> : <CheckCircle2 size={200} />}
                     </div>
                     <div className="relative z-10">
                       <div className="flex items-start justify-between">
-                        <div className="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-rose-500/20">
-                          <AlertCircle size={18} className="text-white" />
+                        <div className={`w-10 h-10 ${(priorityAttention?.atRiskCount ?? 0) > 0 ? 'bg-rose-500 shadow-rose-500/20' : 'bg-emerald-500 shadow-emerald-500/20'} rounded-xl flex items-center justify-center mb-4 shadow-lg`}>
+                          {(priorityAttention?.atRiskCount ?? 0) > 0 ? <AlertCircle size={18} className="text-white" /> : <CheckCircle2 size={18} className="text-white" />}
                         </div>
                         <div className="px-2.5 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></div>
-                          <span className="text-[9px] font-black uppercase tracking-widest">Urgent</span>
+                          <div className={`w-1.5 h-1.5 rounded-full ${(priorityAttention?.atRiskCount ?? 0) > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'}`}></div>
+                          <span className="text-[9px] font-black uppercase tracking-widest">{(priorityAttention?.atRiskCount ?? 0) > 0 ? 'Urgent' : 'All Clear'}</span>
                         </div>
                       </div>
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">Priority Attention</h4>
-                      <h3 className="text-xl font-display font-black tracking-tight leading-tight">General Mathematics</h3>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">
+                        {(priorityAttention?.atRiskCount ?? 0) > 0 ? 'Priority Attention' : 'Status'}
+                      </h4>
+                      <h3 className="text-xl font-display font-black tracking-tight leading-tight">
+                        {(priorityAttention?.atRiskCount ?? 0) > 0 ? priorityAttention?.subjectName : 'No At-Risk Students'}
+                      </h3>
                     </div>
                     <div className="relative z-10 pt-2 flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-400">12 At-Risk Students</span>
-                      <button className="text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors">Review</button>
+                      <span className="text-xs font-medium text-slate-400">
+                        {(priorityAttention?.atRiskCount ?? 0) > 0
+                          ? `${priorityAttention!.atRiskCount} At-Risk Student${priorityAttention!.atRiskCount !== 1 ? 's' : ''}`
+                          : 'All students on track'}
+                      </span>
+                      {(priorityAttention?.atRiskCount ?? 0) > 0 && (
+                        <button onClick={() => setActiveTab('Analytics')} className="text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors">Review</button>
+                      )}
                     </div>
                   </div>
 
@@ -526,8 +568,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                         <PieChart>
                           <Pie
                             data={[
-                              { name: 'Mastery', value: 76 },
-                              { name: 'Remaining', value: 24 }
+                              { name: 'Mastery', value: globalMastery?.avgMastery ?? 0 },
+                              { name: 'Remaining', value: 100 - (globalMastery?.avgMastery ?? 0) }
                             ]}
                             cx="50%"
                             cy="50%"
@@ -545,17 +587,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-[36px] font-display font-black text-[#1e293b] leading-none">76%</span>
+                        <span className="text-[36px] font-display font-black text-[#1e293b] leading-none">{globalMastery?.avgMastery ?? 0}%</span>
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] mt-1">Overall</span>
                       </div>
                     </div>
                     <div className="mt-8 flex items-center gap-12">
                       <div className="text-center">
-                        <p className="text-xl font-display font-black text-indigo-600 leading-none">1,762</p>
+                        <p className="text-xl font-display font-black text-indigo-600 leading-none">{(globalMastery?.passed ?? 0).toLocaleString()}</p>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Passed</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xl font-display font-black text-slate-300 leading-none">762</p>
+                        <p className="text-xl font-display font-black text-slate-300 leading-none">{(globalMastery?.pending ?? 0).toLocaleString()}</p>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Pending</p>
                       </div>
                     </div>
@@ -572,7 +614,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                         <h3 className="text-[15px] font-bold text-[#1e293b]">Subject Breakdown</h3>
                         <p className="text-[11px] text-slate-400 font-medium">Core vs STEM performance</p>
                       </div>
-                      <button className="px-3 py-1.5 bg-white border border-slate-200 text-[10px] font-black text-[#1e293b] uppercase tracking-widest rounded-lg hover:bg-slate-50 transition-all">Export</button>
+                      <button onClick={() => {
+                        const csv = ['Subject,Category,Enrolled,Progress%', ...subjectBreakdown.map(s => `${s.name},${s.type},${s.count},${s.progress}`)].join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = 'subject-breakdown.csv';
+                        a.click();
+                      }} className="px-3 py-1.5 bg-white border border-slate-200 text-[10px] font-black text-[#1e293b] uppercase tracking-widest rounded-lg hover:bg-slate-50 transition-all">Export</button>
                     </div>
                     <div className="flex-1 overflow-x-auto">
                       <table className="w-full text-left">
@@ -585,12 +634,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50/60">
-                          {[
-                            { name: 'General Mathematics', type: 'Core', count: '4.2k', progress: 85 },
-                            { name: 'Pre-Calculus (STEM)', type: 'STEM', count: '1.8k', progress: 62 },
-                            { name: 'Stats & Probability', type: 'Core', count: '3.1k', progress: 78 },
-                            { name: 'Basic Calculus', type: 'STEM', count: '1.2k', progress: 45 },
-                          ].map((sub, idx) => (
+                          {subjectBreakdown.map((sub, idx) => (
                             <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
                               <td className="px-6 py-4">
                                 <div className="flex flex-col">
@@ -654,9 +698,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                       </div>
                       <div className="space-y-5">
                         {[
-                          { label: 'Foundational', color: 'bg-emerald-400', val: 45 },
-                          { label: 'Intermediate', color: 'bg-indigo-400', val: 35 },
-                          { label: 'Advanced', color: 'bg-rose-400', val: 20 },
+                          { label: 'Foundational', color: 'bg-emerald-400', val: difficultyDist?.foundational ?? 0 },
+                          { label: 'Intermediate', color: 'bg-indigo-400', val: difficultyDist?.intermediate ?? 0 },
+                          { label: 'Advanced', color: 'bg-rose-400', val: difficultyDist?.advanced ?? 0 },
                         ].map((item, idx) => (
                           <div key={idx}>
                             <div className="flex justify-between items-center mb-1.5">

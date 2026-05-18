@@ -9,7 +9,6 @@ import { FeatureSpendingCard } from '../../components/admin/ai-monitoring/Featur
 import { ResourceRankingRow } from '../../components/admin/ai-monitoring/ResourceRankingRow';
 import { SystemDirectoryModal } from '../../components/admin/ai-monitoring/SystemDirectoryModal';
 import { PricingInfoTooltip } from '../../components/admin/ai-monitoring/PricingInfoTooltip';
-import { Skeleton } from '../../components/ui/skeleton';
 
 const AIMonitoringPage: React.FC = () => {
   const { data, isLoading, refetch } = useAIMonitoring();
@@ -23,13 +22,39 @@ const AIMonitoringPage: React.FC = () => {
 
   if (isLoading || !data) {
     return (
-      <div className="space-y-4 p-1">
-        <Skeleton className="h-12 w-full rounded-lg" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+      <div className="space-y-5 p-1">
+        {/* Promo banner skeleton */}
+        <div className="h-[72px] w-full rounded-xl bg-slate-100 animate-pulse" />
+        {/* Header row */}
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-48 rounded bg-slate-100 animate-pulse" />
+          <div className="flex gap-2">
+            <div className="h-8 w-24 rounded-lg bg-slate-100 animate-pulse" />
+            <div className="h-8 w-20 rounded-lg bg-slate-100 animate-pulse" />
+          </div>
         </div>
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-[120px] rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 animate-pulse" />
+          ))}
+        </div>
+        {/* Secondary cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-[130px] rounded-xl border border-slate-100 bg-slate-50/50 animate-pulse" />
+          ))}
+        </div>
+        {/* Resource breakdown */}
+        <div className="rounded-xl border border-slate-100 bg-white p-5 space-y-4">
+          <div className="h-4 w-40 rounded bg-slate-100 animate-pulse" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="h-3 w-28 rounded bg-slate-100 animate-pulse" />
+              <div className="flex-1 h-2 rounded-full bg-slate-100 animate-pulse" />
+              <div className="h-3 w-16 rounded bg-slate-100 animate-pulse" />
+            </div>
+          ))}
         </div>
       </div>
     );

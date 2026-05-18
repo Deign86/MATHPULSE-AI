@@ -67,9 +67,13 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
   const fetchQuestions = useCallback(async () => {
     setQuestionsLoading(true);
     try {
-      const q = query(collection(db, 'quizBattleQuestionBank'), limit(50));
+      // Backend stores questions at: question_bank/{grade_level}/{topic}/questions/questions/{docId}
+      const q = query(
+        collection(db, 'question_bank', String(gradeLevel), topic, 'questions', 'questions'),
+        limit(50)
+      );
       const snap = await getDocs(q);
-      const items: QuestionItem[] = snap.docs.map((d) => {
+      let items: QuestionItem[] = snap.docs.map((d) => {
         const data = d.data();
         return {
           id: d.id,
@@ -82,13 +86,31 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           grade_level: data.grade_level || 11,
         };
       });
+      // Fallback: also check legacy quizBattleQuestionBank collection
+      if (items.length === 0) {
+        const legacyQ = query(collection(db, 'quizBattleQuestionBank'), limit(50));
+        const legacySnap = await getDocs(legacyQ);
+        items = legacySnap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            question: data.question || '',
+            choices: data.choices || [],
+            correct_answer: data.correct_answer || '',
+            explanation: data.explanation || '',
+            topic: data.topic || '',
+            difficulty: data.difficulty || 'medium',
+            grade_level: data.grade_level || 11,
+          };
+        });
+      }
       setQuestions(items);
     } catch (err) {
       console.warn('[QuestionBankPanel] Failed to load questions:', err);
     } finally {
       setQuestionsLoading(false);
     }
-  }, []);
+  }, [gradeLevel, topic]);
 
   useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
 
