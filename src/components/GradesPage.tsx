@@ -103,8 +103,8 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
   const averageScore = gradeSummary?.averageScore ? Math.round(gradeSummary.averageScore) : 0;
   const totalQuizzes = gradeSummary?.quizzesCompleted ?? 0;
   
-  // Calculate GPA approximation (assuming 0-100 scale mapping to 0.0-4.0)
-  const gpa = averageScore > 0 ? ((averageScore / 100) * 4.0).toFixed(2) : '0.00';
+  // DepEd SHS General Average (percentage-based, 75 passing)
+  const generalAverage = averageScore > 0 ? averageScore.toString() : '—';
 
   const colorBySubjectId: Record<SubjectId, string> = {
     'gen-math': 'indigo',
@@ -302,11 +302,11 @@ const subjectPerformance = Object.entries({})
               <Award className="w-5 h-5 sm:w-7 sm:h-7" />
             </div>
             <p className="text-slate-400 font-bold text-[9px] sm:text-sm tracking-wider sm:tracking-wide uppercase h-6 sm:h-auto flex items-end sm:block">
-              <span className="sm:hidden">GPA</span>
-              <span className="hidden sm:inline">Overall GPA</span>
+              <span className="sm:hidden">GEN. AVE.</span>
+              <span className="hidden sm:inline">General Average</span>
             </p>
             <div className="flex items-end gap-2 mt-1 sm:mt-2">
-              <h3 className="text-xl sm:text-4xl font-display font-black text-slate-800">{gpa}</h3>
+              <h3 className="text-xl sm:text-4xl font-display font-black text-slate-800">{generalAverage}{averageScore > 0 ? '%' : ''}</h3>
             </div>
           </div>
         </div>

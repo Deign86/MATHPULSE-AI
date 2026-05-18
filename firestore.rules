@@ -323,6 +323,13 @@ service cloud.firestore {
       allow delete: if isSignedIn() && request.auth.uid == docId || isAdmin();
     }
 
+    // ── Diagnostic Results Cache (AI analysis cached per student) ──
+    match /diagnosticResults/{userId}/cache/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
     // ── Diagnostic Sessions (backend writes, students read their own) ──
     match /diagnosticSessions/{docId} {
       allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isTeacherOrAdmin());

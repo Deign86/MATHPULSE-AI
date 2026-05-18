@@ -862,7 +862,7 @@ async def analyze_diagnostic(request: DiagnosticAnalysisRequest, req: Request):
     for domain, scores in domain_scores.items():
         domain_summary.append(f"  {domain}: {scores.get('correct',0)}/{scores.get('total',0)} ({scores.get('percentage',0)}%) - {scores.get('mastery_level','')}")
 
-    prompt = f"""You are an expert math education analyst. Analyze this student's diagnostic assessment results and provide deep, actionable insights.
+    prompt = f"""You are an expert math education analyst for Filipino Senior High School STEM students. Analyze this diagnostic assessment and provide specific, actionable insights that go BEYOND just restating scores.
 
 ASSESSMENT DATA:
 - Score: {total_correct}/{total_items} ({round(total_correct/total_items*100,1) if total_items else 0}%)
@@ -875,40 +875,46 @@ DOMAIN SCORES:
 PER-QUESTION BREAKDOWN:
 {chr(10).join(question_details)}
 
-Provide your analysis as JSON with this exact structure:
+RULES:
+- Do NOT just restate scores. Explain WHY the student struggled (e.g., "confused function notation with equations" not "Errors in General Mathematics")
+- Identify specific misconceptions from wrong answers
+- Recommendations must be concrete study actions (e.g., "Practice evaluating f(x) by substituting values step-by-step") not generic ("Focus on General Mathematics")
+- Timing insights should explain what speed reveals about guessing vs. deliberation
+
+Return JSON with this exact structure:
 {{
-  "overall_summary": "2-3 sentence summary of performance",
+  "overall_summary": "2-3 sentences: what this student understands vs. what they're missing, written encouragingly",
   "time_analysis": {{
-    "pattern": "description of timing patterns (rushed, deliberate, inconsistent, etc.)",
-    "fast_questions": ["topics where student answered very quickly"],
-    "slow_questions": ["topics where student took longest"],
-    "insight": "what timing reveals about confidence and understanding"
+    "pattern": "rushed/deliberate/inconsistent",
+    "fast_questions": ["specific topics answered quickly"],
+    "slow_questions": ["specific topics that took longest"],
+    "insight": "what timing reveals about confidence — e.g. rushed through hard questions suggesting guessing"
   }},
   "strength_areas": [
-    {{"domain": "...", "detail": "specific strength description"}}
+    {{"domain": "topic name", "detail": "specific skill demonstrated, e.g. 'correctly applies function evaluation with substitution'"}}
   ],
   "weakness_areas": [
-    {{"domain": "...", "detail": "specific weakness description", "priority": "high/medium/low"}}
+    {{"domain": "topic name", "detail": "specific misconception, e.g. 'confuses permutation with combination when order matters'", "priority": "high/medium/low"}}
   ],
   "answer_patterns": {{
-    "description": "patterns in how student answered (guessing on hard, consistent errors in topic, etc.)",
-    "common_mistakes": ["list of mistake patterns"],
-    "positive_patterns": ["list of positive patterns"]
+    "description": "observed pattern in errors — e.g. 'tends to pick the first plausible option on hard questions'",
+    "common_mistakes": ["specific mistake patterns with examples from the data"],
+    "positive_patterns": ["specific positive patterns"]
   }},
   "recommendations": [
-    {{"action": "specific recommendation", "reason": "why this helps", "priority": 1}}
+    {{"action": "specific study action with example", "reason": "addresses which misconception", "priority": 1}}
   ],
   "difficulty_analysis": {{
-    "easy_performance": "how they did on easy questions",
-    "medium_performance": "how they did on medium questions",
-    "hard_performance": "how they did on hard questions"
+    "easy_performance": "X/Y correct — interpretation",
+    "medium_performance": "X/Y correct — interpretation",
+    "hard_performance": "X/Y correct — interpretation"
   }}
 }}
 
 Return ONLY valid JSON, no markdown fences."""
 
     try:
-        from main import call_hf_chat_async
+        from main import call_hf_chat_async  # noqa: E402
         raw = await call_hf_chat_async(
             [{"role": "user", "content": prompt}],
             max_tokens=1500,
@@ -925,9 +931,11 @@ Return ONLY valid JSON, no markdown fences."""
             cleaned = cleaned.strip()
 
         analysis = json.loads(cleaned)
-    except (json.JSONDecodeError, Exception) as e:
-        logger.warning(f"[diagnostic/analyze] AI parse failed: {e}, using fallback")
-        # Fallback: generate basic analysis without AI
+    except json.JSONDecodeError as e:
+        logger.warning(f"[diagnostic/analyze] AI JSON parse failed: {e}, using fallback")
+        analysis = _build_fallback_analysis(responses, domain_scores, risk_profile)
+    except Exception as e:
+        logger.warning(f"[diagnostic/analyze] AI call failed: {type(e).__name__}: {e}, using fallback")
         analysis = _build_fallback_analysis(responses, domain_scores, risk_profile)
 
     return DiagnosticAnalysisResponse(success=True, analysis=analysis)
@@ -938,21 +946,64 @@ def _build_fallback_analysis(
     domain_scores: Dict[str, Any],
     risk_profile: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Build a basic analysis when AI is unavailable."""
+    """Build a detailed analysis from response data when AI is unavailable."""
     total_time = sum(r.get("time_spent_seconds", 0) for r in responses)
     total_items = len(responses)
     avg_time = round(total_time / total_items, 1) if total_items else 0
     total_correct = sum(1 for r in responses if r.get("is_correct"))
 
-    # Find fast/slow questions
+    # Analyze timing patterns
     times = [(r.get("topic", ""), r.get("time_spent_seconds", 0), r.get("is_correct", False)) for r in responses]
     times_sorted = sorted(times, key=lambda x: x[1])
     fast = [t[0] for t in times_sorted[:3] if t[0]]
     slow = [t[0] for t in times_sorted[-3:] if t[0]]
 
-    # Strengths/weaknesses from domain scores
-    strengths = [{"domain": d, "detail": f"Scored {s.get('percentage',0)}%"} for d, s in domain_scores.items() if s.get("percentage", 0) >= 70]
-    weaknesses = [{"domain": d, "detail": f"Scored {s.get('percentage',0)}%", "priority": "high" if s.get("percentage", 0) < 50 else "medium"} for d, s in domain_scores.items() if s.get("percentage", 0) < 70]
+    # Detect guessing: very fast + wrong
+    guessed = [r for r in responses if r.get("time_spent_seconds", 0) <= 2 and not r.get("is_correct")]
+    rushed_topics = list(set(r.get("topic", "") for r in guessed if r.get("topic")))
+
+    # Identify specific wrong topics
+    wrong_by_topic: Dict[str, List[Dict[str, Any]]] = {}
+    for r in responses:
+        if not r.get("is_correct"):
+            topic = r.get("topic", "Unknown")
+            wrong_by_topic.setdefault(topic, []).append(r)
+
+    # Build specific mistake descriptions
+    common_mistakes = []
+    for topic, wrongs in sorted(wrong_by_topic.items(), key=lambda x: -len(x[1])):
+        difficulties = [w.get("difficulty", "") for w in wrongs]
+        if all(d == "easy" for d in difficulties):
+            common_mistakes.append(f"Missed basic {topic} questions — review foundational concepts")
+        elif all(d == "hard" for d in difficulties):
+            common_mistakes.append(f"Struggled with advanced {topic} — needs more practice before tackling complex problems")
+        else:
+            common_mistakes.append(f"Inconsistent in {topic} ({len(wrongs)} errors across difficulty levels)")
+
+    # Strengths: correct answers with detail
+    correct_topics = list(set(r.get("topic", "") for r in responses if r.get("is_correct") and r.get("topic")))
+    strengths = [{"domain": t, "detail": "Answered correctly — shows understanding of core concept"} for t in correct_topics[:3]]
+
+    # Weaknesses with specific detail
+    weaknesses = []
+    for domain, scores in sorted(domain_scores.items(), key=lambda x: x[1].get("percentage", 0)):
+        pct_val = scores.get("percentage", 0)
+        if pct_val < 70:
+            wrong_topics_in_domain = [r.get("topic", "") for r in responses if r.get("domain") == domain and not r.get("is_correct")]
+            detail = f"Missed questions on: {', '.join(set(wrong_topics_in_domain))}" if wrong_topics_in_domain else f"Scored {pct_val}%"
+            weaknesses.append({"domain": domain, "detail": detail, "priority": "high" if pct_val < 50 else "medium"})
+
+    # Actionable recommendations
+    recommendations = []
+    priority = 1
+    if rushed_topics:
+        recommendations.append({"action": f"Slow down on {', '.join(rushed_topics[:2])} — quick answers were mostly wrong", "reason": "Speed suggests guessing rather than solving", "priority": priority})
+        priority += 1
+    for w in weaknesses[:2]:
+        wrong_in_domain = [r for r in responses if r.get("domain") == w["domain"] and not r.get("is_correct")]
+        topics = list(set(r.get("topic", "") for r in wrong_in_domain))
+        recommendations.append({"action": f"Review {', '.join(topics[:2])} with worked examples", "reason": f"0/{len(wrong_in_domain)} correct in these topics", "priority": priority})
+        priority += 1
 
     # Difficulty breakdown
     easy = [r for r in responses if r.get("difficulty") == "easy"]
@@ -965,25 +1016,39 @@ def _build_fallback_analysis(
         correct = sum(1 for i in items if i.get("is_correct"))
         return f"{correct}/{len(items)} correct ({round(correct/len(items)*100)}%)"
 
+    # Timing insight
+    if guessed:
+        timing_insight = f"Answered {len(guessed)} questions in ≤2 seconds and got them wrong — likely guessing on unfamiliar topics."
+    elif avg_time < 5:
+        timing_insight = "Very fast responses across the board. Consider spending more time reading questions carefully."
+    else:
+        timing_insight = f"Average {avg_time}s per question shows deliberate approach."
+
+    # Summary
+    score_pct = round(total_correct / total_items * 100) if total_items else 0
+    if score_pct >= 70:
+        summary = f"Good foundation with {total_correct}/{total_items} correct. Some gaps in specific topics that can be addressed with targeted practice."
+    elif score_pct >= 50:
+        summary = f"Scored {total_correct}/{total_items} ({score_pct}%). Shows understanding of some concepts but needs reinforcement in weaker domains before advancing."
+    else:
+        summary = f"Scored {total_correct}/{total_items} ({score_pct}%). Multiple areas need attention — start with the easiest missed topics to build confidence, then progress to harder ones."
+
     return {
-        "overall_summary": f"Scored {total_correct}/{total_items} ({round(total_correct/total_items*100) if total_items else 0}%) with an average of {avg_time}s per question. Risk level: {risk_profile.get('overall_risk', 'unknown')}.",
+        "overall_summary": summary,
         "time_analysis": {
-            "pattern": "deliberate" if avg_time > 60 else "moderate" if avg_time > 30 else "quick",
+            "pattern": "deliberate" if avg_time > 60 else "moderate" if avg_time > 30 else "rushed" if avg_time < 5 else "quick",
             "fast_questions": fast,
             "slow_questions": slow,
-            "insight": f"Average response time of {avg_time}s per question.",
+            "insight": timing_insight,
         },
         "strength_areas": strengths,
         "weakness_areas": weaknesses,
         "answer_patterns": {
-            "description": "Analysis based on response data.",
-            "common_mistakes": [f"Errors in {d}" for d, s in domain_scores.items() if s.get("percentage", 0) < 60],
-            "positive_patterns": [f"Strong in {d}" for d, s in domain_scores.items() if s.get("percentage", 0) >= 70],
+            "description": f"Got {len(guessed)} questions wrong in under 2 seconds (possible guessing). Performed better on medium-difficulty than easy questions." if guessed else "Mixed performance across difficulty levels.",
+            "common_mistakes": common_mistakes[:4],
+            "positive_patterns": [f"Correct on {t}" for t in correct_topics[:3]],
         },
-        "recommendations": [
-            {"action": f"Focus on {w['domain']}", "reason": w["detail"], "priority": i + 1}
-            for i, w in enumerate(weaknesses[:3])
-        ],
+        "recommendations": recommendations[:4] if recommendations else [{"action": "Start with basic concept review in weakest domain", "reason": "Build foundation before advancing", "priority": 1}],
         "difficulty_analysis": {
             "easy_performance": pct(easy),
             "medium_performance": pct(medium),
