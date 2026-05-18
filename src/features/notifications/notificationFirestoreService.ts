@@ -101,8 +101,19 @@ export const getUserNotifications = async (
 export const markAsRead = async (userId: string, notificationId: string): Promise<void> => {
   if (!requireAuth()) return;
   try {
-    const notificationRef = doc(db, 'notifications', userId, 'items', notificationId);
-    await updateDoc(notificationRef, { isRead: true });
+    // Update subcollection (new structure) — uses isRead field
+    const subRef = doc(db, 'notifications', userId, 'items', notificationId);
+    const subUpdate = updateDoc(subRef, { isRead: true }).catch((e) =>
+      console.warn('[firestore] markAsRead subcollection skipped:', e)
+    );
+
+    // Also update top-level (legacy structure) — uses read field
+    const topRef = doc(db, 'notifications', notificationId);
+    const topUpdate = updateDoc(topRef, { isRead: true, read: true }).catch((e) =>
+      console.warn('[firestore] markAsRead top-level skipped:', e)
+    );
+
+    await Promise.all([subUpdate, topUpdate]);
   } catch (error) {
     console.error('[notificationFirestoreService] Error marking as read:', error);
     throw error;
@@ -148,8 +159,19 @@ export const markAllAsRead = async (userId: string): Promise<void> => {
 
 export const deleteNotification = async (userId: string, notificationId: string): Promise<void> => {
   try {
-    const notificationRef = doc(db, 'notifications', userId, 'items', notificationId);
-    await deleteDoc(notificationRef);
+    // Delete from subcollection (new structure)
+    const subRef = doc(db, 'notifications', userId, 'items', notificationId);
+    const subDelete = deleteDoc(subRef).catch((e) =>
+      console.warn('[firestore] deleteNotification subcollection skipped:', e)
+    );
+
+    // Also delete from top-level (legacy structure)
+    const topRef = doc(db, 'notifications', notificationId);
+    const topDelete = deleteDoc(topRef).catch((e) =>
+      console.warn('[firestore] deleteNotification top-level skipped:', e)
+    );
+
+    await Promise.all([subDelete, topDelete]);
   } catch (error) {
     console.error('[notificationFirestoreService] Error deleting notification:', error);
     throw error;
