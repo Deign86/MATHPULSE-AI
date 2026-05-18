@@ -3,7 +3,8 @@ import { TrendingUp, Award, Target, Calendar, Download, Filter, Brain, AlertCirc
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToGradeSummary, subscribeToAssessments, type GradeSummary, type AssessmentRecord } from '../services/gradesService';
-import { type StudentProfile } from '../types/models';
+import { type StudentProfile, type UserProgress } from '../types/models';
+import { subscribeToUserProgress } from '../services/progressService';
 import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { doc, getDoc } from 'firebase/firestore';
@@ -27,6 +28,7 @@ const GradesPage = () => {
   const [assessments, setAssessments] = useState<AssessmentRecord[]>([]);
   const [diagnosticSummary, setDiagnosticSummary] = useState<DiagnosticSummary | null>(null);
   const [showBreakdownModal, setShowBreakdownModal] = useState(false);
+  const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
 // Safely cast userProfile to StudentProfile to access grade
 const studentGrade = (userProfile as StudentProfile | null)?.grade;
@@ -67,9 +69,14 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
       setLoading(false);
     });
 
+    const unsubProgress = subscribeToUserProgress(currentUser.uid, (progress) => {
+      setUserProgress(progress);
+    });
+
     return () => {
       unsubSummary();
       unsubAssessments();
+      unsubProgress();
     };
   }, [currentUser]);
 
@@ -154,20 +161,24 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
     .map((subject) => subject.name);
 
   // Compute subject metrics
-const subjectPerformance = Object.entries({})
+const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
     .filter(([subjectId]) => allowedSubjectSet.has(subjectId as SubjectId))
     .map(([subjectId, subjectData]: [string, any]) => {
       const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
       
-      const subjectQuizzes: any[] = [];
-      const avg = subjectQuizzes.length > 0
-        ? Math.round(subjectQuizzes.reduce((sum: number, q: { score: number }) => sum + q.score, 0) / subjectQuizzes.length)
+      // Compute average from quiz attempts for this subject
+      const subjectQuizAttempts = (userProgress?.quizAttempts || []).filter(q => {
+        const modules = subjectData?.modulesProgress || {};
+        return Object.values(modules).some((m: any) => m.quizzesCompleted?.includes(q.quizId));
+      });
+      const avg = subjectQuizAttempts.length > 0
+        ? Math.round(subjectQuizAttempts.reduce((sum: number, q) => sum + q.score, 0) / subjectQuizAttempts.length)
         : Math.round(subjectData?.progress ?? 0); // Fallback to progress %
       
       return {
         subject: info.label,
         average: avg,
-        quizzes: subjectQuizzes.length || subjectData?.completedModules,
+        quizzes: subjectQuizAttempts.length || subjectData?.completedModules || 0,
         color: info.color
       };
     });
@@ -175,10 +186,13 @@ const subjectPerformance = Object.entries({})
   // Default empty state for all allowed subjects if no progress
   const defaultSubjectPerformance = allowedSubjectIds.map((subjectId) => {
     const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
+    // Use gradeSummary.subjectPerformance as fallback (populated by diagnostic/quiz results)
+    const gradeSummarySubject = gradeSummary?.subjectPerformance?.[info.label];
+    const avg = gradeSummarySubject?.avgScore ? Math.round(gradeSummarySubject.avgScore) : 0;
     return {
       subject: info.label,
-      average: 0,
-      quizzes: 0,
+      average: avg,
+      quizzes: gradeSummarySubject?.count || 0,
       color: info.color
     };
   });
