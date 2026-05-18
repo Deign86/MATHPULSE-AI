@@ -18,6 +18,7 @@ interface QuizGenerationResponse {
     options?: string[];
     correctAnswer: string;
     explanation: string;
+    hints?: string[];
   }>;
   retrievalConfidence: Record<string, unknown>;
   sourceChunks: number;
@@ -125,6 +126,7 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
       options: q.options || undefined,
       correctAnswer: q.correctAnswer,
       explanation: q.explanation,
+      hints: q.hints || [],
     }));
   } catch (error) {
     console.error('[lessonQuizService] Failed to generate quiz via API:', error);

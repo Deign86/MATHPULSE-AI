@@ -171,7 +171,8 @@ Generate a "Try It Yourself" quiz for the following lesson.
     "points": {points},
     "xp_reward": {xp_reward},
     "difficulty": "{difficulty}",
-    "competency_code": "{competency_code or 'N/A'}"
+    "competency_code": "{competency_code or 'N/A'}",
+    "hints": ["Conceptual nudge: Think about what formula applies here...", "Procedural setup: Start by identifying the variables...", "Final push: Substitute the values and compute..."]
   }},
   {{
     "id": "q2",
@@ -187,7 +188,8 @@ Generate a "Try It Yourself" quiz for the following lesson.
     "points": {points},
     "xp_reward": {xp_reward},
     "difficulty": "{difficulty}",
-    "competency_code": "{competency_code or 'N/A'}"
+    "competency_code": "{competency_code or 'N/A'}",
+    "hints": ["Conceptual nudge: Think about what formula applies here...", "Procedural setup: Start by identifying the variables...", "Final push: Substitute the values and compute..."]
   }},
   {{
     "id": "q3",
@@ -200,7 +202,8 @@ Generate a "Try It Yourself" quiz for the following lesson.
     "points": {points},
     "xp_reward": {xp_reward},
     "difficulty": "{difficulty}",
-    "competency_code": "{competency_code or 'N/A'}"
+    "competency_code": "{competency_code or 'N/A'}",
+    "hints": ["Conceptual nudge: Think about what formula applies here...", "Procedural setup: Start by identifying the variables...", "Final push: Substitute the values and compute..."]
   }}
 ]
 
@@ -294,6 +297,7 @@ def _parse_quiz_response(text: str, expected_count: int) -> List[Dict[str, Any]]
             "explanation": q.get("explanation", ""),
             "points": q.get("points", 1),
             "xpReward": q.get("xp_reward", 10),
+            "hints": q.get("hints", []),
         }
 
         validated.append(normalized)

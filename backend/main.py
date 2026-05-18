@@ -103,6 +103,7 @@ from routes.class_records_router import router as class_records_router
 from routes.risk_router import router as risk_router
 from routes.tutor_checkin import router as tutor_checkin_router
 from routes.practice import router as practice_router
+from routes.try_it_yourself import router as try_it_yourself_router
 from routes.ai_monitoring import router as ai_monitoring_router
 
 # Rate limiting (slowapi)
@@ -1148,6 +1149,7 @@ app.include_router(class_records_router)
 app.include_router(risk_router)
 app.include_router(tutor_checkin_router)
 app.include_router(practice_router)
+app.include_router(try_it_yourself_router)
 app.include_router(ai_monitoring_router)
 
 
