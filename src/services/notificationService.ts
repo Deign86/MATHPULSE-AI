@@ -167,6 +167,9 @@ export const markNotificationAsRead = async (notificationId: string): Promise<vo
 };
 
 // Mark all notifications as read for a user
+// NOTE: Also writes to notifications/{userId}/items subcollection so that
+// NotificationContext's onSnapshot (which listens to the subcollection)
+// picks up the change and clears the bell badge.
 export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
   try {
     const notificationsQuery = query(
@@ -177,11 +180,23 @@ export const markAllNotificationsAsRead = async (userId: string): Promise<void> 
 
     const snapshot = await getDocs(notificationsQuery);
     
-    await Promise.all(
-      snapshot.docs.map(doc => 
-        updateDoc(doc.ref, { read: true })
-      )
+    // Write to top-level collection (legacy path used by NotificationCenter)
+    const topLevelUpdates = snapshot.docs.map(doc => 
+      updateDoc(doc.ref, { read: true })
     );
+
+    // Also write to subcollection (path used by NotificationContext subscription)
+    // Note: subcollection field is 'isRead' not 'read'
+    const subcollectionQuery = query(
+      collection(db, 'notifications', userId, 'items'),
+      where('isRead', '==', false)
+    );
+    const subSnapshot = await getDocs(subcollectionQuery);
+    const subUpdates = subSnapshot.docs.map(docSnap =>
+      updateDoc(docSnap.ref, { isRead: true })
+    );
+
+    await Promise.all([...topLevelUpdates, ...subUpdates]);
   } catch (error) {
     console.error('Error marking all notifications as read:', error);
     throw error;
