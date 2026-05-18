@@ -13,6 +13,7 @@ import {
   getDepEdIARQuestionBlueprint,
   estimateIarDurationMinutes,
 } from '../data/iarBlueprint';
+import { resolveTopicId } from '../lib/topicTaxonomy';
 import AssessmentProgressBar from './assessment/AssessmentProgressBar';
 import AssessmentQuestionCard from './assessment/AssessmentQuestionCard';
 import AssessmentResultsModal from './assessment/AssessmentResultsModal';
@@ -261,6 +262,18 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
       });
     });
 
+    // Build topic-level breakdown keyed by module ID for granular flagging
+    const topicBreakdown: Record<string, { correct: boolean; questionId: string }[]> = {};
+    QUESTIONS.forEach((question, index) => {
+      if (!question.scorable || !question.competencyCode) return;
+      const answer = finalAnswers[index];
+      const correct = isCorrectAnswer(question, answer);
+      const moduleId = resolveTopicId(question.competencyCode);
+      if (!moduleId) return;
+      if (!topicBreakdown[moduleId]) topicBreakdown[moduleId] = [];
+      topicBreakdown[moduleId].push({ correct, questionId: question.id });
+    });
+
     const topicSummariesComputed = (Object.keys(topicStats) as IARTopicArea[]).reduce(
       (acc, topicArea) => {
         const { correct, total } = topicStats[topicArea];
@@ -354,6 +367,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
           questionBreakdown,
           workflowMode,
           assessmentType,
+          topicBreakdown,
         );
       } catch (err) {
         console.error('[WARN] Automation: diagnostic pipeline failed:', err);
