@@ -2,6 +2,8 @@ import React, { lazy, Suspense, useState, useRef, useEffect } from 'react';
 import { Bot, X, Send, Maximize2, Minus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useChatContext, Message } from '../contexts/ChatContext';
+import { useAuth } from '../contexts/AuthContext';
+import { subscribeToTutorNudges, consumeNudge, type TutorNudge } from '../services/tutorNudgeService';
 
 const ChatMarkdown = lazy(() => import('./ChatMarkdown.tsx'));
 
@@ -22,13 +24,28 @@ function safeTimestamp(ts: unknown): string {
 
 const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _constraintsRef, onFullScreen }) => {
   const { activeSessionId, setActiveSessionId, createNewSession, getActiveSession, sendMessage, isLoading } = useChatContext();
+  const { currentUser, userRole } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem('floating_ai_tutor_minimized') === '1';
   });
   const [currentMessage, setCurrentMessage] = useState('');
+  const [pendingNudge, setPendingNudge] = useState<TutorNudge | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const nudgeConsumedRef = useRef<string | null>(null);
+
+  // Subscribe to tutor nudges for students
+  useEffect(() => {
+    if (!currentUser?.uid || userRole !== 'student') return;
+    return subscribeToTutorNudges(currentUser.uid, (nudge) => {
+      if (nudge && nudge.id !== nudgeConsumedRef.current) {
+        setPendingNudge(nudge);
+      } else {
+        setPendingNudge(null);
+      }
+    });
+  }, [currentUser?.uid, userRole]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -51,16 +68,29 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
   // Initialize with a new session if none exists
   useEffect(() => {
     if (isOpen && !activeSessionId) {
+      // Use nudge message if available, otherwise default welcome
+      const text = pendingNudge
+        ? pendingNudge.message
+        : 'Hi! I\'m your AI math tutor. What would you like to learn about today?';
       const welcomeMessage: Message = {
-        id: '1',
+        id: pendingNudge ? `nudge-${pendingNudge.id}` : '1',
         sender: 'ai',
-        text: 'Hi! I\'m your AI math tutor. What would you like to learn about today?',
+        text,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       const newSessionId = createNewSession(welcomeMessage);
       setActiveSessionId(newSessionId);
     }
   }, [isOpen]);
+
+  // Consume nudge when tutor is opened and nudge is visible
+  useEffect(() => {
+    if (isOpen && pendingNudge && currentUser?.uid) {
+      nudgeConsumedRef.current = pendingNudge.id;
+      consumeNudge(currentUser.uid, pendingNudge.id).catch(() => {});
+      setPendingNudge(null);
+    }
+  }, [isOpen, pendingNudge]);
 
   const activeSession = getActiveSession();
   const messages = activeSession?.messages || [];
@@ -263,6 +293,9 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
               style={{ willChange: 'transform' }}
             >
               {isOpen ? <X size={28} /> : <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-14 h-14 object-contain drop-shadow-lg" />}
+              {!isOpen && pendingNudge && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full border-2 border-white animate-pulse" />
+              )}
             </motion.button>
           </div>
         )}
