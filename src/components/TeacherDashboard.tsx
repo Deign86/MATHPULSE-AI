@@ -2778,35 +2778,6 @@ const AnalyticsView: React.FC<{
             <p className="text-[13px] text-white/80 font-medium">Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}</p>
           </div>
 
-          {/* Right Side Section Manager */}
-          <div className="bg-white/10 border border-white/20 rounded-[18px] p-[16px] backdrop-blur-md flex flex-col w-full md:w-auto shrink-0 relative z-10 shadow-inner">
-            <label className="text-[11px] font-bold text-white/90 uppercase tracking-wider mb-2 ml-1">Section Manager</label>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-              <div className="relative w-full md:w-[320px]">
-                <select
-                  value={selectedManagerId || ''}
-                  onChange={(e) => setSelectedManagerId(e.target.value)}
-                  className="appearance-none bg-white/20 border border-white/30 text-white text-[13px] font-bold rounded-xl pl-4 pr-10 py-2.5 outline-none focus:border-white/50 focus:ring-2 focus:ring-white/20 w-full shadow-sm cursor-pointer [&>option]:text-[#1e293b]"
-                >
-                  <option value="">Select teacher</option>
-                  {teacherOptions.map((teacher) => (
-                    <option key={teacher.uid} value={teacher.uid}>
-                      {teacher.name} ({teacher.email})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-white/70 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-              <button
-                onClick={handleAssignManager}
-                disabled={!selectedManagerId || managerUpdating}
-                className="bg-white text-[#6366f1] hover:bg-white/90 text-[13px] font-bold rounded-full px-6 py-2.5 shadow-md transition-transform hover:scale-[1.02] whitespace-nowrap disabled:opacity-50 disabled:hover:scale-100"
-                style={{ color: classColor?.hex || '#6366f1' }}
-              >
-                {managerUpdating ? 'Updating...' : 'Assign'}
-              </button>
-            </div>
-          </div>
         </header>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-[18px] w-full">
