@@ -52,6 +52,8 @@ import { getStudentCompetencyProfile } from '../services/assessmentService';
 import type { CompetencyProfileDoc } from '../types/assessment';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { submitPracticeSession } from '../services/practiceService';
+import { subscribeToUserProgress } from '../services/progressService';
+import type { UserProgress } from '../types/models';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -101,6 +103,13 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [isScrolled, setIsScrolled] = useState(false);
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
   const [selectedTeacherModule, setSelectedTeacherModule] = useState<TeacherUploadedModule | null>(null);
+  const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+
+  // Subscribe to user progress for module card progress bars
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+    return subscribeToUserProgress(userProfile.uid, setUserProgress);
+  }, [userProfile?.uid]);
 
   const assignedSubjects = useMemo(() => {
     const rawAssignments = (studentProfile as (StudentProfile & {
@@ -375,6 +384,20 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
     return filtered;
   }, [modulePool, searchQuery, subjectFilter, quarterFilter, competencyFilter, competencyProfile]);
+
+  // Enrich modules with real progress from Firestore
+  const modulesWithProgress = useMemo(() => {
+    if (!userProgress) return filteredModules;
+    return filteredModules.map(module => {
+      const subjectProgress = Object.values(userProgress.subjects || {}).find(sp => sp.modulesProgress?.[module.id]);
+      const mp = subjectProgress?.modulesProgress?.[module.id];
+      if (!mp) return module;
+      const totalItems = module.lessons.length + module.quizzes.length;
+      const completedItems = (mp.lessonsCompleted?.length || 0) + (mp.quizzesCompleted?.length || 0);
+      const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+      return { ...module, progress };
+    });
+  }, [filteredModules, userProgress]);
 
   const curriculumContextLabel = useMemo(() => {
     const visibleQuarter = quarterFilter === 'all' ? 'All Quarters' : quarterFilter;
@@ -803,36 +826,60 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               userId={userProfile?.uid ?? ''}
               onStartQuiz={(quiz) => {
                 practiceQuizEndRef.current = async (q, answers) => {
-                  if (!userProfile?.uid || !q.generatedQuizId) return;
-                  try {
-                    const questionMap = new Map(
-                      (q.loadedQuestions || []).map((lq) => [lq.id, lq])
-                    );
-                    const submitAnswers = answers.map((a) => {
-                      const lq = questionMap.get(a.questionId);
-                      const selectedIndex = lq?.options?.findIndex(
-                        (opt) => opt.trim().toLowerCase() === a.answer.trim().toLowerCase()
-                      ) ?? 0;
-                      return { question_id: a.questionId, selected_index: selectedIndex };
-                    });
+                  if (!userProfile?.uid) return;
 
-                    const result = await submitPracticeSession({
-                      session_id: q.generatedQuizId!,
-                      userId: userProfile.uid,
-                      answers: submitAnswers,
-                    });
+                  // Always record completion locally (regardless of backend success)
+                  const topicName = q.title?.replace(/^Practice Quiz:\s*/i, '').replace(/\s*\(AI\)\s*$/i, '') || '';
+                  const scorePercent = Math.round((answers.filter(a => a.correct).length / Math.max(answers.length, 1)) * 100);
+                  if (topicName) {
+                    const storageKey = `mathpulse_practice_completed_${userProfile.uid}`;
+                    try {
+                      const stored = localStorage.getItem(storageKey);
+                      const map: [string, any][] = stored ? JSON.parse(stored) : [];
+                      const mapObj = new Map(map);
+                      const key = topicName.toLowerCase();
+                      const existing = (mapObj.get(key) as any) || { bestScore: 0, attempts: 0, history: [] };
+                      existing.bestScore = Math.max(existing.bestScore, scorePercent);
+                      existing.attempts += 1;
+                      existing.history.unshift({ date: new Date().toISOString(), score: scorePercent, difficulty: q.difficulty || 'Medium' });
+                      mapObj.set(key, existing);
+                      localStorage.setItem(storageKey, JSON.stringify(Array.from(mapObj.entries())));
+                    } catch {}
+                  }
 
-                    toast.success(
-                      `Score: ${result.score_percent}% | Correct: ${result.correct_count}/${result.total} | +${result.xp_earned} XP`
-                    );
-                  } catch (e) {
-                    console.error(e);
-                    toast.error('Failed to submit quiz results');
+                  // Submit to backend (fire-and-forget)
+                  if (q.generatedQuizId) {
+                    try {
+                      const questionMap = new Map(
+                        (q.loadedQuestions || []).map((lq) => [lq.id, lq])
+                      );
+                      const submitAnswers = answers.map((a) => {
+                        const lq = questionMap.get(a.questionId);
+                        const selectedIndex = lq?.options?.findIndex(
+                          (opt) => opt.trim().toLowerCase() === a.answer.trim().toLowerCase()
+                        ) ?? 0;
+                        return { question_id: a.questionId, selected_index: selectedIndex };
+                      });
+
+                      const result = await submitPracticeSession({
+                        session_id: q.generatedQuizId!,
+                        userId: userProfile.uid,
+                        answers: submitAnswers,
+                      });
+
+                      toast.success(
+                        `Score: ${result.score_percent}% | Correct: ${result.correct_count}/${result.total} | +${result.xp_earned} XP`
+                      );
+                    } catch (e) {
+                      console.error(e);
+                      toast.success(`Score: ${scorePercent}%`);
+                    }
                   }
                 };
                 setSelectedQuiz(quiz);
               }}
               searchQuery={searchQuery}
+              atRiskTopics={normalizedRiskTopics}
             />
           ) : activeTab === 'teacher_uploaded' ? (
             teacherModulesLoading ? (
@@ -882,7 +929,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             )
           ) : activeTab === 'modules' ? (
             <ModulesLibraryView
-              modules={filteredModules}
+              modules={modulesWithProgress}
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}
               isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
@@ -890,7 +937,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             />
           ) : (
             <RecommendedModulesView
-              modules={filteredModules}
+              modules={modulesWithProgress}
               fullPool={modulePool}
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}

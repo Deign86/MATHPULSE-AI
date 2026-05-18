@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Award, Clock, Target, Zap, Trophy, BookOpen, PenTool, Loader2, TrendingUp, DollarSign, Brain, Dice5, BarChart3, Crosshair, FlaskConical, ScatterChart } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Award, Clock, Target, Zap, Trophy, BookOpen, PenTool, Loader2, TrendingUp, DollarSign, Brain, Dice5, BarChart3, Crosshair, FlaskConical, ScatterChart, CheckCircle, History, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Quiz, QuizAnswerRecord } from './QuizExperience';
 import { useAuth } from '../contexts/AuthContext';
 import { SHS_MATH_SUBJECTS, type SubjectId } from '../data/subjects';
@@ -16,6 +16,7 @@ interface PracticeCenterProps {
   onQuizEnd?: (quiz: Quiz, answers: QuizAnswerRecord[]) => void;
   searchQuery?: string;
   allowedSubjectIds?: SubjectId[];
+  atRiskTopics?: string[];
 }
 
 // A spawnable topic card — each represents a competency the AI can generate quizzes for
@@ -42,13 +43,15 @@ function getUnitStyle(unit: string) {
   return UNIT_STYLE[unit] || { icon: PenTool, bg: 'bg-slate-500' };
 }
 
-const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, searchQuery = '', allowedSubjectIds }) => {
+const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, searchQuery = '', allowedSubjectIds, atRiskTopics = [] }) => {
   const { userProfile } = useAuth();
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'recommended'>('all');
   const [practiceStats, setPracticeStats] = useState<PracticeStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [generatingTopic, setGeneratingTopic] = useState<string | null>(null);
+  const [historyModal, setHistoryModal] = useState<{ topic: string; items: Array<{ date: string; score: number; difficulty: string }> } | null>(null);
 
   const availableSubjects = useMemo(() => {
     if (!allowedSubjectIds || allowedSubjectIds.length === 0) return SHS_MATH_SUBJECTS;
@@ -68,18 +71,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
     );
   }, [availableSubjects]);
 
-  // Filter topics
-  const filteredTopics = useMemo(() => {
-    return topicCards.filter((topic) => {
-      const subjectMatch = selectedSubject === 'all' || topic.subject === selectedSubject;
-      const searchMatch = !searchQuery ||
-        topic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        topic.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        topic.subject.toLowerCase().includes(searchQuery.toLowerCase());
-      return subjectMatch && searchMatch;
-    });
-  }, [topicCards, selectedSubject, searchQuery]);
-
+  // Fetch stats
   useEffect(() => {
     if (!userId) return;
     setStatsLoading(true);
@@ -88,6 +80,52 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
       .catch(console.error)
       .finally(() => setStatsLoading(false));
   }, [userId]);
+
+  // Load completed topics from localStorage (re-reads on mount/tab switch)
+  const STORAGE_KEY = `mathpulse_practice_completed_${userId}`;
+  const [completionVersion, setCompletionVersion] = useState(0);
+  
+  // Re-check localStorage when component mounts or becomes visible
+  useEffect(() => {
+    const handleFocus = () => setCompletionVersion(v => v + 1);
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  const completedTopics = useMemo(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) return new Map<string, { bestScore: number; attempts: number; history: Array<{ date: string; score: number; difficulty: string }> }>(JSON.parse(stored));
+    } catch {}
+    return new Map<string, { bestScore: number; attempts: number; history: Array<{ date: string; score: number; difficulty: string }> }>();
+  }, [STORAGE_KEY, completionVersion]);
+
+  // Filter topics
+  const filteredTopics = useMemo(() => {
+    return topicCards.filter((topic) => {
+      const subjectMatch = selectedSubject === 'all' || topic.subject === selectedSubject;
+      const searchMatch = !searchQuery ||
+        topic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        topic.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        topic.subject.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Filter by completion/recommended status
+      let statusMatch = true;
+      if (selectedFilter === 'completed') {
+        statusMatch = completedTopics.has(topic.name.toLowerCase());
+      } else if (selectedFilter === 'recommended') {
+        statusMatch = atRiskTopics.some(rt => 
+          topic.name.toLowerCase().includes(rt.toLowerCase()) || 
+          rt.toLowerCase().includes(topic.name.toLowerCase())
+        );
+      }
+
+      return subjectMatch && searchMatch && statusMatch;
+    });
+  }, [topicCards, selectedSubject, searchQuery, selectedFilter, completedTopics, atRiskTopics]);
+
+  // Save a completed quiz to localStorage
+
 
   // Derive stats
   const totalQuizzesCompleted = practiceStats?.quizzesCompleted ?? 0;
@@ -229,6 +267,24 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
             </button>
           ))}
         </div>
+
+        {/* Status filter pills */}
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm">
+          {([['all', 'All'], ['completed', 'Completed'], ['recommended', 'Recommended']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setSelectedFilter(key as any)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${selectedFilter === key
+                ? key === 'completed' ? 'bg-emerald-500 text-white shadow-sm'
+                  : key === 'recommended' ? 'bg-purple-500 text-white shadow-sm'
+                  : 'bg-indigo-500 text-white shadow-sm'
+                : 'text-[#5a6578] hover:bg-[#edf1f7]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Loading Overlay */}
@@ -274,8 +330,13 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
               <div className="flex items-center justify-between gap-3 md:gap-4">
                 <div className="flex items-center gap-3 md:gap-4 flex-1">
                   {(() => { const { icon: UnitIcon, bg } = getUnitStyle(topic.unit); return (
-                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${bg} text-white`}>
+                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transform group-hover:rotate-3 transition-transform ${bg} text-white relative`}>
                       <UnitIcon size={18} />
+                      {completedTopics.has(topic.name.toLowerCase()) && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
+                          <CheckCircle size={10} className="text-white" />
+                        </div>
+                      )}
                     </div>
                   ); })()}
 
@@ -288,6 +349,11 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
                       }`}>
                         AI {"\u2022"} {selectedDifficulty}
                       </span>
+                      {completedTopics.has(topic.name.toLowerCase()) && (
+                        <span className="px-2 py-0.5 rounded-[6px] text-[9px] md:text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700">
+                          Best: {completedTopics.get(topic.name.toLowerCase())?.bestScore}%
+                        </span>
+                      )}
                       <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     </div>
                     <h3 className="font-bold text-[14px] md:text-[16px] leading-tight mb-1 md:mb-1.5 text-[#0a1628] transition-colors">
@@ -306,14 +372,22 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
                   </div>
                 </div>
 
-                <div className="shrink-0">
+                <div className="shrink-0 flex flex-col items-center gap-1.5">
                   <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] md:text-[12px] font-black uppercase tracking-wider shadow-sm transition-all ${
                     generatingTopic === topic.id
                       ? 'bg-indigo-100 text-indigo-600'
                       : 'bg-indigo-500 text-white group-hover:bg-indigo-600 shadow-indigo-200'
                   }`}>
-                    {generatingTopic === topic.id ? 'Loading...' : 'Start'}
+                    {generatingTopic === topic.id ? 'Loading...' : completedTopics.has(topic.name.toLowerCase()) ? 'Retry' : 'Start'}
                   </div>
+                  {completedTopics.has(topic.name.toLowerCase()) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); const data = completedTopics.get(topic.name.toLowerCase()); setHistoryModal({ topic: topic.name, items: data?.history || [] }); }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    >
+                      <History size={11} /> History
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -328,6 +402,53 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
           </div>
         )}
       </div>
+
+      {/* Quiz History Modal */}
+      <AnimatePresence>
+        {historyModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setHistoryModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[80vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-black text-slate-800">Quiz History</h3>
+                <button onClick={() => setHistoryModal(null)} className="p-1.5 rounded-full hover:bg-slate-100"><X size={18} className="text-slate-400" /></button>
+              </div>
+              <p className="text-sm text-slate-500 mb-4">{historyModal.topic}</p>
+
+              {historyModal.items.length === 0 ? (
+                <p className="text-center text-slate-400 py-8 text-sm">No history found for this topic.</p>
+              ) : (
+                <div className="space-y-3">
+                  {historyModal.items.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-700">
+                          {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                        <p className="text-xs text-slate-400">{item.difficulty} difficulty</p>
+                      </div>
+                      <div className={`text-lg font-black ${item.score >= 80 ? 'text-emerald-600' : item.score >= 50 ? 'text-amber-600' : 'text-rose-600'}`}>
+                        {item.score}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
