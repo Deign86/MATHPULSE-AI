@@ -77,10 +77,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const markAllAsRead = useCallback(async () => {
     if (!userId) return;
     const prev = notificationsRef.current;
+    console.log('[markAllAsRead] prev count:', prev.filter(n => !n.isRead).length, 'notifications:', prev.length);
     setNotifications((curr) => curr.map((n) => (n.isRead ? n : { ...n, isRead: true })));
+    console.log('[markAllAsRead] optimistic update applied, new count should be 0');
     try {
       await firestoreMarkAllAsRead(userId);
-    } catch {
+      console.log('[markAllAsRead] Firestore update succeeded');
+    } catch (err) {
+      console.error('[markAllAsRead] Firestore update failed:', err);
       setNotifications(prev);
     }
   }, [userId]);
