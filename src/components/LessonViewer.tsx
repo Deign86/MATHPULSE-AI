@@ -754,8 +754,8 @@ function SectionRenderer({
             </div>
           )}
 
-          {/* Try It Yourself Quiz CTA */}
-          <button
+          {/* Try It Yourself Quiz CTA - only show if no separate practice quiz */}
+          {!practiceQuiz && (<button
             onClick={onStartTryItQuiz}
             className="w-full flex items-center justify-between gap-4 text-white rounded-2xl px-6 py-4 shadow-lg transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] group"
             style={{ background: '#9956DE' }}
@@ -772,7 +772,7 @@ function SectionRenderer({
               </div>
             </div>
             <ArrowRight size={20} className="text-white/80 group-hover:translate-x-1 transition-transform" />
-          </button>
+          </button>)}
         </div>
       );
 

@@ -1247,6 +1247,21 @@ return (
                     })()}
         </footer>
       </div>
+
+      {/* Leave Quiz Confirmation */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl p-6 w-full max-w-[320px] shadow-2xl border border-slate-200 flex flex-col items-center gap-4">
+            
+            <h3 className="text-lg font-bold text-slate-900 text-center">Leave this quiz?</h3>
+            <p className="text-sm text-slate-500 text-center">Your progress will be reset and you'll need to start over.</p>
+            <div className="w-full flex flex-col gap-2">
+              <button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold rounded-full transition-colors">Stay</button>
+              <button onClick={() => { setShowLeaveConfirm(false); onClose(); }} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-colors">Leave Quiz</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </>
   );
 };

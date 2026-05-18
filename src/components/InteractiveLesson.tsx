@@ -921,10 +921,13 @@ setIsCorrect(false);
         <AnimatePresence>
           {showMenu && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowMenu(false)}>
-              <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-[32px] p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-200 flex flex-col gap-4 text-center">
-                <h2 className="text-2xl font-black text-[#0a1628]">Pause Menu</h2>
-                <Button onClick={() => setShowMenu(false)} className="w-full py-6 rounded-2xl bg-slate-100 text-slate-700 font-bold">Continue Quiz</Button>
-                <Button onClick={() => setShowLeaveConfirm(true)} className="w-full py-6 rounded-2xl bg-red-500 text-white font-bold">Exit Quiz</Button>
+              <motion.div onClick={(e) => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-[2rem] p-6 sm:p-8 max-w-xs w-full shadow-2xl flex flex-col gap-4 text-center">
+                <h2 className="text-xl font-black text-slate-800">Are you sure you want to leave?</h2>
+                <p className="text-sm text-slate-500">Your progress won't be saved.</p>
+                <div className="flex flex-col gap-2">
+                  <Button onClick={() => setShowMenu(false)} className="w-full py-3 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold">Stay</Button>
+                  <Button onClick={() => { setShowMenu(false); onBack(); }} className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">Leave</Button>
+                </div>
               </motion.div>
             </motion.div>
           )}
