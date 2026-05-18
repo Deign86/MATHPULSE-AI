@@ -201,17 +201,21 @@ describe('notificationFirestoreService', () => {
 
   describe('markAllAsRead', () => {
     it('marks all unread notifications as read', async () => {
-      const mockDocs = [
+      const mockSubcollectionDocs = [
         { ref: 'ref-1', data: () => ({ isRead: false }) },
         { ref: 'ref-2', data: () => ({ isRead: false }) },
       ];
-      const mockSnapshot = { docs: mockDocs } as any;
-      (getDocs as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(mockSnapshot);
+      const mockTopLevelDocs = [
+        { ref: 'ref-3', data: () => ({ isRead: false, read: false }) },
+      ];
+      (getDocs as unknown as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ docs: mockSubcollectionDocs } as any)
+        .mockResolvedValueOnce({ docs: mockTopLevelDocs } as any);
       (updateDoc as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       await markAllAsRead('user-123');
 
-      expect(updateDoc).toHaveBeenCalledTimes(2);
+      expect(updateDoc).toHaveBeenCalledTimes(3);
     });
   });
 
