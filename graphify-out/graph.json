@@ -4914,7 +4914,7 @@
       "source_file": "backend/main.py",
       "source_location": "L11800",
       "id": "backend_main_rationale_11800",
-      "community": 150,
+      "community": 231,
       "norm_label": "lazily build allowlist of sympy names for safe eval."
     },
     {
@@ -21870,7 +21870,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L1",
       "id": "src_components_adminragmanager_tsx",
-      "community": 2,
+      "community": 159,
       "norm_label": "adminragmanager.tsx"
     },
     {
@@ -21879,7 +21879,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L8",
       "id": "components_adminragmanager_ragdocument",
-      "community": 2,
+      "community": 159,
       "norm_label": "ragdocument"
     },
     {
@@ -21888,7 +21888,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L14",
       "id": "components_adminragmanager_raghealthresponse",
-      "community": 2,
+      "community": 159,
       "norm_label": "raghealthresponse"
     },
     {
@@ -21897,7 +21897,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L19",
       "id": "components_adminragmanager_subjectgroup",
-      "community": 2,
+      "community": 159,
       "norm_label": "subjectgroup"
     },
     {
@@ -21906,7 +21906,7 @@
       "source_file": "src/components/AdminRagManager.tsx",
       "source_location": "L25",
       "id": "components_adminragmanager_adminragmanager",
-      "community": 2,
+      "community": 159,
       "norm_label": "adminragmanager()"
     },
     {
@@ -22041,7 +22041,7 @@
       "source_file": "src/components/AdminUserManagement.tsx",
       "source_location": "L1",
       "id": "src_components_adminusermanagement_tsx",
-      "community": 345,
+      "community": 2,
       "norm_label": "adminusermanagement.tsx"
     },
     {
@@ -22050,7 +22050,7 @@
       "source_file": "src/components/AdminUserManagement.tsx",
       "source_location": "L46",
       "id": "components_adminusermanagement_adminusermanagementprops",
-      "community": 345,
+      "community": 2,
       "norm_label": "adminusermanagementprops"
     },
     {
@@ -22059,7 +22059,7 @@
       "source_file": "src/components/AdminUserManagement.tsx",
       "source_location": "L51",
       "id": "components_adminusermanagement_builddefaultformdata",
-      "community": 345,
+      "community": 2,
       "norm_label": "builddefaultformdata()"
     },
     {
@@ -22068,7 +22068,7 @@
       "source_file": "src/components/AdminUserManagement.tsx",
       "source_location": "L64",
       "id": "components_adminusermanagement_page_size_options",
-      "community": 345,
+      "community": 2,
       "norm_label": "page_size_options"
     },
     {
@@ -22077,7 +22077,7 @@
       "source_file": "src/components/AdminUserManagement.tsx",
       "source_location": "L66",
       "id": "components_adminusermanagement_pendingconfirmstate",
-      "community": 345,
+      "community": 2,
       "norm_label": "pendingconfirmstate"
     },
     {
@@ -22086,7 +22086,7 @@
       "source_file": "src/components/AdminUserManagement.tsx",
       "source_location": "L83",
       "id": "components_adminusermanagement_normalizefiltervalue",
-      "community": 345,
+      "community": 2,
       "norm_label": "normalizefiltervalue()"
     },
     {
@@ -22095,7 +22095,7 @@
       "source_file": "src/components/AdminUserManagement.tsx",
       "source_location": "L91",
       "id": "components_adminusermanagement_csvescape",
-      "community": 345,
+      "community": 2,
       "norm_label": "csvescape()"
     },
     {
@@ -22104,7 +22104,7 @@
       "source_file": "src/components/AdminUserManagement.tsx",
       "source_location": "L99",
       "id": "components_adminusermanagement_adminusermanagement",
-      "community": 345,
+      "community": 2,
       "norm_label": "adminusermanagement()"
     },
     {
@@ -23904,7 +23904,7 @@
       "source_file": "src/components/ProfilePictureUploader.tsx",
       "source_location": "L1",
       "id": "src_components_profilepictureuploader_tsx",
-      "community": 345,
+      "community": 76,
       "norm_label": "profilepictureuploader.tsx"
     },
     {
@@ -23913,7 +23913,7 @@
       "source_file": "src/components/ProfilePictureUploader.tsx",
       "source_location": "L18",
       "id": "components_profilepictureuploader_profilepictureuploaderprops",
-      "community": 345,
+      "community": 76,
       "norm_label": "profilepictureuploaderprops"
     },
     {
@@ -23922,7 +23922,7 @@
       "source_file": "src/components/ProfilePictureUploader.tsx",
       "source_location": "L27",
       "id": "components_profilepictureuploader_formatbytes",
-      "community": 345,
+      "community": 76,
       "norm_label": "formatbytes()"
     },
     {
@@ -23931,7 +23931,7 @@
       "source_file": "src/components/ProfilePictureUploader.tsx",
       "source_location": "L33",
       "id": "components_profilepictureuploader_getinitials",
-      "community": 345,
+      "community": 76,
       "norm_label": "getinitials()"
     },
     {
@@ -23940,7 +23940,7 @@
       "source_file": "src/components/ProfilePictureUploader.tsx",
       "source_location": "L44",
       "id": "components_profilepictureuploader_createimagefromurl",
-      "community": 345,
+      "community": 76,
       "norm_label": "createimagefromurl()"
     },
     {
@@ -23949,7 +23949,7 @@
       "source_file": "src/components/ProfilePictureUploader.tsx",
       "source_location": "L53",
       "id": "components_profilepictureuploader_canvastoblob",
-      "community": 345,
+      "community": 76,
       "norm_label": "canvastoblob()"
     },
     {
@@ -23958,7 +23958,7 @@
       "source_file": "src/components/ProfilePictureUploader.tsx",
       "source_location": "L66",
       "id": "components_profilepictureuploader_buildcroppedprofilefile",
-      "community": 345,
+      "community": 76,
       "norm_label": "buildcroppedprofilefile()"
     },
     {
@@ -23967,7 +23967,7 @@
       "source_file": "src/components/ProfilePictureUploader.tsx",
       "source_location": "L113",
       "id": "components_profilepictureuploader_profilepictureuploader",
-      "community": 345,
+      "community": 76,
       "norm_label": "profilepictureuploader()"
     },
     {
@@ -25866,7 +25866,7 @@
       "source_file": "src/components/UserAvatar.tsx",
       "source_location": "L1",
       "id": "src_components_useravatar_tsx",
-      "community": 345,
+      "community": 76,
       "norm_label": "useravatar.tsx"
     },
     {
@@ -25875,7 +25875,7 @@
       "source_file": "src/components/UserAvatar.tsx",
       "source_location": "L6",
       "id": "components_useravatar_useravatarprops",
-      "community": 345,
+      "community": 76,
       "norm_label": "useravatarprops"
     },
     {
@@ -25884,7 +25884,7 @@
       "source_file": "src/components/UserAvatar.tsx",
       "source_location": "L20",
       "id": "components_useravatar_getinitials",
-      "community": 345,
+      "community": 76,
       "norm_label": "getinitials()"
     },
     {
@@ -25893,7 +25893,7 @@
       "source_file": "src/components/UserAvatar.tsx",
       "source_location": "L37",
       "id": "components_useravatar_useravatar",
-      "community": 345,
+      "community": 76,
       "norm_label": "useravatar()"
     },
     {
@@ -27162,7 +27162,7 @@
       "source_file": "src/components/ui/avatar.tsx",
       "source_location": "L1",
       "id": "src_components_ui_avatar_tsx",
-      "community": 345,
+      "community": 76,
       "norm_label": "avatar.tsx"
     },
     {
@@ -27171,7 +27171,7 @@
       "source_file": "src/components/ui/avatar.tsx",
       "source_location": "L8",
       "id": "ui_avatar_avatar",
-      "community": 345,
+      "community": 76,
       "norm_label": "avatar()"
     },
     {
@@ -27180,7 +27180,7 @@
       "source_file": "src/components/ui/avatar.tsx",
       "source_location": "L24",
       "id": "ui_avatar_avatarimage",
-      "community": 345,
+      "community": 76,
       "norm_label": "avatarimage()"
     },
     {
@@ -27189,7 +27189,7 @@
       "source_file": "src/components/ui/avatar.tsx",
       "source_location": "L37",
       "id": "ui_avatar_avatarfallback",
-      "community": 345,
+      "community": 76,
       "norm_label": "avatarfallback()"
     },
     {
@@ -27963,7 +27963,7 @@
       "source_file": "src/components/ui/dialog.tsx",
       "source_location": "L27",
       "id": "ui_dialog_dialogclose",
-      "community": 6,
+      "community": 345,
       "norm_label": "dialogclose()"
     },
     {
@@ -27990,7 +27990,7 @@
       "source_file": "src/components/ui/dialog.tsx",
       "source_location": "L78",
       "id": "ui_dialog_dialogheader",
-      "community": 345,
+      "community": 2,
       "norm_label": "dialogheader()"
     },
     {
@@ -27999,7 +27999,7 @@
       "source_file": "src/components/ui/dialog.tsx",
       "source_location": "L88",
       "id": "ui_dialog_dialogfooter",
-      "community": 345,
+      "community": 2,
       "norm_label": "dialogfooter()"
     },
     {
@@ -28008,7 +28008,7 @@
       "source_file": "src/components/ui/dialog.tsx",
       "source_location": "L101",
       "id": "ui_dialog_dialogtitle",
-      "community": 345,
+      "community": 2,
       "norm_label": "dialogtitle"
     },
     {
@@ -28017,7 +28017,7 @@
       "source_file": "src/components/ui/dialog.tsx",
       "source_location": "L116",
       "id": "ui_dialog_dialogdescription",
-      "community": 345,
+      "community": 2,
       "norm_label": "dialogdescription"
     },
     {
@@ -29457,7 +29457,7 @@
       "source_file": "src/components/ui/slider.tsx",
       "source_location": "L1",
       "id": "src_components_ui_slider_tsx",
-      "community": 345,
+      "community": 76,
       "norm_label": "slider.tsx"
     },
     {
@@ -29466,7 +29466,7 @@
       "source_file": "src/components/ui/slider.tsx",
       "source_location": "L8",
       "id": "ui_slider_slider",
-      "community": 345,
+      "community": 76,
       "norm_label": "slider()"
     },
     {
@@ -31392,7 +31392,7 @@
       "source_file": "src/features/notifications/NotificationContext.test.tsx",
       "source_location": "L1",
       "id": "src_features_notifications_notificationcontext_test_tsx",
-      "community": 313,
+      "community": 339,
       "norm_label": "notificationcontext.test.tsx"
     },
     {
@@ -31401,7 +31401,7 @@
       "source_file": "src/features/notifications/NotificationContext.test.tsx",
       "source_location": "L33",
       "id": "notifications_notificationcontext_test_mockunsubscribe",
-      "community": 313,
+      "community": 339,
       "norm_label": "mockunsubscribe"
     },
     {
@@ -31410,7 +31410,7 @@
       "source_file": "src/features/notifications/NotificationContext.test.tsx",
       "source_location": "L49",
       "id": "notifications_notificationcontext_test_testcomponent",
-      "community": 301,
+      "community": 339,
       "norm_label": "testcomponent()"
     },
     {
@@ -31419,7 +31419,7 @@
       "source_file": "src/features/notifications/NotificationContext.test.tsx",
       "source_location": "L102",
       "id": "notifications_notificationcontext_test_button",
-      "community": 313,
+      "community": 339,
       "norm_label": "button"
     },
     {
@@ -31428,7 +31428,7 @@
       "source_file": "src/features/notifications/NotificationContext.tsx",
       "source_location": "L1",
       "id": "src_features_notifications_notificationcontext_tsx",
-      "community": 330,
+      "community": 339,
       "norm_label": "notificationcontext.tsx"
     },
     {
@@ -31437,7 +31437,7 @@
       "source_file": "src/features/notifications/NotificationContext.tsx",
       "source_location": "L16",
       "id": "notifications_notificationcontext_notificationcontexttype",
-      "community": 330,
+      "community": 339,
       "norm_label": "notificationcontexttype"
     },
     {
@@ -31446,7 +31446,7 @@
       "source_file": "src/features/notifications/NotificationContext.tsx",
       "source_location": "L25",
       "id": "notifications_notificationcontext_notificationcontext",
-      "community": 330,
+      "community": 339,
       "norm_label": "notificationcontext"
     },
     {
@@ -31455,7 +31455,7 @@
       "source_file": "src/features/notifications/NotificationContext.tsx",
       "source_location": "L27",
       "id": "notifications_notificationcontext_notificationproviderprops",
-      "community": 330,
+      "community": 339,
       "norm_label": "notificationproviderprops"
     },
     {
@@ -31464,7 +31464,7 @@
       "source_file": "src/features/notifications/NotificationContext.tsx",
       "source_location": "L31",
       "id": "notifications_notificationcontext_notificationprovider",
-      "community": 330,
+      "community": 339,
       "norm_label": "notificationprovider()"
     },
     {
@@ -31680,7 +31680,7 @@
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
       "source_location": "L58",
       "id": "notifications_notificationfirestoreservice_createnotification",
-      "community": 313,
+      "community": 330,
       "norm_label": "createnotification()"
     },
     {
@@ -31716,7 +31716,7 @@
       "source_file": "src/features/notifications/notificationFirestoreService.ts",
       "source_location": "L144",
       "id": "notifications_notificationfirestoreservice_deletenotification",
-      "community": 313,
+      "community": 339,
       "norm_label": "deletenotification()"
     },
     {
@@ -31815,7 +31815,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L1",
       "id": "src_features_notifications_notificationitem_tsx",
-      "community": 301,
+      "community": 121,
       "norm_label": "notificationitem.tsx"
     },
     {
@@ -31824,7 +31824,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L23",
       "id": "notifications_notificationitem_iconmap",
-      "community": 301,
+      "community": 121,
       "norm_label": "iconmap"
     },
     {
@@ -31833,7 +31833,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L36",
       "id": "notifications_notificationitem_badgefortype",
-      "community": 301,
+      "community": 121,
       "norm_label": "badgefortype()"
     },
     {
@@ -31842,7 +31842,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L63",
       "id": "notifications_notificationitem_notificationitemprops",
-      "community": 301,
+      "community": 121,
       "norm_label": "notificationitemprops"
     },
     {
@@ -31851,7 +31851,7 @@
       "source_file": "src/features/notifications/NotificationItem.tsx",
       "source_location": "L67",
       "id": "notifications_notificationitem_notificationitem",
-      "community": 301,
+      "community": 121,
       "norm_label": "notificationitem()"
     },
     {
@@ -31995,7 +31995,7 @@
       "source_file": "src/features/notifications/types.ts",
       "source_location": "L21",
       "id": "notifications_types_notification",
-      "community": 330,
+      "community": 121,
       "norm_label": "notification"
     },
     {
@@ -32022,7 +32022,7 @@
       "source_file": "src/features/notifications/useDailyCheckInReminder.ts",
       "source_location": "L12",
       "id": "notifications_usedailycheckinreminder_usedailycheckinreminder",
-      "community": 330,
+      "community": 339,
       "norm_label": "usedailycheckinreminder()"
     },
     {
@@ -32391,7 +32391,7 @@
       "source_file": "src/hooks/useStudentRisk.ts",
       "source_location": "L1",
       "id": "src_hooks_usestudentrisk_ts",
-      "community": 25,
+      "community": 20,
       "norm_label": "usestudentrisk.ts"
     },
     {
@@ -32400,7 +32400,7 @@
       "source_file": "src/hooks/useStudentRisk.ts",
       "source_location": "L16",
       "id": "hooks_usestudentrisk_usestudentriskoptions",
-      "community": 25,
+      "community": 20,
       "norm_label": "usestudentriskoptions"
     },
     {
@@ -32409,7 +32409,7 @@
       "source_file": "src/hooks/useStudentRisk.ts",
       "source_location": "L21",
       "id": "hooks_usestudentrisk_usestudentriskresult",
-      "community": 25,
+      "community": 20,
       "norm_label": "usestudentriskresult"
     },
     {
@@ -32668,7 +32668,7 @@
       "label": "db",
       "file_type": "code",
       "source_file": "src/lib/firebase.ts",
-      "source_location": "L100",
+      "source_location": "L97",
       "id": "lib_firebase_db",
       "community": 25,
       "norm_label": "db"
@@ -32677,7 +32677,7 @@
       "label": "storage",
       "file_type": "code",
       "source_file": "src/lib/firebase.ts",
-      "source_location": "L101",
+      "source_location": "L98",
       "id": "lib_firebase_storage",
       "community": 25,
       "norm_label": "storage"
@@ -32686,7 +32686,7 @@
       "label": "cloudFunctions",
       "file_type": "code",
       "source_file": "src/lib/firebase.ts",
-      "source_location": "L102",
+      "source_location": "L99",
       "id": "lib_firebase_cloudfunctions",
       "community": 25,
       "norm_label": "cloudfunctions"
@@ -32695,7 +32695,7 @@
       "label": "emulatorPortRaw",
       "file_type": "code",
       "source_file": "src/lib/firebase.ts",
-      "source_location": "L111",
+      "source_location": "L108",
       "id": "lib_firebase_emulatorportraw",
       "community": 25,
       "norm_label": "emulatorportraw"
@@ -32704,7 +32704,7 @@
       "label": "isRealtimeDbEnabled",
       "file_type": "code",
       "source_file": "src/lib/firebase.ts",
-      "source_location": "L120",
+      "source_location": "L117",
       "id": "lib_firebase_isrealtimedbenabled",
       "community": 25,
       "norm_label": "isrealtimedbenabled"
@@ -34020,7 +34020,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L897",
       "id": "types_models_riskhistoryentry",
-      "community": 25,
+      "community": 20,
       "norm_label": "riskhistoryentry"
     },
     {
@@ -34029,7 +34029,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L905",
       "id": "types_models_wriweights",
-      "community": 25,
+      "community": 20,
       "norm_label": "wriweights"
     },
     {
@@ -34047,7 +34047,7 @@
       "source_file": "src/types/models.ts",
       "source_location": "L919",
       "id": "types_models_studentriskprofile",
-      "community": 25,
+      "community": 20,
       "norm_label": "studentriskprofile"
     },
     {
@@ -34173,7 +34173,7 @@
       "source_file": "src/utils/adminUserValidation.ts",
       "source_location": "L1",
       "id": "src_utils_adminuservalidation_ts",
-      "community": 345,
+      "community": 2,
       "norm_label": "adminuservalidation.ts"
     },
     {
@@ -34182,7 +34182,7 @@
       "source_file": "src/utils/adminUserValidation.ts",
       "source_location": "L1",
       "id": "utils_adminuservalidation_admincreateuserformdata",
-      "community": 345,
+      "community": 2,
       "norm_label": "admincreateuserformdata"
     },
     {
@@ -34191,7 +34191,7 @@
       "source_file": "src/utils/adminUserValidation.ts",
       "source_location": "L13",
       "id": "utils_adminuservalidation_admincreateuserfield",
-      "community": 345,
+      "community": 2,
       "norm_label": "admincreateuserfield"
     },
     {
@@ -34200,7 +34200,7 @@
       "source_file": "src/utils/adminUserValidation.ts",
       "source_location": "L24",
       "id": "utils_adminuservalidation_admincreateuservalidationerrors",
-      "community": 345,
+      "community": 2,
       "norm_label": "admincreateuservalidationerrors"
     },
     {
@@ -34209,7 +34209,7 @@
       "source_file": "src/utils/adminUserValidation.ts",
       "source_location": "L32",
       "id": "utils_adminuservalidation_validateadmincreateuserform",
-      "community": 345,
+      "community": 2,
       "norm_label": "validateadmincreateuserform()"
     },
     {
@@ -34218,7 +34218,7 @@
       "source_file": "src/utils/adminUserValidation.ts",
       "source_location": "L88",
       "id": "utils_adminuservalidation_getfirstvalidationerror",
-      "community": 345,
+      "community": 2,
       "norm_label": "getfirstvalidationerror()"
     },
     {
@@ -34227,7 +34227,7 @@
       "source_file": "src/utils/avatarUtils.ts",
       "source_location": "L1",
       "id": "src_utils_avatarutils_ts",
-      "community": 345,
+      "community": 76,
       "norm_label": "avatarutils.ts"
     },
     {
@@ -34236,7 +34236,7 @@
       "source_file": "src/utils/avatarUtils.ts",
       "source_location": "L5",
       "id": "utils_avatarutils_getdefaultavatar",
-      "community": 345,
+      "community": 76,
       "norm_label": "getdefaultavatar()"
     },
     {
@@ -40230,7 +40230,7 @@
       "source_file": "docs/superpowers/plans/2026-05-04-quiz-battle-rag.md",
       "source_location": "L1608",
       "id": "plans_2026_05_04_quiz_battle_rag_phase_5_validation_rollout",
-      "community": 188,
+      "community": 153,
       "norm_label": "phase 5: validation & rollout"
     },
     {
@@ -60758,9 +60758,9 @@
       "source_file": "backend/routes/admin_routes.py",
       "source_location": "L129",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_admin_routes_deletefilerequest",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -60868,9 +60868,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L803",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_diagnostic_diagnosticanalysisrequest",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -60878,9 +60878,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L807",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_diagnostic_diagnosticanalysisresponse",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -86349,9 +86349,9 @@
       "source_file": "backend/main.py",
       "source_location": "L470",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_470",
-      "target": "backend_main_app_lifespan",
-      "confidence_score": 1.0
+      "target": "backend_main_app_lifespan"
     },
     {
       "relation": "rationale_for",
@@ -87236,9 +87236,9 @@
       "source_file": "backend/main.py",
       "source_location": "L791",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_791",
-      "target": "backend_main_extract_uid_from_claims",
-      "confidence_score": 1.0
+      "target": "backend_main_extract_uid_from_claims"
     },
     {
       "relation": "rationale_for",
@@ -87348,9 +87348,9 @@
       "source_file": "backend/main.py",
       "source_location": "L811",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_811",
-      "target": "backend_main_verify_token_with_fallback",
-      "confidence_score": 1.0
+      "target": "backend_main_verify_token_with_fallback"
     },
     {
       "relation": "rationale_for",
@@ -87911,9 +87911,9 @@
       "source_file": "backend/main.py",
       "source_location": "L863",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_863",
-      "target": "backend_main_enforce_rate_limit",
-      "confidence_score": 1.0
+      "target": "backend_main_enforce_rate_limit"
     },
     {
       "relation": "calls",
@@ -88199,9 +88199,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1019",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1019",
-      "target": "backend_main_start_async_task_in_thread",
-      "confidence_score": 1.0
+      "target": "backend_main_start_async_task_in_thread"
     },
     {
       "relation": "rationale_for",
@@ -88569,9 +88569,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1086",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1086",
-      "target": "backend_main_requestmiddleware",
-      "confidence_score": 1.0
+      "target": "backend_main_requestmiddleware"
     },
     {
       "relation": "rationale_for",
@@ -88901,9 +88901,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1204",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1204",
-      "target": "backend_main_ensure_deepseek_available",
-      "confidence_score": 1.0
+      "target": "backend_main_ensure_deepseek_available"
     },
     {
       "relation": "rationale_for",
@@ -89002,9 +89002,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1222",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1222",
-      "target": "backend_main_strip_repetition",
-      "confidence_score": 1.0
+      "target": "backend_main_strip_repetition"
     },
     {
       "relation": "rationale_for",
@@ -89114,9 +89114,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1307",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1307",
-      "target": "backend_main_call_hf_chat_stream",
-      "confidence_score": 1.0
+      "target": "backend_main_call_hf_chat_stream"
     },
     {
       "relation": "rationale_for",
@@ -89468,9 +89468,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1463",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1463",
-      "target": "backend_main_call_hf_chat_async",
-      "confidence_score": 1.0
+      "target": "backend_main_call_hf_chat_async"
     },
     {
       "relation": "calls",
@@ -89624,9 +89624,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1487",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1487",
-      "target": "backend_main_call_hf_chat_stream_async",
-      "confidence_score": 1.0
+      "target": "backend_main_call_hf_chat_stream_async"
     },
     {
       "relation": "rationale_for",
@@ -89714,9 +89714,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1511",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1511",
-      "target": "backend_main_load_local_math_model",
-      "confidence_score": 1.0
+      "target": "backend_main_load_local_math_model"
     },
     {
       "relation": "rationale_for",
@@ -89815,9 +89815,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1800",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1800",
-      "target": "backend_main_is_remember_storage_command",
-      "confidence_score": 1.0
+      "target": "backend_main_is_remember_storage_command"
     },
     {
       "relation": "rationale_for",
@@ -89897,9 +89897,9 @@
       "source_file": "backend/main.py",
       "source_location": "L1823",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_1823",
-      "target": "backend_main_is_math_related_query",
-      "confidence_score": 1.0
+      "target": "backend_main_is_math_related_query"
     },
     {
       "relation": "rationale_for",
@@ -90100,9 +90100,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2005",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2005",
-      "target": "backend_main_build_math_tutor_prompt",
-      "confidence_score": 1.0
+      "target": "backend_main_build_math_tutor_prompt"
     },
     {
       "relation": "rationale_for",
@@ -90200,9 +90200,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2038",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2038",
-      "target": "backend_main_call_math_tutor_llm",
-      "confidence_score": 1.0
+      "target": "backend_main_call_math_tutor_llm"
     },
     {
       "relation": "rationale_for",
@@ -94370,9 +94370,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2210",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2210",
-      "target": "backend_main_memory_health_check",
-      "confidence_score": 1.0
+      "target": "backend_main_memory_health_check"
     },
     {
       "relation": "rationale_for",
@@ -94430,9 +94430,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2222",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2222",
-      "target": "backend_main_debug_scope_info",
-      "confidence_score": 1.0
+      "target": "backend_main_debug_scope_info"
     },
     {
       "relation": "calls",
@@ -94610,9 +94610,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2506",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2506",
-      "target": "backend_main_chat_tutor",
-      "confidence_score": 1.0
+      "target": "backend_main_chat_tutor"
     },
     {
       "relation": "calls",
@@ -94721,9 +94721,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2638",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2638",
-      "target": "backend_main_update_memory_after_response",
-      "confidence_score": 1.0
+      "target": "backend_main_update_memory_after_response"
     },
     {
       "relation": "rationale_for",
@@ -94801,9 +94801,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2657",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2657",
-      "target": "backend_main_chat_tutor_stream",
-      "confidence_score": 1.0
+      "target": "backend_main_chat_tutor_stream"
     },
     {
       "relation": "rationale_for",
@@ -94912,9 +94912,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2868",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2868",
-      "target": "backend_main_extract_final_answer",
-      "confidence_score": 1.0
+      "target": "backend_main_extract_final_answer"
     },
     {
       "relation": "rationale_for",
@@ -95023,9 +95023,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2891",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2891",
-      "target": "backend_main_verify_math_response",
-      "confidence_score": 1.0
+      "target": "backend_main_verify_math_response"
     },
     {
       "relation": "rationale_for",
@@ -95134,9 +95134,9 @@
       "source_file": "backend/main.py",
       "source_location": "L2968",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_2968",
-      "target": "backend_main_verify_with_code",
-      "confidence_score": 1.0
+      "target": "backend_main_verify_with_code"
     },
     {
       "relation": "rationale_for",
@@ -95245,9 +95245,9 @@
       "source_file": "backend/main.py",
       "source_location": "L3164",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_3164",
-      "target": "backend_main_llm_judge_verification",
-      "confidence_score": 1.0
+      "target": "backend_main_llm_judge_verification"
     },
     {
       "relation": "calls",
@@ -95356,9 +95356,9 @@
       "source_file": "backend/main.py",
       "source_location": "L3231",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_3231",
-      "target": "backend_main_verify_solution",
-      "confidence_score": 1.0
+      "target": "backend_main_verify_solution"
     },
     {
       "relation": "rationale_for",
@@ -95511,9 +95511,9 @@
       "source_file": "backend/main.py",
       "source_location": "L3451",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_3451",
-      "target": "backend_main_predict_risk",
-      "confidence_score": 1.0
+      "target": "backend_main_predict_risk"
     },
     {
       "relation": "rationale_for",
@@ -95611,9 +95611,9 @@
       "source_file": "backend/main.py",
       "source_location": "L3542",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_3542",
-      "target": "backend_main_predict_risk_batch",
-      "confidence_score": 1.0
+      "target": "backend_main_predict_risk_batch"
     },
     {
       "relation": "calls",
@@ -95722,9 +95722,9 @@
       "source_file": "backend/main.py",
       "source_location": "L3567",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_3567",
-      "target": "backend_main_generate_ai_learning_path",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_ai_learning_path"
     },
     {
       "relation": "calls",
@@ -95833,9 +95833,9 @@
       "source_file": "backend/main.py",
       "source_location": "L3655",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_3655",
-      "target": "backend_main_daily_insight",
-      "confidence_score": 1.0
+      "target": "backend_main_daily_insight"
     },
     {
       "relation": "rationale_for",
@@ -96087,9 +96087,9 @@
       "source_file": "backend/main.py",
       "source_location": "L3942",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_3942",
-      "target": "backend_main_sanitize_column_mapping",
-      "confidence_score": 1.0
+      "target": "backend_main_sanitize_column_mapping"
     },
     {
       "relation": "rationale_for",
@@ -96726,9 +96726,9 @@
       "source_file": "backend/main.py",
       "source_location": "L4806",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_4806",
-      "target": "backend_main_record_risk_refresh_event",
-      "confidence_score": 1.0
+      "target": "backend_main_record_risk_refresh_event"
     },
     {
       "relation": "rationale_for",
@@ -96837,9 +96837,9 @@
       "source_file": "backend/main.py",
       "source_location": "L4907",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_4907",
-      "target": "backend_main_queue_post_import_risk_refresh",
-      "confidence_score": 1.0
+      "target": "backend_main_queue_post_import_risk_refresh"
     },
     {
       "relation": "rationale_for",
@@ -100017,9 +100017,9 @@
       "source_file": "backend/main.py",
       "source_location": "L5695",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_5695",
-      "target": "backend_main_preview_student_account_import",
-      "confidence_score": 1.0
+      "target": "backend_main_preview_student_account_import"
     },
     {
       "relation": "calls",
@@ -100128,9 +100128,9 @@
       "source_file": "backend/main.py",
       "source_location": "L5884",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_5884",
-      "target": "backend_main_commit_student_account_import",
-      "confidence_score": 1.0
+      "target": "backend_main_commit_student_account_import"
     },
     {
       "relation": "calls",
@@ -100239,9 +100239,9 @@
       "source_file": "backend/main.py",
       "source_location": "L6177",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_6177",
-      "target": "backend_main_log_client_audit_event",
-      "confidence_score": 1.0
+      "target": "backend_main_log_client_audit_event"
     },
     {
       "relation": "rationale_for",
@@ -100351,9 +100351,9 @@
       "source_file": "backend/main.py",
       "source_location": "L6730",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_6730",
-      "target": "backend_main_create_admin_user_and_notify",
-      "confidence_score": 1.0
+      "target": "backend_main_create_admin_user_and_notify"
     },
     {
       "relation": "rationale_for",
@@ -100451,9 +100451,9 @@
       "source_file": "backend/main.py",
       "source_location": "L6826",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_6826",
-      "target": "backend_main_create_student_account_for_teacher",
-      "confidence_score": 1.0
+      "target": "backend_main_create_student_account_for_teacher"
     },
     {
       "relation": "calls",
@@ -100512,9 +100512,9 @@
       "source_file": "backend/main.py",
       "source_location": "L7085",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_7085",
-      "target": "backend_main_delete_admin_user_account",
-      "confidence_score": 1.0
+      "target": "backend_main_delete_admin_user_account"
     },
     {
       "relation": "calls",
@@ -100623,9 +100623,9 @@
       "source_file": "backend/main.py",
       "source_location": "L7195",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_7195",
-      "target": "backend_main_get_recent_risk_refresh_status",
-      "confidence_score": 1.0
+      "target": "backend_main_get_recent_risk_refresh_status"
     },
     {
       "relation": "rationale_for",
@@ -100723,9 +100723,9 @@
       "source_file": "backend/main.py",
       "source_location": "L7291",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_7291",
-      "target": "backend_main_delete_class_section",
-      "confidence_score": 1.0
+      "target": "backend_main_delete_class_section"
     },
     {
       "relation": "calls",
@@ -100764,9 +100764,9 @@
       "source_file": "backend/main.py",
       "source_location": "L7357",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_7357",
-      "target": "backend_main_upload_class_records",
-      "confidence_score": 1.0
+      "target": "backend_main_upload_class_records"
     },
     {
       "relation": "rationale_for",
@@ -100974,9 +100974,9 @@
       "source_file": "backend/main.py",
       "source_location": "L8196",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_8196",
-      "target": "backend_main_upload_course_materials",
-      "confidence_score": 1.0
+      "target": "backend_main_upload_course_materials"
     },
     {
       "relation": "rationale_for",
@@ -101074,9 +101074,9 @@
       "source_file": "backend/main.py",
       "source_location": "L8463",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_8463",
-      "target": "backend_main_get_recent_course_materials",
-      "confidence_score": 1.0
+      "target": "backend_main_get_recent_course_materials"
     },
     {
       "relation": "rationale_for",
@@ -101174,9 +101174,9 @@
       "source_file": "backend/main.py",
       "source_location": "L8562",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_8562",
-      "target": "backend_main_get_course_material_topics",
-      "confidence_score": 1.0
+      "target": "backend_main_get_course_material_topics"
     },
     {
       "relation": "rationale_for",
@@ -110778,9 +110778,9 @@
       "source_file": "backend/main.py",
       "source_location": "L9896",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_9896",
-      "target": "backend_main_generate_lesson_plan",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_lesson_plan"
     },
     {
       "relation": "calls",
@@ -110933,9 +110933,9 @@
       "source_file": "backend/main.py",
       "source_location": "L10223",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_10223",
-      "target": "backend_main_record_import_grounded_feedback",
-      "confidence_score": 1.0
+      "target": "backend_main_record_import_grounded_feedback"
     },
     {
       "relation": "rationale_for",
@@ -111033,9 +111033,9 @@
       "source_file": "backend/main.py",
       "source_location": "L10275",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_10275",
-      "target": "backend_main_get_import_grounded_feedback_summary",
-      "confidence_score": 1.0
+      "target": "backend_main_get_import_grounded_feedback_summary"
     },
     {
       "relation": "rationale_for",
@@ -111133,9 +111133,9 @@
       "source_file": "backend/main.py",
       "source_location": "L10502",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_10502",
-      "target": "backend_main_get_import_grounded_access_audit",
-      "confidence_score": 1.0
+      "target": "backend_main_get_import_grounded_access_audit"
     },
     {
       "relation": "calls",
@@ -111255,9 +111255,9 @@
       "source_file": "backend/main.py",
       "source_location": "L10730",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_10730",
-      "target": "backend_main_distribute_questions",
-      "confidence_score": 1.0
+      "target": "backend_main_distribute_questions"
     },
     {
       "relation": "rationale_for",
@@ -111388,9 +111388,9 @@
       "source_file": "backend/main.py",
       "source_location": "L10764",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_10764",
-      "target": "backend_main_parse_quiz_json",
-      "confidence_score": 1.0
+      "target": "backend_main_parse_quiz_json"
     },
     {
       "relation": "rationale_for",
@@ -111499,9 +111499,9 @@
       "source_file": "backend/main.py",
       "source_location": "L10891",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_10891",
-      "target": "backend_main_repair_quiz_json_with_llm",
-      "confidence_score": 1.0
+      "target": "backend_main_repair_quiz_json_with_llm"
     },
     {
       "relation": "rationale_for",
@@ -111610,9 +111610,9 @@
       "source_file": "backend/main.py",
       "source_location": "L10929",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_10929",
-      "target": "backend_main_regenerate_quiz_json_strict",
-      "confidence_score": 1.0
+      "target": "backend_main_regenerate_quiz_json_strict"
     },
     {
       "relation": "rationale_for",
@@ -111721,9 +111721,9 @@
       "source_file": "backend/main.py",
       "source_location": "L10966",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_10966",
-      "target": "backend_main_validate_quiz_questions",
-      "confidence_score": 1.0
+      "target": "backend_main_validate_quiz_questions"
     },
     {
       "relation": "rationale_for",
@@ -111832,9 +111832,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11060",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11060",
-      "target": "backend_main_generate_quiz",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_quiz"
     },
     {
       "relation": "rationale_for",
@@ -111932,9 +111932,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11377",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11377",
-      "target": "backend_main_preview_quiz",
-      "confidence_score": 1.0
+      "target": "backend_main_preview_quiz"
     },
     {
       "relation": "rationale_for",
@@ -112043,9 +112043,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11578",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11578",
-      "target": "backend_main_get_hf_monitoring",
-      "confidence_score": 1.0
+      "target": "backend_main_get_hf_monitoring"
     },
     {
       "relation": "rationale_for",
@@ -112143,9 +112143,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11655",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11655",
-      "target": "backend_main_get_quiz_topics",
-      "confidence_score": 1.0
+      "target": "backend_main_get_quiz_topics"
     },
     {
       "relation": "calls",
@@ -112254,9 +112254,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11683",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11683",
-      "target": "backend_main_student_competency",
-      "confidence_score": 1.0
+      "target": "backend_main_student_competency"
     },
     {
       "relation": "rationale_for",
@@ -112365,9 +112365,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11800",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11800",
-      "target": "backend_main_get_sympy_safe_dict",
-      "confidence_score": 1.0
+      "target": "backend_main_get_sympy_safe_dict"
     },
     {
       "relation": "rationale_for",
@@ -112465,9 +112465,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11868",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11868",
-      "target": "backend_main_calculator_evaluate",
-      "confidence_score": 1.0
+      "target": "backend_main_calculator_evaluate"
     },
     {
       "relation": "rationale_for",
@@ -112565,9 +112565,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11942",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11942",
-      "target": "backend_main_student_competency_analysis",
-      "confidence_score": 1.0
+      "target": "backend_main_student_competency_analysis"
     },
     {
       "relation": "rationale_for",
@@ -112665,9 +112665,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11979",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11979",
-      "target": "backend_main_train_risk_classification_model",
-      "confidence_score": 1.0
+      "target": "backend_main_train_risk_classification_model"
     },
     {
       "relation": "rationale_for",
@@ -112765,9 +112765,9 @@
       "source_file": "backend/main.py",
       "source_location": "L11995",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_11995",
-      "target": "backend_main_predict_risk_ml",
-      "confidence_score": 1.0
+      "target": "backend_main_predict_risk_ml"
     },
     {
       "relation": "rationale_for",
@@ -112865,9 +112865,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12019",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12019",
-      "target": "backend_main_calibrate_quiz_difficulty",
-      "confidence_score": 1.0
+      "target": "backend_main_calibrate_quiz_difficulty"
     },
     {
       "relation": "rationale_for",
@@ -112965,9 +112965,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12037",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12037",
-      "target": "backend_main_adaptive_quiz_selection",
-      "confidence_score": 1.0
+      "target": "backend_main_adaptive_quiz_selection"
     },
     {
       "relation": "rationale_for",
@@ -113065,9 +113065,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12053",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12053",
-      "target": "backend_main_recommend_learning_topics",
-      "confidence_score": 1.0
+      "target": "backend_main_recommend_learning_topics"
     },
     {
       "relation": "rationale_for",
@@ -113165,9 +113165,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12069",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12069",
-      "target": "backend_main_student_analytics_summary",
-      "confidence_score": 1.0
+      "target": "backend_main_student_analytics_summary"
     },
     {
       "relation": "rationale_for",
@@ -113265,9 +113265,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12087",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12087",
-      "target": "backend_main_class_analytics_insights",
-      "confidence_score": 1.0
+      "target": "backend_main_class_analytics_insights"
     },
     {
       "relation": "rationale_for",
@@ -113365,9 +113365,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12103",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12103",
-      "target": "backend_main_refresh_analytics_cache",
-      "confidence_score": 1.0
+      "target": "backend_main_refresh_analytics_cache"
     },
     {
       "relation": "rationale_for",
@@ -113465,9 +113465,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12118",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12118",
-      "target": "backend_main_generate_mock_data",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_mock_data"
     },
     {
       "relation": "rationale_for",
@@ -113708,9 +113708,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12230",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12230",
-      "target": "backend_main_testing_reset_try_delete_subcollection",
-      "confidence_score": 1.0
+      "target": "backend_main_testing_reset_try_delete_subcollection"
     },
     {
       "relation": "calls",
@@ -113863,9 +113863,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12457",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12457",
-      "target": "backend_main_get_analytics_config",
-      "confidence_score": 1.0
+      "target": "backend_main_get_analytics_config"
     },
     {
       "relation": "rationale_for",
@@ -113963,9 +113963,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12474",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12474",
-      "target": "backend_main_get_imported_class_overview",
-      "confidence_score": 1.0
+      "target": "backend_main_get_imported_class_overview"
     },
     {
       "relation": "calls",
@@ -114074,9 +114074,9 @@
       "source_file": "backend/main.py",
       "source_location": "L12791",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_12791",
-      "target": "backend_main_topic_mastery_analytics",
-      "confidence_score": 1.0
+      "target": "backend_main_topic_mastery_analytics"
     },
     {
       "relation": "calls",
@@ -114185,9 +114185,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13006",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13006",
-      "target": "backend_main_automation_diagnostic_completed",
-      "confidence_score": 1.0
+      "target": "backend_main_automation_diagnostic_completed"
     },
     {
       "relation": "rationale_for",
@@ -114285,9 +114285,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13022",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13022",
-      "target": "backend_main_automation_quiz_submitted",
-      "confidence_score": 1.0
+      "target": "backend_main_automation_quiz_submitted"
     },
     {
       "relation": "rationale_for",
@@ -114385,9 +114385,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13037",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13037",
-      "target": "backend_main_automation_student_enrolled",
-      "confidence_score": 1.0
+      "target": "backend_main_automation_student_enrolled"
     },
     {
       "relation": "rationale_for",
@@ -114485,9 +114485,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13052",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13052",
-      "target": "backend_main_automation_data_imported",
-      "confidence_score": 1.0
+      "target": "backend_main_automation_data_imported"
     },
     {
       "relation": "rationale_for",
@@ -114585,9 +114585,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13067",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13067",
-      "target": "backend_main_automation_content_updated",
-      "confidence_score": 1.0
+      "target": "backend_main_automation_content_updated"
     },
     {
       "relation": "rationale_for",
@@ -114696,9 +114696,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13087",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13087",
-      "target": "backend_main_generate_diagnostic_questions",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_diagnostic_questions"
     },
     {
       "relation": "calls",
@@ -114818,9 +114818,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13172",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13172",
-      "target": "backend_main_analyze_diagnostic_risk",
-      "confidence_score": 1.0
+      "target": "backend_main_analyze_diagnostic_risk"
     },
     {
       "relation": "calls",
@@ -114940,9 +114940,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13245",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13245",
-      "target": "backend_main_save_diagnostic_to_firestore",
-      "confidence_score": 1.0
+      "target": "backend_main_save_diagnostic_to_firestore"
     },
     {
       "relation": "rationale_for",
@@ -115040,9 +115040,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13277",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13277",
-      "target": "backend_main_generate_diagnostic_test",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_diagnostic_test"
     },
     {
       "relation": "rationale_for",
@@ -115140,9 +115140,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13325",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13325",
-      "target": "backend_main_submit_diagnostic_test",
-      "confidence_score": 1.0
+      "target": "backend_main_submit_diagnostic_test"
     },
     {
       "relation": "rationale_for",
@@ -115240,9 +115240,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13389",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13389",
-      "target": "backend_main_get_diagnostic_results",
-      "confidence_score": 1.0
+      "target": "backend_main_get_diagnostic_results"
     },
     {
       "relation": "rationale_for",
@@ -116033,9 +116033,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13525",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13525",
-      "target": "backend_main_generate_diagnostic_lesson",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_diagnostic_lesson"
     },
     {
       "relation": "calls",
@@ -116364,9 +116364,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13625",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13625",
-      "target": "backend_main_generate_lesson_from_diagnostic",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_lesson_from_diagnostic"
     },
     {
       "relation": "rationale_for",
@@ -116915,9 +116915,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13697",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13697",
-      "target": "backend_main_evaluate_progress",
-      "confidence_score": 1.0
+      "target": "backend_main_evaluate_progress"
     },
     {
       "relation": "calls",
@@ -117719,9 +117719,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13866",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13866",
-      "target": "backend_main_resolve_mastery_and_prev_score",
-      "confidence_score": 1.0
+      "target": "backend_main_resolve_mastery_and_prev_score"
     },
     {
       "relation": "rationale_for",
@@ -117830,9 +117830,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13920",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13920",
-      "target": "backend_main_calibrate_quiz_params",
-      "confidence_score": 1.0
+      "target": "backend_main_calibrate_quiz_params"
     },
     {
       "relation": "rationale_for",
@@ -117930,9 +117930,9 @@
       "source_file": "backend/main.py",
       "source_location": "L13943",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_13943",
-      "target": "backend_main_generate_adaptive_quiz",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_adaptive_quiz"
     },
     {
       "relation": "calls",
@@ -118723,9 +118723,9 @@
       "source_file": "backend/main.py",
       "source_location": "L14075",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_14075",
-      "target": "backend_main_generate_learning_path",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_learning_path"
     },
     {
       "relation": "rationale_for",
@@ -119274,9 +119274,9 @@
       "source_file": "backend/main.py",
       "source_location": "L14156",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_main_rationale_14156",
-      "target": "backend_main_generate_personalized_lesson",
-      "confidence_score": 1.0
+      "target": "backend_main_generate_personalized_lesson"
     },
     {
       "relation": "calls",
@@ -122734,9 +122734,9 @@
       "source_file": "backend/routes/admin_routes.py",
       "source_location": "L129",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_routes_admin_routes_py",
-      "target": "routes_admin_routes_deletefilerequest",
-      "confidence_score": 1.0
+      "target": "routes_admin_routes_deletefilerequest"
     },
     {
       "relation": "contains",
@@ -122744,9 +122744,9 @@
       "source_file": "backend/routes/admin_routes.py",
       "source_location": "L135",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_routes_admin_routes_py",
-      "target": "routes_admin_routes_delete_uploaded_file",
-      "confidence_score": 1.0
+      "target": "routes_admin_routes_delete_uploaded_file"
     },
     {
       "relation": "calls",
@@ -122777,9 +122777,9 @@
       "source_file": "backend/routes/admin_routes.py",
       "source_location": "L184",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_admin_routes_delete_uploaded_file",
-      "target": "routes_admin_routes_get_audit_logger",
-      "confidence_score": 1.0
+      "target": "routes_admin_routes_get_audit_logger"
     },
     {
       "relation": "rationale_for",
@@ -122787,9 +122787,9 @@
       "source_file": "backend/routes/admin_routes.py",
       "source_location": "L140",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_admin_routes_rationale_140",
-      "target": "routes_admin_routes_delete_uploaded_file",
-      "confidence_score": 1.0
+      "target": "routes_admin_routes_delete_uploaded_file"
     },
     {
       "relation": "contains",
@@ -123917,9 +123917,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L803",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_routes_diagnostic_py",
-      "target": "routes_diagnostic_diagnosticanalysisrequest",
-      "confidence_score": 1.0
+      "target": "routes_diagnostic_diagnosticanalysisrequest"
     },
     {
       "relation": "contains",
@@ -123927,9 +123927,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L807",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_routes_diagnostic_py",
-      "target": "routes_diagnostic_diagnosticanalysisresponse",
-      "confidence_score": 1.0
+      "target": "routes_diagnostic_diagnosticanalysisresponse"
     },
     {
       "relation": "contains",
@@ -123937,9 +123937,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L813",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_routes_diagnostic_py",
-      "target": "routes_diagnostic_analyze_diagnostic",
-      "confidence_score": 1.0
+      "target": "routes_diagnostic_analyze_diagnostic"
     },
     {
       "relation": "contains",
@@ -123947,9 +123947,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L936",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "backend_routes_diagnostic_py",
-      "target": "routes_diagnostic_build_fallback_analysis",
-      "confidence_score": 1.0
+      "target": "routes_diagnostic_build_fallback_analysis"
     },
     {
       "relation": "rationale_for",
@@ -124154,9 +124154,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L933",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_diagnostic_analyze_diagnostic",
-      "target": "routes_diagnostic_diagnosticanalysisresponse",
-      "confidence_score": 1.0
+      "target": "routes_diagnostic_diagnosticanalysisresponse"
     },
     {
       "relation": "calls",
@@ -124165,9 +124165,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L931",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_diagnostic_analyze_diagnostic",
-      "target": "routes_diagnostic_build_fallback_analysis",
-      "confidence_score": 1.0
+      "target": "routes_diagnostic_build_fallback_analysis"
     },
     {
       "relation": "rationale_for",
@@ -124175,9 +124175,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L814",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_diagnostic_rationale_814",
-      "target": "routes_diagnostic_analyze_diagnostic",
-      "confidence_score": 1.0
+      "target": "routes_diagnostic_analyze_diagnostic"
     },
     {
       "relation": "rationale_for",
@@ -124185,9 +124185,9 @@
       "source_file": "backend/routes/diagnostic.py",
       "source_location": "L941",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routes_diagnostic_rationale_941",
-      "target": "routes_diagnostic_build_fallback_analysis",
-      "confidence_score": 1.0
+      "target": "routes_diagnostic_build_fallback_analysis"
     },
     {
       "relation": "contains",
@@ -150119,9 +150119,9 @@
       "source_file": "src/App.tsx",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_app_tsx",
-      "target": "src_app_diagnosticbreakdown",
-      "confidence_score": 1.0
+      "target": "src_app_diagnosticbreakdown"
     },
     {
       "relation": "contains",
@@ -154647,9 +154647,9 @@
       "source_file": "src/components/GradesPage.tsx",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_gradespage_tsx",
-      "target": "components_gradespage_diagnosticbreakdown",
-      "confidence_score": 1.0
+      "target": "components_gradespage_diagnosticbreakdown"
     },
     {
       "relation": "contains",
@@ -164297,9 +164297,9 @@
       "source_file": "src/components/assessment/DiagnosticBreakdown.tsx",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_assessment_diagnosticbreakdown_tsx",
-      "target": "src_lib_firebase_ts",
-      "confidence_score": 1.0
+      "target": "src_lib_firebase_ts"
     },
     {
       "relation": "imports",
@@ -164308,9 +164308,9 @@
       "source_file": "src/components/assessment/DiagnosticBreakdown.tsx",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_assessment_diagnosticbreakdown_tsx",
-      "target": "lib_firebase_db",
-      "confidence_score": 1.0
+      "target": "lib_firebase_db"
     },
     {
       "relation": "contains",
@@ -164318,9 +164318,9 @@
       "source_file": "src/components/assessment/DiagnosticBreakdown.tsx",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_assessment_diagnosticbreakdown_tsx",
-      "target": "assessment_diagnosticbreakdown_diagnosticresponse",
-      "confidence_score": 1.0
+      "target": "assessment_diagnosticbreakdown_diagnosticresponse"
     },
     {
       "relation": "contains",
@@ -164328,9 +164328,9 @@
       "source_file": "src/components/assessment/DiagnosticBreakdown.tsx",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_assessment_diagnosticbreakdown_tsx",
-      "target": "assessment_diagnosticbreakdown_diagnosticanalysis",
-      "confidence_score": 1.0
+      "target": "assessment_diagnosticbreakdown_diagnosticanalysis"
     },
     {
       "relation": "contains",
@@ -164338,9 +164338,9 @@
       "source_file": "src/components/assessment/DiagnosticBreakdown.tsx",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_assessment_diagnosticbreakdown_tsx",
-      "target": "assessment_diagnosticbreakdown_diagnosticbreakdownprops",
-      "confidence_score": 1.0
+      "target": "assessment_diagnosticbreakdown_diagnosticbreakdownprops"
     },
     {
       "relation": "contains",
@@ -164348,9 +164348,9 @@
       "source_file": "src/components/assessment/DiagnosticBreakdown.tsx",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_assessment_diagnosticbreakdown_tsx",
-      "target": "assessment_diagnosticbreakdown_questionwithtext",
-      "confidence_score": 1.0
+      "target": "assessment_diagnosticbreakdown_questionwithtext"
     },
     {
       "relation": "contains",
@@ -164358,9 +164358,9 @@
       "source_file": "src/components/assessment/DiagnosticBreakdown.tsx",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "src_components_assessment_diagnosticbreakdown_tsx",
-      "target": "assessment_diagnosticbreakdown_diagnosticbreakdown",
-      "confidence_score": 1.0
+      "target": "assessment_diagnosticbreakdown_diagnosticbreakdown"
     },
     {
       "relation": "imports_from",
@@ -216458,5 +216458,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "49ee1f9af5c5e405bc3858401558105a7fcbc3f0"
+  "built_at_commit": "1831ff3c133a740c7db4e63622d19c56728b8512"
 }
