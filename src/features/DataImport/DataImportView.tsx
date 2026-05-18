@@ -257,24 +257,31 @@ export default function DataImportView({
   const [saving, setSaving] = useState(false);
   const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
 
-  // Filter students by current class context (or teacher's classes if no class selected)
+  // Filter students: only show students this teacher manages
   const filteredStudents = useMemo(() => {
-    // If a specific class is selected, filter by it
+    let filtered = localStudents;
+
+    // Primary filter: only students in teacher's own classes
+    if (availableClasses.length > 0) {
+      const classIds = new Set(availableClasses.map(c => normalizeClassSectionId(c.classSectionId || c.id)));
+      filtered = filtered.filter(s =>
+        classIds.has(normalizeClassSectionId(s.classSectionId)) ||
+        classIds.has(normalizeClassSectionId(s.classroomId))
+      );
+    } else {
+      // Teacher has no classes — show nothing
+      return [];
+    }
+
+    // Secondary filter: if a specific class is selected, narrow further
     if (classSectionId) {
-      return localStudents.filter(s =>
+      filtered = filtered.filter(s =>
         normalizeClassSectionId(s.classSectionId) === normalizeClassSectionId(classSectionId) ||
         normalizeClassSectionId(s.classroomId) === normalizeClassSectionId(classSectionId)
       );
     }
-    // Otherwise filter to only students in teacher's known classes
-    if (availableClasses.length > 0) {
-      const classIds = new Set(availableClasses.map(c => normalizeClassSectionId(c.classSectionId || c.id)));
-      return localStudents.filter(s =>
-        classIds.has(normalizeClassSectionId(s.classSectionId)) ||
-        classIds.has(normalizeClassSectionId(s.classroomId))
-      );
-    }
-    return localStudents;
+
+    return filtered;
   }, [localStudents, classSectionId, availableClasses]);
 
   useEffect(() => {
