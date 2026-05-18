@@ -376,7 +376,9 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
                   <div className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[11px] md:text-[12px] font-black uppercase tracking-wider shadow-sm transition-all ${
                     generatingTopic === topic.id
                       ? 'bg-indigo-100 text-indigo-600'
-                      : 'bg-indigo-500 text-white group-hover:bg-indigo-600 shadow-indigo-200'
+                      : completedTopics.has(topic.name.toLowerCase())
+                        ? 'bg-orange-500 text-white group-hover:bg-orange-600 shadow-orange-200'
+                        : 'bg-indigo-500 text-white group-hover:bg-indigo-600 shadow-indigo-200'
                   }`}>
                     {generatingTopic === topic.id ? 'Loading...' : completedTopics.has(topic.name.toLowerCase()) ? 'Retry' : 'Start'}
                   </div>

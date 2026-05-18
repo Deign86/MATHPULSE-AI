@@ -6,10 +6,11 @@ import rehypeKatex from 'rehype-katex';
 /**
  * MathText — Renders text with inline math support for quiz questions/options.
  * 
- * Handles:
- *  - LaTeX delimiters: $...$ for inline, $$...$$ for display
- *  - Common patterns: x^2, t^2, \frac{a}{b}, \sqrt{x}
- *  - Auto-wraps bare math patterns (like "100t^2") in $ delimiters
+ * Converts common plain-text math notation to LaTeX:
+ *  - Caret exponents: x^2, (0.8)^h, 2^t, e^x
+ *  - Asterisk multiplication: 500 * (0.8)^h → 500 \times (0.8)^h
+ *  - Fractions written as a/b
+ *  - Already-delimited LaTeX ($...$, $$...$$)
  */
 
 interface MathTextProps {
@@ -17,54 +18,82 @@ interface MathTextProps {
   className?: string;
 }
 
-/** Patterns that indicate math content needing LaTeX wrapping */
-const MATH_PATTERNS = [
-  /\^[\d{]/,           // x^2, x^{10}
-  /_[\d{]/,            // x_1, x_{10}
-  /\\frac/,            // \frac{a}{b}
-  /\\sqrt/,            // \sqrt{x}
-  /\\(?:times|cdot|pm|mp|leq|geq|neq|approx|infty|pi|theta|alpha|beta|sum|int|lim)\b/,
-];
-
-/** Auto-wrap bare math expressions in $ delimiters */
-function autoWrapMath(text: string): string {
+/** Convert plain-text math notation to LaTeX-delimited string */
+function convertToLatex(text: string): string {
   if (!text) return '';
   
   // Already has $ delimiters — leave as-is
   if (text.includes('$')) return text;
   
-  // Check if text contains math-like patterns that need wrapping
-  const hasMathPattern = MATH_PATTERNS.some(p => p.test(text));
-  if (!hasMathPattern) return text;
+  // Check if text contains any math-like patterns
+  const hasMath = /[\^*×÷]|\\frac|\\sqrt|\\times/.test(text);
+  if (!hasMath) return text;
 
-  // Wrap individual math expressions within the text
-  // Match patterns like: 100t^2, x^{2}, \frac{1}{2}, 3x^2 + 2x
-  return text.replace(
-    /(?:(?:\d+)?[a-zA-Z]?\^[\d{][^,.\s)]*|\\(?:frac|sqrt|times|cdot|pm|mp|leq|geq|neq|approx|infty|pi|theta|alpha|beta|sum|int|lim)[^,.\s)]*)/g,
-    (match) => `$${match}$`
+  // Strategy: find math expressions within the text and wrap them in $...$
+  // Split on sentence structure to avoid wrapping entire sentences
+  
+  // Pattern: match math expressions that contain ^ or * with numbers/variables
+  // Examples: "500 * (0.8)^h", "100 * 2^t", "f(t) = 100 * t^2", "N(h) = 500 * (1.2)^h"
+  
+  // If the text looks like a full math expression (e.g., an option like "N(h) = 500 * (0.8)^h")
+  // Check if it starts with a label like "A: " or similar
+  const labelMatch = text.match(/^([A-Z]:\s*)/);
+  const label = labelMatch ? labelMatch[1] : '';
+  const expr = label ? text.slice(label.length) : text;
+  
+  // If the expression part contains = and math operators, it's a full equation
+  if (expr.includes('=') && (expr.includes('^') || expr.includes('*'))) {
+    const latexExpr = plainToLatex(expr);
+    return label ? `${label}$${latexExpr}$` : `$${latexExpr}$`;
+  }
+  
+  // Otherwise, try to wrap individual math segments
+  // Find segments that look like math (contain ^, *, or are numeric expressions with variables)
+  const result = text.replace(
+    /([A-Za-z()\d.]+(?:\s*[*×]\s*[A-Za-z()\d.^{}]+)+|[A-Za-z()\d.]+\^[A-Za-z()\d.{}]+)/g,
+    (match) => `$${plainToLatex(match)}$`
   );
+  
+  return result;
+}
+
+/** Convert plain math notation to LaTeX syntax */
+function plainToLatex(expr: string): string {
+  let result = expr;
+  
+  // Replace * with \times
+  result = result.replace(/\s*\*\s*/g, ' \\times ');
+  
+  // Replace ^ with proper LaTeX superscript
+  // Handle multi-char exponents: ^{stuff} stays, ^x becomes ^{x}, ^12 becomes ^{12}
+  result = result.replace(/\^([a-zA-Z]{2,}|\d{2,})/g, '^{$1}');
+  // Single char exponents are fine as-is: ^2, ^t, ^h
+  
+  return result;
 }
 
 const MathText: React.FC<MathTextProps> = ({ children, className }) => {
   if (!children || typeof children !== 'string') return null;
 
-  const processed = autoWrapMath(children);
+  const processed = convertToLatex(children);
 
-  // If no math delimiters after processing, render as plain text (faster)
+  // If no math delimiters after processing, render as plain text
   if (!processed.includes('$')) {
-    return <span className={className}>{processed}</span>;
+    return <span className={className}>{children}</span>;
   }
 
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeKatex]}
-      components={{
-        p: ({ children }) => <span className={className}>{children}</span>,
-      }}
-    >
-      {processed}
-    </ReactMarkdown>
+    <span className={className}>
+      <ReactMarkdown
+        remarkPlugins={[remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={{
+          p: ({ children }) => <>{children}</>,
+        }}
+      >
+        {processed}
+      </ReactMarkdown>
+    </span>
   );
 };
 
