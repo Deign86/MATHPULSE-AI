@@ -100,10 +100,6 @@ const LoginPage: React.FC = () => {
   const SECTION_OPTIONS: Record<string, string[]> = {
     'Grade 11': ['Academic', 'Tech-Pro'],
   };
-  const DEPARTMENT_OPTIONS: Record<'teacher', string[]> = {
-    teacher: ['Mathematics', 'Science', 'English', 'Technology', 'Humanities'],
-  };
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -112,7 +108,6 @@ const LoginPage: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
   const [selectedGrade, setSelectedGrade] = useState('Grade 11');
   const [selectedSection, setSelectedSection] = useState(SECTION_OPTIONS['Grade 11'][0]);
-  const [selectedDepartment, setSelectedDepartment] = useState('Mathematics');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPrimaryVideoReady, setIsPrimaryVideoReady] = useState(false);
@@ -269,12 +264,6 @@ const LoginPage: React.FC = () => {
   const secondaryOpacity = activeVideoLayer === 'secondary' ? leadOpacity : trailOpacity;
 
   useEffect(() => {
-    if (selectedRole === 'teacher' && !DEPARTMENT_OPTIONS.teacher.includes(selectedDepartment)) {
-      setSelectedDepartment(DEPARTMENT_OPTIONS.teacher[0]);
-    }
-  }, [selectedDepartment, selectedRole]);
-
-  useEffect(() => {
     const gradeSections = SECTION_OPTIONS[selectedGrade] || [];
     if (gradeSections.length > 0 && !gradeSections.includes(selectedSection)) {
       setSelectedSection(gradeSections[0]);
@@ -324,12 +313,6 @@ const LoginPage: React.FC = () => {
           return;
         }
 
-        if (selectedRole !== 'student' && !selectedDepartment) {
-          setError('Please select a department');
-          setLoading(false);
-          return;
-        }
-
         if (selectedRole === 'admin') {
           setError('Admin account creation is restricted. Please contact an existing administrator.');
           setLoading(false);
@@ -350,7 +333,7 @@ const LoginPage: React.FC = () => {
           selectedRole,
           selectedRole === 'student'
             ? { grade: selectedGrade, section: selectedSection }
-            : { department: selectedDepartment }
+            : { department: 'Mathematics' }
         );
       } else {
         // Sign in existing user
@@ -642,30 +625,6 @@ const LoginPage: React.FC = () => {
                   </motion.div>
                 )}
 
-                {isSignUp && selectedRole !== 'student' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                  >
-                    <label className="block text-xs font-body font-semibold text-slate-500 mb-2 uppercase tracking-wider">
-                      Department
-                    </label>
-                    <div className="relative">
-                      <BookOpen size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <select
-                        value={selectedDepartment}
-                        onChange={(e) => setSelectedDepartment(e.target.value)}
-                        className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
-                        required
-                      >
-                        {DEPARTMENT_OPTIONS.teacher.map((department) => (
-                          <option key={department} value={department}>{department}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </motion.div>
-                )}
 
                 {/* Email Field */}
                 <motion.div

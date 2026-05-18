@@ -1357,7 +1357,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                 isOpen={showRewardsModal}
                 onClose={() => setShowRewardsModal(false)}
                 userLevel={userLevel}
-                currentXP={currentXP}
+                currentXP={progressXPInLevel}
                 xpToNextLevel={xpToNextLevel}
                 totalXP={totalXP}
                 userId={userProfile?.uid || ''}

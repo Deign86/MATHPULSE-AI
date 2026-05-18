@@ -1064,6 +1064,10 @@ export async function assignStudentToClassSection(
     studentUids: [studentUid],
   });
 
+  // Read student profile for managed-student record
+  const userSnap = await getDoc(doc(db, 'users', studentUid));
+  const userData = userSnap.exists() ? userSnap.data() : {} as Record<string, unknown>;
+
   await setDoc(
     doc(db, 'users', studentUid),
     {
@@ -1072,6 +1076,27 @@ export async function assignStudentToClassSection(
       classSectionId,
       adviserTeacherId: ownerTeacherId,
       adviserTeacherName: ownerTeacherName || '',
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  // Create/update managedStudents record so teacher dashboard sees the student
+  await setDoc(
+    doc(db, 'managedStudents', studentUid),
+    {
+      accountUid: studentUid,
+      name: userData.name || userData.displayName || 'Student',
+      email: userData.email || '',
+      lrn: userData.lrn || null,
+      teacherId: ownerTeacherId,
+      grade,
+      gradeLevel: grade,
+      section,
+      classSectionId,
+      classroomId: classSectionId,
+      hasRegisteredAccount: true,
+      source: 'registered',
       updatedAt: serverTimestamp(),
     },
     { merge: true }
@@ -1154,6 +1179,9 @@ export function subscribeToActivityFeed(
       ...doc.data(),
     })) as ClassActivity[];
     callback(activities);
+  }, (error) => {
+    console.error('[studentService] subscribeToActivities error:', error);
+    callback([]);
   });
 }
 
@@ -1208,6 +1236,9 @@ export function subscribeToStudents(
       ...doc.data(),
     })) as ManagedStudent[];
     callback(students);
+  }, (error) => {
+    console.error('[studentService] subscribeToStudents error:', error);
+    callback([]);
   });
 }
 

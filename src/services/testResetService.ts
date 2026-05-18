@@ -239,6 +239,9 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   // Delete module progress subcollection
   deletedDocs += await deleteSubcollectiondocs(`users/${uid}`, 'moduleProgress');
 
+  // Delete daily rewards subcollection
+  deletedDocs += await deleteSubcollectiondocs(`users/${uid}`, 'dailyRewards');
+
   // Delete hero banner summary
   await deleteDoc(doc(db, 'users', uid, 'dashboardSummary', 'heroBannerModal')).then(() => { deletedDocs += 1; }).catch(() => undefined);
 

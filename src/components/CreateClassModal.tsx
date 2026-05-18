@@ -28,7 +28,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
   const { currentUser } = useAuth();
   const [step, setStep] = useState<'details' | 'students'>('details');
   const [className, setClassName] = useState('');
-  const [grade, setGrade] = useState('Grade 11');
+  const grade = 'Grade 11';
   const [section, setSection] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
@@ -43,7 +43,6 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
     if (!open) {
       setStep('details');
       setClassName('');
-      setGrade('Grade 11');
       setSection('');
       setError('');
       setSelectedStudents(new Set());
@@ -176,17 +175,6 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
                     onChange={(e) => setClassName(e.target.value)}
                   />
                   <p className="text-xs text-[#94a3b8] mt-1">Optional. Auto-generated from grade + section if empty.</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-[#475569] block mb-1.5">Grade Level</label>
-                  <select
-                    value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
-                    className="w-full px-3 py-2 border border-[#e2e8f0] rounded-lg text-sm bg-white"
-                  >
-                    <option value="Grade 11">Grade 11</option>
-                    <option value="Grade 12">Grade 12</option>
-                  </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-[#475569] block mb-1.5">Section</label>

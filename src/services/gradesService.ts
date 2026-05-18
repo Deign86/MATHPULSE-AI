@@ -165,6 +165,9 @@ export const subscribeToGradeSummary = (
     } else {
       onChange(null);
     }
+  }, (error) => {
+    console.error('[gradesService] subscribeToGradeSummary error:', error);
+    onChange(null);
   });
 };
 
@@ -184,5 +187,8 @@ export const subscribeToAssessments = (
       results.push({ id: docSnap.id, ...docSnap.data() } as AssessmentRecord);
     });
     onChange(results);
+  }, (error) => {
+    console.error('[gradesService] subscribeToAssessments error:', error);
+    onChange([]);
   });
 };
