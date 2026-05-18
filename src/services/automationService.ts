@@ -133,6 +133,7 @@ export async function triggerDiagnosticCompleted(
   questionBreakdown?: Record<string, DiagnosticQuestionResult[]>,
   workflowMode: IARWorkflowMode = 'iar_only',
   assessmentType: AssessmentType = 'initial_assessment',
+  topicBreakdown?: Record<string, { correct: boolean; questionId: string }[]>,
 ): Promise<AutomationResult> {
   if (assessmentType === 'followup_diagnostic') {
     const assignmentsRef = collection(db, 'deepDiagnosticAssignments');
@@ -166,6 +167,7 @@ export async function triggerDiagnosticCompleted(
     workflowMode,
     assessmentType,
     questionBreakdown: questionBreakdown || null,
+    topicBreakdown: topicBreakdown || null,
     completedAt: serverTimestamp(),
     processed: false,
     processing: false,

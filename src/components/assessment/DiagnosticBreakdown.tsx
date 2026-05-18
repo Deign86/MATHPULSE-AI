@@ -95,26 +95,14 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
       setResponses(rawResponses.map(r => ({ ...r, question_text: questionTexts[r.question_id] })));
       setLoading(false);
 
-      // Fetch AI analysis (check Firestore cache first)
+      // Fetch AI analysis (backend caches after first generation)
       setAnalysisLoading(true);
       try {
-        const cacheSnap = await getDoc(doc(db, 'diagnosticResults', userId, 'cache', 'analysis'));
-        if (cacheSnap.exists()) {
-          setAnalysis(cacheSnap.data() as DiagnosticAnalysis);
-          setAnalysisLoading(false);
-          return;
-        }
         const result = await apiFetch<{ success: boolean; analysis: DiagnosticAnalysis }>(
           '/api/diagnostic/analyze',
           { method: 'POST', body: JSON.stringify({ user_id: userId }) },
         );
-        if (result.success) {
-          setAnalysis(result.analysis);
-          try {
-            const { setDoc } = await import('firebase/firestore');
-            await setDoc(doc(db, 'diagnosticResults', userId, 'cache', 'analysis'), result.analysis);
-          } catch {}
-        }
+        if (result.success) setAnalysis(result.analysis);
       } catch (err) {
         console.error('[DiagnosticBreakdown] AI analysis failed:', err);
       } finally {
@@ -138,7 +126,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
   const content = (
     <div className={`${mode === 'fullscreen' ? 'min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30' : ''} flex flex-col`}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-200/60 px-6 py-4">
+      <div className="top-0 z-10 bg-white border-b border-slate-200/60 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
@@ -169,21 +157,21 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                 <p className="text-3xl font-black mt-1">{scorePercent}%</p>
                 <p className="text-indigo-200 text-sm">{totalCorrect}/{totalItems} correct</p>
               </div>
-              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="bg-white rounded-2xl p-5 border border-slate-100">
                 <div className="flex items-center gap-2 text-slate-500 mb-1">
                   <Clock className="w-4 h-4" /> <span className="text-xs font-medium uppercase">Avg Time</span>
                 </div>
                 <p className="text-2xl font-bold text-slate-800">{avgTime}s</p>
                 <p className="text-xs text-slate-400">per question</p>
               </div>
-              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="bg-white rounded-2xl p-5 border border-slate-100">
                 <div className="flex items-center gap-2 text-slate-500 mb-1">
                   <Zap className="w-4 h-4" /> <span className="text-xs font-medium uppercase">Total Time</span>
                 </div>
                 <p className="text-2xl font-bold text-slate-800">{Math.floor(totalTime / 60)}m {totalTime % 60}s</p>
                 <p className="text-xs text-slate-400">assessment duration</p>
               </div>
-              <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+              <div className="bg-white rounded-2xl p-5 border border-slate-100">
                 <div className="flex items-center gap-2 text-slate-500 mb-1">
                   <AlertTriangle className="w-4 h-4" /> <span className="text-xs font-medium uppercase">Risk</span>
                 </div>
@@ -195,7 +183,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
             </div>
 
             {/* AI Analysis Section */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
                 <div className="flex items-center gap-2">
                   <Lightbulb className="w-5 h-5 text-amber-500" />
@@ -319,7 +307,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
             </div>
 
             {/* Domain Scores */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
                 <h2 className="font-bold text-slate-800 flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-indigo-500" /> Domain Scores
@@ -348,7 +336,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
             </div>
 
             {/* Per-Question Breakdown */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
                 <h2 className="font-bold text-slate-800 flex items-center gap-2">
                   <Target className="w-5 h-5 text-indigo-500" /> Question-by-Question Breakdown
@@ -433,7 +421,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto will-change-transform"
               onClick={e => e.stopPropagation()}
             >
               {content}

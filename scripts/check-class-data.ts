@@ -7,17 +7,15 @@ initializeApp({ credential: cert(serviceAccount) });
 const db = getFirestore();
 
 async function main() {
-  // Sync studentCount from classSectionOwnership.studentUids length
-  const ownershipSnap = await db.collection('classSectionOwnership').get();
-  for (const doc of ownershipSnap.docs) {
-    const studentUids = doc.data().studentUids || [];
-    const classroomRef = db.doc(`classrooms/${doc.id}`);
-    const classroomSnap = await classroomRef.get();
-    if (classroomSnap.exists) {
-      await classroomRef.update({ studentCount: studentUids.length });
-      console.log(`${doc.id}: studentCount → ${studentUids.length}`);
+  // Clear cached diagnostic analysis for all users so it regenerates with improved prompt
+  const cacheSnap = await db.collectionGroup('cache').get();
+  for (const doc of cacheSnap.docs) {
+    if (doc.id === 'analysis' && doc.ref.parent.parent?.parent.id === 'diagnosticResults') {
+      await doc.ref.delete();
+      console.log(`Cleared cache: ${doc.ref.path}`);
     }
   }
+  console.log('Done.');
 }
 
 main().catch(console.error);

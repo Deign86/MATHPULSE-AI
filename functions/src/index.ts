@@ -50,6 +50,7 @@ export {
 } from "./triggers/onStudentProfileUpdated";
 
 export { onActivityScoreWritten, onExternalGradeWritten, runWriBatchRecalc } from "./triggers/riskTriggers";
+export { onModuleStatusUpdate } from "./triggers/onModuleStatusUpdate";
 
 // ─── HTTP Callable Functions ─────────────────────────────────
 

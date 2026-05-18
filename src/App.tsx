@@ -150,6 +150,11 @@ const App = () => {
     [activeGradeLevel, assignedSubjects],
   );
 
+  const moduleStatusMap = useMemo(
+    () => Object.fromEntries(curriculumRuntimeModules.map(m => [m.id, m.moduleStatus])),
+    [curriculumRuntimeModules],
+  );
+
   // App-level Navigation State
   const [sidebarRevertState, setSidebarRevertState] = useState<{ collapsed: boolean }>({ collapsed: false });
 
@@ -1223,12 +1228,15 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                           </div>
                         )}
 
-                        {dashboardShellDeferredReady && atRiskSubjects.length > 0 && (
+                        {dashboardShellDeferredReady && (studentProfile?.flaggedTopics?.length || atRiskSubjects.length > 0) && (
                           <Suspense fallback={dashboardWidgetFallback}>
                             <SupplementalPillCarousel
+                              flaggedTopics={studentProfile?.flaggedTopics || []}
                               atRiskSubjects={atRiskSubjects}
-                              onTopicClick={(topic) => {
-                                handleStudentNavigation('Modules');
+                              moduleStatusMap={moduleStatusMap}
+                              studentId={userProfile?.uid}
+                              onTopicClick={(moduleId) => {
+                                handleStudentNavigation('Modules', moduleId);
                               }}
                             />
                           </Suspense>

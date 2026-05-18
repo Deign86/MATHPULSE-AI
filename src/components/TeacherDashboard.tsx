@@ -92,6 +92,7 @@ import { ClassesOverviewMenu, CLASS_COLORS } from './ClassesOverviewMenu';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 import DataImportView from '../features/DataImport/DataImportView';
+import TeacherModuleStatusControl from './TeacherModuleStatusControl';
 import { subscribeToUserCalendarEvents } from '../services/calendarService';
 import type { CalendarEvent } from '../types/models';
 import CreateStudentAccountModal, {
@@ -1913,6 +1914,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 />
               )}
               {activeView === 'import' && (
+                <>
                 <DataImportView
                   classSectionId={selectedClassSectionId}
                   className={selectedClass?.name}
@@ -1965,6 +1967,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   }}
                   onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
                 />
+                <div className="mt-6">
+                  <TeacherModuleStatusControl teacherId={currentUser?.uid || ''} />
+                </div>
+                </>
               )}
               {activeView === 'notifications' && (
                 <TeacherNotificationsView

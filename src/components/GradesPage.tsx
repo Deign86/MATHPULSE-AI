@@ -78,22 +78,44 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
     if (!currentUser?.uid) return;
     (async () => {
       try {
-        // Try dashboardSummary first
+        // Try dashboardSummary first for score/risk
+        let score = 0, riskLevel = 'Unknown', weaknesses: string[] = [], recommendation = '';
         const summarySnap = await getDoc(doc(db, 'users', currentUser.uid, 'dashboardSummary', 'heroBannerModal'));
         if (summarySnap.exists()) {
           const d = summarySnap.data();
           if (d.status === 'ready') {
-            setDiagnosticSummary({ score: d.latestScorePercent || 0, riskLevel: d.latestRiskLevel || 'Unknown', weaknesses: d.weaknesses || [], recommendation: d.recommendation || '' });
-            return;
+            score = d.latestScorePercent || 0;
+            riskLevel = d.latestRiskLevel || 'Unknown';
+            weaknesses = d.weaknesses || [];
+            recommendation = d.recommendation || '';
+          }
+        } else {
+          const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userSnap.exists()) {
+            const u = userSnap.data();
+            if (u.initialAssessmentCompleted || u.hasCompletedInitialAssessment) {
+              riskLevel = (u.atRiskSubjects?.length > 0) ? 'Moderate' : 'Low';
+              weaknesses = u.atRiskSubjects || [];
+            }
           }
         }
-        // Fallback: user profile
-        const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userSnap.exists()) {
-          const u = userSnap.data();
-          if (u.initialAssessmentCompleted || u.hasCompletedInitialAssessment) {
-            setDiagnosticSummary({ score: 0, riskLevel: (u.atRiskSubjects?.length > 0) ? 'Moderate' : 'Low', weaknesses: u.atRiskSubjects || [], recommendation: 'Continue with your personalized learning path.' });
+
+        // Pull AI-generated recommendation from analysis cache
+        const cacheSnap = await getDoc(doc(db, 'diagnosticResults', currentUser.uid, 'cache', 'analysis'));
+        if (cacheSnap.exists()) {
+          const analysis = cacheSnap.data();
+          const recs = analysis.recommendations || [];
+          if (recs.length > 0) {
+            recommendation = recs.map((r: any) => r.action).join('. ') + '.';
           }
+          const weakAreas = analysis.weakness_areas || [];
+          if (weakAreas.length > 0) {
+            weaknesses = weakAreas.map((w: any) => w.domain);
+          }
+        }
+
+        if (score > 0 || riskLevel !== 'Unknown' || weaknesses.length > 0) {
+          setDiagnosticSummary({ score, riskLevel, weaknesses, recommendation: recommendation || 'Continue with your personalized learning path.' });
         }
       } catch { /* non-fatal */ }
     })();
@@ -318,11 +340,11 @@ const subjectPerformance = Object.entries({})
               <Target className="w-5 h-5 sm:w-7 sm:h-7" />
             </div>
             <p className="text-slate-400 font-bold text-[9px] sm:text-sm tracking-wider sm:tracking-wide uppercase h-6 sm:h-auto flex items-end sm:block">
-              <span className="sm:hidden">Avg Score</span>
-              <span className="hidden sm:inline">Average Score</span>
+              <span className="sm:hidden">Weakest</span>
+              <span className="hidden sm:inline">Weakest Subject</span>
             </p>
             <div className="flex items-end gap-2 mt-1 sm:mt-2">
-              <h3 className="text-xl sm:text-4xl font-display font-black text-slate-800">{averageScore}%</h3>
+              <h3 className="text-lg sm:text-2xl font-display font-black text-slate-800 truncate">{diagnosticSummary?.weaknesses?.[0] || '—'}</h3>
             </div>
           </div>
         </div>

@@ -107,6 +107,7 @@ from routes.ai_monitoring import router as ai_monitoring_router
 from routes.class_analytics_routes import router as class_analytics_router
 from routes.intervention_routes import router as intervention_router
 from routes.pipeline_routes import router as pipeline_router
+from routes.deepseek_rag_routes import router as deepseek_rag_router
 
 # Rate limiting (slowapi)
 try:
@@ -1169,6 +1170,7 @@ app.include_router(ai_monitoring_router)
 app.include_router(class_analytics_router)
 app.include_router(intervention_router)
 app.include_router(pipeline_router)
+app.include_router(deepseek_rag_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────

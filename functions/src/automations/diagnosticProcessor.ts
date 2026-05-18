@@ -47,6 +47,7 @@ import {
   LEARNING_PATH_UNLOCK_CRITERIA_VERSION,
   G12_TRANSITION_MIN_MASTERED_RATIO,
   G12_TRANSITION_MAX_CRITICAL_GAPS,
+  WEAK_TOPIC_THRESHOLD,
 } from "../config/constants";
 import { recommendNextTopicGroup } from "./learningPathEngine";
 import {
@@ -69,6 +70,8 @@ export interface DiagnosticPayload {
     quarter?: 1 | 2 | 3 | 4;
     answerType?: "MCQ" | "shortAnswerNumeric" | "shortAnswerText" | "confidenceLikert";
   }>>;
+  /** Topic-level breakdown keyed by module ID for granular flagging */
+  topicBreakdown?: Record<string, Array<{ correct: boolean; questionId: string }>>;
   workflowMode?: IARWorkflowMode;
   assessmentType?: "initial_assessment" | "followup_diagnostic";
   curriculumVersionSetId?: string;
@@ -112,6 +115,7 @@ export async function processDiagnosticCompletion(
     results,
     gradeLevel,
     questionBreakdown,
+    topicBreakdown,
     workflowMode = DEFAULT_IAR_WORKFLOW_MODE,
     assessmentType = "initial_assessment",
     curriculumVersionSetId: requestedCurriculumVersionSetId,
@@ -149,6 +153,20 @@ export async function processDiagnosticCompletion(
   // STEP 3: Identify weak topics
   const weakTopics = identifyWeakTopics(questionBreakdown);
   functions.logger.info("Weak topics identified", { count: weakTopics.length });
+
+  // STEP 3b: Compute flaggedTopics from topic-level breakdown (module IDs)
+  const flaggedTopics: string[] = [];
+  if (topicBreakdown) {
+    for (const [moduleId, questions] of Object.entries(topicBreakdown)) {
+      if (!questions || questions.length === 0) continue;
+      const correctCount = questions.filter((q) => q.correct).length;
+      const accuracy = correctCount / questions.length;
+      if (accuracy < WEAK_TOPIC_THRESHOLD) {
+        flaggedTopics.push(moduleId);
+      }
+    }
+  }
+  functions.logger.info("Flagged topics (module-level)", { count: flaggedTopics.length, flaggedTopics });
 
   // STEP 4: Compute overall risk level
   const overallRisk = calculateOverallRisk(riskClassifications);
@@ -297,6 +315,7 @@ export async function processDiagnosticCompletion(
     subjectBadges: badges,
     riskClassifications,
     atRiskSubjects,
+    flaggedTopics,
     overallRisk,
     lastAssessmentType: assessmentType,
     ...(isInitialAssessment

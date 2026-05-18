@@ -826,6 +826,12 @@ async def analyze_diagnostic(request: DiagnosticAnalysisRequest, req: Request):
     if not results_doc.exists:
         raise HTTPException(status_code=404, detail="No diagnostic results found")
 
+    # Check server-side cache first
+    cache_ref = firestore_client.collection("diagnosticResults").document(request.user_id).collection("cache").document("analysis")
+    cache_doc = cache_ref.get()
+    if cache_doc.exists:
+        return DiagnosticAnalysisResponse(success=True, analysis=cache_doc.to_dict())
+
     results_data = results_doc.to_dict() or {}
     responses = results_data.get("responses", [])
     domain_scores = results_data.get("domainScores", {})
@@ -937,6 +943,12 @@ Return ONLY valid JSON, no markdown fences."""
     except Exception as e:
         logger.warning(f"[diagnostic/analyze] AI call failed: {type(e).__name__}: {e}, using fallback")
         analysis = _build_fallback_analysis(responses, domain_scores, risk_profile)
+
+    # Cache the analysis in Firestore for future requests
+    try:
+        cache_ref.set(analysis)
+    except Exception as e:
+        logger.warning(f"[diagnostic/analyze] Failed to cache analysis: {e}")
 
     return DiagnosticAnalysisResponse(success=True, analysis=analysis)
 

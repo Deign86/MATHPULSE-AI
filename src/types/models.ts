@@ -59,6 +59,8 @@ export interface StudentProfile extends User {
     expiresAt: string; // ISO timestamp
   };
   atRiskSubjects: string[];
+  /** Module IDs flagged as weak from topic-level diagnostic scoring */
+  flaggedTopics?: string[];
   hasTakenDiagnostic: boolean;
   iarAssessmentState?:
     | 'not_started'
