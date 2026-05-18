@@ -51,8 +51,8 @@ const AdminAnalytics: React.FC = () => {
 
   const kpis = [
     { label: 'Total Active Users', value: loadingKPIs ? null : (summary?.totalActiveUsers ?? 0).toLocaleString(), icon: Users, bg: 'bg-[#4f46e5]', shadow: 'shadow-indigo-500/20' },
-    { label: 'Completion Rate', value: 'N/A', icon: Target, bg: 'bg-[#10b981]', shadow: 'shadow-emerald-500/20' },
-    { label: 'Session Duration', value: 'N/A', icon: Clock, bg: 'bg-[#8b5cf6]', shadow: 'shadow-purple-500/20' },
+    { label: 'Avg. Quiz Score', value: loadingKPIs ? null : `${summary?.avgQuizScore ?? 0}%`, icon: Target, bg: 'bg-[#10b981]', shadow: 'shadow-emerald-500/20' },
+    { label: 'Quizzes Taken', value: loadingKPIs ? null : (summary?.totalQuizzesTaken ?? 0).toLocaleString(), icon: Clock, bg: 'bg-[#8b5cf6]', shadow: 'shadow-purple-500/20' },
     { label: 'At-Risk Students', value: loadingKPIs ? null : (summary?.atRiskStudents ?? 0).toString(), icon: Activity, bg: 'bg-[#f43f5e]', shadow: 'shadow-rose-500/20' },
   ];
 

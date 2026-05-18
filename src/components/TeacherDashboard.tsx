@@ -27,9 +27,11 @@ import {
   refreshClassInsights,
   type ClassAnalyticsReport,
 } from '../services/classAnalyticsService';
+import { getUserProgress } from '../services/progressService';
 import {
   getInterventionPlan,
   generateInterventionPlan,
+  assignLearningPathAsModule,
   type InterventionPlan,
 } from '../services/interventionService';
 import { InterventionStepGuide } from './InterventionStepGuide';
@@ -2771,24 +2773,63 @@ const AnalyticsView: React.FC<{
       return () => { unsubscribe?.(); if (debounceTimer) clearTimeout(debounceTimer); };
     }, [selectedClass.id]);
 
-    // Use backend data when available, fall back to local computation from students
-    const classAverage = backendReport?.class_average ?? (() => {
+    // Fetch real scores from progress/{accountUid} for registered students
+    const [progressScores, setProgressScores] = useState<Map<string, number>>(new Map());
+    useEffect(() => {
+      let cancelled = false;
+      const registeredStudents = students.filter(s => s.accountUid || s.hasRegisteredAccount);
+      if (registeredStudents.length === 0) return;
+      (async () => {
+        try {
+          const { doc: firestoreDoc, getDoc: firestoreGetDoc } = await import('firebase/firestore');
+          const { db: firestoreDb } = await import('../lib/firebase');
+          const scores = new Map<string, number>();
+          // Batch fetch progress docs (limit to avoid excessive reads)
+          const batch = registeredStudents.slice(0, 50);
+          await Promise.all(batch.map(async (student) => {
+            const uid = student.accountUid || student.id;
+            try {
+              const progressSnap = await firestoreGetDoc(firestoreDoc(firestoreDb, 'progress', uid));
+              if (progressSnap.exists()) {
+                const data = progressSnap.data();
+                const avgScore = data.averageScore || 0;
+                if (avgScore > 0) scores.set(student.id, avgScore);
+              }
+            } catch { /* skip individual failures */ }
+          }));
+          if (!cancelled) setProgressScores(scores);
+        } catch { /* non-critical */ }
+      })();
+      return () => { cancelled = true; };
+    }, [students]);
+
+    // Use backend data only when it has assessed students; otherwise compute locally.
+    // The ?? operator won't help here because backend returns 0 (not null) when no
+    // progress data is found — we need to check if the report is actually meaningful.
+    const backendHasData = backendReport != null
+      && backendReport.students.some(s => s.quiz_attempt_count > 0);
+
+    const classAverage = (() => {
+      if (backendHasData) return backendReport!.class_average;
       if (selectedClass.avgScore > 0) return selectedClass.avgScore;
-      // Compute from managed students' avgQuizScore when classrooms doc is stale
       if (students.length === 0) return 0;
-      const scores = students.map(s => s.avgScore).filter(s => s > 0);
+      // Use progress collection scores (fetched from progress/{uid})
+      const scores = students.map(s => progressScores.get(s.id) || s.avgScore).filter(s => s > 0);
       return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     })();
-    const completionRate = backendReport?.completion_rate ?? (() => {
+    const completionRate = (() => {
+      if (backendHasData) return backendReport!.completion_rate;
       if (students.length === 0) return 0;
-      const total = students.reduce((sum, student) => sum + (student.assignmentCompletion || 0), 0);
-      return Math.round(total / students.length);
+      // Completion = % of students who have progress data
+      const withProgress = students.filter(s => progressScores.has(s.id) || s.assignmentCompletion > 0).length;
+      return Math.round((withProgress / students.length) * 100);
     })();
-    const participationRate = backendReport?.participation_rate ?? (() => {
+    const participationRate = (() => {
+      if (backendHasData) return backendReport!.participation_rate;
       if (students.length === 0) return 0;
-      const attendanceAverage = students.reduce((sum, student) => sum + (student.attendance || 0), 0) / students.length;
-      const engagementAverage = students.reduce((sum, student) => sum + (student.engagementScore || 0), 0) / students.length;
-      return Math.round((attendanceAverage * 0.6) + (engagementAverage * 0.4));
+      // Participation = % of students with any activity (progress data or engagement)
+      const withActivity = students.filter(s => progressScores.has(s.id) || s.engagementScore > 0 || s.avgScore > 0).length;
+      return students.length > 0 ? Math.round((withActivity / students.length) * 100) : 0;
     })();
 
     // Compute risk distribution with Unassessed + Critical categories
@@ -2851,8 +2892,8 @@ const AnalyticsView: React.FC<{
     }, [searchTerm, students, filterType, backendReport]);
 
     const topPerformers = useMemo(() => {
-      if (backendReport) {
-        return backendReport.students
+      if (backendHasData) {
+        return backendReport!.students
           .filter(s => s.quiz_attempt_count > 0)
           .sort((a, b) => b.avg_score - a.avg_score)
           .slice(0, 5)
@@ -2863,13 +2904,14 @@ const AnalyticsView: React.FC<{
           .filter(Boolean) as StudentView[];
       }
       return [...students]
+        .map(s => ({ ...s, avgScore: progressScores.get(s.id) || s.avgScore }))
         .sort((a, b) => b.avgScore - a.avgScore)
         .slice(0, 5);
-    }, [students, backendReport]);
+    }, [students, backendReport, backendHasData, progressScores]);
 
     const attentionStudents = useMemo(() => {
-      if (backendReport) {
-        return backendReport.students
+      if (backendHasData) {
+        return backendReport!.students
           .filter(s => ['High Risk', 'Critical'].includes(s.risk_level))
           .sort((a, b) => a.avg_score - b.avg_score)
           .map(bs => {
@@ -2878,8 +2920,8 @@ const AnalyticsView: React.FC<{
           })
           .filter(Boolean) as (StudentView & { _backendRisk?: string })[];
       }
-      return [...students].filter((student) => student.riskLevel === 'high' || student.avgScore < 70 || student.assignmentCompletion < 65);
-    }, [students, backendReport]);
+      return [...students].filter((student) => student.riskLevel === 'high' || (progressScores.get(student.id) || student.avgScore) < 70 || student.assignmentCompletion < 65);
+    }, [students, backendReport, backendHasData, progressScores]);
 
     // Topic performance from backend
     const effectiveTopicPerformance = useMemo(() => {
@@ -2894,9 +2936,12 @@ const AnalyticsView: React.FC<{
 
     // Helper to get backend score for a student
     const getStudentScore = (studentId: string): number | null => {
-      if (!backendReport) return null;
-      const bs = backendReport.students.find(s => s.student_id === studentId);
-      return bs ? bs.avg_score : null;
+      if (backendHasData) {
+        const bs = backendReport!.students.find(s => s.student_id === studentId);
+        if (bs && bs.avg_score > 0) return bs.avg_score;
+      }
+      if (progressScores.has(studentId)) return progressScores.get(studentId)!;
+      return null;
     };
 
     // Helper to get backend risk level for a student
@@ -3321,6 +3366,21 @@ const InterventionView: React.FC<{
     return () => { cancelled = true; };
   }, [student.id]);
 
+  // Fetch real progress data for this student (progress/{accountUid || id})
+  const [studentProgressScore, setStudentProgressScore] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const uid = student.accountUid || student.id;
+    getUserProgress(uid)
+      .then((progress) => {
+        if (!cancelled && progress?.averageScore) {
+          setStudentProgressScore(Math.round(progress.averageScore));
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [student.id, student.accountUid]);
+
   // Escape key closes drawer (with confirm if dirty), Escape also closes export modal
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -3435,6 +3495,38 @@ const InterventionView: React.FC<{
             };
           };
           const detail = parsed?.detail;
+
+          // Auto-retry with allowUnverifiedLesson if self-validation was the only blocker
+          if (detail?.selfValidation && !allowUnverifiedLesson) {
+            try {
+              const classSectionId = student.classSectionId || buildClassSectionId(gradeDraft || 'Grade 11', sectionDraft || 'Section A');
+              const selectedCompetency = student.struggles.length > 0 ? student.struggles[0] : student.weakestTopic;
+              const retryResponse = await generateLessonPlanWithCurriculumGrounding({
+                gradeLevel: gradeDraft || student.grade || 'Grade 11',
+                subject: 'general_math',
+                quarter: 1,
+                moduleUnit: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
+                lessonTitle: `Grounded Lesson: ${selectedCompetency}`,
+                learningCompetency: selectedCompetency,
+                learnerLevel: student.avgScore < 60 ? 'support' : student.avgScore < 80 ? 'developing' : 'advanced',
+                classSectionId,
+                className: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
+                focusTopics: student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
+                topicCount: 5,
+                preferImportedTopics: rolloutFlags.lessonEnabled,
+                allowReviewSources,
+                allowUnverifiedLesson: true,
+              }, true);
+              setLessonPlan(retryResponse);
+              setLessonCurriculumSources(retryResponse.curriculumSources || []);
+              setSavedLessonPlanId(null);
+              setLessonError('');
+              return;
+            } catch {
+              // Retry also failed — fall through to show original error
+            }
+          }
+
           if (detail?.message) {
             errorMessage = detail.message;
           }
@@ -3745,7 +3837,20 @@ const InterventionView: React.FC<{
           <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
             <div className="flex items-center justify-between mb-6 border-b border-[#f1f5f9] pb-4">
               <h3 className="text-[15px] font-semibold text-[#1e293b]">Generated Learning Path</h3>
-              <button disabled={pathLoading || interventionLoading} onClick={async () => {
+              <div className="flex items-center gap-2">
+                <button disabled={!interventionPlan?.learning_path} onClick={async () => {
+                  if (!interventionPlan) return;
+                  try {
+                    await assignLearningPathAsModule(interventionPlan, teacherId);
+                    toast.success(`Learning path assigned to ${student.name}'s modules.`);
+                  } catch (err) {
+                    console.error('[InterventionView] Assign failed:', err);
+                    toast.error('Failed to assign learning path.');
+                  }
+                }} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
+                  <Send className="w-3 h-3" /> Assign to Student
+                </button>
+                <button disabled={pathLoading || interventionLoading} onClick={async () => {
                 setInterventionLoading(true);
                 try {
                   const plan = await generateInterventionPlan(student.id);
@@ -3759,6 +3864,7 @@ const InterventionView: React.FC<{
               }} className="bg-[#f8fafc] hover:bg-white text-[#4f46e5] border border-[#e0e7ff] text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
                 <RefreshCw className={`w-3 h-3 ${interventionLoading ? 'animate-spin' : ''}`} /> {interventionLoading ? 'Analyzing...' : 'Regenerate'}
               </button>
+              </div>
             </div>
 
             <BoneSkeleton
@@ -4000,11 +4106,11 @@ const InterventionView: React.FC<{
           <div className="w-full grid grid-cols-2 gap-[12px]">
             <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Avg Score</p>
-              <p className="text-[20px] font-bold text-[#4f46e5]">{interventionPlan?.avg_score ?? student.avgScore}%</p>
+              <p className="text-[20px] font-bold text-[#4f46e5]">{interventionPlan?.avg_score || studentProgressScore || student.avgScore}%</p>
             </div>
             <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Engagement</p>
-              <p className="text-[20px] font-bold text-[#1e293b]">{interventionPlan?.engagement_level || (student.avgScore > 80 ? 'High' : student.avgScore > 50 ? 'Medium' : 'Low')}</p>
+              <p className="text-[20px] font-bold text-[#1e293b]">{interventionPlan?.engagement_level || ((studentProgressScore || student.avgScore) > 80 ? 'High' : (studentProgressScore || student.avgScore) > 50 ? 'Medium' : 'Low')}</p>
             </div>
             <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Last Active</p>
@@ -4094,52 +4200,201 @@ const InterventionView: React.FC<{
                             const data = await getExportPDFData(student.id);
                             const { default: jsPDF } = await import('jspdf');
                             const doc = new jsPDF();
+                            const pageW = doc.internal.pageSize.getWidth();
+                            const margin = 20;
+                            const contentW = pageW - margin * 2;
                             let y = 20;
-                            doc.setFontSize(18);
-                            doc.text('MathPulse AI - Intervention Report', 20, y); y += 12;
-                            doc.setFontSize(11);
-                            doc.text(`Student: ${data.student_name}`, 20, y); y += 7;
-                            doc.text(`Grade: ${data.grade_level} | Section: ${data.section}`, 20, y); y += 7;
-                            doc.text(`Risk Level: ${data.risk_level} | Avg Score: ${data.avg_score}%`, 20, y); y += 7;
-                            doc.text(`Engagement: ${data.engagement_level} | Generated: ${new Date().toLocaleDateString()}`, 20, y); y += 12;
-                            doc.setFontSize(13);
-                            doc.text('AI Analysis', 20, y); y += 8;
-                            doc.setFontSize(10);
-                            const maxW = 170;
-                            const writeWrapped = (text: string) => {
-                              const lines = doc.splitTextToSize(text, maxW);
-                              for (const line of lines) {
-                                if (y > 270) { doc.addPage(); y = 20; }
-                                doc.text(line, 20, y); y += 5;
-                              }
-                              y += 2;
+
+                            const checkPage = (needed: number) => {
+                              if (y + needed > 275) { doc.addPage(); y = 20; }
                             };
-                            writeWrapped(`Strengths: ${data.learning_strengths}`);
-                            writeWrapped(`Next Steps: ${data.next_steps_summary}`);
-                            y += 4;
-                            if (data.learning_path?.steps?.length) {
-                              doc.setFontSize(13);
-                              doc.text('Learning Path', 20, y); y += 8;
-                              doc.setFontSize(10);
-                              for (const step of data.learning_path.steps) {
-                                if (y > 270) { doc.addPage(); y = 20; }
-                                writeWrapped(`${step.step_number}. [${step.type}] ${step.title} (${step.duration_minutes} min, ${step.difficulty})`);
-                                if (step.competency_tag) { doc.text(`   Competency: ${step.competency_tag}`, 20, y); y += 6; }
+
+                            const drawLine = () => {
+                              doc.setDrawColor(200, 200, 200);
+                              doc.line(margin, y, pageW - margin, y);
+                              y += 6;
+                            };
+
+                            const writeWrapped = (text: string, indent = 0) => {
+                              const lines = doc.splitTextToSize(text, contentW - indent);
+                              for (const line of lines) {
+                                checkPage(5);
+                                doc.text(line, margin + indent, y); y += 5;
                               }
+                            };
+
+                            const sectionHeader = (title: string) => {
+                              checkPage(16);
+                              y += 4;
+                              doc.setFillColor(99, 102, 241);
+                              doc.roundedRect(margin, y - 4, contentW, 10, 2, 2, 'F');
+                              doc.setTextColor(255, 255, 255);
+                              doc.setFontSize(11);
+                              doc.setFont('helvetica', 'bold');
+                              doc.text(title, margin + 4, y + 3);
+                              doc.setTextColor(0, 0, 0);
+                              y += 12;
+                            };
+
+                            // ─── Header ───
+                            doc.setFillColor(79, 70, 229);
+                            doc.rect(0, 0, pageW, 38, 'F');
+                            doc.setTextColor(255, 255, 255);
+                            doc.setFontSize(20);
+                            doc.setFont('helvetica', 'bold');
+                            doc.text('MathPulse AI', margin, 16);
+                            doc.setFontSize(11);
+                            doc.setFont('helvetica', 'normal');
+                            doc.text('Student Intervention Report', margin, 24);
+                            doc.setFontSize(9);
+                            doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, margin, 32);
+                            doc.setTextColor(0, 0, 0);
+                            y = 48;
+
+                            // ─── Student Profile ───
+                            sectionHeader('Student Profile');
+                            doc.setFontSize(10);
+                            doc.setFont('helvetica', 'normal');
+                            const profileRows = [
+                              ['Name', data.student_name],
+                              ['Grade Level', data.grade_level || 'N/A'],
+                              ['Section', data.section || 'N/A'],
+                              ['Risk Level', data.risk_level],
+                              ['Average Score', `${data.avg_score}%`],
+                              ['Engagement', data.engagement_level],
+                              ['Weakest Topic', data.weakest_topic || 'N/A'],
+                              ['Last Active', data.last_active ? new Date(data.last_active).toLocaleDateString() : 'Unknown'],
+                            ];
+                            for (const [label, value] of profileRows) {
+                              checkPage(6);
+                              doc.setFont('helvetica', 'bold');
+                              doc.text(`${label}:`, margin + 2, y);
+                              doc.setFont('helvetica', 'normal');
+                              doc.text(String(value), margin + 45, y);
                               y += 6;
                             }
-                            if (data.teacher_recommendations?.length) {
-                              if (y > 250) { doc.addPage(); y = 20; }
-                              doc.setFontSize(13);
-                              doc.text('Teacher Recommendations', 20, y); y += 8;
+                            y += 4;
+
+                            // ─── Risk Assessment ───
+                            if (data.weak_topics?.length || Object.keys(data.accuracy_by_topic || {}).length) {
+                              sectionHeader('Risk Assessment & Topic Analysis');
                               doc.setFontSize(10);
-                              for (const rec of data.teacher_recommendations) {
-                                if (y > 270) { doc.addPage(); y = 20; }
-                                writeWrapped(`• ${rec}`);
+                              if (data.weak_topics?.length) {
+                                doc.setFont('helvetica', 'bold');
+                                doc.text('Weak Topics:', margin + 2, y); y += 6;
+                                doc.setFont('helvetica', 'normal');
+                                for (const topic of data.weak_topics) {
+                                  checkPage(6);
+                                  doc.text(`  •  ${topic}`, margin + 4, y); y += 5;
+                                }
+                                y += 3;
+                              }
+                              const topicEntries = Object.entries(data.accuracy_by_topic || {});
+                              if (topicEntries.length > 0) {
+                                doc.setFont('helvetica', 'bold');
+                                doc.text('Topic Accuracy Breakdown:', margin + 2, y); y += 7;
+                                doc.setFontSize(9);
+                                doc.setFont('helvetica', 'normal');
+                                for (const [topic, accuracy] of topicEntries.sort(([,a], [,b]) => a - b)) {
+                                  checkPage(7);
+                                  const barW = 60;
+                                  const fillW = (accuracy / 100) * barW;
+                                  doc.text(topic, margin + 4, y);
+                                  doc.setFillColor(226, 232, 240);
+                                  doc.roundedRect(margin + 70, y - 3, barW, 4, 1, 1, 'F');
+                                  doc.setFillColor(accuracy >= 70 ? 34 : accuracy >= 50 ? 245 : 239, accuracy >= 70 ? 197 : accuracy >= 50 ? 158 : 68, accuracy >= 70 ? 94 : accuracy >= 50 ? 11 : 68);
+                                  if (fillW > 0) doc.roundedRect(margin + 70, y - 3, fillW, 4, 1, 1, 'F');
+                                  doc.text(`${Math.round(accuracy)}%`, margin + 70 + barW + 3, y);
+                                  y += 7;
+                                }
+                                y += 3;
                               }
                             }
-                            doc.setFontSize(8);
-                            doc.text('Generated by MathPulse AI | Confidential - For Teacher Use Only', 20, 285);
+
+                            // ─── AI Analysis ───
+                            sectionHeader('AI Analysis & Insights');
+                            doc.setFontSize(10);
+                            if (data.learning_strengths) {
+                              doc.setFont('helvetica', 'bold');
+                              doc.text('Learning Strengths:', margin + 2, y); y += 6;
+                              doc.setFont('helvetica', 'normal');
+                              writeWrapped(data.learning_strengths, 4);
+                              y += 4;
+                            }
+                            if (data.next_steps_summary) {
+                              doc.setFont('helvetica', 'bold');
+                              checkPage(8);
+                              doc.text('Recommended Next Steps:', margin + 2, y); y += 6;
+                              doc.setFont('helvetica', 'normal');
+                              writeWrapped(data.next_steps_summary, 4);
+                              y += 4;
+                            }
+
+                            // ─── Learning Path ───
+                            if (data.learning_path?.steps?.length) {
+                              sectionHeader('Personalized Learning Path');
+                              doc.setFontSize(9);
+                              doc.setFont('helvetica', 'italic');
+                              doc.text(`Estimated Duration: ${data.learning_path.estimated_duration_days} days | Primary Focus: ${data.learning_path.primary_weak_topic}`, margin + 2, y);
+                              y += 8;
+                              doc.setFont('helvetica', 'normal');
+                              doc.setFontSize(10);
+                              for (const step of data.learning_path.steps) {
+                                checkPage(18);
+                                // Step number badge
+                                doc.setFillColor(99, 102, 241);
+                                doc.circle(margin + 6, y, 3, 'F');
+                                doc.setTextColor(255, 255, 255);
+                                doc.setFontSize(8);
+                                doc.text(String(step.step_number), margin + 4.5, y + 1.5);
+                                doc.setTextColor(0, 0, 0);
+                                doc.setFontSize(10);
+                                doc.setFont('helvetica', 'bold');
+                                doc.text(step.title, margin + 14, y + 1);
+                                doc.setFont('helvetica', 'normal');
+                                doc.setFontSize(9);
+                                const meta = `${step.type.replace('_', ' ')} • ${step.duration_minutes} min • ${step.difficulty}${step.competency_tag ? ` • ${step.competency_tag}` : ''}`;
+                                doc.setTextColor(100, 116, 139);
+                                doc.text(meta, margin + 14, y + 6);
+                                doc.setTextColor(0, 0, 0);
+                                if (step.description) {
+                                  doc.setFontSize(9);
+                                  const descLines = doc.splitTextToSize(step.description, contentW - 16);
+                                  for (const line of descLines.slice(0, 2)) {
+                                    y += 5;
+                                    checkPage(5);
+                                    doc.text(line, margin + 14, y + 2);
+                                  }
+                                }
+                                y += 12;
+                              }
+                            }
+
+                            // ─── Teacher Recommendations ───
+                            if (data.teacher_recommendations?.length) {
+                              sectionHeader('Teacher Recommendations');
+                              doc.setFontSize(10);
+                              doc.setFont('helvetica', 'normal');
+                              for (let i = 0; i < data.teacher_recommendations.length; i++) {
+                                checkPage(8);
+                                doc.setFont('helvetica', 'bold');
+                                doc.text(`${i + 1}.`, margin + 2, y);
+                                doc.setFont('helvetica', 'normal');
+                                writeWrapped(data.teacher_recommendations[i], 10);
+                                y += 3;
+                              }
+                            }
+
+                            // ─── Footer ───
+                            const totalPages = doc.getNumberOfPages();
+                            for (let i = 1; i <= totalPages; i++) {
+                              doc.setPage(i);
+                              doc.setFontSize(8);
+                              doc.setTextColor(148, 163, 184);
+                              doc.text('Generated by MathPulse AI | Confidential — For Teacher Use Only', margin, 290);
+                              doc.text(`Page ${i} of ${totalPages}`, pageW - margin - 20, 290);
+                            }
+
                             doc.save(`intervention-report-${data.student_name.replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`);
                             toast.success('PDF report downloaded!');
                           } catch (err) {

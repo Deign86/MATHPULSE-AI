@@ -2,6 +2,8 @@
 // Service layer for Intervention Center backend API
 
 import { auth } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
 
@@ -19,6 +21,7 @@ export interface LearningStep {
   difficulty: 'easy' | 'medium' | 'hard';
   is_completed: boolean;
   completion_score: number | null;
+  youtube_query?: string;
 }
 
 export interface LearningPath {
@@ -112,4 +115,37 @@ export async function getExportPDFData(studentId: string): Promise<InterventionP
   );
   if (!res.ok) throw new Error(`GET export-pdf failed: ${res.status}`);
   return res.json();
+}
+
+export async function assignLearningPathAsModule(
+  plan: InterventionPlan,
+  teacherId: string,
+): Promise<string> {
+  const steps = plan.learning_path?.steps || [];
+  const sections = steps.map((s) => ({
+    title: `Step ${s.step_number}: ${s.title}`,
+    content: `${s.description || s.topic} (${s.type.replace('_', ' ')} · ${s.duration_minutes} mins${s.num_items ? ` · ${s.num_items} items` : ''})`,
+  }));
+
+  const docRef = await addDoc(collection(db, 'modules'), {
+    title: `Intervention: ${plan.weakest_topic} — ${plan.student_name}`,
+    gradeLevel: plan.grade_level || 'Grade 11',
+    subject: 'General Mathematics',
+    quarter: 'Q1',
+    strandOrTrack: null,
+    competencyTags: plan.weak_topics.slice(0, 3),
+    moduleType: 'teacher_uploaded',
+    sourceLabel: 'Teacher Upload',
+    summary: plan.next_steps_summary || `Personalized intervention for ${plan.weakest_topic}`,
+    learningObjectives: [
+      plan.learning_strengths,
+      plan.next_steps_summary,
+    ].filter(Boolean),
+    sections,
+    practice: [],
+    teacherId,
+    assignedTo: plan.student_id,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
 }
