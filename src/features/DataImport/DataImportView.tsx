@@ -324,7 +324,6 @@ export default function DataImportView({
       } else {
         toast.success('Records saved successfully');
       }
-      setCurrentImportView('main');
     } catch (err) {
       toast.error('Failed to save changes');
     } finally {
