@@ -95,14 +95,26 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
       setResponses(rawResponses.map(r => ({ ...r, question_text: questionTexts[r.question_id] })));
       setLoading(false);
 
-      // Fetch AI analysis
+      // Fetch AI analysis (check Firestore cache first)
       setAnalysisLoading(true);
       try {
+        const cacheSnap = await getDoc(doc(db, 'diagnosticResults', userId, 'cache', 'analysis'));
+        if (cacheSnap.exists()) {
+          setAnalysis(cacheSnap.data() as DiagnosticAnalysis);
+          setAnalysisLoading(false);
+          return;
+        }
         const result = await apiFetch<{ success: boolean; analysis: DiagnosticAnalysis }>(
           '/api/diagnostic/analyze',
           { method: 'POST', body: JSON.stringify({ user_id: userId }) },
         );
-        if (result.success) setAnalysis(result.analysis);
+        if (result.success) {
+          setAnalysis(result.analysis);
+          try {
+            const { setDoc } = await import('firebase/firestore');
+            await setDoc(doc(db, 'diagnosticResults', userId, 'cache', 'analysis'), result.analysis);
+          } catch {}
+        }
       } catch (err) {
         console.error('[DiagnosticBreakdown] AI analysis failed:', err);
       } finally {
@@ -126,7 +138,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
   const content = (
     <div className={`${mode === 'fullscreen' ? 'min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30' : ''} flex flex-col`}>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 py-4">
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-200/60 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
@@ -414,13 +426,13 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
             onClick={onClose}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
               className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto"
               onClick={e => e.stopPropagation()}
             >
