@@ -36,6 +36,7 @@ import {
 } from '../services/interventionService';
 import { InterventionStepGuide } from './InterventionStepGuide';
 import { normalizeTopicDisplay } from '../config/subjects';
+import { RiskBadge } from './risk/RiskBadge';
 import {
   getClassroomsByTeacher,
   getStudentsByTeacher,
@@ -146,6 +147,8 @@ export interface StudentView {
   avatar: string;
   avgScore: number;
   riskLevel: 'high' | 'medium' | 'low';
+  riskStatus?: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | null;
+  wri?: number | null;
   weakestTopic: string;
   classroomId: string;
   className: string;
@@ -243,6 +246,8 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
     avatar: s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`,
     avgScore: s.avgQuizScore,
     riskLevel,
+    riskStatus: s.riskStatus || null,
+    wri: s.wri ?? null,
     weakestTopic: s.weakestTopic || 'N/A',
     classroomId: s.classroomId || classMetadata.classSectionId || baseClassName,
     className: classMetadata.className || [grade, section].filter(Boolean).join(' - ') || baseClassName,
@@ -5413,9 +5418,7 @@ const EditRecordsView: React.FC<{
                         }`}>{student.avgScore}%</span>
                     </td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${getRiskBadge(student.riskLevel)}`}>
-                        {student.riskLevel.toUpperCase()}
-                      </span>
+                      <RiskBadge status={student.riskStatus} wri={student.wri} size="sm" />
                     </td>
                     <td className="p-4 text-muted-foreground">{student.weakestTopic}</td>
                     <td className="p-4">
