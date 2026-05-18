@@ -10,6 +10,7 @@ import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
 import AIMonitoringPage from '../pages/admin/AIMonitoringPage';
 import AdminSubjects from './admin/AdminSubjects';
+import AdminClassManagement from './admin/AdminClassManagement';
 import SubjectsHelpModal from './admin/SubjectsHelpModal';
 import MasteryHeatmap from './MasteryHeatmap';
 import AdminPriorityModules from './AdminPriorityModules';
@@ -236,6 +237,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   {activeTab === 'Analytics' && 'Analytics'}
                   {activeTab === 'AI Monitoring' && 'AI Monitoring'}
                   {activeTab === 'Subjects' && 'Curriculum Control'}
+                  {activeTab === 'Class Management' && 'Class Management'}
                 </h1>
                 <p className="text-[13px] text-[#64748b] mt-1">
                   {activeTab === 'Overview' && `System Overview & Management`}
@@ -245,6 +247,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   {activeTab === 'Analytics' && 'Detailed system performance metrics.'}
                   {activeTab === 'AI Monitoring' && 'Platform AI usage and system health.'}
                   {activeTab === 'Subjects' && 'Manage academic subjects, availability, and RAG knowledge sources.'}
+                  {activeTab === 'Class Management' && 'Assign section managers and manage class rosters.'}
                 </p>
               </div>
               
@@ -730,6 +733,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           )}
           {activeTab === 'Analytics' && <AdminAnalytics />}
           {activeTab === 'AI Monitoring' && <AIMonitoringPage />}
+          {activeTab === 'Class Management' && <AdminClassManagement />}
           
           {activeTab === 'Subjects' && <AdminSubjects />}
         </main>
