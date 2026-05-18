@@ -1,16 +1,16 @@
 # Graph Report - MATHPULSE-AI  (2026-05-18)
 
 ## Corpus Check
-- 411 files · ~531,349 words
+- 411 files · ~531,334 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6436 nodes · 15512 edges · 347 communities (297 shown, 50 thin omitted)
+- 6436 nodes · 15512 edges · 348 communities (298 shown, 50 thin omitted)
 - Extraction: 64% EXTRACTED · 36% INFERRED · 0% AMBIGUOUS · INFERRED: 5600 edges (avg confidence: 0.51)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `49ee1f9a`
+- Built from commit: `1831ff3c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -339,6 +339,7 @@
 - [[_COMMUNITY_Community 336|Community 336]]
 - [[_COMMUNITY_Community 337|Community 337]]
 - [[_COMMUNITY_Community 338|Community 338]]
+- [[_COMMUNITY_Community 339|Community 339]]
 - [[_COMMUNITY_Community 341|Community 341]]
 - [[_COMMUNITY_Community 342|Community 342]]
 - [[_COMMUNITY_Community 343|Community 343]]
@@ -371,7 +372,7 @@
 - `AuthenticatedUser` --uses--> `ContentUpdatePayload`  [INFERRED]
   backend/main.py → hf_space_deploy/automation_engine.py
 
-## Communities (347 total, 50 thin omitted)
+## Communities (348 total, 50 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.2
@@ -383,7 +384,7 @@ Nodes (50): BreadcrumbEllipsis(), BreadcrumbItem(), BreadcrumbLink(), Breadcrumb
 
 ### Community 2 - "Community 2"
 Cohesion: 0.05
-Nodes (56): AdminPdfUploadProps, RagHealthSubject, UploadedFile, ShsSubject, SUBJECT_ROWS, SubjectRowData, AddStudentsModalProps, TimeRange (+48 more)
+Nodes (67): AdminPdfUploadProps, RagHealthSubject, UploadedFile, ShsSubject, SUBJECT_ROWS, SubjectRowData, AddStudentsModalProps, TimeRange (+59 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.02
@@ -399,7 +400,7 @@ Nodes (90): DIFFICULTY_MULTIPLIERS, MatchOutcome, MatchXPBreakdown, RoundScoreBr
 
 ### Community 6 - "Community 6"
 Cohesion: 0.04
-Nodes (37): AddStudentsModal(), CLASS_COLORS, ClassesOverviewMenu(), ClassesOverviewMenuProps, ClassOverviewStudentSignal, ClassView, CreateStudentAccountModalProps, CreateStudentAccountSeed (+29 more)
+Nodes (36): AddStudentsModal(), CLASS_COLORS, ClassesOverviewMenu(), ClassesOverviewMenuProps, ClassOverviewStudentSignal, ClassView, CreateStudentAccountModalProps, CreateStudentAccountSeed (+28 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.03
@@ -455,7 +456,7 @@ Nodes (14): _ensure_7_sections(), _fetch_youtube_videos(), _generate_text(), _ge
 
 ### Community 20 - "Community 20"
 Cohesion: 0.02
-Nodes (82): StudentData, StudentProfileModalProps, CURRICULUM_SOURCE_REGISTRY, CURRICULUM_VERSION_SETS, G11_COMPETENCY_INDEX, G11_GENERAL_MATH_DESCRIPTOR, G11_GENERAL_MATH_VALIDATION_RESULT, G11_OFFICIAL_COMPETENCIES (+74 more)
+Nodes (87): StudentData, StudentProfileModalProps, CURRICULUM_SOURCE_REGISTRY, CURRICULUM_VERSION_SETS, G11_COMPETENCY_INDEX, G11_GENERAL_MATH_DESCRIPTOR, G11_GENERAL_MATH_VALIDATION_RESULT, G11_OFFICIAL_COMPETENCIES (+79 more)
 
 ### Community 21 - "Community 21"
 Cohesion: 0.17
@@ -475,7 +476,7 @@ Nodes (14): _basic_risk_top_factors(), _coerce_event_timestamp_utc(), _csv_escap
 
 ### Community 25 - "Community 25"
 Cohesion: 0.04
-Nodes (45): formatDate(), formatValue(), InfoCardProps, ModelConfig, ModelConfigData, ModelConfigPanel(), PROFILE_BADGE_COLORS, DiagnosticAnalysis (+37 more)
+Nodes (40): formatDate(), formatValue(), InfoCardProps, ModelConfig, ModelConfigData, ModelConfigPanel(), PROFILE_BADGE_COLORS, DiagnosticAnalysis (+32 more)
 
 ### Community 26 - "Community 26"
 Cohesion: 0.05
@@ -678,8 +679,8 @@ Cohesion: 0.11
 Nodes (20): classificationRank(), classifyTopicScore(), deriveIARAssessmentInsights(), deriveIARAssessmentState(), DeriveIARInsightsInput, getCanonicalRecommendationTopic(), IARAssessmentInsights, IARAssessmentState (+12 more)
 
 ### Community 76 - "Community 76"
-Cohesion: 0.1
-Nodes (17): BLOOM_CARDS, BloomsTaxonomyModalProps, BLOOM_LABELS, CATEGORY_PREFIXES_BY_GRADE, DIFFICULTY_COLORS, FALLBACK_TOPICS_BY_GRADE, GRADE_LEVELS, MakerTab (+9 more)
+Cohesion: 0.07
+Nodes (31): BLOOM_CARDS, BloomsTaxonomyModalProps, buildCroppedProfileFile(), canvasToBlob(), createImageFromUrl(), getInitials(), ProfilePictureUploader(), ProfilePictureUploaderProps (+23 more)
 
 ### Community 77 - "Community 77"
 Cohesion: 0.19
@@ -858,8 +859,8 @@ Cohesion: 0.1
 Nodes (17): AlertDialogAction(), AlertDialogCancel(), AlertDialogContent(), AlertDialogDescription(), AlertDialogFooter(), AlertDialogHeader(), AlertDialogOverlay(), AlertDialogTitle() (+9 more)
 
 ### Community 121 - "Community 121"
-Cohesion: 0.29
-Nodes (4): deleteButton, mockDeleteNotification, mockMarkAsRead, notification
+Cohesion: 0.19
+Nodes (9): badgeForType(), iconMap, NotificationItem(), NotificationItemProps, deleteButton, mockDeleteNotification, mockMarkAsRead, notification (+1 more)
 
 ### Community 122 - "Community 122"
 Cohesion: 0.26
@@ -971,7 +972,7 @@ Nodes (18): code:python (import hashlib), code:bash (git add backend/services/se
 
 ### Community 150 - "Community 150"
 Cohesion: 0.09
-Nodes (23): fetch_topic_dependencies(), Return the topic prerequisite graph., automation_diagnostic_completed(), get_analytics_config(), Return current ML analytics configuration parameters., Return current ML analytics configuration parameters., Lazily build allowlist of SymPy names for safe eval., Return current ML analytics configuration parameters. (+15 more)
+Nodes (22): fetch_topic_dependencies(), Return the topic prerequisite graph., automation_diagnostic_completed(), get_analytics_config(), Return current ML analytics configuration parameters., Return current ML analytics configuration parameters., Return current ML analytics configuration parameters., Return current ML analytics configuration parameters. (+14 more)
 
 ### Community 151 - "Community 151"
 Cohesion: 0.2
@@ -982,8 +983,8 @@ Cohesion: 0.2
 Nodes (9): code:powershell ($env:CHANGED_FILES_JSON='["src/components/TeacherDashboard.t), code:powershell ($payload = Get-Content docs/examples/agent-ui-fix-dispatch.j), code:powershell (gh api repos/Deign86/MATHPULSE-AI/dispatches --method POST -), code:powershell (gh workflow run agent-dispatch.yml --ref main -f agent_name=), code:powershell (gh run list --limit 20 --json databaseId,event,workflowName,), Deliverable format, Handoff Prompt: Validate Automation on Main, Objective (+1 more)
 
 ### Community 153 - "Community 153"
-Cohesion: 0.2
-Nodes (9): code:javascript (// ── Question bank (read for all authenticated users) ──), code:bash (git add firestore.rules), Phase 2: Firebase & Infrastructure, Placeholder Scan, Quiz Battle RAG-Powered Question Bank — Implementation Plan, Self-Review Checklist, Spec Coverage, Task 7: Update Firestore Rules (+1 more)
+Cohesion: 0.18
+Nodes (10): code:javascript (// ── Question bank (read for all authenticated users) ──), code:bash (git add firestore.rules), Phase 2: Firebase & Infrastructure, Phase 5: Validation & Rollout, Placeholder Scan, Quiz Battle RAG-Powered Question Bank — Implementation Plan, Self-Review Checklist, Spec Coverage (+2 more)
 
 ### Community 154 - "Community 154"
 Cohesion: 0.18
@@ -1006,8 +1007,8 @@ Cohesion: 0.22
 Nodes (8): anchor, eligible, node_test_1, notEligible, now, reasons, reassessmentEngine_1, strict_1
 
 ### Community 159 - "Community 159"
-Cohesion: 0.05
-Nodes (46): SubjectsHelpModalProps, AdminAuditLog(), AdminContent(), AdminDashboard(), AdminDashboardProps, mockModules, AIChatPage(), AvatarInventoryItem (+38 more)
+Cohesion: 0.04
+Nodes (49): SubjectsHelpModalProps, AdminAuditLog(), AdminContent(), AdminDashboard(), AdminDashboardProps, mockModules, RagDocument, RagHealthResponse (+41 more)
 
 ### Community 160 - "Community 160"
 Cohesion: 0.22
@@ -1114,8 +1115,8 @@ Cohesion: 0.33
 Nodes (6): code:python ("""), code:python (from routes.quiz_battle import router as quiz_battle_router), code:python ("/api/quiz-battle/generate": ALL_APP_ROLES,), code:python (app.include_router(quiz_battle_router)), code:bash (git add backend/routes/quiz_battle.py backend/main.py), Task 5: Create Quiz Battle Routes
 
 ### Community 188 - "Community 188"
-Cohesion: 0.33
-Nodes (6): code:bash (cd backend), code:bash (cd ..), code:bash (cd functions), code:bash (git add .), Phase 5: Validation & Rollout, Task 12: Run Full Validation
+Cohesion: 0.4
+Nodes (5): code:bash (cd backend), code:bash (cd ..), code:bash (cd functions), code:bash (git add .), Task 12: Run Full Validation
 
 ### Community 189 - "Community 189"
 Cohesion: 0.33
@@ -1246,8 +1247,8 @@ Cohesion: 0.18
 Nodes (10): AchievementItem, LUCIDE_ICON_MAP, ProgressDoc, RewardsModalProps, ACHIEVEMENT_ICONS, ACHIEVEMENT_MAP, AchievementCategory, AchievementConditionType (+2 more)
 
 ### Community 231 - "Community 231"
-Cohesion: 0.11
-Nodes (19): _get_sympy_safe_dict(), Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Delete all documents in a subcollection. Returns count of deleted docs., Delete all documents in a subcollection. Returns count of deleted docs. (+11 more)
+Cohesion: 0.1
+Nodes (20): _get_sympy_safe_dict(), Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Delete all documents in a subcollection. Returns count of deleted docs., Delete all documents in a subcollection. Returns count of deleted docs. (+12 more)
 
 ### Community 257 - "Community 257"
 Cohesion: 0.12
@@ -1378,8 +1379,8 @@ Cohesion: 0.18
 Nodes (11): generate_learning_path(), Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results. (+3 more)
 
 ### Community 301 - "Community 301"
-Cohesion: 0.18
-Nodes (13): NotificationBell(), TestComponent(), useNotifications(), badgeForType(), iconMap, NotificationItem(), NotificationItemProps, NotificationPanel() (+5 more)
+Cohesion: 0.26
+Nodes (8): NotificationBell(), useNotifications(), NotificationPanel(), NotificationPanelProps, markAllButton, mockOnClose, notificationsValue, skeletons
 
 ### Community 302 - "Community 302"
 Cohesion: 0.4
@@ -1414,8 +1415,8 @@ Cohesion: 0.43
 Nodes (5): ToggleGroup(), ToggleGroupContext, ToggleGroupItem(), Toggle(), toggleVariants
 
 ### Community 313 - "Community 313"
-Cohesion: 0.25
-Nodes (13): buildFallbackSummary(), button, mockUnsubscribe, createNotification(), deleteNotification(), getUserNotifications(), hasCheckedInToday(), hasRemindedToday() (+5 more)
+Cohesion: 0.36
+Nodes (9): buildFallbackSummary(), getUserNotifications(), hasCheckedInToday(), hasRemindedToday(), markAllAsRead(), markAsRead(), requireAuth(), subscribeToNotifications() (+1 more)
 
 ### Community 314 - "Community 314"
 Cohesion: 0.2
@@ -1454,8 +1455,8 @@ Cohesion: 0.2
 Nodes (7): Command(), CommandGroup(), CommandInput(), CommandItem(), CommandList(), CommandSeparator(), CommandShortcut()
 
 ### Community 330 - "Community 330"
-Cohesion: 0.22
-Nodes (11): NotificationContext, NotificationContextType, NotificationProvider(), NotificationProviderProps, notify(), consoleErrorSpy, payload, Notification (+3 more)
+Cohesion: 0.38
+Nodes (6): createNotification(), notify(), consoleErrorSpy, payload, NotificationPayload, NotificationType
 
 ### Community 331 - "Community 331"
 Cohesion: 0.17
@@ -1485,13 +1486,17 @@ Nodes (7): generate_questions(), _get_quiz_battle_services(), _is_internal_reque
 Cohesion: 0.5
 Nodes (4): buildPreview(), MathAnswerInput(), MathAnswerInputProps, superscriptMap
 
+### Community 339 - "Community 339"
+Cohesion: 0.24
+Nodes (9): NotificationContext, NotificationContextType, NotificationProvider(), NotificationProviderProps, button, mockUnsubscribe, TestComponent(), deleteNotification() (+1 more)
+
 ### Community 343 - "Community 343"
 Cohesion: 0.5
 Nodes (3): input, output, toChatPreviewText()
 
 ### Community 345 - "Community 345"
-Cohesion: 0.04
-Nodes (51): AssessmentHistoryChartProps, AssessmentResultsModalProps, proficiencyColors, TabKey, AdminUserManagement(), AdminUserManagementProps, buildDefaultFormData(), PAGE_SIZE_OPTIONS (+43 more)
+Cohesion: 0.06
+Nodes (24): AssessmentHistoryChartProps, AssessmentResultsModalProps, proficiencyColors, TabKey, DAY_PATTERNS, EVENT_COLORS, EventColor, formatTime() (+16 more)
 
 ### Community 346 - "Community 346"
 Cohesion: 0.47
