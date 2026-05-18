@@ -417,7 +417,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
-                  <button className="w-full mt-4 py-3 bg-slate-50 text-[#1e293b] text-[11px] font-black uppercase tracking-[0.15em] rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2.5 group/btn">
+                  <button onClick={() => setActiveTab('AI Monitoring')} className="w-full mt-4 py-3 bg-slate-50 text-[#1e293b] text-[11px] font-black uppercase tracking-[0.15em] rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2.5 group/btn">
                     Health Check <ArrowUpRight size={14} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
                   </button>
                 </div>
