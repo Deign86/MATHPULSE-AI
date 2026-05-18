@@ -2140,7 +2140,7 @@ export const apiService = {
 
     return apiFetch<AdminUpdateUserApiResponse>(
       `/api/admin/users?${params.toString()}`,
-      { method: 'POST', body: JSON.stringify(payload) },
+      { method: 'PATCH', body: JSON.stringify(payload) },
       DEFAULT_RETRY_OPTS,
     );
   },

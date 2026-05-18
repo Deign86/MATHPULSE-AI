@@ -56,8 +56,8 @@ const buildDefaultFormData = (role: 'Student' | 'Teacher' | 'Admin' = 'Student')
   role,
   status: 'Active',
   department: role === 'Teacher' ? 'Mathematics' : role === 'Admin' ? 'System' : '',
-  grade: 'Grade 11',
-  section: 'Section A',
+  grade: '',
+  section: '',
   lrn: '',
 });
 
@@ -117,6 +117,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All Roles');
   const [statusFilter, setStatusFilter] = useState('All Status');
+  const [sectionFilter, setSectionFilter] = useState('All Sections');
 
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [allFilteredSelected, setAllFilteredSelected] = useState(false);
@@ -126,7 +127,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const [bulkRoleTarget, setBulkRoleTarget] = useState<'Student' | 'Teacher' | 'Admin'>('Student');
   const [bulkStatusTarget, setBulkStatusTarget] = useState<'Active' | 'Inactive'>('Active');
   const [bulkGradeTarget, setBulkGradeTarget] = useState('Grade 11');
-  const [bulkSectionTarget, setBulkSectionTarget] = useState('Section A');
+  const [bulkSectionTarget, setBulkSectionTarget] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -145,8 +146,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       search: searchQuery.trim() || undefined,
       role: normalizeFilterValue(roleFilter, 'All Roles'),
       status: normalizeFilterValue(statusFilter, 'All Status'),
+      section: normalizeFilterValue(sectionFilter, 'All Sections'),
     }),
-    [searchQuery, roleFilter, statusFilter],
+    [searchQuery, roleFilter, statusFilter, sectionFilter],
   );
 
   const clearSelection = useCallback(() => {
@@ -263,6 +265,18 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     loadUsers(currentPage);
   }, [loadUsers, currentPage]);
 
+  // Client-side section filter + available sections for dropdown
+  const availableSections = useMemo(() => {
+    const sections = new Set<string>();
+    users.forEach(u => { if (u.section) sections.add(u.section); });
+    return Array.from(sections).sort();
+  }, [users]);
+
+  const displayedUsers = useMemo(() => {
+    if (!activeFilters.section) return users;
+    return users.filter(u => u.section === activeFilters.section);
+  }, [users, activeFilters.section]);
+
   const handleOpenAddModal = useCallback((preferredRole: 'Student' | 'Teacher' | 'Admin' = 'Student') => {
     setEditingUser(null);
     setFormErrors({});
@@ -311,7 +325,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       return;
     }
 
-    const visibleIds = users.map((user) => user.id);
+    const visibleIds = displayedUsers.map((user) => user.id);
     if (allFilteredSelected) {
       setExcludedUserIds((prev) => {
         const next = new Set(prev);
@@ -515,7 +529,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       status: user.status,
       department: user.department,
       grade: user.grade || 'Grade 11',
-      section: user.section || 'Section A',
+      section: user.section || '',
       lrn: user.lrn || '',
     });
     setIsModalOpen(true);
@@ -853,6 +867,26 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   <SelectItem value="Inactive" className="font-bold uppercase tracking-widest text-[10px]">Inactive</SelectItem>
                 </SelectContent>
               </Select>
+
+              {availableSections.length > 0 && (
+                <Select
+                  value={sectionFilter}
+                  onValueChange={(value) => {
+                    setSectionFilter(value);
+                    clearSelection();
+                  }}
+                >
+                  <SelectTrigger className="w-[180px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-4">
+                    <span className="truncate">{sectionFilter === 'All Sections' ? 'All Sections' : sectionFilter}</span>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200">
+                    <SelectItem value="All Sections" className="font-bold uppercase tracking-widest text-[10px]">All Sections</SelectItem>
+                    {availableSections.map(s => (
+                      <SelectItem key={s} value={s} className="font-bold uppercase tracking-widest text-[10px]">{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <Button
               variant="outline"
@@ -861,6 +895,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 setSearchQuery('');
                 setRoleFilter('All Roles');
                 setStatusFilter('All Status');
+                setSectionFilter('All Sections');
                 setCurrentPage(1);
                 clearSelection();
               }}
@@ -1004,7 +1039,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           {loading && users.length === 0 ? (
             <div className="px-6 py-12 text-center text-slate-400 font-medium">Loading users...</div>
           ) : users.length > 0 ? (
-            users.map((user) => {
+            displayedUsers.map((user) => {
               const isPendingToggle = pendingRowActionUserId === user.id;
               return (
                 <div key={`mobile-${user.id}`} className="p-5 space-y-4 group hover:bg-slate-50/50 transition-colors">
@@ -1122,7 +1157,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   </td>
                 </tr>
               ) : users.length > 0 ? (
-                users.map((user) => {
+                displayedUsers.map((user) => {
                   const isPendingToggle = pendingRowActionUserId === user.id;
                   return (
                   <tr key={user.id} className="hover:bg-slate-50/50 transition-all group">
