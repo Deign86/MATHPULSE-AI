@@ -1,16 +1,16 @@
 # Graph Report - MATHPULSE-AI  (2026-05-18)
 
 ## Corpus Check
-- 410 files · ~528,591 words
+- 410 files · ~528,638 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6326 nodes · 15391 edges · 342 communities (293 shown, 49 thin omitted)
+- 6328 nodes · 15393 edges · 350 communities (298 shown, 52 thin omitted)
 - Extraction: 64% EXTRACTED · 36% INFERRED · 0% AMBIGUOUS · INFERRED: 5599 edges (avg confidence: 0.51)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c48b2476`
+- Built from commit: `8b8e9b7a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -323,14 +323,18 @@
 - [[_COMMUNITY_Community 320|Community 320]]
 - [[_COMMUNITY_Community 321|Community 321]]
 - [[_COMMUNITY_Community 322|Community 322]]
+- [[_COMMUNITY_Community 323|Community 323]]
 - [[_COMMUNITY_Community 324|Community 324]]
 - [[_COMMUNITY_Community 325|Community 325]]
 - [[_COMMUNITY_Community 326|Community 326]]
 - [[_COMMUNITY_Community 327|Community 327]]
 - [[_COMMUNITY_Community 328|Community 328]]
+- [[_COMMUNITY_Community 329|Community 329]]
 - [[_COMMUNITY_Community 330|Community 330]]
 - [[_COMMUNITY_Community 331|Community 331]]
 - [[_COMMUNITY_Community 332|Community 332]]
+- [[_COMMUNITY_Community 333|Community 333]]
+- [[_COMMUNITY_Community 334|Community 334]]
 - [[_COMMUNITY_Community 335|Community 335]]
 - [[_COMMUNITY_Community 336|Community 336]]
 - [[_COMMUNITY_Community 337|Community 337]]
@@ -338,9 +342,13 @@
 - [[_COMMUNITY_Community 339|Community 339]]
 - [[_COMMUNITY_Community 341|Community 341]]
 - [[_COMMUNITY_Community 342|Community 342]]
+- [[_COMMUNITY_Community 343|Community 343]]
+- [[_COMMUNITY_Community 344|Community 344]]
 - [[_COMMUNITY_Community 345|Community 345]]
 - [[_COMMUNITY_Community 346|Community 346]]
 - [[_COMMUNITY_Community 347|Community 347]]
+- [[_COMMUNITY_Community 348|Community 348]]
+- [[_COMMUNITY_Community 349|Community 349]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 237 edges
@@ -366,7 +374,7 @@
 - `AuthenticatedUser` --uses--> `ContentUpdatePayload`  [INFERRED]
   backend/main.py → hf_space_deploy/automation_engine.py
 
-## Communities (342 total, 49 thin omitted)
+## Communities (350 total, 52 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.22
@@ -377,8 +385,8 @@ Cohesion: 0.04
 Nodes (52): BreadcrumbEllipsis(), BreadcrumbItem(), BreadcrumbLink(), BreadcrumbList(), BreadcrumbPage(), BreadcrumbSeparator(), Command(), CommandGroup() (+44 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.07
-Nodes (45): AdminPdfUploadProps, RagHealthSubject, UploadedFile, ShsSubject, SUBJECT_ROWS, SubjectRowData, PAGE_SIZE_OPTIONS, ContentModule (+37 more)
+Cohesion: 0.04
+Nodes (76): AdminPdfUploadProps, RagHealthSubject, UploadedFile, ShsSubject, SUBJECT_ROWS, SubjectRowData, AddStudentsModalProps, TimeRange (+68 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.02
@@ -394,7 +402,7 @@ Nodes (90): DIFFICULTY_MULTIPLIERS, MatchOutcome, MatchXPBreakdown, RoundScoreBr
 
 ### Community 6 - "Community 6"
 Cohesion: 0.04
-Nodes (33): CLASS_COLORS, ClassesOverviewMenu(), ClassesOverviewMenuProps, ClassOverviewStudentSignal, ClassView, CreateStudentAccountModalProps, CreateStudentAccountSeed, AnalyticsView() (+25 more)
+Nodes (37): CLASS_COLORS, ClassesOverviewMenu(), ClassesOverviewMenuProps, ClassOverviewStudentSignal, ClassView, CreateStudentAccountModalProps, CreateStudentAccountSeed, AnalyticsView() (+29 more)
 
 ### Community 7 - "Community 7"
 Cohesion: 0.03
@@ -425,12 +433,12 @@ Cohesion: 0.05
 Nodes (41): admin, functions, admin, admin, constants_1, data, db, functions (+33 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.03
-Nodes (86): AdminSubjects(), AppLoadingScreenProps, LearningPath(), LearningPathProps, getQuestionsForLesson(), ModuleDetailView(), ModuleDetailViewProps, quizQuestionBanks (+78 more)
+Cohesion: 0.04
+Nodes (51): AdminSubjects(), LearningPath(), LearningPathProps, ModuleFolderCard(), ModuleFolderCardProps, THEMES, ModulesMascotProps, ModulesPage() (+43 more)
 
 ### Community 15 - "Community 15"
 Cohesion: 0.04
-Nodes (57): _artifact_expiry_epoch(), _build_class_metadata(), _build_column_interpretations(), _build_lesson_generation_content(), _build_record_identity(), _build_stream_continuation_prompt(), _close_hf_async_http_client(), _coerce_nonempty_str_list() (+49 more)
+Nodes (60): _ai_validate_lesson_plan(), _artifact_expiry_epoch(), _build_lesson_generation_blocks(), _build_lesson_generation_content(), _build_stream_continuation_prompt(), _close_hf_async_http_client(), _coerce_nonempty_str_list(), _compute_material_source_legitimacy() (+52 more)
 
 ### Community 16 - "Community 16"
 Cohesion: 0.07
@@ -449,8 +457,8 @@ Cohesion: 0.28
 Nodes (14): _ensure_7_sections(), _fetch_youtube_videos(), _generate_text(), _get_inference_client(), _log_rag_usage(), rag_analysis_context(), rag_generate_problem(), rag_health() (+6 more)
 
 ### Community 20 - "Community 20"
-Cohesion: 0.03
-Nodes (73): AssessmentHistoryChartProps, AssessmentResultsModalProps, proficiencyColors, TabKey, DashboardAvatar, HeroBannerProps, StudentData, StudentProfileModalProps (+65 more)
+Cohesion: 0.02
+Nodes (79): AssessmentHistoryChartProps, AssessmentResultsModalProps, proficiencyColors, TabKey, DashboardAvatar, HeroBannerProps, cleanFirebaseMessage(), extractAuthErrorDetails() (+71 more)
 
 ### Community 21 - "Community 21"
 Cohesion: 0.17
@@ -469,8 +477,8 @@ Cohesion: 0.12
 Nodes (16): _basic_risk_top_factors(), _coerce_event_timestamp_utc(), _csv_escape(), get_client(), _get_hf_call_semaphore(), get_import_grounded_access_audit(), predict_risk(), predict_risk_batch() (+8 more)
 
 ### Community 25 - "Community 25"
-Cohesion: 0.05
-Nodes (38): InitialAssessmentModalProps, TimeRange, RagDocument, RagHealthResponse, SubjectGroup, ConfirmModalProps, cleanFirebaseMessage(), extractAuthErrorDetails() (+30 more)
+Cohesion: 0.04
+Nodes (44): formatDate(), formatValue(), InfoCardProps, ModelConfig, ModelConfigData, ModelConfigPanel(), PROFILE_BADGE_COLORS, InitialAssessmentModalProps (+36 more)
 
 ### Community 26 - "Community 26"
 Cohesion: 0.05
@@ -485,8 +493,8 @@ Cohesion: 0.05
 Nodes (38): 10. Acceptance Criteria, 1. Why This Revision, 2. Hugging Face API Reference, 3. Environment Variables Required, 4. New Service: `huggingFaceService.ts`, 5. Revised `AdminAIMonitoring.tsx`, 6. Playwright E2E Test Plan, 7. Bug-Fix Iteration Workflow (+30 more)
 
 ### Community 29 - "Community 29"
-Cohesion: 0.08
-Nodes (32): cancel_async_task(), create_admin_user_and_notify(), _create_async_task(), delete_class_section(), generate_lesson_plan_async(), generate_quiz_async(), get_async_task_status(), get_current_user() (+24 more)
+Cohesion: 0.07
+Nodes (40): cancel_async_task(), _create_async_task(), delete_class_section(), enforce_rate_limit(), generate_lesson_plan_async(), generate_quiz_async(), get_async_task_status(), get_current_user() (+32 more)
 
 ### Community 30 - "Community 30"
 Cohesion: 0.17
@@ -513,8 +521,8 @@ Cohesion: 0.06
 Nodes (34): App Curriculum vs SSHS Mapping, Appendix: Files Modified This Session, Appendix: Vectorstore Chunk Distribution, Backend RAG Results (Direct API Test with Valid Token), code:block1 (POST https://deign86-mathpulse-api-v3test.hf.space/api/rag/l), code:typescript (try {), code:json ({), code:python ("curriculum/finite_math/Finite-Mathematics-1-1.pdf": {) (+26 more)
 
 ### Community 36 - "Community 36"
-Cohesion: 0.11
-Nodes (22): AvatarInventoryItem, AvatarShop(), AvatarShopProps, ENCOURAGEMENT_PHRASES, EQUIP_EXPRESSIONS, AvatarLayers, CompositeAvatar(), CompositeAvatarProps (+14 more)
+Cohesion: 0.05
+Nodes (39): BattleFooter, BattleFooterProps, BattleHeader, BattleHeaderProps, AvatarInventoryItem, AvatarShop(), AvatarShopProps, ENCOURAGEMENT_PHRASES (+31 more)
 
 ### Community 37 - "Community 37"
 Cohesion: 0.06
@@ -522,7 +530,7 @@ Nodes (37): Separator(), Sheet(), SheetContent(), SheetDescription(), SheetFoote
 
 ### Community 38 - "Community 38"
 Cohesion: 0.08
-Nodes (21): AIMonitoringPage(), AdminAIMonitoring(), AIUsageArea, AlertItem, FEATURE_META, formatCurrency(), formatNumber(), HealthStatus (+13 more)
+Nodes (19): AdminAIMonitoring(), AIUsageArea, AlertItem, FEATURE_META, formatCurrency(), formatNumber(), HealthStatus, PLATFORM_AI_FEATURES (+11 more)
 
 ### Community 39 - "Community 39"
 Cohesion: 0.12
@@ -561,8 +569,8 @@ Cohesion: 0.1
 Nodes (20): _build_remedial_quiz_configs(), _calculate_overall_risk(), _classify_import_risk(), _classify_subject_risks(), DiagnosticResult, _extract_import_topic(), _identify_weak_topics(), MathPulseAutomationEngine (+12 more)
 
 ### Community 48 - "Community 48"
-Cohesion: 0.07
-Nodes (26): AssessmentProgressBarProps, AssessmentQuestionCardProps, difficultyColors, AnswerValue, BASE_COMPLETION_PAYLOAD, DiagnosticAssessmentModal(), DiagnosticAssessmentModalProps, DiagnosticCompletionPayload (+18 more)
+Cohesion: 0.08
+Nodes (24): AssessmentProgressBarProps, AnswerValue, BASE_COMPLETION_PAYLOAD, DiagnosticAssessmentModal(), DiagnosticAssessmentModalProps, DiagnosticCompletionPayload, G12ReadinessIndicators, isCorrectAnswer() (+16 more)
 
 ### Community 49 - "Community 49"
 Cohesion: 0.07
@@ -581,8 +589,8 @@ Cohesion: 0.13
 Nodes (25): _build_rag_context(), _build_system_prompt(), _call_deepseek(), _compute_domain_scores(), _compute_risk_profile(), DiagnosticGenerateRequest, DiagnosticGenerateResponse, DiagnosticOption (+17 more)
 
 ### Community 53 - "Community 53"
-Cohesion: 0.13
-Nodes (17): ChatMarkdown(), ChatMarkdownProps, { container, rerender }, katexEl, extractAfterOrphanThinkClose(), findLastMatchEnd(), formatAssistantResponseForStorage(), formatAssistantResponseForStreaming() (+9 more)
+Cohesion: 0.16
+Nodes (14): ChatMarkdown(), ChatMarkdownProps, { container, rerender }, katexEl, extractAfterOrphanThinkClose(), findLastMatchEnd(), formatAssistantResponseForStorage(), formatAssistantResponseForStreaming() (+6 more)
 
 ### Community 54 - "Community 54"
 Cohesion: 0.08
@@ -622,23 +630,23 @@ Nodes (15): AssessmentAnswerOptionsProps, optionLabels, AssessmentTimer(), Asses
 
 ### Community 63 - "Community 63"
 Cohesion: 0.1
-Nodes (19): formatDate(), formatValue(), InfoCardProps, ModelConfig, ModelConfigData, ModelConfigPanel(), PROFILE_BADGE_COLORS, AdminSettings() (+11 more)
+Nodes (20): _extract_final_answer(), Extract the final numeric/symbolic answer from a math response., Self-consistency verification: generate multiple responses to the same     math, Extract the final numeric/symbolic answer from a math response., Self-consistency verification: generate multiple responses to the same     math, Extract the final numeric/symbolic answer from a math response., Self-consistency verification: generate multiple responses to the same     math, Extract the final numeric/symbolic answer from a math response. (+12 more)
 
 ### Community 64 - "Community 64"
 Cohesion: 0.11
 Nodes (19): _ensure_deepseek_available(), get_hf_monitoring(), Aggregates DeepSeek AI status, model config, and latency probe.     Returns dis, Aggregates DeepSeek AI status, model config, and latency probe.     Returns dis, Aggregates DeepSeek AI status, model config, and latency probe.     Returns dis, Aggregates DeepSeek AI status, model config, and latency probe.     Returns dis, Aggregates DeepSeek AI status, model config, and latency probe.     Returns dis, Verify DeepSeek API key is configured. (+11 more)
 
 ### Community 65 - "Community 65"
-Cohesion: 0.17
-Nodes (22): cacheKeys, normalizeCacheText(), stableHash(), buildChatHintCacheKey(), BuildHintCacheKeyInput, clearHintCache(), getHintCacheResponse(), HintCacheEntry (+14 more)
+Cohesion: 0.18
+Nodes (21): normalizeCacheText(), stableHash(), buildChatHintCacheKey(), BuildHintCacheKeyInput, clearHintCache(), getHintCacheResponse(), HintCacheEntry, hintCacheMemory (+13 more)
 
 ### Community 66 - "Community 66"
 Cohesion: 0.08
 Nodes (22): 0. What this document is, 1. Current state (baseline), 2.1. What "ready" means, 2.2. Full ingestion pipeline, 2.3. Runtime storage layout, 2.4. Validation and logging, 2.5. App integration — how lessons/modules are queried and used, 2.6. Runtime-driven content updates (+14 more)
 
 ### Community 67 - "Community 67"
-Cohesion: 0.06
-Nodes (31): _build_scoring_student_payload(), _queue_post_import_risk_refresh(), Keep only non-empty string->known-field entries from AI mapping output., Keep only non-empty string->known-field entries from AI mapping output., Keep only non-empty string->known-field entries from AI mapping output., Keep only non-empty string->known-field entries from AI mapping output., Keep only non-empty string->known-field entries from AI mapping output., Keep only non-empty string->known-field entries from AI mapping output. (+23 more)
+Cohesion: 0.05
+Nodes (40): _build_column_interpretations(), _build_record_identity(), _build_scoring_student_payload(), _fallback_column_mapping(), _is_empty_cell(), _normalize_class_records(), _normalize_unknown_key(), _queue_post_import_risk_refresh() (+32 more)
 
 ### Community 68 - "Community 68"
 Cohesion: 0.09
@@ -662,7 +670,7 @@ Nodes (10): calls, db, FakeCollection, FakeDocRef, FakeFirestore, FakeUsersWhere
 
 ### Community 73 - "Community 73"
 Cohesion: 0.17
-Nodes (4): TestBuildLessonQuery, TestDistanceToScore, TestIsSequentialModel, TestRetrieveCurriculumContext
+Nodes (4): TestBuildLessonPrompt, TestBuildLessonQuery, TestIsSequentialModel, TestRetrieveCurriculumContext
 
 ### Community 74 - "Community 74"
 Cohesion: 0.08
@@ -693,24 +701,24 @@ Cohesion: 0.1
 Nodes (20): Automation Demo Scenario, code:bash ($env:CHANGED_FILES_JSON='["src/components/TeacherDashboard.t), code:bash (curl -L -X POST \), Demo Goal, Demo Talk Track (what to say), Dispatch command, Example event, Example payload (+12 more)
 
 ### Community 81 - "Community 81"
-Cohesion: 0.09
-Nodes (17): BattleFooter, BattleFooterProps, BattleHeader, BattleHeaderProps, BattlePageTab, DEFAULT_VIEWPORT_SIZE, describeLifecycleEvent(), formatResponseTime() (+9 more)
+Cohesion: 0.2
+Nodes (10): create_admin_user_and_notify(), Create a single user account (Auth + Firestore) and send welcome credentials ema, Create a single user account (Auth + Firestore) and send welcome credentials ema, Create a single user account (Auth + Firestore) and send welcome credentials ema, Create a single user account (Auth + Firestore) and send welcome credentials ema, Create a single user account (Auth + Firestore) and send welcome credentials ema, Create a single user account (Auth + Firestore) and send welcome credentials ema, Create a single user account (Auth + Firestore) and send welcome credentials ema (+2 more)
 
 ### Community 82 - "Community 82"
 Cohesion: 0.11
 Nodes (20): buildProfileError(), buildSelectorForOnlinePlayers(), buildSelectorForSinglePlayer(), buildStaticFallbackPool(), chooseQuestionCandidates(), createBotMatchRecord(), createDeterministicRandomIntFactory(), createOnlineMatchInTransaction() (+12 more)
 
 ### Community 83 - "Community 83"
-Cohesion: 0.05
-Nodes (45): _ai_validate_lesson_plan(), _build_lesson_generation_blocks(), call_hf_chat_async(), _evaluate_lesson_source_legitimacy(), _fallback_topics_for_grade(), generate_lesson_plan(), get_quiz_topics(), _load_class_performance_artifacts() (+37 more)
+Cohesion: 0.07
+Nodes (27): call_hf_chat_async(), daily_insight(), load_local_math_model(), Async wrapper for DeepSeek chat completions., Async wrapper for DeepSeek chat completions., Optional local loader — deprecated in favor of DeepSeek API., Async wrapper for DeepSeek chat completions., Async wrapper for DeepSeek chat completions. (+19 more)
 
 ### Community 84 - "Community 84"
 Cohesion: 0.11
 Nodes (16): buildCompetencyStudentKey(), clampPercent(), COMPETENCY_COLORS, COMPETENCY_MATRIX_ITEMS, CompetencyMatrixSummary, CompetencyStudent, dedupeCompetencyStudents(), FallbackStudentInput (+8 more)
 
 ### Community 85 - "Community 85"
-Cohesion: 0.13
-Nodes (14): formatTime(), getCorrectAnswerForQuestion(), getExplanationForQuestion(), getOptionsForQuestion(), getQuestionForSubject(), normalizeMathAnswer(), normalizeSubjectName(), QuizExperience() (+6 more)
+Cohesion: 0.08
+Nodes (23): buildPreview(), MathAnswerInput(), MathAnswerInputProps, superscriptMap, PracticeCenter(), PracticeCenterProps, TopicCard, UNIT_STYLE (+15 more)
 
 ### Community 86 - "Community 86"
 Cohesion: 0.08
@@ -733,8 +741,8 @@ Cohesion: 0.12
 Nodes (15): admin, diagnosticData, diagnosticProcessor_1, DiagnosticTriggerContext, DiagnosticTriggerRuntimeContext, functions, handleDiagnosticCompleteCreate(), handleDiagnosticCompleteSnapshotCreate() (+7 more)
 
 ### Community 91 - "Community 91"
-Cohesion: 0.14
-Nodes (15): autoHighlightTerms(), formatContent(), inlineFormat(), LessonTab, LessonViewer(), LessonViewerProps, OBJECTIVE_COLORS, parseIntroContent() (+7 more)
+Cohesion: 0.15
+Nodes (14): autoHighlightTerms(), formatContent(), inlineFormat(), LessonTab, LessonViewer(), LessonViewerProps, OBJECTIVE_COLORS, parseIntroContent() (+6 more)
 
 ### Community 92 - "Community 92"
 Cohesion: 0.18
@@ -754,7 +762,7 @@ Nodes (14): ai_rate_limit(), auth_rate_limit(), default_rate_limit(), leaderboar
 
 ### Community 96 - "Community 96"
 Cohesion: 0.11
-Nodes (18): buildFallbackSummary(), getUserNotifications(), hasCheckedInToday(), subscribeToNotifications(), callback, docMock, getDocsMock, getDocsMock2 (+10 more)
+Nodes (15): callback, docMock, getDocsMock, getDocsMock2, mockCollectionRef, mockDocRef, mockDocs, mockSnapshot (+7 more)
 
 ### Community 97 - "Community 97"
 Cohesion: 0.05
@@ -773,8 +781,8 @@ Cohesion: 0.12
 Nodes (16): Admins, Chat (L.O.L.I.), Content Generation Limits, Core Feature Flows, Gamification System, IAR (Initial Assessment & Review), Key Features, MathPulse AI — Product Context (+8 more)
 
 ### Community 101 - "Community 101"
-Cohesion: 0.05
-Nodes (42): _basic_risk_top_factors(), daily_insight(), generate_ai_learning_path(), predict_risk(), predict_risk_batch(), Student risk prediction using DeepSeek AI classification, Student risk prediction using DeepSeek AI classification, Batch risk prediction for multiple students (+34 more)
+Cohesion: 0.06
+Nodes (32): _basic_risk_top_factors(), generate_ai_learning_path(), predict_risk(), predict_risk_batch(), Student risk prediction using DeepSeek AI classification, Student risk prediction using DeepSeek AI classification, Batch risk prediction for multiple students, Batch risk prediction for multiple students (+24 more)
 
 ### Community 102 - "Community 102"
 Cohesion: 0.17
@@ -789,8 +797,8 @@ Cohesion: 0.14
 Nodes (10): _get_user_identifier(), Extract user identifier for rate limiting.     Uses Firebase UID from request.s, Test teacher gets 3x multiplier., Test student gets 1x multiplier., Test the key functions used for rate limiting., Test that UID is extracted from request.state.user., Test fallback to IP when no authenticated user., Test fallback when no client available. (+2 more)
 
 ### Community 105 - "Community 105"
-Cohesion: 0.05
-Nodes (42): chat_tutor(), _extract_final_answer(), memory_health_check(), AI Math Tutor powered by Hugging Face Inference routing., AI Math Tutor powered by Hugging Face Inference routing., Verify that all memory stores are writable and readable for a given uid., Verify that all memory stores are writable and readable for a given uid., Verify that all memory stores are writable and readable for a given uid. (+34 more)
+Cohesion: 0.09
+Nodes (22): chat_tutor(), memory_health_check(), AI Math Tutor powered by Hugging Face Inference routing., AI Math Tutor powered by Hugging Face Inference routing., Verify that all memory stores are writable and readable for a given uid., Verify that all memory stores are writable and readable for a given uid., Verify that all memory stores are writable and readable for a given uid., Verify that all memory stores are writable and readable for a given uid. (+14 more)
 
 ### Community 106 - "Community 106"
 Cohesion: 0.12
@@ -809,8 +817,8 @@ Cohesion: 0.08
 Nodes (13): Exception, _FakeDocSnapshot, _FakeQuery, test_chat_hf_failure_returns_502(), test_chat_stream_emits_error_event(), test_learning_path_ai_failure(), test_predict_risk_ai_failure(), Route-level tests for /api/hf/monitoring endpoint. Updated for DeepSeek AI moni (+5 more)
 
 ### Community 110 - "Community 110"
-Cohesion: 0.24
-Nodes (7): activeCountdowns, AI_ENDPOINTS, getRetryAfterSeconds(), handleRateLimitError(), logRateLimitHit(), RateLimitCountdown, showRateLimitToast()
+Cohesion: 0.21
+Nodes (8): auth, activeCountdowns, AI_ENDPOINTS, getRetryAfterSeconds(), handleRateLimitError(), logRateLimitHit(), RateLimitCountdown, showRateLimitToast()
 
 ### Community 111 - "Community 111"
 Cohesion: 0.24
@@ -829,8 +837,8 @@ Cohesion: 0.06
 Nodes (35): admin, AnyDoc, asNumber(), asString(), dailyRewardReminder, data, db, functions (+27 more)
 
 ### Community 115 - "Community 115"
-Cohesion: 0.09
-Nodes (23): get_course_material_topics(), get_recent_course_materials(), _is_artifact_expired(), _load_persisted_course_material_topics(), List recent uploaded course materials for the authenticated teacher/admin., List recent uploaded course materials for the authenticated teacher/admin., Return persisted course-material topic map for the authenticated teacher/admin., Return persisted course-material topic map for the authenticated teacher/admin. (+15 more)
+Cohesion: 0.2
+Nodes (10): get_recent_course_materials(), List recent uploaded course materials for the authenticated teacher/admin., List recent uploaded course materials for the authenticated teacher/admin., List recent uploaded course materials for the authenticated teacher/admin., List recent uploaded course materials for the authenticated teacher/admin., List recent uploaded course materials for the authenticated teacher/admin., List recent uploaded course materials for the authenticated teacher/admin., List recent uploaded course materials for the authenticated teacher/admin. (+2 more)
 
 ### Community 116 - "Community 116"
 Cohesion: 0.07
@@ -841,32 +849,32 @@ Cohesion: 0.14
 Nodes (14): code:python ("""), code:bash (cd backend), code:bash (git add backend/tests/test_quiz_battle.py), code:python ("""), code:bash (git add backend/rag/pdf_ingestion.py), code:python ("""), code:bash (git add backend/services/question_bank_service.py), code:python (""") (+6 more)
 
 ### Community 118 - "Community 118"
-Cohesion: 0.12
-Nodes (20): cloneDefaultSettings(), ProfileData, SettingsModal(), SettingsModalProps, useUserSettings(), UseUserSettingsReturn, DEFAULT_USER_SETTINGS, ProfileVisibility (+12 more)
+Cohesion: 0.2
+Nodes (10): get_course_material_topics(), Return persisted course-material topic map for the authenticated teacher/admin., Return persisted course-material topic map for the authenticated teacher/admin., Return persisted course-material topic map for the authenticated teacher/admin., Return persisted course-material topic map for the authenticated teacher/admin., Return persisted course-material topic map for the authenticated teacher/admin., Return persisted course-material topic map for the authenticated teacher/admin., Return persisted course-material topic map for the authenticated teacher/admin. (+2 more)
 
 ### Community 119 - "Community 119"
-Cohesion: 0.06
-Nodes (31): enforce_rate_limit(), _fallback_topic_extraction(), Capture lightweight pilot feedback telemetry for import-grounded quiz and lesson, Capture lightweight pilot feedback telemetry for import-grounded quiz and lesson, Capture lightweight pilot feedback telemetry for import-grounded quiz and lesson, Capture lightweight pilot feedback telemetry for import-grounded quiz and lesson, Upload and extract curriculum topics from course materials (PDF, DOCX, TXT)., Upload and extract curriculum topics from course materials (PDF, DOCX, TXT). (+23 more)
+Cohesion: 0.15
+Nodes (13): _fallback_topic_extraction(), Upload and extract curriculum topics from course materials (PDF, DOCX, TXT)., Upload and extract curriculum topics from course materials (PDF, DOCX, TXT)., Upload and extract curriculum topics from course materials (PDF, DOCX, TXT)., Upload and extract curriculum topics from course materials (PDF, DOCX, TXT)., Upload and extract curriculum topics from course materials (PDF, DOCX, TXT)., Upload and extract curriculum topics from course materials (PDF, DOCX, TXT)., Upload and extract curriculum topics from course materials (PDF, DOCX, TXT). (+5 more)
 
 ### Community 120 - "Community 120"
 Cohesion: 0.1
 Nodes (17): AlertDialogAction(), AlertDialogCancel(), AlertDialogContent(), AlertDialogDescription(), AlertDialogFooter(), AlertDialogHeader(), AlertDialogOverlay(), AlertDialogTitle() (+9 more)
 
 ### Community 121 - "Community 121"
-Cohesion: 0.29
-Nodes (4): deleteButton, mockDeleteNotification, mockMarkAsRead, notification
+Cohesion: 0.19
+Nodes (9): badgeForType(), iconMap, NotificationItem(), NotificationItemProps, deleteButton, mockDeleteNotification, mockMarkAsRead, notification (+1 more)
 
 ### Community 122 - "Community 122"
 Cohesion: 0.26
 Nodes (11): admin, checkRateLimit(), checkRateLimitOrThrow(), createRateLimitError(), getEffectiveLimit(), RATE_LIMITS, rateLimitBefore(), RateLimitConfig (+3 more)
 
 ### Community 123 - "Community 123"
-Cohesion: 0.14
-Nodes (12): FeatureSpendingCard(), FeatureSpendingCardProps, KPICard(), KPICardProps, PricingInfoTooltip(), PricingInfoTooltipProps, PromoPricingBanner(), PromoPricingBannerProps (+4 more)
+Cohesion: 0.13
+Nodes (14): AIMonitoringPage(), FeatureSpendingCard(), FeatureSpendingCardProps, KPICard(), KPICardProps, PricingInfoTooltip(), PricingInfoTooltipProps, PromoPricingBanner() (+6 more)
 
 ### Community 124 - "Community 124"
-Cohesion: 0.09
-Nodes (23): _extract_role_from_firestore_rest_payload(), _extract_uid_from_claims(), _get_role_from_firestore_rest(), _init_firebase_admin(), _parse_bearer_token(), Normalize Firebase token user identifier across verifier implementations., Verify Firebase ID token via firebase-admin, then google-auth as fallback., Normalize Firebase token user identifier across verifier implementations. (+15 more)
+Cohesion: 0.22
+Nodes (9): _extract_uid_from_claims(), Normalize Firebase token user identifier across verifier implementations., Normalize Firebase token user identifier across verifier implementations., Normalize Firebase token user identifier across verifier implementations., Normalize Firebase token user identifier across verifier implementations., Normalize Firebase token user identifier across verifier implementations., Normalize Firebase token user identifier across verifier implementations., Normalize Firebase token user identifier across verifier implementations. (+1 more)
 
 ### Community 125 - "Community 125"
 Cohesion: 0.15
@@ -910,7 +918,7 @@ Nodes (38): app_lifespan(), call_hf_chat_stream(), call_hf_chat_stream_async(), 
 
 ### Community 135 - "Community 135"
 Cohesion: 0.06
-Nodes (36): DiagnosticSummary, GradesPage(), DEFAULT_MASTERY_SUMMARY, MasterySummary, SortDir, SortField, STATUS_BADGES, STATUS_ORDER (+28 more)
+Nodes (43): DiagnosticSummary, GradesPage(), HeatmapCell, MasteryHeatmapProps, SUBJECTS, TOPICS_BY_SUBJECT, getQuestionsForLesson(), ModuleDetailView() (+35 more)
 
 ### Community 136 - "Community 136"
 Cohesion: 0.17
@@ -929,8 +937,8 @@ Cohesion: 0.28
 Nodes (5): CompactBanner(), getSubjectKey(), ResultsBanner(), SUPPLEMENTAL_RESOURCES, SupplementalBannerProps
 
 ### Community 141 - "Community 141"
-Cohesion: 0.07
-Nodes (30): _canonicalize_topic_label(), _canonicalize_topic_list(), _deterministic_lesson_checks(), get_imported_class_overview(), _normalize_topic_key(), _pick_weakest_topic(), Assess a student's competency per topic based on their quiz history.     Return, Assess a student's competency per topic based on their quiz history.     Return (+22 more)
+Cohesion: 0.04
+Nodes (52): _auth_user_not_found(), _build_class_metadata(), _canonicalize_topic_label(), _canonicalize_topic_list(), _derive_risk_level(), _deterministic_lesson_checks(), get_imported_class_overview(), _infer_classification() (+44 more)
 
 ### Community 142 - "Community 142"
 Cohesion: 0.16
@@ -1001,8 +1009,8 @@ Cohesion: 0.22
 Nodes (8): anchor, eligible, node_test_1, notEligible, now, reasons, reassessmentEngine_1, strict_1
 
 ### Community 159 - "Community 159"
-Cohesion: 0.05
-Nodes (40): SubjectsHelpModalProps, AddStudentsModal(), AddStudentsModalProps, AdminAuditLog(), AdminContent(), AdminDashboard(), AdminDashboardProps, mockModules (+32 more)
+Cohesion: 0.04
+Nodes (58): AddStudentsModal(), AdminAuditLog(), AdminContent(), AdminDashboard(), AIChatPage(), AppLoadingScreenProps, Notification, NotificationCenter() (+50 more)
 
 ### Community 160 - "Community 160"
 Cohesion: 0.22
@@ -1037,8 +1045,8 @@ Cohesion: 0.29
 Nodes (6): Set up rate limiting for the FastAPI application., setup_rate_limiting(), Test setup_rate_limiting function., Test that setup adds limiter to app state., Test that setup adds exception handler for RateLimitExceeded., TestSetupRateLimiting
 
 ### Community 168 - "Community 168"
-Cohesion: 0.06
-Nodes (49): apply_admin_user_bulk_action(), _build_admin_user_record(), _build_password_reset_email_message(), _coerce_iso_timestamp(), create_student_account_for_teacher(), delete_admin_user_account(), _filter_admin_user_records(), get_recent_risk_refresh_status() (+41 more)
+Cohesion: 0.05
+Nodes (57): apply_admin_user_bulk_action(), _build_admin_user_record(), _build_password_reset_email_message(), _coerce_iso_timestamp(), commit_student_account_import(), create_student_account_for_teacher(), delete_admin_user_account(), _filter_admin_user_records() (+49 more)
 
 ### Community 169 - "Community 169"
 Cohesion: 0.2
@@ -1173,12 +1181,12 @@ Cohesion: 0.23
 Nodes (11): _build_checkin_prompt(), _fallback_message(), generate_tutor_checkin(), Tutor Check-in Engine — DeepSeek-powered contextual student engagement.  POST, Template-based fallback when DeepSeek is unavailable., Suggest a concrete next action based on status., Build a contextual prompt for DeepSeek to generate a tutor check-in., Generate a DeepSeek-powered tutor check-in message for a student. (+3 more)
 
 ### Community 204 - "Community 204"
-Cohesion: 0.25
-Nodes (4): HeatmapCell, MasteryHeatmapProps, SUBJECTS, TOPICS_BY_SUBJECT
+Cohesion: 0.2
+Nodes (10): get_quiz_topics(), Return structured list of SHS math topics organised by grade level.     Only Gr, Regenerate quiz questions using a strict JSON-only prompt path., Return structured list of SHS math topics organised by grade level.     Only Gr, Return structured list of SHS math topics organised by grade level.     Only Gr, Return structured list of SHS math topics organised by grade level.     Only Gr, Return structured list of SHS math topics organised by grade level.     Only Gr, Return structured list of SHS math topics organised by grade level.     Only Gr (+2 more)
 
 ### Community 205 - "Community 205"
-Cohesion: 0.11
-Nodes (18): predict_risk_ml(), Enhanced student risk prediction using trained ML model with SHAP explanations., Enhanced student risk prediction using trained ML model with SHAP explanations., Enhanced student risk prediction using trained ML model with SHAP explanations., Enhanced student risk prediction using trained ML model with SHAP explanations., Delete all documents in a subcollection. Returns count of deleted docs., Delete all documents in a subcollection. Returns count of deleted docs., Enhanced student risk prediction using trained ML model with SHAP explanations. (+10 more)
+Cohesion: 0.22
+Nodes (9): predict_risk_ml(), Enhanced student risk prediction using trained ML model with SHAP explanations., Enhanced student risk prediction using trained ML model with SHAP explanations., Enhanced student risk prediction using trained ML model with SHAP explanations., Enhanced student risk prediction using trained ML model with SHAP explanations., Enhanced student risk prediction using trained ML model with SHAP explanations., Enhanced student risk prediction using trained ML model with SHAP explanations., Enhanced student risk prediction using trained ML model with SHAP explanations. (+1 more)
 
 ### Community 208 - "Community 208"
 Cohesion: 0.5
@@ -1241,8 +1249,8 @@ Cohesion: 0.18
 Nodes (10): AchievementItem, LUCIDE_ICON_MAP, ProgressDoc, RewardsModalProps, ACHIEVEMENT_ICONS, ACHIEVEMENT_MAP, AchievementCategory, AchievementConditionType (+2 more)
 
 ### Community 231 - "Community 231"
-Cohesion: 0.09
-Nodes (26): _auth_user_not_found(), commit_student_account_import(), _generate_temporary_password(), _parse_provisioning_dataframe(), preview_student_account_import(), _prune_account_import_previews(), Parse and validate student account import rows before provisioning., Parse and validate student account import rows before provisioning. (+18 more)
+Cohesion: 0.2
+Nodes (10): _get_sympy_safe_dict(), Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval., Lazily build allowlist of SymPy names for safe eval. (+2 more)
 
 ### Community 257 - "Community 257"
 Cohesion: 0.12
@@ -1353,8 +1361,8 @@ Cohesion: 0.18
 Nodes (11): Current Session (May 17, 2026 — Memory-Aware Tutoring Upgrade) ✅ **PR #125 MERGED TO MAIN**, Files Changed, Files Changed, Frontend Wiring (just done), Graceful Degradation, Memory Context Injection, PR #125 Merge, Static QA Results (+3 more)
 
 ### Community 285 - "Community 285"
-Cohesion: 0.05
-Nodes (40): Clear and refresh all in-memory caches., refresh_all_caches(), calculator_evaluate(), _get_sympy_safe_dict(), preview_quiz(), Generate a 3-question preview quiz for teachers to verify AI question     quali, Generate a 3-question preview quiz for teachers to verify AI question     quali, Generate a 3-question preview quiz for teachers to verify AI question     quali (+32 more)
+Cohesion: 0.18
+Nodes (11): Clear and refresh all in-memory caches., refresh_all_caches(), Evaluate a mathematical expression symbolically using SymPy.     Supports arith, Force clear and refresh all ML analytics caches.     Use when student data has, Force clear and refresh all ML analytics caches.     Use when student data has, Force clear and refresh all ML analytics caches.     Use when student data has, Force clear and refresh all ML analytics caches.     Use when student data has, Force clear and refresh all ML analytics caches.     Use when student data has (+3 more)
 
 ### Community 286 - "Community 286"
 Cohesion: 0.05
@@ -1373,8 +1381,8 @@ Cohesion: 0.2
 Nodes (10): generate_learning_path(), Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results., Generate personalized learning path based on student's diagnostic results. (+2 more)
 
 ### Community 301 - "Community 301"
-Cohesion: 0.4
-Nodes (4): markAllButton, mockOnClose, notificationsValue, skeletons
+Cohesion: 0.23
+Nodes (9): NotificationBell(), TestComponent(), useNotifications(), NotificationPanel(), NotificationPanelProps, markAllButton, mockOnClose, notificationsValue (+1 more)
 
 ### Community 302 - "Community 302"
 Cohesion: 0.4
@@ -1409,8 +1417,8 @@ Cohesion: 0.43
 Nodes (5): ToggleGroup(), ToggleGroupContext, ToggleGroupItem(), Toggle(), toggleVariants
 
 ### Community 313 - "Community 313"
-Cohesion: 0.14
-Nodes (19): NotificationBell(), NotificationContext, NotificationContextType, NotificationProvider(), NotificationProviderProps, button, mockUnsubscribe, TestComponent() (+11 more)
+Cohesion: 0.19
+Nodes (17): buildFallbackSummary(), NotificationContext, NotificationContextType, NotificationProvider(), NotificationProviderProps, button, mockUnsubscribe, deleteNotification() (+9 more)
 
 ### Community 314 - "Community 314"
 Cohesion: 0.2
@@ -1432,6 +1440,10 @@ Nodes (5): Test that practice_generation task type is properly routed to a model
 Cohesion: 0.12
 Nodes (19): _canonicalize_topic_label(), _canonicalize_topic_list(), _deterministic_lesson_checks(), _distribute_questions(), generate_quiz(), _normalize_topic_key(), _parse_quiz_json(), _pick_weakest_topic() (+11 more)
 
+### Community 323 - "Community 323"
+Cohesion: 0.2
+Nodes (10): preview_quiz(), Generate a 3-question preview quiz for teachers to verify AI question     quali, Generate a 3-question preview quiz for teachers to verify AI question     quali, Generate a 3-question preview quiz for teachers to verify AI question     quali, Generate a 3-question preview quiz for teachers to verify AI question     quali, Generate a 3-question preview quiz for teachers to verify AI question     quali, Generate a 3-question preview quiz for teachers to verify AI question     quali, Generate a 3-question preview quiz for teachers to verify AI question     quali (+2 more)
+
 ### Community 324 - "Community 324"
 Cohesion: 0.2
 Nodes (10): build_math_tutor_prompt(), Build a structured math-tutor prompt for the LLM., Build a structured math-tutor prompt for the LLM., Build a structured math-tutor prompt for the LLM., Build a structured math-tutor prompt for the LLM., Build a structured math-tutor prompt for the LLM., Build a structured math-tutor prompt for the LLM., Build a structured math-tutor prompt for the LLM. (+2 more)
@@ -1440,9 +1452,13 @@ Nodes (10): build_math_tutor_prompt(), Build a structured math-tutor prompt for 
 Cohesion: 0.2
 Nodes (10): call_math_tutor_llm(), Convenience wrapper: call the HF serverless model with the MathPulse tutor promp, Convenience wrapper: call the HF serverless model with the MathPulse tutor promp, Convenience wrapper: call the HF serverless model with the MathPulse tutor promp, Convenience wrapper: call the HF serverless model with the MathPulse tutor promp, Convenience wrapper: call the HF serverless model with the MathPulse tutor promp, Convenience wrapper: call the HF serverless model with the MathPulse tutor promp, Convenience wrapper: call the HF serverless model with the MathPulse tutor promp (+2 more)
 
+### Community 329 - "Community 329"
+Cohesion: 0.2
+Nodes (10): Persist lightweight monitoring artifacts for queued risk refresh jobs., Persist lightweight monitoring artifacts for queued risk refresh jobs., Persist lightweight monitoring artifacts for queued risk refresh jobs., Persist lightweight monitoring artifacts for queued risk refresh jobs., Persist lightweight monitoring artifacts for queued risk refresh jobs., Persist lightweight monitoring artifacts for queued risk refresh jobs., Persist lightweight monitoring artifacts for queued risk refresh jobs., Persist lightweight monitoring artifacts for queued risk refresh jobs. (+2 more)
+
 ### Community 330 - "Community 330"
-Cohesion: 0.3
-Nodes (9): createNotification(), hasRemindedToday(), markAsRead(), requireAuth(), notify(), consoleErrorSpy, payload, NotificationPayload (+1 more)
+Cohesion: 0.38
+Nodes (6): createNotification(), notify(), consoleErrorSpy, payload, NotificationPayload, NotificationType
 
 ### Community 331 - "Community 331"
 Cohesion: 0.17
@@ -1452,13 +1468,21 @@ Nodes (8): MathPulseAutomationEngine, Stateless event-driven automation system. 
 Cohesion: 0.22
 Nodes (9): Remove repeated blocks from model output (a common issue with smaller LLMs)., Remove repeated blocks from model output (a common issue with smaller LLMs)., Remove repeated blocks from model output (a common issue with smaller LLMs)., Remove repeated blocks from model output (a common issue with smaller LLMs)., Remove repeated blocks from model output (a common issue with smaller LLMs)., Remove repeated blocks from model output (a common issue with smaller LLMs)., Remove repeated blocks from model output (a common issue with smaller LLMs)., Remove repeated blocks from model output (a common issue with smaller LLMs). (+1 more)
 
+### Community 333 - "Community 333"
+Cohesion: 0.22
+Nodes (9): calculator_evaluate(), Evaluate a mathematical expression symbolically using SymPy.     Supports arith, Evaluate a mathematical expression symbolically using SymPy.     Supports arith, Evaluate a mathematical expression symbolically using SymPy.     Supports arith, Evaluate a mathematical expression symbolically using SymPy.     Supports arith, Evaluate a mathematical expression symbolically using SymPy.     Supports arith, Evaluate a mathematical expression symbolically using SymPy.     Supports arith, Evaluate a mathematical expression symbolically using SymPy.     Supports arith (+1 more)
+
+### Community 334 - "Community 334"
+Cohesion: 0.22
+Nodes (9): Enhanced student risk prediction using trained ML model with SHAP explanations., Delete all documents in a subcollection. Returns count of deleted docs., Delete all documents in a subcollection. Returns count of deleted docs., Delete all documents in a subcollection. Returns count of deleted docs., Delete all documents in a subcollection. Returns count of deleted docs., Delete all documents in a subcollection. Returns count of deleted docs., Delete all documents in a subcollection. Returns count of deleted docs., Delete all documents in a subcollection. Returns count of deleted docs. (+1 more)
+
 ### Community 335 - "Community 335"
 Cohesion: 0.25
 Nodes (5): CompletionOverlayProps, StatsBarProps, TryItYourselfPage(), TryItYourselfPageProps, useFullscreen()
 
 ### Community 336 - "Community 336"
-Cohesion: 0.5
-Nodes (4): buildPreview(), MathAnswerInput(), MathAnswerInputProps, superscriptMap
+Cohesion: 0.22
+Nodes (9): Verify Firebase ID token via firebase-admin, then google-auth as fallback., Verify Firebase ID token via firebase-admin, then google-auth as fallback., Verify Firebase ID token via firebase-admin, then google-auth as fallback., Verify Firebase ID token via firebase-admin, then google-auth as fallback., Verify Firebase ID token via firebase-admin, then google-auth as fallback., Verify Firebase ID token via firebase-admin, then google-auth as fallback., Verify Firebase ID token via firebase-admin, then google-auth as fallback., Verify Firebase ID token via firebase-admin, then google-auth as fallback. (+1 more)
 
 ### Community 337 - "Community 337"
 Cohesion: 0.25
@@ -1467,6 +1491,10 @@ Nodes (3): get_model_config(), OverrideRequest, ProfileSwitchRequest
 ### Community 338 - "Community 338"
 Cohesion: 0.29
 Nodes (7): debug_scope_info(), Reveal what scope check code is deployed and its current state., Reveal what scope check code is deployed and its current state., Reveal what scope check code is deployed and its current state., Reveal what scope check code is deployed and its current state., Reveal what scope check code is deployed and its current state., Reveal what scope check code is deployed and its current state.
+
+### Community 343 - "Community 343"
+Cohesion: 0.5
+Nodes (3): input, output, toChatPreviewText()
 
 ### Community 345 - "Community 345"
 Cohesion: 0.11
@@ -1477,19 +1505,19 @@ Cohesion: 0.47
 Nodes (4): getCachedLesson(), getCacheKey(), setCachedLesson(), UseLessonContentResult
 
 ## Knowledge Gaps
-- **2878 isolated node(s):** `cssTimingProbePlugins`, `MathPulse AI - ML-Powered Student Analytics & Adaptive Learning Module  Provid`, `Get from cache if not expired.`, `Set a cache entry with current timestamp.`, `Get or initialise Firestore client.` (+2873 more)
+- **2880 isolated node(s):** `cssTimingProbePlugins`, `MathPulse AI - ML-Powered Student Analytics & Adaptive Learning Module  Provid`, `Get from cache if not expired.`, `Set a cache entry with current timestamp.`, `Get or initialise Firestore client.` (+2875 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **49 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **52 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `response` connect `Community 24` to `Community 101`, `Community 266`, `Community 69`?**
-  _High betweenness centrality (0.158) - this node is a cross-community bridge._
+  _High betweenness centrality (0.155) - this node is a cross-community bridge._
 - **Why does `FakeFirestore` connect `Community 43` to `Community 182`?**
   _High betweenness centrality (0.121) - this node is a cross-community bridge._
 - **Why does `getScopeBoundaryResponse()` connect `Community 69` to `Community 40`?**
-  _High betweenness centrality (0.079) - this node is a cross-community bridge._
+  _High betweenness centrality (0.077) - this node is a cross-community bridge._
 - **Are the 152 inferred relationships involving `AutomationResult` (e.g. with `AuthenticatedUser` and `AuthMiddleware`) actually correct?**
   _`AutomationResult` has 152 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 152 inferred relationships involving `EnhancedRiskPrediction` (e.g. with `AuthenticatedUser` and `AuthMiddleware`) actually correct?**
@@ -1497,4 +1525,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Are the 152 inferred relationships involving `ClassInsightsResponse` (e.g. with `AuthenticatedUser` and `AuthMiddleware`) actually correct?**
   _`ClassInsightsResponse` has 152 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `cssTimingProbePlugins`, `MathPulse AI - ML-Powered Student Analytics & Adaptive Learning Module  Provid`, `Get from cache if not expired.` to the rest of the system?**
-  _2878 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _2880 weakly-connected nodes found - possible documentation gaps or missing edges._

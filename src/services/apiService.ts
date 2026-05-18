@@ -2775,6 +2775,14 @@ export const apiService = {
     return apiFetch('/api/rag/health', { method: 'GET' });
   },
 
+  /** Delete an uploaded file and its associated backend data */
+  adminDeleteFile: async (fileId: string, collectionName: string): Promise<{ success: boolean }> => {
+    return apiFetch('/api/admin/delete-file', {
+      method: 'POST',
+      body: JSON.stringify({ fileId, collection: collectionName }),
+    });
+  },
+
   /** Generate an intervention plan for an at-risk student */
   async generateInterventionPlan(payload: {
     lrn: string;

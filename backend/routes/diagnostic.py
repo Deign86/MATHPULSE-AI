@@ -795,3 +795,198 @@ async def submit_diagnostic(request: DiagnosticSubmitRequest, req: Request):
         badge_unlocked="first_assessment",
         redirect_to="/dashboard",
     )
+
+
+# ─── AI-Powered Diagnostic Analysis ─────────────────────────────────────
+
+
+class DiagnosticAnalysisRequest(BaseModel):
+    user_id: str
+
+
+class DiagnosticAnalysisResponse(BaseModel):
+    success: bool
+    analysis: Dict[str, Any]
+
+
+@router.post("/analyze", response_model=DiagnosticAnalysisResponse)
+async def analyze_diagnostic(request: DiagnosticAnalysisRequest, req: Request):
+    """Generate AI-powered in-depth analysis of diagnostic results."""
+    user = getattr(req.state, "user", None)
+    if not user or not getattr(user, "uid", None):
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        firestore_client = fs.client()
+    except Exception:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    # Fetch diagnostic results
+    results_doc = firestore_client.collection("diagnosticResults").document(request.user_id).get()
+    if not results_doc.exists:
+        raise HTTPException(status_code=404, detail="No diagnostic results found")
+
+    results_data = results_doc.to_dict() or {}
+    responses = results_data.get("responses", [])
+    domain_scores = results_data.get("domainScores", {})
+    risk_profile = results_data.get("riskProfile", {})
+    test_id = results_data.get("testId", "")
+
+    # Fetch question texts from session
+    question_texts: Dict[str, str] = {}
+    if test_id:
+        session_doc = firestore_client.collection("diagnosticSessions").document(test_id).get()
+        if session_doc.exists:
+            session_data = session_doc.to_dict() or {}
+            for q in session_data.get("questions", []):
+                question_texts[q.get("question_id", "")] = q.get("question_text", "")
+
+    # Build prompt for AI analysis
+    total_time = sum(r.get("time_spent_seconds", 0) for r in responses)
+    total_correct = sum(1 for r in responses if r.get("is_correct"))
+    total_items = len(responses)
+
+    question_details = []
+    for i, r in enumerate(responses, 1):
+        q_text = question_texts.get(r.get("question_id", ""), f"Question {i}")
+        time_s = r.get("time_spent_seconds", 0)
+        question_details.append(
+            f"Q{i} [{r.get('domain','')}/{r.get('topic','')}] "
+            f"(difficulty={r.get('difficulty','')}, bloom={r.get('bloom_level','')}) "
+            f"{'✓' if r.get('is_correct') else '✗'} "
+            f"time={time_s}s | "
+            f"Question: {q_text[:120]}"
+        )
+
+    domain_summary = []
+    for domain, scores in domain_scores.items():
+        domain_summary.append(f"  {domain}: {scores.get('correct',0)}/{scores.get('total',0)} ({scores.get('percentage',0)}%) - {scores.get('mastery_level','')}")
+
+    prompt = f"""You are an expert math education analyst. Analyze this student's diagnostic assessment results and provide deep, actionable insights.
+
+ASSESSMENT DATA:
+- Score: {total_correct}/{total_items} ({round(total_correct/total_items*100,1) if total_items else 0}%)
+- Total time: {total_time}s (avg {round(total_time/total_items,1) if total_items else 0}s per question)
+- Risk level: {risk_profile.get('overall_risk', 'unknown')}
+
+DOMAIN SCORES:
+{chr(10).join(domain_summary)}
+
+PER-QUESTION BREAKDOWN:
+{chr(10).join(question_details)}
+
+Provide your analysis as JSON with this exact structure:
+{{
+  "overall_summary": "2-3 sentence summary of performance",
+  "time_analysis": {{
+    "pattern": "description of timing patterns (rushed, deliberate, inconsistent, etc.)",
+    "fast_questions": ["topics where student answered very quickly"],
+    "slow_questions": ["topics where student took longest"],
+    "insight": "what timing reveals about confidence and understanding"
+  }},
+  "strength_areas": [
+    {{"domain": "...", "detail": "specific strength description"}}
+  ],
+  "weakness_areas": [
+    {{"domain": "...", "detail": "specific weakness description", "priority": "high/medium/low"}}
+  ],
+  "answer_patterns": {{
+    "description": "patterns in how student answered (guessing on hard, consistent errors in topic, etc.)",
+    "common_mistakes": ["list of mistake patterns"],
+    "positive_patterns": ["list of positive patterns"]
+  }},
+  "recommendations": [
+    {{"action": "specific recommendation", "reason": "why this helps", "priority": 1}}
+  ],
+  "difficulty_analysis": {{
+    "easy_performance": "how they did on easy questions",
+    "medium_performance": "how they did on medium questions",
+    "hard_performance": "how they did on hard questions"
+  }}
+}}
+
+Return ONLY valid JSON, no markdown fences."""
+
+    try:
+        from main import call_hf_chat_async
+        raw = await call_hf_chat_async(
+            [{"role": "user", "content": prompt}],
+            max_tokens=1500,
+            temperature=0.3,
+            task_type="analytics",
+        )
+
+        # Parse JSON from response
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+
+        analysis = json.loads(cleaned)
+    except (json.JSONDecodeError, Exception) as e:
+        logger.warning(f"[diagnostic/analyze] AI parse failed: {e}, using fallback")
+        # Fallback: generate basic analysis without AI
+        analysis = _build_fallback_analysis(responses, domain_scores, risk_profile)
+
+    return DiagnosticAnalysisResponse(success=True, analysis=analysis)
+
+
+def _build_fallback_analysis(
+    responses: List[Dict[str, Any]],
+    domain_scores: Dict[str, Any],
+    risk_profile: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Build a basic analysis when AI is unavailable."""
+    total_time = sum(r.get("time_spent_seconds", 0) for r in responses)
+    total_items = len(responses)
+    avg_time = round(total_time / total_items, 1) if total_items else 0
+    total_correct = sum(1 for r in responses if r.get("is_correct"))
+
+    # Find fast/slow questions
+    times = [(r.get("topic", ""), r.get("time_spent_seconds", 0), r.get("is_correct", False)) for r in responses]
+    times_sorted = sorted(times, key=lambda x: x[1])
+    fast = [t[0] for t in times_sorted[:3] if t[0]]
+    slow = [t[0] for t in times_sorted[-3:] if t[0]]
+
+    # Strengths/weaknesses from domain scores
+    strengths = [{"domain": d, "detail": f"Scored {s.get('percentage',0)}%"} for d, s in domain_scores.items() if s.get("percentage", 0) >= 70]
+    weaknesses = [{"domain": d, "detail": f"Scored {s.get('percentage',0)}%", "priority": "high" if s.get("percentage", 0) < 50 else "medium"} for d, s in domain_scores.items() if s.get("percentage", 0) < 70]
+
+    # Difficulty breakdown
+    easy = [r for r in responses if r.get("difficulty") == "easy"]
+    medium = [r for r in responses if r.get("difficulty") == "medium"]
+    hard = [r for r in responses if r.get("difficulty") == "hard"]
+
+    def pct(items: list) -> str:
+        if not items:
+            return "No questions"
+        correct = sum(1 for i in items if i.get("is_correct"))
+        return f"{correct}/{len(items)} correct ({round(correct/len(items)*100)}%)"
+
+    return {
+        "overall_summary": f"Scored {total_correct}/{total_items} ({round(total_correct/total_items*100) if total_items else 0}%) with an average of {avg_time}s per question. Risk level: {risk_profile.get('overall_risk', 'unknown')}.",
+        "time_analysis": {
+            "pattern": "deliberate" if avg_time > 60 else "moderate" if avg_time > 30 else "quick",
+            "fast_questions": fast,
+            "slow_questions": slow,
+            "insight": f"Average response time of {avg_time}s per question.",
+        },
+        "strength_areas": strengths,
+        "weakness_areas": weaknesses,
+        "answer_patterns": {
+            "description": "Analysis based on response data.",
+            "common_mistakes": [f"Errors in {d}" for d, s in domain_scores.items() if s.get("percentage", 0) < 60],
+            "positive_patterns": [f"Strong in {d}" for d, s in domain_scores.items() if s.get("percentage", 0) >= 70],
+        },
+        "recommendations": [
+            {"action": f"Focus on {w['domain']}", "reason": w["detail"], "priority": i + 1}
+            for i, w in enumerate(weaknesses[:3])
+        ],
+        "difficulty_analysis": {
+            "easy_performance": pct(easy),
+            "medium_performance": pct(medium),
+            "hard_performance": pct(hard),
+        },
+    }
