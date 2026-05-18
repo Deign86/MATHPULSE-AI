@@ -695,6 +695,16 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // ── At-Risk Resolution (backend writes via Admin SDK, students read own) ──
+    match /students/{uid}/flaggedTopics/{topicId} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow write: if false; // Backend only via firebase-admin
+    }
+    match /students/{uid}/atRiskFallbackContent/{topicId} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow write: if false; // Backend only via firebase-admin
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;
