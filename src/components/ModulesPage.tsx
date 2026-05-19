@@ -1083,14 +1083,13 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 </div>
                 <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100 p-3">
                   <p className="text-[11px] font-semibold text-slate-600 leading-relaxed">
-                    Curriculum content adapted from the DepEd Strengthened Senior High School (SHS) Teaching Modules.
-                    Original materials are the intellectual property of the Department of Education — Schools Division Office of Navotas City.
-                    All rights reserved by the original authors and publishers.
+                    The learning materials and reference documents utilized within A Web-based AI-Driven Supplemental System in Learning Mathematics for Grade 11 General Mathematics are sourced from publicly accessible repositories of the Department of Education (DepEd), specifically the Schools Division Office (SDO) of Navotas.
                   </p>
                   <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
-                    Used under the Fair Use Doctrine (Republic Act No. 8293, Intellectual Property Code of the Philippines, Section 185)
-                    for non-commercial educational purposes. No copyright infringement is intended.
-                    This platform does not claim ownership of the source curriculum materials.
+                    These materials are used strictly for non-commercial, academic research, and system testing purposes under the Fair Use Doctrine of the Intellectual Property Code of the Philippines (Republic Act No. 8293).
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                    This platform is an independent academic capstone project. It is not officially affiliated with or endorsed by DepEd. Upon full implementation, the system's knowledge base will be updated to utilize the localized modules explicitly authorized by the partner institution.
                   </p>
                 </div>
               </div>
