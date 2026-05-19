@@ -96,9 +96,11 @@ def _classify_risk(avg_score: float, quiz_count: int, days_since_active: Optiona
     return "Low Risk"
 
 
-def _classify_engagement(days_since_active: Optional[int], recent_quiz_count: int) -> str:
-    if days_since_active is not None and days_since_active <= 2 and recent_quiz_count >= 5:
+def _classify_engagement(days_since_active: Optional[int], recent_quiz_count: int, lessons_completed: int = 0) -> str:
+    if lessons_completed >= 5:
         return "High"
+    if lessons_completed >= 2 or (days_since_active is not None and days_since_active <= 2 and recent_quiz_count >= 5):
+        return "High" if recent_quiz_count >= 3 else "Medium"
     if days_since_active is not None and days_since_active <= 7:
         return "Medium"
     return "Low"
@@ -181,8 +183,21 @@ class InterventionEngine:
         # Recent quiz count (last 14 days)
         recent_count = sum(1 for q in quiz_attempts if self._is_recent(q, now, 14))
 
+        # Fetch lessons completed from progress doc
+        lessons_completed = 0
+        for lookup_id in [student_id, student_data.get("accountUid")]:
+            if not lookup_id:
+                continue
+            try:
+                pdoc = db.collection("progress").document(lookup_id).get()
+                if pdoc.exists:
+                    lessons_completed = pdoc.to_dict().get("totalLessonsCompleted", 0)
+                    break
+            except Exception:
+                pass
+
         risk_level = _classify_risk(avg_score, quiz_count, days_since_active)
-        engagement = _classify_engagement(days_since_active, recent_count)
+        engagement = _classify_engagement(days_since_active, recent_count, lessons_completed)
 
         # Generate AI insights
         insights = await self._generate_insights(
@@ -194,6 +209,7 @@ class InterventionEngine:
             strong_topics=strong_topics,
             weak_topics=weak_topics,
             quiz_count=quiz_count,
+            lessons_completed=lessons_completed,
         )
 
         # Generate learning path
@@ -344,6 +360,7 @@ Student: Grade {kwargs['grade_level']}, Section {kwargs['section']}
 Risk Level: {kwargs['risk_level']}
 Average Score: {kwargs['avg_score']:.1f}%
 Engagement: {kwargs['engagement']}
+Lessons Completed: {kwargs.get('lessons_completed', 0)}
 Strong Topics (accuracy > 70%): {', '.join(kwargs['strong_topics'][:3]) or 'None identified yet'}
 Weak Topics (accuracy < 60%): {', '.join(kwargs['weak_topics'][:3]) or 'None identified yet'}
 Quiz Attempt Count (last 30 days): {kwargs['quiz_count']}
@@ -373,7 +390,7 @@ Return as JSON:
         except Exception as e:
             logger.warning(f"DeepSeek insights failed: {e}")
             return {
-                "learning_strengths": "Shows willingness to engage with the platform." if kwargs['quiz_count'] > 0 else "No assessment data yet — potential to be discovered.",
+                "learning_strengths": "Shows willingness to engage with the platform." if kwargs['quiz_count'] > 0 else (f"Completed {kwargs.get('lessons_completed', 0)} lessons; consistent study habits developing." if kwargs.get('lessons_completed', 0) >= 2 else "No assessment data yet — potential to be discovered."),
                 "next_steps_summary": f"Begin with foundational practice in {kwargs['weak_topics'][0] if kwargs['weak_topics'] else 'core topics'}.",
             }
 
