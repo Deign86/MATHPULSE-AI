@@ -48,7 +48,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow create: if isSelf(userId);
       allow read: if isSelf(userId) || isTeacherOrAdmin();
-      allow update: if isSelf(userId) || isAdmin();
+      allow update: if isSelf(userId) || isTeacherOrAdmin();
       allow delete: if isAdmin();
     }
 
@@ -180,6 +180,12 @@ service cloud.firestore {
     match /notifications/{userId}/items/{notificationId} {
       allow read, update, delete: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null;
+    }
+
+    // ── Tutor Nudges (proactive AI nudges per student) ───────────────
+    match /tutorNudges/{studentId}/nudges/{nudgeId} {
+      allow read, update: if request.auth != null && request.auth.uid == studentId;
+      allow create, delete: if false; // Only backend writes nudges
     }
 
     match /tasks/{docId} {
@@ -321,6 +327,13 @@ service cloud.firestore {
       allow read: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
       allow create, update: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
       allow delete: if isSignedIn() && request.auth.uid == docId || isAdmin();
+    }
+
+    // ── Diagnostic Results Cache (AI analysis cached per student) ──
+    match /diagnosticResults/{userId}/cache/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isTeacherOrAdmin();
+      allow delete: if isAdmin();
     }
 
     // ── Diagnostic Sessions (backend writes, students read their own) ──
@@ -635,6 +648,67 @@ service cloud.firestore {
     // Working memory: active session state (current topic, problem, turns)
     match /users/{uid}/tutorMemory/working/{docId} {
       allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ─── Student Intelligence Pipeline Collections ────────────────────────
+
+    // student_profiles/{student_id} — backend-only writes, students read own, teachers read their class
+    match /student_profiles/{studentId} {
+      allow read: if isSignedIn() && (request.auth.uid == studentId || isTeacherOrAdmin());
+      allow write: if false; // Backend service account only
+    }
+
+    // class_analytics/{class_id} — backend-only writes, teachers read
+    match /class_analytics/{classId} {
+      allow read: if isTeacherOrAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // classes/{class_id}/student_summaries/{student_id} — denormalized for Teacher Dashboard
+    match /classes/{classId}/student_summaries/{studentId} {
+      allow read: if isTeacherOrAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // intervention_plans/{student_id} — backend writes, teachers read, students read own
+    match /intervention_plans/{studentId} {
+      allow read: if isSignedIn() && (request.auth.uid == studentId || isTeacherOrAdmin());
+      allow write: if false; // Backend service account only
+    }
+
+    // pipeline_events/{event_id} — audit log, admin read only
+    match /pipeline_events/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // pipeline_jobs/{job_id} — backfill job tracking, admin read only
+    match /pipeline_jobs/{jobId} {
+      allow read: if isAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // modules/{moduleId} — module status, written by teachers/admins
+    match /modules/{moduleId} {
+      allow read: if isSignedIn();
+      allow write: if isTeacherOrAdmin();
+    }
+
+    // module_watch_requests/{docId} — students subscribe to module availability
+    match /module_watch_requests/{docId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isTeacherOrAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── At-Risk Resolution (backend writes via Admin SDK, students read own) ──
+    match /students/{uid}/flaggedTopics/{topicId} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow write: if false; // Backend only via firebase-admin
+    }
+    match /students/{uid}/atRiskFallbackContent/{topicId} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow write: if false; // Backend only via firebase-admin
     }
 
     // Deny-by-default for unknown collections.

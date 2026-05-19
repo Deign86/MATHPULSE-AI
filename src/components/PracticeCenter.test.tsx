@@ -37,10 +37,10 @@ describe('PracticeCenter', () => {
     expect(await screen.findByText('Functions')).toBeInTheDocument();
   });
 
-  it('renders stats cards', () => {
+  it('renders stats cards', async () => {
     render(<PracticeCenter userId="user-1" />);
-    expect(screen.getAllByText('Quizzes Completed').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Total XP Earned').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Average Score').length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Quizzes Completed')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Total XP Earned')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Average Score')).length).toBeGreaterThan(0);
   });
 });

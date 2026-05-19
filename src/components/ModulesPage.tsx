@@ -53,6 +53,7 @@ import type { CompetencyProfileDoc } from '../types/assessment';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { submitPracticeSession } from '../services/practiceService';
 import { subscribeToUserProgress } from '../services/progressService';
+import { watchModule } from '../services/moduleWatchService';
 import type { UserProgress } from '../types/models';
 
 interface ModulesPageProps {
@@ -441,6 +442,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       onEarnXP(xpEarned, `Quiz Completed! +${xpEarned} XP`);
     }
     // Don't unmount here - let user see results modal first
+  };
+
+  const handleNotifyMe = async (moduleId: string) => {
+    if (!currentUser?.uid) return;
+    try {
+      await watchModule(currentUser.uid, moduleId);
+      toast.success("You'll be notified when this module becomes available.");
+    } catch { /* non-critical notification subscription */ }
   };
 
   // Sync quiz mode state with parent
@@ -934,6 +943,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               onPreviewSources={setSourcePreviewModule}
               isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
               weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
+              onNotifyMe={handleNotifyMe}
             />
           ) : (
             <RecommendedModulesView
@@ -945,6 +955,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               learningPathContext={learningPathContext}
               learningPathLoading={learningPathLoading}
               weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
+              onNotifyMe={handleNotifyMe}
             />
           )}
         </motion.div>
@@ -1032,7 +1043,8 @@ const ModulesLibraryView: React.FC<{
   onPreviewSources: (module: CurriculumModuleRuntime) => void;
   isAtRisk?: boolean;
   weakTopics?: string[];
-}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false, weakTopics = [] }) => {
+  onNotifyMe?: (moduleId: string) => void;
+}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false, weakTopics = [], onNotifyMe }) => {
   return (
     <div className="pr-2 space-y-8">
       <div>
@@ -1062,6 +1074,7 @@ const ModulesLibraryView: React.FC<{
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 isRecommended={isRecommended}
+                onNotifyMe={onNotifyMe}
               />
             )})}
           </div>
@@ -1080,7 +1093,8 @@ const RecommendedModulesView: React.FC<{
   learningPathContext?: string | null;
   learningPathLoading?: boolean;
   weakTopics?: string[];
-}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPathContext = null, learningPathLoading = false, weakTopics = [] }) => {
+  onNotifyMe?: (moduleId: string) => void;
+}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPathContext = null, learningPathLoading = false, weakTopics = [], onNotifyMe }) => {
   const inProgress = modules.filter((module) => module.progress > 0 && module.progress < 100);
   const suggested = (modules.length > 0 ? modules : fullPool).filter((module) => module.progress === 0).slice(0, 6);
 
@@ -1130,6 +1144,7 @@ const RecommendedModulesView: React.FC<{
                 isAtRisk={isAtRisk}
                 badgeLabel="In Progress"
                 isRecommended={isRecommended}
+                onNotifyMe={onNotifyMe}
               />
             )})}
           </div>
@@ -1160,6 +1175,7 @@ const RecommendedModulesView: React.FC<{
                 isAtRisk={isAtRisk}
                 badgeLabel="Start"
                 isRecommended={isRecommended}
+                onNotifyMe={onNotifyMe}
               />
             )})}
           </div>

@@ -57,6 +57,7 @@ export async function handleDiagnosticCompleteCreate(
     results,
     gradeLevel: diagnosticData.gradeLevel || "Grade 11",
     questionBreakdown: diagnosticData.questionBreakdown,
+    topicBreakdown: diagnosticData.topicBreakdown,
     workflowMode: diagnosticData.workflowMode,
     assessmentType: diagnosticData.assessmentType,
   });

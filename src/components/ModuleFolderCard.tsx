@@ -1,7 +1,9 @@
-import React from 'react';
-import { BookOpen, Clock, AlertTriangle, Link2, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, Clock, AlertTriangle, Link2, Lock, Hourglass, Info, GraduationCap, Bell } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
+import type { ModuleStatus } from '../data/curriculumModules';
+import { fetchModulePreview } from '../services/deepseekRagService';
 
 export const THEMES = [
   { bg: 'bg-[#9956DE]', tab: 'bg-[#8544c7]', shadow: 'shadow-[#9956DE]/30' },
@@ -22,9 +24,11 @@ interface ModuleFolderCardProps {
   /** Optional pre-computed availability - avoids N Firestore listeners when passed from parent */
   precomputedAvailable?: boolean;
   isRecommended?: boolean;
+  /** Callback for "Notify Me" on coming_soon modules */
+  onNotifyMe?: (moduleId: string) => void;
 }
 
-const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable, isRecommended }) => {
+const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable, isRecommended, onNotifyMe }) => {
   const theme = THEMES[index % THEMES.length];
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
   
@@ -35,7 +39,9 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
     ? precomputedAvailable 
     : (shouldSubscribe ? isSubjectAvailable(module.subjectId) : true);
     
-  const isAvailable = (module.isAvailable !== false) && subjectAvailable;
+  // teacher_uploaded modules are accessible even if isAvailable is false
+  const status: ModuleStatus = module.moduleStatus || (module.isAvailable !== false ? 'available' : 'coming_soon');
+  const isAvailable = ((module.isAvailable !== false) && subjectAvailable) || status === 'teacher_uploaded';
 
   return (
     // PERF: motion.div with whileHover — rendered inside modules.map() in ModulesPage.tsx.
@@ -146,24 +152,95 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
             </div>
           )}
 
-          {!isAvailable && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-[1.4rem] bg-black/60 backdrop-blur-[2px]">
-              <div className="flex flex-col items-center gap-2 md:gap-3">
-                <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-md">
-                  <Lock className="w-5 h-5 md:w-7 md:h-7 text-white" />
-                </div>
-                <div className="text-center px-2">
-                  <p className="text-white font-black text-xs md:text-sm tracking-wide">Content Unavailable</p>
-                  <p className="text-white/70 text-[9px] md:text-[11px] font-semibold mt-0.5 md:mt-1 max-w-[140px] md:max-w-[180px] mx-auto leading-tight">
-                    Teaching module PDF not yet loaded.
-                  </p>
-                </div>
-              </div>
+          {status === 'teacher_uploaded' && isAvailable && (
+            <div className="absolute -top-3 -right-2 bg-emerald-500 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-lg border border-emerald-400">
+              <GraduationCap size={11} strokeWidth={3} /> Teacher Material
             </div>
+          )}
+
+          {!isAvailable && (
+            <ModuleStatusOverlay
+              moduleStatus={status}
+              onNotifyMe={onNotifyMe}
+              moduleId={module.id}
+              moduleTitle={module.title}
+              moduleSubject={module.subject}
+              moduleQuarter={module.quarter ? parseInt(String(module.quarter).replace('Q', '')) : 1}
+            />
           )}
         </div>
       </div>
     </motion.div>
+  );
+};
+
+// ─── Status-aware overlay for unavailable modules ─────────────
+
+interface ModuleStatusOverlayProps {
+  moduleStatus: ModuleStatus;
+  moduleId?: string;
+  moduleTitle?: string;
+  moduleSubject?: string;
+  moduleQuarter?: number;
+  onNotifyMe?: (moduleId: string) => void;
+}
+
+const ModuleStatusOverlay: React.FC<ModuleStatusOverlayProps> = ({ moduleStatus, moduleId, moduleTitle, moduleSubject, moduleQuarter, onNotifyMe }) => {
+  const [aiPreview, setAiPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (moduleStatus !== 'coming_soon' || !moduleId || !moduleTitle) return;
+    let cancelled = false;
+    fetchModulePreview(moduleId, moduleTitle, moduleSubject || 'General Mathematics', moduleQuarter || 1)
+      .then((r) => { if (!cancelled && r.generated) setAiPreview(r.ai_overview); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [moduleStatus, moduleId, moduleTitle, moduleSubject, moduleQuarter]);
+
+  if (moduleStatus === 'coming_soon') {
+    return (
+      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-[1.4rem] bg-black/40 backdrop-blur-[1px]">
+        <div className="flex flex-col items-center gap-2 md:gap-3">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-amber-500/20 border border-amber-300/40 flex items-center justify-center backdrop-blur-md">
+            <Hourglass className="w-5 h-5 md:w-6 md:h-6 text-amber-200" />
+          </div>
+          <div className="text-center px-2">
+            <p className="text-white font-black text-xs md:text-sm tracking-wide">Coming Soon</p>
+            {aiPreview ? (
+              <div className="mt-1 max-w-[180px] md:max-w-[220px] mx-auto">
+                <p className="text-amber-100/90 text-[8px] md:text-[10px] font-semibold leading-tight line-clamp-3">{aiPreview}</p>
+                <p className="text-white/50 text-[7px] md:text-[8px] mt-1 italic">AI Preview · Based on DepEd curriculum</p>
+              </div>
+            ) : (
+              <p className="text-white/70 text-[9px] md:text-[11px] font-semibold mt-0.5 md:mt-1 max-w-[160px] md:max-w-[200px] mx-auto leading-tight">
+                DepEd has not yet released this module. We'll notify you when it's available.
+              </p>
+            )}
+          </div>
+          {onNotifyMe && moduleId && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onNotifyMe(moduleId); }}
+              className="mt-1 px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-400 text-white text-[10px] md:text-xs font-bold transition-colors shadow-md flex items-center gap-1"
+            >
+              <Bell size={12} /> Notify Me
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // unavailable — dimmed ghost card with info icon (NOT a prominent lock)
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-[1.4rem] bg-black/30 backdrop-blur-[1px]">
+      <div className="flex flex-col items-center gap-2">
+        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
+          <Info className="w-4 h-4 md:w-5 md:h-5 text-white/60" />
+        </div>
+        <p className="text-white/60 font-semibold text-[10px] md:text-xs">Not Yet Available</p>
+      </div>
+    </div>
   );
 };
 

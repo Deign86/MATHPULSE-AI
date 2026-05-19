@@ -152,6 +152,11 @@ const App = () => {
     [activeGradeLevel, assignedSubjects],
   );
 
+  const moduleStatusMap = useMemo(
+    () => Object.fromEntries(curriculumRuntimeModules.map(m => [m.id, m.moduleStatus])),
+    [curriculumRuntimeModules],
+  );
+
   // App-level Navigation State
   const [sidebarRevertState, setSidebarRevertState] = useState<{ collapsed: boolean }>({ collapsed: false });
 
@@ -246,15 +251,14 @@ const App = () => {
   const [priorityTopics, setPriorityTopics] = useState<DiagnosticTopicKey[]>(
     (studentProfile?.priorityTopics || []) as DiagnosticTopicKey[],
   );
-  const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0.00');
+  const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0');
 
-  // Load computed GPA from progress data
+  // Load computed general average from progress data (DepEd percentage-based)
   useEffect(() => {
     if (isLoggedIn && userRole === 'student' && userProfile) {
       getUserProgress(userProfile.uid).then((progress) => {
         if (progress && progress.averageScore > 0) {
-          const gpa = Math.min(progress.averageScore / 25, 4.0).toFixed(2);
-          setComputedGpa(gpa);
+          setComputedGpa(Math.round(progress.averageScore).toString());
         }
       }).catch(err => console.error('Error loading progress for GPA:', err));
     }
@@ -789,7 +793,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
       setHasCompletedDiagnostic(null);
       setAssessmentDismissed(false);
       setInitialAssessmentCompleted(false);
-      setComputedGpa('0.00');
+      setComputedGpa('0');
       setActiveTab('Dashboard');
       // Refresh AuthContext profile so stale assessment fields are re-read from Firestore
       void refreshProfile();
@@ -1228,12 +1232,18 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                           </div>
                         )}
 
-                        {dashboardShellDeferredReady && atRiskSubjects.length > 0 && (
+                        {dashboardShellDeferredReady && (studentProfile?.flaggedTopics?.length || atRiskSubjects.length > 0) && (
                           <Suspense fallback={dashboardWidgetFallback}>
                             <SupplementalPillCarousel
+                              flaggedTopics={studentProfile?.flaggedTopics || []}
                               atRiskSubjects={atRiskSubjects}
-                              onTopicClick={(topic) => {
-                                handleStudentNavigation('Modules');
+                              moduleStatusMap={moduleStatusMap}
+                              studentId={userProfile?.uid}
+                              onTopicClick={(moduleId) => {
+                                handleStudentNavigation('Modules', moduleId);
+                              }}
+                              onNavigateToPrerequisite={(moduleId) => {
+                                handleStudentNavigation('Modules', moduleId);
                               }}
                             />
                           </Suspense>

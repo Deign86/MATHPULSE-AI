@@ -25,6 +25,7 @@ import {
   Volume2,
   VolumeX,
   Star,
+  Flag,
 } from 'lucide-react';
 import { WarpBackground } from './ui/warp-background';
 import CompositeAvatar from './CompositeAvatar';
@@ -1856,14 +1857,14 @@ const QuizBattlePage: React.FC = () => {
                       transition={{ delay: 0.4, type: 'spring', stiffness: 300 }}
                       className="absolute -top-2 left-full ml-2 bg-white text-slate-900 text-xs font-black px-3 py-1.5 rounded-2xl rounded-bl-none whitespace-nowrap shadow-lg"
                     >
-                      I give up! 🏳️
+                      I give up!
                     </motion.div>
                   </div>
 
                   <div className="text-center">
                     <h2 className="text-2xl font-black text-white mb-1">Opponent Surrendered</h2>
                     <p className="text-white/50 text-sm">
-                      <span className="font-bold text-white/70">{activeMatch.opponentName || 'Your opponent'}</span> left the match. You win! 🏆
+                      <span className="font-bold text-white/70">{activeMatch.opponentName || 'Your opponent'}</span> left the match. You win!
                     </p>
                   </div>
 
@@ -1881,7 +1882,7 @@ const QuizBattlePage: React.FC = () => {
                         void refreshBattleInsights();
                       }}
                     >
-                      🏆 Claim Victory
+                      <Trophy size={14} className="inline mr-1" />Claim Victory
                     </Button>
                     <Button
                       size="lg"
@@ -2051,7 +2052,7 @@ const QuizBattlePage: React.FC = () => {
                           className="flex items-center justify-between"
                         >
                           <span className="text-white/70 text-sm font-bold">
-                            {activeMatch.outcome === 'win' ? '🏆 Victory Reward' : activeMatch.outcome === 'draw' ? '🤝 Draw Reward' : '📘 Participation Reward'}
+                            {activeMatch.outcome === 'win' ? 'Victory Reward' : activeMatch.outcome === 'draw' ? 'Draw Reward' : 'Participation Reward'}
                           </span>
                           <span className="text-2xl font-black text-amber-400 drop-shadow-md">+{activeMatch.xpEarned || (activeMatch.outcome === 'win' ? 80 : activeMatch.outcome === 'draw' ? 55 : 35)} XP</span>
                         </motion.div>
@@ -2115,6 +2116,7 @@ const QuizBattlePage: React.FC = () => {
               activeMatch={activeMatch}
               scorePulseTarget={scorePulseTarget}
               quizBattleAvatar={quizBattleAvatar}
+              opponentId={activeRoom?.participantIds?.find(id => id !== userProfile?.uid) || null}
             />
 
           </div>
@@ -2635,7 +2637,7 @@ const QuizBattlePage: React.FC = () => {
                             value={setupConfig.subjectId}
                             onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, subjectId: value }))}
                           >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                               setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
                               errorFor('subjectId') && 'border-rose-400')}>
                               <SelectValue placeholder="Select category" />
@@ -2658,7 +2660,7 @@ const QuizBattlePage: React.FC = () => {
                             value={setupConfig.topicId}
                             onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, topicId: value }))}
                           >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                               setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
                               errorFor('topicId') && 'border-rose-400')}>
                               <SelectValue placeholder="Select topic group" />
@@ -2695,7 +2697,7 @@ const QuizBattlePage: React.FC = () => {
                               )
                             }
                           >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
+                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                               setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50")}>
                               <SelectValue />
                             </SelectTrigger>
@@ -2718,7 +2720,7 @@ const QuizBattlePage: React.FC = () => {
                               value={String(setupConfig.rounds)}
                               onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
                             >
-                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
+                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                                 setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
                                 errorFor('rounds') && 'border-rose-400')}>
                                 <SelectValue />
@@ -2743,7 +2745,7 @@ const QuizBattlePage: React.FC = () => {
                                 setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
                               }
                             >
-                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white/60 text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
+                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
                                 setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
                                 errorFor('timePerQuestionSec') && 'border-rose-400')}>
                                 <SelectValue />

@@ -628,17 +628,36 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     let totalStudents = 0;
     let activeTeachers = 0;
     let atRiskStudents = 0;
+    const atRiskUserIds = new Set<string>();
 
     usersSnap.docs.forEach(d => {
       const data = d.data() as Record<string, unknown>;
       if (data.role === 'student') {
         totalStudents++;
-        if (data.overallRisk === 'High') atRiskStudents++;
+        if (data.overallRisk === 'High') {
+          atRiskStudents++;
+          atRiskUserIds.add(d.id);
+        }
       }
       if (data.role === 'teacher' && data.status !== 'Inactive') {
         activeTeachers++;
       }
     });
+
+    // Also count WRI-based at-risk from managedStudents (PR 110 pipeline)
+    try {
+      const managedSnap = await getDocs(collection(db, 'managedStudents'));
+      managedSnap.docs.forEach(d => {
+        const data = d.data() as Record<string, unknown>;
+        const riskStatus = data.riskStatus as string | undefined;
+        if (riskStatus && ['intervene', 'critical', 'at_risk'].includes(riskStatus)) {
+          if (!atRiskUserIds.has(d.id)) {
+            atRiskStudents++;
+            atRiskUserIds.add(d.id);
+          }
+        }
+      });
+    } catch { /* managedStudents may not exist */ }
 
     let totalClasses = 0;
     try {
@@ -874,13 +893,28 @@ export async function getSubjectBreakdown(): Promise<SubjectBreakdownItem[]> {
 /** Get priority attention data — subject with most at-risk students. */
 export async function getPriorityAttention(): Promise<PriorityAttentionData> {
   try {
-    const usersSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
+    const counted = new Set<string>();
     let atRiskCount = 0;
+
+    const usersSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
     usersSnap.docs.forEach(d => {
       const data = d.data() as Record<string, unknown>;
-      if (data.overallRisk === 'High') atRiskCount++;
+      if (data.overallRisk === 'High') { atRiskCount++; counted.add(d.id); }
     });
-    // Currently all at-risk students are in General Mathematics (single-subject platform focus)
+
+    // Also count WRI-based at-risk from managedStudents
+    try {
+      const managedSnap = await getDocs(collection(db, 'managedStudents'));
+      managedSnap.docs.forEach(d => {
+        const data = d.data() as Record<string, unknown>;
+        const rs = data.riskStatus as string | undefined;
+        if (rs && ['intervene', 'critical', 'at_risk'].includes(rs) && !counted.has(d.id)) {
+          atRiskCount++;
+          counted.add(d.id);
+        }
+      });
+    } catch { /* non-critical */ }
+
     return { subjectName: 'General Mathematics', atRiskCount };
   } catch (err) {
     console.error('[adminService] getPriorityAttention error:', err);
@@ -961,6 +995,8 @@ export interface AnalyticsSummary {
   totalXPEarned: number;
   activeStreaks: number;
   aiTutorSessions: number;
+  totalQuizzesTaken: number;
+  avgQuizScore: number;
 }
 
 /** Aggregate analytics KPIs from Firestore. */
@@ -972,17 +1008,31 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
     let atRiskStudents = 0;
     let totalXPEarned = 0;
     let activeStreaks = 0;
+    const atRiskIds = new Set<string>();
 
     usersSnap.docs.forEach(d => {
       const data = d.data() as Record<string, unknown>;
       if (data.role === 'student') {
         totalStudents++;
-        if (data.overallRisk === 'High') atRiskStudents++;
+        if (data.overallRisk === 'High') { atRiskStudents++; atRiskIds.add(d.id); }
         if ((data.streak as number) > 0) activeStreaks++;
         totalXPEarned += (data.totalXP as number) || 0;
       }
       if (data.role === 'teacher') totalTeachers++;
     });
+
+    // Also count WRI-based at-risk from managedStudents
+    try {
+      const managedSnap = await getDocs(collection(db, 'managedStudents'));
+      managedSnap.docs.forEach(d => {
+        const data = d.data() as Record<string, unknown>;
+        const rs = data.riskStatus as string | undefined;
+        if (rs && ['intervene', 'critical', 'at_risk'].includes(rs) && !atRiskIds.has(d.id)) {
+          atRiskStudents++;
+          atRiskIds.add(d.id);
+        }
+      });
+    } catch { /* non-critical */ }
 
     let achievementsUnlocked = 0;
     try {
@@ -996,6 +1046,22 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       aiTutorSessions = chatSnap.size;
     } catch { /* optional */ }
 
+    let totalQuizzesTaken = 0;
+    let avgQuizScore = 0;
+    try {
+      const progressSnap = await getDocs(collection(db, 'progress'));
+      const scores: number[] = [];
+      progressSnap.docs.forEach(d => {
+        const data = d.data() as Record<string, unknown>;
+        const attempts = data.quizAttempts as Array<{ score?: number }> | undefined;
+        if (attempts?.length) {
+          totalQuizzesTaken += attempts.length;
+          attempts.forEach(a => { if (typeof a.score === 'number') scores.push(a.score); });
+        }
+      });
+      avgQuizScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    } catch { /* optional */ }
+
     return {
       totalActiveUsers: totalStudents + totalTeachers,
       totalStudents,
@@ -1005,6 +1071,8 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       totalXPEarned,
       activeStreaks,
       aiTutorSessions,
+      totalQuizzesTaken,
+      avgQuizScore,
     };
   } catch (err) {
     console.error('[adminService] getAnalyticsSummary error:', err);
@@ -1017,6 +1085,8 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       totalXPEarned: 0,
       activeStreaks: 0,
       aiTutorSessions: 0,
+      totalQuizzesTaken: 0,
+      avgQuizScore: 0,
     };
   }
 }

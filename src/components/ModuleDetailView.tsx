@@ -142,7 +142,9 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
         if (cancelled) return;
         // Convert backend response to AIQuizQuestion[] format for QuizExperience
-        const questions = response.questions.map((q: any, i: number) => ({
+        const questions = response.questions
+          .filter((q: any) => q.options?.length && q.correct_index >= 0 && q.correct_index < q.options.length)
+          .map((q: any, i: number) => ({
           id: q.id || 'q-' + i,
           questionType: 'multiple_choice' as const,
           question: q.question,

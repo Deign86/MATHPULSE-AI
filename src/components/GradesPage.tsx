@@ -1,10 +1,11 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { TrendingUp, Award, Target, Calendar, Download, Filter, Brain, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToGradeSummary, subscribeToAssessments, type GradeSummary, type AssessmentRecord } from '../services/gradesService';
-import { type StudentProfile } from '../types/models';
-import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
+import { type StudentProfile, type UserProgress } from '../types/models';
+import { subscribeToUserProgress } from '../services/progressService';
+import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId, subjects } from '../data/subjects';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -27,6 +28,7 @@ const GradesPage = () => {
   const [assessments, setAssessments] = useState<AssessmentRecord[]>([]);
   const [diagnosticSummary, setDiagnosticSummary] = useState<DiagnosticSummary | null>(null);
   const [showBreakdownModal, setShowBreakdownModal] = useState(false);
+  const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
 // Safely cast userProfile to StudentProfile to access grade
 const studentGrade = (userProfile as StudentProfile | null)?.grade;
@@ -67,9 +69,14 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
       setLoading(false);
     });
 
+    const unsubProgress = subscribeToUserProgress(currentUser.uid, (progress) => {
+      setUserProgress(progress);
+    });
+
     return () => {
       unsubSummary();
       unsubAssessments();
+      unsubProgress();
     };
   }, [currentUser]);
 
@@ -78,33 +85,56 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
     if (!currentUser?.uid) return;
     (async () => {
       try {
-        // Try dashboardSummary first
+        // Try dashboardSummary first for score/risk
+        let score = 0, riskLevel = 'Unknown', weaknesses: string[] = [], recommendation = '';
         const summarySnap = await getDoc(doc(db, 'users', currentUser.uid, 'dashboardSummary', 'heroBannerModal'));
         if (summarySnap.exists()) {
           const d = summarySnap.data();
           if (d.status === 'ready') {
-            setDiagnosticSummary({ score: d.latestScorePercent || 0, riskLevel: d.latestRiskLevel || 'Unknown', weaknesses: d.weaknesses || [], recommendation: d.recommendation || '' });
-            return;
+            score = d.latestScorePercent || 0;
+            riskLevel = d.latestRiskLevel || 'Unknown';
+            weaknesses = d.weaknesses || [];
+            recommendation = d.recommendation || '';
+          }
+        } else {
+          const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userSnap.exists()) {
+            const u = userSnap.data();
+            if (u.initialAssessmentCompleted || u.hasCompletedInitialAssessment) {
+              riskLevel = (u.atRiskSubjects?.length > 0) ? 'Moderate' : 'Low';
+              weaknesses = u.atRiskSubjects || [];
+            }
           }
         }
-        // Fallback: user profile
-        const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
-        if (userSnap.exists()) {
-          const u = userSnap.data();
-          if (u.initialAssessmentCompleted || u.hasCompletedInitialAssessment) {
-            setDiagnosticSummary({ score: 0, riskLevel: (u.atRiskSubjects?.length > 0) ? 'Moderate' : 'Low', weaknesses: u.atRiskSubjects || [], recommendation: 'Continue with your personalized learning path.' });
+
+        // Pull AI-generated recommendation from analysis cache
+        const cacheSnap = await getDoc(doc(db, 'diagnosticResults', currentUser.uid, 'cache', 'analysis'));
+        if (cacheSnap.exists()) {
+          const analysis = cacheSnap.data();
+          const recs = analysis.recommendations || [];
+          if (recs.length > 0) {
+            recommendation = recs.map((r: any) => r.action).join('. ') + '.';
           }
+          const weakAreas = analysis.weakness_areas || [];
+          if (weakAreas.length > 0) {
+            weaknesses = weakAreas.map((w: any) => w.domain);
+          }
+        }
+
+        if (score > 0 || riskLevel !== 'Unknown' || weaknesses.length > 0) {
+          setDiagnosticSummary({ score, riskLevel, weaknesses, recommendation: recommendation || 'Continue with your personalized learning path.' });
         }
       } catch { /* non-fatal */ }
     })();
   }, [currentUser?.uid]);
 
   // Compute stats safely
-  const averageScore = gradeSummary?.averageScore ? Math.round(gradeSummary.averageScore) : 0;
-  const totalQuizzes = gradeSummary?.quizzesCompleted ?? 0;
+  const averageScore = gradeSummary?.averageScore ? Math.round(gradeSummary.averageScore)
+    : userProgress?.averageScore ? Math.round(userProgress.averageScore) : 0;
+  const totalQuizzes = Math.max(gradeSummary?.quizzesCompleted ?? 0, userProgress?.quizAttempts?.length ?? 0);
   
-  // Calculate GPA approximation (assuming 0-100 scale mapping to 0.0-4.0)
-  const gpa = averageScore > 0 ? ((averageScore / 100) * 4.0).toFixed(2) : '0.00';
+  // DepEd SHS General Average (percentage-based, 75 passing)
+  const generalAverage = averageScore > 0 ? averageScore.toString() : '—';
 
   const colorBySubjectId: Record<SubjectId, string> = {
     'gen-math': 'indigo',
@@ -132,20 +162,24 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
     .map((subject) => subject.name);
 
   // Compute subject metrics
-const subjectPerformance = Object.entries({})
+const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
     .filter(([subjectId]) => allowedSubjectSet.has(subjectId as SubjectId))
     .map(([subjectId, subjectData]: [string, any]) => {
       const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
       
-      const subjectQuizzes: any[] = [];
-      const avg = subjectQuizzes.length > 0
-        ? Math.round(subjectQuizzes.reduce((sum: number, q: { score: number }) => sum + q.score, 0) / subjectQuizzes.length)
+      // Compute average from quiz attempts for this subject
+      const subjectQuizAttempts = (userProgress?.quizAttempts || []).filter(q => {
+        const modules = subjectData?.modulesProgress || {};
+        return Object.values(modules).some((m: any) => m.quizzesCompleted?.includes(q.quizId));
+      });
+      const avg = subjectQuizAttempts.length > 0
+        ? Math.round(subjectQuizAttempts.reduce((sum: number, q) => sum + q.score, 0) / subjectQuizAttempts.length)
         : Math.round(subjectData?.progress ?? 0); // Fallback to progress %
       
       return {
         subject: info.label,
         average: avg,
-        quizzes: subjectQuizzes.length || subjectData?.completedModules,
+        quizzes: subjectQuizAttempts.length || subjectData?.completedModules || 0,
         color: info.color
       };
     });
@@ -153,37 +187,74 @@ const subjectPerformance = Object.entries({})
   // Default empty state for all allowed subjects if no progress
   const defaultSubjectPerformance = allowedSubjectIds.map((subjectId) => {
     const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
+    // Use gradeSummary.subjectPerformance as fallback (populated by diagnostic/quiz results)
+    const gradeSummarySubject = gradeSummary?.subjectPerformance?.[info.label];
+    const avg = gradeSummarySubject?.avgScore ? Math.round(gradeSummarySubject.avgScore) : 0;
     return {
       subject: info.label,
-      average: 0,
-      quizzes: 0,
+      average: avg,
+      quizzes: gradeSummarySubject?.count || 0,
       color: info.color
     };
   });
 
   const displaySubjectPerformance = subjectPerformance.length > 0 ? subjectPerformance : defaultSubjectPerformance;
 
-  // Recent Quizzes mapping
-  const recentQuizzes = assessments
-    .slice()
-    .sort((a, b) => {
-      const aTime = a.completedAt?.toDate?.()?.getTime() ?? 0;
-      const bTime = b.completedAt?.toDate?.()?.getTime() ?? 0;
-      return bTime - aTime;
-    })
-    .slice(0, 10)
-    .map((record, i) => {
+  // Recent Quizzes mapping — merge assessments subcollection + progress.quizAttempts
+  const progressQuizEntries = useMemo(() => {
+    if (!userProgress?.quizAttempts?.length) return [];
+    // Build a lookup: quizId → { title, subject }
+    const quizLookup = new Map<string, { title: string; subject: string }>();
+    subjects.forEach((subj) => {
+      const shsMatch = SHS_MATH_SUBJECTS.find((s) => s.id === subj.id);
+      const subjectName = shsMatch?.name || subj.title;
+      subj.modules.forEach((mod) => {
+        mod.quizzes.forEach((q) => {
+          quizLookup.set(q.id, { title: q.title, subject: subjectName });
+        });
+      });
+    });
+    return userProgress.quizAttempts.map((attempt, i) => {
+      const lookup = quizLookup.get(attempt.quizId);
+      const completedDate = attempt.completedAt instanceof Date
+        ? attempt.completedAt
+        : new Date(attempt.completedAt as unknown as string);
       return {
+        id: 10000 + i,
+        title: lookup?.title || attempt.quizId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        subject: lookup?.subject || 'General Mathematics',
+        score: Math.round(attempt.score),
+        date: formatDateOnly(completedDate),
+        type: 'quiz' as const,
+        status: attempt.score >= 80 ? 'Excellent' : attempt.score >= 60 ? 'Passing' : 'Needs Review',
+        _timestamp: completedDate.getTime(),
+      };
+    });
+  }, [userProgress?.quizAttempts]);
+
+  const recentQuizzes = useMemo(() => {
+    const fromAssessments = assessments
+      .slice()
+      .map((record, i) => ({
         id: i + 1,
         title: record.title || `Assessment ${i + 1}`,
         subject: record.subject || 'General',
         score: record.score,
         date: record.completedAt ? formatDateOnly(record.completedAt.toDate()) : 'N/A',
-        type: record.type === 'practice' ? 'practice' as const : record.type === 'diagnostic' ? 'module' as const : 'module' as const,
-        status: record.score >= 80 ? 'Excellent' : record.score >= 60 ? 'Passing' : 'Needs Review'
-      };
-    })
-    .filter((quiz) => allowedSubjectLabels.includes(quiz.subject)); // Enforce grade filter
+        type: (record.type === 'practice' ? 'practice' : record.type === 'diagnostic' ? 'quiz' : 'quiz') as 'quiz' | 'practice',
+        status: record.score >= 80 ? 'Excellent' : record.score >= 60 ? 'Passing' : 'Needs Review',
+        _timestamp: record.completedAt?.toDate?.()?.getTime() ?? 0,
+      }));
+
+    // Merge and deduplicate (assessments take priority by title match)
+    const assessmentTitles = new Set(fromAssessments.map(a => a.title.toLowerCase()));
+    const uniqueProgress = progressQuizEntries.filter(p => !assessmentTitles.has(p.title.toLowerCase()));
+
+    return [...fromAssessments, ...uniqueProgress]
+      .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
+      .slice(0, 20)
+      .filter((quiz) => allowedSubjectLabels.includes(quiz.subject));
+  }, [assessments, progressQuizEntries, allowedSubjectLabels]);
 
   // Filter quizzes based on active selections
   const filteredQuizzes = recentQuizzes.filter(quiz => {
@@ -302,11 +373,11 @@ const subjectPerformance = Object.entries({})
               <Award className="w-5 h-5 sm:w-7 sm:h-7" />
             </div>
             <p className="text-slate-400 font-bold text-[9px] sm:text-sm tracking-wider sm:tracking-wide uppercase h-6 sm:h-auto flex items-end sm:block">
-              <span className="sm:hidden">GPA</span>
-              <span className="hidden sm:inline">Overall GPA</span>
+              <span className="sm:hidden">GEN. AVE.</span>
+              <span className="hidden sm:inline">General Average</span>
             </p>
             <div className="flex items-end gap-2 mt-1 sm:mt-2">
-              <h3 className="text-xl sm:text-4xl font-display font-black text-slate-800">{gpa}</h3>
+              <h3 className="text-xl sm:text-4xl font-display font-black text-slate-800">{generalAverage}{averageScore > 0 ? '%' : ''}</h3>
             </div>
           </div>
         </div>
@@ -318,11 +389,11 @@ const subjectPerformance = Object.entries({})
               <Target className="w-5 h-5 sm:w-7 sm:h-7" />
             </div>
             <p className="text-slate-400 font-bold text-[9px] sm:text-sm tracking-wider sm:tracking-wide uppercase h-6 sm:h-auto flex items-end sm:block">
-              <span className="sm:hidden">Avg Score</span>
-              <span className="hidden sm:inline">Average Score</span>
+              <span className="sm:hidden">Weakest</span>
+              <span className="hidden sm:inline">Weakest Subject</span>
             </p>
             <div className="flex items-end gap-2 mt-1 sm:mt-2">
-              <h3 className="text-xl sm:text-4xl font-display font-black text-slate-800">{averageScore}%</h3>
+              <h3 className="text-lg sm:text-2xl font-display font-black text-slate-800 truncate">{diagnosticSummary?.weaknesses?.[0] || '—'}</h3>
             </div>
           </div>
         </div>
@@ -432,7 +503,7 @@ const subjectPerformance = Object.entries({})
                     className="appearance-none w-full pl-3 pr-8 py-2.5 border-none bg-slate-50 rounded-xl text-xs sm:text-sm font-bold text-slate-600 focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer min-w-0 sm:min-w-[120px] shadow-sm"
                   >
                     <option value="all">All Types</option>
-                    <option value="module">Module Quiz</option>
+                    <option value="quiz">Quiz</option>
                     <option value="practice">Practice</option>
                   </select>
                   <Filter className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />

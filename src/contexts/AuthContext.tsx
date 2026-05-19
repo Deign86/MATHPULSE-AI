@@ -92,6 +92,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (profile) {
           setResolvedRole(profile.role);
           setUserProfile(profile);
+          // Update lastActive timestamp on login (fire-and-forget)
+          import('firebase/firestore').then(({ doc, updateDoc, serverTimestamp }) => {
+            import('../lib/firebase').then(({ db }) => {
+              updateDoc(doc(db, 'users', user.uid), { lastActive: serverTimestamp() }).catch(() => {});
+            });
+          });
+          // Wire pipeline context for student event emissions
+          if (profile.role === 'student') {
+            const classId = (profile as any).classSectionId as string || '';
+            const teacherId = (profile as any).adviserTeacherId as string || '';
+            if (classId || teacherId) {
+              import('../services/pipelineService').then(({ setStudentContext }) => {
+                setStudentContext(classId, teacherId);
+              }).catch(() => {});
+            }
+          }
         } else {
           setResolvedRole(safeRequestedRole);
           // Keep login functional when profile storage is temporarily unavailable.

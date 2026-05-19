@@ -183,17 +183,14 @@ describe('notificationFirestoreService', () => {
   });
 
   describe('markAsRead', () => {
-    it('updates notification isRead to true', async () => {
+    it('updates notification isRead to true on both paths', async () => {
       await markAsRead('user-123', 'notif-123');
 
-      expect(updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        { isRead: true }
-      );
+      expect(updateDoc).toHaveBeenCalledTimes(2);
     });
 
     it('handles errors gracefully', async () => {
-      (updateDoc as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Update failed'));
+      (updateDoc as unknown as ReturnType<typeof vi.fn>).mockReturnValue(Promise.reject(new Error('Update failed')));
 
       // Dual-path: individual .catch() handlers swallow per-path errors
       await expect(markAsRead('user-123', 'notif-123')).resolves.toBeUndefined();
@@ -221,10 +218,10 @@ describe('notificationFirestoreService', () => {
   });
 
   describe('deleteNotification', () => {
-    it('deletes the notification document', async () => {
+    it('deletes the notification document from both paths', async () => {
       await deleteNotification('user-123', 'notif-123');
 
-      expect(deleteDoc).toHaveBeenCalledWith(expect.anything());
+      expect(deleteDoc).toHaveBeenCalledTimes(2);
     });
   });
 

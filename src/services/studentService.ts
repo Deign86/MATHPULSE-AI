@@ -17,6 +17,7 @@ import {
   serverTimestamp,
   Timestamp,
   addDoc,
+  arrayRemove,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { ClassSectionMetadata, WRIWeights, RiskHistoryEntry } from '../types/models';
@@ -702,6 +703,26 @@ export async function addManagedStudentsBatch(
 
 export async function deleteManagedStudent(lrn: string): Promise<void> {
   await deleteDoc(doc(db, 'managedStudents', lrn));
+}
+
+/**
+ * Remove a student from a class section. Removes their UID from
+ * `classSectionOwnership.studentUids` and deletes their `managedStudents` doc.
+ */
+export async function removeStudentFromClass(
+  studentId: string,
+  classSectionId: string
+): Promise<void> {
+  // Remove from classSectionOwnership roster
+  const ownershipRef = doc(db, 'classSectionOwnership', classSectionId);
+  await updateDoc(ownershipRef, {
+    studentUids: arrayRemove(studentId),
+    updatedAt: serverTimestamp(),
+  }).catch((e) => console.warn('[studentService] removeStudentFromClass: ownership update failed:', e));
+
+  // Delete managedStudents record
+  await deleteDoc(doc(db, 'managedStudents', studentId))
+    .catch((e) => console.warn('[studentService] removeStudentFromClass: managedStudents delete failed:', e));
 }
 
 export function buildClassSectionId(grade: string, section: string): string {

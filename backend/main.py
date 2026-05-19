@@ -105,6 +105,11 @@ from routes.tutor_checkin import router as tutor_checkin_router
 from routes.practice import router as practice_router
 from routes.try_it_yourself import router as try_it_yourself_router
 from routes.ai_monitoring import router as ai_monitoring_router
+from routes.class_analytics_routes import router as class_analytics_router
+from routes.intervention_routes import router as intervention_router
+from routes.pipeline_routes import router as pipeline_router
+from routes.deepseek_rag_routes import router as deepseek_rag_router
+from routes.at_risk_resolution import router as at_risk_resolution_router
 
 # Rate limiting (slowapi)
 try:
@@ -380,6 +385,19 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/predict-risk/batch": TEACHER_OR_ADMIN,
     "/api/learning-path": ALL_APP_ROLES,
     "/api/analytics/daily-insight": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}/students": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}/topics": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}/refresh-insights": TEACHER_OR_ADMIN,
+    "/api/analytics/class/{class_id}/invalidate-cache": ALL_APP_ROLES,
+    "/api/intervention/generate": TEACHER_OR_ADMIN,
+    "/api/intervention/{student_id}": TEACHER_OR_ADMIN,
+    "/api/intervention/{student_id}/step/{step_number}/complete": ALL_APP_ROLES,
+    "/api/intervention/{student_id}/export-pdf": TEACHER_OR_ADMIN,
+    "/api/pipeline/event": ALL_APP_ROLES,
+    "/api/pipeline/profile/{student_id}": ALL_APP_ROLES,
+    "/api/pipeline/profile/{student_id}/recompute": TEACHER_OR_ADMIN,
+    "/api/pipeline/admin/backfill": ADMIN_ONLY,
     "/api/upload/class-records": TEACHER_OR_ADMIN,
     "/api/class-section/{class_section_id}": TEACHER_OR_ADMIN,
     "/api/upload/class-records/risk-refresh/recent": TEACHER_OR_ADMIN,
@@ -387,6 +405,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/import/student-accounts/commit": TEACHER_OR_ADMIN,
     "/api/admin/users": ADMIN_ONLY,
     "/api/admin/users/bulk-action": ADMIN_ONLY,
+    "/api/admin/school-analytics": ADMIN_ONLY,
     "/api/teacher/create-student-account": TEACHER_OR_ADMIN,
     "/api/upload/course-materials": TEACHER_OR_ADMIN,
     "/api/upload/course-materials/recent": TEACHER_OR_ADMIN,
@@ -1151,6 +1170,11 @@ app.include_router(tutor_checkin_router)
 app.include_router(practice_router)
 app.include_router(try_it_yourself_router)
 app.include_router(ai_monitoring_router)
+app.include_router(class_analytics_router)
+app.include_router(intervention_router)
+app.include_router(pipeline_router)
+app.include_router(deepseek_rag_router)
+app.include_router(at_risk_resolution_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
@@ -1874,6 +1898,74 @@ def _is_continuation_followup_token(message: str) -> bool:
     return followup_token in _CONTINUATION_FOLLOWUP_TOKENS
 
 
+# ─── Context-Aware Intent Gate (Fix: out-of-scope false positives) ────
+# This function prevents short/vague student replies from being rejected
+# as off-topic when an active tutoring session is in progress.
+
+_FILIPINO_CONTINUATION_PHRASES: Set[str] = {
+    "di ko alam", "hindi ko alam", "di ko gets", "hindi ko gets",
+    "di ko maintindihan", "hindi ko maintindihan", "ano ulit", "ano yun",
+    "bakit", "paano", "paano po", "bakit po", "sige", "sige po",
+    "oo", "oo nga", "okay", "ok", "gets ko na", "gets", "ayaw ko na",
+    "hindi", "hindi po", "wala akong idea", "di ko alam yan",
+    "ano", "ano po", "huh", "what", "wait", "idk", "i don't know",
+    "i dont know", "not sure", "unsure", "help", "help me",
+    "di ko pa gets", "di ko pa alam", "try ko", "ano nga ulit",
+    "thanks", "thank you", "salamat", "nice", "wow", "oh",
+}
+
+
+def is_continuation_reply(user_message: str, active_state: Any, recent_turns: Optional[list]) -> bool:
+    """
+    Returns True if the message should be treated as a continuation of
+    the current tutoring session rather than a new or off-topic request.
+
+    A message is a continuation if ANY of the following are true:
+    - It matches known Filipino/Taglish continuation patterns
+    - It is short (under 8 words) AND active_state has active_topic or current_problem
+    - The last assistant message in recent_turns was a question or problem prompt
+    """
+    msg = user_message.strip().lower()
+    if not msg:
+        return False
+
+    # Check Filipino/Taglish continuation signals
+    words = msg.split()
+    word_count = len(words)
+    word_set = set(words)
+    for phrase in _FILIPINO_CONTINUATION_PHRASES:
+        if ' ' in phrase:
+            # Multi-word: substring match
+            if phrase in msg:
+                return True
+        else:
+            # Single-word: only match if message is short (≤3 words)
+            if word_count <= 3 and phrase in word_set:
+                return True
+
+    # Short messages (under 8 words) with active math context are continuations
+    has_active_context = active_state and (
+        getattr(active_state, "active_topic", "") or
+        getattr(active_state, "current_problem", "")
+    )
+
+    if word_count <= 7 and has_active_context:
+        return True
+
+    # Last assistant turn was a question or problem prompt
+    if recent_turns:
+        for turn in reversed(recent_turns):
+            role = turn.get("role") if isinstance(turn, dict) else getattr(turn, "role", "")
+            content = (turn.get("content") if isinstance(turn, dict) else getattr(turn, "content", "")) or ""
+            if str(role).lower() in ("assistant", "ai"):
+                content_stripped = content.strip()
+                if content_stripped.endswith("?") or "solve" in content_stripped.lower() or "try" in content_stripped.lower():
+                    return True
+                break
+
+    return False
+
+
 def _extract_latest_assistant_message(history: Optional[Sequence[Any]]) -> Optional[str]:
     if not history:
         return None
@@ -2296,7 +2388,40 @@ MEMORY AWARENESS:
 - Build on what was previously taught — don't repeat from scratch unless the student asks.
 - If the student refers to "that problem" or "last time", use memory context to infer what they mean.
 - If memory is not available, continue tutoring normally without it.
-- Never mention the memory system to the student — just use it naturally."""
+- Never mention the memory system to the student — just use it naturally.
+
+CONTEXT-AWARE FALLBACK RULE:
+You have access to a MEMORY CONTEXT block above that contains:
+- CURRENT SESSION STATE: active_topic and current_problem fields
+- RECENT CONVERSATION: the last 10 turns of this session
+
+RULE: If the MEMORY CONTEXT shows an active_topic OR current_problem OR the previous
+assistant turn asked the student a question, you MUST treat any short, vague, or
+conversational student reply as a continuation of that tutoring thread.
+
+NEVER trigger the out-of-scope response for:
+- "di ko alam" / "hindi ko alam" / "di ko gets" (Filipino: I don't know)
+- "idk", "I don't know", "not sure"
+- "huh?", "what?", "ano?", "bakit?", "paano?"
+- "okay", "ok", "sige", "oo", "gets ko na"
+- "help", "help me", "ayaw ko na"
+- any reply under 8 words when a math problem is active
+
+For ALL of the above, continue the tutoring session. If the student doesn't know
+the answer, guide them with a hint or a simpler step. Do not abandon them.
+
+Only use the out-of-scope response when:
+1. The student explicitly asks about something completely unrelated to mathematics
+   (e.g., "who is the president?", "write my English essay", "what is noli me tangere about")
+2. AND there is no active_topic, current_problem, or recent math context in memory
+
+When in doubt, ask a clarifying math question rather than triggering out-of-scope.
+
+LANGUAGE:
+You understand and respond naturally in Filipino, Tagalog, Taglish, and English.
+Always match the student's language. Filipino and Taglish expressions are valid input.
+Treat all Filipino conversational replies as normal student communication, never as
+off-topic or unrecognized input."""
 
 
 _STREAM_COMPLETION_MODES: Set[str] = {"auto", "marker", "none"}
@@ -2508,9 +2633,24 @@ async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
     _start_ms = int(time.monotonic() * 1000)
     try:
-        boundary_response = get_scope_boundary_response(request.message, request.history)
-        if boundary_response is not None:
-            return ChatResponse(response=boundary_response)
+        # ─── Context-Aware Intent Gate (before scope check) ──────
+        # Load active state to determine if student is mid-session.
+        # If so, skip scope check for short/vague replies.
+        _skip_scope_check = False
+        if request.userId and request.sessionId and HAS_MEMORY_SERVICE and get_active_state is not None:
+            try:
+                _active = get_active_state(request.userId, request.sessionId)
+            except Exception:
+                _active = None
+            _history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])[-10:]]
+            if is_continuation_reply(request.message, _active, _history_dicts):
+                _skip_scope_check = True
+        # ─── End Intent Gate ─────────────────────────────────────
+
+        if not _skip_scope_check:
+            boundary_response = get_scope_boundary_response(request.message, request.history)
+            if boundary_response is not None:
+                return ChatResponse(response=boundary_response)
 
         system_prompt = MATH_TUTOR_SYSTEM_PROMPT
 
@@ -2658,7 +2798,19 @@ async def _update_memory_after_response(
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
     try:
-        boundary_response = get_scope_boundary_response(request.message, request.history)
+        # ─── Context-Aware Intent Gate (before scope check) ──────
+        _skip_scope_check = False
+        if request.userId and request.sessionId and HAS_MEMORY_SERVICE and get_active_state is not None:
+            try:
+                _active = get_active_state(request.userId, request.sessionId)
+            except Exception:
+                _active = None
+            _history_dicts = [{"role": m.role, "content": m.content} for m in (request.history or [])[-10:]]
+            if is_continuation_reply(request.message, _active, _history_dicts):
+                _skip_scope_check = True
+        # ─── End Intent Gate ─────────────────────────────────────
+
+        boundary_response = None if _skip_scope_check else get_scope_boundary_response(request.message, request.history)
         
         # ─── Memory Context Injection ────────────────────────────
         memory_context = ""
