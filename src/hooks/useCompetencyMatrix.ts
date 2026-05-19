@@ -14,7 +14,6 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { db } from '../lib/firebase';
 import {
   fetchQuizResults,
   fetchModuleProgress,
@@ -25,7 +24,7 @@ import {
 import { subscribeToUserProgress } from '../services/progressService';
 import { getActiveSubjectIdsForGrade } from '../data/subjects';
 import { subjects } from '../data/subjects';
-import type { RadarRow, ModuleInfo, FirestoreModuleProgress } from '../types/competency';
+import type { RadarRow, ModuleInfo, FirestoreModuleProgress, FirestoreQuizResult } from '../types/competency';
 import type { UserProgress } from '../types/models';
 
 export interface UseCompetencyMatrixResult {
@@ -90,6 +89,8 @@ export function useCompetencyMatrix(userId: string): UseCompetencyMatrixResult {
         color: THEME_PALETTE[i % THEME_PALETTE.length],
       }));
 
+      setModulesList(modsInfo);
+
       // Try cache first
       const cached = await fetchCachedCompetencyMatrix(userId);
       if (currentLoadId !== loadIdRef.current) return;
@@ -106,12 +107,26 @@ export function useCompetencyMatrix(userId: string): UseCompetencyMatrixResult {
       const moduleProgress = await fetchModuleProgress(userId);
       if (currentLoadId !== loadIdRef.current) return;
 
-      const hasActivity = quizResults.length > 0;
+      // If subcollection-based fetches returned nothing, derive from progress doc
+      let effectiveQuizResults = quizResults;
+      let effectiveModuleProgress = moduleProgress;
+
+      if (quizResults.length === 0 && progress) {
+        // Build quiz results from progress.quizAttempts + module mapping
+        effectiveQuizResults = buildQuizResultsFromProgress(progress, validModules);
+      }
+
+      if (Object.keys(moduleProgress).length === 0 && progress) {
+        // Build module progress from progress.subjects.*.modulesProgress
+        effectiveModuleProgress = buildModuleProgressFromProgress(progress);
+      }
+
+      const hasActivity = effectiveQuizResults.length > 0 || Object.keys(effectiveModuleProgress).length > 0;
       setIsEmpty(!hasActivity);
 
       buildChartFromRawData(
-        quizResults,
-        moduleProgress,
+        effectiveQuizResults,
+        effectiveModuleProgress,
         modsInfo,
         validModules,
         setData,
@@ -303,4 +318,83 @@ function buildChartFromRawData(
 
   setTopModule(bestModName);
   setData(chartData);
+}
+
+
+// ─── Helpers to derive data from progress document ────────────────────────────
+
+/**
+ * Build FirestoreQuizResult[] from progress.quizAttempts by cross-referencing
+ * with progress.subjects.*.modulesProgress to determine module ownership.
+ */
+function buildQuizResultsFromProgress(
+  progress: UserProgress,
+  validModules: { id: string; title: string; lessons: unknown[]; quizzes: unknown[] }[],
+): FirestoreQuizResult[] {
+  const attempts = progress.quizAttempts || [];
+  if (attempts.length === 0) return [];
+
+  // Build a quizId → moduleId lookup from subjects.*.modulesProgress
+  const quizToModule: Record<string, string> = {};
+  if (progress.subjects) {
+    for (const subjectProgress of Object.values(progress.subjects)) {
+      if (!subjectProgress.modulesProgress) continue;
+      for (const [moduleId, mp] of Object.entries(subjectProgress.modulesProgress)) {
+        for (const qId of mp.quizzesCompleted || []) {
+          quizToModule[qId] = moduleId;
+        }
+      }
+    }
+  }
+
+  // If no module mapping found, distribute attempts across valid modules by index
+  const hasMapping = Object.keys(quizToModule).length > 0;
+
+  return attempts.map((a, i) => {
+    let moduleId = quizToModule[a.quizId] || '';
+    if (!moduleId && !hasMapping && validModules.length > 0) {
+      // Distribute evenly across modules as best-effort
+      moduleId = validModules[i % validModules.length].id;
+    }
+
+    return {
+      quizId: a.quizId,
+      moduleId,
+      subjectId: '',
+      score: a.score,
+      totalQuestions: a.answers?.length || 0,
+      correctAnswers: a.answers?.filter((ans) => ans.isCorrect).length || 0,
+      questionType: 'multiple_choice' as const,
+      timestamp: a.completedAt instanceof Date ? a.completedAt : new Date(a.completedAt as unknown as string),
+      timeSpent: a.timeSpent || 0,
+    } satisfies FirestoreQuizResult;
+  });
+}
+
+/**
+ * Build module progress map from progress.subjects.*.modulesProgress
+ */
+function buildModuleProgressFromProgress(
+  progress: UserProgress,
+): Record<string, FirestoreModuleProgress> {
+  const result: Record<string, FirestoreModuleProgress> = {};
+
+  if (!progress.subjects) return result;
+
+  for (const [subjectId, subjectProgress] of Object.entries(progress.subjects)) {
+    if (!subjectProgress.modulesProgress) continue;
+    for (const [moduleId, mp] of Object.entries(subjectProgress.modulesProgress)) {
+      result[moduleId] = {
+        moduleId,
+        subjectId,
+        sessionsCompleted: (mp.lessonsCompleted?.length || 0) + (mp.quizzesCompleted?.length || 0),
+        lastActive: mp.lastAccessedAt instanceof Date ? mp.lastAccessedAt : new Date(mp.lastAccessedAt as unknown as string),
+        moduleTitle: moduleId,
+        lessonsCompleted: mp.lessonsCompleted || [],
+        quizzesCompleted: mp.quizzesCompleted || [],
+      };
+    }
+  }
+
+  return result;
 }
