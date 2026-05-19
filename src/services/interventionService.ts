@@ -3,7 +3,7 @@
 
 import { auth } from '../lib/firebase';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
 
@@ -183,4 +183,22 @@ export async function assignStepAsModule(
     createdAt: serverTimestamp(),
   });
   return docRef.id;
+}
+
+/** Check if a learning path is already assigned for this student */
+export async function getAssignedModuleIds(studentId: string): Promise<string[]> {
+  const q = query(
+    collection(db, 'modules'),
+    where('assignedTo', '==', studentId),
+    where('moduleType', '==', 'teacher_uploaded'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.id);
+}
+
+/** Revoke (delete) all assigned intervention modules for a student */
+export async function revokeAssignedModules(studentId: string): Promise<number> {
+  const ids = await getAssignedModuleIds(studentId);
+  await Promise.all(ids.map((id) => deleteDoc(doc(db, 'modules', id))));
+  return ids.length;
 }
