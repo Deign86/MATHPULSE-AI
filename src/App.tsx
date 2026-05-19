@@ -87,6 +87,8 @@ const App = () => {
   );
 
   const [activeTab, setActiveTab] = useState('Dashboard');
+  const avatarUnsavedRef = useRef(false);
+  const [pendingAvatarNav, setPendingAvatarNav] = useState<string | null>(null);
   const constraintsRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
@@ -198,6 +200,8 @@ const App = () => {
   }, []);
 
   const handleStudentNavigation = (tab: string, moduleId?: string) => {
+    // Guard: check if Avatar Studio has unsaved changes
+    if (activeTab === 'Avatar Studio' && avatarUnsavedRef.current && tab !== 'Avatar Studio') { setPendingAvatarNav(tab); return; }
     if (moduleId) {
       setTargetModuleId(moduleId);
     } else if (tab === 'Modules' && activeTab !== 'Modules') {
@@ -1320,7 +1324,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                   </Suspense>
                 ) : activeTab === 'Avatar Studio' ? (
                   <Suspense fallback={tabLoadingFallback}>
-                    <AvatarShop
+                                        <AvatarShop
                       onSaveProfile={(layers) => {
                         setProfileOverrides((prev) => ({
                           ...prev,
@@ -1328,8 +1332,12 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                         }));
                       }}
                       onNavigateToModules={() => handleStudentNavigation('Modules')}
+                      unsavedChangesRef={avatarUnsavedRef}
+                      pendingNavigation={pendingAvatarNav}
+                      onConfirmLeave={() => { const nav = pendingAvatarNav; setPendingAvatarNav(null); if (nav) setTimeout(() => handleStudentNavigation(nav), 0); }}
+                      onCancelNavigation={() => setPendingAvatarNav(null)}
                     />
-                  </Suspense>
+</Suspense>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
                     {activeTab} Content Coming Soon
