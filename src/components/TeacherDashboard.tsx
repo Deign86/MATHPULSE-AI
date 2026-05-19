@@ -32,6 +32,8 @@ import {
   getInterventionPlan,
   generateInterventionPlan,
   assignLearningPathAsModule,
+  revokeAssignedModules,
+  getAssignedModuleIds,
   type InterventionPlan,
 } from '../services/interventionService';
 import { InterventionStepGuide } from './InterventionStepGuide';
@@ -3328,6 +3330,7 @@ const InterventionView: React.FC<{
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
   const [interventionPlan, setInterventionPlan] = useState<InterventionPlan | null>(null);
   const [interventionLoading, setInterventionLoading] = useState(true);
+  const [isPathAssigned, setIsPathAssigned] = useState(false);
   const [selectedStep, setSelectedStep] = useState<import('../services/interventionService').LearningStep | null>(null);
   const [learningPath, setLearningPath] = useState<string>(initialCache?.learningPath || '');
   const [pathLoading, setPathLoading] = useState(true);
@@ -3369,6 +3372,10 @@ const InterventionView: React.FC<{
       .then((plan) => { if (!cancelled) setInterventionPlan(plan); })
       .catch((err) => console.warn('[InterventionView] Backend fetch failed:', err))
       .finally(() => { if (!cancelled) setInterventionLoading(false); });
+    // Check if already assigned
+    getAssignedModuleIds(student.id)
+      .then((ids) => { if (!cancelled) setIsPathAssigned(ids.length > 0); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [student.id]);
 
@@ -3861,14 +3868,21 @@ const InterventionView: React.FC<{
                 <button disabled={!interventionPlan?.learning_path} onClick={async () => {
                   if (!interventionPlan) return;
                   try {
-                    await assignLearningPathAsModule(interventionPlan, teacherId);
-                    toast.success(`Learning path assigned to ${student.name}'s modules.`);
+                    if (isPathAssigned) {
+                      const count = await revokeAssignedModules(student.id);
+                      setIsPathAssigned(false);
+                      toast.success(`Revoked ${count} assigned module(s) from ${student.name}.`);
+                    } else {
+                      await assignLearningPathAsModule(interventionPlan, teacherId);
+                      setIsPathAssigned(true);
+                      toast.success(`Learning path assigned to ${student.name}'s modules.`);
+                    }
                   } catch (err) {
-                    console.error('[InterventionView] Assign failed:', err);
-                    toast.error('Failed to assign learning path.');
+                    console.error('[InterventionView] Action failed:', err);
+                    toast.error(isPathAssigned ? 'Failed to revoke.' : 'Failed to assign learning path.');
                   }
-                }} className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
-                  <Send className="w-3 h-3" /> Assign to Student
+                }} className={`${isPathAssigned ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'} border text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50`}>
+                  {isPathAssigned ? <><X className="w-3 h-3" /> Revoke</> : <><Send className="w-3 h-3" /> Assign to Student</>}
                 </button>
                 <button disabled={pathLoading || interventionLoading} onClick={async () => {
                 setInterventionLoading(true);
