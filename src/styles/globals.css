@@ -815,3 +815,29 @@ html.smart-dark [data-preserve-color='true'] {
   overflow-y: hidden;
   padding-bottom: 0.15rem;
 }
+
+/* Override KaTeX serif font with system font (Nunito) */
+.katex {
+  font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 1em !important;
+  font-weight: inherit !important;
+}
+.katex .mathnormal,
+.katex .mathit,
+.katex .mathrm,
+.katex .mathbf,
+.katex .mathsf,
+.katex .mainrm {
+  font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: inherit !important;
+  font-style: normal !important;
+}
+.katex .mord,
+.katex .mrel,
+.katex .mbin,
+.katex .mopen,
+.katex .mclose,
+.katex .mpunct {
+  font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: inherit !important;
+}

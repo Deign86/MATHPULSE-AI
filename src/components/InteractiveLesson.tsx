@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { Button } from './ui/button';
 import ScientificCalculator from './ScientificCalculator';
+import MathText from './MathText';
 
 const AnimatedCounter: React.FC<{ value: number; label: string; delay?: number; icon?: React.ReactNode }> = ({ value, label, delay = 0, icon }) => {
   const [count, setCount] = React.useState(0);
@@ -66,6 +67,8 @@ export interface Question {
   correctAnswer: string; // For all types (text match for fill-in-blank)
   explanation?: string; // Explanation for the correct answer
   optionExplanations?: { [key: string]: string }; // Explanations for each option (for multiple choice)
+  hints?: string[]; // 3-tier progressive scaffolding hints
+  bloomLevel?: 'remember' | 'understand' | 'apply' | 'analyze' | 'evaluate'; // Bloom's taxonomy level
 }
 
 interface Lesson {
@@ -263,9 +266,13 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   const [showNoLivesModal, setShowNoLivesModal] = useState(false);
   const [nextHeartCountdown, setNextHeartCountdown] = useState(15 * 60 * 1000);
   const [revealUsed, setRevealUsed] = useState<Record<number, boolean>>({});
+  const [attemptCounts, setAttemptCounts] = useState<Record<number, number>>({});  // per-question attempts
+  const [hintsUsedPerQuestion, setHintsUsedPerQuestion] = useState<Record<number, number>>({});  // hints used per question (0-3)
+  const [questionResolved, setQuestionResolved] = useState<Record<number, boolean>>({});  // whether question is formally resolved
   const [failedOptions, setFailedOptions] = useState<Record<number, string[]>>({});
   const [shakeCard, setShakeCard] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [achievementPill, setAchievementPill] = useState<'streak' | 'multiplier2' | 'multiplier3' | null>(null);
 
   // Background floating orbs logic
@@ -540,6 +547,8 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
     const ptsAwarded = wasHintUsed ? 5 : 10;
     setCurrentPoints(prev => prev + ptsAwarded);
     setScore(s => s + 1);
+      if (!attemptCounts[currentIndex]) setAttemptCounts(prev => ({ ...prev, [currentIndex]: (prev[currentIndex] || 0) + 1 }));
+      setQuestionResolved(prev => ({ ...prev, [currentIndex]: true }));
     const newStreak = streak + 1;
     setStreak(newStreak);
     setMaxStreak(Math.max(maxStreak, newStreak));
@@ -1018,7 +1027,7 @@ setIsCorrect(false);
                        ))}
                     </span>
                   ) : (
-                    currentQuestion.question
+                    <MathText>{currentQuestion.question}</MathText>
                   )}
                 </h2>
              </div>
@@ -1083,7 +1092,7 @@ setIsCorrect(false);
                              }}
                              className={`p-4 sm:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-base sm:text-lg text-left transition-all flex items-center justify-between ${bgColor} ${isCurrentlyAnswered || isRevealed || isEliminated ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'}`}
                            >
-                              <span className="truncate pr-4">{optionText}</span>
+                              <span className="truncate pr-4"><MathText>{optionText}</MathText></span>
                               {isEliminated && <X size={20} className="text-slate-400 shrink-0" />}
                               {isRevealed && optionText === currentQuestion.correctAnswer && <Check size={24} className="text-emerald-500 shrink-0" />}
                               {isCurrentlyAnswered && optionText === currentQuestion.correctAnswer && !isRevealed && <Check size={24} className="text-emerald-500 shrink-0" />}
@@ -1170,7 +1179,7 @@ setIsCorrect(false);
                     if (revealUsed[currentIndex]) {
                       return (
                         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-                          <button onClick={toggleExplainPanel} className="bg-white hover:bg-slate-50 text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                          <button onClick={toggleExplainPanel} disabled={!questionResolved[currentIndex] && !revealUsed[currentIndex]} className="bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
                             <img src="/mascot/modules_avatar.png" className="w-5 h-5 drop-shadow-sm" alt="AI Explain" />
                             Explain
                           </button>
@@ -1198,11 +1207,11 @@ setIsCorrect(false);
                            <img src="/icons/quiz_key.png" alt="Hint" className="w-5 h-5 object-contain" />
                            Hint
                         </button>
-                        <button onClick={handleRevealUse} disabled={revealUsed[currentIndex] || isAnswered || showExplainPanel} className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                        <button onClick={handleRevealUse} disabled={revealUsed[currentIndex] || isAnswered || showExplainPanel || (() => { const q = questions[currentIndex]; const attempts = attemptCounts[currentIndex] || 0; if (q?.type === 'true-false') return true; if (q?.type === 'fill-in-blank') return attempts < 1; return attempts < 2; })()} className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
                            <HelpCircle size={18} className="text-purple-500" />
                            Reveal
                         </button>
-                        <button onClick={toggleExplainPanel} className="bg-white hover:bg-slate-50 text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                        <button onClick={toggleExplainPanel} disabled={!questionResolved[currentIndex] && !revealUsed[currentIndex]} className="bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
                            <img src="/mascot/modules_avatar.png" className="w-5 h-5 drop-shadow-sm" alt="AI Explain" />
                            Explain
                         </button>

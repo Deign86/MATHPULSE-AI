@@ -103,6 +103,7 @@ from routes.class_records_router import router as class_records_router
 from routes.risk_router import router as risk_router
 from routes.tutor_checkin import router as tutor_checkin_router
 from routes.practice import router as practice_router
+from routes.try_it_yourself import router as try_it_yourself_router
 from routes.ai_monitoring import router as ai_monitoring_router
 from routes.class_analytics_routes import router as class_analytics_router
 from routes.intervention_routes import router as intervention_router
@@ -1167,6 +1168,7 @@ app.include_router(class_records_router)
 app.include_router(risk_router)
 app.include_router(tutor_checkin_router)
 app.include_router(practice_router)
+app.include_router(try_it_yourself_router)
 app.include_router(ai_monitoring_router)
 app.include_router(class_analytics_router)
 app.include_router(intervention_router)

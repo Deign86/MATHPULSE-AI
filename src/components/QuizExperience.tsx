@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, Award, Flame, ChevronRight, Edit3, Sparkles, Volume2, VolumeX, Maximize, Minimize, ChevronLeft, Heart, Key, Check, HelpCircle, RefreshCw, BookOpen, HeartCrack } from 'lucide-react';
 import { Button } from './ui/button';
+import MathText from './MathText';
 import confetti from 'canvas-confetti';
 import { triggerQuizSubmitted } from '../services/automationService';
 import { saveQuizResults } from '../services/quizService';
@@ -859,7 +860,7 @@ onClick={() => {
                </Button>
                <Button
                  size="lg"
-                 onClick={onClose}
+                 onClick={handleFinish}
                  className="w-full h-10 sm:h-11 rounded-2xl text-xs font-black bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200"
                >
                  FINISH
@@ -1097,7 +1098,7 @@ return (
                           </React.Fragment>
                        ))}
                     </span>
-                  ) : viewedQuestion.question}
+                  ) : <MathText>{viewedQuestion.question}</MathText>}
                 </h2>
              </div>
 
@@ -1152,7 +1153,7 @@ return (
                              onClick={() => { if (isAllDisabled || isCurrentlyAnswered || isEliminated) return; handleAnswerSelect(idx); }}
                              className={`p-3 sm:p-4 md:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-sm sm:text-base md:text-lg text-left transition-all flex items-center justify-between ${bgColor} ${isAllDisabled || isCurrentlyAnswered || isEliminated ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'}`}
                            >
-                              <span className="truncate pr-4">{opt}</span>
+                              <span className="truncate pr-4"><MathText>{opt}</MathText></span>
                               {isEliminated && <XCircle size={20} className="text-slate-400 shrink-0" />}
                               {isCurrentlyAnswered && idx === viewedQuestion.correctAnswer && <CheckCircle size={22} className="text-emerald-500 shrink-0" />}
                               {isCurrentlyAnswered && selectedAnswer === idx && idx !== viewedQuestion.correctAnswer && <XCircle size={22} className="text-rose-500 shrink-0" />}

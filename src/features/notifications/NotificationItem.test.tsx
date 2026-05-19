@@ -24,6 +24,7 @@ vi.mock('lucide-react', () => {
     BookOpen: MockIcon,
     Zap: MockIcon,
     AlertCircle: MockIcon,
+    AlertTriangle: MockIcon,
     Trash2: ({ onClick }: { onClick?: () => void }) => (
       <button data-testid="trash2-icon" onClick={onClick}>Trash</button>
     ),

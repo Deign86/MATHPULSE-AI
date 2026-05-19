@@ -139,14 +139,16 @@ Generate a "Try It Yourself" quiz for the following lesson.
 ## Instructions
 1. Generate EXACTLY {question_count} questions covering the topic above.
 2. Question types to use: {qt_str}
-3. DISTRIBUTION (for {question_count} questions):
-   - Include at least 1 "remember" (recall, definitions, fundamental facts)
-   - Include at least 1 "understand" (explain concepts)
-   - Include at least 1 "apply" (real-world context: pesos, jeepney, sari-sari store, barangay)
-   - Difficulty: {difficulty} — appropriate for {grade_level} Filipino STEM students.
+3. BLOOM'S TAXONOMY DISTRIBUTION (for {question_count} questions):
+   - "remember" + "understand" (recall, definitions, explain concepts): ~35% of questions
+   - "apply" (solve problems, real-world context: pesos, jeepney, sari-sari store, barangay): ~30% of questions
+   - "analyze" (compare, contrast, break down complex problems): ~20% of questions
+   - "evaluate" (judge, justify, determine best approach): ~15% of questions
+   Tag each question with its bloom_level field (one of: "remember", "understand", "apply", "analyze", "evaluate").
 4. Use Filipino-localized context where possible (pesos, jeepney, barangay, sari-sari store, etc.).
 5. Each question must be mathematically accurate and curriculum-aligned.
-6. Provide clear explanations for the correct answer.{variance_instruction}
+6. Provide clear explanations for the correct answer.
+7. Questions at higher Bloom's levels should be genuinely harder — not just rephrased recall.{variance_instruction}
 
 ## Question Type Rules
 - multiple-choice: 4 options as array of objects with "key" and "text" fields, exactly one correct
@@ -171,7 +173,8 @@ Generate a "Try It Yourself" quiz for the following lesson.
     "points": {points},
     "xp_reward": {xp_reward},
     "difficulty": "{difficulty}",
-    "competency_code": "{competency_code or 'N/A'}"
+    "competency_code": "{competency_code or 'N/A'}",
+    "hints": ["Conceptual nudge: Recall the power rule for derivatives.", "Procedural setup: Identify the exponent and apply nxⁿ⁻¹.", "Final push: Compute 3x² from x³."]
   }},
   {{
     "id": "q2",
@@ -187,7 +190,8 @@ Generate a "Try It Yourself" quiz for the following lesson.
     "points": {points},
     "xp_reward": {xp_reward},
     "difficulty": "{difficulty}",
-    "competency_code": "{competency_code or 'N/A'}"
+    "competency_code": "{competency_code or 'N/A'}",
+    "hints": ["Conceptual nudge: Think about the interior angle sum property.", "Procedural setup: Consider what theorem governs triangle angles.", "Final push: Recall the triangle angle sum theorem states 180°."]
   }},
   {{
     "id": "q3",
@@ -200,7 +204,8 @@ Generate a "Try It Yourself" quiz for the following lesson.
     "points": {points},
     "xp_reward": {xp_reward},
     "difficulty": "{difficulty}",
-    "competency_code": "{competency_code or 'N/A'}"
+    "competency_code": "{competency_code or 'N/A'}",
+    "hints": ["Conceptual nudge: This is a substitution problem.", "Procedural setup: Replace x with 4 in the expression.", "Final push: Multiply 2×4, then add 3."]
   }}
 ]
 
@@ -210,7 +215,9 @@ IMPORTANT:
 - correct_answer must be the KEY ("A","B","C","D") that matches the correct option
 - For fill-in-blank, correct_answer is the exact text that fills the blank
 - Generate FRESH, VARIED questions — no two questions should be identical or nearly identical
-- Spread Bloom's taxonomy: include "remember", "understand", and "apply" level questions"""
+- Spread Bloom's taxonomy: include "remember", "understand", "apply", "analyze", and "evaluate" level questions
+- bloom_level MUST be one of: "remember", "understand", "apply", "analyze", "evaluate"
+"""
 
 
 # ── Response Parser ────────────────────────────────────────────────────
@@ -294,6 +301,7 @@ def _parse_quiz_response(text: str, expected_count: int) -> List[Dict[str, Any]]
             "explanation": q.get("explanation", ""),
             "points": q.get("points", 1),
             "xpReward": q.get("xp_reward", 10),
+            "hints": q.get("hints", []),
         }
 
         validated.append(normalized)
@@ -395,7 +403,7 @@ async def generate_quiz(request: QuizGenerationRequest):
                 {"role": "user", "content": prompt},
             ],
             task_type="quiz_generation",
-            max_new_tokens=3000,
+            max_new_tokens=6000,
             temperature=0.7,  # Higher temp for variance
             top_p=0.9,
         )

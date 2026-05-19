@@ -83,7 +83,7 @@ const AdminClassManagement: React.FC = () => {
         await updateDoc(ownershipSnap.docs[0].ref, { managerId: teacher.uid, managerName: teacher.name });
       } else {
         // Try direct doc ID match
-        try { await updateDoc(ownershipRef, { managerId: teacher.uid, managerName: teacher.name }); } catch {}
+        try { await updateDoc(ownershipRef, { managerId: teacher.uid, managerName: teacher.name }); } catch { /* ownership update is non-critical */ }
       }
       setClasses(prev => prev.map(c => c.id === classId ? { ...c, managerId: teacher.uid, managerName: teacher.name } : c));
       toast.success(`Assigned ${teacher.name} as manager`);
