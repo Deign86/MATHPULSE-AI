@@ -1350,7 +1350,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page and quiz mode */}
           {(activeTab !== 'AI Chat' && !isInQuizMode) && (
             <Suspense fallback={null}>
-              <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50">
+              <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-[60]">
                 <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
               </div>
             </Suspense>
