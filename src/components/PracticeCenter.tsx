@@ -106,7 +106,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) return new Map<string, { bestScore: number; attempts: number; history: Array<{ date: string; score: number; difficulty: string }> }>(JSON.parse(stored));
-    } catch {}
+    } catch { /* localStorage parse failure is non-critical */ }
     return new Map<string, { bestScore: number; attempts: number; history: Array<{ date: string; score: number; difficulty: string }> }>();
   }, [STORAGE_KEY, completionVersion]);
 

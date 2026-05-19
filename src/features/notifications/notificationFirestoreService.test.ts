@@ -48,8 +48,8 @@ vi.mock('firebase/firestore', () => {
     where: vi.fn((...args) => ({ type: 'where', args })),
     orderBy: vi.fn((...args) => ({ type: 'orderBy', args })),
     limit: vi.fn((n: number) => ({ type: 'limit', count: n })),
-    updateDoc: vi.fn(),
-    deleteDoc: vi.fn(),
+    updateDoc: vi.fn(() => Promise.resolve()),
+    deleteDoc: vi.fn(() => Promise.resolve()),
     serverTimestamp: vi.fn(() => 'mock-server-timestamp'),
     onSnapshot: vi.fn(),
     Timestamp: MockTimestamp as any,
@@ -195,7 +195,8 @@ describe('notificationFirestoreService', () => {
     it('handles errors gracefully', async () => {
       (updateDoc as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Update failed'));
 
-      await expect(markAsRead('user-123', 'notif-123')).rejects.toThrow('Update failed');
+      // Dual-path: individual .catch() handlers swallow per-path errors
+      await expect(markAsRead('user-123', 'notif-123')).resolves.toBeUndefined();
     });
   });
 

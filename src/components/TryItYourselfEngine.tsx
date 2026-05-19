@@ -498,7 +498,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
             options: v.options, correctAnswer: v.correctAnswer, explanation: v.explanation || '', hints: v.hints || [],
           }))];
         }
-      } catch {}
+      } catch { /* shadow retry fetch is non-critical */ }
     }
 
     setCurrentPhaseIdx(nextPhaseIdx);
@@ -519,7 +519,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
     });
     let serverXP = totalXP;
     if (userId) {
-      try { const r = await completeSession({ userId, sessionId, questionResults: allResults }); serverXP = r.totalXP; } catch {}
+      try { const r = await completeSession({ userId, sessionId, questionResults: allResults }); serverXP = r.totalXP; } catch { /* server XP verification is non-critical */ }
     }
     const totalCorrect = Object.values(questionStates).filter(qs => qs.resolution === 'correct').length;
     onComplete(Math.round((totalCorrect / questions.length) * 100), serverXP);

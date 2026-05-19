@@ -844,7 +844,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                       existing.history.unshift({ date: new Date().toISOString(), score: scorePercent, difficulty: q.difficulty || 'Medium' });
                       mapObj.set(key, existing);
                       localStorage.setItem(storageKey, JSON.stringify(Array.from(mapObj.entries())));
-                    } catch {}
+                    } catch { /* localStorage write failure is non-critical */ }
                   }
 
                   // Submit to backend (fire-and-forget)
