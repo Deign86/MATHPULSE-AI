@@ -415,6 +415,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           onStartPractice={handleStartPractice}
           onProgressUpdate={handleProgressUpdate}
           onComplete={handleComplete}
+          setIsInQuizMode={setIsInQuizMode}
         />
       );
     } else {
