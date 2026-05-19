@@ -323,6 +323,31 @@ function buildChartFromRawData(
 
 // ─── Helpers to derive data from progress document ────────────────────────────
 
+/** Maps curriculum module IDs to radar chart module IDs */
+const CURRICULUM_TO_MODULE: Record<string, string> = {
+  'gm-q1-functions-graphs': 'gm-1',
+  'gm-q1-patterns-sequences-series': 'gm-1',
+  'gm-q1-business-finance': 'gm-2',
+  'gm-q1-financial-application-sequences-series': 'gm-2',
+  'gm-q1-bf': 'gm-2',
+  'gm-q1-logic': 'gm-3',
+};
+
+function resolveCurriculumToModule(id: string): string {
+  // Direct match
+  if (CURRICULUM_TO_MODULE[id]) return CURRICULUM_TO_MODULE[id];
+  // Prefix match
+  for (const [prefix, modId] of Object.entries(CURRICULUM_TO_MODULE)) {
+    if (id.startsWith(prefix)) return modId;
+  }
+  // Keyword match
+  const lower = id.toLowerCase();
+  if (lower.includes('function') || lower.includes('graph') || lower.includes('pattern') || lower.includes('sequence')) return 'gm-1';
+  if (lower.includes('business') || lower.includes('finance') || lower.includes('interest') || lower.includes('annuit')) return 'gm-2';
+  if (lower.includes('logic') || lower.includes('proposition') || lower.includes('truth')) return 'gm-3';
+  return id; // fallback: return as-is
+}
+
 /**
  * Build FirestoreQuizResult[] from progress.quizAttempts by cross-referencing
  * with progress.subjects.*.modulesProgress to determine module ownership.
@@ -340,8 +365,9 @@ function buildQuizResultsFromProgress(
     for (const subjectProgress of Object.values(progress.subjects)) {
       if (!subjectProgress.modulesProgress) continue;
       for (const [moduleId, mp] of Object.entries(subjectProgress.modulesProgress)) {
+        const resolvedMod = resolveCurriculumToModule(moduleId);
         for (const qId of mp.quizzesCompleted || []) {
-          quizToModule[qId] = moduleId;
+          quizToModule[qId] = resolvedMod;
         }
       }
     }
@@ -352,9 +378,15 @@ function buildQuizResultsFromProgress(
 
   return attempts.map((a, i) => {
     let moduleId = quizToModule[a.quizId] || '';
-    if (!moduleId && !hasMapping && validModules.length > 0) {
-      // Distribute evenly across modules as best-effort
-      moduleId = validModules[i % validModules.length].id;
+    if (!moduleId) {
+      // Try resolving the quizId itself as a curriculum ID
+      moduleId = resolveCurriculumToModule(a.quizId);
+      // If it resolved to itself (no match), try distributing
+      if (moduleId === a.quizId) {
+        moduleId = !hasMapping && validModules.length > 0
+          ? validModules[i % validModules.length].id
+          : '';
+      }
     }
 
     return {
@@ -384,15 +416,25 @@ function buildModuleProgressFromProgress(
   for (const [subjectId, subjectProgress] of Object.entries(progress.subjects)) {
     if (!subjectProgress.modulesProgress) continue;
     for (const [moduleId, mp] of Object.entries(subjectProgress.modulesProgress)) {
-      result[moduleId] = {
-        moduleId,
-        subjectId,
-        sessionsCompleted: (mp.lessonsCompleted?.length || 0) + (mp.quizzesCompleted?.length || 0),
-        lastActive: mp.lastAccessedAt instanceof Date ? mp.lastAccessedAt : new Date(mp.lastAccessedAt as unknown as string),
-        moduleTitle: moduleId,
-        lessonsCompleted: mp.lessonsCompleted || [],
-        quizzesCompleted: mp.quizzesCompleted || [],
-      };
+      const resolvedId = resolveCurriculumToModule(moduleId);
+      // Merge if multiple curriculum modules map to same radar module
+      if (!result[resolvedId]) {
+        result[resolvedId] = {
+          moduleId: resolvedId,
+          subjectId,
+          sessionsCompleted: 0,
+          lastActive: new Date(),
+          moduleTitle: resolvedId,
+          lessonsCompleted: [],
+          quizzesCompleted: [],
+        };
+      }
+      const existing = result[resolvedId];
+      existing.sessionsCompleted += (mp.lessonsCompleted?.length || 0) + (mp.quizzesCompleted?.length || 0);
+      existing.lessonsCompleted.push(...(mp.lessonsCompleted || []));
+      existing.quizzesCompleted.push(...(mp.quizzesCompleted || []));
+      const lastAccess = mp.lastAccessedAt instanceof Date ? mp.lastAccessedAt : new Date(mp.lastAccessedAt as unknown as string);
+      if (lastAccess > existing.lastActive) existing.lastActive = lastAccess;
     }
   }
 
