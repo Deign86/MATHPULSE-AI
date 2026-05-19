@@ -62,7 +62,7 @@ export interface TeacherUploadedModule {
   sourceLabel: 'Teacher Upload';
   summary: string;
   learningObjectives: string[];
-  sections: Array<{ title: string; content: string }>;
+  sections: Array<{ title: string; content: string; stepType?: string; stepNumber?: number; topic?: string; durationMinutes?: number; numItems?: number | null; difficulty?: string; competencyTag?: string; youtubeQuery?: string; isCompleted?: boolean }>;
   practice: Array<{
     question: string;
     options: Array<{ label: string; text: string }>;

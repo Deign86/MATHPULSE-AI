@@ -125,6 +125,15 @@ export async function assignLearningPathAsModule(
   const sections = steps.map((s) => ({
     title: `Step ${s.step_number}: ${s.title}`,
     content: `${s.description || s.topic} (${s.type.replace('_', ' ')} · ${s.duration_minutes} mins${s.num_items ? ` · ${s.num_items} items` : ''})`,
+    stepType: s.type,
+    stepNumber: s.step_number,
+    topic: s.topic,
+    durationMinutes: s.duration_minutes,
+    numItems: s.num_items || null,
+    difficulty: s.difficulty,
+    competencyTag: s.competency_tag || '',
+    youtubeQuery: s.youtube_query || '',
+    isCompleted: s.is_completed || false,
   }));
 
   const docRef = await addDoc(collection(db, 'modules'), {
