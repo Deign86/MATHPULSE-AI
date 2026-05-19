@@ -15,6 +15,11 @@ import {
   RotateCcw,
   GraduationCap,
   BookUser,
+  Video,
+  PenTool,
+  CheckCircle2,
+  MessageCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -527,12 +532,61 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             <div className="mb-6">
               <h2 className="text-lg font-bold text-slate-900 mb-3">Sections</h2>
               <div className="space-y-3">
-                {selectedTeacherModule.sections.map((section, i) => (
-                  <div key={i} className="border border-slate-200 rounded-xl p-4">
-                    <h3 className="text-sm font-bold text-slate-800 mb-1">{section.title}</h3>
-                    <p className="text-sm text-slate-600 leading-relaxed">{section.content}</p>
-                  </div>
-                ))}
+                {selectedTeacherModule.sections.map((section, i) => {
+                  // Detect step type from metadata or parse from content for legacy data
+                  const detectedType = section.stepType
+                    || (section.content.includes('video lesson') ? 'video_lesson'
+                      : section.content.includes('practice') ? 'practice'
+                      : section.content.includes('assessment') ? 'assessment'
+                      : section.content.includes('chat') ? 'chat_session'
+                      : section.content.includes('review') ? 'review' : undefined);
+                  const isInteractive = !!detectedType;
+                  const StepIcon = detectedType === 'video_lesson' ? Video
+                    : detectedType === 'practice' ? PenTool
+                    : detectedType === 'assessment' ? CheckCircle2
+                    : detectedType === 'chat_session' ? MessageCircle
+                    : detectedType === 'review' ? RefreshCw : null;
+
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={!isInteractive}
+                      onClick={() => {
+                        if (!isInteractive) return;
+                        if (detectedType === 'video_lesson' && section.youtubeQuery) {
+                          window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(section.youtubeQuery)}`, '_blank');
+                        } else if (detectedType === 'video_lesson') {
+                          const query = section.topic || section.title.replace(/^Step \d+:\s*/, '');
+                          window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query + ' math lesson')}`, '_blank');
+                        } else if (detectedType === 'practice' || detectedType === 'assessment') {
+                          toast.info(`Starting ${detectedType === 'assessment' ? 'assessment' : 'practice'}: ${section.topic || section.title}`);
+                        } else {
+                          toast.info(`Opening: ${section.title}`);
+                        }
+                      }}
+                      className={`w-full text-left border rounded-xl p-4 transition-all ${
+                        isInteractive
+                          ? 'border-slate-200 hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group'
+                          : 'border-slate-200'
+                      } ${section.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : ''}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-2">
+                            {StepIcon && <StepIcon size={14} className="text-indigo-500 shrink-0" />}
+                            {section.title}
+                            {section.isCompleted && <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />}
+                          </h3>
+                          <p className="text-sm text-slate-600 leading-relaxed">{section.content}</p>
+                        </div>
+                        {isInteractive && (
+                          <ArrowRight size={16} className="text-slate-400 group-hover:text-indigo-500 shrink-0 transition-colors" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
