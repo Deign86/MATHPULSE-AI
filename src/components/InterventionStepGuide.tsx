@@ -2,12 +2,13 @@
 // Modal panel for working through a learning step with AI guidance
 
 import React, { useState } from 'react';
-import { X, CheckCircle, Clock, Video, PenTool, MessageCircle, RefreshCw, Send } from 'lucide-react';
+import { X, CheckCircle, Clock, Video, PenTool, MessageCircle, RefreshCw, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { assignStepAsModule } from '../services/interventionService';
 import type { LearningStep } from '../services/interventionService';
 import { InterventionVideoStep } from './intervention/InterventionVideoStep';
 import { normalizeTopicDisplay } from '../config/subjects';
+import { apiService } from '../services/apiService';
 import { toast } from 'sonner';
 
 interface Props {
@@ -48,6 +49,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
     { role: 'assistant', content: `Hi ${studentName}! Let's work on "${normalizeTopicDisplay(step.title)}". ${step.description || `This covers ${normalizeTopicDisplay(step.topic)}.`} Ready to start?` },
   ]);
   const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
 
   const handleAssign = async () => {
     setCompleting(true);
@@ -63,18 +65,24 @@ export const InterventionStepGuide: React.FC<Props> = ({
     }
   };
 
-  const handleSendChat = () => {
-    if (!chatInput.trim()) return;
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || chatLoading) return;
     const userMsg = chatInput.trim();
     setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setChatInput('');
-    // Simulate AI response (in production, this would call /api/intervention/guidance)
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, {
-        role: 'assistant',
-        content: `Great question about ${step.topic}! Let me help you understand this step by step. What part are you finding most challenging?`,
-      }]);
-    }, 1000);
+    setChatLoading(true);
+
+    try {
+      const history = chatMessages.map(m => ({ role: m.role, content: m.content }));
+      const res = await apiService.chat(userMsg, history, undefined, {
+        moduleContext: { title: normalizeTopicDisplay(step.title), summary: `Topic: ${step.topic}. ${step.description}` },
+      });
+      setChatMessages(prev => [...prev, { role: 'assistant', content: res.response }]);
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: `I'm having trouble connecting right now. Try asking again in a moment!` }]);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   return (
@@ -149,7 +157,6 @@ export const InterventionStepGuide: React.FC<Props> = ({
               <div className="px-4 py-3 border-b border-slate-100 bg-white">
                 <p className="text-[12px] font-semibold text-[#1e293b] flex items-center gap-1.5">
                   <MessageCircle className="w-3.5 h-3.5 text-indigo-500" /> AI Guide
-                  <span className="text-[9px] font-medium text-slate-400 ml-1">(Preview)</span>
                 </p>
               </div>
               <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[200px] max-h-[300px]">
@@ -172,8 +179,8 @@ export const InterventionStepGuide: React.FC<Props> = ({
                   placeholder="Ask for help..."
                   className="flex-1 text-[12px] px-3 py-2 rounded-[10px] border border-slate-200 focus:outline-none focus:border-indigo-300"
                 />
-                <button onClick={handleSendChat} className="w-8 h-8 rounded-full bg-indigo-500 hover:bg-indigo-600 flex items-center justify-center text-white transition-colors">
-                  <Send className="w-3.5 h-3.5" />
+                <button onClick={handleSendChat} disabled={chatLoading} className="w-8 h-8 rounded-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 flex items-center justify-center text-white transition-colors">
+                  {chatLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 </button>
               </div>
             </div>

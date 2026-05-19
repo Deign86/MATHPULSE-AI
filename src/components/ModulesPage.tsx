@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import ModuleFolderCard from './ModuleFolderCard';
 import ModuleDetailView from './ModuleDetailView';
 import PracticeCenter from './PracticeCenter';
+import ModuleStepGuide from './ModuleStepGuide';
 
 import ModulesMascot from './ModulesMascot';
 import QuizExperience from './QuizExperience';
@@ -109,6 +110,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [isScrolled, setIsScrolled] = useState(false);
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
   const [selectedTeacherModule, setSelectedTeacherModule] = useState<TeacherUploadedModule | null>(null);
+  const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
   // Subscribe to user progress for module card progress bars
@@ -554,16 +556,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                       disabled={!isInteractive}
                       onClick={() => {
                         if (!isInteractive) return;
-                        if (detectedType === 'video_lesson' && section.youtubeQuery) {
-                          window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(section.youtubeQuery)}`, '_blank');
-                        } else if (detectedType === 'video_lesson') {
-                          const query = section.topic || section.title.replace(/^Step \d+:\s*/, '');
-                          window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query + ' math lesson')}`, '_blank');
-                        } else if (detectedType === 'practice' || detectedType === 'assessment') {
-                          toast.info(`Starting ${detectedType === 'assessment' ? 'assessment' : 'practice'}: ${section.topic || section.title}`);
-                        } else {
-                          toast.info(`Opening: ${section.title}`);
-                        }
+                        setActiveStepIndex(i);
                       }}
                       className={`w-full text-left border rounded-xl p-4 transition-all ${
                         isInteractive
@@ -612,6 +605,18 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             </div>
           )}
         </div>
+
+        {activeStepIndex !== null && selectedTeacherModule.sections[activeStepIndex] && (
+          <ModuleStepGuide
+            section={selectedTeacherModule.sections[activeStepIndex]}
+            sectionIndex={activeStepIndex}
+            totalSections={selectedTeacherModule.sections.length}
+            moduleTitle={selectedTeacherModule.title}
+            studentName={studentProfile?.name || 'Student'}
+            practice={selectedTeacherModule.practice}
+            onClose={() => setActiveStepIndex(null)}
+          />
+        )}
       </div>
     );
   }
