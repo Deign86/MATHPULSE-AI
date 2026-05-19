@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap } from 'lucide-react';
+import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap, BadgeCheck, RotateCcw, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
@@ -15,6 +15,7 @@ import { getQuestionCountForQuiz } from '../services/lessonQuizService';
 import type { UserProgress, AIQuizQuestion } from '../types/models';
 
 import { generatePracticeSession } from '../services/practiceService';
+import { useModuleProgress } from '../hooks/useModuleProgress';
 import { Loader2 } from 'lucide-react';
 
 interface ModuleDetailViewProps {
@@ -200,6 +201,22 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return new Set(ids);
   }, [dbModuleProgress?.quizzesCompleted]);
 
+  // Hook for additional completion indicators (study materials, quiz scores, module badge)
+  const {
+    isModuleCompleted,
+    isStudyMaterialsCompleted,
+    isLessonQuizCompleted,
+    getLastQuizScore,
+    markStudyMaterialsComplete,
+  } = useModuleProgress({
+    userProgress,
+    userId: userProfile?.uid,
+    subjectId,
+    moduleId: module.id,
+    totalLessons: module.lessons.length,
+    totalQuizzes: module.quizzes.length,
+  });
+
   const completedLessons = dbModuleProgress?.lessonsCompleted?.length ?? module.lessons.filter(l => l.completed).length;
   const completedQuizzes = dbModuleProgress?.quizzesCompleted?.length ?? module.quizzes.filter(q => q.completed).length;
   const moduleProgressPercentFromDb = dbModuleProgress?.progress ?? module.progress;
@@ -212,7 +229,10 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
   // Per-lesson progress (0-100) persisted in Firestore under progress.lessons[lessonId].
   const getLessonProgressPercent = (lessonId: string, isCompleted: boolean) => {
-    const pct = userProgress?.lessons?.[lessonId]?.score; // Assuming score stores the percentage here based on models
+    const lesson = userProgress?.lessons?.[lessonId];
+    if (!lesson) return isCompleted ? 100 : 0;
+    if (lesson.completed) return 100;
+    const pct = lesson.progressPercent ?? lesson.score;
     if (typeof pct === 'number' && Number.isFinite(pct)) return Math.max(0, Math.min(100, pct));
     return isCompleted ? 100 : 0;
   };
@@ -228,7 +248,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return Math.round((lessonSum + quizSum) / totalItems);
   }, [completedLessonIds, completedQuizzes, module.lessons, module.quizzes.length, totalItems, userProgress?.lessons]);
 
-  const moduleProgressPercent = moduleProgressPercentFromDb > 0 ? moduleProgressPercentFromDb : derivedModuleProgressPercent;
+  const moduleProgressPercent = derivedModuleProgressPercent > 0 ? derivedModuleProgressPercent : moduleProgressPercentFromDb;
 
   const standaloneQuiz = useMemo(() => {
     // Prefer explicitly-marked final/general module quizzes
@@ -310,6 +330,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     if (userProfile?.uid && subjectId) {
       void (async () => {
         try {
+          await markStudyMaterialsComplete(currentLesson.id);
           await completeLesson(
             userProfile.uid,
             subjectId,
@@ -506,6 +527,11 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                 <div className="flex items-center gap-1.5">
                   <Award size={16} className="text-emerald-400" />
                   <span className="text-[11px] md:text-xs font-black text-white uppercase tracking-wider">Module Mastery</span>
+                  {isModuleCompleted && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase tracking-wide">
+                      <BadgeCheck size={12} /> Completed
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-[10px] md:text-xs font-bold text-slate-400">{completedItems}/{totalItems}</span>
@@ -629,10 +655,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                               lesson.locked
                                 ? 'bg-slate-100 text-slate-400'
                                 : isCompleted
-                                  ? 'text-white'
-                                  : 'text-white'
+                                  ? 'text-white ring-2 ring-emerald-400 ring-offset-1'
+                                  : lessonPct > 0
+                                    ? 'text-white ring-2 ring-amber-400 ring-offset-1'
+                                    : 'text-white'
                             }`}
-                            style={!lesson.locked ? (isCompleted ? { backgroundColor: '#0ea5e9' } : { backgroundColor: lessonAccentHex }) : {}}
+                            style={!lesson.locked ? (isCompleted ? { backgroundColor: '#10b981' } : { backgroundColor: lessonAccentHex }) : {}}
                           >
                             {lesson.locked ? <Lock size={16} /> : isCompleted ? <CheckCircle2 size={20} /> : <Play size={18} className="ml-0.5" />}
                           </div>
@@ -652,11 +680,29 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                       </button>
 
                       <div className="flex flex-wrap gap-2 md:gap-3 px-0.5 md:px-1">
-                        <button type="button" className="inline-flex items-center gap-1 rounded-full bg-white px-3 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
-                          <BookOpen size={12} /> Study Materials
+                        <button
+                          type="button"
+                          onClick={() => !lesson.locked && (setSelectedLesson({ lesson, type: 'lesson' }), markStudyMaterialsComplete(lesson.id))}
+                          className={`inline-flex items-center gap-1 rounded-full px-3 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5 ${
+                            isStudyMaterialsCompleted(lesson.id)
+                              ? 'bg-emerald-50 border border-emerald-200'
+                              : 'bg-white'
+                          }`}
+                          style={{ color: isStudyMaterialsCompleted(lesson.id) ? '#059669' : lessonAccentHex }}
+                        >
+                          {isStudyMaterialsCompleted(lesson.id) ? <><CheckCircle2 size={12} /> Review</> : <><BookOpen size={12} /> Study Materials</>}
                         </button>
-                        <button type="button" className="inline-flex items-center gap-1 rounded-full bg-white px-3 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5" style={{ color: lessonAccentHex }}>
-                          <Bookmark size={12} /> Quiz
+                        <button
+                          type="button"
+                          onClick={() => !lesson.locked && (setSelectedLesson({ lesson, type: 'lesson' }), handleStartPractice())}
+                          className={`inline-flex items-center gap-1 rounded-full px-3 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5 ${
+                            isLessonQuizCompleted(lesson.id)
+                              ? 'bg-emerald-50 border border-emerald-200'
+                              : 'bg-white'
+                          }`}
+                          style={{ color: isLessonQuizCompleted(lesson.id) ? '#059669' : lessonAccentHex }}
+                        >
+                          {isLessonQuizCompleted(lesson.id) ? <><RotateCcw size={12} /> Retry</> : <><Bookmark size={12} /> Quiz</>}
                         </button>
                       </div>
 
@@ -701,19 +747,28 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                             </p>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
-                            className={`px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[11px] md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
-                              standaloneQuiz.locked
-                                ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
-                                : (iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))
-                                  ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
-                                  : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
-                            }`}
-                          >
-                            {(iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)) ? 'REVIEW' : 'START'}
-                          </button>
+                          <div className="flex items-center gap-2 self-center shrink-0">
+                            {(iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)) && getLastQuizScore(standaloneQuiz.id) && (
+                              <span className="inline-flex items-center gap-1 text-amber-300 text-[11px] md:text-xs font-bold">
+                                <Star size={12} fill="currentColor" /> Last: {getLastQuizScore(standaloneQuiz.id)!.score}/{getLastQuizScore(standaloneQuiz.id)!.total}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
+                              className={`px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[11px] md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm ${
+                                standaloneQuiz.locked
+                                  ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
+                                  : (iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))
+                                    ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
+                                    : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
+                              }`}
+                            >
+                              {(iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))
+                                ? <span className="inline-flex items-center gap-1"><RefreshCw size={12} /> Retake</span>
+                                : 'START'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -740,19 +795,28 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
-                    className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm self-center shrink-0 ${
-                      standaloneQuiz.locked
-                        ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
-: (iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))
-                              ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
-                              : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
-                          }`}
-                        >
-                          {(iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)) ? 'REVIEW' : 'START'}
-                  </button>
+                  <div className="flex items-center gap-2 self-center shrink-0">
+                    {(iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)) && getLastQuizScore(standaloneQuiz.id) && (
+                      <span className="inline-flex items-center gap-1 text-amber-300 text-[11px] md:text-xs font-bold">
+                        <Star size={12} fill="currentColor" /> Last: {getLastQuizScore(standaloneQuiz.id)!.score}/{getLastQuizScore(standaloneQuiz.id)!.total}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
+                      className={`px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm ${
+                        standaloneQuiz.locked
+                          ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
+                          : (iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))
+                            ? 'bg-white/20 text-white border border-white/40 hover:bg-white/30 shadow-sm'
+                            : 'bg-transparent text-white border border-white/40 hover:bg-white/10 shadow-sm'
+                      }`}
+                    >
+                      {(iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))
+                        ? <span className="inline-flex items-center gap-1"><RefreshCw size={12} /> Retake</span>
+                        : 'START'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

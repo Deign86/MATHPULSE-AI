@@ -7,7 +7,7 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -3374,13 +3374,27 @@ const InterventionView: React.FC<{
 
   // Fetch real progress data for this student (progress/{accountUid || id})
   const [studentProgressScore, setStudentProgressScore] = useState<number | null>(null);
+  const [studentModulesCompleted, setStudentModulesCompleted] = useState<{ completed: number; total: number } | null>(null);
   useEffect(() => {
     let cancelled = false;
     const uid = student.accountUid || student.id;
     getUserProgress(uid)
       .then((progress) => {
-        if (!cancelled && progress?.averageScore) {
+        if (cancelled) return;
+        if (progress?.averageScore) {
           setStudentProgressScore(Math.round(progress.averageScore));
+        }
+        // Count modules where all lessons+quizzes are completed
+        if (progress?.subjects) {
+          let completed = 0;
+          let total = 0;
+          for (const subj of Object.values(progress.subjects)) {
+            for (const mod of Object.values(subj.modulesProgress || {})) {
+              total++;
+              if (mod.progress >= 100) completed++;
+            }
+          }
+          setStudentModulesCompleted({ completed, total });
         }
       })
       .catch(() => {});
@@ -4134,6 +4148,17 @@ const InterventionView: React.FC<{
               <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={interventionPlan?.weakest_topic || student.weakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || student.weakestTopic || '')}</p>
             </div>
           </div>
+
+          {/* Module Completion */}
+          {studentModulesCompleted && studentModulesCompleted.total > 0 && (
+            <div className="w-full bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-3">
+              <BadgeCheck size={18} className={studentModulesCompleted.completed === studentModulesCompleted.total ? 'text-emerald-500' : 'text-slate-400'} />
+              <div>
+                <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Modules Completed</p>
+                <p className="text-[16px] font-bold text-[#1e293b]">{studentModulesCompleted.completed}/{studentModulesCompleted.total}</p>
+              </div>
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="w-full flex flex-col gap-[10px]">
