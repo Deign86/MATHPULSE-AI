@@ -305,6 +305,7 @@ export interface LessonProgress {
   progressPercent?: number;
   quizCompleted?: boolean;
   quizScore?: number;
+  studyMaterialsCompleted?: boolean;
 }
 
 export interface QuizAttempt {
