@@ -165,7 +165,6 @@ async def resolve_question(request: Request, body: ResolveQuestionRequest):
 
     status = _determine_status(body.attempts, body.hintsUsed, body.resolution, previous_status)
 
-    db = _get_firestore()
     if db:
         try:
             state_ref = db.collection("user_question_states").document(f"{body.userId}_{body.questionId}")
@@ -332,10 +331,10 @@ async def generate_round(request: Request, body: GenerateRoundRequest):
     
     if db and body.questionIds:
         try:
-            # Batch fetch all question states for this user
-            for qid in body.questionIds:
-                doc_ref = db.collection("user_question_states").document(f"{body.userId}_{qid}")
-                doc = doc_ref.get()
+            # Batch fetch all question states in one round-trip
+            doc_refs = [db.collection("user_question_states").document(f"{body.userId}_{qid}") for qid in body.questionIds]
+            docs = db.get_all(doc_refs)
+            for qid, doc in zip(body.questionIds, docs):
                 if doc.exists:
                     statuses[qid] = doc.to_dict().get("status", "New")
                 else:

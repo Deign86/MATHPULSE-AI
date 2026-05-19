@@ -140,12 +140,11 @@ Generate a "Try It Yourself" quiz for the following lesson.
 1. Generate EXACTLY {question_count} questions covering the topic above.
 2. Question types to use: {qt_str}
 3. BLOOM'S TAXONOMY DISTRIBUTION (for {question_count} questions):
-   - "remember" (recall, definitions, fundamental facts): ~33% of questions
-   - "understand" (explain concepts, interpret meaning): included in remember group
-   - "apply" (solve problems, real-world context: pesos, jeepney, sari-sari store, barangay): ~33% of questions
+   - "remember" + "understand" (recall, definitions, explain concepts): ~35% of questions
+   - "apply" (solve problems, real-world context: pesos, jeepney, sari-sari store, barangay): ~30% of questions
    - "analyze" (compare, contrast, break down complex problems): ~20% of questions
-   - "evaluate" (judge, justify, determine best approach): ~14% of questions
-   Tag each question with its bloom_level field.
+   - "evaluate" (judge, justify, determine best approach): ~15% of questions
+   Tag each question with its bloom_level field (one of: "remember", "understand", "apply", "analyze", "evaluate").
 4. Use Filipino-localized context where possible (pesos, jeepney, barangay, sari-sari store, etc.).
 5. Each question must be mathematically accurate and curriculum-aligned.
 6. Provide clear explanations for the correct answer.
@@ -175,7 +174,7 @@ Generate a "Try It Yourself" quiz for the following lesson.
     "xp_reward": {xp_reward},
     "difficulty": "{difficulty}",
     "competency_code": "{competency_code or 'N/A'}",
-    "hints": ["Conceptual nudge: Think about what formula applies here...", "Procedural setup: Start by identifying the variables...", "Final push: Substitute the values and compute..."]
+    "hints": ["Conceptual nudge: Recall the power rule for derivatives.", "Procedural setup: Identify the exponent and apply nxⁿ⁻¹.", "Final push: Compute 3x² from x³."]
   }},
   {{
     "id": "q2",
@@ -192,7 +191,7 @@ Generate a "Try It Yourself" quiz for the following lesson.
     "xp_reward": {xp_reward},
     "difficulty": "{difficulty}",
     "competency_code": "{competency_code or 'N/A'}",
-    "hints": ["Conceptual nudge: Think about what formula applies here...", "Procedural setup: Start by identifying the variables...", "Final push: Substitute the values and compute..."]
+    "hints": ["Conceptual nudge: Think about the interior angle sum property.", "Procedural setup: Consider what theorem governs triangle angles.", "Final push: Recall the triangle angle sum theorem states 180°."]
   }},
   {{
     "id": "q3",
@@ -206,7 +205,7 @@ Generate a "Try It Yourself" quiz for the following lesson.
     "xp_reward": {xp_reward},
     "difficulty": "{difficulty}",
     "competency_code": "{competency_code or 'N/A'}",
-    "hints": ["Conceptual nudge: Think about what formula applies here...", "Procedural setup: Start by identifying the variables...", "Final push: Substitute the values and compute..."]
+    "hints": ["Conceptual nudge: This is a substitution problem.", "Procedural setup: Replace x with 4 in the expression.", "Final push: Multiply 2×4, then add 3."]
   }}
 ]
 

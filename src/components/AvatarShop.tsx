@@ -52,7 +52,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   const [currentXP, setCurrentXP] = useState(0);
   const [purchasingItemId, setPurchasingItemId] = useState<string | null>(null);
   const [avatarSpeech, setAvatarSpeech] = useState<string | null>(null);
-  const [inventoryItems] = useState<AvatarInventoryItem[]>(MOCK_INVENTORY);
+  const inventoryItems = MOCK_INVENTORY;
   const [activeCategory, setActiveCategory] = useState<TabCategory>('top');
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [isPreviewActive, setIsPreviewActive] = useState(false);
@@ -71,7 +71,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   const hasExclusivePreview = useMemo(() => {
     const ids = [equipped.top, equipped.bottom, equipped.shoes, equipped.accessory].filter(Boolean);
     return ids.some(id => { const item = inventoryItems.find(i => i.id === id); return (item?.isExclusive || item?.isReward) && !ownedItems.includes(id!); });
-  }, [equipped, inventoryItems, ownedItems, isPreviewActive]);
+  }, [equipped, inventoryItems, ownedItems]);
 
   // Expose unsaved state to parent
   useEffect(() => { if (unsavedChangesRef) unsavedChangesRef.current = hasUnsavedChanges; }, [hasUnsavedChanges, unsavedChangesRef]);
@@ -79,7 +79,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
   // Show leave modal when parent requests navigation while unsaved
   useEffect(() => { if (pendingNavigation && hasUnsavedChanges) setShowLeaveModal(true); }, [pendingNavigation, hasUnsavedChanges]);
   useEffect(() => { if (userProfile && userProfile.role === 'student') { const sp = userProfile as StudentProfile; setOwnedItems(sp.ownedAvatarItems || []); setCurrentXP(sp.currentXP || 0); } }, [userProfile]);
-  useEffect(() => { const initial: AvatarLayers = { top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID, bottom: userProfile?.avatarLayers?.bottom || '', shoes: userProfile?.avatarLayers?.shoes || '', accessory: userProfile?.avatarLayers?.accessory || '' }; setEquipped(initial); setSavedEquipped(initial); }, []);
+  useEffect(() => { const initial: AvatarLayers = { top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID, bottom: userProfile?.avatarLayers?.bottom || '', shoes: userProfile?.avatarLayers?.shoes || '', accessory: userProfile?.avatarLayers?.accessory || '' }; setEquipped(initial); setSavedEquipped(initial); }, [userProfile?.uid]);
   useEffect(() => { if (!avatarSpeech) { const timer = setInterval(() => { if (Math.random() > 0.6) setAvatarSpeech(ENCOURAGEMENT_PHRASES[Math.floor(Math.random() * ENCOURAGEMENT_PHRASES.length)]); }, 5000); return () => clearInterval(timer); } }, [avatarSpeech]);
   useEffect(() => { if (avatarSpeech) { const timer = setTimeout(() => setAvatarSpeech(null), 3500); return () => clearTimeout(timer); } }, [avatarSpeech]);
 
@@ -223,7 +223,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-1">
         {items.map(item => {
           const cat = item.category;
-          const isEquipped = item.setLayers ? Object.values(item.setLayers).some(v => v && equipped[Object.keys(item.setLayers!).find(k => (item.setLayers as any)[k] === v) as keyof AvatarLayers] === v) : equipped[cat] === item.id;
+          const isEquipped = item.setLayers ? Object.entries(item.setLayers).every(([layer, id]) => !id || equipped[layer as keyof AvatarLayers] === id) : equipped[cat] === item.id;
           const isOwned = ownedItems.includes(item.id);
           const isExclusive = Boolean(item.isExclusive);
           const isLocked = Boolean(((item.price && item.price > 0) || item.isReward) && !isOwned);

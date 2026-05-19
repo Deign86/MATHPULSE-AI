@@ -12,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
 import { db } from '../lib/firebase';
 import { getQuestionCountForQuiz } from '../services/lessonQuizService';
-import type { UserProgress } from '../types/models';
+import type { UserProgress, AIQuizQuestion } from '../types/models';
 
 import { generatePracticeSession } from '../services/practiceService';
 import { Loader2 } from 'lucide-react';
@@ -31,7 +31,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [iarCompleted, setIarCompleted] = useState(false);
-  const [quizQuestions, setQuizQuestions] = useState<any[] | null>(null);
+  const [quizQuestions, setQuizQuestions] = useState<(AIQuizQuestion | Question)[] | null>(null);
 
   // Check if the Initial Assessment has been completed before showing REVIEW markers
   useEffect(() => {
@@ -148,7 +148,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           question: q.question,
           options: q.options,
           correctAnswer: q.options[q.correct_index],
-          bloomLevel: (q.bloomsLevel?.toLowerCase() || 'understand') as 'remember' | 'understand' | 'apply' | 'analyze',
+          bloomLevel: (q.bloom_level?.toLowerCase() || 'understand') as 'remember' | 'understand' | 'apply' | 'analyze',
           difficulty: 'medium' as const,
           topic: selectedLesson.quiz.title,
           subject: subjectTitle,
@@ -156,7 +156,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           explanation: q.explanation || '',
         }));
 
-        setQuizQuestions(questions);
         setQuizQuestions(questions);
       } catch (err) {
         console.error('[ModuleDetailView] Quiz generation failed:', err);
@@ -421,7 +420,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             type: 'practice',
             completed: selectedLesson.quiz.completed,
             locked: false,
-            loadedQuestions: quizQuestions as any,
+            loadedQuestions: quizQuestions as AIQuizQuestion[],
             source: 'ai_generated',
           }}
           onClose={() => {

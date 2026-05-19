@@ -1018,7 +1018,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         sessionId={tryItSessionId}
         userId={userProfile?.uid}
         onBack={() => { setShowTryItPage(false); setTryItQuestions(null); }}
-        onComplete={(scorePercent, totalXP) => {
+        onComplete={(scorePercent) => {
           onTryItQuizComplete?.(scorePercent);
           setTryItQuizCompleted(true);
           setShowTryItPage(false);

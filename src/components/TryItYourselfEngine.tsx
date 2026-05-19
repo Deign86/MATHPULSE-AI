@@ -151,12 +151,21 @@ function getTopicIcons(title: string) {
 
 // ─── SFX ──────────────────────────────────────────────────────────────────────
 
+let _audioCtx: AudioContext | null = null;
+function getAudioContext(): AudioContext | null {
+  if (_audioCtx && _audioCtx.state !== 'closed') return _audioCtx;
+  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioCtx) return null;
+  _audioCtx = new AudioCtx();
+  return _audioCtx;
+}
+
 function playSound(type: 'correct' | 'incorrect' | 'complete' | 'streak' | 'hint', enabled: boolean) {
   if (!enabled) return;
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
     const t = ctx.currentTime;
     const note = (freq: number, start: number, dur: number, vol = 0.1, wave: OscillatorType = 'sine') => {
       const osc = ctx.createOscillator();
@@ -418,6 +427,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
   }, [currentQuestion, questionStates, textInput, isSubmitting, streak, userId, sessionId, isAudioEnabled, getOrCreateQState]);
 
   // ─── QUEUE ADVANCEMENT ────────────────────────────────────────────────────
+  const finishPhaseRef = useRef<() => void>(() => {});
   const advanceQueue = useCallback(() => {
     const nextIdx = queueIndex + 1;
     const unresolvedAfter = queue.slice(nextIdx).filter(q => !questionStates[q.id]?.resolved);
@@ -429,7 +439,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
         setQueue(unresolved);
         setQueueIndex(0);
       } else {
-        finishPhase();
+        finishPhaseRef.current();
       }
     } else {
       setQueueIndex(nextIdx);
@@ -447,7 +457,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
       xpEarned += qs.xpAwarded;
       if (qs.resolution === 'correct') correct++;
       if (qs.resolution === 'revealed') revealed++;
-      if (qs.attempts >= STRUGGLE_THRESHOLD) struggles.push(lessonTitle);
+      if (qs.attempts >= STRUGGLE_THRESHOLD) struggles.push((q as any).topic || (q as any).competencyCode || lessonTitle);
     });
     const result: RoundResult = { phase: PHASE_IDS[currentPhaseIdx], questionsCorrect: correct, questionsRevealed: revealed, xpEarned, struggleTopics: [...new Set(struggles)] };
     setCurrentRoundResult(result);
@@ -460,6 +470,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
       setPhaseConfettiFired(false);
     }
   }, [currentPhaseIdx, totalPhases, phaseGroups, questionStates, lessonTitle, isAudioEnabled]);
+  finishPhaseRef.current = finishPhase;
 
   // ─── ADVANCE TO NEXT PHASE ────────────────────────────────────────────────
   const advanceToNextPhase = useCallback(async () => {
@@ -517,10 +528,13 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
   // ─── Enter key ────────────────────────────────────────────────────────────
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && currentQuestion?.type === 'fill-in-blank' && textInput.trim()) handleAnswer();
+      if (e.key === 'Enter' && currentQuestion?.type === 'fill-in-blank' && textInput.trim()) {
+        e.preventDefault();
+        handleAnswer();
+      }
     };
-    window.addEventListener('keypress', handleKey);
-    return () => window.removeEventListener('keypress', handleKey);
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
   }, [handleAnswer, currentQuestion, textInput]);
 
   // Fire confetti on phase-complete screen
@@ -726,7 +740,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
             <ScientificCalculator isOpen={true} onClose={() => setShowCalculator(false)} inline />
           </div>
         </motion.div>,
-        document.getElementById('modal-root')!
+        document.getElementById('modal-root') || document.body
       )}
 
       {/* Round Result Overlay */}

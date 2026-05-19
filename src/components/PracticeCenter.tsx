@@ -88,9 +88,19 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
   // Re-check localStorage when component mounts or becomes visible
   useEffect(() => {
     const handleFocus = () => setCompletionVersion(v => v + 1);
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) setCompletionVersion(v => v + 1);
+    };
+    const handleCustom = () => setCompletionVersion(v => v + 1);
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('practice-completion-updated', handleCustom);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('practice-completion-updated', handleCustom);
+    };
+  }, [STORAGE_KEY]);
 
   const completedTopics = useMemo(() => {
     try {

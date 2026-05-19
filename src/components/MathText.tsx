@@ -25,8 +25,8 @@ function convertToLatex(text: string): string {
   // Already has $ delimiters — leave as-is
   if (text.includes('$')) return text;
   
-  // Check if text contains any math-like patterns
-  const hasMath = /[\^*×÷]|\\frac|\\sqrt|\\times/.test(text);
+  // Check if text contains any math-like patterns (require digit/variable context around operators)
+  const hasMath = /\d[\^*×÷]|[\^*×÷]\d|\\frac|\\sqrt|\\times|\w\^\w/.test(text);
   if (!hasMath) return text;
 
   // Strategy: find math expressions within the text and wrap them in $...$
@@ -64,10 +64,9 @@ function plainToLatex(expr: string): string {
   // Replace * with \times
   result = result.replace(/\s*\*\s*/g, ' \\times ');
   
-  // Replace ^ with proper LaTeX superscript
-  // Handle multi-char exponents: ^{stuff} stays, ^x becomes ^{x}, ^12 becomes ^{12}
-  result = result.replace(/\^([a-zA-Z]{2,}|\d{2,})/g, '^{$1}');
-  // Single char exponents are fine as-is: ^2, ^t, ^h
+  // Replace ^ with proper LaTeX superscript — always wrap in {} for robustness
+  result = result.replace(/\^(\{[^}]+\})/g, '^$1'); // already braced — keep as-is
+  result = result.replace(/\^([^{])/g, '^{$1}'); // single char → wrap in {}
   
   return result;
 }
