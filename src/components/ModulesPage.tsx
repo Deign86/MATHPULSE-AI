@@ -1065,11 +1065,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 </div>
               </div>
 
-              {/* Sources hidden from students - uncomment below to show for debugging */}
-              {/* <div className="rounded-2xl border border-slate-200 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Sources</p>
-                <div className="mt-2 space-y-2">
-                  {sourcePreviewModule.module_sources.map((source) => (
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Sources & Attribution</p>
+                <div className="mt-3 space-y-2">
+                  {sourcePreviewModule.module_sources?.map((source) => (
                     <a
                       key={source.id}
                       href={source.url}
@@ -1082,7 +1081,19 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                     </a>
                   ))}
                 </div>
-              </div> */}
+                <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100 p-3">
+                  <p className="text-[11px] font-semibold text-slate-600 leading-relaxed">
+                    Curriculum content adapted from the DepEd Strengthened Senior High School (SHS) Teaching Modules.
+                    Original materials are the intellectual property of the Department of Education — Schools Division Office of Navotas City.
+                    All rights reserved by the original authors and publishers.
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-2 leading-relaxed">
+                    Used under the Fair Use Doctrine (Republic Act No. 8293, Intellectual Property Code of the Philippines, Section 185)
+                    for non-commercial educational purposes. No copyright infringement is intended.
+                    This platform does not claim ownership of the source curriculum materials.
+                  </p>
+                </div>
+              </div>
             </div>
           </motion.aside>
         )}
