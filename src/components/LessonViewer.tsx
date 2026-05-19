@@ -290,6 +290,8 @@ interface LessonViewerProps {
   onTryItQuizComplete?: (scorePercent: number) => void;
   /** Fires when user clicks Continue Learning in the Try It Yourself quiz overlay — advances to next lesson */
   onContinueLearning?: () => void;
+  /** Controls floating AI tutor visibility during Try It Yourself quiz */
+  setIsInQuizMode?: (value: boolean) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -897,6 +899,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onProgressUpdate,
   onTryItQuizComplete,
   onContinueLearning,
+  setIsInQuizMode,
 }) => {
   const { userProfile } = useAuth();
   const [currentSection, setCurrentSection] = useState(0);
@@ -908,6 +911,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const [tryItLoading, setTryItLoading] = useState(false);
   const [tryItSessionId] = useState(() => `tiy-${Date.now()}`);
 
+  // Hide floating AI tutor during Try It Yourself quiz
+  useEffect(() => {
+    setIsInQuizMode?.(showTryItPage);
+    return () => { setIsInQuizMode?.(false); };
+  }, [showTryItPage]);
   // Generate questions when Try It Yourself is opened
   useEffect(() => {
     if (!showTryItPage || tryItQuestions) return;
