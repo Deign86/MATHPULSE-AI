@@ -11,6 +11,19 @@ vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ userProfile: { uid: 'user-1', grade: '11' } }),
 }));
 
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(),
+  query: vi.fn(),
+  where: vi.fn(),
+  onSnapshot: vi.fn(() => vi.fn()),
+  doc: vi.fn(),
+  getDoc: vi.fn(() => Promise.resolve({ exists: () => false })),
+}));
+
+vi.mock('../lib/firebase', () => ({
+  db: {},
+}));
+
 vi.mock('../hooks/useCurriculum', () => ({
   useCurriculum: () => ({ isLoading: false, refetch: vi.fn() }),
 }));

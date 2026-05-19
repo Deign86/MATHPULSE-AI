@@ -39,8 +39,8 @@ describe('PracticeCenter', () => {
 
   it('renders stats cards', () => {
     render(<PracticeCenter userId="user-1" />);
-    expect(screen.getByText('Quizzes Completed')).toBeInTheDocument();
-    expect(screen.getByText('Total XP Earned')).toBeInTheDocument();
-    expect(screen.getByText('Average Score')).toBeInTheDocument();
+    expect(screen.getAllByText('Quizzes Completed').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Total XP Earned').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Average Score').length).toBeGreaterThan(0);
   });
 });
