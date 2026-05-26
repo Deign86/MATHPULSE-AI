@@ -17,10 +17,21 @@ import {
   serverTimestamp,
   Timestamp,
   addDoc,
+  arrayUnion,
   arrayRemove,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { ClassSectionMetadata, WRIWeights, RiskHistoryEntry } from '../types/models';
+
+/**
+ * Origin of a student record displayed in the teacher dashboard.
+ *
+ * - `registered` → a Firebase Auth user with `role: "student"` (canonical source).
+ * - `import`     → an Excel/CSV roster row that has no Firebase user yet.
+ * - `both`       → a registered account that also appears in an import roster
+ *                  (enrichment data merged in).
+ */
+export type ManagedStudentSource = 'registered' | 'import' | 'both';
 
 // Types for the teacher's student management
 export interface ManagedStudent {
@@ -62,9 +73,22 @@ export interface ManagedStudent {
   systemPerformanceAvg?: number | null;
   riskHistory?: RiskHistoryEntry[];
   riskRecalcNeeded?: boolean;
-  // ── Registered-account linkage (used by teacher dashboard merge pipeline) ──
+  /**
+   * Whether this student has a Firebase Auth account in the `users` collection.
+   * `true`  → student can log in (record sourced from `users/{uid}` or matched).
+   * `false` → roster-only (import file) entry that needs an account created.
+   */
   hasRegisteredAccount?: boolean;
-  source?: 'registered' | 'import' | 'both';
+
+  /**
+   * Origin of this record in the dashboard. See {@link ManagedStudentSource}.
+   */
+  source?: ManagedStudentSource;
+
+  /**
+   * Firebase Auth UID for this student when {@link hasRegisteredAccount} is true.
+   * For `source: 'registered' | 'both'` this equals the `users/{uid}` doc id.
+   */
   accountUid?: string;
 }
 
@@ -111,6 +135,7 @@ export interface ReassignStudentSectionInput {
   teacherName?: string;
   schoolYear: string;
   previousClassSectionId?: string;
+}
 }
 
 export interface Classroom {
@@ -1261,6 +1286,561 @@ export function subscribeToStudents(
     console.error('[studentService] subscribeToStudents error:', error);
     callback([]);
   });
+}
+
+// ============================================================================
+// REGISTERED STUDENT ACCOUNTS (Phase 3: users/* as primary source of truth)
+// ============================================================================
+//
+// These helpers treat the Firestore `users` collection (where role === 'student')
+// as the canonical roster of students that exist on the platform. The import
+// pipeline (`managedStudents` collection) is now used only to:
+//   • Enrich registered students with section/grade/risk metadata
+//   • Surface "roster-only" students who don't have an account yet so the teacher
+//     can create one with `createStudentAccountFromRoster`.
+
+/**
+ * A student record sourced directly from `users/{uid}` (role === 'student').
+ *
+ * This is the canonical shape for the dashboard's primary roster query and is
+ * mapped to a `ManagedStudent`-compatible view by {@link mapRegisteredStudentToManaged}.
+ */
+export interface RegisteredStudentAccount {
+  uid: string;
+  name: string;
+  email: string;
+  lrn?: string;
+  photo?: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
+  adviserTeacherId?: string;
+  role: 'student';
+  createdAt?: Timestamp;
+}
+
+/** Input for {@link createStudentAccountFromRoster}. */
+export interface CreateStudentFromRosterInput {
+  name: string;
+  lrn?: string;
+  /** Teacher-provided email or auto-generated (e.g. `lrn@school.mathpulse.local`). */
+  email: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
+  adviserTeacherId: string;
+  adviserTeacherName?: string;
+  schoolYear?: string;
+  /** Auto-generated 8+ char alphanumeric. Shown to the teacher exactly once. */
+  temporaryPassword: string;
+}
+
+/** Result of {@link createStudentAccountFromRoster}. */
+export interface CreateStudentFromRosterResult {
+  uid: string;
+  /** Echo of the temporary password — must be displayed once and never persisted. */
+  temporaryPassword: string;
+}
+
+/** Input for {@link reassignStudentSection}. */
+export interface ReassignStudentSectionInput {
+  /** `managedStudents/{id}` doc id OR `users/{uid}` UID. */
+  studentId: string;
+  /** When true, also update `users/{studentId}` (registered account). */
+  isRegisteredAccount: boolean;
+  newClassSectionId: string;
+  newGrade: string;
+  newSection: string;
+  /** Optional previous classSectionId so we can remove the studentId from its array. */
+  previousClassSectionId?: string;
+  teacherId: string;
+  teacherName?: string;
+  schoolYear: string;
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Normalize a student name for fuzzy matching between roster (import) rows and
+ * registered accounts. Lowercases, trims, and collapses whitespace; strips
+ * common punctuation that varies between data sources (commas in "Last, First",
+ * periods after middle initials, etc.).
+ */
+export function normalizeName(value: string | null | undefined): string {
+  if (!value) return '';
+  return String(value)
+    .toLowerCase()
+    .replace(/[.,;:'"`]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildAvatarFallback(name: string, photo?: string): string {
+  if (photo && photo.trim()) return photo.trim();
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Student')}&background=random`;
+}
+
+/**
+ * Map a {@link RegisteredStudentAccount} to a {@link ManagedStudent}-compatible
+ * shape so the dashboard's StudentView pipeline can consume it without changes.
+ *
+ * Performance fields (avgQuizScore, riskLevel, attendance, etc.) default to
+ * neutral values; downstream code enriches them from `managedStudents` data.
+ */
+export function mapRegisteredStudentToManaged(
+  account: RegisteredStudentAccount,
+  options?: { teacherId?: string; teacherName?: string }
+): ManagedStudent {
+  const now = Timestamp.now();
+  const grade = (account.grade || '').trim();
+  const section = (account.section || '').trim();
+  const classSectionId =
+    (account.classSectionId || '').trim()
+    || (grade && section ? buildClassSectionId(grade, section) : '');
+  const className = grade && section ? `${grade} - ${section}` : '';
+  const classMetadata = buildClassSectionMetadata({
+    classSectionId,
+    className,
+    grade,
+    section,
+    adviserTeacherId: account.adviserTeacherId || options?.teacherId,
+    adviserTeacherName: options?.teacherName,
+  });
+
+  return {
+    id: account.uid,
+    accountUid: account.uid,
+    lrn: account.lrn || undefined,
+    name: account.name || account.email || 'Student',
+    email: account.email || '',
+    avatar: buildAvatarFallback(account.name || account.email || 'Student', account.photo),
+    teacherId: account.adviserTeacherId || options?.teacherId,
+    grade: classMetadata.grade || undefined,
+    gradeLevel: classMetadata.gradeLevel || undefined,
+    classification: classMetadata.classification || undefined,
+    strand: classMetadata.strand || undefined,
+    section: classMetadata.section || undefined,
+    classSectionId: classMetadata.classSectionId || undefined,
+    className: classMetadata.className || undefined,
+    classMetadata,
+    riskLevel: 'Low',
+    engagementScore: 0,
+    avgQuizScore: 0,
+    weakestTopic: '',
+    classroomId: classMetadata.classSectionId || '',
+    attendance: 0,
+    assignmentCompletion: 0,
+    lastActive: null,
+    struggles: [],
+    createdAt: account.createdAt ?? now,
+    updatedAt: now,
+    hasRegisteredAccount: true,
+    source: 'registered',
+  };
+}
+
+/**
+ * Fetch every student account this teacher should see in the dashboard.
+ *
+ * Strategy (everything OR'd together, deduped by uid):
+ *   1. `users where role == 'student' AND adviserTeacherId == teacherId`
+ *   2. `users where role == 'student' AND classSectionId in <classSectionIds>`
+ *      (chunked into groups of 30 to satisfy Firestore's `in` limit).
+ *
+ * This is the PRIMARY source for the teacher dashboard — every registered
+ * student account linked to this teacher appears here regardless of whether
+ * any import file has ever mentioned them.
+ *
+ * @param teacherId       Firebase UID of the requesting teacher.
+ * @param classSectionIds Section IDs the teacher owns / manages
+ *                        (from `getClassSectionOwnershipByTeacher` + `getClassroomsByTeacher`).
+ */
+export async function getAllRegisteredStudentsByTeacher(
+  teacherId: string,
+  classSectionIds: string[] = []
+): Promise<RegisteredStudentAccount[]> {
+  if (!teacherId) return [];
+
+  const usersRef = collection(db, 'users');
+  const deduped = new Map<string, RegisteredStudentAccount>();
+
+  const ingest = (uid: string, data: Record<string, unknown>) => {
+    if (!uid) return;
+    if (deduped.has(uid)) return;
+    if (data.role !== 'student') return;
+
+    const account: RegisteredStudentAccount = {
+      uid,
+      name: String(data.name || data.displayName || data.email || '').trim() || 'Student',
+      email: String(data.email || '').trim(),
+      lrn: data.lrn ? String(data.lrn).trim() || undefined : undefined,
+      photo: data.photo
+        ? String(data.photo).trim() || undefined
+        : data.photoURL
+          ? String(data.photoURL).trim() || undefined
+          : undefined,
+      grade: data.grade ? String(data.grade).trim() || undefined : undefined,
+      section: data.section ? String(data.section).trim() || undefined : undefined,
+      classSectionId: data.classSectionId ? String(data.classSectionId).trim() || undefined : undefined,
+      adviserTeacherId: data.adviserTeacherId ? String(data.adviserTeacherId).trim() || undefined : undefined,
+      role: 'student',
+      createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined,
+    };
+    deduped.set(uid, account);
+  };
+
+  // Query 1 — students adviced by this teacher.
+  try {
+    const adviserQuery = query(
+      usersRef,
+      where('role', '==', 'student'),
+      where('adviserTeacherId', '==', teacherId)
+    );
+    const adviserSnapshot = await getDocs(adviserQuery);
+    adviserSnapshot.docs.forEach((entry) => ingest(entry.id, entry.data()));
+  } catch (error) {
+    console.warn('[studentService] getAllRegisteredStudentsByTeacher (adviserTeacherId) failed:', error);
+  }
+
+  // Query 2 — students whose classSectionId is one this teacher owns/manages.
+  // Firestore `in` queries support up to 30 values per query.
+  const uniqueSectionIds = Array.from(
+    new Set(
+      classSectionIds
+        .map((id) => (id || '').trim())
+        .filter((id) => id.length > 0)
+    )
+  );
+  for (let index = 0; index < uniqueSectionIds.length; index += 30) {
+    const chunk = uniqueSectionIds.slice(index, index + 30);
+    if (chunk.length === 0) continue;
+    try {
+      const sectionQuery = query(
+        usersRef,
+        where('role', '==', 'student'),
+        where('classSectionId', 'in', chunk)
+      );
+      const sectionSnapshot = await getDocs(sectionQuery);
+      sectionSnapshot.docs.forEach((entry) => ingest(entry.id, entry.data()));
+    } catch (error) {
+      console.warn(
+        '[studentService] getAllRegisteredStudentsByTeacher (classSectionId in) failed for chunk:',
+        chunk,
+        error
+      );
+    }
+  }
+
+  return Array.from(deduped.values()).sort((a, b) =>
+    String(a.name || '').localeCompare(String(b.name || ''))
+  );
+}
+
+/**
+ * Identify roster (import-pipeline) students who do NOT yet have a registered
+ * Firebase account, returning them tagged with `hasRegisteredAccount: false`.
+ *
+ * Match keys (in priority order):
+ *   1. LRN — strongest match when both records have one.
+ *   2. Document id == registered uid — covers the "managed doc keyed by uid" case.
+ *   3. Normalized name + classSectionId — fallback for legacy imports.
+ *
+ * Returned entries are intended for direct rendering in the dashboard with a
+ * "Create Account" CTA.
+ */
+export function markRosterStudentsWithoutAccounts(
+  rosterStudents: ManagedStudent[],
+  registeredStudents: RegisteredStudentAccount[]
+): ManagedStudent[] {
+  if (rosterStudents.length === 0) return [];
+
+  const byLrn = new Map<string, RegisteredStudentAccount>();
+  const byUid = new Map<string, RegisteredStudentAccount>();
+  const byNameSection = new Map<string, RegisteredStudentAccount>();
+  registeredStudents.forEach((account) => {
+    if (account.uid) byUid.set(account.uid, account);
+    if (account.lrn) {
+      const key = account.lrn.trim().toLowerCase();
+      if (key) byLrn.set(key, account);
+    }
+    const nameKey = normalizeName(account.name);
+    const sectionKey = (account.classSectionId || '').trim().toLowerCase();
+    if (nameKey) {
+      // Index both with-section and bare-name variants so we can match either.
+      if (sectionKey) byNameSection.set(`${nameKey}|${sectionKey}`, account);
+      byNameSection.set(nameKey, account);
+    }
+  });
+
+  return rosterStudents
+    .filter((roster) => {
+      const lrnKey = (roster.lrn || '').trim().toLowerCase();
+      if (lrnKey && byLrn.has(lrnKey)) return false;
+      if (roster.id && byUid.has(roster.id)) return false;
+      const nameKey = normalizeName(roster.name);
+      const sectionKey = (roster.classSectionId || roster.classroomId || '').trim().toLowerCase();
+      if (nameKey && sectionKey && byNameSection.has(`${nameKey}|${sectionKey}`)) return false;
+      if (nameKey && byNameSection.has(nameKey)) return false;
+      return true;
+    })
+    .map((roster) => ({
+      ...roster,
+      hasRegisteredAccount: false,
+      source: 'import' as ManagedStudentSource,
+    }));
+}
+
+/**
+ * Create a Firebase Auth account + `users/{uid}` doc for a roster-only student
+ * who currently exists only in an import file.
+ *
+ * Implementation contract:
+ * - Calls `POST /api/teacher/create-student-account` (FastAPI + Admin SDK).
+ *   Frontend SDK cannot create users for other emails, so this MUST go through
+ *   the backend.
+ * - Backend writes `users/{uid}` with `role: "student"` and merges the section
+ *   metadata.
+ * - This helper additionally writes a `managedStudents/{uid}` linking doc so
+ *   teacher-side analytics enrichment continues to work.
+ * - The temporary password is returned ONCE so the modal can show it to the
+ *   teacher; it is never persisted in Firestore.
+ */
+export async function createStudentAccountFromRoster(
+  input: CreateStudentFromRosterInput
+): Promise<CreateStudentFromRosterResult> {
+  if (!input.name?.trim()) {
+    throw new Error('Student name is required.');
+  }
+  if (!input.email?.trim()) {
+    throw new Error('Student email is required.');
+  }
+  if (!input.temporaryPassword || input.temporaryPassword.length < 8) {
+    throw new Error('Temporary password must be at least 8 characters.');
+  }
+  if (!input.adviserTeacherId?.trim()) {
+    throw new Error('Adviser teacher id is required.');
+  }
+
+  const grade = (input.grade || '').trim();
+  const section = (input.section || '').trim();
+  const classSectionId =
+    (input.classSectionId || '').trim()
+    || (grade && section ? buildClassSectionId(grade, section) : '');
+
+  // Lazy import to avoid a hard cycle (apiService imports from various places).
+  const { apiService } = await import('./apiService');
+  const response = await apiService.createStudentAccount({
+    name: input.name.trim(),
+    email: input.email.trim().toLowerCase(),
+    temporary_password: input.temporaryPassword,
+    lrn: input.lrn?.trim() || null,
+    grade: grade || null,
+    section: section || null,
+    class_section_id: classSectionId || null,
+    adviser_teacher_id: input.adviserTeacherId.trim(),
+    school_year: input.schoolYear?.trim() || null,
+  });
+
+  const uid = (response.uid || '').trim();
+  if (!uid) {
+    throw new Error('Backend did not return a uid for the newly created student.');
+  }
+
+  // Persist a managedStudents linking doc so the teacher's enrichment pipeline
+  // continues to surface this student (this write IS allowed for teachers).
+  try {
+    const className = grade && section ? `${grade} - ${section}` : '';
+    const classMetadata = buildClassSectionMetadata({
+      classSectionId,
+      className,
+      grade,
+      section,
+      schoolYear: input.schoolYear || null,
+      adviserTeacherId: input.adviserTeacherId,
+      adviserTeacherName: input.adviserTeacherName || null,
+    });
+
+    await setDoc(
+      doc(db, 'managedStudents', uid),
+      withoutUndefined({
+        accountUid: uid,
+        name: input.name.trim(),
+        email: input.email.trim().toLowerCase(),
+        lrn: input.lrn?.trim() || undefined,
+        teacherId: input.adviserTeacherId,
+        grade: grade || undefined,
+        section: section || undefined,
+        classSectionId: classSectionId || undefined,
+        className: className || undefined,
+        classMetadata,
+        riskLevel: 'Low',
+        engagementScore: 0,
+        avgQuizScore: 0,
+        attendance: 0,
+        assignmentCompletion: 0,
+        weakestTopic: '',
+        classroomId: classSectionId || '',
+        struggles: [],
+        hasRegisteredAccount: true,
+        source: 'both',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+  } catch (error) {
+    // Non-fatal: the auth user already exists. Log and continue so the teacher
+    // still gets the credentials. The next dashboard refresh will pick up the
+    // user via getAllRegisteredStudentsByTeacher().
+    console.warn('[studentService] createStudentAccountFromRoster: managedStudents linking write failed:', error);
+  }
+
+  // Also link the section ownership so this student counts toward the teacher's section.
+  if (classSectionId) {
+    try {
+      await upsertClassSectionOwnership({
+        classSectionId,
+        grade,
+        section,
+        schoolYear: input.schoolYear || '',
+        ownerTeacherId: input.adviserTeacherId,
+        ownerTeacherName: input.adviserTeacherName,
+        studentUids: [uid],
+      });
+    } catch (error) {
+      console.warn('[studentService] createStudentAccountFromRoster: section ownership upsert failed:', error);
+    }
+  }
+
+  return { uid, temporaryPassword: input.temporaryPassword };
+}
+
+/**
+ * Move a student between sections, updating every relevant Firestore record:
+ *
+ *  - `managedStudents/{studentId}`        → grade, section, classSectionId
+ *  - `users/{studentId}` (registered only) → grade, section, classSectionId, adviserTeacherId
+ *  - `classSectionOwnership/{newClassSectionId}` → arrayUnion(studentId)
+ *  - `classSectionOwnership/{previousClassSectionId}` → arrayRemove(studentId)
+ *
+ * The `users/{uid}` write may be rejected by Firestore rules in environments
+ * where teachers cannot directly mutate other users — it is wrapped so that
+ * the rest of the operation still succeeds. For environments that restrict
+ * teacher writes to users, route this through a backend endpoint.
+ */
+export async function reassignStudentSection(input: ReassignStudentSectionInput): Promise<void> {
+  if (!input.studentId) throw new Error('studentId is required.');
+  if (!input.newClassSectionId) throw new Error('newClassSectionId is required.');
+  if (!input.teacherId) throw new Error('teacherId is required.');
+
+  const newGrade = (input.newGrade || '').trim();
+  const newSection = (input.newSection || '').trim();
+  const newClassSectionId =
+    (input.newClassSectionId || '').trim()
+    || (newGrade && newSection ? buildClassSectionId(newGrade, newSection) : '');
+  if (!newClassSectionId) {
+    throw new Error('Unable to compute new classSectionId.');
+  }
+
+  const className = newGrade && newSection ? `${newGrade} - ${newSection}` : '';
+  const classMetadata = buildClassSectionMetadata({
+    classSectionId: newClassSectionId,
+    className,
+    grade: newGrade,
+    section: newSection,
+    schoolYear: input.schoolYear,
+    adviserTeacherId: input.teacherId,
+    adviserTeacherName: input.teacherName,
+    ownerTeacherId: input.teacherId,
+    ownerTeacherName: input.teacherName,
+  });
+
+  // 1. managedStudents doc — always (this is the safe, teacher-writable record).
+  try {
+    await setDoc(
+      doc(db, 'managedStudents', input.studentId),
+      withoutUndefined({
+        grade: newGrade || undefined,
+        section: newSection || undefined,
+        classSectionId: newClassSectionId,
+        className: className || undefined,
+        classroomId: newClassSectionId,
+        classMetadata,
+        teacherId: input.teacherId,
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+  } catch (error) {
+    console.warn('[studentService] reassignStudentSection: managedStudents update failed:', error);
+  }
+
+  // 2. users doc — only for registered accounts.
+  if (input.isRegisteredAccount) {
+    try {
+      await setDoc(
+        doc(db, 'users', input.studentId),
+        withoutUndefined({
+          grade: newGrade || undefined,
+          section: newSection || undefined,
+          classSectionId: newClassSectionId,
+          adviserTeacherId: input.teacherId,
+          adviserTeacherName: input.teacherName || '',
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      );
+    } catch (error) {
+      console.warn(
+        '[studentService] reassignStudentSection: users doc update failed (this is expected when Firestore rules restrict teacher writes to user docs — route via backend if needed):',
+        error
+      );
+    }
+  }
+
+  // 3. New section ownership — arrayUnion the studentId.
+  try {
+    await upsertClassSectionOwnership({
+      classSectionId: newClassSectionId,
+      grade: newGrade,
+      section: newSection,
+      schoolYear: input.schoolYear || '',
+      ownerTeacherId: input.teacherId,
+      ownerTeacherName: input.teacherName,
+      studentUids: [input.studentId],
+    });
+  } catch (error) {
+    console.warn('[studentService] reassignStudentSection: new section ownership upsert failed:', error);
+  }
+
+  // 4. Old section ownership — arrayRemove the studentId.
+  const previousId = (input.previousClassSectionId || '').trim();
+  if (previousId && previousId !== newClassSectionId) {
+    try {
+      const previousRef = doc(db, 'classSectionOwnership', previousId);
+      const previous = await getDoc(previousRef);
+      if (previous.exists()) {
+        await updateDoc(previousRef, {
+          studentUids: arrayRemove(input.studentId),
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.warn('[studentService] reassignStudentSection: old section arrayRemove failed:', error);
+    }
+  }
+
+  // Touch the new section's studentUids via arrayUnion explicitly in case
+  // upsertClassSectionOwnership merged in a way that lost atomicity.
+  try {
+    const nextRef = doc(db, 'classSectionOwnership', newClassSectionId);
+    await updateDoc(nextRef, {
+      studentUids: arrayUnion(input.studentId),
+      updatedAt: serverTimestamp(),
+    });
+  } catch {
+    // upsertClassSectionOwnership above already set the array. Ignore.
+  }
 }
 
 // ============================================================================
