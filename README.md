@@ -4,6 +4,8 @@
 
 ### AI-Powered Math Education Platform
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-MathPulse%20AI-FF6B6B?logo=huggingface&logoColor=white)](https://huggingface.co/spaces/Deign86/MathPulse-AI)
+
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Firebase](https://img.shields.io/badge/Firebase-12-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
