@@ -11,9 +11,11 @@
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
 [![DeepSeek](https://img.shields.io/badge/DeepSeek-API-171PA1?logo=robot&logoColor=white)](https://deepseek.com)
+[![GitNexus](https://img.shields.io/badge/GitNexus-Analyzed-8A2BE2?logo=git&logoColor=white)](https://github.com/waybarrios/gitnexus)
+[![Graphify](https://img.shields.io/badge/Graphify-Mapped-00C853?logo=graphviz&logoColor=white)](https://github.com/waybarrios/graphify)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An interactive, gamified math learning platform featuring AI-powered tutoring via DeepSeek, role-based dashboards, and personalized learning paths for students, teachers, and administrators.
+An interactive, gamified math learning platform featuring AI-powered tutoring via DeepSeek, role-based dashboards, and personalized learning paths for students, teachers, and administrators. The project spans **573 source files** across a React + TypeScript frontend, FastAPI Python backend, and Firebase Cloud Functions — mapped as a knowledge graph of **16,882 code symbols** with **26,955 relationships** organized into **580 functional communities** and **300 execution flow chains**.
 
 [Features](#-features) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Architecture](#-architecture) · [API Reference](#-api-reference) · [Contributing](#-contributing)
 
@@ -212,6 +214,22 @@ npm run check:backend:quick
 
 ## 🏗 Architecture
 
+### Codebase Scale
+
+The project has been mapped as a full knowledge graph using **GitNexus** — spanning 573 source files, 16,882 code symbols, and 26,955 relationships. The graph analysis identified **580 functional communities** (high-cohesion clusters) and **300 execution flow chains** that trace call patterns from UI to backend to infrastructure.
+
+| Metric | Value |
+|---|---|
+| Source files | 573 |
+| Code symbols | 16,882 |
+| Symbol relationships | 26,955 |
+| Functional communities | 580 |
+| Execution flow chains | 300 |
+
+**Largest functional communities by symbol count:** Radix UI primitives + shadcn/ui components (131 symbols, 0.71 cohesion), Cloud Function triggers (118, 0.98), Backend services (54, 0.65), Frontend page components (51, 0.58), SHS Excel parser pipeline (48, 0.96), Automation engine (25, 0.86), RAG pipeline (22, 0.84).
+
+**Execution flow depth** — the deepest call chains (7–8 steps) span frontend components → API service layer → backend routes → AI inference → Firestore, confirming a clean service-oriented architecture. Notable flows: `ModulesPage → FetchWithTimeout → IsRetryableStatus → ApiError` (8 steps, cross-community), `SendMessage → NormalizeEscapedThinkTags → FindLastMatchEnd` (7 steps, AI chat), `Generate_diagnostic → _resolve_vectorstore_dir → Get_deepseek_client` (6 steps, RAG-enhanced diagnostic).
+
 ### DeepSeek AI Integration
 
 The backend was migrated from HuggingFace Inference API to DeepSeek API. Key changes:
@@ -252,13 +270,21 @@ POST /api/tasks/{task_id}/cancel
 
 Enable via `ENABLE_ASYNC_GENERATION=true`, `ASYNC_TASK_TTL_SECONDS=3600`.
 
-### Pre-Deployment Validation
+### Codebase Health & Quality
 
-`backend/pre_deploy_check.py` and `backend/startup_validation.py` run at startup and during CI to validate:
+**Type Safety** — TypeScript 5.9 strict mode across all frontend code, with Zod 4 validation schemas and discriminated union role types (`StudentRole`, `TeacherRole`, `AdminRole`).
+
+**Test Coverage** — Frontend uses Vitest with testing library patterns across key components (ModulesPage, ChatMarkdown, PracticeCenter, notification workflows). Backend has 20+ test files covering API routes, services, RAG pipeline, risk classification, and email templates. Cloud Functions include integration tests for automation triggers and quiz battle flows.
+
+**Linting & Formatting** — ESLint 8 with TypeScript-aware rules, Prettier 3 for consistent formatting. Pre-commit hooks via `predev` script.
+
+**Pre-Deployment Validation** — `backend/pre_deploy_check.py` and `backend/startup_validation.py` gate every deployment:
 - File structure and import integrity
 - Environment variables (`DEEPSEEK_API_KEY`, model IDs)
 - Configuration file parsing
 - InferenceClient initialization
+
+**CI/CD** — GitHub Actions workflow deploys to Hugging Face Spaces on push to `main`, with pre-deploy validation scripts and `.env.production` injection. Docker Compose provides full-stack local orchestration.
 
 ### Chat Reliability Features
 
@@ -279,35 +305,49 @@ Enable via `ENABLE_ASYNC_GENERATION=true`, `ASYNC_TASK_TTL_SECONDS=3600`.
 ### Directory Structure
 ```
 MATHPULSE-AI/
-├── config/                     # Shared model/inference configuration
+├── config/                     # Shared model/inference configuration (cohesion: 0.89)
 │   ├── env.sample
 │   └── models.yaml
 ├── src/
-│   ├── components/              # Student/teacher/admin UI, quiz + lesson workflows
-│   ├── contexts/                # AuthContext, ChatContext
+│   ├── components/              # 51 page-level UI components (cohesion: 0.58)
+│   ├── components/ui/          # 48 Radix UI + shadcn primitives (cohesion: 0.71)
+│   ├── contexts/               # AuthContext, ChatContext
 │   ├── features/
-│   │   └── notifications/      # NotificationBell, NotificationPanel, useDailyCheckInReminder
-│   ├── services/                # Firebase + FastAPI service layer, daily check-in service
-│   ├── data/                    # Subject/module curriculum data
-│   ├── types/                   # Shared frontend models
+│   │   └── notifications/      # NotificationBell, NotificationPanel, service layer
+│   ├── services/                # 40+ Firebase + FastAPI service modules
+│   ├── data/                    # Curriculum data, subjects, diagnostic policies (cohesion: 0.89)
+│   ├── types/                   # Shared frontend models (discriminated union role types)
 │   ├── styles/                  # Styling system and globals
+│   ├── hooks/                   # 13 custom hooks (cohesion: 0.88)
 │   ├── utils/                   # Math rendering, scope detection, streaming utils
 │   ├── App.tsx
 │   └── main.tsx
 ├── backend/
-│   ├── services/               # DeepSeek inference client, email, logging, caching
-│   ├── tests/                   # Backend API regression tests
+│   ├── routes/                  # 64 API routes across 15+ route modules
+│   ├── rag/                     # Chroma vector store, curriculum retrieval, PDF ingestion (cohesion: 0.84)
+│   ├── services/                # DeepSeek inference, analytics, intervention engine (cohesion: 0.65)
+│   ├── tests/                   # 20+ test files
 │   ├── config/                  # Backend-local model/env mirrors
+│   ├── middleware/              # Rate limiter
 │   ├── analytics.py             # Risk, competency, recommendation engines
 │   ├── automation_engine.py     # Event-driven automation workflows
 │   ├── main.py                  # FastAPI API surface
 │   ├── startup_validation.py    # Startup guardrail checks
 │   └── pre_deploy_check.py      # Deployment safety checks
 ├── functions/
-│   └── src/                     # Firebase Cloud Functions (TypeScript)
+│   └── src/                     # 118-symbol Cloud Function module (cohesion: 0.98)
+│       ├── automations/         # Diagnostic processing, risk analysis, quiz scoring
+│       ├── triggers/            # Firestore lifecycle triggers + quiz battle API
+│       ├── notifications/       # FCM push notification pipelines
+│       ├── scoring/             # XP scoring engine
+│       ├── services/            # Backend API client, runtime cache
+│       └── utils/               # Rate limiting, push utilities, sanitization
 ├── jobs/                        # Offline eval + synthetic generation jobs
 ├── datasets/                    # Evaluation + metadata datasets
+│   └── vectorstore/             # Chroma DB with BAAI/bge-small-en-v1.5 embeddings
 ├── scripts/                     # Utility scripts (backend gate, seed users, model sync)
+├── services/                    # Shared Python services (email, inference, provisioning)
+├── features/import/             # SHS Excel parser pipeline (48 symbols, cohesion: 0.96)
 ├── docker-compose.yml
 ├── Dockerfile
 ├── nginx.conf
@@ -343,7 +383,27 @@ chatMessages/       → Chat message history (user/assistant/system roles)
 
 ## 📡 API Reference
 
-The FastAPI backend exposes the following endpoints:
+The FastAPI backend exposes **64 routes** across 15+ route modules:
+
+| Route Module | Routes | Domain |
+|---|---|---|
+| `rag_routes.py` | 8 | RAG lesson generation, health, document management |
+| `class_analytics_routes.py` | 6 | Class analytics, student views, topic performance |
+| `class_records_router.py` | 6 | SHS class record upload, AI-powered column detection, reports |
+| `pipeline_routes.py` | 5 | Student intelligence pipeline, nudges, profile recompute |
+| `admin_routes.py` | 4 | Admin PDF upload/reingest, school analytics |
+| `intervention_routes.py` | 3 | Student intervention plans, stepped guides, PDF export |
+| `deepseek_rag_routes.py` | 3 | Weakness detection, module previews, study tips |
+| `quiz_battle.py` | 3 | Quiz battle PDF ingestion, bank status, results |
+| `practice.py` | 3 | Practice session generation, submission, stats, history |
+| `diagnostic.py` | 1 | Full diagnostic + RAG analysis |
+| `risk_router.py` | 2 | Risk computation (single + batch) |
+| `quiz_generation_routes.py` | 1 | AI quiz generation |
+| `ai_monitoring.py` | 2 | DeepSeek monitoring + cost tracking |
+
+Served from a single FastAPI `app` instance with CORS middleware, rate limiting, and startup validation. Interactive docs at `/docs` (Swagger UI) or `/redoc`.
+
+### Endpoint Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
