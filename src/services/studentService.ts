@@ -136,7 +136,6 @@ export interface ReassignStudentSectionInput {
   schoolYear: string;
   previousClassSectionId?: string;
 }
-}
 
 export interface Classroom {
   id: string;
