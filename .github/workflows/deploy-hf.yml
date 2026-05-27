@@ -370,6 +370,7 @@ jobs:
             'colorFrom: blue' \
             'colorTo: purple' \
             'sdk: static' \
+            'app_file: index.html' \
             'pinned: false' \
             '---' > hf-frontend/README.md
 
@@ -381,6 +382,7 @@ jobs:
           grep -q '^colorFrom: blue$' hf-frontend/README.md
           grep -q '^colorTo: purple$' hf-frontend/README.md
           grep -q '^sdk: static$' hf-frontend/README.md
+          grep -q '^app_file: index.html$' hf-frontend/README.md
           grep -q '^pinned: false$' hf-frontend/README.md
           echo "README.md Space metadata validation passed"
           
