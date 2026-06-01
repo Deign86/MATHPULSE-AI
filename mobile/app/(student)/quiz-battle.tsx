@@ -5,11 +5,13 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Pressable,
+  useColorScheme,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Text } from '../../components/ui/Text';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
+import { MathText } from '../../components/MathText';
 import { useAuthStore } from '../../stores/useAuthStore';
 import {
   useQuizBattleStore,
@@ -47,6 +49,9 @@ export default function QuizBattleScreen() {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(3);
+
+  const colorScheme = useColorScheme();
+  const mathColorScheme: 'light' | 'dark' = colorScheme === 'dark' ? 'dark' : 'light';
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -379,9 +384,11 @@ export default function QuizBattleScreen() {
           {/* Question */}
           <Card className="mb-4">
             <CardContent>
-              <Text variant="h4" className="mb-4">
-                {currentQuestion.question}
-              </Text>
+              <MathText
+                content={currentQuestion.question}
+                colorScheme={mathColorScheme}
+                className="mb-4"
+              />
               <Text variant="caption" className="text-muted-foreground mb-2">
                 Select your answer:
               </Text>
@@ -405,18 +412,19 @@ export default function QuizBattleScreen() {
                   accessibilityLabel={`Option ${String.fromCharCode(65 + idx)}: ${option}`}
                   accessibilityState={{ selected: isSelected }}
                 >
-                  <Text
-                    variant="body"
-                    className={isSelected ? 'text-primary' : 'text-surface-foreground'}
-                  >
+                  <View className="flex-row">
                     <Text
                       variant="body"
                       className={isSelected ? 'text-primary font-bold' : 'text-muted-foreground font-bold'}
                     >
                       {String.fromCharCode(65 + idx)}.{' '}
                     </Text>
-                    {option}
-                  </Text>
+                    <MathText
+                      content={option}
+                      colorScheme={mathColorScheme}
+                      className="flex-1"
+                    />
+                  </View>
                 </Pressable>
               );
             })}

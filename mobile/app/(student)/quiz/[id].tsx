@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, ScrollView, TouchableOpacity, ActivityIndicator, } from 'react-native';
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, useColorScheme } from 'react-native';
 import { Text } from '../../../components/ui/Text';
 import { Button } from '../../../components/ui/Button';
+import { MathText } from '../../../components/MathText';
 import { useLocalSearchParams, router } from 'expo-router';
 import { auth } from '../../../lib/firebase';
 import { useAuthStore } from '../../../stores/useAuthStore';
@@ -31,6 +32,9 @@ export default function QuizDetailScreen() {
   const [score, setScore] = useState(0);
   const [xpEarned, setXpEarned] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const colorScheme = useColorScheme();
+  const mathColorScheme: 'light' | 'dark' = colorScheme === 'dark' ? 'dark' : 'light';
 
   useEffect(() => {
     if (!id) return;
@@ -161,9 +165,11 @@ export default function QuizDetailScreen() {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
         <View className="bg-surface rounded-2xl p-5 mb-6">
-          <Text variant="h3" className="text-foreground mb-1">
-            {currentQuestion?.question ?? 'Loading question...'}
-          </Text>
+          <MathText
+            content={currentQuestion?.question ?? 'Loading question...'}
+            colorScheme={mathColorScheme}
+            className="mb-1"
+          />
           {currentQuestion?.points > 0 && (
             <Text className="text-primary text-xs mt-2">
               {currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''}
@@ -186,9 +192,11 @@ export default function QuizDetailScreen() {
                   >
                     {isSelected && <View className="w-2.5 h-2.5 rounded-full bg-primary-foreground" />}
                   </View>
-                  <Text className={`text-sm flex-1 ${isSelected ? 'text-foreground font-medium' : 'text-foreground'}`}>
-                    {option}
-                  </Text>
+                  <MathText
+                    content={option}
+                    colorScheme={mathColorScheme}
+                    className={`text-sm flex-1 ${isSelected ? 'text-foreground font-medium' : 'text-foreground'}`}
+                  />
                 </View>
               </TouchableOpacity>
             );

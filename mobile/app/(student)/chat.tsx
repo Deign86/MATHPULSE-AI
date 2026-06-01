@@ -8,9 +8,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  useColorScheme,
 } from "react-native";
 import { Text } from "../../components/ui/Text";
 import { Button } from "../../components/ui/Button";
+import { MathText } from "../../components/MathText";
 import { router } from "expo-router";
 import { useChatStore } from "../../stores/useChatStore";
 import type { ChatSession, ChatMessage } from "../../types/models";
@@ -35,6 +37,9 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+
+  const colorScheme = useColorScheme();
+  const mathColorScheme: 'light' | 'dark' = colorScheme === 'dark' ? 'dark' : 'light';
 
   // Subscribe to user sessions on mount for live updates
   useEffect(() => {
@@ -212,15 +217,15 @@ export default function ChatScreen() {
                   : "bg-surface rounded-2xl rounded-tl-sm self-start"
               }`}
             >
-              <Text
+              <MathText
+                content={item.content}
+                colorScheme={mathColorScheme}
                 className={
                   item.role === "user"
                     ? "text-primary-foreground text-sm"
                     : "text-foreground text-sm"
                 }
-              >
-                {item.content}
-              </Text>
+              />
             </View>
           )}
         />
