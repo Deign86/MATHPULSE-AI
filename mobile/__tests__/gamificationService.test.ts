@@ -4,11 +4,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Shared mock references ─────────────────────────────────────────────────
 
-const mockGetDoc = vi.fn();
-const mockGetDocs = vi.fn();
-const mockSetDoc = vi.fn();
-const mockUpdateDoc = vi.fn();
-const mockRunTransaction = vi.fn();
+const { mockGetDoc, mockGetDocs, mockSetDoc, mockUpdateDoc, mockRunTransaction } = vi.hoisted(() => ({
+  mockGetDoc: vi.fn(),
+  mockGetDocs: vi.fn(),
+  mockSetDoc: vi.fn(),
+  mockUpdateDoc: vi.fn(),
+  mockRunTransaction: vi.fn(),
+}));
 
 vi.mock('../lib/firebase', () => ({
   db: {},

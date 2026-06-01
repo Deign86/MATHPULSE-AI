@@ -2,49 +2,21 @@
 // Test stub for tutorMemoryService — verifies all 6 public functions
 // and that paths follow users/{uid}/tutorMemory/{profile,sessions,working}
 
-declare function describe(name: string, fn: () => void): void;
-declare function it(name: string, fn: () => void): void;
-declare function beforeEach(fn: () => void): void;
-declare function expect<T>(actual: T): {
-  toBe(expected: unknown): void;
-  toEqual(expected: unknown): void;
-  toHaveLength(expected: number): void;
-  toHaveBeenCalled(): void;
-  toHaveBeenCalledWith(...args: unknown[]): void;
-  toBeNull(): void;
-  toBeDefined(): void;
-  toBeInstanceOf(expected: unknown): void;
-  toContain(expected: unknown): void;
-};
-declare const jest: {
-  fn<T extends (...args: unknown[]) => unknown = (...args: unknown[]) => unknown>(
-    impl?: (...args: Parameters<T>) => ReturnType<T>,
-  ): jest.Mock<T>;
-  clearAllMocks(): void;
-  mock(moduleName: string, factory?: () => Record<string, unknown>): void;
-};
-declare namespace jest {
-  interface Mock<T extends (...args: unknown[]) => unknown = (...args: unknown[]) => unknown> {
-    (...args: Parameters<T>): ReturnType<T>;
-    mock: { calls: unknown[][] };
-    mockImplementation(fn: (...args: unknown[]) => unknown): this;
-    mockResolvedValue(val: unknown): this;
-    mockReturnValue(val: unknown): this;
-  }
-}
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockGetDoc = jest.fn();
-const mockSetDoc = jest.fn(() => Promise.resolve());
-const mockServerTimestamp = jest.fn(() => 'ts-sentinel');
+const { mockGetDoc, mockSetDoc, mockServerTimestamp } = vi.hoisted(() => ({
+  mockGetDoc: vi.fn(),
+  mockSetDoc: vi.fn(() => Promise.resolve()),
+  mockServerTimestamp: vi.fn(() => 'ts-sentinel'),
+}));
 
-// jest.mock is hoisted to top of file by babel-jest — must be called at scope root
-jest.mock('../lib/firebase', () => ({
+vi.mock('../lib/firebase', () => ({
   auth: { currentUser: { uid: 'test-uid' } },
   db: {},
-  doc: jest.fn(),
+  doc: vi.fn(),
   getDoc: mockGetDoc,
   setDoc: mockSetDoc,
-  collection: jest.fn(),
+  collection: vi.fn(),
   firestoreServerTimestamp: mockServerTimestamp,
 }));
 
@@ -57,11 +29,11 @@ import {
   buildFollowUpContext,
 } from '../services/tutorMemoryService';
 
-// ── loadTutorProfile ──────────────────────────────────────────
+// ── loadTutorProfile ────────────────────────────────────────────────────────
 
 describe('loadTutorProfile', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('reads from users/{uid}/tutorMemory/profile', async () => {
@@ -97,11 +69,11 @@ describe('loadTutorProfile', () => {
   });
 });
 
-// ── saveTutorProfile ──────────────────────────────────────────
+// ── saveTutorProfile ────────────────────────────────────────────────────────
 
 describe('saveTutorProfile', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('writes to users/{uid}/tutorMemory/profile with serverTimestamp', async () => {
@@ -114,7 +86,7 @@ describe('saveTutorProfile', () => {
     });
 
     expect(mockSetDoc).toHaveBeenCalled();
-    const callArgs = mockSetDoc.mock.calls[0];
+    const callArgs = (mockSetDoc as unknown as { mock: { calls: unknown[][] } }).mock.calls[0];
     const payload = callArgs[1] as Record<string, unknown>;
     expect(payload.subjects).toEqual(['Functions', 'Logic']);
     expect(payload.learningStyle).toBe('step_by_step');
@@ -122,11 +94,11 @@ describe('saveTutorProfile', () => {
   });
 });
 
-// ── appendTutorSession ────────────────────────────────────────
+// ── appendTutorSession ──────────────────────────────────────────────────────
 
 describe('appendTutorSession', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('writes to users/{uid}/tutorMemory/sessions/{sessionId} with serverTimestamp', async () => {
@@ -139,7 +111,7 @@ describe('appendTutorSession', () => {
     });
 
     expect(mockSetDoc).toHaveBeenCalled();
-    const callArgs = mockSetDoc.mock.calls[0];
+    const callArgs = (mockSetDoc as unknown as { mock: { calls: unknown[][] } }).mock.calls[0];
     const payload = callArgs[1] as Record<string, unknown>;
     expect(payload.title).toBe('Functions Review');
     expect(payload.topics).toEqual(['Functions', 'Domain']);
@@ -149,11 +121,11 @@ describe('appendTutorSession', () => {
   });
 });
 
-// ── getTutorWorkingMemory ─────────────────────────────────────
+// ── getTutorWorkingMemory ──────────────────────────────────────────────────
 
 describe('getTutorWorkingMemory', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('reads from users/{uid}/tutorMemory/working', async () => {
@@ -187,11 +159,11 @@ describe('getTutorWorkingMemory', () => {
   });
 });
 
-// ── setTutorWorkingMemory ─────────────────────────────────────
+// ── setTutorWorkingMemory ──────────────────────────────────────────────────
 
 describe('setTutorWorkingMemory', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('writes to users/{uid}/tutorMemory/working with serverTimestamp', async () => {
@@ -202,7 +174,7 @@ describe('setTutorWorkingMemory', () => {
     });
 
     expect(mockSetDoc).toHaveBeenCalled();
-    const callArgs = mockSetDoc.mock.calls[0];
+    const callArgs = (mockSetDoc as unknown as { mock: { calls: unknown[][] } }).mock.calls[0];
     const payload = callArgs[1] as Record<string, unknown>;
     expect(payload.recentTopics).toEqual(['Functions']);
     expect(payload.reviewQueue).toEqual(['CompositeFunctions', 'Domain']);
@@ -211,7 +183,7 @@ describe('setTutorWorkingMemory', () => {
   });
 });
 
-// ── buildFollowUpContext ──────────────────────────────────────
+// ── buildFollowUpContext ──────────────────────────────────────────────────
 
 describe('buildFollowUpContext', () => {
   it('returns a string containing the user ID', () => {
@@ -233,11 +205,9 @@ describe('buildFollowUpContext', () => {
 
     const ctx = buildFollowUpContext('user-1', msgs);
 
-    // Only user messages, not assistant
     expect(ctx).toContain('What is a function?');
     expect(ctx).toContain('Give me an example.');
     expect(ctx).toContain('How about domain?');
-    // Assistant messages are filtered out: 'A function maps' is absent
   });
 
   it('includes instruction text for AI follow-up behaviour', () => {

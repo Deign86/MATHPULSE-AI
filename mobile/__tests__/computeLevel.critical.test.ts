@@ -6,6 +6,28 @@
  *                   L7=2077, L8=3200, L9=4867, L10=7328
  */
 
+vi.mock('../lib/firebase', () => ({
+  db: {},
+  auth: { currentUser: { uid: 'test-uid' } },
+  doc: vi.fn(),
+  collection: vi.fn(),
+  firestoreQuery: vi.fn(),
+  where: vi.fn(),
+  orderBy: vi.fn(),
+  limit: vi.fn(),
+  getDoc: vi.fn(() => Promise.resolve({ exists: () => false, data: () => ({}) })),
+  getDocs: vi.fn(() => Promise.resolve({ docs: [] })),
+  setDoc: vi.fn(() => Promise.resolve()),
+  updateDoc: vi.fn(() => Promise.resolve()),
+  deleteDoc: vi.fn(() => Promise.resolve()),
+  runTransaction: vi.fn(),
+  writeBatch: vi.fn(),
+  firestoreServerTimestamp: vi.fn(() => new Date('2026-06-01T00:00:00Z')),
+  increment: (n: number) => ({ __inc: n }),
+  arrayUnion: (...items: unknown[]) => items,
+  onSnapshot: vi.fn(() => vi.fn()),
+}));
+
 import { computeLevel } from '../services/gamificationService';
 
 describe('computeLevel - critical formula', () => {
