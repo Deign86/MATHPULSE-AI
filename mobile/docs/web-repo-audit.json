@@ -1,0 +1,288 @@
+{
+  "root": "C:\\Users\\Deign\\Downloads\\MATHPULSE-AI",
+  "packageManager": "npm",
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite",
+    "dev:open": "vite --open",
+    "dev:debug:plugin-transform": "vite --debug plugin-transform",
+    "dev:debug:transform": "vite --debug transform",
+    "dev:debug:css-probe": "cross-env VITE_CSS_TIMING_PROBE=1 vite --debug transform",
+    "dev:profile": "vite --profile --open",
+    "build": "vite build",
+    "bones:build": "npx boneyard-js build",
+    "bones:capture": "npx boneyard-js capture",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write src/**/*.{ts,tsx}",
+    "typecheck": "tsc --noEmit",
+    "typecheck:backend": "node scripts/backend-gate.mjs typecheck",
+    "check:backend": "node scripts/backend-gate.mjs check",
+    "sync:models": "python scripts/sync_models_config.py",
+    "predev": "npm run sync:models ; npm run check:backend:dev",
+    "check:backend:quick": "node scripts/backend-gate.mjs quick",
+    "check:backend:dev": "node scripts/backend-gate.mjs dev"
+  },
+  "frameworks": [
+    "React",
+    "Vite"
+  ],
+  "dependencyMatches": {
+    "auth": [
+      "firebase"
+    ],
+    "api": [
+      "@tanstack/react-query"
+    ],
+    "state": [],
+    "forms": [
+      "react-hook-form",
+      "zod"
+    ],
+    "styling": [
+      "tailwindcss",
+      "class-variance-authority"
+    ],
+    "ui": [
+      "@radix-ui/react-dialog"
+    ],
+    "routing": [
+      "react-router-dom"
+    ],
+    "mobileCandidate": []
+  },
+  "dependencyNames": [
+    "@radix-ui/react-accordion",
+    "@radix-ui/react-alert-dialog",
+    "@radix-ui/react-aspect-ratio",
+    "@radix-ui/react-avatar",
+    "@radix-ui/react-checkbox",
+    "@radix-ui/react-collapsible",
+    "@radix-ui/react-context-menu",
+    "@radix-ui/react-dialog",
+    "@radix-ui/react-dropdown-menu",
+    "@radix-ui/react-hover-card",
+    "@radix-ui/react-label",
+    "@radix-ui/react-menubar",
+    "@radix-ui/react-navigation-menu",
+    "@radix-ui/react-popover",
+    "@radix-ui/react-progress",
+    "@radix-ui/react-radio-group",
+    "@radix-ui/react-scroll-area",
+    "@radix-ui/react-select",
+    "@radix-ui/react-separator",
+    "@radix-ui/react-slider",
+    "@radix-ui/react-slot",
+    "@radix-ui/react-switch",
+    "@radix-ui/react-tabs",
+    "@radix-ui/react-toggle",
+    "@radix-ui/react-toggle-group",
+    "@radix-ui/react-tooltip",
+    "@tailwindcss/typography",
+    "@tailwindcss/vite",
+    "@tanstack/react-query",
+    "@testing-library/dom",
+    "@testing-library/jest-dom",
+    "@testing-library/react",
+    "@types/canvas-confetti",
+    "@types/node",
+    "@types/react",
+    "@types/react-dom",
+    "@types/three",
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser",
+    "@vitejs/plugin-react-swc",
+    "boneyard-js",
+    "canvas-confetti",
+    "class-variance-authority",
+    "clsx",
+    "cmdk",
+    "cross-env",
+    "date-fns",
+    "embla-carousel-react",
+    "eslint",
+    "eslint-config-prettier",
+    "eslint-plugin-react",
+    "eslint-plugin-react-hooks",
+    "ffmpeg-static",
+    "firebase",
+    "html2canvas",
+    "input-otp",
+    "jsdom",
+    "jspdf",
+    "lucide-react",
+    "math-expression-evaluator",
+    "motion",
+    "next-themes",
+    "prettier",
+    "puppeteer",
+    "react",
+    "react-day-picker",
+    "react-dom",
+    "react-draggable",
+    "react-easy-crop",
+    "react-hook-form",
+    "react-markdown",
+    "react-resizable-panels",
+    "react-router-dom",
+    "react-virtuoso",
+    "recharts",
+    "rehype-katex",
+    "remark-math",
+    "sonner",
+    "tailwind-merge",
+    "tailwindcss",
+    "three",
+    "typescript",
+    "vaul",
+    "vite",
+    "vitest",
+    "xlsx",
+    "zod"
+  ],
+  "sourceFilesScanned": 120,
+  "inputClassification": "web-frontend",
+  "routes": [
+    {
+      "route": "/admin\\AIMonitoringPage",
+      "file": "src\\pages\\admin\\AIMonitoringPage.tsx",
+      "source": "file-system"
+    },
+    {
+      "route": "/AssessmentPage",
+      "file": "src\\pages\\AssessmentPage.tsx",
+      "source": "file-system"
+    },
+    {
+      "route": "/teacher\\AtRiskDashboard",
+      "file": "src\\pages\\teacher\\AtRiskDashboard.tsx",
+      "source": "file-system"
+    },
+    {
+      "route": "/mathpulse_final_logo.png",
+      "file": "index.html",
+      "source": "href-route"
+    }
+  ],
+  "routeConfidence": "detected-from-files",
+  "renderingModel": "client-spa-external-api",
+  "internalApiRoutes": [],
+  "serverSignals": [],
+  "browserApiUsage": {
+    "document": [
+      {
+        "file": "docs\\ai-quiz-maker.html",
+        "count": 59
+      },
+      {
+        "file": "docs\\calendar-notifications.html",
+        "count": 95
+      },
+      {
+        "file": "docs\\class-analytics-menu.html",
+        "count": 28
+      },
+      {
+        "file": "docs\\class-analytics-student-detail.html",
+        "count": 14
+      },
+      {
+        "file": "docs\\competency-ui.html",
+        "count": 74
+      },
+      {
+        "file": "docs\\data-import.html",
+        "count": 26
+      },
+      {
+        "file": "docs\\three-pages.html",
+        "count": 72
+      },
+      {
+        "file": "docs\\topic-mastery.html",
+        "count": 51
+      }
+    ],
+    "window": [
+      {
+        "file": "functions\\src\\config\\constants.ts",
+        "count": 1
+      },
+      {
+        "file": "functions\\src\\utils\\rateLimiter.ts",
+        "count": 3
+      },
+      {
+        "file": "public\\firebase-messaging-sw.js",
+        "count": 2
+      },
+      {
+        "file": "src\\App.tsx",
+        "count": 17
+      },
+      {
+        "file": "src\\components\\AIChatPage.tsx",
+        "count": 2
+      },
+      {
+        "file": "src\\components\\battle\\BattleActiveContent.tsx",
+        "count": 2
+      },
+      {
+        "file": "src\\components\\CreateStudentAccountModal.tsx",
+        "count": 1
+      },
+      {
+        "file": "src\\components\\DiagnosticAssessmentModal.tsx",
+        "count": 4
+      }
+    ],
+    "localStorage": [
+      {
+        "file": "src\\App.tsx",
+        "count": 5
+      },
+      {
+        "file": "src\\components\\FloatingAITutor.tsx",
+        "count": 2
+      }
+    ],
+    "sessionStorage": [
+      {
+        "file": "src\\App.tsx",
+        "count": 2
+      },
+      {
+        "file": "src\\components\\assessment\\InitialAssessmentModal.tsx",
+        "count": 3
+      },
+      {
+        "file": "src\\components\\ErrorBoundary.tsx",
+        "count": 6
+      },
+      {
+        "file": "src\\components\\GradesPage.tsx",
+        "count": 1
+      }
+    ],
+    "navigator": [
+      {
+        "file": "src\\components\\CreateStudentAccountModal.tsx",
+        "count": 3
+      }
+    ]
+  },
+  "mobileRisks": [
+    "browser-only-apis",
+    "mobile-auth-session-handling",
+    "api-data-layer-port",
+    "web-styling-port",
+    "dom-ui-component-rewrite"
+  ],
+  "interestingFiles": [
+    "vite.config.ts",
+    "tsconfig.json",
+    ".env.example"
+  ]
+}
