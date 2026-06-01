@@ -4,72 +4,91 @@
 
 @layer base {
   :root {
-    --background: 222 47% 5%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 7%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 5%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 5%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 60%;
-    --radius: 0.5rem;
+    --background: #f7f9fc;
+    --foreground: #0a1628;
+    --card: #ffffff;
+    --card-foreground: #0a1628;
+    --popover: #ffffff;
+    --popover-foreground: #0a1628;
+    --primary: #9956DE;
+    --primary-foreground: #ffffff;
+    --secondary: #7274ED;
+    --secondary-foreground: #ffffff;
+    --muted: #f4f4f5;
+    --muted-foreground: #71717a;
+    --accent: #1FA7E1;
+    --accent-foreground: #ffffff;
+    --destructive: #FF8B8B;
+    --destructive-foreground: #ffffff;
+    --border: #e4e4e7;
+    --input: transparent;
+    --input-background: #f4f4f5;
+    --switch-background: #d4d4d8;
+    --ring: #9956DE;
+    --radius: 1.25rem;
 
-    --chart-1: 217 91% 60%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 271 81% 56%;
-    --chart-5: 0 72% 51%;
+    --chart-1: #9956DE;
+    --chart-2: #FF8B8B;
+    --chart-3: #75D06A;
+    --chart-4: #FFB356;
+    --chart-5: #1FA7E1;
 
-    --success: 142 71% 45%;
-    --success-foreground: 222 47% 5%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 5%;
-    --info: 199 89% 48%;
-    --info-foreground: 222 47% 5%;
+    --success: #75D06A;
+    --success-foreground: #0a1628;
+    --warning: #FFB356;
+    --warning-foreground: #0a1628;
+    --info: #1FA7E1;
+    --info-foreground: #ffffff;
 
-    --sidebar-background: 222 47% 7%;
-    --sidebar-foreground: 215 20% 75%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 222 47% 5%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #09090b;
+    --sidebar-primary: #7c3aed;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f3f0ff;
+    --sidebar-accent-foreground: #5b21b6;
+    --sidebar-border: #e4e4e7;
+    --sidebar-ring: #7c3aed;
 
-    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-weight-medium: 500;
+    --font-weight-normal: 400;
+    --font-size: 16px;
+
+    --font-sans: 'Nunito', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --font-display: 'Nunito';
+    --font-body: 'Nunito';
   }
 
   .dark {
-    --background: 222 47% 5%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 7%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 5%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 5%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 60%;
+    --background: #050d18;
+    --foreground: #f0f7ff;
+    --card: #0a1628;
+    --card-foreground: #f0f7ff;
+    --popover: #0a1628;
+    --popover-foreground: #f0f7ff;
+    --primary: #a78bfa;
+    --primary-foreground: #ffffff;
+    --secondary: #2e1065;
+    --secondary-foreground: #c4b5fd;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --accent: #27272a;
+    --accent-foreground: #f43f5e;
+    --destructive: #ef4444;
+    --destructive-foreground: #09090b;
+    --border: #27272a;
+    --input: #27272a;
+    --input-background: #27272a;
+    --switch-background: #3f3f46;
+    --ring: #a78bfa;
+
+    --sidebar: #09090b;
+    --sidebar-foreground: #fafafa;
+    --sidebar-primary: #a78bfa;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #27272a;
+    --sidebar-accent-foreground: #fafafa;
+    --sidebar-border: #27272a;
+    --sidebar-ring: #a78bfa;
   }
 }

@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Slot, router, useSegments } from 'expo-router';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import { listenAuthState, fetchCurrentProfile } from '../services/authService';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -17,6 +19,9 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Prevent splash screen from auto-hiding while fonts load
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
   const login = useAuthStore((s) => s.login);
   const logout = useAuthStore((s) => s.logout);
@@ -25,6 +30,24 @@ export default function RootLayout() {
   const segments = useSegments();
   const requestPermissions = useNotificationStore((s) => s.requestPermissions);
   const expoPushToken = useNotificationStore((s) => s.expoPushToken);
+
+  // Load all Nunito font weights from assets
+  const [fontsLoaded, fontError] = useFonts({
+    'Nunito-Light': require('../assets/fonts/Nunito-Light.ttf'),
+    'Nunito-Regular': require('../assets/fonts/Nunito-Regular.ttf'),
+    'Nunito-Medium': require('../assets/fonts/Nunito-Medium.ttf'),
+    'Nunito-SemiBold': require('../assets/fonts/Nunito-SemiBold.ttf'),
+    'Nunito-Bold': require('../assets/fonts/Nunito-Bold.ttf'),
+    'Nunito-ExtraBold': require('../assets/fonts/Nunito-ExtraBold.ttf'),
+    'Nunito-Black': require('../assets/fonts/Nunito-Black.ttf'),
+  });
+
+  // Hide splash screen once fonts are loaded or errored
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
 
   // Set up Android notification channel at app startup
   useEffect(() => {
@@ -79,6 +102,11 @@ export default function RootLayout() {
       router.replace('/(auth)/login');
     }
   }, [user, segments]);
+
+  // Block render until fonts are loaded
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
 
   return (
     <ErrorBoundary>
