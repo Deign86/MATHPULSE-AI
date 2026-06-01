@@ -2,7 +2,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { initializeAuth } from 'firebase/auth';
-import { initializeFirestore, memoryLocalCache } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  memoryLocalCache,
+  doc,
+  getDoc,
+  setDoc,
+  getDocs,
+  collection,
+  query as firestoreQuery,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  runTransaction,
+  writeBatch,
+  updateDoc,
+  increment,
+  arrayUnion,
+  serverTimestamp as firestoreServerTimestamp,
+} from 'firebase/firestore';
 import {
   getDatabase,
   ref,
@@ -61,6 +80,26 @@ export {
   orderByChild,
   equalTo,
   serverTimestamp,
+};
+
+// Firestore helpers (re-exported for services)
+export {
+  doc,
+  getDoc,
+  setDoc,
+  getDocs,
+  collection,
+  firestoreQuery,
+  where,
+  orderBy,
+  limit,
+  onSnapshot,
+  runTransaction,
+  writeBatch,
+  updateDoc,
+  increment,
+  arrayUnion,
+  firestoreServerTimestamp,
 };
 
 export type { FirebaseApp };

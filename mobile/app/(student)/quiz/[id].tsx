@@ -5,22 +5,17 @@ import { Button } from '../../../components/ui/Button';
 import { useLocalSearchParams, router } from 'expo-router';
 import { auth } from '../../../lib/firebase';
 import { useAuthStore } from '../../../stores/useAuthStore';
+import type { GeneratedQuiz, AIQuizQuestion } from '../../../types/models';
 import { getQuizDetails, submitQuiz } from '../../../services/quizService';
 
-interface QuizQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  correctAnswer?: string;
-  points: number;
-}
-
+/** Local quiz state derived from GeneratedQuiz. `id`, `title`, `questions` come from Firestore;
+ *  `subject` and `xpReward` are derived from the quiz document where available. */
 interface QuizDetail {
   id: string;
   title: string;
-  subject: string;
-  questions: QuizQuestion[];
-  xpReward: number;
+  subject?: string;
+  questions: AIQuizQuestion[];
+  xpReward?: number;
 }
 
 type ScreenState = 'loading' | 'quiz' | 'result';
@@ -29,7 +24,7 @@ export default function QuizDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const user = useAuthStore((s) => s.user);
   const [quiz, setQuiz] = useState<QuizDetail | null>(null);
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [questions, setQuestions] = useState<AIQuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [screenState, setScreenState] = useState<ScreenState>('loading');
@@ -42,7 +37,13 @@ export default function QuizDetailScreen() {
     (async () => {
       try {
         const data = await getQuizDetails(id);
-        setQuiz(data);
+        setQuiz({
+          id: data.id,
+          title: data.title,
+          subject: data.metadata?.topicsCovered?.[0] ?? '',
+          questions: data.questions,
+          xpReward: data.totalPoints * 2,
+        });
         setQuestions(data.questions ?? []);
         setScreenState('quiz');
       } catch {
@@ -102,7 +103,7 @@ export default function QuizDetailScreen() {
       <View className="flex-1 bg-background p-6 pt-16 items-center justify-center">
         <View className="bg-surface rounded-3xl p-8 w-full max-w-sm items-center">
           <Text className="text-5xl mb-4">
-            {score === total ? '🎉' : score > total * 0.7 ? '👏' : '📚'}
+            {score === total ? 'Perfect!' : score > total * 0.7 ? 'Great Job!' : 'Keep Learning!'}
           </Text>
           <Text variant="h2" className="text-foreground mb-2">Quiz Complete!</Text>
           <View className="flex-row items-baseline mt-4 mb-2">

@@ -1,15 +1,18 @@
-import { useEffect } from 'react'
-import { View, ActivityIndicator } from 'react-native'
+import { useEffect, useState } from 'react'
 import { router } from 'expo-router'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { AppLoadingScreen } from '@/components/AppLoadingScreen'
 
 export default function Index() {
+  const [hasChecked, setHasChecked] = useState(false)
   const user = useAuthStore((s) => s.user)
   const studentProfile = useAuthStore((s) => s.studentProfile)
   const teacherProfile = useAuthStore((s) => s.teacherProfile)
   const adminProfile = useAuthStore((s) => s.adminProfile)
 
   useEffect(() => {
+    setHasChecked(true)
+
     if (!user) {
       router.replace('/(auth)/login')
       return
@@ -25,9 +28,9 @@ export default function Index() {
     }
   }, [user, studentProfile, teacherProfile, adminProfile])
 
-  return (
-    <View className="flex-1 items-center justify-center bg-background">
-      <ActivityIndicator size="large" color="#6366f1" />
-    </View>
-  )
+  if (!hasChecked) {
+    return <AppLoadingScreen />
+  }
+
+  return <AppLoadingScreen />
 }

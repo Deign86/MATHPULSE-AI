@@ -7,6 +7,7 @@ import type {
   TeacherProfile,
   AdminProfile,
 } from '../types/models'
+import { updateUserProfile } from '../services/authService'
 
 const secureStoreStorage = {
   getItem: async (name: string): Promise<string | null> => {
@@ -34,7 +35,7 @@ interface AuthActions {
   login: (user: User, profile: StudentProfile | TeacherProfile | AdminProfile) => void
   logout: () => void
   setUser: (user: User) => void
-  updateProfile: (profile: Partial<StudentProfile | TeacherProfile | AdminProfile>) => void
+  updateProfile: (profile: Partial<StudentProfile | TeacherProfile | AdminProfile>) => Promise<void>
   clearError: () => void
 }
 
@@ -74,21 +75,44 @@ export const useAuthStore = create<AuthState & AuthActions>()(
 
       setUser: (user) => set({ user }),
 
-      updateProfile: (profile) =>
-        set((state) => ({
-          studentProfile:
-            state.studentProfile && profile.role === 'student'
-              ? { ...state.studentProfile, ...profile }
-              : state.studentProfile,
-          teacherProfile:
-            state.teacherProfile && profile.role === 'teacher'
-              ? { ...state.teacherProfile, ...profile }
-              : state.teacherProfile,
-          adminProfile:
-            state.adminProfile && profile.role === 'admin'
-              ? { ...state.adminProfile, ...profile }
-              : state.adminProfile,
-        })),
+      updateProfile: async (profile) => {
+          const { user } = useAuthStore.getState()
+          if (!user) return
+
+          const result = await updateUserProfile(
+            user.uid,
+            user.role,
+            profile as Record<string, unknown>
+          )
+
+          if (!result.success) {
+            set({ error: result.error })
+            return
+          }
+
+          const writtenKeySet = new Set(result.writtenKeys)
+          const filtered: Record<string, unknown> = {}
+          for (const key of Object.keys(profile)) {
+            if (writtenKeySet.has(key)) {
+              filtered[key] = (profile as Record<string, unknown>)[key]
+            }
+          }
+
+          set((state) => ({
+            studentProfile:
+              state.studentProfile && user.role === 'student'
+                ? { ...state.studentProfile, ...filtered }
+                : state.studentProfile,
+            teacherProfile:
+              state.teacherProfile && user.role === 'teacher'
+                ? { ...state.teacherProfile, ...filtered }
+                : state.teacherProfile,
+            adminProfile:
+              state.adminProfile && user.role === 'admin'
+                ? { ...state.adminProfile, ...filtered }
+                : state.adminProfile,
+          }))
+        },
 
       clearError: () => set({ error: null }),
     }),

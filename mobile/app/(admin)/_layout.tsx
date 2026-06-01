@@ -21,7 +21,7 @@ export default function AdminLayout() {
         options={{
           title: 'Overview',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>📊</Text>
+            <Text style={{ color, fontSize: 20 }}>Overview</Text>
           ),
           tabBarAccessibilityLabel: 'Overview tab',
         }}
@@ -31,7 +31,7 @@ export default function AdminLayout() {
         options={{
           title: 'Users',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>👥</Text>
+            <Text style={{ color, fontSize: 20 }}>Users</Text>
           ),
           tabBarAccessibilityLabel: 'Users tab',
         }}
@@ -41,7 +41,7 @@ export default function AdminLayout() {
         options={{
           title: 'Models',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🤖</Text>
+            <Text style={{ color, fontSize: 20 }}>Models</Text>
           ),
           tabBarAccessibilityLabel: 'Models tab',
         }}
@@ -51,7 +51,7 @@ export default function AdminLayout() {
         options={{
           title: 'Alerts',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🔔</Text>
+            <Text style={{ color, fontSize: 20 }}>Alerts</Text>
           ),
           tabBarAccessibilityLabel: 'Alerts tab',
         }}
@@ -61,7 +61,7 @@ export default function AdminLayout() {
         options={{
           title: 'Audit',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>📜</Text>
+            <Text style={{ color, fontSize: 20 }}>Audit</Text>
           ),
           tabBarAccessibilityLabel: 'Audit tab',
         }}

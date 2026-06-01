@@ -52,7 +52,7 @@ export default function RootLayout() {
               role: 'student',
               updatedAt: new Date(),
               createdAt: new Date(firebaseUser.metadata.creationTime ?? Date.now()),
-            } as any,
+            },
             profile,
           );
         } else {

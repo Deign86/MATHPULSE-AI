@@ -1,4 +1,6 @@
 import { API_URL } from '../lib/api';
+import { db, doc, getDoc } from '../lib/firebase';
+import type { GeneratedQuiz } from '../types/models';
 
 export interface QuizFilters {
   gradeLevel?: number;
@@ -48,9 +50,12 @@ export async function listQuizzes(
   return res.json();
 }
 
-export async function getQuizDetails(quizId: string): Promise<any> {
-  console.warn('[quizService.getQuizDetails] Backend endpoint not yet implemented; returning null');
-  return null;
+export async function getQuizDetails(quizId: string): Promise<GeneratedQuiz> {
+  const quizDoc = await getDoc(doc(db, 'generatedQuizzes', quizId));
+  if (!quizDoc.exists()) {
+    throw new Error(`Quiz with id "${quizId}" not found`);
+  }
+  return { id: quizDoc.id, ...quizDoc.data() } as GeneratedQuiz;
 }
 
 export async function submitQuiz(

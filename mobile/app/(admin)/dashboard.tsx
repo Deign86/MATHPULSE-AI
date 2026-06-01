@@ -8,19 +8,19 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { auth } from '../../lib/firebase';
 import { getSystemStats, type SystemStats } from '../../services/adminService';
 
-const MOCK: SystemStats = {
-  totalUsers: 2847,
-  totalStudents: 2612,
-  totalTeachers: 218,
-  totalAdmins: 17,
-  activeUsers24h: 1240,
-  activeUsers7d: 2105,
-  totalQuizzes: 312,
-  totalLessons: 184,
-  totalChatSessions: 9230,
-  averageScore: 74.2,
+const DEFAULT_STATS: SystemStats = {
+  totalUsers: 0,
+  totalStudents: 0,
+  totalTeachers: 0,
+  totalAdmins: 0,
+  activeUsers24h: 0,
+  activeUsers7d: 0,
+  totalQuizzes: 0,
+  totalLessons: 0,
+  totalChatSessions: 0,
+  averageScore: 0,
   systemHealth: 'healthy',
-  uptimePercent: 99.94,
+  uptimePercent: 0,
 };
 
 const HEALTH_VARIANT: Record<string, 'success' | 'warning' | 'destructive'> = {
@@ -31,7 +31,7 @@ const HEALTH_VARIANT: Record<string, 'success' | 'warning' | 'destructive'> = {
 
 export default function AdminDashboard() {
   const user = useAuthStore((s) => s.user);
-  const [stats, setStats] = useState<SystemStats>(MOCK);
+  const [stats, setStats] = useState<SystemStats>(DEFAULT_STATS);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -137,25 +137,25 @@ export default function AdminDashboard() {
         <View className="gap-3">
           <Card className="p-4">
             <TouchableOpacity onPress={() => router.push('/users')}>
-              <Text className="text-foreground text-sm font-semibold mb-1">👥 Manage Users</Text>
+              <Text className="text-foreground text-sm font-semibold mb-1">Manage Users</Text>
               <Text className="text-muted-foreground text-xs">View, suspend, or update user accounts</Text>
             </TouchableOpacity>
           </Card>
           <Card className="p-4">
             <TouchableOpacity onPress={() => router.push('/models')}>
-              <Text className="text-foreground text-sm font-semibold mb-1">🤖 AI Model Config</Text>
+              <Text className="text-foreground text-sm font-semibold mb-1">AI Model Config</Text>
               <Text className="text-muted-foreground text-xs">Enable, disable, or tune model providers</Text>
             </TouchableOpacity>
           </Card>
           <Card className="p-4">
             <TouchableOpacity onPress={() => router.push('/alerts')}>
-              <Text className="text-foreground text-sm font-semibold mb-1">🔔 System Alerts</Text>
+              <Text className="text-foreground text-sm font-semibold mb-1">System Alerts</Text>
               <Text className="text-muted-foreground text-xs">Active warnings and incidents</Text>
             </TouchableOpacity>
           </Card>
           <Card className="p-4">
             <TouchableOpacity onPress={() => router.push('/profile')}>
-              <Text className="text-foreground text-sm font-semibold mb-1">👤 My Profile</Text>
+              <Text className="text-foreground text-sm font-semibold mb-1">My Profile</Text>
               <Text className="text-muted-foreground text-xs">View account info and sign out</Text>
             </TouchableOpacity>
           </Card>

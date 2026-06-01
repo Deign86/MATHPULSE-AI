@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ChatSession, ChatMessage } from "../types/models";
+import { auth } from "../lib/firebase";
 import * as chatService from "../services/chatService";
 
 interface ChatState {
@@ -10,11 +11,15 @@ interface ChatState {
   error: string | null;
   createSession: (topic?: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
-  setActiveSession: (sessionId: string, messages: ChatMessage[]) => void;
+  setActiveSession: (sessionId: string) => void;
   clearSession: () => void;
   clearError: () => void;
   appendStreamingChunk: (messageId: string, chunk: string) => void;
   finalizeStreamingMessage: (messageId: string) => void;
+  loadSessions: (uid: string) => Promise<void>;
+  loadSessionMessages: (sessionId: string) => Promise<void>;
+  setSessions: (sessions: ChatSession[]) => void;
+  endSession: (sessionId: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -23,32 +28,42 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   isStreaming: false,
   error: null,
+
   createSession: async (topic?: string) => {
     try {
-      const session = await chatService.createSession(topic);
+      const uid = auth.currentUser?.uid;
+      if (!uid) {
+        set({ error: "Not authenticated" });
+        return;
+      }
+      const session = await chatService.createSession(uid, topic);
       set((state) => ({
         sessions: [session, ...state.sessions],
         activeSessionId: session.id,
         messages: [],
         error: null,
       }));
-    } catch (err: any) {
-      set({ error: err.message ?? "Failed to create session" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create session";
+      set({ error: message });
     }
   },
+
   sendMessage: async (content: string) => {
     const { activeSessionId, messages: prevMessages } = get();
     if (!activeSessionId) {
       set({ error: "No active session" });
       return;
     }
+
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}-user`,
-      userId: "",
+      userId: auth.currentUser?.uid ?? "",
       role: "user",
       content,
       timestamp: new Date(),
     };
+
     const placeholder: ChatMessage = {
       id: `msg-${Date.now()}-assistant`,
       userId: "",
@@ -56,6 +71,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
       content: "",
       timestamp: new Date(),
     };
+
+    // Persist user message to Firestore before streaming
+    try {
+      await chatService.addMessageToSession(activeSessionId, {
+        role: userMsg.role,
+        content: userMsg.content,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to persist user message";
+      console.error(message);
+    }
+
     set((state) => ({
       messages: [...state.messages, userMsg, placeholder],
       isStreaming: true,
@@ -73,22 +100,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
         placeholder.id,
         history,
       );
-    } catch (err: any) {
-      set({
-        error: err.message ?? "Failed to send message",
-        isStreaming: false,
-      });
+
+      // Persist assistant message to Firestore after streaming completes
+      const currentMessages = get().messages;
+      const assistantMsg = currentMessages.find((m) => m.id === placeholder.id);
+      if (assistantMsg && assistantMsg.content.trim()) {
+        await chatService.addMessageToSession(activeSessionId, {
+          role: assistantMsg.role,
+          content: assistantMsg.content,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to send message";
+      set({ error: message, isStreaming: false });
     }
   },
-  setActiveSession: (sessionId: string, messages: ChatMessage[]) => {
-    set({ activeSessionId: sessionId, messages, error: null });
+
+  setActiveSession: (sessionId: string) => {
+    set({ activeSessionId: sessionId, messages: [], error: null });
   },
+
   clearSession: () => {
     set({ activeSessionId: null, messages: [], isStreaming: false, error: null });
   },
+
   clearError: () => {
     set({ error: null });
   },
+
   appendStreamingChunk: (messageId: string, chunk: string) => {
     set((state) => ({
       messages: state.messages.map((m) =>
@@ -96,7 +135,46 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ),
     }));
   },
+
   finalizeStreamingMessage: (messageId: string) => {
     set({ isStreaming: false });
+  },
+
+  loadSessions: async (uid: string) => {
+    try {
+      const sessions = await chatService.getUserChatSessions(uid);
+      set({ sessions, error: null });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load sessions";
+      set({ error: message });
+    }
+  },
+
+  loadSessionMessages: async (sessionId: string) => {
+    try {
+      const messages = await chatService.getSessionMessages(sessionId);
+      set({ messages, error: null });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load messages";
+      set({ error: message });
+    }
+  },
+
+  setSessions: (sessions: ChatSession[]) => {
+    set({ sessions });
+  },
+
+  endSession: async (sessionId: string) => {
+    try {
+      await chatService.endSession(sessionId);
+      set((state) => ({
+        sessions: state.sessions.filter((s) => s.id !== sessionId),
+        activeSessionId: state.activeSessionId === sessionId ? null : state.activeSessionId,
+        error: null,
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to end session";
+      set({ error: message });
+    }
   },
 }));

@@ -21,7 +21,7 @@ export default function StudentLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🏠</Text>
+            <Text style={{ color, fontSize: 20 }}>Home</Text>
           ),
           tabBarAccessibilityLabel: 'Home tab',
         }}
@@ -31,7 +31,7 @@ export default function StudentLayout() {
         options={{
           title: 'Progress',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>📊</Text>
+            <Text style={{ color, fontSize: 20 }}>Progress</Text>
           ),
           tabBarAccessibilityLabel: 'Progress tab',
         }}
@@ -41,7 +41,7 @@ export default function StudentLayout() {
         options={{
           title: 'Quizzes',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>✏️</Text>
+            <Text style={{ color, fontSize: 20 }}>Quiz</Text>
           ),
           tabBarAccessibilityLabel: 'Quizzes tab',
         }}
@@ -51,7 +51,7 @@ export default function StudentLayout() {
         options={{
           title: 'AI Tutor',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>💬</Text>
+            <Text style={{ color, fontSize: 20 }}>Chat</Text>
           ),
           tabBarAccessibilityLabel: 'AI Tutor tab',
         }}
@@ -61,7 +61,7 @@ export default function StudentLayout() {
         options={{
           title: 'Battle',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⚔️</Text>
+            <Text style={{ color, fontSize: 20 }}>Battle</Text>
           ),
           tabBarAccessibilityLabel: 'Quiz Battle tab',
         }}
@@ -71,7 +71,7 @@ export default function StudentLayout() {
         options={{
           title: 'Rewards',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>🏆</Text>
+            <Text style={{ color, fontSize: 20 }}>Rewards</Text>
           ),
           tabBarAccessibilityLabel: 'Rewards tab',
         }}

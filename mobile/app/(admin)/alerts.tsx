@@ -7,14 +7,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { auth } from '../../lib/firebase';
 import { getSystemAlerts, type SystemAlert } from '../../services/adminService';
 
-const MOCK: SystemAlert[] = [
-  { id: 'a1', level: 'critical', service: 'API Gateway', message: 'Elevated 5xx rate on /api/chat (3.2% over 10 min)', timestamp: '2026-06-01T15:42:00Z', resolved: false },
-  { id: 'a2', level: 'warning', service: 'DeepSeek API', message: 'Token usage at 78% of daily budget', timestamp: '2026-06-01T15:30:00Z', resolved: false },
-  { id: 'a3', level: 'info', service: 'Firebase Auth', message: 'New device sign-in for admin@mathpulse.ai from Manila, PH', timestamp: '2026-06-01T14:12:00Z', resolved: true },
-  { id: 'a4', level: 'warning', service: 'Quiz Service', message: 'Average response time 1.2s (SLO: 800ms)', timestamp: '2026-06-01T13:55:00Z', resolved: false },
-  { id: 'a5', level: 'info', service: 'Daily Rewards', message: '1,247 students claimed today\'s reward', timestamp: '2026-06-01T08:00:00Z', resolved: true },
-  { id: 'a6', level: 'critical', service: 'Realtime DB', message: 'Connection spike during Quiz Battle event (8,200 concurrent)', timestamp: '2026-05-31T19:20:00Z', resolved: true },
-];
+const EMPTY_ALERTS: SystemAlert[] = [];
 
 const LEVEL_VARIANT: Record<string, 'destructive' | 'warning' | 'default'> = {
   critical: 'destructive',
@@ -23,16 +16,16 @@ const LEVEL_VARIANT: Record<string, 'destructive' | 'warning' | 'default'> = {
 };
 
 const LEVEL_ICON: Record<string, string> = {
-  critical: '🔴',
-  warning: '🟡',
-  info: '🔵',
+  critical: '!!',
+  warning: '!',
+  info: 'i',
 };
 
 type Filter = 'all' | 'active' | 'resolved';
 
 export default function AdminAlertsScreen() {
   const adminProfile = useAuthStore((s) => s.adminProfile);
-  const [alerts, setAlerts] = useState<SystemAlert[]>(MOCK);
+  const [alerts, setAlerts] = useState<SystemAlert[]>(EMPTY_ALERTS);
   const [filter, setFilter] = useState<Filter>('active');
   const [refreshing, setRefreshing] = useState(false);
 

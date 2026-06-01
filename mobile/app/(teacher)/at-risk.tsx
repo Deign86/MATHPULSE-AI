@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { Text } from '../../components/ui/Text';
 import { Card } from '../../components/ui/Card';
@@ -9,44 +9,50 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { auth } from '../../lib/firebase';
 import { getAtRiskStudents, type AtRiskStudent } from '../../services/teacherService';
 
-const MOCK: AtRiskStudent[] = [
-  { uid: 's1', name: 'Carlo Mendoza', grade: '11', section: 'A', overallRisk: 'High', atRiskSubjects: ['Functions', 'Business Math'], lastActive: '2026-05-25', averageScore: 52, trend: 'declining', reason: '3 consecutive failed quizzes' },
-  { uid: 's2', name: 'Patricia Cruz', grade: '11', section: 'B', overallRisk: 'High', atRiskSubjects: ['Logic'], lastActive: '2026-05-28', averageScore: 58, trend: 'declining', reason: 'Missed 5 lessons last week' },
-  { uid: 's3', name: 'Roberto Garcia', grade: '12', section: 'C', overallRisk: 'Medium', atRiskSubjects: ['Functions'], lastActive: '2026-05-30', averageScore: 67, trend: 'stable', reason: 'Struggling with derivatives' },
-  { uid: 's4', name: 'Miguel Bautista', grade: '12', section: 'C', overallRisk: 'Medium', atRiskSubjects: ['Business Math'], lastActive: '2026-05-29', averageScore: 71, trend: 'declining', reason: 'Quiz scores dropped 15%' },
-  { uid: 's5', name: 'Camila Villanueva', grade: '11', section: 'A', overallRisk: 'Low', atRiskSubjects: ['Logic'], lastActive: '2026-05-30', averageScore: 78, trend: 'improving', reason: 'Improving slowly' },
-];
-
 const RISK_VARIANT: Record<string, 'destructive' | 'warning' | 'success'> = {
   High: 'destructive',
   Medium: 'warning',
   Low: 'success',
 };
 
-const TREND_ICON: Record<string, string> = {
-  declining: '📉',
-  stable: '➡️',
-  improving: '📈',
+const TREND_LABEL: Record<string, string> = {
+  declining: 'Declining',
+  stable: 'Stable',
+  improving: 'Improving',
 };
 
 export default function AtRiskScreen() {
   const teacherProfile = useAuthStore((s) => s.teacherProfile);
-  const [students, setStudents] = useState<AtRiskStudent[]>(MOCK);
+  const [students, setStudents] = useState<AtRiskStudent[]>([]);
   const [filter, setFilter] = useState<'all' | 'High' | 'Medium' | 'Low'>('all');
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const onRefresh = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!teacherProfile) return;
-    setRefreshing(true);
+    setError(null);
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) return;
-      const data = await getAtRiskStudents(teacherProfile.uid, token).catch(() => null);
-      if (data) setStudents(data);
-    } finally {
-      setRefreshing(false);
+      const data = await getAtRiskStudents(teacherProfile.uid, token);
+      setStudents(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load at-risk students';
+      setError(message);
     }
   }, [teacherProfile]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchData().finally(() => setLoading(false));
+  }, [fetchData]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, [fetchData]);
 
   const filtered = filter === 'all' ? students : students.filter((s) => s.overallRisk === filter);
   const counts = {
@@ -55,6 +61,15 @@ export default function AtRiskScreen() {
     Medium: students.filter((s) => s.overallRisk === 'Medium').length,
     Low: students.filter((s) => s.overallRisk === 'Low').length,
   };
+
+  if (loading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#10b981" />
+        <Text className="text-muted-foreground text-sm mt-3">Loading at-risk students...</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-background">
@@ -83,6 +98,14 @@ export default function AtRiskScreen() {
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10b981" />}
       >
+        {error && (
+          <View className="mb-4">
+            <Card className="p-3 bg-error/10 border border-error/30">
+              <Text className="text-error text-sm">{error}</Text>
+            </Card>
+          </View>
+        )}
+
         <View className="gap-3">
           {filtered.map((s) => (
             <TouchableOpacity key={s.uid} onPress={() => router.push(`/student/${s.uid}`)}>
@@ -92,7 +115,7 @@ export default function AtRiskScreen() {
                   <View className="flex-1">
                     <Text className="text-foreground text-sm font-semibold">{s.name}</Text>
                     <Text className="text-muted-foreground text-xs">
-                      Grade {s.grade} · Sec {s.section} · Avg {s.averageScore}%
+                      Grade {s.grade} - Sec {s.section} - Avg {s.averageScore}%
                     </Text>
                   </View>
                   <Badge variant={RISK_VARIANT[s.overallRisk]}>
@@ -101,7 +124,7 @@ export default function AtRiskScreen() {
                 </View>
 
                 <View className="bg-surface/50 rounded-xl p-3 mb-2">
-                  <Text className="text-foreground text-xs mb-1">⚠️ {s.reason}</Text>
+                  <Text className="text-foreground text-xs mb-1">{s.reason}</Text>
                   <View className="flex-row flex-wrap gap-1 mt-2">
                     {s.atRiskSubjects.map((subj) => (
                       <View key={subj} className="bg-red-500/15 border border-red-500/30 rounded-full px-2 py-0.5">
@@ -115,8 +138,8 @@ export default function AtRiskScreen() {
                   <Text className="text-muted-foreground text-xs">
                     Last active: {new Date(s.lastActive).toLocaleDateString()}
                   </Text>
-                  <Text className="text-xs">
-                    {TREND_ICON[s.trend]} <Text className="text-muted-foreground">{s.trend}</Text>
+                  <Text className="text-xs text-muted-foreground">
+                    {TREND_LABEL[s.trend] || s.trend}
                   </Text>
                 </View>
               </Card>

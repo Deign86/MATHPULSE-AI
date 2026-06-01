@@ -11,9 +11,9 @@ import { auth } from '../lib/firebase';
 import type { UserRole } from '../types/models';
 
 const ROLE_LABEL: Record<UserRole, string> = {
-  student: '🎓 Student',
-  teacher: '👨‍🏫 Teacher',
-  admin: '🛡️ Admin',
+  student: 'Student',
+  teacher: 'Teacher',
+  admin: 'Admin',
 };
 
 export default function ProfileScreen() {
@@ -107,13 +107,13 @@ export default function ProfileScreen() {
 
       <View className="px-4 gap-3">
         <Button variant="outline" onPress={() => router.push('/settings')}>
-          ⚙️ Settings
+          Settings
         </Button>
         <Button variant="outline" onPress={() => router.push('/notifications')}>
-          🔔 Notifications
+          Notifications
         </Button>
         <Button variant="destructive" onPress={handleLogout} loading={signingOut}>
-          🚪 Sign Out
+          Sign Out
         </Button>
       </View>
     </ScrollView>

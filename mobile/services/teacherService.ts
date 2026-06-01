@@ -1,4 +1,14 @@
 import { API_URL } from '../lib/api';
+import {
+  db,
+  collection,
+  getDocs,
+  firestoreQuery,
+  where,
+  orderBy,
+  updateDoc,
+  doc,
+} from '../lib/firebase';
 
 // --- Types ---
 
@@ -35,6 +45,12 @@ export interface TeachingTask {
   status: 'draft' | 'published' | 'closed';
   submissions: number;
   totalStudents: number;
+  isOverdue: boolean;
+}
+
+export interface TeachingTaskFilters {
+  status?: 'all' | 'pending' | 'completed' | 'overdue';
+  classId?: string;
 }
 
 export interface ClassAnalytics {
@@ -117,12 +133,89 @@ export async function getAtRiskStudents(
   return data?.students ?? data?.atRisk ?? data ?? [];
 }
 
+function toFirestoreDate(value: unknown): Date {
+  if (value instanceof Date) return value;
+  if (typeof value === 'number') return new Date(value);
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? new Date() : new Date(parsed);
+  }
+  if (typeof value === 'object' && value) {
+    const record = value as { toDate?: () => Date; seconds?: number };
+    if (typeof record.toDate === 'function') return record.toDate();
+    if (typeof record.seconds === 'number') return new Date(record.seconds * 1000);
+  }
+  return new Date();
+}
+
 export async function getTeachingTasks(
   teacherId: string,
-  token: string,
+  filters?: TeachingTaskFilters,
 ): Promise<TeachingTask[]> {
-  console.warn('[teacherService.getTeachingTasks] Backend endpoint not yet implemented; returning empty result');
-  return [];
+  const now = Date.now();
+  const constraints: Parameters<typeof firestoreQuery>[1][] = [
+    where('assignedTeacherId', '==', teacherId),
+    orderBy('dueDate', 'asc'),
+  ];
+
+  const tasksQuery = firestoreQuery(collection(db, 'tasks'), ...constraints);
+  const snap = await getDocs(tasksQuery);
+
+  const tasks: TeachingTask[] = snap.docs.map((d) => {
+    const data = d.data() as Record<string, unknown>;
+    const dueDateMs = toFirestoreDate(data.dueDate).getTime();
+    const isOverdue = dueDateMs < now && data.status !== 'closed';
+
+    return {
+      id: d.id,
+      title: typeof data.title === 'string' ? data.title : 'Untitled Task',
+      classId: typeof data.classId === 'string' ? data.classId : '',
+      className: typeof data.className === 'string' ? data.className : '',
+      type: ['assignment', 'quiz', 'project', 'review'].includes(data.type as string)
+        ? (data.type as TeachingTask['type'])
+        : 'assignment',
+      dueDate: typeof data.dueDate === 'string'
+        ? data.dueDate
+        : toFirestoreDate(data.dueDate).toISOString(),
+      status: ['draft', 'published', 'closed'].includes(data.status as string)
+        ? (data.status as TeachingTask['status'])
+        : 'draft',
+      submissions: typeof data.submissions === 'number' ? data.submissions : 0,
+      totalStudents: typeof data.totalStudents === 'number' ? data.totalStudents : 0,
+      isOverdue,
+    };
+  });
+
+  let filtered = tasks;
+
+  if (filters?.status && filters.status !== 'all') {
+    filtered = filtered.filter((t) => {
+      switch (filters.status) {
+        case 'pending':
+          return t.status === 'published' && !t.isOverdue;
+        case 'completed':
+          return t.status === 'closed';
+        case 'overdue':
+          return t.isOverdue;
+        default:
+          return true;
+      }
+    });
+  }
+
+  if (filters?.classId) {
+    filtered = filtered.filter((t) => t.classId === filters.classId);
+  }
+
+  return filtered;
+}
+
+export async function markTeachingTaskComplete(
+  taskId: string,
+): Promise<void> {
+  await updateDoc(doc(db, 'tasks', taskId), {
+    status: 'closed',
+  });
 }
 
 export async function getClassAnalytics(

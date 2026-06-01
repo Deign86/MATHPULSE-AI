@@ -21,7 +21,7 @@ export default function TeacherLayout() {
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>📊</Text>
+            <Text style={{ color, fontSize: 12, fontWeight: '700' }}>DB</Text>
           ),
           tabBarAccessibilityLabel: 'Dashboard tab',
         }}
@@ -31,7 +31,7 @@ export default function TeacherLayout() {
         options={{
           title: 'Students',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>👥</Text>
+            <Text style={{ color, fontSize: 12, fontWeight: '700' }}>ST</Text>
           ),
           tabBarAccessibilityLabel: 'Students tab',
         }}
@@ -41,7 +41,7 @@ export default function TeacherLayout() {
         options={{
           title: 'At-Risk',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>⚠️</Text>
+            <Text style={{ color, fontSize: 12, fontWeight: '700' }}>AR</Text>
           ),
           tabBarAccessibilityLabel: 'At-Risk tab',
         }}
@@ -51,7 +51,7 @@ export default function TeacherLayout() {
         options={{
           title: 'Tasks',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>📝</Text>
+            <Text style={{ color, fontSize: 12, fontWeight: '700' }}>TK</Text>
           ),
           tabBarAccessibilityLabel: 'Tasks tab',
         }}
@@ -61,7 +61,7 @@ export default function TeacherLayout() {
         options={{
           title: 'Insights',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>💡</Text>
+            <Text style={{ color, fontSize: 12, fontWeight: '700' }}>IN</Text>
           ),
           tabBarAccessibilityLabel: 'Insights tab',
         }}

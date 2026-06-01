@@ -7,11 +7,11 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { auth } from '../lib/firebase';
 import { getTeachingTasks, type TeachingTask } from '../services/teacherService';
 
-const TYPE_ICON: Record<string, string> = {
-  assignment: '📄',
-  quiz: '✏️',
-  project: '🎯',
-  review: '🔁',
+const TYPE_LABEL: Record<string, string> = {
+  assignment: 'Assignment',
+  quiz: 'Quiz',
+  project: 'Project',
+  review: 'Review',
 };
 
 const STATUS_VARIANT: Record<string, 'default' | 'warning' | 'secondary' | 'destructive'> = {
@@ -38,7 +38,7 @@ export default function StudentTasksScreen() {
       const token = await auth.currentUser?.getIdToken();
       if (!token) return;
       // Student view: show all published + closed tasks across student's classes
-      const data = await getTeachingTasks(user.uid, token).catch(() => []);
+      const data = await getTeachingTasks(user.uid).catch(() => []);
       setTasks(data ?? []);
     } finally {
       setRefreshing(false);
@@ -85,7 +85,7 @@ export default function StudentTasksScreen() {
       >
         {filtered.length === 0 ? (
           <View className="items-center py-16">
-            <Text className="text-5xl mb-3">📭</Text>
+            <Text className="text-3xl font-bold mb-3 text-muted-foreground">No Tasks</Text>
             <Text className="text-muted-foreground text-base">No tasks here</Text>
             <Text className="text-muted-foreground text-sm mt-1">
               {filter === 'active' ? "You're all caught up!" : 'Check back later'}
@@ -104,7 +104,7 @@ export default function StudentTasksScreen() {
                 >
                   <Card className="p-4">
                     <View className="flex-row items-start mb-2">
-                      <Text className="text-2xl mr-3">{TYPE_ICON[task.type]}</Text>
+                      <Text className="text-sm font-semibold text-primary mr-3 uppercase">{TYPE_LABEL[task.type]}</Text>
                       <View className="flex-1">
                         <Text className="text-foreground text-sm font-semibold">{task.title}</Text>
                         <Text className="text-muted-foreground text-xs mt-0.5">{task.className}</Text>

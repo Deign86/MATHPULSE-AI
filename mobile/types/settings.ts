@@ -58,3 +58,26 @@ export const DEFAULT_ADMIN_SYSTEM_CONFIG: AdminSystemConfig = {
     endpoint: 'https://api.deepseek.com',
   },
 };
+
+// ─── Re-exports from models.ts (centralised settings type) ─────────────────
+
+export type { UserSettings } from './models';
+export { DEFAULT_USER_SETTINGS } from './models';
+
+// ─── Mobile-specific settings extensions ───────────────────────────────────
+
+/** Platform-specific preferences only present on mobile clients. */
+export interface MobileSettings {
+  /** System haptic feedback (iOS/Android taptic engine). */
+  hapticsEnabled: boolean;
+  /** UI language override (e.g. 'en', 'fil'). */
+  language: string;
+  /** Named theme preset ('light' | 'dark' | 'system'). */
+  theme: 'light' | 'dark' | 'system';
+}
+
+export const DEFAULT_MOBILE_SETTINGS: MobileSettings = {
+  hapticsEnabled: true,
+  language: 'en',
+  theme: 'system',
+};

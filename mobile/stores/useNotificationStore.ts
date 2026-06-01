@@ -5,8 +5,15 @@ import { Platform } from 'react-native'
 import * as Notifications from 'expo-notifications'
 import Constants from 'expo-constants'
 import type { Notification } from '../types/models'
-import { registerPushToken } from '../services/notificationService'
+import {
+  registerPushToken,
+  subscribeToUserNotifications,
+  markNotificationRead,
+  markAllRead as markAllReadService,
+  deleteNotification as deleteNotificationService,
+} from '../services/notificationService'
 import { auth } from '../lib/firebase'
+import { useAuthStore } from './useAuthStore'
 
 interface NotificationState {
   notifications: Notification[]
@@ -24,7 +31,13 @@ interface NotificationActions {
   requestPermissions: () => Promise<void>
   clearAll: () => void
   clearError: () => void
+  /** Subscribe to real-time notifications from Firestore. Returns unsubscribe fn. */
+  subscribe: (uid: string) => () => void
+  /** Delete a notification from Firestore and local state. */
+  deleteNotification: (notifId: string) => Promise<void>
 }
+
+let _unsubscribe: (() => void) | undefined;
 
 export const useNotificationStore = create<NotificationState & NotificationActions>()(
   persist(
@@ -43,9 +56,48 @@ export const useNotificationStore = create<NotificationState & NotificationActio
             : state.unreadCount + 1,
         })),
 
+      subscribe: (uid: string) => {
+        _unsubscribe?.()
+        _unsubscribe = subscribeToUserNotifications(
+          uid,
+          (notifications) => {
+            set({
+              notifications,
+              unreadCount: notifications.filter((n) => !n.read).length,
+            })
+          },
+          (error) => {
+            console.warn('[notifications] subscribe error:', error)
+            set({ error: error instanceof Error ? error.message : String(error) })
+          },
+        )
+        return _unsubscribe
+      },
+
   clearAll: () => set({ notifications: [], unreadCount: 0 }),
 
-      markRead: (notificationId) =>
+      deleteNotification: async (notifId: string) => {
+        const uid = useAuthStore.getState().user?.uid
+        if (uid) {
+          await deleteNotificationService(uid, notifId)
+        }
+        set((state) => {
+          const filtered = state.notifications.filter((n) => n.id !== notifId)
+          return {
+            notifications: filtered,
+            unreadCount: filtered.filter((n) => !n.read).length,
+          }
+        })
+      },
+
+      markRead: (notificationId) => {
+        const uid = useAuthStore.getState().user?.uid
+        if (uid) {
+          markNotificationRead(uid, notificationId).catch((err: unknown) => {
+            const message = err instanceof Error ? err.message : String(err)
+            console.warn('[notifications] markRead service call failed:', message)
+          })
+        }
         set((state) => {
           const updated = state.notifications.map((n) =>
             n.id === notificationId && !n.read ? { ...n, read: true } : n
@@ -54,13 +106,22 @@ export const useNotificationStore = create<NotificationState & NotificationActio
             notifications: updated,
             unreadCount: updated.filter((n) => !n.read).length,
           }
-        }),
+        })
+      },
 
-      markAllRead: () =>
+      markAllRead: () => {
+        const uid = useAuthStore.getState().user?.uid
+        if (uid) {
+          markAllReadService(uid).catch((err: unknown) => {
+            const message = err instanceof Error ? err.message : String(err)
+            console.warn('[notifications] markAllRead service call failed:', message)
+          })
+        }
         set((state) => ({
           notifications: state.notifications.map((n) => ({ ...n, read: true })),
           unreadCount: 0,
-        })),
+        }))
+      },
 
       setPushToken: (token) => set({ expoPushToken: token }),
 
@@ -128,3 +189,21 @@ export const useNotificationStore = create<NotificationState & NotificationActio
     }
   )
 )
+
+// ── Auto-hydrate from Firestore on auth change ──────────────────
+
+useAuthStore.subscribe((state, prevState) => {
+  const prevUid = prevState.user?.uid
+  const nextUid = state.user?.uid
+
+  if (nextUid && nextUid !== prevUid) {
+    // User logged in or switched accounts — start real-time notification sync
+    _unsubscribe?.()
+    useNotificationStore.getState().subscribe(nextUid)
+  } else if (!nextUid) {
+    // User logged out — tear down subscription and clear store
+    _unsubscribe?.()
+    _unsubscribe = undefined
+    useNotificationStore.getState().clearAll()
+  }
+})

@@ -41,6 +41,10 @@ export interface StudentProfile extends User {
   lrn?: string;
   grade: string;
   section?: string;
+  classSectionId?: string | null;
+  adviserTeacherId?: string | null;
+  adviserTeacherName?: string | null;
+  schoolYear?: string | null;
   school: string;
   enrollmentDate: string;
   major: string;
@@ -97,7 +101,7 @@ export interface StudentProfile extends User {
   }>;
   overallRisk?: 'High' | 'Medium' | 'Low';
   iarMode?: 'iar_only' | 'iar_plus_diagnostic';
-  learningPathState?: 'locked_pending_deep_diagnostic' | 'unlocked';
+  learningPathState?: 'uninitiated' | 'locked_pending_deep_diagnostic' | 'unlocked';
   lastAssessmentType?: 'initial_assessment' | 'followup_diagnostic';
   initialAssessmentCompletedAt?: Date;
   remediationState?: 'not_required' | 'queued' | 'in_progress' | 'completed' | 'expired';

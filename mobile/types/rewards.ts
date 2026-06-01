@@ -33,6 +33,7 @@ export interface DailyRewardState {
   hintTokens: number;
   streakShields: number;
   activeMultiplier: ActiveMultiplier | null;
+  shieldPendingDate?: string; // PHT date when shield was proactively used (useStreakShield)
 }
 
 export interface ClaimResult {
