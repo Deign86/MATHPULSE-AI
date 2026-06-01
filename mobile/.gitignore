@@ -46,3 +46,7 @@ GoogleService-Info.plist
 # generated native folders
 /ios
 /android
+
+# local debug scripts (JDK PATH fixes, env probes, etc.)
+.tmp-*.ps1
+.tmp-*.sh
