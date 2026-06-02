@@ -3,6 +3,7 @@
     "name": "MathPulse AI",
     "slug": "mathpulse-ai",
     "version": "1.0.0",
+    "entryPoint": "expo-router/entry-classic",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "mathpulse-ai",
