@@ -135,10 +135,30 @@ export const signInWithEmail = async (email: string, password: string): Promise<
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error: unknown) {
     const firebaseError = error as { code?: string; message?: string };
+    if (
+      firebaseError.message &&
+      (firebaseError.message.includes('exceeded the quota') ||
+        firebaseError.message.includes('QuotaExceededError') ||
+        firebaseError.message.includes('setItem'))
+    ) {
+      console.warn('[AUTH] Browser LocalStorage full. Clearing storage cache and retrying sign-in...');
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        await signInWithEmailAndPassword(auth, email, password);
+        return;
+      } catch (retryError) {
+        throw toAuthServiceError(
+          retryError,
+          'Browser storage limit reached. Please clear your browser cache/cookies and try again.'
+        );
+      }
+    }
+
     console.error('[ERROR] Error signing in:', {
       code: firebaseError.code,
       message: firebaseError.message,
-      fullError: error
+      fullError: error,
     });
     throw toAuthServiceError(error, 'Failed to sign in');
   }
