@@ -93,10 +93,20 @@ The FCM worker remains registered separately by `pushNotificationService.ts`.
 |---|---|---|
 | `VITE_APP_VERSION` | `1.0.0` | App-shell cache version (bump to invalidate the precache) |
 | `VITE_ENABLE_SW_IN_DEV` | `false` | Register `/sw.js` in local dev builds |
-| `VITE_API_URL` | same-origin `/api` | Backend origin; keep unset for Firebase/Nginx proxy |
+| `VITE_API_URL` | `https://deign86-mathpulse-api-v3test.hf.space` in production workflow | Existing FastAPI backend origin. Override only when backend hosting changes. |
 | `CORS_ORIGINS` | `http://localhost:5173,http://localhost:4173` | Backend allow-list; set to deployed frontend origins in production |
 
 ## 6. Hosting configuration
+
+### Backend origin
+
+Firebase Hosting serves the frontend only. The current FastAPI backend remains at:
+
+```text
+https://deign86-mathpulse-api-v3test.hf.space
+```
+
+`deploy-frontend.yml` injects this origin through `VITE_API_URL` unless the GitHub repository variable overrides it. Backend CORS must allow `https://mathpulse-ai-2026.web.app`.
 
 ### Firebase Hosting (`firebase.json`)
 
