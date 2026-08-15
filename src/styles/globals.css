@@ -399,7 +399,7 @@ html.smart-dark [data-preserve-color='true'] {
 }
 
 .lesson-callout-headsup::after {
-  content: '⚠';
+  content: '';
   position: absolute;
   right: 1rem;
   top: 50%;

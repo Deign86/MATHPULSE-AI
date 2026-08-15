@@ -14,11 +14,11 @@ export const TEACHER_ALERT_MESSAGES: Partial<
   Record<RiskStatus, (studentName: string, wri: number) => string>
 > = {
   intervene: (name, wri) =>
-    `📘 ${name} is approaching the intervention threshold (WRI: ${wri}). Remedial modules have been activated. Please review their progress.`,
+    `${name} is approaching the intervention threshold (WRI: ${wri}). Remedial modules have been activated. Please review their progress.`,
   critical: (name, wri) =>
-    `⚠️ ${name} requires urgent attention (WRI: ${wri}). A structured intervention checklist has been generated. Please act soon.`,
+    `${name} requires urgent attention (WRI: ${wri}). A structured intervention checklist has been generated. Please act soon.`,
   at_risk: (name, wri) =>
-    `🚨 ${name} is at critical risk of failing (WRI: ${wri}). Your acknowledgment is required before their learning path continues.`,
+    `${name} is at critical risk of failing (WRI: ${wri}). Your acknowledgment is required before their learning path continues.`
 };
 
 // ─── Public API ───────────────────────────────────────────────────────────────

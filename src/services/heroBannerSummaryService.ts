@@ -131,7 +131,7 @@ export function subscribeToHeroBannerModalSummary(
 // ── Private helpers ────────────────────────────────────────────────────────────
 
 function _buildHeadline(score: number): string {
-  if (score >= 80) return 'Outstanding performance! 🎉';
+  if (score >= 80) return 'Outstanding performance!';
   if (score >= 65) return 'Good job — keep it up!';
   if (score >= 50) return 'You\'re making progress!';
   return 'Let\'s build your foundation';

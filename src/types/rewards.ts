@@ -11,7 +11,7 @@ export interface RewardDefinition {
   day: number; // 0–6 assigned after shuffle
   label: string;
   description: string;
-  icon: string; // emoji or icon name
+  icon: string; // stable lucide icon key
   type: RewardType;
   value: number | string; // XP amount, multiplier %, or badge ID
   rarity: RewardRarity;
