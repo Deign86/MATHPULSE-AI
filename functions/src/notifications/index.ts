@@ -13,7 +13,7 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { sendPushToUser, sendPushToUsers, sanitizeAppRoute, type PushResult } from "../utils/sendPush";
+import { sendPushToUser, sendPushToUsers, sanitizeAppRoute, isValidAssignmentId, type PushResult } from "../utils/sendPush";
 
 type AnyDoc = Record<string, unknown>;
 
@@ -33,8 +33,17 @@ function manilaDate(date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
-export function canTeacherNotifyStudent(callerUid: string, callerRole: unknown, managedStudent: AnyDoc | null, targetRole: unknown): boolean {
-  return callerRole === "admin" ? targetRole === "student" : callerRole === "teacher" && targetRole === "student" && managedStudent?.teacherId === callerUid;
+/**
+ * Authorization helper for a trusted classSectionOwnership document. The
+ * teacher-writable managedStudents.teacherId field is deliberately ignored.
+ */
+export function canTeacherNotifyStudent(callerUid: string, callerRole: unknown, ownership: AnyDoc | null, targetRole: unknown, targetStudentId?: string): boolean {
+  if (targetRole !== "student") return false;
+  if (callerRole === "admin") return true;
+  if (callerRole !== "teacher" || !ownership) return false;
+  const owner = ownership.ownerTeacherId === callerUid || ownership.managerId === callerUid;
+  const roster = ownership.studentUids;
+  return owner && (!targetStudentId || (Array.isArray(roster) && roster.includes(targetStudentId)));
 }
 
 function emptyResult(): PushResult { return { sent: 0, failed: 0, suppressed: 0, invalidated: 0, duplicate: 0 }; }
@@ -276,6 +285,8 @@ export const streakReminder = functions.pubsub
 // ───────────────────────── Assignment Deadline (Callable) ───────────────
 interface NotifyAssignmentDeadlinePayload {
   studentIds?: string[];
+  assignmentId?: string;
+  classSectionId?: string;
   assignmentTitle?: string;
   dueDate?: string;
   assignmentUrl?: string;
@@ -308,28 +319,51 @@ export const notifyAssignmentDeadline = functions.https.onCall(
 
     const rawStudentIds = Array.isArray(data?.studentIds) ? data.studentIds : [];
     const studentIds = Array.from(new Set(rawStudentIds.filter((id): id is string => typeof id === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(id)))).slice(0, 100);
+    const assignmentId = asString(data?.assignmentId);
+    const classSectionId = asString(data?.classSectionId);
     const assignmentTitle = asString(data?.assignmentTitle);
     const dueDate = asString(data?.dueDate);
-    const assignmentUrl = sanitizeAppRoute(data?.assignmentUrl || "/grades");
-    if (studentIds.length === 0 || !assignmentTitle || assignmentTitle.length > 160 || /[\r\n]/.test(assignmentTitle) || !dueDate || dueDate.length > 80 || /[\r\n]/.test(dueDate) || Number.isNaN(Date.parse(dueDate)) || !assignmentUrl) {
-      throw new functions.https.HttpsError("invalid-argument", "Valid students, title, due date, and app-relative URL are required.");
+    const assignmentUrl = sanitizeAppRoute(data?.assignmentUrl || (assignmentId ? `/grades?assignmentId=${encodeURIComponent(assignmentId)}` : "/grades"));
+    if (!isValidAssignmentId(assignmentId) || studentIds.length === 0 || !assignmentTitle || assignmentTitle.length > 160 || /[\r\n]/.test(assignmentTitle) || !dueDate || dueDate.length > 80 || /[\r\n]/.test(dueDate) || Number.isNaN(Date.parse(dueDate)) || !assignmentUrl) {
+      throw new functions.https.HttpsError("invalid-argument", "Valid assignmentId, students, title, due date, and app-relative URL are required.");
     }
 
     const db = admin.firestore();
+    const assignment = await db.doc(`quizAssignments/${assignmentId}`).get();
+    if (!assignment.exists) throw new functions.https.HttpsError("not-found", "Assignment not found.");
+    const assignmentData = assignment.data() || {};
+    const assignmentTarget = asString(assignmentData.lrn);
+    const assignmentTeacherId = asString(assignmentData.teacherId) || asString(assignmentData.assignedBy);
+    if (callerRole === "teacher" && assignmentTeacherId !== context.auth.uid) {
+      throw new functions.https.HttpsError("permission-denied", "You may only notify students for your own assignments.");
+    }
+    const assignmentSectionId = asString(assignmentData.classSectionId) || asString(assignmentData.classroomId);
+    if (callerRole === "teacher" && assignmentSectionId && assignmentSectionId !== classSectionId) {
+      throw new functions.https.HttpsError("permission-denied", "The assignment is not bound to this class section.");
+    }
+    if (callerRole === "teacher" && !classSectionId) {
+      throw new functions.https.HttpsError("invalid-argument", "classSectionId is required for teacher assignment notifications.");
+    }
+    const ownership = callerRole === "teacher" ? await db.doc(`classSectionOwnership/${classSectionId}`).get() : null;
+    const ownershipData = ownership?.exists ? ownership.data() || null : null;
+    if (callerRole === "teacher" && !ownershipData) {
+      throw new functions.https.HttpsError("permission-denied", "Class-section ownership could not be verified.");
+    }
     const authorized: string[] = [];
     for (const uid of studentIds) {
       const user = await db.doc(`users/${uid}`).get();
-      const managed = callerRole === "teacher" ? await db.doc(`managedStudents/${uid}`).get() : null;
-      if (canTeacherNotifyStudent(context.auth.uid, callerRole, managed?.exists ? managed.data() || null : null, user.data()?.role)) authorized.push(uid);
+      const assignmentMatches = !assignmentTarget || assignmentTarget === uid;
+      if (assignmentMatches && canTeacherNotifyStudent(context.auth.uid, callerRole, ownershipData, user.data()?.role, uid)) authorized.push(uid);
     }
     const result = emptyResult();
-    const stableId = eventId("assignment-deadline", `${assignmentTitle}:${dueDate}:${assignmentUrl}`);
+    const stableId = eventId("assignment-deadline", assignmentId);
     const results = await sendPushToUsers(authorized, {
       title: "📚 Assignment Due Soon",
       body: `"${assignmentTitle}" is due on ${dueDate}.`,
       url: assignmentUrl,
-      tag: `assignment-deadline-${assignmentTitle}`,
+      tag: `assignment-deadline-${assignmentId}`,
       eventId: stableId,
+      assignmentId,
       notificationType: "assignment",
     });
     mergeResult(result, results);
@@ -344,6 +378,10 @@ export const notifyAssignmentDeadline = functions.https.onCall(
  */
 export const sendTestPush = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Sign-in required.");
+  const caller = await admin.firestore().doc(`users/${context.auth.uid}`).get();
+  if (caller.data()?.role !== "admin") {
+    throw new functions.https.HttpsError("permission-denied", "Only administrators may send test pushes.");
+  }
   const requestId = typeof data?.requestId === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(data.requestId) ? data.requestId : `${Date.now()}`;
   return sendPushToUser(context.auth.uid, {
     title: "🔔 MathPulse Test Notification",
@@ -400,6 +438,8 @@ export const onInAppNotificationCreated = functions.firestore
     const title = asString(data.title) || "MathPulse AI";
     const body = asString(data.message) || "";
     const url = asString(data.actionUrl) || "/";
+    const assignmentId = asString(metadata.assignmentId) || asString(data.assignmentId) || asString(data.quizId);
+    if (fcmType === "assignment" && !isValidAssignmentId(assignmentId)) return;
 
     await sendPushToUser(context.params.userId, {
       title,
@@ -407,6 +447,7 @@ export const onInAppNotificationCreated = functions.firestore
       url,
       tag: `inapp-${context.params.notificationId}`,
       eventId: eventId("inapp", `${context.params.userId}:${context.params.notificationId}`),
+      ...(fcmType === "assignment" ? { assignmentId } : {}),
       notificationType: fcmType,
     });
   });
