@@ -1,5 +1,6 @@
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
+import { createHash } from "node:crypto";
 
 export type PushNotificationType =
   | "achievement"
@@ -22,6 +23,8 @@ export interface PushPayload {
   url?: string;
   tag?: string;
   eventId?: string;
+  /** Required for assignment notifications so retries identify one assignment. */
+  assignmentId?: string;
   notificationType: PushNotificationType;
   icon?: string;
   badge?: string;
@@ -48,6 +51,7 @@ const RECIPIENT_CONCURRENCY = 8;
 const MAX_RETRIES = 2;
 const DELIVERY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PROCESSING_TIMEOUT_MS = 10 * 60 * 1000;
+const ASSIGNMENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
 const INVALID_TOKEN_CODES = new Set([
   "messaging/registration-token-not-registered",
@@ -85,13 +89,23 @@ function addResults(target: PushResult, value: PushResult): void {
 
 function isToken(value: unknown): value is string {
   // FCM registration tokens are opaque, but cannot contain whitespace/control chars.
-  return typeof value === "string" && value.length > 0 && value.length <= 4096 && !/[\s\u0000-\u001f\u007f]/.test(value);
+  return typeof value === "string" && value.length > 0 && value.length <= 4096 && !/\s/.test(value);
 }
 
 function stableEventId(userId: string, payload: PushPayload): string {
   if (payload.eventId && /^[\w:./-]{1,200}$/.test(payload.eventId)) return payload.eventId;
   // Deterministic fallback keeps old callers compile-compatible while making retries idempotent.
-  return `derived-${Buffer.from(JSON.stringify({ userId, title: payload.title, body: payload.body, url: payload.url || "/", tag: payload.tag || "", type: payload.notificationType })).toString("base64url")}`.slice(0, 200);
+  return `derived-${Buffer.from(JSON.stringify({ userId, assignmentId: payload.assignmentId || "", title: payload.title, body: payload.body, url: payload.url || "/", tag: payload.tag || "", type: payload.notificationType })).toString("base64url")}`.slice(0, 200);
+}
+
+/** Assignment IDs are opaque document IDs, never arbitrary user input. */
+export function isValidAssignmentId(value: unknown): value is string {
+  return typeof value === "string" && ASSIGNMENT_ID_PATTERN.test(value);
+}
+
+/** A one-way token identifier suitable for delivery state documents and diagnostics. */
+export function hashPushToken(token: string): string {
+  return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
 function deliveryId(eventId: string, userId: string): string {
@@ -187,9 +201,16 @@ async function finishDelivery(userId: string, eventId: string, status: "delivere
   }, { merge: true });
 }
 
-function payloadData(payload: PushPayload): Record<string, string> {
+/**
+ * Build the data-only payload consumed by public/firebase-messaging-sw.js.
+ * Do not add a `notification` field here: the worker owns background display.
+ */
+export function buildPushData(payload: PushPayload): Record<string, string> {
   const url = sanitizeAppRoute(payload.url || "/");
   if (!url) throw new Error("Push URL must be a single-leading-slash app route");
+  if (payload.notificationType === "assignment" && !isValidAssignmentId(payload.assignmentId)) {
+    throw new Error("Assignment notifications require a valid assignmentId");
+  }
   return {
     title: String(payload.title),
     body: String(payload.body),
@@ -199,6 +220,7 @@ function payloadData(payload: PushPayload): Record<string, string> {
     eventId: String(payload.eventId || ""),
     url,
     notificationType: String(payload.notificationType),
+    ...(payload.assignmentId ? { assignmentId: payload.assignmentId } : {}),
   };
 }
 
@@ -227,9 +249,47 @@ export function dedupeTokens(tokens: string[]): { tokens: string[]; duplicate: n
 
 function wait(ms: number): Promise<void> { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
-interface BatchSendResult { sent: number; failed: number; invalidated: number; }
+interface BatchSendResult { sent: number; failed: number; invalidated: number; retryable: number; }
 
-async function sendBatch(tokens: string[], data: Record<string, string>, refs?: Map<string, FirebaseFirestore.DocumentReference>): Promise<BatchSendResult> {
+type TokenDeliveryStatus = "sent" | "invalid" | "retryable";
+
+/** Exported for tests and callers that need the same FCM error semantics. */
+export function classifyTokenDelivery(item: { success: boolean; error?: { code?: string } }): TokenDeliveryStatus {
+  if (item.success) return "sent";
+  return isInvalidTokenError(item.error?.code) ? "invalid" : "retryable";
+}
+
+async function persistTokenDelivery(eventId: string, userId: string, token: string, status: TokenDeliveryStatus, code?: string): Promise<void> {
+  // The hash is the only token-derived value persisted or emitted. Raw tokens never
+  // enter Firestore delivery state or logs.
+  await admin.firestore().collection("_pushDeliveries").doc(deliveryId(eventId, userId))
+    .collection("tokens").doc(hashPushToken(token)).set({
+      status,
+      ...(code ? { errorCode: code } : {}),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+}
+
+async function terminalTokenHashes(eventId: string, userId: string, tokens: string[]): Promise<Set<string>> {
+  const refs = tokens.map((token) => admin.firestore().collection("_pushDeliveries").doc(deliveryId(eventId, userId))
+    .collection("tokens").doc(hashPushToken(token)));
+  const snapshots = await Promise.all(refs.map((ref) => ref.get()));
+  const terminal = new Set<string>();
+  snapshots.forEach((snap, index) => {
+    const status = snap.data()?.status;
+    if (status === "sent" || status === "invalid") terminal.add(hashPushToken(tokens[index]));
+  });
+  return terminal;
+}
+
+async function sendBatch(
+  tokens: string[],
+  data: Record<string, string>,
+  refs: Map<string, FirebaseFirestore.DocumentReference> | undefined,
+  eventId: string | undefined,
+  userId: string | undefined,
+  retryRound = 0,
+): Promise<BatchSendResult> {
   let response: admin.messaging.BatchResponse | undefined;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
     try {
@@ -243,25 +303,51 @@ async function sendBatch(tokens: string[], data: Record<string, string>, refs?: 
     } catch (error) {
       if (attempt === MAX_RETRIES) {
         functions.logger.error("[sendPush] FCM batch failed", { count: tokens.length, error: error instanceof Error ? error.message : "unknown" });
-        return { sent: 0, failed: tokens.length, invalidated: 0 };
+        if (eventId && userId) await Promise.all(tokens.map((token) => persistTokenDelivery(eventId, userId, token, "retryable")));
+        return { sent: 0, failed: tokens.length, invalidated: 0, retryable: tokens.length };
       }
       await wait(50 * (2 ** attempt));
     }
   }
-  if (!response) return { sent: 0, failed: tokens.length, invalidated: 0 };
+  if (!response) return { sent: 0, failed: tokens.length, invalidated: 0, retryable: tokens.length };
   let invalidated = 0;
+  const retryableTokens: string[] = [];
   await Promise.all(response.responses.map(async (item, index) => {
-    if (item.success || !isInvalidTokenError(item.error?.code)) return;
+    const status = classifyTokenDelivery(item);
+    if (status === "retryable") retryableTokens.push(tokens[index]);
+    if (status === "invalid") invalidated += 1;
+    if (eventId && userId) await persistTokenDelivery(eventId, userId, tokens[index], status, item.error?.code);
+    if (status !== "invalid") return;
     const ref = refs?.get(tokens[index]);
     if (!ref) return;
     try {
       await ref.update({ active: false, invalidatedAt: admin.firestore.FieldValue.serverTimestamp(), invalidationReason: item.error?.code });
-      invalidated += 1;
     } catch (error) {
       functions.logger.warn("[sendPush] token invalidation failed", { error: error instanceof Error ? error.message : "unknown" });
     }
   }));
-  return { sent: response.successCount, failed: response.failureCount, invalidated };
+
+  // FCM may return transient per-token errors in an otherwise successful
+  // BatchResponse. Retry only those tokens; terminal successes/invalid tokens
+  // are never resent. The retry state is also persisted for trigger retries.
+  if (retryableTokens.length > 0 && retryRound < MAX_RETRIES) {
+    await wait(50 * (2 ** retryRound));
+    const retry = await sendBatch(retryableTokens, data, refs, eventId, userId, retryRound + 1);
+    const terminalFailureCount = response.failureCount - retryableTokens.length;
+    return {
+      sent: response.successCount + retry.sent,
+      failed: terminalFailureCount + retry.failed,
+      invalidated: invalidated + retry.invalidated,
+      retryable: retry.retryable,
+    };
+  }
+
+  return {
+    sent: response.successCount,
+    failed: response.failureCount,
+    invalidated,
+    retryable: retryableTokens.length,
+  };
 }
 
 /** Send to an explicit token list. This never logs token values or prefixes. */
@@ -272,17 +358,32 @@ export async function sendPushToTokens(tokens: string[], payload: PushPayload, o
   result.failed += deduped.malformed;
   result.duplicate += deduped.duplicate;
   if (unique.length === 0) return result;
-  const eventId = payload.eventId || `token-send-${Buffer.from(JSON.stringify({ title: payload.title, body: payload.body, url: payload.url || "/", tag: payload.tag || "", type: payload.notificationType })).toString("base64url")}`.slice(0, 180);
+  const eventId = payload.eventId || `token-send-${Buffer.from(JSON.stringify({ assignmentId: payload.assignmentId || "", title: payload.title, body: payload.body, url: payload.url || "/", tag: payload.tag || "", type: payload.notificationType })).toString("base64url")}`.slice(0, 180);
   if (options.userId) {
     const claim = await claimDelivery(options.userId, eventId);
     if (claim === "duplicate") { result.duplicate += 1; return result; }
   }
-  const data = payloadData({ ...payload, eventId });
+  const data = buildPushData({ ...payload, eventId });
+  let retryable = 0;
   for (const batch of chunkTokens(unique)) {
-    addResults(result, await sendBatch(batch, data, options.tokenRefs));
+    let pending = batch;
+    if (options.userId) {
+      const terminal = await terminalTokenHashes(eventId, options.userId, batch);
+      result.duplicate += batch.filter((token) => terminal.has(hashPushToken(token))).length;
+      pending = batch.filter((token) => !terminal.has(hashPushToken(token)));
+    }
+    if (pending.length > 0) {
+      const batchResult = await sendBatch(pending, data, options.tokenRefs, options.userId ? eventId : undefined, options.userId);
+      result.sent += batchResult.sent;
+      result.failed += batchResult.failed;
+      result.invalidated += batchResult.invalidated;
+      retryable += batchResult.retryable;
+    }
   }
   if (options.userId) {
-    await finishDelivery(options.userId, eventId, result.sent > 0 || result.failed < unique.length ? "delivered" : "failed");
+    // A user/event is delivered only once every token is terminal. Retryable
+    // failures leave the claim retryable and successful/invalid tokens skipped.
+    await finishDelivery(options.userId, eventId, retryable === 0 ? "delivered" : "failed");
   }
   return result;
 }

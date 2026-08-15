@@ -14,6 +14,7 @@ import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, Us
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService.ts';
 import { Toaster, toast } from 'sonner';
 import { NotificationProvider } from '@/features/notifications';
+import { deactivateCurrentSessionToken } from './services/pushNotificationService';
 import PushNotificationsManager from './components/PushNotificationsManager';
 import InstallPwaButton from './components/InstallPwaButton.tsx';
 import OnlineOfflineBanner from './components/OnlineOfflineBanner.tsx';
@@ -110,6 +111,7 @@ const App = () => {
           setMaintenanceMode(true);
           // Sign out non-admin users
           if (isLoggedIn && userRole !== 'admin') {
+            if (userProfile?.uid) await deactivateCurrentSessionToken(userProfile.uid);
             await signOutUser();
           }
         } else {
@@ -645,6 +647,7 @@ const App = () => {
 
   const handleLogout = async () => {
     try {
+      if (userProfile?.uid) await deactivateCurrentSessionToken(userProfile.uid);
       await signOutUser();
       setProfileOverrides({});
       setActiveTab('Dashboard');

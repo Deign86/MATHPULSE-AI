@@ -296,7 +296,13 @@ service cloud.firestore {
 
     match /managedStudents/{studentId} {
       allow read: if isSelf(studentId) || isTeacherOrAdmin();
-      allow create, update: if isTeacherOrAdmin();
+      // This remains teacher-writable for roster/risk enrichment compatibility,
+      // but teacherId is not an authorization source for callable notifications.
+      allow create: if isTeacherOrAdmin();
+      allow update: if isAdmin() || (isTeacher() &&
+        (!request.resource.data.keys().hasAny(['teacherId']) ||
+         !resource.data.keys().hasAny(['teacherId']) ||
+         request.resource.data.teacherId == resource.data.teacherId));
       allow delete: if isAdmin();
     }
 
@@ -332,17 +338,15 @@ service cloud.firestore {
 
     match /classSectionOwnership/{classSectionId} {
       allow read: if isTeacherOrAdmin();
-      allow create: if isAdmin() || (isTeacher() && (
-        ownerInIncoming('ownerTeacherId') ||
-        ownerInIncoming('managerId')
-      ));
-      allow update: if isAdmin() || (isTeacher() && (
-        ownerInIncoming('ownerTeacherId') ||
-        ownerInExisting('ownerTeacherId') ||
-        ownerInIncoming('managerId') ||
-        ownerInExisting('managerId')
-      ));
-      allow delete: if isAdmin() || (isTeacher() && ownerInExisting('ownerTeacherId'));
+      // Ownership and roster membership are trusted authorization inputs. A
+      // teacher may maintain a section only after admin provisioning; teacher
+      // writes cannot claim or transfer ownership/manager fields.
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isTeacher() &&
+        resource.data.ownerTeacherId == request.auth.uid &&
+        request.resource.data.ownerTeacherId == resource.data.ownerTeacherId &&
+        request.resource.data.managerId == resource.data.managerId);
+      allow delete: if isAdmin();
     }
 
     match /courseMaterials/{materialId} {
