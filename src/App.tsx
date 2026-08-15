@@ -942,12 +942,17 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
     return <AppLoadingScreen message="Preparing your dashboard..." />;
   }
 
+  const withPushManager = (content: React.ReactNode) => (
+    <PushNotificationsManager>{content}</PushNotificationsManager>
+  );
+
+  let authenticatedContent: React.ReactNode;
+
   // Show Teacher Dashboard
   if (userRole === 'teacher') {
-    return (
+    authenticatedContent = (
       <NotificationProvider>
       <>
-        <PushNotificationsManager />
         <Suspense fallback={<AppLoadingScreen message="Loading teacher dashboard..." />}>
           <TeacherDashboard 
             onLogout={handleLogout}
@@ -985,14 +990,10 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
        </>
       </NotificationProvider>
     );
-  }
-
-  // Show Admin Dashboard
-  if (userRole === 'admin') {
-    return (
+  } else if (userRole === 'admin') {
+    authenticatedContent = (
       <NotificationProvider>
       <>
-        <PushNotificationsManager />
         <Suspense fallback={<AppLoadingScreen message="Loading admin dashboard..." />}>
           <AdminDashboard 
             onLogout={handleLogout}
@@ -1030,13 +1031,11 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
        </>
       </NotificationProvider>
     );
-  }
-
-  // Show Student Dashboard (existing code)
-  const studentDashboard = (
+  } else {
+    // Show Student Dashboard (existing code)
+    const studentDashboard = (
     <NotificationProvider>
     <>
-    <PushNotificationsManager />
     <ChatProvider>
       <div className="flex h-screen w-full bg-[#f8faff] overflow-hidden">
         {/* Desktop Sidebar */}
@@ -1501,7 +1500,12 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
     </NotificationProvider>
   );
 
-  return <ProgressGate>{studentDashboard}</ProgressGate>;
+    authenticatedContent = <ProgressGate>{studentDashboard}</ProgressGate>;
+  }
+
+  // Exactly one lifecycle manager wraps all role branches. Settings consumes
+  // its controls through context, so role switching never duplicates hooks.
+  return withPushManager(authenticatedContent);
 };
 
 export default App;

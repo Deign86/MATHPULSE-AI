@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   deactivateCurrentPushToken,
+  deactivateCurrentSessionToken,
   getPushCapability,
   onForegroundMessage,
   pushStatus,
@@ -90,8 +91,11 @@ export function usePushNotifications(): UsePushNotificationsResult {
     // Account changes and logout are the only automatic cleanup paths. This is
     // deliberately not an effect cleanup, so StrictMode/remounts do not
     // deregister a still-valid device token.
-    if (previousUid && previousUid !== nextUid && previousToken) {
-      void deactivateCurrentPushToken(previousUid, previousToken);
+    if (previousUid && previousUid !== nextUid) {
+      // Account switch/logout cleanup is intentional. There is no cleanup
+      // return from this effect: ordinary remounts must not revoke a device.
+      void deactivateCurrentSessionToken(previousUid);
+      if (previousToken) void deactivateCurrentPushToken(previousUid, previousToken);
     }
     tokenRef.current = null;
     uidRef.current = nextUid;
