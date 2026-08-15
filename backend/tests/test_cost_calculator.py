@@ -5,16 +5,30 @@ import os
 from unittest.mock import patch
 from datetime import datetime, timezone
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.cost_calculator import calculate_feature_cost, calculate_full_price_cost
 from config.ai_pricing import get_active_pricing, DEEPSEEK_PRICING
 
 
+ACTIVE_PROMO_TIME = datetime(2026, 5, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture
+def active_promo_datetime():
+    """Keep promotional-price assertions independent of the wall clock."""
+    with patch("config.ai_pricing.datetime") as mock_dt:
+        mock_dt.now.return_value = ACTIVE_PROMO_TIME
+        mock_dt.side_effect = datetime
+        yield mock_dt
+
+
 class TestCalculateFeatureCostPromoActive:
     """Tests when promotional pricing is active (before 2026-05-31)."""
 
-    def test_basic_calculation(self):
+    def test_basic_calculation(self, active_promo_datetime):
         result = calculate_feature_cost(
             "deepseek-v4-pro",
             cache_hit_tokens=1_000_000,
@@ -28,7 +42,7 @@ class TestCalculateFeatureCostPromoActive:
         expected_total = 0.003625 + 0.435 + 0.87
         assert abs(result["total_usd"] - expected_total) < 1e-5
 
-    def test_zero_tokens(self):
+    def test_zero_tokens(self, active_promo_datetime):
         result = calculate_feature_cost("deepseek-v4-pro", 0, 0, 0)
         assert result["total_usd"] == 0.0
         assert result["cache_hit_cost"] == 0.0
@@ -36,7 +50,7 @@ class TestCalculateFeatureCostPromoActive:
         assert result["output_cost"] == 0.0
         assert result["is_promotional"] is True
 
-    def test_only_cache_hits(self):
+    def test_only_cache_hits(self, active_promo_datetime):
         result = calculate_feature_cost("deepseek-v4-pro", 5_000_000, 0, 0)
         expected = (5_000_000 / 1_000_000) * 0.003625
         assert abs(result["total_usd"] - expected) < 1e-5
