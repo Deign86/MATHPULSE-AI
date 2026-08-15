@@ -97,8 +97,11 @@ cd functions && npm run build && npm test
 npm run build
 npx firebase deploy --only hosting --project mathpulse-ai-2026
 
-# Deploy backend (separate infrastructure, if configured)
-python scripts/deploy-hf.py
+# Deploy frontend PWA
+npx firebase deploy --only hosting --project mathpulse-ai-2026
+
+# Backend checks/deployment are handled by the selected backend platform.
+# GitHub Actions no longer deploys or manages Hugging Face Spaces.
 ```
 
 ## Project Structure
