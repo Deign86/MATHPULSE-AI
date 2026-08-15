@@ -68,7 +68,7 @@ export const onAchievementUnlocked = functions.firestore
 
     const name = asString(data.name) || asString(data.title) || "New Achievement";
     await sendPushToUser(context.params.userId, {
-      title: "🏆 Achievement Unlocked!",
+      title: "Achievement Unlocked!",
       body: `You earned: ${name}`,
       url: "/grades",
       tag: `achievement-${context.params.achievementId}`,
@@ -113,7 +113,7 @@ export const onQuizBattleUpdate = functions.firestore
       challengedId
     ) {
       await sendPushToUser(challengedId, {
-        title: "⚔️ Battle Challenge!",
+        title: "Battle Challenge!",
         body: `${challengerName} challenged you to a Math Battle!`,
         url: `/battle?match=${battleId}`,
         tag: `battle-invite-${battleId}`,
@@ -134,7 +134,7 @@ export const onQuizBattleUpdate = functions.firestore
       await Promise.all(
         recipients.map((uid) =>
           sendPushToUser(uid, {
-            title: "🎮 Battle Complete!",
+            title: "Battle Complete!",
             body: "Your Math Battle has ended. Check the results!",
             url: `/battle?match=${battleId}`,
             tag: `battle-complete-${battleId}`,
@@ -164,7 +164,7 @@ export const onGradePosted = functions.firestore
     const subject = asString(data.subject) || asString(data.title) || "an assessment";
 
     await sendPushToUser(studentId, {
-      title: "📝 New Grade Posted",
+      title: "New Grade Posted",
       body: `You scored ${score}/${maxScore} on ${subject}.`,
       url: "/grades",
       tag: `grade-${context.params.attemptId}`,
@@ -219,7 +219,7 @@ export const dailyRewardReminder = functions.pubsub
     await Promise.all(
       targets.map((uid) =>
         sendPushToUser(uid, {
-          title: "🎁 Daily Reward Ready!",
+          title: "Daily Reward Ready!",
           body: "Your daily bonus is waiting. Log in to claim it!",
           url: "/",
           tag: "daily-reward",
@@ -269,7 +269,7 @@ export const streakReminder = functions.pubsub
     await Promise.all(
       targets.map(({ uid, streak }) =>
         sendPushToUser(uid, {
-          title: "🔥 Keep Your Streak Alive!",
+          title: "Keep Your Streak Alive!",
           body: `You have a ${streak}-day streak! Complete a lesson today to keep it going.`,
           url: "/modules",
           tag: "streak-reminder",
@@ -358,7 +358,7 @@ export const notifyAssignmentDeadline = functions.https.onCall(
     const result = emptyResult();
     const stableId = eventId("assignment-deadline", assignmentId);
     const results = await sendPushToUsers(authorized, {
-      title: "📚 Assignment Due Soon",
+      title: "Assignment Due Soon",
       body: `"${assignmentTitle}" is due on ${dueDate}.`,
       url: assignmentUrl,
       tag: `assignment-deadline-${assignmentId}`,
@@ -384,7 +384,7 @@ export const sendTestPush = functions.https.onCall(async (data, context) => {
   }
   const requestId = typeof data?.requestId === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(data.requestId) ? data.requestId : `${Date.now()}`;
   return sendPushToUser(context.auth.uid, {
-    title: "🔔 MathPulse Test Notification",
+    title: "MathPulse Test Notification",
     body: "Push notifications are working! You'll receive updates here.",
     url: "/",
     tag: `test-push-${requestId}`,
