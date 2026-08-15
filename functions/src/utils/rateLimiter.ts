@@ -5,7 +5,7 @@
  * Stores { count, windowStart } per user per function, resets every 60 seconds.
  */
 
-import * as admin from 'firebase-admin';
+import * as admin from "firebase-admin";
 
 // Rate limits per function type
 const RATE_LIMITS: Record<string, number> = {
@@ -49,7 +49,7 @@ export interface RateLimitConfig {
   windowSeconds: number;
   functionName: string;
   uid: string;
-  role?: 'admin' | 'teacher' | 'student';
+  role?: "admin" | "teacher" | "student";
 }
 
 export interface RateLimitResult {
@@ -73,12 +73,12 @@ function getEffectiveLimit(
   functionName: string,
   role?: string
 ): number {
-  const baseLimit = RATE_LIMITS[functionName] || RATE_LIMITS['default'];
+  const baseLimit = RATE_LIMITS[functionName] || RATE_LIMITS["default"];
 
-  if (role === 'admin') {
+  if (role === "admin") {
     return baseLimit * ADMIN_MULTIPLIER;
   }
-  if (role === 'teacher') {
+  if (role === "teacher") {
     return baseLimit * TEACHER_MULTIPLIER;
   }
   return baseLimit;
@@ -91,7 +91,7 @@ function getEffectiveLimit(
 export async function checkRateLimit(
   uid: string,
   functionName: string,
-  role?: 'admin' | 'teacher' | 'student'
+  role?: "admin" | "teacher" | "student"
 ): Promise<RateLimitResult> {
   const db = admin.firestore();
   const effectiveLimit = getEffectiveLimit(functionName, role);
@@ -181,7 +181,7 @@ export async function checkRateLimit(
 export async function checkRateLimitOrThrow(
   uid: string,
   functionName: string,
-  role?: 'admin' | 'teacher' | 'student'
+  role?: "admin" | "teacher" | "student"
 ): Promise<void> {
   const result = await checkRateLimit(uid, functionName, role);
 
@@ -217,7 +217,7 @@ export async function rateLimitBefore(
   context: any,
   options: {
     functionName: string;
-    getRole?: (data: any, context: any) => 'admin' | 'teacher' | 'student' | undefined;
+    getRole?: (data: any, context: any) => "admin" | "teacher" | "student" | undefined;
   }
 ): Promise<void> {
   const uid = context?.auth?.uid;
