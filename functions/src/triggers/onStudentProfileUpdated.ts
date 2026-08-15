@@ -230,8 +230,8 @@ export const onStudentProfileUpdated = functions.firestore
     if (beforeXP !== afterXP || beforeData.name !== afterData.name || beforeData.level !== afterData.level || beforeData.photo !== afterData.photo) {
       const leaderboardRef = db.collection("leaderboard").doc(userId);
       await leaderboardRef.set({
-        name: afterData.name || 'Unknown',
-        photo: afterData.photo || '',
+        name: afterData.name || "Unknown",
+        photo: afterData.photo || "",
         totalXP: afterXP,
         level: afterData.level || 1,
         weeklyXP: afterData.weeklyXP || 0,

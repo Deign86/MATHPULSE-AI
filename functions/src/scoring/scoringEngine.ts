@@ -1,4 +1,4 @@
-import { clamp } from '../utils/math';
+import { clamp } from "../utils/math";
 
 export interface RoundScoreBreakdown {
   basePoints: number;
@@ -15,10 +15,10 @@ export interface MatchXPBreakdown {
   performanceXP: number;
   totalXPAwarded: number;
   totalPointsEarned: number;
-  scoringVersion: 'v2';
+  scoringVersion: "v2";
 }
 
-export const DIFFICULTY_MULTIPLIERS: Record<'easy' | 'medium' | 'hard', number> = {
+export const DIFFICULTY_MULTIPLIERS: Record<"easy" | "medium" | "hard", number> = {
   easy: 1.0,
   medium: 1.15,
   hard: 1.30,
@@ -27,10 +27,10 @@ export const DIFFICULTY_MULTIPLIERS: Record<'easy' | 'medium' | 'hard', number> 
 export const XP_CAP_PER_BATTLE = 140;
 export const DAILY_BATTLE_XP_CAP = 500;
 
-export type MatchOutcome = 'win' | 'loss' | 'draw';
+export type MatchOutcome = "win" | "loss" | "draw";
 
 export const computeRoundScoreBreakdown = (params: {
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: "easy" | "medium" | "hard";
   consecutiveCorrect: number;
   responseMs: number;
   roundStartedAtMs: number;
@@ -62,7 +62,7 @@ export const computeMatchXP = (params: {
   battleXPEarnedToday: number;
 }): { xpBreakdown: MatchXPBreakdown; actualXPAwarded: number } => {
   const { outcome, totalPointsEarned, battleXPEarnedToday } = params;
-  const baseMatchXP = outcome === 'win' ? 60 : outcome === 'draw' ? 40 : 20;
+  const baseMatchXP = outcome === "win" ? 60 : outcome === "draw" ? 40 : 20;
   const performanceXP = Math.floor(totalPointsEarned * 0.08);
   const uncappedXP = baseMatchXP + performanceXP;
   const cappedByMatchXP = Math.min(uncappedXP, XP_CAP_PER_BATTLE);
@@ -74,7 +74,7 @@ export const computeMatchXP = (params: {
     performanceXP,
     totalXPAwarded: actualXPAwarded,
     totalPointsEarned,
-    scoringVersion: 'v2',
+    scoringVersion: "v2",
   };
 
   return { xpBreakdown, actualXPAwarded };

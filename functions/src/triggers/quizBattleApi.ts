@@ -174,7 +174,13 @@ type QueueStatus = "searching" | "matched" | "cancelled";
 type MatchStatus = "ready" | "in_progress" | "completed" | "cancelled";
 type RoomStatus = "waiting" | "ready" | "cancelled" | "expired";
 type RoundWinner = "playerA" | "playerB" | "draw";
-import { MatchOutcome } from '../scoring/scoringEngine';
+import {
+  MatchOutcome,
+  RoundScoreBreakdown,
+  MatchXPBreakdown,
+  computeRoundScoreBreakdown,
+  computeMatchXP,
+} from "../scoring/scoringEngine";
 type HeartbeatScope = "queue" | "room" | "match";
 type LifecycleEventType = "round_started" | "answer_locked" | "round_result" | "match_completed";
 
@@ -237,7 +243,7 @@ interface StoredRoundResultRecord {
   playerBScoreBreakdown?: RoundScoreBreakdown;
 }
 
-import { RoundScoreBreakdown, MatchXPBreakdown } from '../scoring/scoringEngine';
+
 
 interface RoundResultRecord {
   roundNumber: number;
@@ -412,7 +418,7 @@ interface BattleQuestionCandidate {
 interface QuestionSetBundle {
   questions: BattleQuestionPublic[];
   answerKeys: number[];
-  difficulties: ('easy' | 'medium' | 'hard')[];
+  difficulties: ("easy" | "medium" | "hard")[];
   source: "ai" | "bank";
   servedQuestionIds: string[];
   selector: QuestionPoolSelector;
@@ -751,7 +757,7 @@ const QUESTION_BANK: BattleQuestionTemplate[] = [
   },
 ];
 
-import { clamp } from '../utils/math';
+import { clamp } from "../utils/math";
 
 const randomInRange = (min: number, max: number): number => {
   if (max <= min) return min;
@@ -1123,15 +1129,15 @@ const shuffleChoicesPreservingCorrect = (
 const materializeQuestionSet = (
   candidates: BattleQuestionCandidate[],
   randomInt: (min: number, max: number) => number = randomInRange,
-): { questions: BattleQuestionPublic[]; answerKeys: number[]; difficulties: ('easy' | 'medium' | 'hard')[] } => {
+): { questions: BattleQuestionPublic[]; answerKeys: number[]; difficulties: ("easy" | "medium" | "hard")[] } => {
   const answerKeys: number[] = [];
-  const difficulties: ('easy' | 'medium' | 'hard')[] = [];
+  const difficulties: ("easy" | "medium" | "hard")[] = [];
   const questions = candidates.map((candidate, index) => {
     const shuffled = shuffleChoicesPreservingCorrect(candidate.choices, candidate.correctOptionIndex, randomInt);
     answerKeys.push(shuffled.correctOptionIndex);
-    const diff: 'easy' | 'medium' | 'hard' = (candidate.difficulty === 'easy' || candidate.difficulty === 'medium' || candidate.difficulty === 'hard')
+    const diff: "easy" | "medium" | "hard" = (candidate.difficulty === "easy" || candidate.difficulty === "medium" || candidate.difficulty === "hard")
       ? candidate.difficulty
-      : 'medium';
+      : "medium";
     difficulties.push(diff);
     return {
       roundNumber: index + 1,
@@ -1864,13 +1870,7 @@ const xpForOutcome = (outcome: MatchOutcome): number => {
   return 35;
 };
 
-import {
-  DIFFICULTY_MULTIPLIERS,
-  XP_CAP_PER_BATTLE,
-  DAILY_BATTLE_XP_CAP,
-  computeRoundScoreBreakdown,
-  computeMatchXP,
-} from '../scoring/scoringEngine';
+
 
 const normalizeSourceType = (raw: unknown): BattleQuestionSourceType => {
   const value = asString(raw, "").toLowerCase();
@@ -2375,13 +2375,13 @@ const selectQuestionSet = async (params: {
   };
 };
 
-const getRoundDifficulties = (raw: unknown): ('easy' | 'medium' | 'hard')[] => {
+const getRoundDifficulties = (raw: unknown): ("easy" | "medium" | "hard")[] => {
   if (!isRecord(raw)) return [];
   const diffs = raw.difficulties;
   if (!Array.isArray(diffs)) return [];
   return diffs.map((entry) => {
-    const s = asString(entry, 'medium');
-    return (s === 'easy' || s === 'medium' || s === 'hard') ? s : 'medium';
+    const s = asString(entry, "medium");
+    return (s === "easy" || s === "medium" || s === "hard") ? s : "medium";
   });
 };
 
@@ -3017,7 +3017,7 @@ const finalizeCompletedMatch = async (
 
       const existingStats = participantStats[participantId];
       const todayUTC = new Date().toISOString().slice(0, 10);
-      const battleXPEarnedDate = asString(existingStats.battleXPEarnedDate, '');
+      const battleXPEarnedDate = asString(existingStats.battleXPEarnedDate, "");
       const battleXPEarnedToday = battleXPEarnedDate === todayUTC
         ? asNumber(existingStats.battleXPEarnedToday, 0)
         : 0;
@@ -3483,7 +3483,7 @@ const persistAiGenerationSuccess = async (
 
     tx.set(roundKeysRef, {
       keys: generatedSet.answerKeys,
-      difficulties: generatedSet.answerKeys.map(() => 'medium' as const),
+      difficulties: generatedSet.answerKeys.map(() => "medium" as const),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
@@ -4090,9 +4090,9 @@ const progressMatchTimerIfExpired = async (
 
     const roundKeys = keysSnap.exists ? getRoundKeys(keysSnap.data()) : [];
     const roundDifficulties = keysSnap.exists ? getRoundDifficulties(keysSnap.data()) : [];
-    const roundDifficulty: 'easy' | 'medium' | 'hard' = roundDifficulties.length > currentRound - 1
+    const roundDifficulty: "easy" | "medium" | "hard" = roundDifficulties.length > currentRound - 1
       ? roundDifficulties[currentRound - 1]
-      : 'medium';
+      : "medium";
     const correctOptionIndex = roundKeys[currentRound - 1];
     if (typeof correctOptionIndex !== "number" || correctOptionIndex < 0) {
       return;
@@ -5172,9 +5172,9 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
 
     const roundKeys = keysSnap.exists ? getRoundKeys(keysSnap.data()) : [];
     const roundDifficulties = keysSnap.exists ? getRoundDifficulties(keysSnap.data()) : [];
-    const roundDifficulty: 'easy' | 'medium' | 'hard' = roundDifficulties.length > roundNumber - 1
+    const roundDifficulty: "easy" | "medium" | "hard" = roundDifficulties.length > roundNumber - 1
       ? roundDifficulties[roundNumber - 1]
-      : 'medium';
+      : "medium";
     const correctOptionIndex = roundKeys[roundNumber - 1];
     if (typeof correctOptionIndex !== "number" || correctOptionIndex < 0) {
       throw new functions.https.HttpsError("internal", "Round answer key missing.");

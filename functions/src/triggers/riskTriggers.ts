@@ -190,9 +190,9 @@ async function generateTutorCheckIn(
 
   // Build contextual message
   const messages: Record<string, string> = {
-    watch: `Hi ${studentName}! I noticed your recent quiz scores have been a bit lower than usual (${avgRecent ?? 'N/A'}%). Let's take a moment to review any tricky concepts together. You've got this! 💪`,
-    intervene: `${studentName}, your teacher and I are here to help. Your WRI is ${wri ?? 'N/A'} — let's focus on one topic at a time. I've unlocked some extra hints for your next quiz. 🎯`,
-    critical: `${studentName}, I'm worried about your progress. Your recent scores (${avgRecent ?? 'N/A'}%) suggest you might be struggling. Please start a remedial module or reach out to your teacher today. We're here for you. ❤️`,
+    watch: `Hi ${studentName}! I noticed your recent quiz scores have been a bit lower than usual (${avgRecent ?? "N/A"}%). Let's take a moment to review any tricky concepts together. You've got this! 💪`,
+    intervene: `${studentName}, your teacher and I are here to help. Your WRI is ${wri ?? "N/A"} — let's focus on one topic at a time. I've unlocked some extra hints for your next quiz. 🎯`,
+    critical: `${studentName}, I'm worried about your progress. Your recent scores (${avgRecent ?? "N/A"}%) suggest you might be struggling. Please start a remedial module or reach out to your teacher today. We're here for you. ❤️`,
     at_risk: `${studentName}, your learning path is paused while your teacher reviews your progress. In the meantime, review your completed lessons and don't hesitate to ask for help. You can do this! 🌟`,
   };
 
@@ -401,7 +401,7 @@ export const onExternalGradeWritten = functions.firestore
 
 export const runWriBatchRecalc = functions.pubsub
   .schedule("every 60 minutes")
-  .onRun(async (context) => {
+  .onRun(async () => {
     const db = admin.firestore();
     const managedStudentsRef = db.collection("managedStudents");
 
@@ -428,6 +428,6 @@ export const runWriBatchRecalc = functions.pubsub
       functions.logger.error("[ERROR] Batch recalc query failed", { error: error.message });
     }
 
-    functions.logger.info(`[WRI] Batch recalc complete`, { processed, errors });
+    functions.logger.info("[WRI] Batch recalc complete", { processed, errors });
     return null;
   });

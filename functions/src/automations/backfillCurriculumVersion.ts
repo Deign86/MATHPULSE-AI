@@ -205,20 +205,25 @@ async function processCollection(
 
   let lastDocId: string | null = null;
   let scannedInCollection = 0;
+  let continuePaging = true;
 
-  while (true) {
+  while (continuePaging) {
     if (
       typeof options.maxDocsPerCollection === "number" &&
       scannedInCollection >= options.maxDocsPerCollection
     ) {
-      break;
+      continuePaging = false;
+      continue;
     }
 
     const remaining = typeof options.maxDocsPerCollection === "number"
       ? Math.max(options.maxDocsPerCollection - scannedInCollection, 0)
       : pageSize;
 
-    if (remaining === 0) break;
+    if (remaining === 0) {
+      continuePaging = false;
+      continue;
+    }
 
     let query = db
       .collection(collectionName)
@@ -231,7 +236,8 @@ async function processCollection(
 
     const snap = await query.get();
     if (snap.empty) {
-      break;
+      continuePaging = false;
+      continue;
     }
 
     let batch = db.batch();
