@@ -17,13 +17,27 @@
 [![Graphify](https://img.shields.io/badge/Graphify-Mapped-00C853?logo=graphviz&logoColor=white)](https://github.com/waybarrios/graphify)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An interactive, gamified math learning platform featuring AI-powered tutoring via DeepSeek, role-based dashboards, and personalized learning paths for students, teachers, and administrators. The project spans **573 source files** across a React + TypeScript frontend, FastAPI Python backend, and Firebase Cloud Functions — mapped as a knowledge graph of **16,882 code symbols** with **26,955 relationships** organized into **580 functional communities** and **300 execution flow chains**.
+An interactive, gamified, installable Progressive Web App (PWA) featuring AI-powered tutoring via DeepSeek, role-based dashboards, and personalized learning paths for students, teachers, and administrators. The frontend is built, served, and deployed from this repository through Firebase Hosting; it does not require a hosted Hugging Face frontend. The project spans **573 source files** across a React + TypeScript frontend, FastAPI Python backend, and Firebase Cloud Functions — mapped as a knowledge graph of **16,882 code symbols** with **26,955 relationships** organized into **580 functional communities** and **300 execution flow chains**.
 
-[Features](#-features) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Architecture](#-architecture) · [API Reference](#-api-reference) · [Contributing](#-contributing)
+[Features](#-features) · [PWA](docs/PWA.md) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Architecture](#-architecture) · [API Reference](#-api-reference) · [Contributing](#-contributing)
 
 </div>
 
 ---
+
+## 📱 Progressive Web App
+
+MathPulse AI is production-ready as an installable PWA:
+
+- App manifest with 192px, 512px, maskable, and Apple touch icons.
+- Versioned app-shell service worker with offline navigation fallback.
+- Conservative caching that excludes authenticated API responses and private user data.
+- Desktop install button in the authenticated header when browser installation is available.
+- iOS Add to Home Screen guidance and responsive safe-area support.
+- Online/offline status banner with network-dependent operations kept honest.
+- Firebase Hosting deployment with SPA rewrites and correct PWA cache headers.
+
+See [PWA architecture and deployment documentation](docs/PWA.md).
 
 ## ✨ Features
 

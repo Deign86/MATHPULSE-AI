@@ -23,7 +23,18 @@ npm install
 npm run dev
 ```
 
-The dev server starts at `http://localhost:3000`.
+The dev server starts at `http://localhost:3000`. MathPulse frontend is an installable Progressive Web App in production. Service-worker registration stays disabled during normal Vite development to avoid stale HMR caches; set `VITE_ENABLE_SW_IN_DEV=true` when explicitly testing PWA behavior.
+
+## PWA development and production deployment
+
+PWA source files live in `public/manifest.webmanifest`, `public/sw.js`, and `src/hooks/usePwaInstall.ts`. Build output is `build/`.
+
+```bash
+npm run build
+npx firebase deploy --only hosting --project mathpulse-ai-2026
+```
+
+Firebase Hosting serves the repository-owned frontend over HTTPS with SPA fallback. Configure `VITE_API_URL` for a separately deployed FastAPI origin, or use same-origin `/api` behind Nginx. Full PWA installation, offline limitations, cache policy, and troubleshooting are documented in [docs/PWA.md](docs/PWA.md).
 
 ## What `npm run dev` Does
 

@@ -1,6 +1,6 @@
 # MathPulse AI
 
-> AI-powered mathematics tutoring platform for Filipino senior high school STEM students (Grade 11–12), their teachers, and administrators. Powered by DeepSeek, Firebase, and FastAPI.
+> Installable, repository-owned Progressive Web App (PWA) for Filipino senior high school STEM students (Grade 11–12), teachers, and administrators. Frontend is React/Vite on Firebase Hosting; AI services use the configured FastAPI backend and DeepSeek.
 
 ## Overview
 
@@ -19,6 +19,14 @@ MathPulse AI delivers personalized math learning through:
 - [Teacher dashboard](/teacher) — Class analytics, topic mastery, data import
 - [Admin dashboard](/admin) — User management, content, system settings
 
+## PWA behavior
+
+- Manifest: `/manifest.webmanifest`
+- App-shell service worker: `/sw.js`
+- Offline fallback: `/offline.html`
+- Install control: authenticated application header
+- Private API and authenticated user data are never cached by the app-shell service worker
+
 ## Public documentation
 
 - [README](https://github.com/Deign86/MATHPULSE-AI/blob/main/README.md) — Project overview, setup, architecture
@@ -30,9 +38,9 @@ Authenticated routes (`/student`, `/teacher`, `/admin`, `/api/*`) require Fireba
 
 ## Tech stack
 
-- Frontend: React 18, TypeScript, Vite, Tailwind CSS v4
+- Frontend PWA: React 18, TypeScript, Vite, Tailwind CSS v4
 - Backend: FastAPI, Python 3.10+, DeepSeek API
-- Infra: Firebase Auth, Firestore, Cloud Functions, Firebase Hosting
+- Infra: Firebase Hosting, Firebase Auth, Firestore, Cloud Functions, configurable FastAPI backend
 
 ## Contact
 

@@ -61,16 +61,16 @@ Project root: C:\Users\Deign\Downloads\MATHPULSE-AI
 
 ## Project Overview
 
-**What:** MathPulse AI — AI-powered mathematics tutoring platform
+**What:** MathPulse AI — installable, repository-owned Progressive Web App (PWA) for AI-powered mathematics tutoring
 **Target Users:** Filipino Senior High School STEM students (Grade 11-12), their teachers, and admins
-**Stack:** React 18 + TypeScript + Vite (frontend), FastAPI + Python (backend), Firebase Cloud Functions (Node 22), Firestore + Realtime Database
+**Stack:** React 18 + TypeScript + Vite PWA frontend, FastAPI + Python backend, Firebase Hosting/Auth/Cloud Functions (Node 22), Firestore + Realtime Database
 
 ## Key Conventions
 
 - Path alias: `@` → `./src`
 - Component file naming: PascalCase `.tsx`, hook files: `use*.ts`, service files: `*Service.ts`
 - State management: Zustand (stores), TanStack Query (server state), React Context (auth, notifications, chat)
-- All API calls go through `src/services/apiService.ts` which wraps the backend at `https://deign86-mathpulse-api-v3test.hf.space`
+- All API calls go through the typed `src/config/env.ts` and `src/services/apiService.ts` abstraction. Production frontend defaults to same-origin `/api` when proxied; separately deployed FastAPI origin is configured with `VITE_API_URL`.
 - Firebase Functions use Node.js 22 runtime, deployed to `mathpulse-ai-2026` project
 - Quiz Battle uses Firebase Realtime Database for matchmaking queue
 - IAR workflow states: `not_started`, `in_progress`, `completed`, `skipped_unassessed`, `deep_diagnostic_required`, `deep_diagnostic_in_progress`, `placed`
@@ -93,8 +93,12 @@ cd backend && pip install -r requirements.txt && uvicorn main:app --reload
 # Functions
 cd functions && npm run build && npm test
 
-# Deploy
-python scripts/deploy-hf.py    # HuggingFace Spaces deployment
+# Deploy frontend PWA
+npm run build
+npx firebase deploy --only hosting --project mathpulse-ai-2026
+
+# Deploy backend (separate infrastructure, if configured)
+python scripts/deploy-hf.py
 ```
 
 ## Project Structure
