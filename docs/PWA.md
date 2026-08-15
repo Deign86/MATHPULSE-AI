@@ -132,7 +132,35 @@ Equivalent rules for the Docker production image:
 `VITE_APP_VERSION` is passed as a build arg to the production stage in
 `docker-compose.yml`. The production image serves the built PWA through Nginx.
 
-## 7. Verification checklist
+## 7. CI and release verification
+
+CI builds the production output and runs `npm run validate:pwa` before the
+frontend artifact can be uploaded or deployed. The validator checks the
+manifest JSON and required fields, every manifest icon, detected service
+workers, local `importScripts` dependencies, literal precache entries, and the
+asset list emitted in `pwa-config.js`.
+
+Run the same checks locally with:
+
+```bash
+npm ci --legacy-peer-deps
+npm run build
+npm run validate:pwa
+```
+
+Deploy these files together from `build/`: `index.html`,
+`manifest.webmanifest`, `sw.js`, `pwa-config.js`, `firebase-config.js`,
+`firebase-messaging-sw.js`, `offline.html`, `/icons/**`, root logo assets, and
+`/assets/**`. Firebase Hosting keeps workers, generated configuration,
+manifest, and HTML revalidating while content-hashed assets use long-lived
+immutable caching.
+
+To test a service-worker update safely, build with a new `VITE_APP_VERSION`,
+serve the production build with `npm run preview`, and use a private browser
+profile or clear the registered worker/cache between releases. Confirm the
+new worker activates, the app shell loads offline, and `/api/**` is not cached.
+
+## 8. Verification checklist
 
 - [ ] `npm run build` emits `build/manifest.webmanifest`, `build/sw.js`,
       `build/pwa-config.js`, and `build/offline.html`.
@@ -146,7 +174,7 @@ Equivalent rules for the Docker production image:
 - [ ] `beforeinstallprompt` shows the install button; `appinstalled` hides it.
 - [ ] On iOS Safari, the header control shows "Add to Home Screen" guidance.
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Symptom | Likely cause / fix |
 |---|---|
