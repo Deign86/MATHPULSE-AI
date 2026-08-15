@@ -1,190 +1,124 @@
-# Backend Deployment Safety - Restart Loop Prevention
+# Backend Validation and Deployment Safety
 
-## Problem
+## Purpose
 
-Previously, backend deployments would sometimes get stuck in infinite restart loops:
-- Status: `APP_STARTING` → restart → `APP_STARTING` → repeat indefinitely
-- Caused by: import errors, missing secrets, config mismatches, file structure issues
-- Result: Backend unreachable, debugging difficult in HF Space logs
+Backend deployments can fail or enter restart loops when imports, secrets, configuration, or file structure are invalid. This document describes repository validation and startup safeguards without coupling GitHub Actions to any hosting provider.
 
-## Solution
+## Validation layers
 
-**Three-layer validation system** that catches 99% of issues BEFORE deployment:
+### Layer 1: Local validation
 
-### Layer 1: Local Validation (Before Git Push)
-Run this before pushing to main:
+Run before pushing backend changes:
+
 ```bash
 python backend/pre_deploy_check.py
 ```
 
-This checks:
-- ✅ All Python imports (catches relative import vs absolute errors)
-- ✅ Config file validity (models.yaml exists and is readable)
-- ✅ File structure (required files exist)
-- ✅ InferenceClient configuration (task mappings correct)
-- ✅ Environment variables (HF_TOKEN status)
+Checks include:
 
-### Layer 2: GitHub Actions Pre-Deployment (Before HF Spaces Push)
-When you push to main, GitHub Actions runs:
-```yaml
-- name: Pre-deployment validation
-  run: python backend/pre_deploy_check.py
-```
+- Python imports and package structure
+- `config/models.yaml` validity
+- Required files and directories
+- Inference client configuration
+- Provider environment warnings
 
-If validation fails, **deployment is blocked**.
-The workflow shows exactly which check failed in the logs.
+Run backend tests locally:
 
-### Layer 3: Startup Validation (Container Initialization)
-If somehow invalid code reaches HF Spaces, `startup_validation.py` runs FIRST thing:
-- Exits immediately with clear error message if any critical check fails
-- Error is visible in HF Space logs
-- Container does NOT restart indefinitely
-
-## Common Failure Scenarios & Prevention
-
-### Scenario 1: Relative Import Error
-**Problem**: Code uses `from .services.inference_client import ...`
-**Solution**: Validation catches this - must use `from services.inference_client import ...`
-**Prevention**: Pre-deployment check validates all imports
-
-### Scenario 2: Missing Config File
-**Problem**: `config/models.yaml` is missing or empty
-**Solution**: Validation checks file existence and content
-**Prevention**: Pre-deployment check will fail with clear message
-
-### Scenario 3: Model Routing Error  
-**Problem**: `task_model_map` missing keys like 'chat' or 'verify_solution'
-**Solution**: Validation creates InferenceClient and verifies all required tasks mapped
-**Prevention**: Pre-deployment check lists all mapped tasks and models
-
-### Scenario 4: Missing HF_TOKEN
-**Problem**: HF_TOKEN not set, inference fails
-**Solution**: Clear warning logged (doesn't block deployment, but documented)
-**Prevention**: Pre-deployment check warns you
-
-## How to Use
-
-### Before Making Backend Changes
-1. Edit backend code
-2. Test locally with: `python -m pytest backend/tests/test_api.py`
-
-### Before Pushing to GitHub
 ```bash
-# Run pre-deployment validation
-python backend/pre_deploy_check.py
-
-# If validation passes ✅
-git add backend/
-git commit -m "fix: description"
-git push origin main
-
-# If validation fails ❌
-# Fix the error shown in output, then run validation again
+cd backend
+python -m pytest tests/ -v --tb=short
 ```
 
-### If Validation Fails
-Example output:
-```
-❌ IMPORT ERROR - Cannot start backend:
-   ModuleNotFoundError: No module named 'services'
+### Layer 2: Repository CI
 
-This usually means:
-  - A Python package is missing (check requirements.txt)
-  - A relative import was used (must be absolute in container)
-  - A circular import exists
+`.github/workflows/ci.yml` validates frontend, backend, and Firebase Functions on pull requests and non-main pushes. CI does not deploy backend infrastructure.
 
-Deploy will FAIL and backend will restart indefinitely.
+The frontend PWA deployment workflow is separate:
+
+```text
+.github/workflows/deploy-frontend.yml
 ```
 
-**Fix**: Look at the error and resolve it locally before pushing.
+It builds and deploys the repository-owned frontend to Firebase Hosting. It does not use Hugging Face credentials or deploy Hugging Face Spaces.
 
-## Critical Rules to Prevent Restart Loops
+### Layer 3: Backend startup validation
 
-1. **Always use absolute imports in backend code**
-   - ❌ `from .services import ...`
-   - ✅ `from services.inference_client import ...`
+When the selected backend platform starts the container, `backend/startup_validation.py` runs first:
 
-2. **Keep config files in sync**
-   - `config/models.yaml`
-   - `backend/config/models.yaml`
-   - Both should match exactly
+- Exits with a clear error when a critical check fails
+- Prevents opaque restart loops
+- Leaves deployment ownership with the selected backend platform
 
-3. **Set HF_TOKEN as HF Space Secret**
-   - Use: `python set-hf-secrets.py --hf-token YOUR_TOKEN`
-   - DO NOT hardcode in code
-   - DO NOT pass as environment variable via GitHub Actions (use secrets)
+## Common failure scenarios
 
-4. **Don't modify critical startup files without testing**
-   - `backend/main.py`
-   - `backend/services/inference_client.py`
-   - `backend/config/models.yaml`
+### Import errors
 
-5. **Test locally before pushing**
-   ```bash
-   cd backend
-   python -c "from startup_validation import run_all_validations; run_all_validations()"
-   ```
+Use absolute backend imports, for example:
 
-## Deployment Flow
-
+```python
+from services.inference_client import InferenceClient
 ```
+
+Run `python backend/pre_deploy_check.py` before deployment.
+
+### Missing configuration
+
+Verify:
+
+```text
+backend/config/models.yaml
+backend/.env.example
+```
+
+Do not copy private credentials into frontend `.env` files or `VITE_*` variables.
+
+### Missing provider credentials
+
+Configure required backend provider credentials in the selected backend runtime. Never hardcode them or pass them to the browser.
+
+### CORS failures
+
+Set explicit backend origins:
+
+```env
+CORS_ORIGINS=https://mathpulse-ai-2026.web.app
+```
+
+Do not use wildcard CORS with credentials in production.
+
+## Deployment flow
+
+```text
 Local changes
     ↓
-git push origin main
+pull request / push
     ↓
-🔍 GitHub Actions: run pre_deploy_check.py
+Repository CI validates frontend, backend, and functions
     ↓
-  PASS? → Push to HF Spaces
+PASS → deploy selected platform through its approved workflow or CLI
+FAIL → deployment blocked; inspect CI logs
     ↓
-  FAIL? → ❌ Deployment blocked, check logs
+Backend platform runs startup_validation.py
     ↓
-HF Space: startup_validation.py runs first
-    ↓
-  PASS? → FastAPI app starts normally
-    ↓
-  FAIL? → Exit with clear error message (no restart loop)
+PASS → FastAPI starts
+FAIL → clear startup error; no opaque restart loop
 ```
 
-## Monitoring Deployments
+## Monitoring
 
-Watch the GitHub Actions workflow:
-1. Go to your GitHub repo
-2. Click **Actions** tab
-3. Click latest **Deploy to Hugging Face Spaces** workflow
-4. Check the **Pre-deployment validation** step
-5. If it failed, click it to see the exact error
-6. Fix locally and push again
+- Inspect GitHub Actions **CI** for repository validation.
+- Inspect **Deploy MathPulse PWA** for Firebase Hosting frontend deployment.
+- Inspect logs in the selected backend platform for FastAPI startup and runtime errors.
+- Run `python backend/pre_deploy_check.py` locally before retrying a backend deployment.
 
-## Emergency Fixes
+## Files
 
-If backend gets stuck restarting despite these checks:
+- `backend/startup_validation.py` — backend startup checks
+- `backend/pre_deploy_check.py` — local pre-deployment checks
+- `.github/workflows/ci.yml` — repository validation
+- `.github/workflows/deploy-frontend.yml` — Firebase Hosting PWA deployment
+- `docs/PWA.md` — frontend PWA architecture and deployment guide
 
-1. **Check HF Space logs**:
-   - Go to https://huggingface.co/spaces/Deign86/mathpulse-api-v3test
-   - Click **Logs** → **Current**
-   - Look for startup error messages
+## Provider migration note
 
-2. **Common quick fixes**:
-   - Verify HF_TOKEN secret: `python set-hf-secrets.py --hf-token YOUR_TOKEN`
-   - Check config file wasn't corrupted: `cat config/models.yaml`
-   - Verify imports are absolute: `grep "from \." backend/*.py` (should return nothing)
-
-3. **Manual redeploy** (if you fixed locally):
-   ```bash
-   python deploy-hf.py --wait-timeout-sec 120
-   ```
-
-## Files Added for Safety
-
-- `backend/startup_validation.py` - Core validation logic (3-layer system)
-- `backend/pre_deploy_check.py` - Local validation script
-- `.github/workflows/deploy-hf.yml` - Updated with pre-deployment step
-
-## Summary
-
-✅ **No more restart loops** - Validation catches issues before deployment
-✅ **Clear error messages** - Know exactly what's wrong and how to fix it
-✅ **Safe deployments** - GitHub Actions blocks bad deployments
-✅ **Local testing** - Run validation locally before pushing
-
-*This system has been tested and will prevent 99% of deployment issues.*
+The dedicated GitHub Actions workflow that synchronized secrets, pushed backend files, and enforced model settings on Hugging Face Spaces has been removed. GitHub Actions no longer deploys or manages Hugging Face Spaces. Legitimate backend/provider code and manual migration scripts may remain until the backend hosting provider is separately migrated.

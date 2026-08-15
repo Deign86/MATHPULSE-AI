@@ -306,7 +306,7 @@ Enable via `ENABLE_ASYNC_GENERATION=true`, `ASYNC_TASK_TTL_SECONDS=3600`.
 - Configuration file parsing
 - InferenceClient initialization
 
-**CI/CD** — The frontend is built from this repository and deployed as a PWA through Firebase Hosting or the production Docker/Nginx image. The backend workflow remains separate and may deploy the FastAPI service to its configured infrastructure. Docker Compose provides full-stack local orchestration.
+**CI/CD** — Repository CI validates frontend, backend, and Functions code. The frontend is built from this repository and deployed as a PWA through Firebase Hosting or the production Docker/Nginx image. Backend deployment is owned by the selected backend platform; GitHub Actions no longer deploys or manages Hugging Face Spaces. Docker Compose provides full-stack local orchestration.
 
 ### Chat Reliability Features
 
