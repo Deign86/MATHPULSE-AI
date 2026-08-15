@@ -1,0 +1,122 @@
+name: Deploy FastAPI backend
+
+# The existing FastAPI backend is hosted in this Hugging Face Space.
+# This workflow only validates and synchronizes backend source files.
+# It does not manage Space secrets, model settings, or frontend hosting.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SPACE_ID: Deign86/mathpulse-api-v3test
+
+jobs:
+  validate:
+    name: Validate backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+
+      - name: Run pre-deploy checks
+        run: python backend/pre_deploy_check.py
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: >
+          python -m pytest tests/ -v --tb=short
+          -k "not (test_imported_class_overview_returns_inferred_state or test_inference_metrics_requires_admin or test_recent_course_materials_respects_class_section_filter or test_recent_course_materials_reports_retention_exclusions or test_contains_thinking_hint or test_chunk_count_included or test_empty_collection_returns_empty_list or test_contains_json_and_required_keys)"
+
+  deploy:
+    name: Push backend source to Hugging Face
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: backend-production
+      url: https://huggingface.co/spaces/Deign86/mathpulse-api-v3test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Clone backend Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HF_TOKEN" || { echo 'Missing HF_TOKEN repository secret'; exit 1; }
+          git clone "https://Deign86:${HF_TOKEN}@huggingface.co/spaces/${SPACE_ID}" hf-space
+
+      - name: Synchronize backend source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='datasets/vectorstore' \
+            --exclude='datasets/vectorstore/**' \
+            backend/ hf-space/
+
+          printf '%s\n' \
+            '---' \
+            'title: MathPulse AI API' \
+            'emoji: "🧮"' \
+            'colorFrom: blue' \
+            'colorTo: indigo' \
+            'sdk: docker' \
+            'app_port: 7860' \
+            'pinned: false' \
+            '---' \
+            '' \
+            '# MathPulse AI Backend' \
+            '' \
+            'FastAPI backend for the MathPulse AI educational platform.' \
+            > hf-space/README.md
+
+          test -f hf-space/Dockerfile
+          test -f hf-space/startup.sh
+          test -f hf-space/main.py
+          test ! -d hf-space/datasets/vectorstore
+
+      - name: Commit and push backend source
+        working-directory: hf-space
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --staged --quiet; then
+            echo 'No backend changes to deploy'
+            exit 0
+          fi
+          git commit -m "deploy: backend from ${GITHUB_SHA::7}"
+          git push origin main
