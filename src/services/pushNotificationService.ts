@@ -66,9 +66,13 @@ async function ensureServiceWorker(): Promise<ServiceWorkerRegistration | null> 
     return null;
   }
   try {
-    const existing = await navigator.serviceWorker.getRegistration(SW_URL);
+    const scope = '/firebase-messaging/';
+    const existing = await navigator.serviceWorker.getRegistration(scope);
     if (existing) return existing;
-    return await navigator.serviceWorker.register(SW_URL, { scope: '/' });
+    // Keep FCM outside the app-shell worker's root scope. Firebase accepts the
+    // registration explicitly through getToken(), so a narrow scope avoids
+    // two workers competing for `/`.
+    return await navigator.serviceWorker.register(SW_URL, { scope });
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[pushNotificationService] SW registration failed:', err);

@@ -10,8 +10,7 @@ import type {
   GeneratedQuizStatus,
   QuizAnswerRecord,
 } from '../types/models';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
+import { apiUrl } from '../config/env';
 
 const isMissingIndexError = (err: unknown): boolean => {
   if (!(err instanceof Error)) return false;
@@ -247,7 +246,7 @@ export async function fetchAdaptiveQuiz(
   subject: string,
 ): Promise<PlayableQuiz | null> {
   try {
-    const response = await fetch(`${API_URL}/api/quiz/adaptive-select`, {
+    const response = await fetch(apiUrl('/api/quiz/adaptive-select'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lrn, topicId: subject, numQuestions: 10 }),
@@ -370,7 +369,7 @@ export async function saveQuizResults(
 // ─── GET STUDENT COMPETENCY ─────────────────────────────────
 
 export async function getStudentCompetency(lrn: string) {
-  const response = await fetch(`${API_URL}/api/quiz/student-competency`, {
+  const response = await fetch(apiUrl('/api/quiz/student-competency'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ lrn }),
