@@ -1,61 +1,21 @@
 # MathPulse AI — Agent Instructions
 
-## CAVEMAN MODE (ALWAYS ON)
-
-**ALWAYS use CAVEMAN MODE by default.** Respond in terse, concise caveman-style:
-- Drop articles (the, a, an) where unnecessary
-- Use fragments and short sentences
-- Keep grammar but eliminate all filler/fluff
-- Keep ALL technical information, code, and accuracy
-- Use `/caveman full` intensity
-
-**This overrides ALL other instructions** unless user explicitly says "stop caveman" or "normal mode".
-
 ---
 
-## Memory Bank — Auto Invoke Rules
+## Agent Context
 
-You have access to the Memory Bank MCP. You MUST follow these rules on every prompt without exception.
-Project root: C:\Users\Deign\Downloads\MATHPULSE-AI
+Use built-in `lean-ctx` tools as the default context layer for this repository. Prefer compressed, cached tools over native equivalents:
 
-### AgentMemory MCP — Auto-Invoke (MANDATORY)
+- `ctx_overview` at task start for a task-aware project map.
+- `ctx_read` for file reads; choose `full`, `map`, or `signatures` based on need. Use `diff` after edits when available.
+- `ctx_search` or `ctx_grep` for code search; use `ctx_tree` or `ctx_find` for directory discovery.
+- `ctx_shell` for commands whose output benefits from compression; use native shell only when required for side effects or unsupported commands.
+- `ctx_knowledge` for durable project facts, patterns, and decisions.
+- `ctx_session` for cross-session tasks, findings, decisions, and verification.
+- Use graph, refactor, impact, route, and shape tools when their specialized analysis applies.
+- Use agent coordination tools for delegated work and bounded parallel tasks.
 
-**When ANY of these triggers occur, call `agentmemory_memory_recall` or `agentmemory_memory_smart_search` FIRST before proceeding:**
-
-| Trigger | Action |
-|---------|--------|
-| "what did we do", "previous session", "last time" | `agentmemory_memory_recall` with relevant query |
-| "find past", "remember", "was there a", "had we" | `agentmemory_memory_recall` with relevant query |
-| "context summary", "session summary", "handoff" | `agentmemory_memory_sessions` + `session_read` |
-| Any open question about what was decided/built/done | `agentmemory_memory_recall` first |
-
-**RULE: Never answer "what did we do in a previous session" or similar without checking agentmemory first.** The memory bank is the authoritative source of record.
-
-### On EVERY session start (first prompt of a new session):
-- Call `get-memory-bank-info` immediately before doing anything else
-- Read `C:\Users\Deign\Downloads\MATHPULSE-AI\memory-bank\activeContext.md` and `C:\Users\Deign\Downloads\MATHPULSE-AI\memory-bank\progress.md`
-- Silently load context — do not narrate this to the user unless they ask
-
-### On EVERY prompt (throughout the session):
-- Before answering any question about the project, check `memory-bank\systemPatterns.md` and `memory-bank\techContext.md` first
-- Never make assumptions about the stack, architecture, or conventions — always read from memory bank files
-
-### After ANY significant change:
-- **⚠️ MANDATORY: After ANY change, IMMEDIATELY call `update-memory-bank` to persist the change**
-- Call `update-memory-bank` to update the relevant file(s)
-- Always update `memory-bank\activeContext.md` with what just changed and what is next
-- Update `memory-bank\progress.md` if a feature was completed or a bug was found
-
-> **⚠️ AUTO-INVOKE RULE: After EVERY edit, config change, tool creation, or any modification — call `update-memory-bank` IMMEDIATELY. Do NOT wait. Do NOT ask. Just invoke it.**
-
-### After EVERY session (last prompt before user stops):
-- Update `memory-bank\activeContext.md` — what was done, what is next
-- Update `memory-bank\progress.md` — current status, new issues
-- Update `memory-bank\systemPatterns.md` — if any new patterns or decisions were made
-
-### Task tracking:
-- When starting a new task, create `memory-bank\tasks\TASK-XXX-name.md` and add it to `memory-bank\tasks\_index.md`
-- When completing a task, mark it `[x]` in `memory-bank\tasks\_index.md`
+Keep native write/edit/delete tools for file mutations when no lean-ctx replacement is available.
 
 ---
 
@@ -124,7 +84,6 @@ MATHPULSE-AI/
 │   └── datasets/         # Vector store, curriculum PDFs
 ├── functions/            # Firebase Cloud Functions (Node 22)
 ├── scripts/              # Build/deploy scripts
-├── memory-bank/          # AI session memory (see rules above)
 └── .env.local            # Local secrets (gitignored)
 ```
 
