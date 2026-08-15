@@ -111,14 +111,20 @@ function normalizeGrade12Topic(raw: string): string {
 function resolveFirstPrerequisite(topicId: string): string {
   const visited = new Set<string>();
   let current = topicId;
+  let resolved = false;
 
-  while (true) {
+  while (!resolved) {
     if (visited.has(current)) return topicId;
     visited.add(current);
     const prereqs = G12_PREREQUISITES[current];
-    if (!prereqs || prereqs.length === 0) return current;
+    if (!prereqs || prereqs.length === 0) {
+      resolved = true;
+      continue;
+    }
     current = prereqs[0];
   }
+
+  return current;
 }
 
 /**
