@@ -114,7 +114,8 @@
             "sync:models": "python scripts/sync_models_config.py",
             "predev": "npm run sync:models ; npm run check:backend:dev",
             "check:backend:quick": "node scripts/backend-gate.mjs quick",
-            "check:backend:dev": "node scripts/backend-gate.mjs dev"
+            "check:backend:dev": "node scripts/backend-gate.mjs dev",
+            "validate:pwa": "node scripts/validate-pwa-build.mjs"
       },
       "overrides": {
             "protobufjs": ">=7.5.5"

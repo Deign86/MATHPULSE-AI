@@ -72,6 +72,15 @@
         ]
       },
       {
+        "source": "firebase-config.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "manifest.webmanifest",
         "headers": [
           {
@@ -80,7 +89,7 @@
           },
           {
             "key": "Cache-Control",
-            "value": "no-cache"
+            "value": "no-cache, must-revalidate"
           }
         ]
       },
@@ -107,7 +116,7 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
+            "value": "public, max-age=3600, must-revalidate"
           }
         ]
       }

@@ -29,6 +29,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - run: npm ci --legacy-peer-deps
       - run: npm run typecheck
@@ -40,28 +41,25 @@ jobs:
           VITE_APP_VERSION: ${{ github.sha }}
         run: npm run build
 
-      - name: Verify PWA build contract
+      - name: Validate PWA build artifacts
+        run: npm run validate:pwa
+
+      - name: Check production bundle safety
         shell: bash
         run: |
           set -euo pipefail
-          required=(
-            build/index.html
-            build/manifest.webmanifest
-            build/sw.js
-            build/pwa-config.js
-            build/offline.html
-            build/icons/icon-192.png
-            build/icons/icon-512.png
-            build/icons/icon-maskable-512.png
-          )
-          for file in "${required[@]}"; do
-            test -f "$file" || { echo "Missing PWA artifact: $file"; exit 1; }
-          done
-          if grep -RinE 'hf\.space|huggingface\.co/spaces/Deign86/MathPulse-AI' build \
+          if grep -RinE 'huggingface\.co/spaces/Deign86/MathPulse-AI' build \
             --include='*.js' --include='*.html' --include='*.json'; then
             echo 'Retired hosted frontend reference found in build output'
             exit 1
           fi
+
+      - name: Upload production frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mathpulse-pwa-${{ github.sha }}
+          path: build
+          retention-days: 7
 
   backend:
     name: Backend checks
@@ -76,9 +74,13 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
 
       - name: Install backend dependencies
-        run: python -m pip install -r backend/requirements-dev.txt
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements-dev.txt
 
       - name: Run backend pre-deploy checks
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: python backend/pre_deploy_check.py
 
       - name: Run backend tests

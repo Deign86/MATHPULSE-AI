@@ -36,9 +36,13 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
 
       - name: Install backend dependencies
-        run: python -m pip install -r backend/requirements-dev.txt
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements-dev.txt
 
       - name: Run pre-deploy checks
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: python backend/pre_deploy_check.py
 
       - name: Run backend tests
