@@ -4,7 +4,7 @@
 
 ### AI-Powered Math Education Platform
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-MathPulse%20AI-FF6B6B?logo=huggingface&logoColor=white)](https://huggingface.co/spaces/Deign86/MathPulse-AI)
+[![PWA](https://img.shields.io/badge/PWA-installable-9956DE?logo=pwa&logoColor=white)](docs/PWA.md)
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
@@ -108,7 +108,8 @@ An interactive, gamified math learning platform featuring AI-powered tutoring vi
 | **Firebase Analytics** | Usage tracking (optional) |
 | **Firebase Cloud Functions** | Event-driven automation (TypeScript) |
 | **Docker** | Containerized deployment (frontend + backend) |
-| **Hugging Face Spaces** | Backend API hosting |
+| **Firebase Hosting** | Production PWA hosting with HTTPS and SPA fallback |
+| **Nginx / Docker** | Self-hosted production alternative |
 
 ### AI Models (Current Runtime)
 
@@ -164,8 +165,10 @@ Runtime model override system with Firestore persistence. Model profiles: `dev`,
    DEEPSEEK_API_KEY=your_deepseek_api_key
    DEEPSEEK_BASE_URL=https://api.deepseek.com
 
-   # Backend API (optional — defaults to hosted HF Spaces)
-   VITE_API_URL=https://deign86-mathpulse-api-v3test.hf.space
+   # Backend API (optional — defaults to same-origin /api)
+   # Set absolute URL only when frontend and backend deploy separately.
+   VITE_API_URL=/api
+   VITE_APP_VERSION=1.0.0
 
    # Import-grounded generation rollout flags (frontend)
    VITE_ENABLE_IMPORT_GROUNDED_QUIZ=true
@@ -174,9 +177,12 @@ Runtime model override system with Firestore persistence. Model profiles: `dev`,
    VITE_ENABLE_ASYNC_GENERATION=true
    ```
 
-   Deploying to Hugging Face Spaces:
-   - Add all `VITE_FIREBASE_*` values, `DEEPSEEK_API_KEY`, and `VITE_API_URL` as GitHub Actions secrets.
-   - The `deploy-hf.yml` workflow writes a `.env.production` at build time so Vite bakes in the correct config.
+   For production PWA deployment, build the repository-owned frontend and deploy `build/` to Firebase Hosting:
+   ```bash
+   npm run build
+   npx firebase deploy --only hosting
+   ```
+   Configure Firebase Hosting secrets and the backend `CORS_ORIGINS` value for the deployed HTTPS origin. See [PWA deployment documentation](docs/PWA.md).
 
 4. **Start the frontend dev server**
    ```bash
@@ -194,7 +200,7 @@ Runtime model override system with Firestore persistence. Model profiles: `dev`,
    export ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS=true
    uvicorn main:app --reload --host 0.0.0.0 --port 7860
    ```
-   > **Note:** The hosted backend at `https://deign86-mathpulse-api-v3test.hf.space` is used by default. Local backend is only needed for development. Port 7860 matches Hugging Face Spaces convention; Docker maps it to 8000.
+   > **Note:** The local backend is optional for frontend development. Set `VITE_API_URL=http://127.0.0.1:8000` when running FastAPI separately, or leave the default `/api` when using the Docker/Nginx proxy.
 
 ### Build for Production
 ```bash
@@ -286,7 +292,7 @@ Enable via `ENABLE_ASYNC_GENERATION=true`, `ASYNC_TASK_TTL_SECONDS=3600`.
 - Configuration file parsing
 - InferenceClient initialization
 
-**CI/CD** — GitHub Actions workflow deploys to Hugging Face Spaces on push to `main`, with pre-deploy validation scripts and `.env.production` injection. Docker Compose provides full-stack local orchestration.
+**CI/CD** — The frontend is built from this repository and deployed as a PWA through Firebase Hosting or the production Docker/Nginx image. The backend workflow remains separate and may deploy the FastAPI service to its configured infrastructure. Docker Compose provides full-stack local orchestration.
 
 ### Chat Reliability Features
 

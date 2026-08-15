@@ -3,8 +3,7 @@
 // Never blocks UI. Errors are logged, never shown to students.
 
 import { auth } from '../lib/firebase';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
+import { apiUrl } from '../config/env';
 
 export interface PipelineEvent {
   student_id: string;
@@ -25,7 +24,7 @@ export function emitPipelineEvent(event: PipelineEvent): void {
       const currentUser = auth.currentUser;
       if (!currentUser) return;
       const token = await currentUser.getIdToken(false);
-      await fetch(`${API_BASE}/api/pipeline/event`, {
+      await fetch(apiUrl('/api/pipeline/event'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

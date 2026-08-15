@@ -3,8 +3,6 @@ import { db } from '../lib/firebase';
 import { apiFetch } from './apiService';
 import type { AssessmentResult, AssessmentHistoryEntry } from '../types/models';
 
-const API_URL = 'https://deign86-mathpulse-api-v3test.hf.space';
-
 export async function saveAssessmentResult(
   result: Omit<AssessmentResult, 'completedAt'>,
 ): Promise<string> {
@@ -18,7 +16,7 @@ export async function saveAssessmentResult(
   });
 
   try {
-    await apiFetch(`${API_URL}/api/diagnostic/results`, {
+    await apiFetch('/api/diagnostic/results', {
       method: 'POST',
       body: JSON.stringify({
         test_id: attemptId,

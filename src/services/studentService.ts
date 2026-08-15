@@ -375,7 +375,7 @@ export async function getAllRegisteredStudentsByTeacher(
  * in for academic metrics until/unless they are enriched from
  * `managedStudents/{accountUid}`.
  */
-export function mapRegisteredStudentToManaged(account: RegisteredStudentAccount): ManagedStudent {
+export function mapRegisteredStudentToManagedLegacy(account: RegisteredStudentAccount): ManagedStudent {
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
     account.name || 'Student'
   )}&background=random`;
@@ -431,7 +431,7 @@ export function normalizeStudentName(value: string | null | undefined): string {
  * `source: 'import'` and `hasRegisteredAccount: false` so the dashboard can
  * surface a "Create Account" CTA on its card.
  */
-export function markRosterStudentsWithoutAccounts(
+export function markRosterStudentsWithoutAccountsLegacy(
   rosterStudents: ManagedStudent[],
   registeredStudents: RegisteredStudentAccount[]
 ): ManagedStudent[] {
@@ -480,7 +480,7 @@ export function markRosterStudentsWithoutAccounts(
  * `classSectionOwnership` membership lists for both the new and previous
  * section.
  */
-export async function reassignStudentSection(input: ReassignStudentSectionInput): Promise<void> {
+export async function reassignStudentSectionLegacy(input: ReassignStudentSectionInput): Promise<void> {
   const studentId = (input.studentId || '').trim();
   if (!studentId) {
     throw new Error('Cannot reassign section: studentId is required.');
@@ -577,7 +577,7 @@ export async function reassignStudentSection(input: ReassignStudentSectionInput)
  * `managedStudents/{uid}` enrichment row so the dashboard sees the new record
  * via the registered-students path on the next refresh.
  */
-export async function createStudentAccountFromRoster(
+export async function createStudentAccountFromRosterLegacy(
   input: CreateStudentFromRosterInput
 ): Promise<CreateStudentFromRosterResult> {
   // Lazy import keeps the service tree-shake friendly and avoids a circular
@@ -627,13 +627,13 @@ export async function createStudentAccountFromRoster(
         accountUid: uid,
         name: (input.name || '').trim() || 'Student',
         email: trimmedEmail,
-        lrn: input.lrn?.trim() || null,
+        lrn: input.lrn?.trim() || undefined,
         teacherId: adviserTeacherId,
-        grade: grade || null,
-        gradeLevel: normalizeGradeLevel(grade) || null,
-        section: section || null,
-        classSectionId: classSectionId || null,
-        classroomId: classSectionId || null,
+        grade: grade || undefined,
+        gradeLevel: normalizeGradeLevel(grade) || undefined,
+        section: section || undefined,
+        classSectionId: classSectionId || undefined,
+        classroomId: classSectionId || undefined,
         riskLevel: 'Low',
         avgQuizScore: 0,
         engagementScore: 0,
@@ -1334,13 +1334,6 @@ export interface CreateStudentFromRosterInput {
   temporaryPassword: string;
 }
 
-/** Result of {@link createStudentAccountFromRoster}. */
-export interface CreateStudentFromRosterResult {
-  uid: string;
-  /** Echo of the temporary password — must be displayed once and never persisted. */
-  temporaryPassword: string;
-}
-
 /** Input for {@link reassignStudentSection}. */
 export interface ReassignStudentSectionInput {
   /** `managedStudents/{id}` doc id OR `users/{uid}` UID. */
@@ -1454,7 +1447,7 @@ export function mapRegisteredStudentToManaged(
  * @param classSectionIds Section IDs the teacher owns / manages
  *                        (from `getClassSectionOwnershipByTeacher` + `getClassroomsByTeacher`).
  */
-export async function getAllRegisteredStudentsByTeacher(
+export async function getAllRegisteredStudentsByTeacherLegacy(
   teacherId: string,
   classSectionIds: string[] = []
 ): Promise<RegisteredStudentAccount[]> {
@@ -1631,13 +1624,14 @@ export async function createStudentAccountFromRoster(
   const response = await apiService.createStudentAccount({
     name: input.name.trim(),
     email: input.email.trim().toLowerCase(),
-    temporary_password: input.temporaryPassword,
-    lrn: input.lrn?.trim() || null,
-    grade: grade || null,
-    section: section || null,
-    class_section_id: classSectionId || null,
-    adviser_teacher_id: input.adviserTeacherId.trim(),
-    school_year: input.schoolYear?.trim() || null,
+    temporaryPassword: input.temporaryPassword,
+    lrn: input.lrn?.trim() || undefined,
+    grade: grade || undefined,
+    section: section || undefined,
+    classSectionId: classSectionId || undefined,
+    adviserTeacherId: input.adviserTeacherId.trim(),
+    adviserTeacherName: input.adviserTeacherName?.trim() || undefined,
+    schoolYear: input.schoolYear?.trim() || undefined,
   });
 
   const uid = (response.uid || '').trim();
@@ -1711,7 +1705,11 @@ export async function createStudentAccountFromRoster(
     }
   }
 
-  return { uid, temporaryPassword: input.temporaryPassword };
+  return {
+    uid,
+    email: input.email.trim().toLowerCase(),
+    temporaryPassword: input.temporaryPassword,
+  };
 }
 
 /**

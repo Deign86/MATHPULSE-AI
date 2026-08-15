@@ -1,5 +1,5 @@
 // src/services/apiService.ts
-// Backend API client for FastAPI backend (Hugging Face Spaces)
+// Backend API client for FastAPI backend
 //
 // Features:
 //  - Retry with exponential backoff (max 3 retries)
@@ -28,6 +28,7 @@ import {
 } from './apiUtils';
 import { handleRateLimitError } from '../utils/rateLimitHandler';
 import { auth } from '../lib/firebase';
+import { apiUrl } from '../config/env';
 import type { ClassSectionMetadata } from '../types/models';
 import type {
   CurriculumGroundedLessonResponse,
@@ -37,8 +38,6 @@ import type {
 
 // Re-export error classes so consumers can catch them
 export { ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError };
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
 
 const parseEnvBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
   if (value == null || value.trim() === '') return defaultValue;
@@ -1022,16 +1021,8 @@ export interface RagHealthResponse {
 // ─── RAG API Functions ──────────────────────────────────────
 
 export async function getRagHealth(): Promise<RagHealthResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const currentUser = auth.currentUser;
-  if (currentUser) {
-    try {
-      const idToken = await currentUser.getIdToken(false);
-      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
-    } catch { /* non-critical */ }
-  }
-  const res = await fetch(`${API_BASE}/api/rag/health`, { headers });
+  const headers = new Headers({ Accept: 'application/json' });
+  const res = await fetch(apiUrl('/api/rag/health'), { headers });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`GET /api/rag/health failed: ${res.status} ${body}`);
@@ -1040,18 +1031,9 @@ export async function getRagHealth(): Promise<RagHealthResponse> {
 }
 
 export async function generateRagLesson(payload: RagLessonRequest): Promise<RagLessonResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const currentUser = auth.currentUser;
-  if (currentUser) {
-    try {
-      const idToken = await currentUser.getIdToken(false);
-      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
-    } catch { /* non-critical */ }
-  }
-  const res = await fetch(`${API_BASE}/api/rag/lesson`, {
+  const res = await fetch(apiUrl('/api/rag/lesson'), {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -1062,18 +1044,9 @@ export async function generateRagLesson(payload: RagLessonRequest): Promise<RagL
 }
 
 export async function generateRagProblem(payload: RagProblemRequest): Promise<RagProblemResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const currentUser = auth.currentUser;
-  if (currentUser) {
-    try {
-      const idToken = await currentUser.getIdToken(false);
-      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
-    } catch { /* non-critical */ }
-  }
-  const res = await fetch(`${API_BASE}/api/rag/generate-problem`, {
+  const res = await fetch(apiUrl('/api/rag/generate-problem'), {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -1084,18 +1057,9 @@ export async function generateRagProblem(payload: RagProblemRequest): Promise<Ra
 }
 
 export async function getRagAnalysisContext(payload: RagAnalysisContextRequest): Promise<RagAnalysisContextResponse> {
-  const API_BASE = import.meta.env.VITE_BACKEND_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const currentUser = auth.currentUser;
-  if (currentUser) {
-    try {
-      const idToken = await currentUser.getIdToken(false);
-      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
-    } catch { /* non-critical */ }
-  }
-  const res = await fetch(`${API_BASE}/api/rag/analysis-context`, {
+  const res = await fetch(apiUrl('/api/rag/analysis-context'), {
     method: 'POST',
-    headers,
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
@@ -1257,7 +1221,7 @@ const IMPORTED_OVERVIEW_RETRY_OPTS: RetryFetchOptions = {
 let _warmupPromise: Promise<boolean> | null = null;
 
 /**
- * Wake up the HuggingFace Space by pinging the health endpoint.
+ * Wake up the backend by pinging the health endpoint.
  * Called early (e.g., on app load or when chat page mounts) to reduce
  * cold-start latency when the user actually sends a message.
  *
@@ -1269,11 +1233,11 @@ export async function warmupBackend(): Promise<boolean> {
 
   _warmupPromise = (async () => {
     try {
-      logApiInfo('/health', 'GET', 'Warming up HuggingFace Space...');
+      logApiInfo('/health', 'GET', 'Warming up backend...');
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15_000);
 
-      const res = await fetch(`${API_URL}/health`, {
+      const res = await fetch(apiUrl('/health'), {
         method: 'GET',
         signal: controller.signal,
       });
@@ -1305,7 +1269,7 @@ export async function apiFetch<T>(
   options?: RequestInit,
   retryOpts: RetryFetchOptions = DEFAULT_RETRY_OPTS,
 ): Promise<T> {
-  const url = `${API_URL}${endpoint}`;
+  const url = apiUrl(endpoint);
   const method = options?.method ?? 'GET';
 
   logApiInfo(endpoint, method, 'Starting request');
@@ -1392,7 +1356,7 @@ async function apiFetchBlob(
   options?: RequestInit,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<Blob> {
-  const url = `${API_URL}${endpoint}`;
+  const url = apiUrl(endpoint);
   const method = options?.method ?? 'GET';
   logApiInfo(endpoint, method, 'Starting blob request');
 
@@ -1614,7 +1578,7 @@ export const apiService = {
       try {
         refreshIdleTimer();
 
-        const response = await fetch(`${API_URL}/api/chat/stream`, {
+        const response = await fetch(apiUrl('/api/chat/stream'), {
           method: 'POST',
           headers,
           body: JSON.stringify(requestPayload),
@@ -2737,7 +2701,7 @@ export const apiService = {
   }> => {
     const currentUser = auth.currentUser;
     const token = currentUser ? await currentUser.getIdToken() : undefined;
-    const response = await fetch(`${API_URL}/api/admin/upload-pdf`, {
+    const response = await fetch(apiUrl('/api/admin/upload-pdf'), {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,

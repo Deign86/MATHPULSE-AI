@@ -14,6 +14,35 @@ import { applySettingsFromCache } from './services/settingsService.ts';
 // Apply cached theme/font before React renders to prevent flash
 applySettingsFromCache();
 
+/**
+ * Register the PWA app-shell service worker (`/sw.js`).
+ *
+ * Registration is production-only by default to avoid stale-cache friction
+ * during Vite HMR development. Set `VITE_ENABLE_SW_IN_DEV=true` to exercise
+ * the offline/install flow against the dev server.
+ *
+ * This worker is deliberately separate from `/firebase-messaging-sw.js`, which
+ * is registered by `pushNotificationService.ts` for FCM. The two coexist and
+ * must not overwrite each other.
+ */
+function registerAppServiceWorker(): void {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+  const shouldRegister =
+    import.meta.env.PROD || import.meta.env.VITE_ENABLE_SW_IN_DEV === 'true';
+  if (!shouldRegister) return;
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .catch((error) => {
+        console.warn('[pwa] App service worker registration failed:', error);
+      });
+  });
+}
+
+registerAppServiceWorker();
+
 // Clear the ErrorBoundary's stale-chunk reload flag on each fresh load. If
 // the new bundle loaded successfully (we made it this far in main.tsx), the
 // flag from the previous reload is no longer needed — clearing it now lets a

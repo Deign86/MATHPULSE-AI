@@ -15,6 +15,8 @@ import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUser
 import { Toaster, toast } from 'sonner';
 import { NotificationProvider } from '@/features/notifications';
 import PushNotificationsManager from './components/PushNotificationsManager';
+import InstallPwaButton from './components/InstallPwaButton.tsx';
+import OnlineOfflineBanner from './components/OnlineOfflineBanner.tsx';
 import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
@@ -1090,7 +1092,8 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           
           {/* Header — compact with inline gamification stats */}
           <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-3 sm:px-6 py-2 sm:py-3 flex flex-row items-center justify-between gap-2 sm:gap-3 sticky top-0 z-30 shadow-sm">
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <InstallPwaButton />
               <button
                 className="lg:hidden p-2 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-colors"
                 onClick={() => setIsMobileSidebarOpen(true)}
@@ -1165,6 +1168,8 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
               </button>
             </div>
           </header>
+
+          <OnlineOfflineBanner />
 
           {/* Main Content Area */}
           <main

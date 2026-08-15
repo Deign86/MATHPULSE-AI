@@ -58,7 +58,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
     window.localStorage.setItem('floating_ai_tutor_minimized', isMinimized ? '1' : '0');
   }, [isMinimized]);
 
-  // Warm up the HuggingFace Space when chat is opened
+  // Warm up the backend when chat is opened
   useEffect(() => {
     if (isOpen) {
       import('../services/apiService.ts')

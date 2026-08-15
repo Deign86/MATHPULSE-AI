@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { GRADE_LEVELS, SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 import { cacheKeys } from '../utils/cacheKeys';
 import { useCurriculum } from '../hooks/useCurriculum';
+import { apiUrl } from '../config/env';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -130,14 +131,13 @@ const TopicMasteryView: React.FC<{
         const settingsSnap = await getDoc(settingsRef);
         const excluded: string[] = settingsSnap.exists() ? settingsSnap.data()?.excludedTopics || [] : [];
 
-        const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
         const params = new URLSearchParams({ teacherId: currentUser.uid });
         if (classSectionId) {
           params.set('classSectionId', classSectionId);
         }
 
         const token = await currentUser.getIdToken();
-        const res = await fetch(`${API_URL}/api/analytics/topic-mastery?${params.toString()}`, {
+        const res = await fetch(apiUrl(`/api/analytics/topic-mastery?${params.toString()}`), {
           headers: {
             Authorization: `Bearer ${token}`,
           },
