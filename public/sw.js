@@ -62,7 +62,8 @@ function isCacheableRequest(request) {
   if (isApiPath(url.pathname)) return false;
   // Skip service-worker/config scripts so we never serve a stale copy of the
   // workers themselves.
-  if (url.pathname === '/sw.js' || url.pathname === '/pwa-config.js') return false;
+  if (url.pathname === '/sw.js' || url.pathname === '/pwa-config.js' ||
+      url.pathname === '/firebase-messaging-sw.js' || url.pathname === '/firebase-config.js') return false;
   return true;
 }
 
@@ -129,7 +130,8 @@ self.addEventListener('fetch', (event) => {
   if (isApiPath(url.pathname)) return;
 
   // Service workers and their generated config are always network-first.
-  if (url.pathname === '/sw.js' || url.pathname === '/pwa-config.js') return;
+  if (url.pathname === '/sw.js' || url.pathname === '/pwa-config.js' ||
+      url.pathname === '/firebase-messaging-sw.js' || url.pathname === '/firebase-config.js') return;
 
   if (request.mode === 'navigate') {
     // Network-first navigation with an offline app-shell fallback.
