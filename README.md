@@ -124,6 +124,7 @@ See [PWA architecture and deployment documentation](docs/PWA.md).
 | **Docker** | Containerized deployment (frontend + backend) |
 | **Firebase Hosting** | Production PWA hosting with HTTPS and SPA fallback |
 | **Nginx / Docker** | Self-hosted production alternative |
+| **Hugging Face Space** | Existing FastAPI backend API hosting |
 
 ### AI Models (Current Runtime)
 
@@ -306,7 +307,7 @@ Enable via `ENABLE_ASYNC_GENERATION=true`, `ASYNC_TASK_TTL_SECONDS=3600`.
 - Configuration file parsing
 - InferenceClient initialization
 
-**CI/CD** — Repository CI validates frontend, backend, and Functions code. The frontend is built from this repository and deployed as a PWA through Firebase Hosting or the production Docker/Nginx image. Backend deployment is owned by the selected backend platform; GitHub Actions no longer deploys or manages Hugging Face Spaces. Docker Compose provides full-stack local orchestration.
+**CI/CD** — Repository CI validates frontend, backend, and Functions code. The frontend is built from this repository and deployed as a PWA through Firebase Hosting or the production Docker/Nginx image. The existing FastAPI backend remains hosted at `https://deign86-mathpulse-api-v3test.hf.space`; GitHub Actions no longer deploys or manages that Space. Docker Compose provides full-stack local orchestration.
 
 ### Chat Reliability Features
 

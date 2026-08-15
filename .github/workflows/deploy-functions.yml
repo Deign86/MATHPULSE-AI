@@ -1,0 +1,75 @@
+name: Deploy Firebase Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-functions-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+  FIREBASE_PROJECT_ID: mathpulse-ai-2026
+
+jobs:
+  validate:
+    name: Validate Functions
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - run: npm ci --legacy-peer-deps
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+
+  deploy:
+    name: Deploy to Firebase Functions
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://console.firebase.google.com/project/${{ env.FIREBASE_PROJECT_ID }}/functions
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: Deploy Functions
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          credentials_file="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$credentials_file"
+          trap 'rm -f "$credentials_file"' EXIT
+          export GOOGLE_APPLICATION_CREDENTIALS="$credentials_file"
+          npx firebase-tools deploy --only functions --project "${FIREBASE_PROJECT_ID}"
