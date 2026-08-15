@@ -116,6 +116,30 @@ function validatePwaConfig() {
   }
 }
 
+function validateFcmArtifacts() {
+  const messagingWorker = 'firebase-messaging-sw.js';
+  const configAsset = 'firebase-config.js';
+  if (!exists(messagingWorker)) fail('FCM messaging service worker is missing from the build output');
+  if (!exists(configAsset)) fail('Generated firebase-config.js is missing from the build output');
+
+  const worker = read(messagingWorker) || '';
+  const config = read(configAsset) || '';
+  if (!worker.includes("importScripts('/firebase-config.js')")) {
+    fail('FCM messaging worker must import /firebase-config.js');
+  }
+  if (!worker.includes('payload.data') || !worker.includes('showNotification')) {
+    fail('FCM messaging worker must render data payloads for background delivery');
+  }
+  if (!worker.includes('safeInternalRoute') || !worker.includes('NOTIFICATION_CLICK')) {
+    fail('FCM messaging worker must validate click routes and notify the app');
+  }
+  if (!/self\.FIREBASE_API_KEY\s*=\s*"(?!")/.test(config) ||
+      !/self\.FIREBASE_PROJECT_ID\s*=\s*"(?!")/.test(config) ||
+      !/self\.FIREBASE_MESSAGING_SENDER_ID\s*=\s*"(?!")/.test(config)) {
+    fail('Generated firebase-config.js must contain non-empty Firebase web configuration');
+  }
+}
+
 function validate() {
   if (!fs.existsSync(outputDir)) {
     fail(`Build output directory does not exist: ${outputDir}`);
@@ -162,6 +186,7 @@ function validate() {
     }
   }
   validatePwaConfig();
+  validateFcmArtifacts();
 
   const summary = [
     '## PWA Build Validation',

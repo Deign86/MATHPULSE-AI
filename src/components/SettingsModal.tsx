@@ -653,49 +653,45 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         );
                       })}
                     </div>
-                    <div className="mt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            const { requestPushPermissionAndRegister } = await import('../services/pushNotificationService');
-                            // Get current user UID from auth
-                            const { auth } = await import('../lib/firebase');
-                            const uid = auth.currentUser?.uid;
-                            if (!uid) {
-                              toast.error('You must be signed in to test push notifications.');
-                              return;
+                    {role === 'admin' && (
+                      <div className="mt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const { requestPushPermissionAndRegister } = await import('../services/pushNotificationService');
+                              const { auth } = await import('../lib/firebase');
+                              const uid = auth.currentUser?.uid;
+                              if (!uid) {
+                                toast.error('You must be signed in to test push notifications.');
+                                return;
+                              }
+                              const token = await requestPushPermissionAndRegister(uid, 'prompt');
+                              if (!token) {
+                                toast.error('Push setup failed. Check that VITE_FIREBASE_VAPID_KEY is configured and notifications are allowed.');
+                                return;
+                              }
+                              const { httpsCallable } = await import('firebase/functions');
+                              const { cloudFunctions } = await import('../lib/firebase');
+                              const fn = httpsCallable(cloudFunctions, 'sendTestPush');
+                              const result = await fn({ requestId: `${uid}-${Date.now()}-${Math.random().toString(36).slice(2)}` });
+                              const sent = (result?.data as { sent?: number } | undefined)?.sent ?? 0;
+                              if (sent > 0) {
+                                toast.success(`Sent test push to ${sent} device(s).`);
+                              } else {
+                                toast.message('No active devices found. Enable browser notifications first.');
+                              }
+                            } catch (err) {
+                              toast.error(err instanceof Error ? err.message : 'Failed to send test push');
                             }
-                            // Ensure token is registered before sending
-                            const token = await requestPushPermissionAndRegister(uid, 'prompt');
-                            if (!token) {
-                              toast.error('Push setup failed. Check that VITE_FIREBASE_VAPID_KEY is configured and notifications are allowed.');
-                              return;
-                            }
-                            const { httpsCallable } = await import('firebase/functions');
-                            const { cloudFunctions } = await import('../lib/firebase');
-                            const fn = httpsCallable(cloudFunctions, 'sendTestPush');
-                            if (role !== 'admin' && !import.meta.env.DEV) {
-                              toast.error('Test push is available to administrators only.');
-                              return;
-                            }
-                            const result = await fn({ requestId: `${uid}-${Date.now()}-${Math.random().toString(36).slice(2)}` });
-                            const sent = (result?.data as { sent?: number } | undefined)?.sent ?? 0;
-                            if (sent > 0) {
-                              toast.success(`Sent test push to ${sent} device(s).`);
-                            } else {
-                              toast.message('No active devices found. Enable browser notifications first.');
-                            }
-                          } catch (err) {
-                            toast.error(err instanceof Error ? err.message : 'Failed to send test push');
-                          }
-                        }}
-                      >
-                        <Bell size={14} className="mr-2" />Send test push
-                      </Button>
-                    </div>
+                          }}
+                        >
+                          <Bell size={14} className="mr-2" />Send test push
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-4 border-t border-[#dde3eb]">
