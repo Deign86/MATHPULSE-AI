@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer, CheckCircle2, Gift } from 'lucide-react';
+import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer, CheckCircle2, Gift, Star, Sparkles, Rocket, Flame, Sprout, Search, BookOpen, Flashlight, Castle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RewardDefinition } from '../types/rewards';
 
@@ -16,6 +16,10 @@ interface DailyCheckInModalProps {
   currentDayIndex: number; // 0-6 (Mon-Sun)
   timeUntilReset: string;
 }
+
+const rewardIcons: Record<string, React.ReactNode> = {
+  zap: <Zap size={18} className="text-amber-500" />, star: <Star size={18} className="text-yellow-500" />, sparkles: <Sparkles size={18} className="text-amber-500" />, shield: <Shield size={18} className="text-blue-500" />, lightbulb: <Lightbulb size={18} className="text-violet-500" />, flashlight: <Flashlight size={18} className="text-violet-500" />, timer: <Timer size={18} className="text-pink-500" />, rocket: <Rocket size={18} className="text-pink-500" />, flame: <Flame size={18} className="text-red-500" />, sprout: <Sprout size={18} className="text-emerald-500" />, search: <Search size={18} className="text-violet-500" />, castle: <Castle size={18} className="text-blue-500" />, 'book-open': <BookOpen size={18} className="text-violet-500" />,
+};
 
 const typeIcons: Record<string, React.ReactNode> = {
   xp: <Zap size={18} className="text-amber-500" />,
@@ -206,7 +210,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                         borderColor: reward.color + '40',
                       }}
                     >
-                      <span className="text-lg">{reward.icon}</span>
+                      <span className="text-lg">{rewardIcons[reward.icon] ?? typeIcons[reward.type]}</span>
                     </div>
 
                     <div className={`font-black text-xs leading-none mt-0.5 text-center ${today ? 'text-amber-600' : claimed ? 'text-slate-500' : 'text-slate-600'}`}>
@@ -271,7 +275,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                         borderColor: day7.color + '40',
                       }}
                     >
-                      <span className="text-2xl">{day7.icon}</span>
+                      <span className="text-2xl">{rewardIcons[day7.icon] ?? typeIcons[day7.type]}</span>
                     </div>
                     <span className={`font-black text-sm ${isToday(6) ? 'text-amber-600' : 'text-slate-600'}`}>{day7.label}</span>
                   </div>
