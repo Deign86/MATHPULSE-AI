@@ -32,8 +32,6 @@ import {
 } from '../types/assessment';
 import { apiFetch } from './apiService';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
-
 // ─── Firestore Collection Names ─────────────────────────────────────────
 
 const ASSESSMENTS_COLLECTION = 'assessments';
@@ -337,7 +335,7 @@ export const generateAssessment = async (
   difficulty: 'mixed' | 'easier' | 'harder' = 'mixed'
 ): Promise<GenerateAssessmentResponse> => {
   return apiFetch<GenerateAssessmentResponse>(
-    `${API_URL}/api/assessment/generate`,
+    '/api/assessment/generate',
     {
       method: 'POST',
       body: JSON.stringify({
@@ -358,7 +356,7 @@ export const submitAssessment = async (
   assessmentType: 'initial' | 'followup' | 'practice' = 'initial'
 ): Promise<SubmitAssessmentResponse> => {
   return apiFetch<SubmitAssessmentResponse>(
-    `${API_URL}/api/assessment/submit`,
+    '/api/assessment/submit',
     {
       method: 'POST',
       body: JSON.stringify({

@@ -4,8 +4,7 @@
 import { auth } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
+import { apiUrl } from '../config/env';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -72,14 +71,14 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export async function getInterventionPlan(studentId: string): Promise<InterventionPlan> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_URL}/api/intervention/${encodeURIComponent(studentId)}`, { headers });
+  const res = await fetch(apiUrl(`/api/intervention/${encodeURIComponent(studentId)}`), { headers });
   if (!res.ok) throw new Error(`GET intervention failed: ${res.status}`);
   return res.json();
 }
 
 export async function generateInterventionPlan(studentId: string): Promise<InterventionPlan> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_URL}/api/intervention/generate`, {
+  const res = await fetch(apiUrl('/api/intervention/generate'), {
     method: 'POST',
     headers,
     body: JSON.stringify({ student_id: studentId }),
@@ -96,7 +95,7 @@ export async function completeStep(
 ): Promise<{ status: string; step_number: number; score: number }> {
   const headers = await getAuthHeaders();
   const res = await fetch(
-    `${API_URL}/api/intervention/${encodeURIComponent(studentId)}/step/${stepNumber}/complete`,
+    apiUrl(`/api/intervention/${encodeURIComponent(studentId)}/step/${stepNumber}/complete`),
     {
       method: 'POST',
       headers,
@@ -110,7 +109,7 @@ export async function completeStep(
 export async function getExportPDFData(studentId: string): Promise<InterventionPlan> {
   const headers = await getAuthHeaders();
   const res = await fetch(
-    `${API_URL}/api/intervention/${encodeURIComponent(studentId)}/export-pdf`,
+    apiUrl(`/api/intervention/${encodeURIComponent(studentId)}/export-pdf`),
     { headers }
   );
   if (!res.ok) throw new Error(`GET export-pdf failed: ${res.status}`);

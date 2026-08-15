@@ -66,7 +66,7 @@ const AIChatPage = () => {
     shouldAutoScrollRef.current = isNearBottom();
   };
 
-  // Warm up the HuggingFace Space on mount to reduce cold-start latency
+  // Warm up the backend on mount to reduce cold-start latency
   useEffect(() => {
     import('../services/apiService.ts')
       .then(({ warmupBackend }) => {

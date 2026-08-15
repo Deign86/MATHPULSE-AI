@@ -2,8 +2,7 @@
 // Service layer for Class Analytics backend API
 
 import { auth } from '../lib/firebase';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
+import { apiUrl } from '../config/env';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -75,7 +74,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export async function getClassAnalytics(classId: string, refresh = false): Promise<ClassAnalyticsReport> {
   const headers = await getAuthHeaders();
-  const url = `${API_URL}/api/analytics/class/${encodeURIComponent(classId)}${refresh ? '?refresh=true' : ''}`;
+  const url = apiUrl(`/api/analytics/class/${encodeURIComponent(classId)}${refresh ? '?refresh=true' : ''}`);
   const res = await fetch(url, { headers });
   if (!res.ok) {
     throw new Error(`GET class analytics failed: ${res.status}`);
@@ -89,7 +88,7 @@ export async function getClassStudents(
 ): Promise<StudentAnalyticsSummary[]> {
   const headers = await getAuthHeaders();
   const res = await fetch(
-    `${API_URL}/api/analytics/class/${encodeURIComponent(classId)}/students?filter=${filter}`,
+    apiUrl(`/api/analytics/class/${encodeURIComponent(classId)}/students?filter=${filter}`),
     { headers }
   );
   if (!res.ok) {
@@ -101,7 +100,7 @@ export async function getClassStudents(
 export async function getClassTopics(classId: string): Promise<TopicPerformance[]> {
   const headers = await getAuthHeaders();
   const res = await fetch(
-    `${API_URL}/api/analytics/class/${encodeURIComponent(classId)}/topics`,
+    apiUrl(`/api/analytics/class/${encodeURIComponent(classId)}/topics`),
     { headers }
   );
   if (!res.ok) {
@@ -113,7 +112,7 @@ export async function getClassTopics(classId: string): Promise<TopicPerformance[
 export async function refreshClassInsights(classId: string): Promise<ClassInsights> {
   const headers = await getAuthHeaders();
   const res = await fetch(
-    `${API_URL}/api/analytics/class/${encodeURIComponent(classId)}/refresh-insights`,
+    apiUrl(`/api/analytics/class/${encodeURIComponent(classId)}/refresh-insights`),
     { method: 'POST', headers }
   );
   if (!res.ok) {
@@ -128,7 +127,7 @@ export async function refreshClassInsights(classId: string): Promise<ClassInsigh
 export async function invalidateClassCache(classId: string): Promise<void> {
   const headers = await getAuthHeaders();
   await fetch(
-    `${API_URL}/api/analytics/class/${encodeURIComponent(classId)}/invalidate-cache`,
+    apiUrl(`/api/analytics/class/${encodeURIComponent(classId)}/invalidate-cache`),
     { method: 'POST', headers }
   );
 }

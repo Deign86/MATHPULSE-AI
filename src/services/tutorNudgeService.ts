@@ -13,6 +13,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { apiUrl } from '../config/env';
 
 export interface TutorNudge {
   id: string;
@@ -63,8 +64,6 @@ export async function consumeNudge(studentId: string, nudgeId: string): Promise<
   await updateDoc(nudgeRef, { consumed: true });
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
-
 /**
  * Request the backend to check if a nudge should be generated for this student.
  * Used for students who already have risk data but no recent pipeline events.
@@ -73,7 +72,7 @@ export async function requestNudgeCheck(studentId: string): Promise<void> {
   try {
     const { auth } = await import('../lib/firebase');
     const token = await auth.currentUser?.getIdToken();
-    await fetch(`${API_URL}/api/pipeline/nudge/${studentId}`, {
+    await fetch(apiUrl(`/api/pipeline/nudge/${studentId}`), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

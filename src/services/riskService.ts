@@ -12,8 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { WRIWeights, RiskHistoryEntry, StudentRiskProfile } from '../types/models';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
+import { apiUrl } from '../config/env';
 
 // ─── API Response Types ───────────────────────────────────────────────────────
 
@@ -115,7 +114,7 @@ export async function computeWRI(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30_000);
 
-    const response = await fetch(`${API_BASE}/api/risk/compute`, {
+    const response = await fetch(apiUrl('/api/risk/compute'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ d, g, p, weights }),
@@ -189,7 +188,7 @@ export async function computeWRIBatch(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60_000);
 
-    const response = await fetch(`${API_BASE}/api/risk/compute/batch`, {
+    const response = await fetch(apiUrl('/api/risk/compute/batch'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ students, weights }),

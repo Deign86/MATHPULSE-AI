@@ -4,8 +4,7 @@
 // through the centralized apiFetch wrapper.
 
 import { apiFetch, ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError } from './apiService';
-
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
+import { apiUrl } from '../config/env';
 
 export { ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError };
 
@@ -68,7 +67,7 @@ export async function generateDiagnostic(
   strand: string,
   gradeLevel: string,
 ): Promise<DiagnosticGenerateResponse> {
-  const url = `${API_URL}/api/diagnostic/generate`;
+  const url = apiUrl('/api/diagnostic/generate');
 
   const { auth } = await import('../lib/firebase');
   const currentUser = auth.currentUser;
@@ -174,7 +173,7 @@ export async function submitDiagnostic(
   testId: string,
   responses: DiagnosticResponseItem[],
 ): Promise<DiagnosticSubmitResponse> {
-  const url = `${API_URL}/api/diagnostic/submit`;
+  const url = apiUrl('/api/diagnostic/submit');
 
   const headers = new Headers({ 'Content-Type': 'application/json' });
 

@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
+import { apiUrl } from '../config/env';
 
 export interface ModulePreviewResult {
   ai_overview: string;
@@ -18,7 +18,7 @@ export async function fetchModulePreview(
   subject: string,
   quarter: number,
 ): Promise<ModulePreviewResult> {
-  const res = await fetch(`${API_URL}/api/deepseek/module-preview`, {
+  const res = await fetch(apiUrl('/api/deepseek/module-preview'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ module_id: moduleId, module_title: moduleTitle, subject, quarter }),
@@ -34,7 +34,7 @@ export async function fetchStudyTips(
   subject: string,
   confidenceScore: number,
 ): Promise<StudyTipsResult> {
-  const res = await fetch(`${API_URL}/api/deepseek/study-tips`, {
+  const res = await fetch(apiUrl('/api/deepseek/study-tips'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

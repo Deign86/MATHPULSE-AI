@@ -22,7 +22,7 @@ MathPulse AI delivers personalized math learning through:
 ## Public documentation
 
 - [README](https://github.com/Deign86/MATHPULSE-AI/blob/main/README.md) — Project overview, setup, architecture
-- [API Reference](https://deign86-mathpulse-api-v3test.hf.space/docs) — Interactive Swagger UI for the FastAPI backend
+- [API Reference](/docs) — Interactive Swagger UI for the FastAPI backend (served by the configured backend origin)
 
 ## Authentication
 
@@ -32,7 +32,7 @@ Authenticated routes (`/student`, `/teacher`, `/admin`, `/api/*`) require Fireba
 
 - Frontend: React 18, TypeScript, Vite, Tailwind CSS v4
 - Backend: FastAPI, Python 3.10+, DeepSeek API
-- Infra: Firebase Auth, Firestore, Cloud Functions, Hugging Face Spaces
+- Infra: Firebase Auth, Firestore, Cloud Functions, Firebase Hosting
 
 ## Contact
 

@@ -16,9 +16,9 @@ import {
 import { auth, db } from '../lib/firebase';
 import { UserRole } from '../types/models';
 import { initializeUserProgress } from './progressService';
+import { apiUrl } from '../config/env';
 
 const BATCH_SIZE = 400;
-const API_URL = import.meta.env.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space';
 
 export interface ResetTestingDataParams {
   uid: string;
@@ -40,7 +40,7 @@ async function resetTestingDataViaBackend(params: ResetTestingDataParams): Promi
   }
 
   const token = await currentUser.getIdToken();
-  const response = await fetch(`${API_URL}/api/testing/reset-data`, {
+  const response = await fetch(apiUrl('/api/testing/reset-data'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
