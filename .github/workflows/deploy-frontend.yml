@@ -50,8 +50,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-
-      - run: npm ci --legacy-peer-deps
+          cache-dependency-path: package-lock.json
 
       - id: metadata
         name: Set build metadata
@@ -76,23 +75,13 @@ jobs:
           VITE_FIREBASE_VAPID_KEY: ${{ vars.VITE_FIREBASE_VAPID_KEY }}
         run: npm run build
 
-      - name: Verify PWA output and bundle safety
+      - name: Validate PWA output and bundle safety
+        run: npm run validate:pwa
+
+      - name: Check production bundle safety
         shell: bash
         run: |
           set -euo pipefail
-          required=(
-            build/index.html
-            build/manifest.webmanifest
-            build/sw.js
-            build/pwa-config.js
-            build/offline.html
-            build/icons/icon-192.png
-            build/icons/icon-512.png
-            build/icons/icon-maskable-512.png
-          )
-          for file in "${required[@]}"; do
-            test -f "$file" || { echo "Missing PWA artifact: $file"; exit 1; }
-          done
           if grep -RinE 'huggingface\.co/spaces/Deign86/MathPulse-AI' build \
             --include='*.js' --include='*.html' --include='*.json'; then
             echo 'Retired hosted frontend reference found in build output'
