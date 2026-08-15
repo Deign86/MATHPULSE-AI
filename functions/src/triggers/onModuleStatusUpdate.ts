@@ -49,7 +49,7 @@ export const onModuleStatusUpdate = functions.firestore
         createNotification({
           userId,
           type: "message",
-          title: "Module Now Available! 🎉",
+          title: "Module Now Available! ",
           message: `"${moduleTitle}" is now available. Start learning!`,
           link: `/modules?open=${moduleId}`,
         }),
