@@ -1,17 +1,31 @@
 /**
- * @file PushNotificationsManager.tsx
- *
- * Render-free component that activates the FCM lifecycle hook for the
- * current authenticated user. Mounted once near the top of the tree
- * (inside `BrowserRouter` + `AuthProvider`) so it survives tab changes
- * and role-based route switching.
+ * The single authenticated-tree owner of browser push lifecycle. Keeping this
+ * above role-specific branches prevents dashboard navigation/remounts from
+ * unregistering a valid device token.
  */
-import React from 'react';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
+import React, { createContext, useContext } from 'react';
+import { usePushNotifications, type UsePushNotificationsResult } from '@/hooks/usePushNotifications';
 
-const PushNotificationsManager: React.FC = () => {
-  usePushNotifications();
-  return null;
+export const PushNotificationsContext = createContext<UsePushNotificationsResult | null>(null);
+
+export function usePushNotificationControls(): UsePushNotificationsResult {
+  const controls = useContext(PushNotificationsContext);
+  if (controls) return controls;
+  return {
+    status: 'unsupported',
+    enable: async () => false,
+    disable: async () => {},
+    refresh: async () => {},
+  };
+}
+
+const PushNotificationsManager: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+  const controls = usePushNotifications();
+  return (
+    <PushNotificationsContext.Provider value={controls}>
+      {children}
+    </PushNotificationsContext.Provider>
+  );
 };
 
 export default PushNotificationsManager;

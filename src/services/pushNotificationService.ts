@@ -145,6 +145,12 @@ async function persistToken(userId: string, token: string): Promise<void> {
     active: true, activeSession: getSessionId(), updatedAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
   };
   if (!previous?.exists()) record.createdAt = serverTimestamp();
+  // FCM can rotate a token while the browser session stays the same. Retire
+  // only the previous token belonging to this session; records for every
+  // other browser/device remain active.
+  if (currentToken && currentToken.userId === userId && currentToken.token !== token) {
+    await deactivate(userId, currentToken.token);
+  }
   currentToken = { userId, token };
   await setDoc(tokenRef, record, { merge: true });
 }
