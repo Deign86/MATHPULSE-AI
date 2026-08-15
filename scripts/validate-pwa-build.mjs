@@ -67,7 +67,9 @@ function findServiceWorkers() {
   }
 
   for (const file of files) {
-    if (/(?:^|\/)(?:sw|service-worker)(?:[-.][^/]*)?\.js$/i.test(file)) {
+    // Include conventional app workers and explicitly named workers such as
+    // firebase-messaging-sw.js without requiring a specific PWA plugin.
+    if (/(?:^|\/)(?:sw|service-worker|[^/]*-sw)\.js$/i.test(file)) {
       configured.add(file);
     }
   }
