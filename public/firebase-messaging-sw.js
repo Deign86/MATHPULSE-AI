@@ -1,41 +1,9 @@
-/**
- * MathPulse AI — Firebase Cloud Messaging Service Worker
- * --------------------------------------------------------
- * Handles BACKGROUND push messages (when the page is closed or tab is
- * not focused). Foreground messages are handled in
- * src/services/pushNotificationService.ts via onMessage().
- *
- * The compat SDKs are imported here because service workers cannot use
- * ES modules in all browsers consistently (and Firebase's modular SDK
- * does not yet ship a SW build).
- *
- * Firebase config is loaded from /firebase-config.js, which is generated
- * at dev/build time by the `mathpulse-fcm-config` plugin in vite.config.ts
- * from VITE_FIREBASE_* env vars. This keeps secrets out of the SW source
- * file while still working offline once cached by the browser.
- *
- * Mobile parity contract:
- *   The `data` payload shape — `{ url, tag, notificationType }` —
- *   MUST stay stable so future Capacitor / React Native FCM handlers
- *   can route deep links identically.
- */
-
+/* MathPulse AI FCM worker. The sender must use data-only FCM messages. */
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
+importScripts('/firebase-config.js');
 
-// /firebase-config.js is emitted by the Vite plugin at startup/build.
-// It sets self.FIREBASE_API_KEY etc. from VITE_FIREBASE_* env values.
-try {
-  importScripts('/firebase-config.js');
-} catch (err) {
-  // Service worker may load before /firebase-config.js exists (cold cache).
-  // We still attempt initialization below; if it fails, push is disabled
-  // until the config asset is cached.
-  // eslint-disable-next-line no-console
-  console.warn('[fcm-sw] /firebase-config.js not yet available:', err);
-}
-
-const firebaseConfig = {
+const config = {
   apiKey: self.FIREBASE_API_KEY,
   authDomain: self.FIREBASE_AUTH_DOMAIN,
   projectId: self.FIREBASE_PROJECT_ID,
@@ -43,77 +11,68 @@ const firebaseConfig = {
   messagingSenderId: self.FIREBASE_MESSAGING_SENDER_ID,
   appId: self.FIREBASE_APP_ID,
 };
-
 let messaging = null;
 try {
-  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-    firebase.initializeApp(firebaseConfig);
-    messaging = firebase.messaging();
-  } else {
-    // eslint-disable-next-line no-console
-    console.warn('[fcm-sw] Firebase config missing — push disabled until config loads.');
-  }
-} catch (err) {
-  // eslint-disable-next-line no-console
-  console.error('[fcm-sw] Firebase init failed:', err);
-}
+  if (config.apiKey && config.projectId && !firebase.apps.length) firebase.initializeApp(config);
+  if (firebase.apps.length) messaging = firebase.messaging();
+} catch (error) { console.warn('[fcm-sw] Firebase unavailable', error); }
 
+const seen = new Set();
 const DEFAULT_ICON = '/mathpulse_logo.png';
 const DEFAULT_BADGE = '/mathpulse_logo.png';
+function safeInternalRoute(value) {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return null;
+  if (/[\\\r\n]/.test(value) || /[a-z][a-z\d+.-]*:/i.test(value)) return null;
+  try {
+    const url = new URL(value, self.location.origin);
+    return url.origin === self.location.origin ? `${url.pathname}${url.search}${url.hash}` : null;
+  } catch (_) { return null; }
+}
+function payloadEventId(data) {
+  return String(data.eventId || data.messageId || data.tag || `${data.title || ''}:${data.body || ''}`);
+}
 
 if (messaging) {
   messaging.onBackgroundMessage((payload) => {
-    const notif = payload.notification || {};
+    // Data-only is intentional: handling notification payloads here would
+    // duplicate the browser's automatic display.
     const data = payload.data || {};
-    const title = notif.title || 'MathPulse AI';
-    const body = notif.body || '';
-    const tag = data.tag || 'mathpulse-default';
-
-    self.registration.showNotification(title, {
-      body,
-      icon: notif.icon || DEFAULT_ICON,
-      badge: DEFAULT_BADGE,
-      data,
-      tag,
-      renotify: true,
+    const eventId = payloadEventId(data);
+    if (seen.has(eventId)) return;
+    seen.add(eventId);
+    if (seen.size > 500) seen.delete(seen.values().next().value);
+    const route = safeInternalRoute(data.url) || '/';
+    self.registration.showNotification(data.title || 'MathPulse AI', {
+      body: data.body || '',
+      icon: data.icon || DEFAULT_ICON,
+      badge: data.badge || DEFAULT_BADGE,
+      image: data.image || undefined,
+      tag: data.tag || `mathpulse-${eventId}`,
+      data: { route, eventId },
+      renotify: false,
       requireInteraction: false,
     });
   });
 }
 
-// Notification click → focus existing tab or open new window.
-// The `data.url` field carries the in-app deep link.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/';
-
+  const data = event.notification.data || {};
+  const route = safeInternalRoute(data.route || data.url) || '/';
+  const eventId = String(data.eventId || '');
   event.waitUntil((async () => {
-    const allClients = await clients.matchAll({
-      type: 'window',
-      includeUncontrolled: true,
-    });
-
-    for (const client of allClients) {
+    const windows = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
       try {
-        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
-          client.postMessage({ type: 'NOTIFICATION_CLICK', url });
-          return client.focus();
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          await client.focus();
+          client.postMessage({ type: 'NOTIFICATION_CLICK', url: route, eventId });
+          return;
         }
-      } catch (_) { /* ignore */ }
+      } catch (_) { /* ignore an unavailable client */ }
     }
-
-    if (clients.openWindow) {
-      return clients.openWindow(url);
-    }
-    return null;
+    if (clients.openWindow) await clients.openWindow(new URL(route, self.location.origin).href);
   })());
 });
-
-// Skip waiting on install so updates take effect on the next reload.
-self.addEventListener('install', () => {
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
-});
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
