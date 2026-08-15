@@ -49,8 +49,14 @@ export function usePushNotifications(): UsePushNotificationsResult {
     const capability = getPushCapability();
     if (!capability.supported) { setStatus('unsupported'); return; }
     const permission = Notification.permission;
-    if (permission === 'denied') { setStatus('denied'); return; }
-    if (permission !== 'granted') { setStatus('default'); return; }
+    if (permission !== 'granted') {
+      // A grant can be revoked back to `default`, not only `denied`. Deactivate
+      // all active records for this browser session before exposing that state.
+      await deactivateCurrentSessionToken(uid);
+      tokenRef.current = null;
+      setStatus(permission === 'denied' ? 'denied' : 'default');
+      return;
+    }
     setStatus('registering');
     try {
       const token = await requestPushPermissionAndRegister(uid, 'refresh');
@@ -78,7 +84,10 @@ export function usePushNotifications(): UsePushNotificationsResult {
 
   const disable = useCallback(async () => {
     const uid = uidRef.current || currentUser?.uid;
-    if (uid) await deactivateCurrentPushToken(uid, tokenRef.current);
+    if (uid) {
+      if (tokenRef.current) await deactivateCurrentPushToken(uid, tokenRef.current);
+      else await deactivateCurrentSessionToken(uid);
+    }
     tokenRef.current = null;
     setStatus(Notification.permission === 'denied' ? 'denied' : 'granted');
   }, [currentUser?.uid]);

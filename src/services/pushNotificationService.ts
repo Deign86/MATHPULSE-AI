@@ -8,7 +8,7 @@ import {
   type MessagePayload,
   type Messaging,
 } from 'firebase/messaging';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where, serverTimestamp } from 'firebase/firestore';
 import firebaseApp, { db } from '../lib/firebase';
 
 export type FCMPlatform = 'web';
@@ -204,9 +204,23 @@ export async function deactivateCurrentPushToken(userId: string, token: string |
 }
 
 export async function deactivateCurrentSessionToken(userId: string): Promise<void> {
-  if (!currentToken || currentToken.userId !== userId) return;
-  await deactivate(userId, currentToken.token);
-  currentToken = null;
+  if (!userId) return;
+  const session = getSessionId();
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, 'users', userId, 'fcmTokens'),
+      where('activeSession', '==', session),
+      where('active', '==', true),
+    ));
+    await Promise.all(snapshot.docs.map((tokenDoc) => updateDoc(tokenDoc.ref, {
+      active: false,
+      updatedAt: serverTimestamp(),
+      lastSeenAt: serverTimestamp(),
+    })));
+  } catch (error) {
+    console.warn('[push] session token cleanup failed', error);
+  }
+  if (currentToken?.userId === userId) currentToken = null;
 }
 
 export function resetPushServiceForTests(): void {
