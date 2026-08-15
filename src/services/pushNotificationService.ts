@@ -1,220 +1,208 @@
-/**
- * @file pushNotificationService.ts
- *
- * Frontend Firebase Cloud Messaging (FCM) integration. Owns:
- *   - browser permission prompt
- *   - service worker registration (`/firebase-messaging-sw.js`)
- *   - token retrieval + persistence to `users/{uid}/fcmTokens/{token}`
- *   - foreground message subscription
- *   - logout-time token deregistration
- *
- * The token-storage schema is intentionally platform-agnostic so that a
- * future Capacitor / React Native FCM client can write tokens with
- * `platform: 'android' | 'ios'` to the same subcollection without any
- * Cloud Function changes — the sender query reads `where('active','==',true)`
- * across platforms and forwards via `admin.messaging().sendEachForMulticast`.
- */
-
-import { getMessaging, getToken, onMessage, deleteToken, isSupported, type MessagePayload, type Messaging } from 'firebase/messaging';
-import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+/** Browser FCM integration. Permission is requested only by an explicit user action. */
+import {
+  deleteToken,
+  getMessaging,
+  getToken,
+  isSupported,
+  onMessage,
+  type MessagePayload,
+  type Messaging,
+} from 'firebase/messaging';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import firebaseApp, { db } from '../lib/firebase';
 
-export type FCMPlatform = 'web' | 'android' | 'ios';
+export type FCMPlatform = 'web';
+export type PushStatus = 'unsupported' | 'default' | 'granted' | 'registering' | 'enabled' | 'denied' | 'error';
+export type PushPermissionAction = 'prompt' | 'refresh';
+
+export interface PushCapability {
+  supported: boolean;
+  reason?: 'secure-context' | 'notification' | 'service-worker' | 'firebase' | 'vapid' | 'unknown';
+}
 
 export interface FCMTokenRecord {
   token: string;
   userId: string;
   platform: FCMPlatform;
+  browser: string;
   userAgent: string;
-  // ServerTimestamp on write — Date | undefined when read
+  active: boolean;
+  activeSession: string;
   createdAt?: unknown;
   updatedAt?: unknown;
-  active: boolean;
+  lastSeenAt?: unknown;
 }
 
-const SW_URL = '/firebase-messaging-sw.js';
-
+export const FCM_SW_URL = '/firebase-messaging-sw.js';
+export const FCM_SW_SCOPE = '/firebase-messaging/';
+const SESSION_KEY = 'mathpulse-fcm-session';
 let cachedMessaging: Messaging | null = null;
-let supportChecked = false;
-let supported = false;
+let supportPromise: Promise<boolean> | null = null;
+let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
+let sessionId: string | null = null;
+let currentToken: { userId: string; token: string } | null = null;
+
+/** Accept only app-relative routes. Exported for SW-contract and hook tests. */
+export function safeInternalRoute(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return null;
+  if (/[\\\r\n]/.test(value) || /[a-z][a-z\d+.-]*:/i.test(value)) return null;
+  try {
+    const parsed = new URL(value, 'https://mathpulse.invalid');
+    if (parsed.origin !== 'https://mathpulse.invalid') return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+export function pushStatus(permission: NotificationPermission | undefined, capable: boolean, enabled: boolean): PushStatus {
+  if (!capable) return 'unsupported';
+  if (permission === 'denied') return 'denied';
+  if (permission === 'granted') return enabled ? 'enabled' : 'granted';
+  return 'default';
+}
+
+export function sha256Hex(value: string): Promise<string> {
+  if (typeof crypto === 'undefined' || !crypto.subtle) return Promise.reject(new Error('Web Crypto is unavailable'));
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)).then((buffer) =>
+    Array.from(new Uint8Array(buffer), (byte) => byte.toString(16).padStart(2, '0')).join(''),
+  );
+}
+
+export function getSessionId(): string {
+  if (sessionId) return sessionId;
+  try {
+    const existing = sessionStorage.getItem(SESSION_KEY);
+    if (existing) return (sessionId = existing);
+    const generated = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    sessionStorage.setItem(SESSION_KEY, generated);
+    return (sessionId = generated);
+  } catch {
+    return (sessionId = `memory-${Date.now()}-${Math.random()}`);
+  }
+}
+
+export function getPushCapability(): PushCapability {
+  if (typeof window === 'undefined') return { supported: false, reason: 'unknown' };
+  if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return { supported: false, reason: 'secure-context' };
+  }
+  if (typeof Notification === 'undefined') return { supported: false, reason: 'notification' };
+  if (!('serviceWorker' in navigator)) return { supported: false, reason: 'service-worker' };
+  if (!import.meta.env.VITE_FIREBASE_VAPID_KEY) return { supported: false, reason: 'vapid' };
+  return { supported: true };
+}
+
+export async function isPushSupported(): Promise<boolean> {
+  const capability = getPushCapability();
+  if (!capability.supported) return false;
+  supportPromise ??= isSupported().catch(() => false);
+  return supportPromise;
+}
 
 async function getMessagingIfSupported(): Promise<Messaging | null> {
-  if (!supportChecked) {
+  if (!(await isPushSupported())) return null;
+  try {
+    cachedMessaging ??= getMessaging(firebaseApp);
+    return cachedMessaging;
+  } catch {
+    return null;
+  }
+}
+
+/** Reuses one narrow-scope registration and never registers on ordinary mount. */
+export function ensureFirebaseMessagingServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (registrationPromise) return registrationPromise;
+  registrationPromise = (async () => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null;
     try {
-      supported = await isSupported();
-    } catch {
-      supported = false;
-    }
-    supportChecked = true;
-  }
-  if (!supported) return null;
-  if (!cachedMessaging) {
-    cachedMessaging = getMessaging(firebaseApp);
-  }
-  return cachedMessaging;
-}
-
-/**
- * Register the FCM service worker if not already registered. Returns the
- * registration so it can be passed to `getToken()`.
- *
- * Re-using an existing registration avoids duplicate SWs when the user
- * navigates between routes.
- */
-async function ensureServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
-    return null;
-  }
-  try {
-    const scope = '/firebase-messaging/';
-    const existing = await navigator.serviceWorker.getRegistration(scope);
-    if (existing) return existing;
-    // Keep FCM outside the app-shell worker's root scope. Firebase accepts the
-    // registration explicitly through getToken(), so a narrow scope avoids
-    // two workers competing for `/`.
-    return await navigator.serviceWorker.register(SW_URL, { scope });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[pushNotificationService] SW registration failed:', err);
-    return null;
-  }
-}
-
-/**
- * Prompt the user for notification permission, retrieve an FCM token,
- * and persist it to Firestore. Returns null when push is unsupported,
- * permission was denied, or the VAPID key is misconfigured.
- *
- * Idempotent: calling multiple times reuses the existing SW registration
- * and rewrites the token doc with `updatedAt` refreshed (handy for
- * tracking active devices).
- */
-export async function requestPushPermissionAndRegister(userId: string): Promise<string | null> {
-  if (!userId) return null;
-  if (typeof window === 'undefined' || typeof Notification === 'undefined') {
-    return null;
-  }
-
-  const messaging = await getMessagingIfSupported();
-  if (!messaging) {
-    // eslint-disable-next-line no-console
-    console.warn('[pushNotificationService] FCM not supported in this browser.');
-    return null;
-  }
-
-  let permission: NotificationPermission;
-  try {
-    // Respect the browser's existing decision:
-    //  - 'granted'  → skip prompt, proceed.
-    //  - 'denied'   → user (or the browser's auto-block heuristic, e.g. after
-    //                 ignoring the prompt N times) has refused. Re-prompting
-    //                 produces a no-op + a console warning every reload, so
-    //                 short-circuit and let the user re-enable manually via
-    //                 site settings.
-    //  - 'default'  → only state in which we should actually prompt.
-    if (Notification.permission === 'granted') {
-      permission = 'granted';
-    } else if (Notification.permission === 'denied') {
+      return await navigator.serviceWorker.getRegistration(FCM_SW_SCOPE) ||
+        await navigator.serviceWorker.register(FCM_SW_URL, { scope: FCM_SW_SCOPE });
+    } catch (error) {
+      console.warn('[push] service worker registration failed', error);
       return null;
-    } else {
-      permission = await Notification.requestPermission();
     }
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[pushNotificationService] permission prompt failed:', err);
-    return null;
+  })();
+  return registrationPromise;
+}
+
+function browserName(): string {
+  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  if (/Edg\//.test(ua)) return 'Edge';
+  if (/Chrome\//.test(ua)) return 'Chrome';
+  if (/Firefox\//.test(ua)) return 'Firefox';
+  if (/Safari\//.test(ua)) return 'Safari';
+  return 'unknown';
+}
+
+async function persistToken(userId: string, token: string): Promise<void> {
+  const id = await sha256Hex(token);
+  const tokenRef = doc(db, 'users', userId, 'fcmTokens', id);
+  const previous = await getDoc(tokenRef).catch(() => null);
+  const record: Record<string, unknown> = {
+    token, userId, platform: 'web', browser: browserName(),
+    userAgent: typeof navigator === 'undefined' ? '' : navigator.userAgent,
+    active: true, activeSession: getSessionId(), updatedAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
+  };
+  if (!previous?.exists()) record.createdAt = serverTimestamp();
+  currentToken = { userId, token };
+  await setDoc(tokenRef, record, { merge: true });
+}
+
+/** Register/refresh without asking. `prompt` is exclusively for the Enable button. */
+export async function requestPushPermissionAndRegister(userId: string, action: PushPermissionAction = 'prompt'): Promise<string | null> {
+  if (!userId || !getPushCapability().supported || !(await isPushSupported())) return null;
+  const permission = Notification.permission;
+  if (permission === 'denied') return null;
+  if (permission !== 'granted') {
+    if (action !== 'prompt') return null;
+    const result = await Notification.requestPermission();
+    if (result !== 'granted') return null;
   }
-
-  if (permission !== 'granted') return null;
-
-  const vapidKey = (import.meta.env.VITE_FIREBASE_VAPID_KEY || '').trim();
-  if (!vapidKey) {
-    // eslint-disable-next-line no-console
-    console.warn('[pushNotificationService] VITE_FIREBASE_VAPID_KEY missing — cannot fetch FCM token.');
-    return null;
-  }
-
-  const swRegistration = await ensureServiceWorker();
-  if (!swRegistration) return null;
-
-  let token: string | null = null;
-  try {
-    token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swRegistration });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[pushNotificationService] getToken failed:', err);
-    return null;
-  }
-
+  const messaging = await getMessagingIfSupported();
+  const registration = await ensureFirebaseMessagingServiceWorker();
+  const vapidKey = String(import.meta.env.VITE_FIREBASE_VAPID_KEY || '').trim();
+  if (!messaging || !registration || !vapidKey) return null;
+  const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration });
   if (!token) return null;
-
-  try {
-    const tokenRef = doc(db, 'users', userId, 'fcmTokens', token);
-    const record: FCMTokenRecord = {
-      token,
-      userId,
-      platform: 'web',
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      active: true,
-    };
-    await setDoc(tokenRef, record, { merge: true });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[pushNotificationService] persisting token failed:', err);
-    // Token is still usable — return it so the caller can subscribe to onMessage.
-  }
-
+  await persistToken(userId, token);
   return token;
 }
 
-/**
- * Subscribe to FCM foreground messages. Returns an unsubscribe function.
- *
- * The browser does NOT auto-display foreground messages — the caller is
- * responsible for surfacing them (we route into the in-app notification
- * system via the usePushNotifications hook).
- */
-export function onForegroundMessage(
-  callback: (payload: MessagePayload) => void,
-): () => void {
-  let unsub: (() => void) | undefined;
+export function onForegroundMessage(callback: (payload: MessagePayload) => void): () => void {
+  let unsubscribe: (() => void) | undefined;
   let cancelled = false;
-
   void getMessagingIfSupported().then((messaging) => {
-    if (cancelled || !messaging) return;
-    unsub = onMessage(messaging, callback);
+    if (!cancelled && messaging) unsubscribe = onMessage(messaging, callback);
   });
-
-  return () => {
-    cancelled = true;
-    unsub?.();
-  };
+  return () => { cancelled = true; unsubscribe?.(); };
 }
 
-/**
- * Mark a token as inactive in Firestore and delete it from FCM. Called on
- * logout so the device stops receiving pushes for the previous user.
- */
+async function deactivate(userId: string, token: string): Promise<void> {
+  const id = await sha256Hex(token);
+  await updateDoc(doc(db, 'users', userId, 'fcmTokens', id), {
+    active: false, updatedAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
+  }).catch(() => setDoc(doc(db, 'users', userId, 'fcmTokens', id), { token, userId, active: false, updatedAt: serverTimestamp() }, { merge: true }));
+}
+
+/** Deactivates only this browser session's token; other devices are untouched. */
 export async function deregisterPushToken(userId: string, token: string): Promise<void> {
   if (!userId || !token) return;
+  await deactivate(userId, token);
+  if (currentToken?.userId === userId && currentToken.token === token) currentToken = null;
+  try { const messaging = await getMessagingIfSupported(); if (messaging) await deleteToken(messaging); } catch { /* best effort */ }
+}
 
-  try {
-    const tokenRef = doc(db, 'users', userId, 'fcmTokens', token);
-    await updateDoc(tokenRef, { active: false, updatedAt: serverTimestamp() });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[pushNotificationService] marking token inactive failed:', err);
-  }
+export async function deactivateCurrentPushToken(userId: string, token: string | null): Promise<void> {
+  if (token) await deactivate(userId, token);
+}
 
-  try {
-    const messaging = await getMessagingIfSupported();
-    if (messaging) {
-      await deleteToken(messaging);
-    }
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[pushNotificationService] deleteToken failed:', err);
-  }
+export async function deactivateCurrentSessionToken(userId: string): Promise<void> {
+  if (!currentToken || currentToken.userId !== userId) return;
+  await deactivate(userId, currentToken.token);
+  currentToken = null;
+}
+
+export function resetPushServiceForTests(): void {
+  cachedMessaging = null; supportPromise = null; registrationPromise = null; sessionId = null; currentToken = null;
 }
