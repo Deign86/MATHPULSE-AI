@@ -10,7 +10,7 @@
       html,body{margin:0;min-height:100%}
       body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;font-family:'Nunito',ui-sans-serif,system-ui,sans-serif;background:#f8faff;color:#0a1628}
       .card{width:min(100%,26rem);padding:2rem;border-radius:2rem;border:1px solid #dde3eb;background:#fff;box-shadow:0 24px 40px rgba(56,189,248,.12);text-align:center}
-      .emoji{font-size:3rem;line-height:1}
+      .offline-icon{width:3rem;height:3rem;display:block;margin:0 auto;color:#9956DE}
       h1{margin:1rem 0 .5rem;font-size:1.35rem;font-weight:800}
       p{margin:0 0 1.5rem;color:#64748b;font-size:.95rem;line-height:1.5}
       button{appearance:none;border:0;cursor:pointer;padding:.75rem 1.25rem;border-radius:.9rem;background:#9956DE;color:#fff;font-weight:700;font-size:.9rem}
@@ -19,7 +19,8 @@
   </head>
   <body>
     <main class="card">
-      <div class="emoji" aria-hidden="true">📡</div>
+      <svg class="offline-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 9.5a16 16 0 0 1 22 0"/><path d="M5 13.5a10 10 0 0 1 14 0"/><path d="M9 17.5a4.5 4.5 0 0 1 6 0"/><path d="M12 21h.01"/><path d="m3 3 18 18"/></svg>
+
       <h1>You're offline</h1>
       <p>MathPulse AI needs a connection to load your dashboard and AI tutor. Check your network and try again.</p>
       <button type="button" onclick="window.location.reload()">Try again</button>

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import {
   ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb,
   Calculator, Award, RefreshCw, AlertTriangle, NotebookPen,
-  Clock, Key, ClipboardCheck, Target, Zap, PlayCircle
+  Clock, Key, ClipboardCheck, Target, Zap, PlayCircle, Ruler, Sparkles, Pin
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -115,17 +115,17 @@ function formatContent(raw: string): React.ReactNode {
   const isFormula  = (l: string) => MATH_RE.test(l) && l.trim().length < 120;
 
   // Callout type → color scheme
-  const calloutScheme = (prefix: string): { bg: string; border: string; text: string; label: string } => {
+  const calloutScheme = (prefix: string): { bg: string; border: string; text: string; label: React.ReactNode } => {
     const p = prefix.toLowerCase();
     if (/formula|theorem|property|rule/.test(p))
-      return { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', label: '📐' };
+      return { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', label: <Ruler aria-hidden="true" size={14} /> };
     if (/definition|concept|key/.test(p))
-      return { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-900', label: '📖' };
+      return { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-900', label: <BookOpen aria-hidden="true" size={14} /> };
     if (/note|reminder|important/.test(p))
-      return { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-900', label: '⚠️' };
+      return { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-900', label: <AlertTriangle aria-hidden="true" size={14} /> };
     if (/example|step/.test(p))
-      return { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', label: '✏️' };
-    return { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-800', label: '💡' };
+      return { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', label: <NotebookPen aria-hidden="true" size={14} /> };
+    return { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-800', label: <Lightbulb aria-hidden="true" size={14} /> };
   };
 
   for (const rawLine of lines) {
@@ -485,7 +485,7 @@ function SectionRenderer({
                 <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
                   callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
                 }`}>
-                  {callout.type === 'tip' ? '✨ Tip' : callout.type === 'important' ? '⚠️ Heads Up' : '📌 Note'}
+                  {callout.type === 'tip' ? <><Sparkles aria-hidden="true" size={12} /> Tip</> : callout.type === 'important' ? <><AlertTriangle aria-hidden="true" size={12} /> Heads Up</> : <><Pin aria-hidden="true" size={12} /> Note</>}
                 </p>
                 <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{callout.text}</p>
               </div>
@@ -500,7 +500,7 @@ function SectionRenderer({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 text-amber-600">
-                  ⚠️ Heads Up
+                  <><AlertTriangle aria-hidden="true" size={12} /> Heads Up</>
                 </p>
                 <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">
                   This lesson has {totalSectionCount} sections and takes about 20 minutes to complete. Grab a pen — you might want to take notes along the way!
@@ -577,7 +577,7 @@ function SectionRenderer({
                     <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
                       callout.type === 'important' ? 'text-rose-500' : callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
                     }`}>
-                      {callout.type === 'important' ? '🔑 Important' : callout.type === 'tip' ? '✨ Tip' : '📌 Note'}
+                      {callout.type === 'important' ? <><Key aria-hidden="true" size={12} /> Important</> : callout.type === 'tip' ? <><Sparkles aria-hidden="true" size={12} /> Tip</> : <><Pin aria-hidden="true" size={12} /> Note</>}
                     </p>
                     <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{inlineFormat(callout.text)}</p>
                   </div>
