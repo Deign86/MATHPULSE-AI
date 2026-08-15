@@ -45,6 +45,37 @@ service cloud.firestore {
       return isSignedIn() && (ownerInExisting(field) || ownerInIncoming(field));
     }
 
+    function validPushPreferences() {
+      let p = request.resource.data.pushPreferences;
+      return p is map
+        && p.keys().hasOnly(['pushEnabled', 'achievement', 'quiz_battle', 'daily_reward', 'assignment', 'grade_posted', 'streak_reminder', 'leaderboard', 'system'])
+        && (!p.keys().hasAny(['pushEnabled']) || p.pushEnabled is bool)
+        && (!p.keys().hasAny(['achievement']) || p.achievement is bool)
+        && (!p.keys().hasAny(['quiz_battle']) || p.quiz_battle is bool)
+        && (!p.keys().hasAny(['daily_reward']) || p.daily_reward is bool)
+        && (!p.keys().hasAny(['assignment']) || p.assignment is bool)
+        && (!p.keys().hasAny(['grade_posted']) || p.grade_posted is bool)
+        && (!p.keys().hasAny(['streak_reminder']) || p.streak_reminder is bool)
+        && (!p.keys().hasAny(['leaderboard']) || p.leaderboard is bool)
+        && (!p.keys().hasAny(['system']) || p.system is bool);
+    }
+
+    function validQuietHours() {
+      let n = request.resource.data.notifications;
+      return n is map && (!n.keys().hasAny(['quietHours']) || (
+        n.quietHours is map
+        && n.quietHours.keys().hasOnly(['start', 'end', 'timeZone'])
+        && (!n.quietHours.keys().hasAny(['start']) || (n.quietHours.start is string && n.quietHours.start.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')))
+        && (!n.quietHours.keys().hasAny(['end']) || (n.quietHours.end is string && n.quietHours.end.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')))
+        && (!n.quietHours.keys().hasAny(['timeZone']) || n.quietHours.timeZone is string)
+      ));
+    }
+
+    function validPreferencesSettings() {
+      return (!request.resource.data.keys().hasAny(['pushPreferences']) || validPushPreferences())
+        && (!request.resource.data.keys().hasAny(['notifications']) || validQuietHours());
+    }
+
     match /users/{userId} {
       allow create: if isSelf(userId);
       allow read: if isSelf(userId) || isTeacherOrAdmin();
@@ -82,7 +113,8 @@ service cloud.firestore {
 
     match /users/{userId}/settings/{settingsId} {
       allow read: if isSelf(userId) || isAdmin();
-      allow create, update: if isSelf(userId) || isAdmin();
+      allow create, update: if (isSelf(userId) || isAdmin())
+        && (settingsId != 'preferences' || validPreferencesSettings());
       allow delete: if isAdmin();
     }
 
@@ -97,7 +129,27 @@ service cloud.firestore {
     // Admin SDK (bypasses rules), so we only need to scope client access here.
     match /users/{userId}/fcmTokens/{tokenId} {
       allow read: if isSelf(userId) || isAdmin();
-      allow create, update, delete: if isSelf(userId);
+      allow create: if isSelf(userId)
+        && request.resource.data.userId is string
+        && request.resource.data.userId == userId
+        && request.resource.data.token is string
+        && request.resource.data.token.size() > 0
+        && request.resource.data.token.size() <= 4096
+        && request.resource.data.platform is string
+        && request.resource.data.platform in ['web', 'ios', 'android']
+        && request.resource.data.active is bool;
+      allow update: if isSelf(userId)
+        && resource.data.userId is string
+        && resource.data.userId == userId
+        && request.resource.data.userId is string
+        && request.resource.data.userId == resource.data.userId
+        && resource.data.token is string
+        && request.resource.data.token is string
+        && request.resource.data.token == resource.data.token
+        && request.resource.data.platform is string
+        && request.resource.data.platform in ['web', 'ios', 'android']
+        && request.resource.data.active is bool;
+      allow delete: if isSelf(userId);
     }
 
     // ── Daily Rewards (users can only claim their own, must change lastClaimedDate) ──
@@ -178,8 +230,8 @@ service cloud.firestore {
 
     // ── Notifications subcollection (new structure) ─────────────────
     match /notifications/{userId}/items/{notificationId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read, update, delete: if isSelf(userId);
+      allow create: if isSelf(userId);
     }
 
     // ── Tutor Nudges (proactive AI nudges per student) ───────────────
@@ -345,11 +397,16 @@ service cloud.firestore {
     // Assessment Results — students can read their own, backend writes
     match /assessmentResults/{studentId}/attempts/{attemptId} {
       allow read: if request.auth != null && request.auth.uid == studentId;
-      allow write: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == studentId;
+      allow delete: if false;
     }
 
+    // Delivery claims are server-owned; Admin SDK bypasses these rules.
 
-    // ── Student Progress / Stats (written by backend after diagnostic) ──
+    match /_pushDeliveries/{deliveryId} {
+      allow read, write: if false;
+    }
+
     match /studentProgress/{userId} {
       allow read: if isSelf(userId) || isTeacherOrAdmin();
       allow create, update: if isSelf(userId) || isAdmin();

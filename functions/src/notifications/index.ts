@@ -13,7 +13,7 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { sendPushToUser } from "../utils/sendPush";
+import { sendPushToUser, sendPushToUsers, sanitizeAppRoute, type PushResult } from "../utils/sendPush";
 
 type AnyDoc = Record<string, unknown>;
 
@@ -23,6 +23,23 @@ function asString(value: unknown, fallback = ""): string {
 
 function asNumber(value: unknown, fallback = 0): number {
   return typeof value === "number" ? value : fallback;
+}
+
+function eventId(prefix: string, value: string): string {
+  return `${prefix}:${value}`.replace(/[^A-Za-z0-9:._/-]/g, "_").slice(0, 180);
+}
+
+function manilaDate(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
+
+export function canTeacherNotifyStudent(callerUid: string, callerRole: unknown, managedStudent: AnyDoc | null, targetRole: unknown): boolean {
+  return callerRole === "admin" ? targetRole === "student" : callerRole === "teacher" && targetRole === "student" && managedStudent?.teacherId === callerUid;
+}
+
+function emptyResult(): PushResult { return { sent: 0, failed: 0, suppressed: 0, invalidated: 0, duplicate: 0 }; }
+function mergeResult(target: PushResult, value: PushResult): void {
+  target.sent += value.sent; target.failed += value.failed; target.suppressed += value.suppressed; target.invalidated += value.invalidated; target.duplicate += value.duplicate;
 }
 
 // ───────────────────────── Achievement Unlocked ─────────────────────────
@@ -46,6 +63,7 @@ export const onAchievementUnlocked = functions.firestore
       body: `You earned: ${name}`,
       url: "/grades",
       tag: `achievement-${context.params.achievementId}`,
+      eventId: eventId("achievement", `${context.params.userId}:${context.params.achievementId}`),
       notificationType: "achievement",
     });
   });
@@ -90,6 +108,7 @@ export const onQuizBattleUpdate = functions.firestore
         body: `${challengerName} challenged you to a Math Battle!`,
         url: `/battle?match=${battleId}`,
         tag: `battle-invite-${battleId}`,
+        eventId: eventId("battle-invite", battleId),
         notificationType: "quiz_battle",
       });
     }
@@ -110,6 +129,7 @@ export const onQuizBattleUpdate = functions.firestore
             body: "Your Math Battle has ended. Check the results!",
             url: `/battle?match=${battleId}`,
             tag: `battle-complete-${battleId}`,
+            eventId: eventId("battle-complete", `${battleId}:${uid}`),
             notificationType: "quiz_battle",
           }),
         ),
@@ -139,6 +159,7 @@ export const onGradePosted = functions.firestore
       body: `You scored ${score}/${maxScore} on ${subject}.`,
       url: "/grades",
       tag: `grade-${context.params.attemptId}`,
+      eventId: eventId("grade", `${studentId}:${context.params.attemptId}`),
       notificationType: "grade_posted",
     });
   });
@@ -154,7 +175,7 @@ export const dailyRewardReminder = functions.pubsub
   .timeZone("Asia/Manila")
   .onRun(async () => {
     const db = admin.firestore();
-    const today = new Date().toISOString().split("T")[0];
+    const today = manilaDate();
 
     const usersSnap = await db
       .collection("users")
@@ -193,6 +214,7 @@ export const dailyRewardReminder = functions.pubsub
           body: "Your daily bonus is waiting. Log in to claim it!",
           url: "/",
           tag: "daily-reward",
+          eventId: eventId("daily-reward", `${uid}:${today}`),
           notificationType: "daily_reward",
         }),
       ),
@@ -211,7 +233,7 @@ export const streakReminder = functions.pubsub
   .timeZone("Asia/Manila")
   .onRun(async () => {
     const db = admin.firestore();
-    const today = new Date().toISOString().split("T")[0];
+    const today = manilaDate();
 
     const usersSnap = await db
       .collection("users")
@@ -242,6 +264,7 @@ export const streakReminder = functions.pubsub
           body: `You have a ${streak}-day streak! Complete a lesson today to keep it going.`,
           url: "/modules",
           tag: "streak-reminder",
+          eventId: eventId("streak", `${uid}:${today}`),
           notificationType: "streak_reminder",
         }),
       ),
@@ -283,28 +306,34 @@ export const notifyAssignmentDeadline = functions.https.onCall(
       );
     }
 
-    const studentIds = Array.isArray(data?.studentIds) ? data.studentIds : [];
-    const assignmentTitle = asString(data?.assignmentTitle) || "An assignment";
-    const dueDate = asString(data?.dueDate) || "soon";
-    const assignmentUrl = asString(data?.assignmentUrl) || "/grades";
-
-    if (studentIds.length === 0) {
-      return { sent: 0, error: "No studentIds provided." };
+    const rawStudentIds = Array.isArray(data?.studentIds) ? data.studentIds : [];
+    const studentIds = Array.from(new Set(rawStudentIds.filter((id): id is string => typeof id === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(id)))).slice(0, 100);
+    const assignmentTitle = asString(data?.assignmentTitle);
+    const dueDate = asString(data?.dueDate);
+    const assignmentUrl = sanitizeAppRoute(data?.assignmentUrl || "/grades");
+    if (studentIds.length === 0 || !assignmentTitle || assignmentTitle.length > 160 || /[\r\n]/.test(assignmentTitle) || !dueDate || dueDate.length > 80 || /[\r\n]/.test(dueDate) || Number.isNaN(Date.parse(dueDate)) || !assignmentUrl) {
+      throw new functions.https.HttpsError("invalid-argument", "Valid students, title, due date, and app-relative URL are required.");
     }
 
-    await Promise.all(
-      studentIds.map((uid) =>
-        sendPushToUser(uid, {
-          title: "📚 Assignment Due Soon",
-          body: `"${assignmentTitle}" is due on ${dueDate}.`,
-          url: assignmentUrl,
-          tag: `assignment-deadline-${assignmentTitle}`,
-          notificationType: "assignment",
-        }),
-      ),
-    );
-
-    return { sent: studentIds.length };
+    const db = admin.firestore();
+    const authorized: string[] = [];
+    for (const uid of studentIds) {
+      const user = await db.doc(`users/${uid}`).get();
+      const managed = callerRole === "teacher" ? await db.doc(`managedStudents/${uid}`).get() : null;
+      if (canTeacherNotifyStudent(context.auth.uid, callerRole, managed?.exists ? managed.data() || null : null, user.data()?.role)) authorized.push(uid);
+    }
+    const result = emptyResult();
+    const stableId = eventId("assignment-deadline", `${assignmentTitle}:${dueDate}:${assignmentUrl}`);
+    const results = await sendPushToUsers(authorized, {
+      title: "📚 Assignment Due Soon",
+      body: `"${assignmentTitle}" is due on ${dueDate}.`,
+      url: assignmentUrl,
+      tag: `assignment-deadline-${assignmentTitle}`,
+      eventId: stableId,
+      notificationType: "assignment",
+    });
+    mergeResult(result, results);
+    return { ...result, authorized: authorized.length };
   },
 );
 
@@ -313,18 +342,17 @@ export const notifyAssignmentDeadline = functions.https.onCall(
  * Sends a test push to the caller's own active tokens. Used by the
  * "Test Notification" button in Settings → Notifications.
  */
-export const sendTestPush = functions.https.onCall(async (_data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError("unauthenticated", "Sign-in required.");
-  }
-  const result = await sendPushToUser(context.auth.uid, {
+export const sendTestPush = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError("unauthenticated", "Sign-in required.");
+  const requestId = typeof data?.requestId === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(data.requestId) ? data.requestId : `${Date.now()}`;
+  return sendPushToUser(context.auth.uid, {
     title: "🔔 MathPulse Test Notification",
     body: "Push notifications are working! You'll receive updates here.",
     url: "/",
-    tag: "test-push",
+    tag: `test-push-${requestId}`,
+    eventId: eventId("test", `${context.auth.uid}:${requestId}`),
     notificationType: "system",
   });
-  return result;
 });
 
 // ───────────────────────── In-App Notification Catch-All ────────────────
@@ -378,6 +406,7 @@ export const onInAppNotificationCreated = functions.firestore
       body,
       url,
       tag: `inapp-${context.params.notificationId}`,
+      eventId: eventId("inapp", `${context.params.userId}:${context.params.notificationId}`),
       notificationType: fcmType,
     });
   });
