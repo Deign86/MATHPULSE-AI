@@ -50,6 +50,7 @@ import {
 } from '../services/settingsService';
 import { TeacherPreferences } from '../types/settings';
 import { validateProfileDraft } from '../utils/profileValidation';
+import { usePushNotificationControls } from './PushNotificationsManager';
 
 interface ProfileData {
   uid?: string;
@@ -99,6 +100,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onResetData,
 }) => {
   const role = profileData?.role || 'student';
+  const pushControls = usePushNotificationControls();
   const { teacherPrefs, adminConfig, saveTeacherPrefs, saveAdminConfig } = useUserSettings();
 
   const [activeSection, setActiveSection] = useState('account');
@@ -525,11 +527,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] font-body">Push Notifications</h4>
-                      <p className="text-xs text-slate-500 mt-1">Get notified on your device</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {pushControls.status === 'unsupported' ? 'This browser does not support push notifications.' :
+                          pushControls.status === 'denied' ? 'Notifications are blocked. Allow them in your browser settings, then try again.' :
+                          pushControls.status === 'enabled' ? 'Enabled on this device.' :
+                          pushControls.status === 'registering' ? 'Setting up this device...' : 'Enable notifications on this device.'}
+                      </p>
+                      {pushControls.status === 'error' && <p className="text-xs text-red-600 mt-1">Could not register this device. Please try again.</p>}
                     </div>
                     <Switch
-                      checked={localSettings.notifications.pushNotifications}
-                      onCheckedChange={(v) => updateSettings((p) => ({ ...p, notifications: { ...p.notifications, pushNotifications: v } }))}
+                      checked={pushControls.status === 'enabled'}
+                      disabled={pushControls.status === 'unsupported' || pushControls.status === 'denied' || pushControls.status === 'registering'}
+                      onCheckedChange={async (value) => {
+                        if (value) {
+                          const enabled = await pushControls.enable();
+                          if (!enabled) toast.error('Notifications could not be enabled.');
+                        } else {
+                          await pushControls.disable();
+                        }
+                        updateSettings((p) => ({ ...p, notifications: { ...p.notifications, pushNotifications: value } }));
+                      }}
                     />
                   </div>
                   <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
@@ -652,7 +669,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                               return;
                             }
                             // Ensure token is registered before sending
-                            const token = await requestPushPermissionAndRegister(uid);
+                            const token = await requestPushPermissionAndRegister(uid, 'prompt');
                             if (!token) {
                               toast.error('Push setup failed. Check that VITE_FIREBASE_VAPID_KEY is configured and notifications are allowed.');
                               return;
@@ -660,7 +677,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             const { httpsCallable } = await import('firebase/functions');
                             const { cloudFunctions } = await import('../lib/firebase');
                             const fn = httpsCallable(cloudFunctions, 'sendTestPush');
-                            const result = await fn({});
+                            if (role !== 'admin' && !import.meta.env.DEV) {
+                              toast.error('Test push is available to administrators only.');
+                              return;
+                            }
+                            const result = await fn({ requestId: `${uid}-${Date.now()}-${Math.random().toString(36).slice(2)}` });
                             const sent = (result?.data as { sent?: number } | undefined)?.sent ?? 0;
                             if (sent > 0) {
                               toast.success(`Sent test push to ${sent} device(s).`);
