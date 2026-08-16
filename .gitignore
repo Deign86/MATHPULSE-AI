@@ -125,3 +125,6 @@ eslint_output.txt
 .lint-out.txt
 .lint-temp.txt
 docs/ui-standardization-summary.md
+
+# Local pi agent state — never commit
+.pi/
