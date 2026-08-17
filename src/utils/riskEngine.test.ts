@@ -6,62 +6,38 @@ import {
   isAtRiskByScore,
   computeSystemPerformance,
   DEFAULT_WEIGHTS,
-} from '../utils/riskEngine';
+} from './riskEngine';
 
 describe('riskEngine', () => {
-  describe('computeRisk', () => {
-    it('returns null WRI when diagnostic score is null', () => {
-      const result = computeRisk({ diagnosticScore: null, externalGradesAvg: 80, systemPerformanceAvg: 70 });
-      expect(result.wri).toBeNull();
-      expect(result.riskStatus).toBeNull();
-      expect(result.overallRisk).toBe('Low');
-    });
-
-    it('computes WRI correctly with all inputs', () => {
-      // WRI = 0.30*90 + 0.40*85 + 0.30*80 = 27 + 34 + 24 = 85
-      const result = computeRisk({ diagnosticScore: 90, externalGradesAvg: 85, systemPerformanceAvg: 80 });
-      expect(result.wri).toBe(85);
-      expect(result.riskStatus).toBe('watch');
-      expect(result.overallRisk).toBe('Moderate');
-    });
-
-    it('falls back to diagnostic score when G and P are null', () => {
-      // WRI = 0.30*70 + 0.40*70 + 0.30*70 = 70
-      const result = computeRisk({ diagnosticScore: 70, externalGradesAvg: null, systemPerformanceAvg: null });
-      expect(result.wri).toBe(70);
-      expect(result.riskStatus).toBe('critical');
-    });
-
-    it('marks low-performing student as at_risk', () => {
-      // WRI = 0.30*40 + 0.40*50 + 0.30*45 = 12 + 20 + 13.5 = 45.5
-      const result = computeRisk({ diagnosticScore: 40, externalGradesAvg: 50, systemPerformanceAvg: 45 });
-      expect(result.wri).toBe(45.5);
-      expect(result.riskStatus).toBe('at_risk');
-      expect(result.overallRisk).toBe('Critical');
-    });
-
-    it('marks high-performing student as safe', () => {
-      // WRI = 0.30*95 + 0.40*92 + 0.30*90 = 28.5 + 36.8 + 27 = 92.3
-      const result = computeRisk({ diagnosticScore: 95, externalGradesAvg: 92, systemPerformanceAvg: 90 });
-      expect(result.wri).toBe(92.3);
-      expect(result.riskStatus).toBe('safe');
-      expect(result.overallRisk).toBe('Low');
-    });
-  });
-
   describe('classifyWRI', () => {
-    it('classifies thresholds correctly', () => {
+    it('classifies >= 88 as safe', () => {
+      expect(classifyWRI(90)).toBe('safe');
       expect(classifyWRI(88)).toBe('safe');
+    });
+
+    it('classifies 80..87.99 as watch', () => {
+      expect(classifyWRI(87.99)).toBe('watch');
       expect(classifyWRI(80)).toBe('watch');
+    });
+
+    it('classifies 75..79.99 as intervene', () => {
+      expect(classifyWRI(79.99)).toBe('intervene');
       expect(classifyWRI(75)).toBe('intervene');
+    });
+
+    it('classifies 68..74.99 as critical', () => {
+      expect(classifyWRI(74.99)).toBe('critical');
       expect(classifyWRI(68)).toBe('critical');
-      expect(classifyWRI(67)).toBe('at_risk');
-      expect(classifyWRI(0)).toBe('at_risk');
+    });
+
+    it('classifies < 68 as at_risk', () => {
+      expect(classifyWRI(67.99)).toBe('at_risk');
+      expect(classifyWRI(50)).toBe('at_risk');
     });
   });
 
   describe('riskStatusToOverallRisk', () => {
-    it('maps all statuses to admin-readable labels', () => {
+    it('maps statuses correctly', () => {
       expect(riskStatusToOverallRisk('safe')).toBe('Low');
       expect(riskStatusToOverallRisk('watch')).toBe('Moderate');
       expect(riskStatusToOverallRisk('intervene')).toBe('High');
@@ -70,19 +46,84 @@ describe('riskEngine', () => {
     });
   });
 
+  describe('computeRisk', () => {
+    it('returns null WRI and Low overall risk when diagnosticScore is null', () => {
+      const res = computeRisk({
+        diagnosticScore: null,
+        externalGradesAvg: 80,
+        systemPerformanceAvg: 90,
+      });
+      expect(res.wri).toBeNull();
+      expect(res.riskStatus).toBeNull();
+      expect(res.overallRisk).toBe('Low');
+    });
+
+    it('computes standard weights correctly (safe)', () => {
+      // 0.3*90 + 0.4*90 + 0.3*90 = 90.0
+      const res = computeRisk({
+        diagnosticScore: 90,
+        externalGradesAvg: 90,
+        systemPerformanceAvg: 90,
+      });
+      expect(res.wri).toBe(90.0);
+      expect(res.riskStatus).toBe('safe');
+      expect(res.overallRisk).toBe('Low');
+    });
+
+    it('computes standard weights correctly (at_risk)', () => {
+      // 0.3*60 + 0.4*70 + 0.3*65 = 18 + 28 + 19.5 = 65.5
+      const res = computeRisk({
+        diagnosticScore: 60,
+        externalGradesAvg: 70,
+        systemPerformanceAvg: 65,
+      });
+      expect(res.wri).toBe(65.5);
+      expect(res.riskStatus).toBe('at_risk');
+      expect(res.overallRisk).toBe('Critical');
+    });
+
+    it('computes standard weights correctly (intervene)', () => {
+      // 0.3*78 + 0.4*76 + 0.3*74 = 23.4 + 30.4 + 22.2 = 76.0
+      const res = computeRisk({
+        diagnosticScore: 78,
+        externalGradesAvg: 76,
+        systemPerformanceAvg: 74,
+      });
+      expect(res.wri).toBe(76.0);
+      expect(res.riskStatus).toBe('intervene');
+      expect(res.overallRisk).toBe('High');
+    });
+
+    it('defaults missing G and P to D', () => {
+      const res = computeRisk({
+        diagnosticScore: 68,
+        externalGradesAvg: null,
+        systemPerformanceAvg: null,
+      });
+      expect(res.wri).toBe(68.0);
+      expect(res.riskStatus).toBe('critical');
+      expect(res.overallRisk).toBe('Critical');
+    });
+
+    it('handles custom weights', () => {
+      const res = computeRisk({
+        diagnosticScore: 70,
+        externalGradesAvg: 90,
+        systemPerformanceAvg: 80,
+        weights: { w1: 0.2, w2: 0.5, w3: 0.3 },
+      });
+      // 0.2*70 + 0.5*90 + 0.3*80 = 14 + 45 + 24 = 83.0
+      expect(res.wri).toBe(83.0);
+      expect(res.riskStatus).toBe('watch');
+      expect(res.overallRisk).toBe('Moderate');
+    });
+  });
+
   describe('isAtRiskByScore', () => {
-    it('returns true for scores below 60', () => {
+    it('returns true only for scores in (0, 60)', () => {
       expect(isAtRiskByScore(59)).toBe(true);
-      expect(isAtRiskByScore(40)).toBe(true);
-      expect(isAtRiskByScore(1)).toBe(true);
-    });
-
-    it('returns false for scores at or above 60', () => {
       expect(isAtRiskByScore(60)).toBe(false);
-      expect(isAtRiskByScore(100)).toBe(false);
-    });
-
-    it('returns false for zero score (no data)', () => {
+      expect(isAtRiskByScore(75)).toBe(false);
       expect(isAtRiskByScore(0)).toBe(false);
     });
   });
@@ -92,10 +133,9 @@ describe('riskEngine', () => {
       expect(computeSystemPerformance([])).toBeNull();
     });
 
-    it('computes average of quiz scores', () => {
-      expect(computeSystemPerformance([80, 60, 70])).toBe(70);
-      expect(computeSystemPerformance([100])).toBe(100);
-      expect(computeSystemPerformance([33, 67])).toBe(50);
+    it('computes rounded average', () => {
+      expect(computeSystemPerformance([80, 90, 85])).toBe(85);
+      expect(computeSystemPerformance([70, 75])).toBe(73);
     });
   });
 });

@@ -30,6 +30,7 @@ const mapNotificationDoc = (docSnap: { id: string; data: () => any }): Notificat
   return {
     ...(data as Omit<Notification, 'id' | 'createdAt' | 'actionUrl'>),
     id: docSnap.id,
+    read: Boolean(data.read ?? data.isRead ?? false),
     createdAt,
     actionUrl,
   } as Notification;
@@ -62,7 +63,8 @@ export const createNotification = async (
       type: notification.type,
       title: notification.title,
       message: notification.message,
-      read: notification.read,
+      read: false,
+      isRead: false,
       createdAt: serverTimestamp(),
       // Backwards compatibility with older cloud-function payloads
       link: actionUrl || null,
