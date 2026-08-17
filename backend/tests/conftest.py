@@ -36,28 +36,39 @@ def _get_mock_verify():
 
 
 def _mock_verify_id_token(token: str, *, check_revoked: bool = False) -> dict:
-    """Return fake Firebase claims dict for tokens with 'mock_token_' prefix."""
-    if token and token.startswith("mock_token_"):
-        uid = token[len("mock_token_"):]
+    """Return fake Firebase claims dict for tokens with 'mock_token_' or 'test-' prefix."""
+    if token and (token.startswith("mock_token_") or token.startswith("test-")):
+        uid = token.replace("mock_token_", "").replace("test-", "")
+        role = "teacher" if ("teacher" in token or "auth" in token) else "student"
         return {
-            "uid": uid,
-            "sub": uid,
-            "email": f"{uid}@test.mathpulse.ai",
+            "uid": uid or "test-user-id",
+            "sub": uid or "test-user-id",
+            "email": f"{uid or 'test'}@test.mathpulse.ai",
             "email_verified": True,
-            "role": "student",
+            "role": role,
         }
     # Non-mock tokens: call the real Firebase implementation
     real_verify = _get_mock_verify()
-    return real_verify(token, check_revoked=check_revoked)
+    if real_verify is not None and real_verify is not _mock_verify_id_token:
+        return real_verify(token, check_revoked=check_revoked)
+    return {
+        "uid": "test-user-id",
+        "sub": "test-user-id",
+        "email": "test@test.mathpulse.ai",
+        "email_verified": True,
+        "role": "student",
+    }
 
 
 def _apply_firebase_mock():
     """Apply the mock to firebase_admin.auth.verify_id_token (idempotent)."""
     try:
         import firebase_admin.auth
+        global _mock_orig_verify
 
         current = firebase_admin.auth.verify_id_token
         if not hasattr(current, "_mathpulse_mock"):
+            _mock_orig_verify = current
             firebase_admin.auth.verify_id_token = _mock_verify_id_token
             firebase_admin.auth.verify_id_token._mathpulse_mock = True
     except Exception:

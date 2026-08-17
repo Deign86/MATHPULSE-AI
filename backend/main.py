@@ -463,6 +463,22 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/class-records/upload": TEACHER_OR_ADMIN,
 }
 
+_COMPILED_ROLE_PATTERNS: List[Tuple[re.Pattern, Set[str]]] = []
+for _pattern_str, _roles in ROLE_POLICIES.items():
+    if "{" in _pattern_str:
+        _regex_str = "^" + re.sub(r"\{[a-zA-Z0-9_]+\}", r"[^/]+", _pattern_str) + "$"
+        _COMPILED_ROLE_PATTERNS.append((re.compile(_regex_str), _roles))
+
+
+def resolve_required_roles(path: str) -> Optional[Set[str]]:
+    """Resolves required roles for a path using exact lookup or compiled pattern matching."""
+    if path in ROLE_POLICIES:
+        return ROLE_POLICIES[path]
+    for pattern_regex, roles in _COMPILED_ROLE_PATTERNS:
+        if pattern_regex.match(path):
+            return roles
+    return None
+
 if not os.getenv("DEEPSEEK_API_KEY"):
     logger.warning(
         "DEEPSEEK_API_KEY is not set. AI features will fail. "
@@ -1090,7 +1106,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             claims=decoded,
         )
 
-        required_roles = ROLE_POLICIES.get(path)
+        required_roles = resolve_required_roles(path)
         if required_roles and role not in required_roles:
             return JSONResponse(status_code=403, content={"detail": "Forbidden for this role"})
 
@@ -9191,69 +9207,6 @@ class ImportGroundedAccessAuditResponse(BaseModel):
     warnings: List[str]
 
 
-# ─── Diagnostic Test Models ────────────────────────────────────
-
-class DiagnosticGenerateRequest(BaseModel):
-    strand: str = Field(..., description="Student strand: ABM, STEM, HUMSS, GAS, TVL")
-    gradeLevel: str = Field(..., description="Grade level: Grade 11 or Grade 12")
-    numQuestions: int = Field(default=15, ge=5, le=30, description="Number of questions to generate")
-
-
-class DiagnosticQuestion(BaseModel):
-    question_id: str
-    competency_code: str
-    domain: str
-    topic: str
-    difficulty: str
-    bloom_level: str
-    question_text: str
-    options: Dict[str, str]
-    correct_answer: str
-    solution_hint: str
-    curriculum_reference: str
-
-
-class DiagnosticGenerateResponse(BaseModel):
-    questions: List[DiagnosticQuestion]
-    test_id: str
-    metadata: Dict[str, Any]
-
-
-class DiagnosticSubmitRequest(BaseModel):
-    user_id: str
-    test_id: str
-    strand: str
-    grade_level: str
-    responses: List[Dict[str, Any]]
-
-
-class DiagnosticResult(BaseModel):
-    user_id: str
-    test_id: str
-    taken_at: datetime
-    strand: str
-    grade_level: str
-    total_items: int
-    total_score: int
-    percentage_score: float
-    responses: List[Dict[str, Any]]
-    domain_scores: Dict[str, Dict[str, Any]]
-    risk_profile: Dict[str, Any]
-
-
-class DiagnosticSubmitResponse(BaseModel):
-    success: bool
-    result: DiagnosticResult
-    risk_profile: Dict[str, Any]
-    domain_scores: Dict[str, Dict[str, Any]]
-    redirect_to: str
-
-
-class DiagnosticResultsResponse(BaseModel):
-    success: bool
-    results: List[DiagnosticResult]
-
-
 # ─── DepEd Curriculum Competency Domains ────────────────────────────
 
 DEPD_ED_COMPETENCY_DOMAINS: Dict[str, Dict[str, List[str]]] = {
@@ -13235,340 +13188,6 @@ async def automation_content_updated(payload: ContentUpdatePayload):
     except Exception as e:
         logger.error(f"Automation content error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
-
-
-# ─── Diagnostic Test Endpoints ─────────────────────────────────
-
-async def _generate_diagnostic_questions(
-    strand: str,
-    grade_level: str,
-    num_questions: int,
-) -> List[DiagnosticQuestion]:
-    """Generate diagnostic test questions using LLM based on DepEd curriculum with RAG."""
-    
-    topics = DEPD_ED_COMPETENCY_DOMAINS.get(strand, {}).get(grade_level, [])
-    if not topics:
-        topics = DEPD_ED_COMPETENCY_DOMAINS.get("STEM", {}).get("Grade 11", [])
-    
-    topic_list = "\n".join([f"- {t}" for t in topics[:10]])
-    
-    curriculum_chunks = retrieve_curriculum_context(
-        query=f"{topics[0] if topics else strand} examples problems {grade_level}",
-        subject="General Mathematics",
-        top_k=3,
-    )
-    
-    curriculum_context = ""
-    for chunk in curriculum_chunks:
-        source = chunk.get("source_file", "unknown")
-        content = chunk.get("content", "")[:500]
-        curriculum_context += f"[Source: {source}]\n{content}\n\n---\n\n"
-    
-    rag_instruction = ""
-    if curriculum_context:
-        rag_instruction = f"""CURRICULUM REFERENCE:
-{curriculum_context}
-
-Use these examples as reference. Do not copy directly."""
-    
-    prompt = f"""You are MathPulse AI's Diagnostic Test Generator. Generate {num_questions} multiple-choice questions for a Filipino Senior High School student (Strand: {strand}, Grade: {grade_level}).
-
-Based on these DepEd SHS curriculum competencies:
-{topic_list}
-
-{rag_instruction}
-
-Generate questions in this strict JSON format (no other text):
-[
-  {{
-    "question_id": "DX-<generate uuid>",
-    "competency_code": "TOPIC-SUBTOPIC-01",
-    "domain": "Domain Name",
-    "topic": "Specific Topic",
-    "difficulty": "easy|medium|hard",
-    "bloom_level": "remembering|understanding|applying|analyzing",
-    "question_text": "Question text in Filipino context",
-    "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
-    "correct_answer": "A|B|C|D",
-    "solution_hint": "Brief solution hint (1-2 sentences)",
-    "curriculum_reference": "DepEd SHS [Strand] Q[X] - [Topic]"
-  }}
-]
-
-Distribution: 40% easy, 40% medium, 20% hard.
-Use Filipino real-life context (peso amounts, SSS/PhilHealth/BIR, local scenarios).
-Distractors must be plausible but clearly wrong.
-Return ONLY the JSON array, no other text."""
-
-    try:
-        messages = [
-            {"role": "system", "content": "You are a math question generator. Return ONLY valid JSON."},
-            {"role": "user", "content": prompt},
-        ]
-        response = await call_hf_chat_async(messages, max_tokens=4096, temperature=0.3, task_type="quiz")
-        
-        import re
-        json_match = re.search(r'\[.*\]', response, re.DOTALL)
-        if json_match:
-            questions_data = json.loads(json_match.group())
-        else:
-            questions_data = json.loads(response)
-        
-        questions = []
-        for q in questions_data[:num_questions]:
-            questions.append(DiagnosticQuestion(**q))
-        
-        return questions
-    except Exception as e:
-        logger.error(f"Diagnostic question generation error: {e}")
-        raise
-
-
-async def _analyze_diagnostic_risk(
-    responses: List[Dict[str, Any]],
-    total_items: int,
-    total_score: int,
-) -> Dict[str, Any]:
-    """Analyze student performance and generate risk profile."""
-    domain_scores: Dict[str, Dict[str, Any]] = {}
-    domain_responses: Dict[str, List[Dict[str, Any]]] = {}
-    
-    for resp in responses:
-        domain = resp.get("domain", "Unknown")
-        if domain not in domain_responses:
-            domain_responses[domain] = []
-        domain_responses[domain].append(resp)
-    
-    for domain, resp_list in domain_responses.items():
-        correct = sum(1 for r in resp_list if r.get("is_correct", False))
-        total = len(resp_list)
-        pct = (correct / total * 100) if total > 0 else 0
-        
-        mastery = "mastered" if pct >= 80 else "developing" if pct >= 60 else "beginning"
-        domain_scores[domain] = {
-            "correct": correct,
-            "total": total,
-            "percentage": round(pct, 1),
-            "mastery_level": mastery,
-        }
-    
-    weak_domains = [
-        d for d, data in domain_scores.items()
-        if data["percentage"] < 60
-    ]
-    
-    critical_gaps = []
-    competency_attempts: Dict[str, List[bool]] = {}
-    for resp in responses:
-        comp_code = resp.get("competency_code", "")
-        if comp_code not in competency_attempts:
-            competency_attempts[comp_code] = []
-        competency_attempts[comp_code].append(resp.get("is_correct", False))
-    
-    for comp_code, results in competency_attempts.items():
-        correct_count = sum(1 for r in results if r)
-        if len(results) >= 2 and correct_count == 0:
-            critical_gaps.append(comp_code)
-    
-    overall_pct = (total_score / total_items * 100) if total_items > 0 else 0
-    
-    if overall_pct >= 75 and len(critical_gaps) == 0:
-        overall_risk = "low"
-    elif overall_pct >= 55 or len(critical_gaps) <= 2:
-        overall_risk = "moderate"
-    elif overall_pct >= 40 or len(critical_gaps) <= 4:
-        overall_risk = "high"
-    else:
-        overall_risk = "critical"
-    
-    intervention_messages = {
-        "low": "Great job! You have a solid foundation. Keep practicing to maintain your skills!",
-        "moderate": "You're making good progress. Focus on the topics where you need more practice.",
-        "high": "Don't worry! With focused practice on your weak areas, you'll improve quickly.",
-        "critical": "Let's work on this together. Start with the basics and build up your confidence.",
-    }
-    
-    suggested_path = weak_domains[:3] if weak_domains else list(domain_scores.keys())[:3]
-    
-    return {
-        "overall_risk": overall_risk,
-        "overall_score_percent": round(overall_pct, 1),
-        "domain_scores": domain_scores,
-        "weak_domains": weak_domains,
-        "critical_gaps": critical_gaps,
-        "recommended_intervention": intervention_messages[overall_risk],
-        "suggested_learning_path": suggested_path,
-    }
-
-
-def _save_diagnostic_to_firestore(result: DiagnosticResult) -> bool:
-    """Save diagnostic result to Firestore."""
-    if not HAS_FIREBASE_ADMIN or not firebase_firestore:
-        logger.warning("Firebase not available for diagnostic save")
-        return False
-    
-    try:
-        db = firebase_firestore.client()
-        doc_ref = db.collection("diagnosticResults").document(result.user_id).collection("attempts").document(result.test_id)
-        doc_ref.set({
-            "testId": result.test_id,
-            "takenAt": result.taken_at,
-            "strand": result.strand,
-            "gradeLevel": result.grade_level,
-            "totalItems": result.total_items,
-            "totalScore": result.total_score,
-            "percentageScore": result.percentage_score,
-            "responses": result.responses,
-            "domainScores": result.domain_scores,
-            "riskProfile": result.risk_profile,
-        })
-        
-        latest_ref = db.collection("users").document(result.user_id)
-        latest_ref.set({"latestDiagnosticTestId": result.test_id}, merge=True)
-        
-        return True
-    except Exception as e:
-        logger.error(f"Firestore diagnostic save error: {e}")
-        return False
-
-
-@app.post("/api/diagnostic/generate", response_model=DiagnosticGenerateResponse)
-async def generate_diagnostic_test(request: DiagnosticGenerateRequest):
-    """
-    Generate a personalized diagnostic assessment for a student.
-    Questions are based on DepEd Strengthened SHS Curriculum.
-    """
-    try:
-        test_id = f"DX-{uuid.uuid4().hex[:12]}"
-        
-        questions = await _generate_diagnostic_questions(
-            request.strand,
-            request.gradeLevel,
-            request.numQuestions,
-        )
-        
-        stripped_questions = []
-        for q in questions:
-            stripped_questions.append(DiagnosticQuestion(
-                question_id=q.question_id,
-                competency_code=q.competency_code,
-                domain=q.domain,
-                topic=q.topic,
-                difficulty=q.difficulty,
-                bloom_level=q.bloom_level,
-                question_text=q.question_text,
-                options=q.options,
-                correct_answer=q.correct_answer,
-                solution_hint="",
-                curriculum_reference=q.curriculum_reference,
-            ))
-        
-        metadata = {
-            "strand": request.strand,
-            "grade_level": request.gradeLevel,
-            "num_questions": len(questions),
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-        }
-        
-        return DiagnosticGenerateResponse(
-            questions=stripped_questions,
-            test_id=test_id,
-            metadata=metadata,
-        )
-    except Exception as e:
-        logger.error(f"Diagnostic generation error: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Diagnostic generation error: {str(e)}")
-
-
-@app.post("/api/diagnostic/submit", response_model=DiagnosticSubmitResponse)
-async def submit_diagnostic_test(request: DiagnosticSubmitRequest):
-    """
-    Submit diagnostic test responses, score them, and generate risk profile.
-    Results are saved to Firestore for use by other subsystems.
-    """
-    try:
-        total_items = len(request.responses)
-        total_score = 0
-        scored_responses = []
-        
-        for resp in request.responses:
-            is_correct = resp.get("student_answer", "") == resp.get("correct_answer", "")
-            if is_correct:
-                total_score += 1
-            scored_responses.append({
-                "question_id": resp.get("question_id"),
-                "competency_code": resp.get("competency_code"),
-                "domain": resp.get("domain"),
-                "topic": resp.get("topic"),
-                "difficulty": resp.get("difficulty"),
-                "bloom_level": resp.get("bloom_level"),
-                "student_answer": resp.get("student_answer"),
-                "correct_answer": resp.get("correct_answer"),
-                "is_correct": is_correct,
-                "time_spent_seconds": resp.get("time_spent_seconds", 0),
-            })
-        
-        risk_profile = await _analyze_diagnostic_risk(
-            scored_responses,
-            total_items,
-            total_score,
-        )
-        
-        domain_scores = risk_profile.get("domain_scores", {})
-        
-        result = DiagnosticResult(
-            user_id=request.user_id,
-            test_id=request.test_id,
-            taken_at=datetime.now(timezone.utc),
-            strand=request.strand,
-            grade_level=request.grade_level,
-            total_items=total_items,
-            total_score=total_score,
-            percentage_score=round(total_score / total_items * 100, 1),
-            responses=scored_responses,
-            domain_scores=domain_scores,
-            risk_profile=risk_profile,
-        )
-        
-        _save_diagnostic_to_firestore(result)
-        
-        return DiagnosticSubmitResponse(
-            success=True,
-            result=result,
-            risk_profile=risk_profile,
-            domain_scores=domain_scores,
-            redirect_to="/dashboard",
-        )
-    except Exception as e:
-        logger.error(f"Diagnostic submit error: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Diagnostic submit error: {str(e)}")
-
-
-@app.get("/api/diagnostic/results/{user_id}", response_model=DiagnosticResultsResponse)
-async def get_diagnostic_results(user_id: str):
-    """
-    Fetch diagnostic test results for a student.
-    Returns all attempts with risk profiles.
-    """
-    if not HAS_FIREBASE_ADMIN or not firebase_firestore:
-        return DiagnosticResultsResponse(success=False, results=[])
-    
-    try:
-        db = firebase_firestore.client()
-        docs = db.collection("diagnosticResults").document(user_id).collection("attempts").stream()
-        
-        results = []
-        for doc in docs:
-            data = doc.to_dict()
-            if data:
-                results.append(DiagnosticResult(**data))
-        
-        results.sort(key=lambda x: x.taken_at, reverse=True)
-        
-        return DiagnosticResultsResponse(success=True, results=results)
-    except Exception as e:
-        logger.error(f"Diagnostic results fetch error: {e}")
-        return DiagnosticResultsResponse(success=False, results=[])
 
 
 # ─── DepEd Topic Registry for Lessons/Quizzes ─────────────────────────────
