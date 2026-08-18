@@ -75,14 +75,12 @@ async def get_profile(student_id: str, request: Request):
     if user.role not in ("student", "teacher", "admin"):
         raise HTTPException(status_code=403, detail="Forbidden for this role")
 
-    _firebase_firestore = None
     try:
-        from firebase_admin import firestore as ff
-        _firebase_firestore = ff
-    except Exception:
-        raise HTTPException(status_code=503, detail="Firestore unavailable")
+        from main import get_firestore_client
+        db = get_firestore_client()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Firestore unavailable") from exc
 
-    db = _firebase_firestore.client()
     doc = db.collection("student_profiles").document(student_id).get()
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Profile not found")

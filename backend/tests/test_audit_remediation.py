@@ -12,6 +12,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
+import main as main_module
 from main import app, resolve_required_roles, ROLE_POLICIES
 
 
@@ -41,7 +42,8 @@ class TestPipelineProfileOwnership:
     def test_student_cannot_access_other_student_profile(self):
         client = TestClient(app, headers={"Authorization": "Bearer mock_token_student_A"})
         # When token is mock_token_student_A, uid is "student_A" and role is "student"
-        response = client.get("/api/pipeline/profile/student_B")
+        with patch.object(main_module.firebase_auth, "verify_id_token", return_value={"uid": "student_A", "role": "student"}):
+            response = client.get("/api/pipeline/profile/student_B")
         assert response.status_code == 403
         assert "own profile" in response.json().get("detail", "").lower()
 
@@ -54,7 +56,10 @@ class TestPipelineProfileOwnership:
         mock_db = MagicMock()
         mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
 
-        with patch("firebase_admin.firestore.client", return_value=mock_db):
+        with patch.object(main_module, "firebase_firestore", object()), \
+             patch.object(main_module, "_firebase_ready", True), \
+             patch.object(main_module, "get_firestore_client", return_value=mock_db), \
+             patch.object(main_module.firebase_auth, "verify_id_token", return_value={"uid": "student_A", "role": "student"}):
             response = client.get("/api/pipeline/profile/student_A")
             assert response.status_code == 200
             assert response.json()["student_id"] == "student_A"
@@ -68,7 +73,10 @@ class TestPipelineProfileOwnership:
         mock_db = MagicMock()
         mock_db.collection.return_value.document.return_value.get.return_value = mock_doc
 
-        with patch("firebase_admin.firestore.client", return_value=mock_db):
+        with patch.object(main_module, "firebase_firestore", object()), \
+             patch.object(main_module, "_firebase_ready", True), \
+             patch.object(main_module, "get_firestore_client", return_value=mock_db), \
+             patch.object(main_module.firebase_auth, "verify_id_token", return_value={"uid": "teacher_T", "role": "teacher"}):
             response = client.get("/api/pipeline/profile/student_B")
             assert response.status_code == 200
             assert response.json()["student_id"] == "student_B"
@@ -79,7 +87,8 @@ class TestDiagnosticResultsEndpoint:
 
     def test_diagnostic_results_rejects_other_student(self):
         client = TestClient(app, headers={"Authorization": "Bearer mock_token_student_1"})
-        response = client.get("/api/diagnostic/results/student_2")
+        with patch.object(main_module.firebase_auth, "verify_id_token", return_value={"uid": "student_1", "role": "student"}):
+            response = client.get("/api/diagnostic/results/student_2")
         assert response.status_code == 403
 
     def test_diagnostic_results_allows_own_student(self):
@@ -90,11 +99,26 @@ class TestDiagnosticResultsEndpoint:
         mock_db = MagicMock()
         mock_db.collection.return_value.document.return_value.collection.return_value.stream.return_value = [mock_doc]
 
-        with patch("firebase_admin.firestore.client", return_value=mock_db):
+        with patch.object(main_module, "firebase_firestore", object()), \
+             patch.object(main_module, "_firebase_ready", True), \
+             patch.object(main_module, "get_firestore_client", return_value=mock_db), \
+             patch.object(main_module.firebase_auth, "verify_id_token", return_value={"uid": "student_1", "role": "student"}):
             response = client.get("/api/diagnostic/results/student_1")
             assert response.status_code == 200
             assert response.json()["success"] is True
             assert len(response.json()["results"]) == 1
+
+    def test_diagnostic_results_reports_firestore_outage(self):
+        client = TestClient(app, headers={"Authorization": "Bearer mock_token_student_1"})
+
+        with patch.object(main_module, "firebase_firestore", object()), \
+             patch.object(main_module, "_firebase_ready", True), \
+             patch.object(main_module, "get_firestore_client", side_effect=RuntimeError("unavailable")), \
+             patch.object(main_module.firebase_auth, "verify_id_token", return_value={"uid": "student_1", "role": "student"}):
+            response = client.get("/api/diagnostic/results/student_1")
+
+        assert response.status_code == 503
+        assert response.json()["detail"] == "Diagnostic results unavailable"
 
 
 class TestCurriculumRAGSignature:

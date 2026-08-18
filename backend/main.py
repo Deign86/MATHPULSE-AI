@@ -608,6 +608,16 @@ FIRESTORE_SERVER_TIMESTAMP: Any = getattr(cast(Any, firebase_firestore), "SERVER
 FIRESTORE_QUERY_DESCENDING: Any = getattr(getattr(cast(Any, firebase_firestore), "Query", None), "DESCENDING", "DESCENDING")
 
 
+def get_firestore_client() -> Any:
+    """Return the initialized Firestore client through the canonical backend seam."""
+    if not (_firebase_ready and firebase_firestore):
+        raise RuntimeError("Firestore is not initialized")
+    try:
+        return firebase_firestore.client()
+    except Exception as exc:
+        raise RuntimeError("Firestore client is unavailable") from exc
+
+
 def _snapshot_to_dict(snapshot: Any) -> Dict[str, Any]:
     data = snapshot.to_dict() if hasattr(snapshot, "to_dict") else {}
     return data if isinstance(data, dict) else {}

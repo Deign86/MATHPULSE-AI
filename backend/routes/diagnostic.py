@@ -503,7 +503,8 @@ async def generate_diagnostic(request: DiagnosticGenerateRequest, req: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
-        firestore_client = fs.client()
+        from main import get_firestore_client
+        firestore_client = get_firestore_client()
         test_id, questions = await _generate_questions(
             request.strand,
             request.grade_level,
@@ -740,9 +741,10 @@ async def submit_diagnostic(request: DiagnosticSubmitRequest, req: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
-        firestore_client = fs.client()
+        from main import get_firestore_client
+        firestore_client = get_firestore_client()
     except Exception as e:
-        raise HTTPException(status_code=503, detail="Database unavailable")
+        raise HTTPException(status_code=503, detail="Database unavailable") from e
 
     try:
         session_doc = firestore_client.collection("diagnosticSessions").document(request.test_id).get()
@@ -817,9 +819,10 @@ async def analyze_diagnostic(request: DiagnosticAnalysisRequest, req: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
-        firestore_client = fs.client()
-    except Exception:
-        raise HTTPException(status_code=503, detail="Database unavailable")
+        from main import get_firestore_client
+        firestore_client = get_firestore_client()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database unavailable") from exc
 
     # Fetch diagnostic results
     results_doc = firestore_client.collection("diagnosticResults").document(request.user_id).get()
@@ -1079,11 +1082,8 @@ async def get_diagnostic_results(user_id: str, req: Request):
         raise HTTPException(status_code=403, detail="Students can only view their own results")
 
     try:
-        firestore_client = fs.client()
-    except Exception:
-        return {"success": False, "results": []}
-
-    try:
+        from main import get_firestore_client
+        firestore_client = get_firestore_client()
         docs = firestore_client.collection("diagnosticResults").document(user_id).collection("attempts").stream()
         results = []
         for doc in docs:
@@ -1092,7 +1092,7 @@ async def get_diagnostic_results(user_id: str, req: Request):
                 results.append(data)
         results.sort(key=lambda x: str(x.get("takenAt") or x.get("taken_at") or ""), reverse=True)
         return {"success": True, "results": results}
-    except Exception as e:
-        logger.error(f"Diagnostic results fetch error: {e}")
-        return {"success": False, "results": []}
+    except Exception as exc:
+        logger.error(f"Diagnostic results fetch error: {exc}")
+        raise HTTPException(status_code=503, detail="Diagnostic results unavailable") from exc
 
