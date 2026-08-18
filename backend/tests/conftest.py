@@ -125,7 +125,7 @@ def _install_main_auth_wrapper() -> None:
     main_module = sys.modules.get("main")
     firebase_auth = getattr(main_module, "firebase_auth", None)
     verifier = getattr(firebase_auth, "verify_id_token", None)
-    if firebase_auth is None or verifier is None or getattr(verifier, "_mathpulse_test_wrapper", False):
+    if firebase_auth is None or verifier is None or getattr(verifier, "_mathpulse_test_wrapper", False) is True:
         return
 
     def _verify_for_test(token: str, *, check_revoked: bool = False) -> dict:
