@@ -6,7 +6,7 @@ export default defineConfig({
     testTimeout: 30000,
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["functions/**", "build/**", "dist/**", "node_modules/**"],
-    setupFiles: ["@testing-library/jest-dom/vitest", "./src/test-setup.ts"],
+    setupFiles: ["./src/test-setup.ts"],
   },
   resolve: {
     alias: {
