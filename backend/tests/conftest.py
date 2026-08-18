@@ -141,7 +141,9 @@ def _install_main_auth_wrapper() -> None:
 
 @pytest.fixture(autouse=True)
 def _mock_firebase_auth():
-    """Re-apply Firebase auth mocks before every test without leaking state."""
+    """Re-apply Firebase auth mock before every test without leaking state."""
+    main_module = sys.modules.get("main")
+    original_firestore = getattr(main_module, "firebase_firestore", None)
     try:
         import firebase_admin
         import firebase_admin.auth
@@ -154,3 +156,5 @@ def _mock_firebase_auth():
     except Exception:
         pass
     yield
+    if main_module is not None:
+        main_module.firebase_firestore = original_firestore
