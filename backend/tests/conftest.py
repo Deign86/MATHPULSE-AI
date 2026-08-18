@@ -39,7 +39,7 @@ def _mock_verify_id_token(token: str, *, check_revoked: bool = False) -> dict:
     """Return fake Firebase claims dict for tokens with 'mock_token_' or 'test-' prefix."""
     if token and (token.startswith("mock_token_") or token.startswith("test-")):
         uid = token.replace("mock_token_", "").replace("test-", "")
-        if uid == "teacher":
+        if uid in {"teacher", "auth-token"}:
             uid = "test-teacher-uid"
         role = "teacher" if ("teacher" in token or "auth" in token) else "student"
         return {
