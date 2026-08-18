@@ -114,23 +114,41 @@ def _auto_evict_stale_services():
     yield
 
 
+def _install_main_auth_wrapper() -> None:
+    """Keep token identity deterministic without overriding test-specific mocks.
+
+    Some test modules replace ``main.firebase_auth`` with a MagicMock whose
+    verifier always returns one teacher.  Wrapping that verifier preserves its
+    intentional behavior for ordinary test tokens while ensuring the shared
+    ``mock_token_<uid>`` convention remains order-independent.
+    """
+    main_module = sys.modules.get("main")
+    firebase_auth = getattr(main_module, "firebase_auth", None)
+    verifier = getattr(firebase_auth, "verify_id_token", None)
+    if firebase_auth is None or verifier is None or getattr(verifier, "_mathpulse_test_wrapper", False):
+        return
+
+    def _verify_for_test(token: str, *, check_revoked: bool = False) -> dict:
+        if token and (token.startswith("mock_token_") or token.startswith("test-")):
+            return _mock_verify_id_token(token, check_revoked=check_revoked)
+        return verifier(token, check_revoked=check_revoked)
+
+    _verify_for_test._mathpulse_test_wrapper = True
+    firebase_auth.verify_id_token = _verify_for_test
+
+
 @pytest.fixture(autouse=True)
 def _mock_firebase_auth():
-    """Re-apply Firebase auth mock before every test.
-
-    Some test files import main.py after conftest.py is loaded, which may
-    overwrite the firebase_admin.auth.verify_id_token reference. This fixture
-    ensures the mock is always active when tests run.
-    """
+    """Re-apply Firebase auth mocks before every test without leaking state."""
     try:
         import firebase_admin
         import firebase_admin.auth
 
-        # Only re-apply if not already our mock (avoid infinite recursion)
         current = firebase_admin.auth.verify_id_token
         if not getattr(current, "_is_mocked", False):
             firebase_admin.auth.verify_id_token = _mock_verify_id_token
             firebase_admin.auth.verify_id_token._is_mocked = True
+        _install_main_auth_wrapper()
     except Exception:
         pass
     yield
