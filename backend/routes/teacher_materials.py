@@ -197,18 +197,27 @@ def _retrieve_rag_context(
     try:
         from rag.curriculum_rag import retrieve_curriculum_context
 
+        rag_query = f"{query} {grade_level}".strip() if grade_level else query
         result = retrieve_curriculum_context(
-            query=query,
+            query=rag_query,
             grade_level=grade_level or "",
             top_k=top_k,
         )
-        if isinstance(result, dict):
-            # New format with metadata + chunks
+        if isinstance(result, list):
+            formatted = []
+            for chunk in result:
+                src = chunk.get("source_file") or chunk.get("source", "unknown")
+                text = chunk.get("content") or chunk.get("text", "")
+                if text:
+                    formatted.append(f"[Source: {src}]\n{text}")
+            return "\n\n---\n\n".join(formatted)
+        elif isinstance(result, dict):
+            # Dict format with metadata + chunks
             chunks = result.get("chunks", [])
             formatted = []
             for chunk in chunks:
-                src = chunk.get("source", "unknown")
-                text = chunk.get("text", "")
+                src = chunk.get("source_file") or chunk.get("source", "unknown")
+                text = chunk.get("content") or chunk.get("text", "")
                 if text:
                     formatted.append(f"[Source: {src}]\n{text}")
             return "\n\n---\n\n".join(formatted)

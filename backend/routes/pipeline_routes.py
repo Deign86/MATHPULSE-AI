@@ -69,7 +69,11 @@ async def request_nudge(student_id: str, background_tasks: BackgroundTasks, requ
 @router.get("/profile/{student_id}")
 async def get_profile(student_id: str, request: Request):
     """Get full student profile."""
-    _require_auth(request)
+    user = _require_auth(request)
+    if user.role == "student" and student_id != user.uid:
+        raise HTTPException(status_code=403, detail="Students can only access their own profile")
+    if user.role not in ("student", "teacher", "admin"):
+        raise HTTPException(status_code=403, detail="Forbidden for this role")
 
     _firebase_firestore = None
     try:

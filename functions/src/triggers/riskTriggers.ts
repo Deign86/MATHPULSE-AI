@@ -269,7 +269,7 @@ function computeWRI(
   const wri = w1 * D + w2 * (G ?? D) + w3 * (P ?? D);
   const riskStatus = deriveRiskStatus(wri);
 
-  return { wri: Math.round(wri * 10) / 10, riskStatus, pending: false };
+  return { wri: Math.round(wri * 100) / 100, riskStatus, pending: false };
 }
 
 async function recalcStudentWRI(studentId: string): Promise<void> {
