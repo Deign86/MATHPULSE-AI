@@ -1,4 +1,5 @@
 // Global test setup - mock Firebase to prevent API key errors
+import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
 
 // Mock Firebase packages before any tests run
