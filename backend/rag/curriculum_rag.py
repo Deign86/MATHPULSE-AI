@@ -4,7 +4,7 @@ Updated curriculum RAG with exact match retrieval and 7-section notebook output.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def _to_where(
@@ -56,6 +56,8 @@ def retrieve_curriculum_context(
     competency_code: str | None = None,
     storage_path: str | None = None,
     top_k: int = 8,
+    grade_level: str | None = None,
+    **kwargs: Any,
 ) -> list[dict]:
     from rag.vectorstore_loader import get_vectorstore_components
 

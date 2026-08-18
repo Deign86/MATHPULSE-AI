@@ -1067,3 +1067,32 @@ def _build_fallback_analysis(
             "hard_performance": pct(hard),
         },
     }
+
+
+@router.get("/results/{user_id}")
+async def get_diagnostic_results(user_id: str, req: Request):
+    """Fetch diagnostic test results for a student."""
+    user = getattr(req.state, "user", None)
+    if not user or not getattr(user, "uid", None):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if getattr(user, "role", None) == "student" and user.uid != user_id:
+        raise HTTPException(status_code=403, detail="Students can only view their own results")
+
+    try:
+        firestore_client = fs.client()
+    except Exception:
+        return {"success": False, "results": []}
+
+    try:
+        docs = firestore_client.collection("diagnosticResults").document(user_id).collection("attempts").stream()
+        results = []
+        for doc in docs:
+            data = doc.to_dict()
+            if data:
+                results.append(data)
+        results.sort(key=lambda x: str(x.get("takenAt") or x.get("taken_at") or ""), reverse=True)
+        return {"success": True, "results": results}
+    except Exception as e:
+        logger.error(f"Diagnostic results fetch error: {e}")
+        return {"success": False, "results": []}
+
