@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence } from 'firebase/auth';
-import { initializeFirestore, memoryLocalCache } from 'firebase/firestore';
+import { initializeAuth, getAuth, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence } from 'firebase/auth';
+import { initializeFirestore, getFirestore, memoryLocalCache } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
@@ -79,10 +79,16 @@ function buildAuthInstance() {
     }
     return initializeAuth(app, { persistence: [inMemoryPersistence] });
   } catch {
-    // Test environment or partially-mocked firebase/auth — return a safe stub
-    return {
-      currentUser: null,
-    } as ReturnType<typeof initializeAuth>;
+    try {
+      return getAuth(app);
+    } catch {
+      // Test environment or unconfigured Firebase — return a safe stub with Auth methods
+      return {
+        currentUser: null,
+        onAuthStateChanged: () => () => {},
+        signOut: async () => {},
+      } as unknown as ReturnType<typeof initializeAuth>;
+    }
   }
 }
 export const auth = buildAuthInstance();
@@ -90,8 +96,12 @@ function buildDbInstance() {
   try {
     return initializeFirestore(app, { localCache: memoryLocalCache() });
   } catch {
-    // Test environment or partially-mocked firebase/firestore — return a safe stub
-    return {} as ReturnType<typeof initializeFirestore>;
+    try {
+      return getFirestore(app);
+    } catch {
+      // Test environment or unconfigured Firebase — return a safe stub
+      return {} as ReturnType<typeof initializeFirestore>;
+    }
   }
 }
 export const db = buildDbInstance();
