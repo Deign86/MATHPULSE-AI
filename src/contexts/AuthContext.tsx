@@ -50,86 +50,96 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setLoading(true);
-      setCurrentUser(user);
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = onAuthStateChanged(auth, async (user) => {
+        setLoading(true);
+        setCurrentUser(user);
 
-      if (user) {
-        const requestedRole = consumePendingAuthRole() || getLastAuthRole() || inferRoleFromKnownDemoEmail(user.email) || 'student';
-        const safeRequestedRole: UserRole = requestedRole === 'admin' ? 'student' : requestedRole;
+        if (user) {
+          const requestedRole = consumePendingAuthRole() || getLastAuthRole() || inferRoleFromKnownDemoEmail(user.email) || 'student';
+          const safeRequestedRole: UserRole = requestedRole === 'admin' ? 'student' : requestedRole;
 
-        // Fetch user profile from Firestore
-        let profile = await getUserProfile(user.uid);
-        
-        // If profile doesn't exist, auto-create it
-        if (!profile && user.email) {
-          const role: UserRole = safeRequestedRole;
-          const name = user.displayName || 'User';
+          // Fetch user profile from Firestore
+          let profile = await getUserProfile(user.uid);
           
-          try {
-            profile = await createUserProfile(user, role, { name });
+          // If profile doesn't exist, auto-create it
+          if (!profile && user.email) {
+            const role: UserRole = safeRequestedRole;
+            const name = user.displayName || 'User';
+            
+            try {
+              profile = await createUserProfile(user, role, { name });
 
-            // Fire automation for new student enrollment
-            if (role === 'student') {
-              import('../services/automationService.ts')
-                .then(({ triggerStudentEnrolled }) =>
-                  triggerStudentEnrolled({
-                    lrn: (profile as StudentProfile | undefined)?.lrn || user.uid,
-                    name,
-                    email: user.email || '',
-                    gradeLevel: '',
-                  })
-                )
-                .catch((err) =>
-                  console.error('[WARN] Automation: enrollment pipeline failed:', err)
-                );
+              // Fire automation for new student enrollment
+              if (role === 'student') {
+                import('../services/automationService.ts')
+                  .then(({ triggerStudentEnrolled }) =>
+                    triggerStudentEnrolled({
+                      lrn: (profile as StudentProfile | undefined)?.lrn || user.uid,
+                      name,
+                      email: user.email || '',
+                      gradeLevel: '',
+                    })
+                  )
+                  .catch((err) =>
+                    console.error('[WARN] Automation: enrollment pipeline failed:', err)
+                  );
+              }
+            } catch (err) {
+              console.error('[ERROR] AuthContext: Failed to auto-create profile:', err);
             }
-          } catch (err) {
-            console.error('[ERROR] AuthContext: Failed to auto-create profile:', err);
           }
-        }
 
-        if (profile) {
-          setResolvedRole(profile.role);
-          setUserProfile(profile);
-          // Update lastActive timestamp on login (fire-and-forget)
-          import('firebase/firestore').then(({ doc, updateDoc, serverTimestamp }) => {
-            import('../lib/firebase').then(({ db }) => {
-              updateDoc(doc(db, 'users', user.uid), { lastActive: serverTimestamp() }).catch(() => {});
+          if (profile) {
+            setResolvedRole(profile.role);
+            setUserProfile(profile);
+            // Update lastActive timestamp on login (fire-and-forget)
+            import('firebase/firestore').then(({ doc, updateDoc, serverTimestamp }) => {
+              import('../lib/firebase').then(({ db }) => {
+                updateDoc(doc(db, 'users', user.uid), { lastActive: serverTimestamp() }).catch(() => {});
+              });
             });
-          });
-          // Wire pipeline context for student event emissions
-          if (profile.role === 'student') {
-            const classId = (profile as any).classSectionId as string || '';
-            const teacherId = (profile as any).adviserTeacherId as string || '';
-            if (classId || teacherId) {
-              import('../services/pipelineService').then(({ setStudentContext }) => {
-                setStudentContext(classId, teacherId);
-              }).catch(() => {});
+            // Wire pipeline context for student event emissions
+            if (profile.role === 'student') {
+              const classId = (profile as any).classSectionId as string || '';
+              const teacherId = (profile as any).adviserTeacherId as string || '';
+              if (classId || teacherId) {
+                import('../services/pipelineService').then(({ setStudentContext }) => {
+                  setStudentContext(classId, teacherId);
+                }).catch(() => {});
+              }
             }
+          } else {
+            setResolvedRole(safeRequestedRole);
+            // Keep login functional when profile storage is temporarily unavailable.
+            setUserProfile({
+              uid: user.uid,
+              email: user.email || '',
+              name: user.displayName || 'User',
+              role: safeRequestedRole,
+              photo: user.photoURL || '',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            } as User);
           }
         } else {
-          setResolvedRole(safeRequestedRole);
-          // Keep login functional when profile storage is temporarily unavailable.
-          setUserProfile({
-            uid: user.uid,
-            email: user.email || '',
-            name: user.displayName || 'User',
-            role: safeRequestedRole,
-            photo: user.photoURL || '',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          } as User);
+          setResolvedRole('student');
+          setUserProfile(null);
         }
-      } else {
-        setResolvedRole('student');
-        setUserProfile(null);
-      }
-      
+        
+        setLoading(false);
+      });
+    } catch (err) {
+      console.error('[ERROR] AuthContext: Failed to attach auth listener:', err);
       setLoading(false);
-    });
+    }
 
-    return unsubscribe;
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const refreshProfile = async () => {
