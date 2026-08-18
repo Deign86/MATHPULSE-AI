@@ -1,0 +1,52 @@
+name: PR Quality
+
+on:
+  pull_request_target:
+    branches:
+      - main
+      - develop
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - ready_for_review
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: pr-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  anti-slop:
+    name: Anti-slop PR checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check pull request quality
+        uses: peakoss/anti-slop@v0.3.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          max-failures: 4
+          max-changed-files: 100
+          max-changed-lines: 15000
+          require-description: true
+          require-maintainer-can-modify: true
+          require-commit-author-match: false
+          blocked-paths: |
+            README.md
+            SECURITY.md
+            LICENSE
+            CODE_OF_CONDUCT.md
+          exempt-author-association: OWNER,MEMBER,COLLABORATOR
+          exempt-bots: |
+            actions-user
+            autofix-ci[bot]
+            dependabot[bot]
+            renovate[bot]
+            github-actions[bot]
+          close-pr: true
+          lock-pr: false
