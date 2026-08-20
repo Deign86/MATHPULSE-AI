@@ -5,9 +5,11 @@
 ### AI-Powered Math Education Platform
 
 [![PWA](https://img.shields.io/badge/PWA-installable-9956DE?logo=pwa&logoColor=white)](docs/PWA.md)
+[![Android APK](https://img.shields.io/badge/Android%20APK-Download%20v1.0.0-3DDC84?logo=android&logoColor=white)](https://github.com/Deign86/MATHPULSE-AI/releases/tag/v1.0.0-android)
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Capacitor](https://img.shields.io/badge/Capacitor-7.1-119EFF?logo=capacitor&logoColor=white)](https://capacitorjs.com)
 [![Firebase](https://img.shields.io/badge/Firebase-12-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
@@ -17,13 +19,37 @@
 [![Graphify](https://img.shields.io/badge/Graphify-Mapped-00C853?logo=graphviz&logoColor=white)](https://github.com/waybarrios/graphify)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An interactive, gamified, installable Progressive Web App (PWA) featuring AI-powered tutoring via DeepSeek, role-based dashboards, and personalized learning paths for students, teachers, and administrators. The frontend is built, served, and deployed from this repository through Firebase Hosting; it does not require a hosted Hugging Face frontend. The project spans **573 source files** across a React + TypeScript frontend, FastAPI Python backend, and Firebase Cloud Functions — mapped as a knowledge graph of **16,882 code symbols** with **26,955 relationships** organized into **580 functional communities** and **300 execution flow chains**.
+An interactive, gamified, installable Progressive Web App (PWA) and native Android APK featuring AI-powered tutoring via DeepSeek, role-based dashboards, and personalized learning paths for students, teachers, and administrators. The frontend is built, served, and deployed from this repository through Firebase Hosting; it does not require a hosted Hugging Face frontend. The project spans **573 source files** across a React + TypeScript frontend, native Android Capacitor wrapper, FastAPI Python backend, and Firebase Cloud Functions — mapped as a knowledge graph of **16,882 code symbols** with **26,955 relationships** organized into **580 functional communities** and **300 execution flow chains**.
 
-[Features](#-features) · [PWA](docs/PWA.md) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Architecture](#-architecture) · [API Reference](#-api-reference) · [Contributing](#-contributing)
+[Features](#-features) · [Android APK](#-android-native-app-apk) · [PWA](docs/PWA.md) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Architecture](#-architecture) · [API Reference](#-api-reference) · [Contributing](#-contributing)
 
 </div>
 
 ---
+
+## 🤖 Android Native App (APK)
+
+MathPulse AI is available as a standalone native Android application powered by [Capacitor](https://capacitorjs.com):
+
+- **Direct APK Download**: Download the latest build from [GitHub Releases](https://github.com/Deign86/MATHPULSE-AI/releases/tag/v1.0.0-android) (`MathPulse-AI-debug.apk`).
+- **Firebase Native Integration**: Fully integrated with Firebase Auth, Cloud Firestore, and Realtime Database for project `mathpulse-ai-2026`.
+- **Adaptive Launcher Icon**: Pixel-perfect launcher icons with safe-zone margin scaling for all modern Android launchers and home screens.
+- **Hardware Back-Button Navigation**: Closes active modals/drawers first, then navigates back through pages before exiting at the root dashboard.
+- **Safe-Area & Notch Insets**: Full edge-to-edge layout support with dynamic viewport handling (`100dvh`).
+
+```bash
+# Build web assets & sync with Capacitor
+npm run build
+npm run cap:sync
+
+# Compile Debug APK
+npm run android:debug
+
+# Open project in Android Studio
+npm run cap:android
+```
+
+See the complete [Android Setup & Release Guide](docs/ANDROID_APK_SETUP.md) for signing keys, Google Play AAB builds, and local development.
 
 ## 📱 Progressive Web App
 
@@ -84,6 +110,7 @@ See [PWA architecture and deployment documentation](docs/PWA.md).
 |---|---|---|
 | **React** | 18.3.1 | UI framework with functional components and hooks |
 | **TypeScript** | 5.9.3 | Type-safe development |
+| **Capacitor** | 7.1.2 | Cross-platform native runtime bridge for Android APK & iOS |
 | **Vite** | 6.3.5 | Fast dev server, HMR, optimized builds (`@vitejs/plugin-react-swc`) |
 | **Tailwind CSS** | 4.1.18 | Utility-first CSS — integrated via dedicated `@tailwindcss/vite` plugin (no PostCSS) |
 | **Radix UI** | Latest | Accessible, unstyled component primitives (48+ UI components) |
@@ -365,6 +392,8 @@ MATHPULSE-AI/
 │       ├── scoring/             # XP scoring engine
 │       ├── services/            # Backend API client, runtime cache
 │       └── utils/               # Rate limiting, push utilities, sanitization
+├── android/                    # Native Android platform (Capacitor 7 wrapper, Gradle, adaptive icons)
+├── docs/                       # Project documentation (PWA.md, ANDROID_APK_SETUP.md)
 ├── jobs/                        # Offline eval + synthetic generation jobs
 ├── datasets/                    # Evaluation + metadata datasets
 │   └── vectorstore/             # Chroma DB with BAAI/bge-small-en-v1.5 embeddings
