@@ -100,13 +100,9 @@ memory-bank/
 # Graphify — generated knowledge graph artifacts
 .graphify*
 graphify-out/
-
-─── Graphify ───────────────────────────────────────────
-Local SHA256 cache — regenerates automatically on /graphify .
 graphify-out/cache/
 
-─── GitNexus ───────────────────────────────────────────
-Local KuzuDB binary index — regenerates on: npx gitnexus analyze
+# GitNexus
 .gitnexus/
 gitnexus.db
 
@@ -128,3 +124,19 @@ docs/ui-standardization-summary.md
 
 # Local pi agent state — never commit
 .pi/
+
+# Android / Capacitor build artifacts & signing credentials
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml
+android/captures/
+android/.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+

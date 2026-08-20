@@ -26,6 +26,7 @@ import { deleteDoc, doc, getDoc, getDocFromServer, updateDoc, serverTimestamp } 
 import { db } from './lib/firebase';
 import { saveAssessmentResult } from './services/gradesService';
 import { buildHeroBannerModalSummary, saveHeroBannerModalSummary } from './services/heroBannerSummaryService';
+import { useCapacitorBackButton } from './hooks/useCapacitorBackButton';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -256,6 +257,96 @@ const App = () => {
     (studentProfile?.priorityTopics || []) as DiagnosticTopicKey[],
   );
   const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0');
+
+  // Capacitor Android hardware / gesture back button handling
+  useCapacitorBackButton({
+    activeModals: [
+      () => {
+        if (isMobileSidebarOpen) {
+          setIsMobileSidebarOpen(false);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (showCalculator) {
+          setShowCalculator(false);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (showRewardsModal) {
+          setShowRewardsModal(false);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (showSettingsModal) {
+          setShowSettingsModal(false);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (showProfileModal) {
+          setShowProfileModal(false);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (showLogoutConfirm) {
+          setShowLogoutConfirm(false);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (showDiagnosticBreakdown) {
+          setShowDiagnosticBreakdown(false);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (showDiagnosticModal) {
+          setShowDiagnosticModal(false);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (showAssessmentPage) {
+          setShowAssessmentPage(false);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (targetModuleId) {
+          setTargetModuleId(null);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (pendingAvatarNav) {
+          setPendingAvatarNav(null);
+          return true;
+        }
+        return false;
+      },
+      () => {
+        if (activeTab !== 'Dashboard') {
+          handleStudentNavigation('Dashboard');
+          return true;
+        }
+        return false;
+      },
+    ],
+  });
 
   // Load computed general average from progress data (DepEd percentage-based)
   useEffect(() => {

@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+
 /**
  * Typed, centralized frontend runtime configuration.
  *
@@ -12,17 +14,27 @@
 
 const trimToEmpty = (value: string | undefined): string => (value ?? '').trim();
 
+/** True when running inside native Capacitor wrapper (Android/iOS). */
+export const IS_NATIVE_PLATFORM = Capacitor.isNativePlatform();
+
 /**
  * Normalize the configured backend base URL.
  *
- * - Unset / empty → same-origin `/api` (the production hosting proxy path).
+ * - Unset / empty → same-origin `/api` on web, or clear warning on native Android.
  * - Absolute URL   → its origin (backend routes `/api/...` and `/health` are
  *                    appended by `apiUrl` so the path structure is preserved).
  * - Relative path  → kept as-is (e.g. `/api`).
  */
 function normalizeApiBaseUrl(raw: string | undefined): string {
   const value = trimToEmpty(raw);
-  if (!value) return '/api';
+  if (!value) {
+    if (IS_NATIVE_PLATFORM) {
+      console.warn(
+        '[Capacitor / Android] VITE_API_URL is unset. On native Android APK, relative /api requests cannot reach the backend. Set VITE_API_URL=https://your-api-domain.com for production or http://10.0.2.2:8000 for local emulator development.',
+      );
+    }
+    return '/api';
+  }
 
   if (/^https?:\/\//i.test(value)) {
     try {
@@ -41,7 +53,7 @@ function normalizeApiBaseUrl(raw: string | undefined): string {
   return value.replace(/\/+$/, '') || '/api';
 }
 
-/** Base URL for the FastAPI backend. Defaults to same-origin `/api`. */
+/** Base URL for the FastAPI backend. Defaults to same-origin `/api` on web. */
 export const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
 
 /** True when the app is running a production build. */
