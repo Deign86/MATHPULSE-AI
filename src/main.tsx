@@ -11,6 +11,8 @@ import { queryClient } from './lib/queryClient.ts';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { applySettingsFromCache } from './services/settingsService.ts';
 
+import { Capacitor } from '@capacitor/core';
+
 // Apply cached theme/font before React renders to prevent flash
 applySettingsFromCache();
 
@@ -26,7 +28,7 @@ applySettingsFromCache();
  * must not overwrite each other.
  */
 function registerAppServiceWorker(): void {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || Capacitor.isNativePlatform()) return;
 
   const shouldRegister =
     import.meta.env.PROD || import.meta.env.VITE_ENABLE_SW_IN_DEV === 'true';
