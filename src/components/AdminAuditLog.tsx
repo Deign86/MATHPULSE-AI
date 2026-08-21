@@ -60,16 +60,16 @@ const StatCard: React.FC<{
   };
 
   return (
-    <div className={`relative overflow-hidden rounded-[24px] p-5 text-white shadow-lg transition-all hover:scale-[1.02] ${variants[variant]}`}>
+    <div className={`relative overflow-hidden rounded-[24px] p-3.5 sm:p-5 text-white shadow-lg transition-all hover:scale-[1.02] min-w-0 ${variants[variant]}`}>
       <div className="absolute -right-4 -top-4 opacity-10">
         <Icon size={100} />
       </div>
-      <div className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-        <Icon size={16} />
+      <div className="absolute right-3.5 top-3.5 sm:right-4 sm:top-4 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/20 flex items-center justify-center">
+        <Icon size={14} className="sm:w-4 sm:h-4" />
       </div>
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{title}</p>
-      <h3 className="text-2xl font-black mt-2 leading-none">{value}</h3>
-      <p className="text-[10px] font-bold mt-4 opacity-70 uppercase tracking-widest">{subtitle}</p>
+      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-[0.2em] opacity-80 truncate">{title}</p>
+      <h3 className="text-xl sm:text-2xl font-black mt-1.5 sm:mt-2 leading-none truncate">{value}</h3>
+      <p className="text-[9px] sm:text-[10px] font-bold mt-3 sm:mt-4 opacity-70 uppercase tracking-widest truncate">{subtitle}</p>
       
       {/* Subject Card Styling Circle */}
       <div className="absolute -bottom-8 -left-8 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
@@ -240,7 +240,7 @@ const AdminAuditLog: React.FC = () => {
         </div>
 
         {/* ── 2. Performance Metric Pods ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0">
           <StatCard
             title="Total Events"
             value={loading ? '...' : logs.length}

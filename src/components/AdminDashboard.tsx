@@ -215,21 +215,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-hidden">
         {/* Header */}
-        <header className="bg-transparent border-b border-[#e2e8f0]/40 px-[24px] xl:px-[32px] pt-[24px] pb-[16px] flex-shrink-0 z-30">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-0">
-            <div className="flex-1 flex items-start gap-3">
+        <header className="bg-transparent border-b border-[#e2e8f0]/40 px-4 sm:px-[24px] xl:px-[32px] pt-4 sm:pt-[24px] pb-3 sm:pb-[16px] flex-shrink-0 z-30 w-full min-w-0">
+          <div className="flex items-center justify-between gap-2 sm:gap-4 mb-0 w-full min-w-0">
+            <div className="flex-1 min-w-0 flex items-center gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="lg:hidden mt-1 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-[#dde3eb] bg-white text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
+                className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-[#dde3eb] bg-white text-[#5a6578] hover:bg-[#edf1f7] transition-colors shrink-0"
                 aria-label="Open navigation"
               >
                 <Menu size={18} />
               </button>
-              <div>
-                <h1 className="text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl sm:text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight truncate">
                   {activeTab === 'Overview' && 'Admin Dashboard'}
                   {activeTab === 'Content' && 'Content'}
                   {activeTab === 'Audit Log' && 'Audit Log'}
@@ -239,7 +239,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   {activeTab === 'Subjects' && 'Curriculum Control'}
                   {activeTab === 'Class Management' && 'Class Management'}
                 </h1>
-                <p className="text-[13px] text-[#64748b] mt-1">
+                <p className="text-xs sm:text-[13px] text-[#64748b] mt-0.5 sm:mt-1 truncate">
                   {activeTab === 'Overview' && `System Overview & Management`}
                   {activeTab === 'Content' && 'Upload PDFs for AI-powered content.'}
                   {activeTab === 'Audit Log' && 'Monitor system activity and security.'}
@@ -253,7 +253,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               
               {/* Quick Admin Stats */}
               {activeTab === 'Overview' && (
-                <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
+                <div className="hidden xl:flex items-center gap-2 ml-4 mt-1 shrink-0">
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4f46e5]/10 border border-[#4f46e5]/20 rounded-lg">
                     <Users size={13} className="text-[#4f46e5]" />
                     <span className="text-xs font-display font-semibold text-[#4f46e5]">{(dashStats?.totalStudents ?? 0).toLocaleString()} students</span>
@@ -270,7 +270,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               )}
             </div>
 
-            <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {/* Help Toggle (Subjects Only) */}
               {activeTab === 'Subjects' && (
                 <div className="relative">
@@ -312,9 +312,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               {/* Profile Pill */}
               <div
                 onClick={onOpenProfile}
-                className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
+                className="flex items-center gap-2 bg-white/60 p-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02] shrink-0"
               >
-                <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                <div className="w-7 h-7 rounded-full bg-indigo-100 overflow-hidden shrink-0">
                   <UserAvatar
                     src={userProfile?.photo}
                     name={userProfile?.name || 'Admin'}
@@ -322,7 +322,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <span className="text-[13px] font-semibold text-[#1e293b]">{userProfile?.name || 'Admin'}</span>
+                <span className="hidden sm:inline text-[13px] font-semibold text-[#1e293b] truncate max-w-[120px]">{userProfile?.name || 'Admin'}</span>
               </div>
             </div>
           </div>
@@ -331,16 +331,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         {/* Main Grid */}
         <main className={`flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden px-4 sm:px-[24px] xl:px-[32px] scrollbar-hide ${['User Management', 'Audit Log'].includes(activeTab) ? 'pb-0' : 'pb-[32px]'}`}>
           {activeTab === 'Overview' && (
-            <div className="max-w-[1600px] mx-auto space-y-6 sm:space-y-8 pt-4 sm:pt-6 xl:pt-8">
+            <div className="max-w-[1600px] mx-auto space-y-4 sm:space-y-6 xl:space-y-8 pt-4 sm:pt-6 xl:pt-8 w-full min-w-0">
               {/* Row 1: Ratio 4:8 */}
-              <div className="grid grid-cols-12 gap-4 sm:gap-6 h-auto xl:h-[170px]">
+              <div className="grid grid-cols-12 gap-4 sm:gap-6 h-auto xl:h-[170px] min-w-0">
                 {/* Welcome Card (col-span-4) */}
-                <div className="col-span-12 xl:col-span-4 h-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] rounded-[28px] p-6 relative overflow-hidden shadow-sm shadow-indigo-500/10 group">
+                <div className="col-span-12 xl:col-span-4 h-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] rounded-[28px] p-5 sm:p-6 relative overflow-hidden shadow-sm shadow-indigo-500/10 group min-w-0">
                   <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-1000"></div>
                   <div className="relative z-10 flex flex-col justify-between h-full">
                     <div>
                       <h2 className="text-white/70 text-[10px] font-black uppercase tracking-[0.2em] mb-1.5">Platform Overview</h2>
-                      <p className="text-white text-4xl font-display font-black tracking-tighter leading-none">
+                      <p className="text-white text-3xl sm:text-4xl font-display font-black tracking-tighter leading-none">
                         {loadingOverview ? '...' : (dashStats?.totalStudents ?? 0).toLocaleString()}
                       </p>
                       <p className="text-white/80 text-xs font-medium mt-1">Total Active Students</p>
@@ -356,17 +356,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 </div>
 
                 {/* KPI Stats Card (col-span-8) */}
-                <div className="col-span-12 xl:col-span-8 h-full bg-white border border-slate-200/60 rounded-[28px] p-4 sm:p-5 flex items-center shadow-sm shadow-slate-200/50">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 w-full h-full gap-4 sm:gap-0">
+                <div className="col-span-12 xl:col-span-8 h-full bg-white border border-slate-200/60 rounded-[28px] p-4 sm:p-5 flex items-center shadow-sm shadow-slate-200/50 min-w-0">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 w-full h-full gap-3 sm:gap-0">
                     {systemStats.map((stat, idx) => (
-                      <div key={idx} className={`flex flex-col justify-center px-2 sm:px-8 ${idx !== 3 ? 'sm:border-r border-slate-100' : ''}`}>
-                        <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center mb-2 sm:mb-3 shadow-sm`}>
-                          <stat.icon size={20} className={stat.iconColor} />
+                      <div key={idx} className={`flex flex-col justify-center px-2 sm:px-6 min-w-0 ${idx % 2 === 0 ? 'border-r border-slate-100 sm:border-r-0' : ''} ${idx !== 3 ? 'sm:border-r sm:border-slate-100' : ''}`}>
+                        <div className={`w-9 h-9 sm:w-10 sm:h-10 ${stat.color} rounded-xl flex items-center justify-center mb-2 shadow-sm shrink-0`}>
+                          <stat.icon size={18} className={stat.iconColor} />
                         </div>
-                        <p className="text-[20px] sm:text-[24px] font-display font-black text-[#1e293b] leading-tight tracking-tight">
+                        <p className="text-lg sm:text-[24px] font-display font-black text-[#1e293b] leading-tight tracking-tight truncate">
                           {loadingOverview ? '...' : stat.value}
                         </p>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mt-0.5">{stat.label}</p>
+                        <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-tight sm:tracking-[0.15em] mt-0.5 truncate">{stat.label}</p>
                       </div>
                     ))}
                   </div>
@@ -374,15 +374,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               </div>
 
               {/* Row 2: Ratio 5:4:3 */}
-              <div className="grid grid-cols-12 gap-6 min-h-[330px]">
+              <div className="grid grid-cols-12 gap-4 sm:gap-6 min-h-[330px] min-w-0">
                 {/* System Performance (col-span-5) */}
-                <div className="col-span-12 xl:col-span-5 bg-white rounded-[28px] border border-slate-200/60 p-6 flex flex-col shadow-sm shadow-slate-200/50">
-                  <div className="flex items-center justify-between mb-6">
+                <div className="col-span-12 xl:col-span-5 bg-white rounded-[28px] border border-slate-200/60 p-4 sm:p-6 flex flex-col shadow-sm shadow-slate-200/50 min-w-0">
+                  <div className="flex items-center justify-between mb-4 sm:mb-6">
                     <div>
-                      <h3 className="text-[16px] font-bold text-[#1e293b]">System Performance</h3>
-                      <p className="text-[11px] text-slate-400 font-medium">AI vs Manual Activity</p>
+                      <h3 className="text-[15px] sm:text-[16px] font-bold text-[#1e293b]">System Performance</h3>
+                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">AI vs Manual Activity</p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-2 sm:gap-3">
                       <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 rounded-lg">
                         <div className="w-1.5 h-1.5 rounded-full bg-[#6366f1]"></div>
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">AI</span>
@@ -393,7 +393,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                       </div>
                     </div>
                   </div>
-                  <div className="flex-1 w-full min-h-[200px]">
+                  <div className="flex-1 w-full min-h-[200px] min-w-0">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={weeklyActivity} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
@@ -411,17 +411,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 </div>
 
                 {/* AI Model Status (col-span-4) */}
-                <div className="col-span-12 xl:col-span-4 bg-white rounded-[28px] border border-slate-200/60 p-6 flex flex-col shadow-sm shadow-slate-200/50 group">
+                <div className="col-span-12 xl:col-span-4 bg-white rounded-[28px] border border-slate-200/60 p-4 sm:p-6 flex flex-col shadow-sm shadow-slate-200/50 group min-w-0">
                   <div className="flex items-start justify-between mb-1">
                     <div>
-                      <h3 className="text-[16px] font-bold text-[#1e293b]">AI Model Status</h3>
-                      <p className="text-[11px] text-slate-400 font-medium">Success Rate</p>
+                      <h3 className="text-[15px] sm:text-[16px] font-bold text-[#1e293b]">AI Model Status</h3>
+                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">Success Rate</p>
                     </div>
-                    <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
                       <Activity size={16} className="text-indigo-600" />
                     </div>
                   </div>
-                  <div className="flex items-baseline gap-2 mb-4">
+                  <div className="flex items-baseline gap-2 mb-3 sm:mb-4">
                     {inferenceMetrics ? (() => {
                       const completed = inferenceMetrics.requests_ok + inferenceMetrics.requests_error;
                       const rate = completed > 0
@@ -429,14 +429,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                         : 100;
                       const healthy = rate >= 90;
                       return (<>
-                        <span className="text-[38px] font-display font-black text-indigo-600 tracking-tighter leading-none">{rate}%</span>
+                        <span className="text-3xl sm:text-[38px] font-display font-black text-indigo-600 tracking-tighter leading-none">{rate}%</span>
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${healthy ? 'text-emerald-500 bg-emerald-50' : 'text-amber-500 bg-amber-50'}`}>
                           {healthy ? 'Optimal' : `${inferenceMetrics.requests_error} errors`}
                         </span>
                       </>);
-                    })() : <span className="text-[38px] font-display font-black text-indigo-600 tracking-tighter leading-none">...</span>}
+                    })() : <span className="text-3xl sm:text-[38px] font-display font-black text-indigo-600 tracking-tighter leading-none">...</span>}
                   </div>
-                  <div className="flex-1 flex flex-col justify-center gap-3">
+                  <div className="flex-1 flex flex-col justify-center gap-2.5 sm:gap-3">
                     {inferenceMetrics && (
                       <>
                         <div className="flex items-center gap-2">
@@ -448,17 +448,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                           <span>{inferenceMetrics.requests_ok.toLocaleString()} OK</span>
                           <span>{inferenceMetrics.requests_error.toLocaleString()} failed</span>
                         </div>
-                        <p className="text-[10px] text-slate-400">{inferenceMetrics.requests_total.toLocaleString()} total attempts · {inferenceMetrics.retries_total.toLocaleString()} retries</p>
+                        <p className="text-[10px] text-slate-400 truncate">{inferenceMetrics.requests_total.toLocaleString()} total attempts · {inferenceMetrics.retries_total.toLocaleString()} retries</p>
                       </>
                     )}
                   </div>
-                  <button onClick={() => setActiveTab('AI Monitoring')} className="w-full mt-4 py-3 bg-slate-50 text-[#1e293b] text-[11px] font-black uppercase tracking-[0.15em] rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2.5 group/btn">
+                  <button onClick={() => setActiveTab('AI Monitoring')} className="w-full mt-4 py-2.5 sm:py-3 bg-slate-50 text-[#1e293b] text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 group/btn min-h-[40px]">
                     Health Check <ArrowUpRight size={14} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
                   </button>
                 </div>
 
                 {/* Top Performers (col-span-3) */}
-                <div className="col-span-12 xl:col-span-3 flex flex-col gap-4">
+                <div className="col-span-12 xl:col-span-3 flex flex-col gap-3 sm:gap-4 min-w-0">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-2">Top Performers</h3>
                   <div className="flex flex-col gap-3 flex-1">
                     {loadingOverview ? (

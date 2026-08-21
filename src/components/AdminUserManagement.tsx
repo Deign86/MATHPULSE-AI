@@ -808,17 +808,15 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               </div>
             ))}
       </div>
-      </div>
-
-      {/* Action Bar - Sticky Header */}
-      <div className="sticky top-0 z-40 -mx-[24px] xl:-mx-[32px] px-[24px] xl:px-[32px] pt-4 pb-4 bg-[#f8fafc] backdrop-blur-sm">
-        <div className="flex flex-col xl:flex-row items-center gap-3">
+      </div>      {/* Action Bar - Sticky Header */}
+      <div className="sticky top-0 z-40 px-2 sm:px-4 pt-3 sm:pt-4 pb-3 sm:pb-4 bg-[#f8fafc] backdrop-blur-sm w-full">
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 w-full">
           {/* Global Search */}
           <div className="relative flex-1 w-full group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
             <Input 
               placeholder="Search by name, email, or LRN..." 
-              className="pl-11 h-12 bg-white border-slate-200/60 rounded-2xl focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all text-sm font-medium shadow-md shadow-slate-200/40"
+              className="pl-11 h-12 bg-white border-slate-200/60 rounded-2xl focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all text-sm font-medium shadow-md shadow-slate-200/40 w-full"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -828,104 +826,109 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             />
           </div>
           
-            <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-              <Select
-                value={roleFilter}
-                onValueChange={(value) => {
-                  setRoleFilter(value);
-                  setCurrentPage(1);
-                  clearSelection();
-                }}
-              >
-                <SelectTrigger className="w-[180px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-4">
-                  <span className="truncate">
-                    {roleFilter === 'All Roles' ? 'All Roles' : roleFilter === 'Admin' ? 'Administrator' : roleFilter === 'Teacher' ? 'Educator' : roleFilter}
-                  </span>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
-                  <SelectItem value="All Roles" className="font-bold uppercase tracking-widest text-[10px]">All Roles</SelectItem>
-                  <SelectItem value="Admin" className="font-bold uppercase tracking-widest text-[10px]">Administrator</SelectItem>
-                  <SelectItem value="Teacher" className="font-bold uppercase tracking-widest text-[10px]">Educator</SelectItem>
-                  <SelectItem value="Student" className="font-bold uppercase tracking-widest text-[10px]">Student</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value);
-                  setCurrentPage(1);
-                  clearSelection();
-                }}
-              >
-                <SelectTrigger className="w-[180px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-4">
-                  <span className="truncate">{statusFilter === 'All Status' ? 'All Statuses' : statusFilter}</span>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
-                  <SelectItem value="All Status" className="font-bold uppercase tracking-widest text-[10px]">All Statuses</SelectItem>
-                  <SelectItem value="Active" className="font-bold uppercase tracking-widest text-[10px]">Active</SelectItem>
-                  <SelectItem value="Inactive" className="font-bold uppercase tracking-widest text-[10px]">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {availableSections.length > 0 && (
-                <Select
-                  value={sectionFilter}
-                  onValueChange={(value) => {
-                    setSectionFilter(value);
-                    clearSelection();
-                  }}
-                >
-                  <SelectTrigger className="w-[180px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-4">
-                    <span className="truncate">{sectionFilter === 'All Sections' ? 'All Sections' : sectionFilter}</span>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200">
-                    <SelectItem value="All Sections" className="font-bold uppercase tracking-widest text-[10px]">All Sections</SelectItem>
-                    {availableSections.map(s => (
-                      <SelectItem key={s} value={s} className="font-bold uppercase tracking-widest text-[10px]">{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {
-                setSearchQuery('');
-                setRoleFilter('All Roles');
-                setStatusFilter('All Status');
-                setSectionFilter('All Sections');
+          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+            <Select
+              value={roleFilter}
+              onValueChange={(value) => {
+                setRoleFilter(value);
                 setCurrentPage(1);
                 clearSelection();
               }}
-              disabled={!searchQuery && roleFilter === 'All Roles' && statusFilter === 'All Status'}
-              className="h-12 w-12 rounded-xl border-slate-200 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-slate-200/40"
-              title="Reset Filters"
             >
-              <FilterX size={18} />
-            </Button>
+              <SelectTrigger className="flex-1 sm:w-[150px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-3">
+                <span className="truncate">
+                  {roleFilter === 'All Roles' ? 'All Roles' : roleFilter === 'Admin' ? 'Admin' : roleFilter === 'Teacher' ? 'Teacher' : roleFilter}
+                </span>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200">
+                <SelectItem value="All Roles" className="font-bold uppercase tracking-widest text-[10px]">All Roles</SelectItem>
+                <SelectItem value="Admin" className="font-bold uppercase tracking-widest text-[10px]">Administrator</SelectItem>
+                <SelectItem value="Teacher" className="font-bold uppercase tracking-widest text-[10px]">Educator</SelectItem>
+                <SelectItem value="Student" className="font-bold uppercase tracking-widest text-[10px]">Student</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 transition-all shadow-md shadow-slate-200/40"
-              onClick={() => loadUsers(currentPage)}
-              disabled={loading || isProcessingBulkAction}
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
+                setCurrentPage(1);
+                clearSelection();
+              }}
             >
-              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-            </Button>
+              <SelectTrigger className="flex-1 sm:w-[140px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-3">
+                <span className="truncate">{statusFilter === 'All Status' ? 'All Statuses' : statusFilter}</span>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200">
+                <SelectItem value="All Status" className="font-bold uppercase tracking-widest text-[10px]">All Statuses</SelectItem>
+                <SelectItem value="Active" className="font-bold uppercase tracking-widest text-[10px]">Active</SelectItem>
+                <SelectItem value="Inactive" className="font-bold uppercase tracking-widest text-[10px]">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <Button 
-              className="h-12 gap-2 bg-[#9956DE] hover:bg-[#8b5cf6] text-white rounded-xl shadow-lg shadow-purple-200/50 transition-all px-6 font-black uppercase text-[11px] tracking-widest" 
-              onClick={() => handleOpenAddModal()}
-              disabled={isProcessingBulkAction}
-            >
-              <UserPlus size={18} />
-              Add User
-            </Button>
+            {availableSections.length > 0 && (
+              <Select
+                value={sectionFilter}
+                onValueChange={(value) => {
+                  setSectionFilter(value);
+                  clearSelection();
+                }}
+              >
+                <SelectTrigger className="flex-1 sm:w-[140px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-3">
+                  <span className="truncate">{sectionFilter === 'All Sections' ? 'All Sections' : sectionFilter}</span>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="All Sections" className="font-bold uppercase tracking-widest text-[10px]">All Sections</SelectItem>
+                  {availableSections.map(s => (
+                    <SelectItem key={s} value={s} className="font-bold uppercase tracking-widest text-[10px]">{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <div className="flex items-center gap-2 ml-auto">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  setSearchQuery('');
+                  setRoleFilter('All Roles');
+                  setStatusFilter('All Status');
+                  setSectionFilter('All Sections');
+                  setCurrentPage(1);
+                  clearSelection();
+                }}
+                disabled={!searchQuery && roleFilter === 'All Roles' && statusFilter === 'All Status'}
+                className="h-12 w-12 rounded-xl border-slate-200 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-slate-200/40 shrink-0"
+                title="Reset Filters"
+              >
+                <FilterX size={18} />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-12 w-12 rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 transition-all shadow-md shadow-slate-200/40 shrink-0"
+                onClick={() => loadUsers(currentPage)}
+                disabled={loading || isProcessingBulkAction}
+                title="Refresh Users"
+              >
+                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+              </Button>
+
+              <Button 
+                className="h-12 gap-2 bg-[#9956DE] hover:bg-[#8b5cf6] text-white rounded-xl shadow-lg shadow-purple-200/50 transition-all px-4 sm:px-6 font-black uppercase text-[11px] tracking-widest shrink-0" 
+                onClick={() => handleOpenAddModal()}
+                disabled={isProcessingBulkAction}
+              >
+                <UserPlus size={18} />
+                <span className="hidden sm:inline">Add User</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            </div>
           </div>
         </div>
+      </div>
 
         {/* Floating Bulk Action Bar */}
         {selectedCount > 0 && (
@@ -1295,16 +1298,16 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       </div>
 
       {/* Pagination — ── Standardized Sticky Footer Pagination ── */}
-      <div className="sticky bottom-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-12 py-3 bg-white border-t-2 border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] -mx-[24px] xl:-mx-[32px] w-[calc(100%+48px)] xl:w-[calc(100%+64px)]">
-        <p className="text-[12px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-4">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#9956DE] animate-pulse shadow-[0_0_12px_rgba(153,86,222,0.6)]"></span>
+      <div className="sticky bottom-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-6 py-3 bg-white border-t-2 border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] w-full">
+        <p className="text-[11px] sm:text-[12px] font-black text-slate-500 uppercase tracking-wider sm:tracking-widest flex items-center gap-2 sm:gap-4 truncate">
+          <span className="w-2 h-2 rounded-full bg-[#9956DE] animate-pulse shadow-[0_0_12px_rgba(153,86,222,0.6)] shrink-0"></span>
           Showing <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">{visibleRangeStart}–{visibleRangeEnd}</span>
-          <span className="text-slate-300 font-bold mx-1">/</span>
+          <span className="text-slate-300 font-bold mx-0.5">/</span>
           <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">{totalUsers}</span>
-          <span className="text-slate-400 ml-1">Total System Records</span>
+          <span className="text-slate-400 ml-1 hidden sm:inline">Total System Records</span>
         </p>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 w-full sm:w-auto">
           <Select
             value={String(pageSize)}
             onValueChange={(value) => {
