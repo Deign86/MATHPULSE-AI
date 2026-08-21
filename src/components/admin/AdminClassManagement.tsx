@@ -160,12 +160,12 @@ const AdminClassManagement: React.FC = () => {
                   <p className="text-[11px] text-emerald-600 font-medium mt-0.5">Manager: {cls.managerName}</p>
                 )}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="relative">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0">
+                <div className="relative flex-1 sm:flex-initial">
                   <select
                     value={selectedManagers[cls.id] || ''}
                     onChange={(e) => setSelectedManagers(prev => ({ ...prev, [cls.id]: e.target.value }))}
-                    className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-[12px] font-semibold rounded-lg pl-3 pr-8 py-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 w-[220px]"
+                    className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl pl-3 pr-8 py-2.5 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 w-full sm:w-[220px] min-h-[40px]"
                   >
                     <option value="">Select teacher...</option>
                     {teachers.map(t => (
@@ -177,7 +177,7 @@ const AdminClassManagement: React.FC = () => {
                 <button
                   onClick={() => handleAssignManager(cls.id)}
                   disabled={!selectedManagers[cls.id] || assigning === cls.id}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-bold rounded-lg disabled:opacity-50 transition-colors whitespace-nowrap"
+                  className="px-4 py-2.5 min-h-[40px] bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-colors whitespace-nowrap flex items-center justify-center"
                 >
                   {assigning === cls.id ? '...' : 'Assign'}
                 </button>

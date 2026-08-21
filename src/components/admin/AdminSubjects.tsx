@@ -114,7 +114,7 @@ const AdminSubjects: React.FC = () => {
       )}
 
       {/* Stats Grid - Bento Style */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
           { 
             label: 'Total Subjects', 
@@ -145,15 +145,15 @@ const AdminSubjects: React.FC = () => {
             shadow: 'shadow-purple-500/20' 
           },
         ].map((stat, idx) => (
-          <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-5 rounded-[28px] text-white flex flex-col gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg`}>
+          <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-3.5 sm:p-5 rounded-[24px] sm:rounded-[28px] text-white flex flex-col gap-2 sm:gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg min-w-0`}>
             <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
             <div className="relative z-10 flex items-center justify-between">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{stat.label}</p>
-              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
-                <stat.icon size={14} />
+              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-[0.2em] opacity-80 truncate">{stat.label}</p>
+              <div className="bg-white/20 p-1.5 sm:p-2 rounded-xl backdrop-blur-sm shrink-0">
+                <stat.icon size={13} className="sm:w-3.5 sm:h-3.5" />
               </div>
             </div>
-            <h3 className="relative z-10 text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
+            <h3 className="relative z-10 text-2xl sm:text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
           </div>
         ))}
       </div>
