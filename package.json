@@ -73,6 +73,7 @@
       },
       "devDependencies": {
             "@capacitor/cli": "^7.6.8",
+            "@oxlint/plugins": "^1.79.0",
             "@testing-library/dom": "^10.4.1",
             "@testing-library/jest-dom": "^6.9.1",
             "@testing-library/react": "^16.3.2",
@@ -92,6 +93,7 @@
             "eslint-plugin-react-hooks": "^4.6.2",
             "ffmpeg-static": "^5.3.0",
             "jsdom": "^29.1.1",
+            "oxlint": "^1.79.0",
             "prettier": "^3.8.3",
             "puppeteer": "^24.42.0",
             "three": "^0.183.2",
@@ -117,6 +119,7 @@
             "test": "vitest run --passWithNoTests",
             "test:watch": "vitest",
             "lint": "eslint src --ext .ts,.tsx",
+            "lint:ox": "oxlint",
             "lint:fix": "eslint src --ext .ts,.tsx --fix",
             "format": "prettier --write src/**/*.{ts,tsx}",
             "typecheck": "tsc --noEmit",
