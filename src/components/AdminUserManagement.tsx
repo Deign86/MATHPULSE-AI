@@ -1081,7 +1081,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 h-9 rounded-xl border-slate-200 text-slate-600 font-bold text-xs gap-2"
+                      className="flex-1 h-10 min-h-[40px] rounded-xl border-slate-200 text-slate-600 font-bold text-xs gap-2"
                       onClick={() => handleOpenEditModal(user)}
                     >
                       <Edit size={14} /> Edit
@@ -1089,7 +1089,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`flex-1 h-9 rounded-xl border-slate-200 font-bold text-xs gap-2 ${
+                      className={`flex-1 h-10 min-h-[40px] rounded-xl border-slate-200 font-bold text-xs gap-2 ${
                         user.status === 'Active' ? 'text-slate-600' : 'text-emerald-600'
                       }`}
                       onClick={() => handleToggleStatus(user)}
@@ -1101,7 +1101,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-9 w-9 rounded-xl border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-100"
+                      className="h-10 w-10 min-w-[40px] min-h-[40px] rounded-xl border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center"
                       onClick={() => handleDeleteUser(user.id, user.name)}
                       disabled={isProcessingBulkAction}
                     >

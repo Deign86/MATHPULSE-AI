@@ -166,8 +166,8 @@ const AdminSubjects: React.FC = () => {
       )}
 
       {/* Subject Table - Premium Integrated */}
-      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 overflow-hidden relative">
-        <Table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 overflow-hidden overflow-x-auto relative w-full">
+        <Table className="w-full text-left border-collapse min-w-[720px]">
           <TableHeader>
             <TableRow className="bg-[#9956DE] hover:bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-md">
               <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Subject Identity</TableHead>
@@ -227,7 +227,7 @@ const AdminSubjects: React.FC = () => {
                   </TableCell>
 
                   <TableCell className="px-6 py-5">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-h-[44px] min-w-[44px]">
                       <Switch
                         checked={isAvailable}
                         onCheckedChange={(checked: boolean) => handleToggle(subject.id, checked)}

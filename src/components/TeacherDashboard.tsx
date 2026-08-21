@@ -2286,64 +2286,64 @@ const DashboardView: React.FC<{
       )}
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
         {/* Card 1 — Total Students */}
-        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-sm sm:rounded-lg p-[10px] sm:p-[15px] text-white flex flex-col gap-[6px] sm:gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-xl sm:rounded-lg p-3 sm:p-[15px] text-white flex flex-col gap-1.5 sm:gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[9px] sm:text-[11px] opacity-90 leading-tight">Total students</span>
-            <div className="hidden sm:flex bg-white/20 p-1.5 rounded-lg"><Users size={15} /></div>
+            <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">Total students</span>
+            <div className="flex bg-white/20 p-1.5 rounded-lg"><Users size={15} /></div>
           </div>
-          <div className="relative z-10 text-[18px] sm:text-[26px] font-semibold tracking-tight">{totalStudents}</div>
-          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
-            <span className="hidden sm:block">Added this year</span>
-            <span className="bg-black/15 px-[5px] sm:px-[7px] py-[2px] rounded font-semibold">{totalStudents > 0 ? '+1' : '0'}</span>
+          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight">{totalStudents}</div>
+          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Added this year</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold">{totalStudents > 0 ? '+1' : '0'}</span>
           </div>
         </div>
 
         {/* Card 2 — Class Average */}
-        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-sm sm:rounded-lg p-[10px] sm:p-[15px] text-white flex flex-col gap-[6px] sm:gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-xl sm:rounded-lg p-3 sm:p-[15px] text-white flex flex-col gap-1.5 sm:gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[9px] sm:text-[11px] opacity-90 leading-tight">Class average</span>
-            <div className="hidden sm:flex bg-white/20 p-1.5 rounded-lg"><Target size={15} /></div>
+            <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">Class average</span>
+            <div className="flex bg-white/20 p-1.5 rounded-lg"><Target size={15} /></div>
           </div>
-          <div className="relative z-10 text-[18px] sm:text-[26px] font-semibold tracking-tight">{avgPerformance}%</div>
-          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
-            <span className="hidden sm:block">Vs. last month</span>
-            <span className="bg-black/15 px-[5px] sm:px-[7px] py-[2px] rounded font-semibold">+2.5%</span>
+          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight">{avgPerformance}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Vs. last month</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold">+2.5%</span>
           </div>
         </div>
 
         {/* Card 3 — Engagement Rate */}
-        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-sm sm:rounded-lg p-[10px] sm:p-[15px] text-white flex flex-col gap-[6px] sm:gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-xl sm:rounded-lg p-3 sm:p-[15px] text-white flex flex-col gap-1.5 sm:gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[9px] sm:text-[11px] opacity-90 leading-tight">Engage&shy;ment</span>
-            <div className="hidden sm:flex bg-white/20 p-1.5 rounded-lg"><Activity size={15} /></div>
+            <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">Engagement</span>
+            <div className="flex bg-white/20 p-1.5 rounded-lg"><Activity size={15} /></div>
           </div>
-          <div className="relative z-10 text-[18px] sm:text-[26px] font-semibold tracking-tight">{engagementRate}%</div>
-          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
-            <span className="hidden sm:block">Active participants</span>
-            <span className="bg-black/15 px-[5px] sm:px-[7px] py-[2px] rounded font-semibold">{Math.round((engagementRate / 100) * totalStudents)}</span>
+          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight">{engagementRate}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Active participants</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold">{Math.round((engagementRate / 100) * totalStudents)}</span>
           </div>
         </div>
 
         {/* Card 4 — At Risk */}
-        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-sm sm:rounded-lg p-[10px] sm:p-[15px] text-white flex flex-col gap-[6px] sm:gap-[10px]">
+        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-xl sm:rounded-lg p-3 sm:p-[15px] text-white flex flex-col gap-1.5 sm:gap-[10px]">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
           <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-[9px] sm:text-[11px] opacity-90 leading-tight">At risk</span>
-            <div className="hidden sm:flex bg-white/20 p-1.5 rounded-lg"><AlertCircle size={15} /></div>
+            <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">At risk</span>
+            <div className="flex bg-white/20 p-1.5 rounded-lg"><AlertCircle size={15} /></div>
           </div>
-          <div className="relative z-10 text-[18px] sm:text-[26px] font-semibold tracking-tight">{totalAtRisk}</div>
-          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
-            <span className="hidden sm:block">Requires attention</span>
-            <span className="bg-black/15 px-[5px] sm:px-[7px] py-[2px] rounded font-semibold">{riskPercentage}%</span>
+          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight">{totalAtRisk}</div>
+          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
+            <span>Requires attention</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold">{riskPercentage}%</span>
           </div>
         </div>
       </div>
