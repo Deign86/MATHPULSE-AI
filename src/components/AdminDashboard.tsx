@@ -223,7 +223,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="lg:hidden mt-1 p-2 rounded-lg border border-[#dde3eb] bg-white text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
+                className="lg:hidden mt-1 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-[#dde3eb] bg-white text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
                 aria-label="Open navigation"
               >
                 <Menu size={18} />
@@ -329,11 +329,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         </header>
 
         {/* Main Grid */}
-        <main className={`flex-1 overflow-y-auto px-[24px] xl:px-[32px] scrollbar-hide ${['User Management', 'Audit Log'].includes(activeTab) ? 'pb-0' : 'pb-[32px]'}`}>
+        <main className={`flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden px-4 sm:px-[24px] xl:px-[32px] scrollbar-hide ${['User Management', 'Audit Log'].includes(activeTab) ? 'pb-0' : 'pb-[32px]'}`}>
           {activeTab === 'Overview' && (
-            <div className="max-w-[1600px] mx-auto space-y-8 pt-6 xl:pt-8">
+            <div className="max-w-[1600px] mx-auto space-y-6 sm:space-y-8 pt-4 sm:pt-6 xl:pt-8">
               {/* Row 1: Ratio 4:8 */}
-              <div className="grid grid-cols-12 gap-6 h-[170px]">
+              <div className="grid grid-cols-12 gap-4 sm:gap-6 h-auto xl:h-[170px]">
                 {/* Welcome Card (col-span-4) */}
                 <div className="col-span-12 xl:col-span-4 h-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] rounded-[28px] p-6 relative overflow-hidden shadow-sm shadow-indigo-500/10 group">
                   <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-1000"></div>
@@ -345,7 +345,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                       </p>
                       <p className="text-white/80 text-xs font-medium mt-1">Total Active Students</p>
                     </div>
-                    <div className="flex items-center gap-2 py-1 px-3 bg-white/10 backdrop-blur-md rounded-full w-fit border border-white/10">
+                    <div className="flex items-center gap-2 py-1 px-3 bg-white/10 backdrop-blur-md rounded-full w-fit border border-white/10 mt-3 sm:mt-0">
                       <TrendingUp size={12} className="text-emerald-400" />
                       <span className="text-white text-[10px] font-bold tracking-wide">{dashStats?.activeTeachers ?? 0} teachers · {dashStats?.totalClasses ?? 0} classes</span>
                     </div>
@@ -356,17 +356,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 </div>
 
                 {/* KPI Stats Card (col-span-8) */}
-                <div className="col-span-12 xl:col-span-8 h-full bg-white border border-slate-200/60 rounded-[28px] px-2 py-5 flex items-center shadow-sm shadow-slate-200/50">
-                  <div className="grid grid-cols-4 w-full h-full">
+                <div className="col-span-12 xl:col-span-8 h-full bg-white border border-slate-200/60 rounded-[28px] p-4 sm:p-5 flex items-center shadow-sm shadow-slate-200/50">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 w-full h-full gap-4 sm:gap-0">
                     {systemStats.map((stat, idx) => (
-                      <div key={idx} className={`flex flex-col justify-center px-8 ${idx !== 3 ? 'border-r border-slate-100' : ''}`}>
-                        <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center mb-3 shadow-sm`}>
+                      <div key={idx} className={`flex flex-col justify-center px-2 sm:px-8 ${idx !== 3 ? 'sm:border-r border-slate-100' : ''}`}>
+                        <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center mb-2 sm:mb-3 shadow-sm`}>
                           <stat.icon size={20} className={stat.iconColor} />
                         </div>
-                        <p className="text-[24px] font-display font-black text-[#1e293b] leading-tight tracking-tight">
+                        <p className="text-[20px] sm:text-[24px] font-display font-black text-[#1e293b] leading-tight tracking-tight">
                           {loadingOverview ? '...' : stat.value}
                         </p>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] mt-0.5">{stat.label}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mt-0.5">{stat.label}</p>
                       </div>
                     ))}
                   </div>

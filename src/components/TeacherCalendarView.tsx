@@ -438,16 +438,16 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
             </div>
 
             {/* Grid Wrapper - Scrollable */}
-            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-auto custom-scrollbar">
               {/* Weekdays */}
-              <div className="grid grid-cols-7 text-center border-b border-slate-200/60 pb-5 shrink-0 sticky top-0 bg-white z-20 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.05)] px-4 pt-6">
+              <div className="grid grid-cols-7 min-w-[560px] md:min-w-0 text-center border-b border-slate-200/60 pb-5 shrink-0 sticky top-0 bg-white z-20 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.05)] px-4 pt-6">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                   <div key={day} className="text-[12px] font-bold text-[#475569] uppercase tracking-widest">{day}</div>
                 ))}
               </div>
 
               {/* Days Grid - removed grid-rows to allow height expansion */}
-              <div className="grid grid-cols-7 gap-2 pb-6 px-4">
+              <div className="grid grid-cols-7 min-w-[560px] md:min-w-0 gap-2 pb-6 px-4">
                 {gridDays.map((day) => {
                   const key = toDateKey(day);
                   const dayEvs = eventsByDay.get(key) || [];

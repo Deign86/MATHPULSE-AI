@@ -212,8 +212,8 @@ const AdminAuditLog: React.FC = () => {
   const visibleRangeEnd = Math.min(currentPage * pageSize, filteredLogs.length);
 
   return (
-    <div className="flex flex-col min-h-full animate-in fade-in duration-500">
-      <div className="flex-1 space-y-8 pt-6 xl:pt-8 pb-6 px-1 max-w-[1600px] mx-auto w-full">
+    <div className="flex flex-col min-h-full w-full max-w-full overflow-x-hidden animate-in fade-in duration-500">
+      <div className="flex-1 space-y-6 sm:space-y-8 pt-4 sm:pt-6 xl:pt-8 pb-6 px-1 max-w-[1600px] mx-auto w-full">
         {/* ── 1. Action Header Bar ── */}
         <div className="flex items-center justify-between px-2 shrink-0">
           <div className="flex items-center gap-3">
@@ -225,14 +225,14 @@ const AdminAuditLog: React.FC = () => {
              <button 
                onClick={loadLogs} 
                disabled={loading}
-               className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-purple-600 shadow-sm transition-all active:scale-95 group"
+               className="p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-purple-600 shadow-sm transition-all active:scale-95 group"
                title="Synchronize logs"
              >
                <RefreshCw size={14} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
              </button>
              <button 
                disabled
-               className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-60 cursor-not-allowed"
+               className="flex items-center gap-2 px-4 py-2 min-h-[40px] bg-white border border-slate-200 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-60 cursor-not-allowed"
              >
                <Download size={14} /> Export Logs
              </button>
@@ -273,7 +273,7 @@ const AdminAuditLog: React.FC = () => {
       </div>{/* End flex-1 stats wrapper */}
 
       {/* ── 3. High-Fidelity Filtering Area ── */}
-        <div className="sticky top-0 z-40 -mx-[24px] xl:-mx-[32px] px-[24px] xl:px-[32px] pt-4 pb-4 bg-[#f8fafc] backdrop-blur-sm">
+        <div className="sticky top-0 z-40 px-2 sm:px-4 pt-3 sm:pt-4 pb-3 sm:pb-4 bg-[#f8fafc] backdrop-blur-sm w-full">
           <div className="flex flex-col xl:flex-row items-center gap-3">
               {/* Global Search */}
               <div className="relative flex-1 w-full group">

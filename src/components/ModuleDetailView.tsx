@@ -684,26 +684,26 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                         <button
                           type="button"
                           onClick={() => !lesson.locked && (setSelectedLesson({ lesson, type: 'lesson' }), markStudyMaterialsComplete(lesson.id))}
-                          className={`inline-flex items-center gap-1 rounded-full px-3 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5 ${
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 md:px-4 py-2 md:py-2.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5 min-h-[40px] ${
                             isStudyMaterialsCompleted(lesson.id)
                               ? 'bg-emerald-50 border border-emerald-200'
                               : 'bg-white'
                           }`}
                           style={{ color: isStudyMaterialsCompleted(lesson.id) ? '#059669' : lessonAccentHex }}
                         >
-                          {isStudyMaterialsCompleted(lesson.id) ? <><CheckCircle2 size={12} /> Review</> : <><BookOpen size={12} /> Study Materials</>}
+                          {isStudyMaterialsCompleted(lesson.id) ? <><CheckCircle2 size={14} /> Review</> : <><BookOpen size={14} /> Study Materials</>}
                         </button>
                         <button
                           type="button"
                           onClick={() => !lesson.locked && (setSelectedLesson({ lesson, type: 'lesson' }), handleStartPractice())}
-                          className={`inline-flex items-center gap-1 rounded-full px-3 md:px-4 py-1 md:py-1.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5 ${
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 md:px-4 py-2 md:py-2.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5 min-h-[40px] ${
                             isLessonQuizCompleted(lesson.id)
                               ? 'bg-emerald-50 border border-emerald-200'
                               : 'bg-white'
                           }`}
                           style={{ color: isLessonQuizCompleted(lesson.id) ? '#059669' : lessonAccentHex }}
                         >
-                          {isLessonQuizCompleted(lesson.id) ? <><RotateCcw size={12} /> Retry</> : <><Bookmark size={12} /> Quiz</>}
+                          {isLessonQuizCompleted(lesson.id) ? <><RotateCcw size={14} /> Retry</> : <><Bookmark size={14} /> Quiz</>}
                         </button>
                       </div>
 
@@ -726,29 +726,31 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                         <div className="flex-1 h-px bg-slate-200" />
                       </div>
 
-                      <div className="relative rounded-[1.5rem] bg-[#533ab6] p-3 md:p-5 shadow-lg overflow-hidden group transition-all hover:shadow-xl hover:-translate-y-1">
+                      <div className="relative rounded-[1.5rem] bg-[#533ab6] p-4 md:p-5 shadow-lg overflow-hidden group transition-all hover:shadow-xl hover:-translate-y-1">
                         <div className="absolute right-2 md:right-10 top-1/2 -translate-y-1/2 text-white/5 text-[80px] md:text-[140px] font-black font-display pointer-events-none group-hover:scale-110 transition-transform duration-500">?</div>
 
-                        <div className="relative z-10 flex flex-wrap items-center gap-3 md:gap-5">
-                          <div className="w-12 h-12 md:w-14 md:h-14 rounded-[12px] md:rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
-                            <Target size={22} className="text-rose-400" />
+                        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-5">
+                          <div className="flex items-start gap-3 md:gap-4 min-w-0 flex-1">
+                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-[12px] md:rounded-[14px] bg-white/10 backdrop-blur-md border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
+                              <Target size={22} className="text-rose-400" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-0.5 md:mb-1 drop-shadow-sm">
+                                COMPETENCY CHECK · General Quiz
+                              </p>
+                              <h3 className="font-display font-medium text-[16px] md:text-[22px] text-white leading-tight mb-1 md:mb-2 tracking-tight">
+                                {standaloneQuiz.title}
+                              </h3>
+                              <p className="text-[11px] md:text-xs font-semibold text-white/80 flex flex-wrap items-center gap-2 md:gap-3">
+                                <span className="inline-flex items-center gap-1"><PenTool size={11} /> {standaloneQuiz.questions} Qs</span>
+                                <span className="inline-flex items-center gap-1"><Clock size={11} /> {standaloneQuiz.duration}</span>
+                                <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={11} className="fill-amber-300" /> +50 XP</span>
+                              </p>
+                            </div>
                           </div>
 
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[9px] md:text-[11px] font-black uppercase tracking-widest text-[#a3b1ee] mb-0.5 md:mb-1 drop-shadow-sm">
-                              COMPETENCY CHECK · General Quiz
-                            </p>
-                            <h3 className="font-display font-medium text-[16px] md:text-[22px] text-white leading-tight mb-1 md:mb-2 tracking-tight">
-                              {standaloneQuiz.title}
-                            </h3>
-                            <p className="text-[11px] md:text-xs font-semibold text-white/80 flex flex-wrap items-center gap-2 md:gap-3">
-                              <span className="inline-flex items-center gap-1"><PenTool size={11} /> {standaloneQuiz.questions} Qs</span>
-                              <span className="inline-flex items-center gap-1"><Clock size={11} /> {standaloneQuiz.duration}</span>
-                              <span className="inline-flex items-center gap-1 text-amber-300 drop-shadow-md"><Zap size={11} className="fill-amber-300" /> +50 XP</span>
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2 self-center shrink-0">
+                          <div className="flex items-center gap-2 self-start sm:self-center shrink-0 pt-2 sm:pt-0">
                             {(iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed)) && getLastQuizScore(standaloneQuiz.id) && (
                               <span className="inline-flex items-center gap-1 text-amber-300 text-[11px] md:text-xs font-bold">
                                 <Star size={12} fill="currentColor" /> Last: {getLastQuizScore(standaloneQuiz.id)!.score}/{getLastQuizScore(standaloneQuiz.id)!.total}
@@ -757,7 +759,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                             <button
                               type="button"
                               onClick={() => !standaloneQuiz.locked && (setSelectedLesson({ quiz: standaloneQuiz, type: 'quiz' }), setIsInQuizMode && setIsInQuizMode(true))}
-                              className={`px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-[11px] md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm ${
+                              className={`px-5 md:px-6 py-2.5 md:py-2.5 rounded-xl text-xs md:text-sm font-bold tracking-wider transition-all backdrop-blur-sm min-h-[40px] flex items-center justify-center ${
                                 standaloneQuiz.locked
                                   ? 'bg-white/5 text-white/30 border border-white/10 cursor-not-allowed'
                                   : (iarCompleted && (completedQuizIds.has(standaloneQuiz.id) || standaloneQuiz.completed))
