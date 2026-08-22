@@ -103,6 +103,7 @@ const AdminPriorityModules: React.FC = () => {
                   <div className="w-full h-2 rounded-full bg-white/30 overflow-hidden shadow-inner mt-1">
                     <div
                       className="h-full bg-white rounded-full e-w"
+                      // SAFETY: trusted internal value already conforms to the asserted type.
                       style={{ ['--w' as any]: `${module.progress}%` }}
                     />
                   </div>

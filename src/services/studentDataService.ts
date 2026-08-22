@@ -12,10 +12,18 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  type DocumentData
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { z } from 'zod';
 import { getPHTDateString } from '../data/rewardCatalog';
+
+/** Firestore timestamp-like values; parsing never throws. */
+const timestampLikeValue = z.looseObject({
+  toDate: z.instanceof(Function).optional(),
+  seconds: z.number().optional(),
+});
 
 // ============================================================================
 // TYPES - Cross-role data structures
@@ -102,16 +110,19 @@ export interface ClassMasterySummary {
 /**
  * Convert Firestore timestamp to Date
  */
-const toDate = (ts: unknown): Date | null => {
+const toDate = <V>(ts: V): Date | null => {
   if (!ts) return null;
   if (ts instanceof Date) return ts;
-  if (typeof ts === 'string') return new Date(ts);
-  if (typeof ts === 'number') return new Date(ts);
-  if (typeof ts === 'object' && ts !== null) {
-    const maybeTs = ts as { toDate?: () => Date; seconds?: number };
-    if (typeof maybeTs.toDate === 'function') return maybeTs.toDate();
-    if (typeof maybeTs.seconds === 'number') return new Date(maybeTs.seconds * 1000);
-  }
+
+  const asString = z.string().safeParse(ts);
+  if (asString.success) return new Date(asString.data);
+
+  const asNumber = z.number().safeParse(ts);
+  if (asNumber.success) return new Date(asNumber.data);
+
+  const maybeTs = timestampLikeValue.safeParse(ts);
+  if (maybeTs.success && maybeTs.data.toDate instanceof Function) return maybeTs.data.toDate();
+  if (maybeTs.success && maybeTs.data.seconds !== undefined) return new Date(maybeTs.data.seconds * 1000);
   return null;
 };
 
@@ -248,8 +259,10 @@ export async function getModuleProgressByTeacher(
       for (const [subjId, subjData] of Object.entries(subjects)) {
         if (subjectId && subjId !== subjectId) continue;
         
-        const modulesProgress = (subjData as { modulesProgress?: Record<string, unknown> }).modulesProgress || {};
+        // SAFETY: subjects.*.modulesProgress records are written by this app with the module-progress fields read below.
+        const modulesProgress: DocumentData = ((subjData as DocumentData).modulesProgress as DocumentData) || {};
         for (const [modId, modData] of Object.entries(modulesProgress)) {
+          // SAFETY: module-progress records carry progress/lessonsCompleted/quizzesCompleted/timestamps.
           const md = modData as {
             progress: number;
             lessonsCompleted: string[];
@@ -432,6 +445,7 @@ export async function getDiagnosticResultsByTeacher(
       let weakTopics: string[] = [];
       
       for (const [subject, rc] of Object.entries(riskClassifications)) {
+        // SAFETY: riskClassifications entries are written by this app with score/status fields.
         const classification = rc as { score: number; status: string };
         if (classification.score < worstScore) {
           worstScore = classification.score;

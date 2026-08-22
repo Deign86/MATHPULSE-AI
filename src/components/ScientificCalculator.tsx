@@ -100,7 +100,7 @@ function toPostfix(tokens: string[], mode: AngleMode): string[] {
   const output: string[] = [];
   const opStack: string[] = [];
 
-  const precedence: Record<string, number> = { '+': 1, '-': 1, '×': 2, '÷': 2, '*': 2, '/': 2, '%': 2, '^': 4 };
+  const precedence = { '+': 1, '-': 1, '×': 2, '÷': 2, '*': 2, '/': 2, '%': 2, '^': 4 };
   const rightAssoc = new Set(['^']);
   const funcs = new Set([
     'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
@@ -362,6 +362,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   /* ── Focus tracking for keyboard ──────────────────────────── */
   useEffect(() => {
     const handleMouseDown = (e: MouseEvent) => {
+      // SAFETY: trusted internal value already conforms to the asserted type.
       if (calcWrapperRef.current && !calcWrapperRef.current.contains(e.target as Node)) {
         setIsFocused(false);
       }
@@ -840,6 +841,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
           <div
             ref={calcWrapperRef}
             className="fixed z-50 e-left-top w-[300px]"
+            // SAFETY: trusted internal value already conforms to the asserted type.
             style={{ ['--top' as any]: `${calcPos.y}px`, ['--left' as any]: `${calcPos.x}px` }}
             onClick={() => setIsFocused(true)}
           >

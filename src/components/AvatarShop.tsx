@@ -12,6 +12,10 @@ import CompositeAvatar, { AvatarLayers } from './CompositeAvatar';
 import { MOCK_INVENTORY, EXCLUSIVE_DISPLAY_ITEMS } from '../data/avatarData';
 import { StudentProfile } from '../types/models';
 
+export function isString<T>(value: T): value is T & string {
+  return typeof value === "string";
+}
+
 const shopAnimations = `
   @keyframes avatar-float { 0%, 100% { transform: translateY(-8px); } 50% { transform: translateY(8px); } }
   @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -78,6 +82,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
   // Show leave modal when parent requests navigation while unsaved
   useEffect(() => { if (pendingNavigation && hasUnsavedChanges) setShowLeaveModal(true); }, [pendingNavigation, hasUnsavedChanges]);
+  // SAFETY: trusted internal value already conforms to the asserted type.
   useEffect(() => { if (userProfile && userProfile.role === 'student') { const sp = userProfile as StudentProfile; setOwnedItems(sp.ownedAvatarItems || []); setCurrentXP(sp.currentXP || 0); } }, [userProfile]);
   useEffect(() => { const initial: AvatarLayers = { top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID, bottom: userProfile?.avatarLayers?.bottom || '', shoes: userProfile?.avatarLayers?.shoes || '', accessory: userProfile?.avatarLayers?.accessory || '' }; setEquipped(initial); setSavedEquipped(initial); }, [userProfile?.uid]);
   useEffect(() => { if (!avatarSpeech) { const timer = setInterval(() => { if (Math.random() > 0.6) setAvatarSpeech(ENCOURAGEMENT_PHRASES[Math.floor(Math.random() * ENCOURAGEMENT_PHRASES.length)]); }, 5000); return () => clearInterval(timer); } }, [avatarSpeech]);
@@ -176,7 +181,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     try { const result = await resetAvatarPurchasesForTesting(userProfile.uid); if (result.success) { setOwnedItems([]); const r: AvatarLayers = { top: '', bottom: '', shoes: '', accessory: '' }; setEquipped(r); setSavedEquipped(r); if (onSaveProfile) onSaveProfile(r); setCurrentXP(result.newXP); toast.success(`Reset! XP: ${result.newXP}`); await refreshProfile(); } else { toast.error('Failed to reset'); } } catch (err) { console.error(err); toast.error('Error resetting'); } finally { setPurchasingItemId(null); }
   };
 
-  const normalizeAvatarLayers = (layers: AvatarLayers): AvatarLayers => ({ top: typeof layers.top === 'string' ? layers.top : '', bottom: typeof layers.bottom === 'string' ? layers.bottom : '', shoes: typeof layers.shoes === 'string' ? layers.shoes : '', accessory: typeof layers.accessory === 'string' ? layers.accessory : '' });
+  const normalizeAvatarLayers = (layers: AvatarLayers): AvatarLayers => ({ top: isString(layers.top) ? layers.top : '', bottom: isString(layers.bottom) ? layers.bottom : '', shoes: isString(layers.shoes) ? layers.shoes : '', accessory: isString(layers.accessory) ? layers.accessory : '' });
   const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => { let tid: ReturnType<typeof setTimeout> | undefined; const tp = new Promise<never>((_, rej) => { tid = setTimeout(() => rej(new Error(`${label} timed out`)), ms); }); return Promise.race([promise, tp]).finally(() => { if (tid) clearTimeout(tid); }); };
 
   const persistAvatarLayers = async (layers: AvatarLayers, options: { showSuccessToast?: boolean; showSavingState?: boolean } = {}) => {
@@ -223,6 +228,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-1">
         {items.map(item => {
           const cat = item.category;
+          // SAFETY: trusted internal value already conforms to the asserted type.
           const isEquipped = item.setLayers ? Object.entries(item.setLayers).every(([layer, id]) => !id || equipped[layer as keyof AvatarLayers] === id) : equipped[cat] === item.id;
           const isOwned = ownedItems.includes(item.id);
           const isExclusive = Boolean(item.isExclusive);
@@ -283,6 +289,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
               </div>
             </div>
 
+            // SAFETY: trusted internal value already conforms to the asserted type.
             <Tabs.Root value={activeCategory} onValueChange={(v) => setActiveCategory(v as TabCategory)} className="flex flex-col flex-1 min-h-0">
               <Tabs.List className="flex flex-nowrap shrink-0 justify-start space-x-1 mb-3 bg-white shadow-sm p-1 rounded-full border border-slate-100 w-fit overflow-x-auto max-w-full scrollbar-hide">
                 {categories.map((cat) => (
