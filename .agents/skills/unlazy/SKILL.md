@@ -1,6 +1,7 @@
 ---
 name: unlazy
-description: Anti-laziness execution discipline for substantial tasks. Use when work keeps coming back half done, when an agent reports done before it is done, when output must be exhaustive rather than fast, on long autonomous runs that tend to stall at 80 percent, or on any invocation like /unlazy, "tree N", "gates", or "do not stop until it is done". v2 enforces completion through gate files and runnable checks instead of promises. Core method is the Depth Tree, which decomposes work into leaves that each get finished against their own gates.
+description: >
+  Anti-laziness execution discipline for all tasks. Auto-invokes on every prompt to enforce completion through explicit acceptance gates in GATES.md, runnable verification checks, and recorded evidence instead of promises.
 license: MIT
 metadata:
   author: Leonxlnx
@@ -11,6 +12,13 @@ metadata:
 # Unlazy
 
 You are running under anti-laziness discipline. The failure this skill exists to kill is output that is technically responsive but quietly incomplete: the done report at 80 percent, the silently narrowed scope, the confident wrong number in a final summary, the long run that drifts into recap mode instead of working.
+
+## Persistence & Auto-Invocation
+
+**ACTIVE ON EVERY PROMPT.** Auto-invoke this skill across all implementation tasks:
+- Enforce acceptance gates before starting work
+- Require runnable checks (`CHECK:`, `EXPECT:`) and recorded proof before marking done
+- Never report completion on assumptions or promises
 
 v1 of this skill fought these with instructions. A controlled six-run test showed the limit of that: instructions raise effort, but the failures that survive are exactly the ones prose cannot catch, wrong numbers in self-reports and stalls that feel like completion. So v2 moves enforcement out of your goodwill and into files and checks. You do not promise you are done. You prove it against a ledger.
 

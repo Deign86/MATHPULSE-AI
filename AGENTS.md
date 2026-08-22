@@ -220,17 +220,19 @@ This project is indexed by GitNexus as **MATHPULSE-AI** (15991 symbols, 29062 re
 
 ---
 
-## Mandatory Skills — Ponytail + Unlazy
+## Mandatory Skills — Ponytail + Unlazy + Anti-Slop + Firecrawl Developer Index
 
-Every coding task in this repository MUST use the following two skills together, in this order:
+Every coding task and prompt in this repository MUST auto-invoke and use the following skills together:
 
-1. **Ponytail** — read and follow `.agents/skills/ponytail/SKILL.md` before planning or editing.
-   Apply Ponytail in `full` mode by default: question whether work is needed, reuse existing
+1. **Ponytail** — read and follow `.agents/skills/ponytail/SKILL.md`.
+   **AUTO-INVOKE ON EVERY PROMPT.**
+   Apply Ponytail in `full` mode by default: question whether work is needed (YAGNI), reuse existing
    code, prefer standard-library and native solutions, and make the smallest correct change.
    Keep validation, error handling, security, accessibility, and explicitly requested behavior
    intact. Do not disable Ponytail unless the user explicitly says `stop ponytail` or `normal mode`.
 
-2. **Unlazy** — read and follow `.agents/skills/unlazy/SKILL.md` before starting real work.
+2. **Unlazy** — read and follow `.agents/skills/unlazy/SKILL.md`.
+   **AUTO-INVOKE ON EVERY PROMPT.**
    Apply anti-laziness discipline: write acceptance gates to `GATES.md` *before* implementing,
    one checkbox per outcome, with `CHECK:`/`EXPECT:` lines wherever an outcome can be run as a
    command. Done means every gate is checked **with recorded evidence** (run
@@ -238,29 +240,47 @@ Every coding task in this repository MUST use the following two skills together,
    mode for tasks under ~30 minutes, orchestrated mode (`PLAN.md` + `gates/` per leaf) for builds.
    Re-measure every number in the final report at report time; paste the ledger, N of N checked.
 
+3. **Anti-Slop** — read and follow `.agents/skills/anti-slop/SKILL.md`.
+   **AUTO-INVOKE ON EVERY PROMPT.**
+   Eliminate generic AI-generated code patterns, text slop, and cookie-cutter design:
+   - **Code quality**: Reject placeholder/generic names (`data`, `result`, `temp`, `item`), delete obvious/parroting comments, eliminate unneeded abstraction wrappers, and avoid loose `any` or unjustified type assertions.
+   - **Linter & Rules**: Enforce and verify repository Oxlint anti-slop rules (`tools/oxlint/anti-slop`).
+   - **Writing**: Strip fluff, corporate buzzwords ("delve into", "navigate complexities", "in today's world"), and self-referential AI commentary.
+   - **UI/UX**: Reject generic gradient soup, unnecessary neumorphism/glassmorphism, and template-forced layouts.
+
+4. **Firecrawl Developer Index** — read and follow `.agents/skills/firecrawl-developer-index/SKILL.md`.
+   **AUTO-INVOKE ON EVERY PROMPT.**
+   Whenever consulting external code, API contracts, library behaviors, error messages, GitHub issues, pull requests, or technical documentation:
+   Query the index at `https://api.firecrawl.dev/v2/search/developer` (or CLI `npx -y firecrawl-cli developer <query>` / MCP `firecrawl_developer_search`) to retrieve primary-source passages from READMEs, merged PRs, issues, and docs.
+   - For bug fixes / errors: `types=["issue","pull_request"]`
+   - For contracts / docs: `types=["doc","readme"]`
+   - Always quote returned passages and cite URLs.
+
 Ponytail governs *what* you build (the simplest correct thing); Unlazy governs *whether it is
-actually done* (gates + evidence, no 80% reports). Both apply to every coding task, including
-reviewing and refactoring.
+actually done* (gates + evidence, no 80% reports); Anti-Slop governs *code and prose quality* (zero low-evidence fluff or generic boilerplate); Firecrawl Developer Index ensures truth from primary sources. All apply automatically to every prompt, task, review, and refactor.
 
-## External Documentation — Mandatory Context7 Usage
+## External Documentation & Search — Mandatory Firecrawl Developer Index Usage
 
-**ALWAYS use Context7 API when working with external libraries, APIs, or frameworks.**
+**ALWAYS use Firecrawl Developer Index when working with external libraries, APIs, frameworks, or error diagnostics.**
 
-When implementing features that use:
+When implementing features or debugging that use:
 - New npm packages or Python libraries
 - Framework APIs (React, FastAPI, Firebase, etc.)
 - Third-party services or SDKs
 - Any external dependency not covered in this AGENTS.md
+- Error strings, stack traces, upstream bug tracking, or PR resolutions
 
 You MUST:
-1. Use `context7_resolve-library-id` to find the library
-2. Use `context7_query-docs` to get current documentation and code examples
-3. Never assume API behavior — always verify with Context7
+1. Auto-invoke Firecrawl Developer Index (`npx -y firecrawl-cli developer <query>` or HTTP `https://api.firecrawl.dev/v2/search/developer`) to find primary sources (merged PRs, issues, READMEs, official docs).
+2. For error messages / stack traces: search with `types=["issue","pull_request"]`.
+3. For contracts / docs: search with `types=["doc","readme"]`.
+4. Never assume API behavior — always verify against primary sources with Firecrawl Developer Index and cite exact source URLs and passages.
 
-**Why:** Prevents hallucinations about library APIs, ensures correct usage patterns, and provides production-ready code examples.
+**Why:** Prevents hallucinations about library APIs, ensures correct usage patterns, and provides production-ready code examples verified from 70M+ primary open-source issues, PRs, and docs.
 
-**Triggers (auto-invoke):**
+**Triggers (auto-invoke on every prompt):**
 - "How do I use [library]?"
 - "What's the best practice for [framework feature]?"
 - Implementing unfamiliar npm/pip packages
 - Any question about external library behavior
+- Investigating any error message, exception, or bug fix

@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "anti-slop": {
+      "source": "rand/cc-polymath",
+      "sourceType": "github",
+      "skillPath": "skills/anti-slop/SKILL.md",
+      "computedHash": "76efa981799d4d9454aef081ae02fd21cc38f56450d0d8bd33c5f50221f53543"
+    },
+    "firecrawl-developer-index": {
+      "source": "firecrawl/skills",
+      "sourceType": "github",
+      "skillPath": "skills/core/firecrawl-developer-index/SKILL.md",
+      "computedHash": "67d1f7452842711ddd0517248cb8d034defd53ae299387530148f04b4a86a3eb"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github"
