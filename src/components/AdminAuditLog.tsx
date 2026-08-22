@@ -144,7 +144,7 @@ const AdminAuditLog: React.FC = () => {
   };
 
   // Label mappings for full-word display
-  const CATEGORY_LABELS: Record<string, string> = {
+  const CATEGORY_LABELS = {
     'All Categories': 'All Categories',
     'Auth': 'Authentication',
     'Data': 'Data Operations',
@@ -153,7 +153,7 @@ const AdminAuditLog: React.FC = () => {
     'Content': 'Content Pipeline'
   };
 
-  const SEVERITY_LABELS: Record<string, string> = {
+  const SEVERITY_LABELS = {
     'All Severities': 'All Severities',
     'Info': 'Information',
     'Warning': 'Warning',
@@ -161,7 +161,7 @@ const AdminAuditLog: React.FC = () => {
     'Critical': 'Critical'
   };
 
-  const ROLE_LABELS: Record<string, string> = {
+  const ROLE_LABELS = {
     'All Roles': 'All Roles',
     'Admin': 'Administrator',
     'Teacher': 'Educator',

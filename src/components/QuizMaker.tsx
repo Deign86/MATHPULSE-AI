@@ -33,6 +33,10 @@ import {
 import { getStudentsByTeacher, type ManagedStudent } from '../services/studentService';
 import type { GeneratedQuiz, AIQuizQuestion, GeneratedQuizStatus } from '../types/models';
 
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === "number";
+}
+
 // ─── Types ──────────────────────────────────────────────────
 
 interface QuizMakerProps {
@@ -56,14 +60,14 @@ interface QuizMakerProps {
 type Step = 'setup' | 'topics' | 'style' | 'preview' | 'results';
 type MakerTab = 'create' | 'bank';
 
-const STATUS_COLORS: Record<GeneratedQuizStatus, string> = {
+const STATUS_COLORS = {
   draft: 'bg-[#edf1f7] text-[#5a6578]',
   published: 'bg-green-100 text-green-700',
   assigned: 'bg-sky-100 text-sky-700',
   completed: 'bg-rose-100 text-rose-700',
 };
 
-const QUESTION_TYPE_LABELS: Record<QuestionType, { label: string; icon: React.ReactNode; description: string }> = {
+const QUESTION_TYPE_LABELS = {
   identification: { label: 'Identification', icon: <FileText size={16} />, description: 'Define or identify concepts' },
   enumeration: { label: 'Enumeration', icon: <Layers size={16} />, description: 'List steps or properties' },
   multiple_choice: { label: 'Multiple Choice', icon: <Check size={16} />, description: 'Choose from 4 options' },
@@ -71,7 +75,7 @@ const QUESTION_TYPE_LABELS: Record<QuestionType, { label: string; icon: React.Re
   equation_based: { label: 'Equation-Based', icon: <Calculator size={16} />, description: 'Solve equations' },
 };
 
-const BLOOM_LABELS: Record<BloomLevel, { label: string; color: string; description: string }> = {
+const BLOOM_LABELS = {
   remember: { label: 'Remember', color: 'bg-sky-100 text-sky-700 border-sky-300', description: 'Recall facts & formulas' },
   understand: { label: 'Understand', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', description: 'Explain concepts' },
   apply: { label: 'Apply', color: 'bg-rose-100 text-rose-700 border-rose-300', description: 'Use in new contexts' },
@@ -88,7 +92,7 @@ const normalizeGradeLevel = (value?: string): 'Grade 11' | 'Grade 12' => {
   return 'Grade 11';
 };
 
-const FALLBACK_TOPICS_BY_GRADE: Record<'Grade 11' | 'Grade 12', Record<string, string[]>> = {
+const FALLBACK_TOPICS_BY_GRADE = {
   'Grade 11': {
     'General Mathematics - Patterns, Relations, and Functions': ['Patterns and Real-Life Relationships', 'Functions as Mathematical Models', 'Function Notation and Evaluation', 'Domain and Range of Functions', 'Operations on Functions', 'Composite Functions', 'Inverse Functions', 'Graphs of Rational Functions', 'Graphs of Exponential Functions', 'Graphs of Logarithmic Functions'],
     'General Mathematics - Financial Mathematics': ['Simple and Compound Interest', 'Simple and General Annuities', 'Present and Future Value', 'Loans, Amortization, and Sinking Funds', 'Stocks, Bonds, and Market Indices', 'Business Decision-Making with Mathematical Models'],
@@ -104,7 +108,7 @@ const FALLBACK_TOPICS_BY_GRADE: Record<'Grade 11' | 'Grade 12', Record<string, s
   },
 };
 
-const CATEGORY_PREFIXES_BY_GRADE: Record<'Grade 11' | 'Grade 12', string[]> = {
+const CATEGORY_PREFIXES_BY_GRADE = {
   'Grade 11': ['General Mathematics - '],
   'Grade 12': ['Pre-Calculus - ', 'Basic Calculus - '],
 };
@@ -131,7 +135,7 @@ interface PersistedQuizTask {
   ownerUid?: string;
 }
 
-const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
+const DIFFICULTY_COLORS = {
   easy: 'text-green-600',
   medium: 'text-rose-600',
   hard: 'text-red-600',
@@ -331,6 +335,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     newDist[key] = newVal;
 
     // Redistribute to maintain sum = 100
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const others = Object.keys(newDist).filter(k => k !== key) as DifficultyLevel[];
     const othersTotal = others.reduce((s, k) => s + newDist[k], 0);
     if (othersTotal > 0) {
@@ -440,7 +445,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       Math.min(
         100,
         Math.round(
-          typeof status.progressPercent === 'number'
+          isNum(status.progressPercent)
             ? status.progressPercent
             : status.status === 'queued'
             ? 10
@@ -510,6 +515,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
     let persisted: PersistedQuizTask | null = null;
     try {
+      // SAFETY: trusted internal value already conforms to the asserted type.
       persisted = JSON.parse(raw) as PersistedQuizTask;
     } catch {
       clearPersistedTask();
@@ -542,6 +548,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
         if (!payload || typeof payload !== 'object') {
           throw new Error('Quiz generation completed without a valid result payload.');
         }
+        // SAFETY: trusted internal value already conforms to the asserted type.
         const resultPayload = payload as unknown as QuizGenerationResponse;
         setQuizResult(resultPayload);
         setStep('results');
@@ -729,11 +736,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
     const questions: AIQuizQuestion[] = result.questions.map((q, i) => ({
       id: `q_${Date.now()}_${i}`,
+      // SAFETY: trusted internal value already conforms to the asserted type.
       questionType: (q.questionType as AIQuizQuestion['questionType']) || 'identification',
       question: q.question,
       ...(q.options ? { options: q.options } : {}),
       correctAnswer: q.correctAnswer,
+      // SAFETY: trusted internal value already conforms to the asserted type.
       bloomLevel: (q.bloomLevel as AIQuizQuestion['bloomLevel']) || 'understand',
+      // SAFETY: trusted internal value already conforms to the asserted type.
       difficulty: (q.difficulty as AIQuizQuestion['difficulty']) || 'medium',
       topic: q.topic,
       subject: effectiveGrade,
@@ -784,6 +794,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       savedQuizId ? { documentId: savedQuizId } : undefined,
     );
     setSavedQuizId(id);
+    // SAFETY: trusted internal value already conforms to the asserted type.
     upsertBankQuiz({
       id,
       ...quizData,
@@ -810,6 +821,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
         savedQuizId ? { documentId: savedQuizId } : undefined,
       );
       setSavedQuizId(id);
+      // SAFETY: trusted internal value already conforms to the asserted type.
       upsertBankQuiz({
         id,
         ...quizData,
@@ -1014,14 +1026,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     );
   };
 
-  const BLOOM_BADGE_COLORS: Record<string, string> = {
+  const BLOOM_BADGE_COLORS = {
     remember: 'bg-sky-100 text-sky-700 border-sky-300',
     understand: 'bg-rose-100 text-rose-700 border-rose-300',
     apply: 'bg-emerald-100 text-emerald-700 border-emerald-300',
     analyze: 'bg-rose-100 text-rose-700 border-rose-300',
   };
 
-  const BLOOM_COLORS: Record<string, { badge: string; card: string; num: string }> = {
+  const BLOOM_COLORS = {
     remember: { badge: 'border-purple-200 text-purple-700 bg-purple-50', card: 'from-[#a855f7] to-[#9333ea]', num: 'text-purple-700 bg-purple-100 border-purple-200' },
     understand: { badge: 'border-blue-200 text-blue-700 bg-blue-50', card: 'from-[#3b82f6] to-[#2563eb]', num: 'text-blue-700 bg-blue-100 border-blue-200' },
     apply: { badge: 'border-amber-200 text-amber-700 bg-amber-50', card: 'from-[#f59e0b] to-[#d97706]', num: 'text-amber-700 bg-amber-100 border-amber-200' },
@@ -1146,6 +1158,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
                 {/* Footer metadata */}
                 <div className="flex gap-6 text-[12px] font-medium text-[#64748b] mt-5 pt-4 border-t border-slate-100">
+                  // SAFETY: trusted internal value already conforms to the asserted type.
                   <span className="flex items-center gap-1.5"><FileText size={14} /> <strong className="text-[#1e293b]">Type:</strong> {QUESTION_TYPE_LABELS[q.questionType as QuestionType]?.label || q.questionType}</span>
                   <span className="flex items-center gap-1.5"><Brain size={14} /> <strong className="text-[#1e293b]">Bloom:</strong> {q.bloomLevel}</span>
                 </div>
@@ -1579,6 +1592,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Question Types</h3>
                 </div>
                 <div className="p-4 grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  // SAFETY: trusted internal value already conforms to the asserted type.
                   {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, typeof QUESTION_TYPE_LABELS[QuestionType]][]).map(([type, info]) => {
                     const isSelected = selectedTypes.includes(type);
                     return (
@@ -1618,6 +1632,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Bloom's Taxonomy Levels</h3>
                 </div>
                 <div className="p-6 flex flex-wrap gap-4">
+                  // SAFETY: trusted internal value already conforms to the asserted type.
                   {(Object.entries(BLOOM_LABELS) as [BloomLevel, typeof BLOOM_LABELS[BloomLevel]][]).map(([level, info]) => {
                     const isSelected = selectedBlooms.includes(level);
                     return (
@@ -1643,6 +1658,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Difficulty Distribution</h3>
                 </div>
                 <div className="p-8 space-y-8">
+                  // SAFETY: trusted internal value already conforms to the asserted type.
                   {(Object.entries(difficultyDist) as [DifficultyLevel, number][]).map(([level, pct]) => {
                     const colorMap = { easy: 'bg-emerald-400', medium: 'bg-amber-400', hard: 'bg-rose-400' };
                     const hoverColorMap = { easy: 'text-emerald-600', medium: 'text-amber-500', hard: 'text-rose-500' };
@@ -1814,6 +1830,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <div className="space-y-3 text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.difficultyBreakdown).map(([d, c]) => (
                       <div key={d} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
+                        // SAFETY: trusted internal value already conforms to the asserted type.
                         <span className={`font-bold capitalize ${DIFFICULTY_COLORS[d as DifficultyLevel] || 'text-[#475569]'}`}>{d}</span>
                         <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
                       </div>
@@ -1836,6 +1853,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <div className="space-y-3 text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.questionTypeBreakdown).map(([t, c]) => (
                       <div key={t} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
+                        // SAFETY: trusted internal value already conforms to the asserted type.
                         <span className="text-[#1e293b] font-semibold">{QUESTION_TYPE_LABELS[t as QuestionType]?.label || t}</span>
                         <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
                       </div>

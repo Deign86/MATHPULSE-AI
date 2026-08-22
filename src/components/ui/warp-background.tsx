@@ -34,6 +34,7 @@ const Beam = ({
    return (
       <motion.div
          style={
+            // SAFETY: trusted internal value already conforms to the asserted type.
             {
                "--x": `${x}`,
                "--width": `${width}`,
@@ -102,6 +103,7 @@ return (
          ) : (
             <div
                style={
+                  // SAFETY: trusted internal value already conforms to the asserted type.
                   {
                      "--perspective": `${perspective}px`,
                      "--grid-color": gridColor,

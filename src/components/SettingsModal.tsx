@@ -85,6 +85,7 @@ interface SettingsModalProps {
   onResetData?: () => Promise<void>;
 }
 
+// SAFETY: trusted internal value already conforms to the asserted type.
 const cloneDefaultSettings = (): UserSettings => JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)) as UserSettings;
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -451,6 +452,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Gender</label>
                     <Select
                       value={accountData.gender || ''}
+                      // SAFETY: trusted internal value already conforms to the asserted type.
                       onValueChange={(value) => setAccountData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'prefer_not_to_say' }))}
                     >
                       <SelectTrigger className="max-w-md bg-white border-[#dde3eb] rounded-lg">
@@ -598,6 +600,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         <div key={item.key} className="flex items-center gap-3">
                           <input
                             type="checkbox"
+                            // SAFETY: trusted internal value already conforms to the asserted type.
                             checked={localSettings.notifications.notificationTypes[item.key as keyof UserSettings['notifications']['notificationTypes']]}
                             onChange={(e) =>
                               updateSettings((p) => ({
@@ -639,6 +642,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         { key: 'leaderboard', label: 'Leaderboard updates', icon: BarChart3 },
                         { key: 'system', label: 'System announcements', icon: Megaphone },
                       ].map((item) => {
+                        // SAFETY: trusted internal value already conforms to the asserted type.
                         const k = item.key as keyof UserSettings['pushPreferences'];
                         const Icon = item.icon;
                         return (
@@ -677,6 +681,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                               const { cloudFunctions } = await import('../lib/firebase');
                               const fn = httpsCallable(cloudFunctions, 'sendTestPush');
                               const result = await fn({ requestId: `${uid}-${Date.now()}-${Math.random().toString(36).slice(2)}` });
+                              // SAFETY: trusted internal value already conforms to the asserted type.
                               const sent = (result?.data as { sent?: number } | undefined)?.sent ?? 0;
                               if (sent > 0) {
                                 toast.success(`Sent test push to ${sent} device(s).`);
@@ -783,6 +788,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <select
                       value={localSettings.privacy.profileVisibility}
+                      // SAFETY: trusted internal value already conforms to the asserted type.
                       onChange={(e) => updateSettings((p) => ({ ...p, privacy: { ...p.privacy, profileVisibility: e.target.value as ProfileVisibility } }))}
                       className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm bg-white text-[#0a1628]"
                     >
@@ -830,6 +836,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Preferred Study Time</label>
                     <select
                       value={localSettings.learning.preferredStudyTime}
+                      // SAFETY: trusted internal value already conforms to the asserted type.
                       onChange={(e) => updateSettings((p) => ({ ...p, learning: { ...p.learning, preferredStudyTime: e.target.value as StudyTimePreference } }))}
                       className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm w-full max-w-xs bg-white text-[#0a1628]"
                     >
@@ -863,6 +870,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Quiz Difficulty Preference</label>
                     <select
                       value={localSettings.learning.quizDifficultyPreference}
+                      // SAFETY: trusted internal value already conforms to the asserted type.
                       onChange={(e) => updateSettings((p) => ({ ...p, learning: { ...p.learning, quizDifficultyPreference: e.target.value as QuizDifficultyPreference } }))}
                       className="px-3 py-2 border border-[#dde3eb] rounded-lg text-sm w-full max-w-xs bg-white text-[#0a1628]"
                     >

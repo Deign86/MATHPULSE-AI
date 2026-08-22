@@ -45,17 +45,21 @@ export async function getStudentRiskProfile(studentId: string): Promise<StudentR
 
   if (!docSnap.exists()) return null;
 
-  const data = docSnap.data() as Record<string, unknown>;
+  // SAFETY: managedStudents risk fields are written by this service to match StudentRiskProfile.
+  const data = docSnap.data() as Partial<
+    Pick<StudentRiskProfile, 'wri' | 'riskStatus' | 'weights' | 'diagnosticScore' | 'externalGradesAvg' | 'systemPerformanceAvg' | 'riskHistory' | 'riskRecalcNeeded'>
+    & { riskUpdatedAt?: Timestamp }
+  >;
   return {
-    wri: (data.wri as number) ?? null,
-    riskStatus: (data.riskStatus as StudentRiskProfile['riskStatus']) ?? null,
-    riskUpdatedAt: data.riskUpdatedAt ? (data.riskUpdatedAt as Timestamp).toDate() : null,
-    weights: (data.weights as WRIWeights) ?? { w1: 0.30, w2: 0.40, w3: 0.30 },
-    diagnosticScore: (data.diagnosticScore as number) ?? null,
-    externalGradesAvg: (data.externalGradesAvg as number) ?? null,
-    systemPerformanceAvg: (data.systemPerformanceAvg as number) ?? null,
-    riskHistory: (data.riskHistory as RiskHistoryEntry[]) ?? [],
-    riskRecalcNeeded: (data.riskRecalcNeeded as boolean) ?? false,
+    wri: data.wri ?? null,
+    riskStatus: data.riskStatus ?? null,
+    riskUpdatedAt: data.riskUpdatedAt ? data.riskUpdatedAt.toDate() : null,
+    weights: data.weights ?? { w1: 0.30, w2: 0.40, w3: 0.30 },
+    diagnosticScore: data.diagnosticScore ?? null,
+    externalGradesAvg: data.externalGradesAvg ?? null,
+    systemPerformanceAvg: data.systemPerformanceAvg ?? null,
+    riskHistory: data.riskHistory ?? [],
+    riskRecalcNeeded: data.riskRecalcNeeded ?? false,
   };
 }
 
@@ -72,6 +76,7 @@ export async function updateStudentRiskProfile(
 
   const historyEntry: RiskHistoryEntry = {
     wri: result.wri ?? 0,
+    // SAFETY: the backend computes risk_status values from the StudentRiskProfile union.
     riskStatus: result.risk_status as RiskHistoryEntry['riskStatus'],
     computedAt: new Date(),
     trigger,

@@ -8,8 +8,9 @@
  * 3 random locked achievements without repetition across renders.
  */
 
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, type DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { z } from 'zod';
 import { awardXP } from './gamificationService';
 import {
   ACHIEVEMENTS,
@@ -43,6 +44,13 @@ const SHUFFLE_POOL_SIZE = 3; // number of locked achievements to display
 const SHUFFLE_HISTORY = 6;   // don't repeat these recently shown IDs
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+// Schema-validated accessors for untyped Firestore snapshot fields.
+const numOf = (fallback: number) => z.number().catch(fallback);
+const num = numOf(0).parse;
+const levelOrOne = numOf(1).parse;
+const bool = z.boolean().catch(false).parse;
+const attemptsOf = z.array(z.object({ score: z.number() })).catch([]).parse;
 
 /** Seeded pseudo-random number generator (no external deps). */
 function seededRandom(seed: number): () => number {
@@ -90,8 +98,8 @@ export function getDailyShuffledAchievements(
  */
 export async function checkAndAwardAchievements(
   userId: string,
-  progressData: Record<string, unknown>,
-  userData: Record<string, unknown>,
+  progressData: DocumentData,
+  userData: DocumentData,
   eventType?: AchievementConditionType
 ): Promise<UnlockedAchievement[]> {
   // 1. Load currently unlocked IDs
@@ -99,6 +107,7 @@ export async function checkAndAwardAchievements(
   const unlockedMap = new Set<string>();
   if (achievementsDoc.exists()) {
     const data = achievementsDoc.data();
+    // SAFETY: the achievements field is only ever written by this service as UnlockedAchievement[].
     (data.achievements as UnlockedAchievement[]).forEach((a) => unlockedMap.add(a.id));
   }
 
@@ -113,8 +122,8 @@ export async function checkAndAwardAchievements(
 
   // 3. Evaluate conditions
   const newlyUnlocked: UnlockedAchievement[] = [];
-  const progress = progressData as Record<string, unknown>;
-  const user = userData as Record<string, unknown>;
+  const progress = progressData;
+  const user = userData;
 
   for (const achievement of candidates) {
     const earned = evaluateCondition(achievement, progress, user);
@@ -127,9 +136,11 @@ export async function checkAndAwardAchievements(
 
   // 4. Persist to Firestore
   if (newlyUnlocked.length > 0) {
-    const existing: UnlockedAchievement[] = achievementsDoc.exists()
-      ? (achievementsDoc.data().achievements as UnlockedAchievement[])
-      : [];
+    let existing: UnlockedAchievement[] = [];
+    if (achievementsDoc.exists()) {
+      // SAFETY: the achievements field is only ever written by this service as UnlockedAchievement[].
+      existing = achievementsDoc.data().achievements as UnlockedAchievement[];
+    }
 
     await setDoc(
       doc(db, 'achievements', userId),
@@ -149,15 +160,15 @@ export async function checkAndAwardAchievements(
 /** Evaluate whether a single achievement's condition is met. */
 function evaluateCondition(
   achievement: AchievementConfig,
-  progress: Record<string, unknown>,
-  user: Record<string, unknown>
+  progress: DocumentData,
+  user: DocumentData
 ): boolean {
   const { condition, threshold } = achievement;
 
   switch (condition) {
     // ── lesson_complete ──────────────────────────────────────────────────────
     case 'lesson_complete': {
-      const count = (progress.totalLessonsCompleted as number) || 0;
+      const count = num(progress.totalLessonsCompleted);
       return threshold !== undefined ? count >= threshold : count >= 1;
     }
 
@@ -165,110 +176,110 @@ function evaluateCondition(
     case 'perfect_score': {
       if (threshold !== undefined) {
         // Count how many quizzes have a perfect score
-        const attempts = (progress.quizAttempts as Array<{ score: number }>) || [];
+        const attempts = attemptsOf(progress.quizAttempts);
         return attempts.filter((q) => q.score === 100).length >= threshold;
       }
       // Single perfect score check
-      const attempts = (progress.quizAttempts as Array<{ score: number }>) || [];
+      const attempts = attemptsOf(progress.quizAttempts);
       return attempts.some((q) => q.score === 100);
     }
 
     // ── quiz_complete ───────────────────────────────────────────────────────
     case 'quiz_complete': {
-      const count = (progress.totalQuizzesCompleted as number) || 0;
+      const count = num(progress.totalQuizzesCompleted);
       return threshold !== undefined ? count >= threshold : count >= 1;
     }
 
     // ── mastery_10 (daily streak) ──────────────────────────────────────────
     case 'mastery_10': {
-      const streak = (user.dailyStreak as number) || 0;
+      const streak = num(user.dailyStreak);
       return threshold !== undefined ? streak >= threshold : streak >= 10;
     }
 
     // ── mastery_level ───────────────────────────────────────────────────────
     case 'mastery_level': {
-      const level = (user.level as number) || 1;
+      const level = levelOrOne(user.level);
       return threshold !== undefined ? level >= threshold : level >= 5;
     }
 
     // ── mastery_xp ─────────────────────────────────────────────────────────
     case 'mastery_xp': {
-      const totalXP = (user.totalXP as number) || 0;
+      const totalXP = num(user.totalXP);
       return totalXP >= (threshold ?? 5000);
     }
 
     // ── mastery_all_lessons ─────────────────────────────────────────────────
     case 'mastery_all_lessons': {
-      return (progress.allLessonsCompleted as boolean) || false;
+      return bool(progress.allLessonsCompleted);
     }
 
     // ── mastery_all_subjects ───────────────────────────────────────────────
     case 'mastery_all_subjects': {
-      return (progress.allSubjectsExplored as boolean) || false;
+      return bool(progress.allSubjectsExplored);
     }
 
     // ── mastery_assessment_perfect ─────────────────────────────────────────
     case 'mastery_assessment_perfect': {
-      return (progress.assessmentPerfect as boolean) || false;
+      return bool(progress.assessmentPerfect);
     }
 
     // ── mastery_max_level ─────────────────────────────────────────────────
     case 'mastery_max_level': {
-      const level = (user.level as number) || 1;
+      const level = levelOrOne(user.level);
       return level >= 100; // assuming level 100 is max
     }
 
     // ── battle_win ─────────────────────────────────────────────────────────
     case 'battle_win': {
-      const count = (progress.battleWins as number) || 0;
+      const count = num(progress.battleWins);
       return threshold !== undefined ? count >= threshold : count >= 1;
     }
 
     // ── battle_undefeated ──────────────────────────────────────────────────
     case 'battle_undefeated': {
-      const streak = (progress.battleWinStreak as number) || 0;
+      const streak = num(progress.battleWinStreak);
       return streak >= (threshold ?? 5);
     }
 
     // ── battle_comeback ───────────────────────────────────────────────────
     case 'battle_comeback': {
-      const count = (progress.battleComebackWins as number) || 0;
+      const count = num(progress.battleComebackWins);
       return count >= 1;
     }
 
     // ── speed_quiz ─────────────────────────────────────────────────────────
     case 'speed_quiz': {
       // Handled by quiz submission service — this is only checked on explicit speed events
-      const count = (progress.speedQuizWins as number) || 0;
+      const count = num(progress.speedQuizWins);
       return count >= 1;
     }
 
     // ── quiz_no_mistakes ─────────────────────────────────────────────────
     case 'quiz_no_mistakes': {
-      return (progress.quizNoMistakes as boolean) || false;
+      return bool(progress.quizNoMistakes);
     }
 
     // ── explore_* / social_* ───────────────────────────────────────────────
     case 'explore_profile_complete':
-      return (user.profileComplete as boolean) || false;
+      return bool(user.profileComplete);
 
     case 'explore_friend_added': {
-      const count = (progress.friendsAdded as number) || 0;
+      const count = num(progress.friendsAdded);
       return threshold !== undefined ? count >= threshold : count >= 1;
     }
 
     case 'explore_social': {
-      const count = (progress.friendsAdded as number) || 0;
+      const count = num(progress.friendsAdded);
       return count >= (threshold ?? 1);
     }
 
     case 'social_friend': {
-      const count = (progress.friendsAdded as number) || 0;
+      const count = num(progress.friendsAdded);
       return count >= (threshold ?? 1);
     }
 
     case 'social_contribution':
-      return (progress.contributionMade as boolean) || false;
+      return bool(progress.contributionMade);
 
     case 'social_xp': {
       // Top-10 leaderboard check — depends on getUserRank
@@ -276,7 +287,7 @@ function evaluateCondition(
     }
 
     case 'social_daily_return': {
-      const days = (progress.consecutiveDaysActive as number) || 0;
+      const days = num(progress.consecutiveDaysActive);
       return days >= (threshold ?? 3);
     }
 

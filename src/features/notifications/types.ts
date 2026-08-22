@@ -2,6 +2,10 @@
  * @file types.ts
  * Shared types for the notification feature.
  */
+import type { DocumentData } from 'firebase/firestore';
+
+/** Opaque Firestore passthrough bag for notification-specific fields. */
+export type NotificationMetadata = DocumentData;
 
 export type NotificationType =
   | 'achievement_unlocked'
@@ -26,7 +30,7 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: Date;
-  metadata?: Record<string, unknown>;
+  metadata?: NotificationMetadata;
   actionUrl?: string;
 }
 
@@ -35,6 +39,6 @@ export interface NotificationPayload {
   type: NotificationType;
   title: string;
   message: string;
-  metadata?: Record<string, unknown>;
+  metadata?: NotificationMetadata;
   actionUrl?: string;
 }

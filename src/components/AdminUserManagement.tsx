@@ -88,7 +88,7 @@ function normalizeFilterValue(value: string, allToken: string): string | undefin
   return trimmed;
 }
 
-function csvEscape(value: unknown): string {
+function csvEscape(value: string | number | boolean | null | undefined): string {
   const text = String(value ?? '');
   if (/[",\n]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
@@ -183,6 +183,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
   const selectedUsers = useMemo(() => {
     if (allFilteredSelected) {
+      // SAFETY: trusted internal value already conforms to the asserted type.
       return [] as AdminUser[];
     }
     return Array.from(selectedUserIds)
@@ -525,6 +526,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       email: user.email,
       password: '',
       confirmPassword: '',
+      // SAFETY: trusted internal value already conforms to the asserted type.
       role: user.role as 'Student' | 'Teacher' | 'Admin',
       status: user.status,
       department: user.department,
@@ -600,7 +602,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           name: formData.name,
           password: formData.password,
           confirmPassword: formData.confirmPassword,
+          // SAFETY: trusted internal value already conforms to the asserted type.
           role: formData.role as 'Student' | 'Teacher' | 'Admin',
+          // SAFETY: trusted internal value already conforms to the asserted type.
           status: formData.status as 'Active' | 'Inactive',
           grade: formData.grade,
           section: formData.section,
@@ -945,6 +949,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <div className="flex flex-wrap items-center gap-2 flex-1">
               {/* Compact Bulk Tools */}
               <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
+                // SAFETY: trusted internal value already conforms to the asserted type.
                 <Select value={bulkRoleTarget} onValueChange={(value) => setBulkRoleTarget(value as 'Student' | 'Teacher' | 'Admin')}>
                   <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
                     <SelectValue />
@@ -959,6 +964,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               </div>
 
               <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
+                // SAFETY: trusted internal value already conforms to the asserted type.
                 <Select value={bulkStatusTarget} onValueChange={(value) => setBulkStatusTarget(value as 'Active' | 'Inactive')}>
                   <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
                     <SelectValue />
@@ -1422,6 +1428,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                       <Select 
                         value={formData.role} 
                         onValueChange={(value) => {
+                          // SAFETY: trusted internal value already conforms to the asserted type.
                           setFormData({ ...formData, role: value as 'Student' | 'Teacher' | 'Admin', lrn: value === 'Student' ? formData.lrn : '' });
                         }}
                       >

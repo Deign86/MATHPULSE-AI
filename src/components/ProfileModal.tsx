@@ -246,6 +246,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                         <Select
                           value={editedData.gender || ''}
                           onValueChange={(value) => {
+                            // SAFETY: trusted internal value already conforms to the asserted type.
                             setEditedData({ ...editedData, gender: value ? (value as 'male' | 'female' | 'prefer_not_to_say') : undefined });
                           }}
                           disabled={!isEditing}

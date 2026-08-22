@@ -66,6 +66,7 @@ const PodiumAvatar: React.FC<{
               alt={name}
               className="w-full h-full object-cover"
               onError={(e) => {
+                // SAFETY: trusted internal value already conforms to the asserted type.
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />

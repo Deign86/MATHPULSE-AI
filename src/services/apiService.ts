@@ -329,6 +329,11 @@ export interface UploadResponse {
   }[];
 }
 
+/** JSON-compatible field values exchanged with the backend API. */
+type ApiFieldValue = string | number | boolean | null | { toDate?: () => Date } | ApiFieldValue[];
+/** Free-form API payload object (metadata, checks, export rows). */
+interface ApiPayloadObject { [field: string]: ApiFieldValue }
+
 export interface RiskRefreshMonitorJob {
   refreshId: string;
   status: 'queued' | 'success' | 'failed' | 'unknown';
@@ -339,7 +344,7 @@ export interface RiskRefreshMonitorJob {
   completedAtEpoch?: number | null;
   durationMs?: number | null;
   updatedAtIso?: string | null;
-  metadata?: Record<string, unknown>;
+  metadata?: ApiPayloadObject;
 }
 
 export interface RiskRefreshMonitorStats {
@@ -500,7 +505,7 @@ export interface LessonSelfValidationReport {
   passed: boolean;
   score: number;
   issues: string[];
-  checks: Record<string, unknown>;
+  checks: ApiPayloadObject;
 }
 
 export interface LessonPlanBlock {
@@ -606,7 +611,7 @@ export interface AsyncTaskStatusResponse {
   progressPercent?: number;
   progressStage?: string;
   progressMessage?: string | null;
-  result?: Record<string, unknown> | null;
+  result?: ApiPayloadObject | null;
   error?: unknown;
 }
 
@@ -667,7 +672,7 @@ export interface ImportGroundedFeedbackRequest {
   status: 'success' | 'failed' | 'skipped';
   classSectionId?: string;
   className?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: ApiPayloadObject;
 }
 
 export interface ImportGroundedFeedbackResponse {
@@ -742,7 +747,7 @@ export interface ImportGroundedAccessAuditItem {
   method: string;
   classSectionId?: string | null;
   createdAtIso?: string | null;
-  metadata: Record<string, unknown>;
+  metadata: ApiPayloadObject;
 }
 
 export interface ImportGroundedAccessAuditSummary {
@@ -917,7 +922,7 @@ export interface AdminUpdateUserApiResponse {
   success: boolean;
   uid: string;
   message: string;
-  updatesApplied: Record<string, unknown>;
+  updatesApplied: ApiPayloadObject;
   warnings: string[];
 }
 
@@ -965,7 +970,7 @@ export interface AdminBulkActionApiResponse {
   warnings: string[];
   export?: {
     format: string;
-    rows: Record<string, unknown>[];
+    rows: ApiPayloadObject[];
   } | null;
 }
 
@@ -1442,37 +1447,47 @@ const FALLBACK_CALCULATOR: CalculatorResponse = {
 
 // ─── Response validators ─────────────────────────────────────
 
-function validateChatResponse(data: unknown): data is ChatResponse {
-  return typeof data === 'object' && data !== null && typeof (data as ChatResponse).response === 'string';
+const isObj = <V,>(v: V | null | undefined): v is V & object =>
+  v !== null && typeof v === 'object';
+const isString = <V,>(v: V | null | undefined): v is V & string => typeof v === 'string';
+const isNumber = <V,>(v: V | null | undefined): v is V & number => typeof v === 'number';
+
+function validateChatResponse(cause: unknown): cause is ChatResponse {
+  if (!isObj(cause)) return false;
+  // SAFETY: backend chat payloads are untyped JSON; only the response field is consumed.
+  return isString((cause as ChatResponse).response);
 }
 
-function validateRiskPrediction(data: unknown): data is RiskPrediction {
-  if (typeof data !== 'object' || data === null) return false;
-  const d = data as RiskPrediction;
-  return typeof d.riskLevel === 'string' && typeof d.confidence === 'number';
+function validateRiskPrediction(cause: unknown): cause is RiskPrediction {
+  if (!isObj(cause)) return false;
+  // SAFETY: prediction payloads are untyped JSON; fields validated before use.
+  const d = cause as RiskPrediction;
+  return isString(d.riskLevel) && isNumber(d.confidence);
 }
 
-function validateQuizResponse(data: unknown): data is QuizGenerationResponse {
-  if (typeof data !== 'object' || data === null) return false;
-  const d = data as QuizGenerationResponse;
-  return Array.isArray(d.questions) && typeof d.totalPoints === 'number';
+function validateQuizResponse(cause: unknown): cause is QuizGenerationResponse {
+  if (!isObj(cause)) return false;
+  // SAFETY: quiz payloads are untyped JSON; fields validated before use.
+  const d = cause as QuizGenerationResponse;
+  return Array.isArray(d.questions) && isNumber(d.totalPoints);
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function extractTaskErrorMessage(error: unknown): string {
-  if (!error) return 'Generation task failed without a detailed error.';
-  if (typeof error === 'string') return error;
-  if (typeof error === 'object' && error !== null) {
-    const maybeRecord = error as Record<string, unknown>;
-    if (typeof maybeRecord.message === 'string') return maybeRecord.message;
+function extractTaskErrorMessage(cause: unknown): string {
+  if (!cause) return 'Generation task failed without a detailed error.';
+  if (isString(cause)) return cause;
+  if (isObj(cause)) {
+    // SAFETY: failure envelopes are untyped JSON; only the message field is read.
+    const maybeRecord = cause as { message?: string };
+    if (isString(maybeRecord.message)) return maybeRecord.message;
     try {
       return JSON.stringify(maybeRecord);
     } catch {
       return 'Generation task failed due to an unknown error.';
     }
   }
-  return String(error);
+  return String(cause);
 }
 
 // ─── Public API ──────────────────────────────────────────────
@@ -1518,14 +1533,14 @@ export const apiService = {
     const requestPayload: ChatRequest = {
       message,
       history: history ?? [],
-      ...(options?.sessionId ? { sessionId: options.sessionId } : {}),
-      ...(options?.expectedEndMarker ? { expectedEndMarker: options.expectedEndMarker } : {}),
-      ...(options?.completionMode ? { completionMode: options.completionMode } : {}),
-      ...(typeof options?.continuationMaxRounds === 'number'
-        ? { continuationMaxRounds: Math.max(0, Math.floor(options.continuationMaxRounds)) }
-        : {}),
-      ...(options?.moduleContext ? { moduleContext: options.moduleContext } : {}),
+      moduleContext: options?.moduleContext,
     };
+    if (options?.sessionId) requestPayload.sessionId = options.sessionId;
+    if (options?.expectedEndMarker) requestPayload.expectedEndMarker = options.expectedEndMarker;
+    if (options?.completionMode) requestPayload.completionMode = options.completionMode;
+    if (isNumber(options?.continuationMaxRounds)) {
+      requestPayload.continuationMaxRounds = Math.max(0, Math.floor(options.continuationMaxRounds));
+    }
 
     if (onChunk) {
       const streamController = new AbortController();
@@ -1651,8 +1666,9 @@ export const apiService = {
             if (eventType === 'chunk') {
               let chunk = eventData;
               try {
+                // SAFETY: SSE payloads are backend JSON; only the chunk field is read.
                 const parsed = JSON.parse(eventData) as { chunk?: string };
-                if (typeof parsed?.chunk === 'string') {
+                if (isString(parsed?.chunk)) {
                   chunk = parsed.chunk;
                 }
               } catch {
@@ -1667,8 +1683,9 @@ export const apiService = {
             } else if (eventType === 'error') {
               let errorMessage = 'Streaming failed on server.';
               try {
+                // SAFETY: SSE error payloads are backend JSON; only detail is read.
                 const parsed = JSON.parse(eventData) as { detail?: string };
-                if (typeof parsed?.detail === 'string' && parsed.detail.trim()) {
+                if (isString(parsed?.detail) && parsed.detail.trim()) {
                   errorMessage = parsed.detail;
                 }
               } catch {
@@ -2362,9 +2379,10 @@ export const apiService = {
         pollIntervalMs: 1_500,
       });
       const payload = task.result;
-      if (!payload || typeof payload !== 'object') {
+      if (!isObj(payload)) {
         throw new Error('Lesson generation completed without a valid result payload.');
       }
+      // SAFETY: async lesson-plan task payloads mirror the synchronous LessonPlanResponse contract.
       return payload as unknown as LessonPlanResponse;
     }
 
@@ -2404,13 +2422,13 @@ export const apiService = {
         onProgress: options?.onProgress,
       });
       const payload = task.result;
-      if (!payload || typeof payload !== 'object') {
+      if (!isObj(payload)) {
         throw new Error('Quiz generation completed without a valid result payload.');
       }
       if (!validateQuizResponse(payload)) {
         throw new Error('Invalid quiz generation response from async task payload.');
       }
-      return payload as unknown as QuizGenerationResponse;
+      return payload;
     }
 
     const result = await apiFetch<QuizGenerationResponse>(
@@ -2558,13 +2576,13 @@ export const apiService = {
 
   // ─── Automation Engine ──────────────────────────────────────
 
-  /** Trigger diagnostic completion automation */
+/** Trigger diagnostic completion automation */
   async automationDiagnosticCompleted(payload: {
     lrn: string;
     results: { subject: string; score: number }[];
     gradeLevel?: string;
     questionBreakdown?: Record<string, { correct: boolean }[]>;
-  }): Promise<unknown> {
+  }): Promise<ApiPayloadObject> {
     validateRequired('/api/automation/diagnostic-completed', {
       lrn: payload.lrn,
       results: payload.results,
@@ -2585,7 +2603,7 @@ export const apiService = {
     totalQuestions: number;
     correctAnswers: number;
     timeSpentSeconds: number;
-  }): Promise<unknown> {
+  }): Promise<ApiPayloadObject> {
     validateRequired('/api/automation/quiz-submitted', {
       lrn: payload.lrn,
       quizId: payload.quizId,
@@ -2605,7 +2623,7 @@ export const apiService = {
     email: string;
     gradeLevel?: string;
     teacherId?: string;
-  }): Promise<unknown> {
+  }): Promise<ApiPayloadObject> {
     validateRequired('/api/automation/student-enrolled', {
       lrn: payload.lrn,
       name: payload.name,
@@ -2623,7 +2641,7 @@ export const apiService = {
     teacherId: string;
     students: Record<string, unknown>[];
     columnMapping: Record<string, string>;
-  }): Promise<unknown> {
+  }): Promise<ApiPayloadObject> {
     validateRequired('/api/automation/data-imported', {
       teacherId: payload.teacherId,
       students: payload.students,
@@ -2643,7 +2661,7 @@ export const apiService = {
     contentId: string;
     subjectId?: string;
     details?: string;
-  }): Promise<unknown> {
+  }): Promise<ApiPayloadObject> {
     validateRequired('/api/automation/content-updated', {
       adminId: payload.adminId,
       action: payload.action,
@@ -2833,6 +2851,21 @@ export const apiService = {
   },
 };
 
+/** RAG sources arrive with snake_case aliases beside the camelCase contract fields. */
+function normalizeCurriculumSource(source: CurriculumSource): CurriculumSource {
+  // SAFETY: backend emits snake_case aliases (source_file, content_domain, chunk_type) on each source.
+  const raw = source as CurriculumSource & {
+    source_file?: string;
+    content_domain?: string;
+    chunk_type?: string;
+  };
+  const out = { ...source };
+  if (raw.source_file) out.sourceFile = raw.source_file;
+  if (raw.content_domain) out.contentDomain = raw.content_domain;
+  if (raw.chunk_type) out.chunkType = raw.chunk_type;
+  return out;
+}
+
 // Fetch a curriculum-grounded lesson explanation
 export async function getCurriculumGroundedLesson(
   topic: string,
@@ -2860,13 +2893,7 @@ export async function getCurriculumGroundedLesson(
     }),
   });
 
-  const sources = (result.sources || []).map((source) => ({
-    ...source,
-    sourceFile: (source as unknown as { source_file?: string }).source_file || source.sourceFile,
-    content: (source as unknown as { content?: string }).content || source.content,
-    contentDomain: (source as unknown as { content_domain?: string }).content_domain || source.contentDomain,
-    chunkType: (source as unknown as { chunk_type?: string }).chunk_type || source.chunkType,
-  }));
+  const sources = (result.sources || []).map(normalizeCurriculumSource);
 
   return {
     explanation: result.explanation,
@@ -2892,10 +2919,7 @@ export async function generateGroundedProblem(
     body: JSON.stringify({ topic, subject, quarter, difficulty }),
   });
 
-  const sources = (result.sources || []).map((source) => ({
-    ...source,
-    sourceFile: (source as unknown as { source_file?: string }).source_file || source.sourceFile,
-  }));
+  const sources = (result.sources || []).map(normalizeCurriculumSource);
 
   return {
     problem: result.problem,

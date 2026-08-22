@@ -8,8 +8,9 @@ import {
   type MessagePayload,
   type Messaging,
 } from 'firebase/messaging';
-import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where, serverTimestamp, type DocumentData } from 'firebase/firestore';
 import firebaseApp, { db } from '../lib/firebase';
+import { z } from 'zod';
 
 export type FCMPlatform = 'web';
 export type PushStatus = 'unsupported' | 'default' | 'granted' | 'registering' | 'enabled' | 'denied' | 'error';
@@ -43,11 +44,13 @@ let sessionId: string | null = null;
 let currentToken: { userId: string; token: string } | null = null;
 
 /** Accept only app-relative routes. Exported for SW-contract and hook tests. */
-export function safeInternalRoute(value: unknown): string | null {
-  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return null;
-  if (/[\\\r\n]/.test(value) || /[a-z][a-z\d+.-]*:/i.test(value)) return null;
+export function safeInternalRoute<V>(value: V): string | null {
+  const parsedRoute = z.string().safeParse(value);
+  if (!parsedRoute.success || !parsedRoute.data.startsWith('/') || parsedRoute.data.startsWith('//')) return null;
+  const route = parsedRoute.data;
+  if (/[\\\r\n]/.test(route) || /[a-z][a-z\d+.-]*:/i.test(route)) return null;
   try {
-    const parsed = new URL(value, 'https://mathpulse.invalid');
+    const parsed = new URL(route, 'https://mathpulse.invalid');
     if (parsed.origin !== 'https://mathpulse.invalid') return null;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
@@ -63,7 +66,7 @@ export function pushStatus(permission: NotificationPermission | undefined, capab
 }
 
 export function sha256Hex(value: string): Promise<string> {
-  if (typeof crypto === 'undefined' || !crypto.subtle) return Promise.reject(new Error('Web Crypto is unavailable'));
+  if (!('crypto' in globalThis) || !crypto.subtle) return Promise.reject(new Error('Web Crypto is unavailable'));
   return crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)).then((buffer) =>
     Array.from(new Uint8Array(buffer), (byte) => byte.toString(16).padStart(2, '0')).join(''),
   );
@@ -74,7 +77,7 @@ export function getSessionId(): string {
   try {
     const existing = sessionStorage.getItem(SESSION_KEY);
     if (existing) return (sessionId = existing);
-    const generated = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const generated = crypto.randomUUID instanceof Function ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
     sessionStorage.setItem(SESSION_KEY, generated);
     return (sessionId = generated);
   } catch {
@@ -83,11 +86,11 @@ export function getSessionId(): string {
 }
 
 export function getPushCapability(): PushCapability {
-  if (typeof window === 'undefined') return { supported: false, reason: 'unknown' };
+  if (!('window' in globalThis)) return { supported: false, reason: 'unknown' };
   if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
     return { supported: false, reason: 'secure-context' };
   }
-  if (typeof Notification === 'undefined') return { supported: false, reason: 'notification' };
+  if (!('Notification' in globalThis)) return { supported: false, reason: 'notification' };
   if (!('serviceWorker' in navigator)) return { supported: false, reason: 'service-worker' };
   if (!import.meta.env.VITE_FIREBASE_VAPID_KEY) return { supported: false, reason: 'vapid' };
   return { supported: true };
@@ -114,7 +117,7 @@ async function getMessagingIfSupported(): Promise<Messaging | null> {
 export function ensureFirebaseMessagingServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (registrationPromise) return registrationPromise;
   registrationPromise = (async () => {
-    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null;
+    if (!('navigator' in globalThis) || !('serviceWorker' in navigator)) return null;
     try {
       return await navigator.serviceWorker.getRegistration(FCM_SW_SCOPE) ||
         await navigator.serviceWorker.register(FCM_SW_URL, { scope: FCM_SW_SCOPE });
@@ -127,7 +130,7 @@ export function ensureFirebaseMessagingServiceWorker(): Promise<ServiceWorkerReg
 }
 
 function browserName(): string {
-  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  const ua = 'navigator' in globalThis ? navigator.userAgent : '';
   if (/Edg\//.test(ua)) return 'Edge';
   if (/Chrome\//.test(ua)) return 'Chrome';
   if (/Firefox\//.test(ua)) return 'Firefox';
@@ -139,9 +142,9 @@ async function persistToken(userId: string, token: string): Promise<void> {
   const id = await sha256Hex(token);
   const tokenRef = doc(db, 'users', userId, 'fcmTokens', id);
   const previous = await getDoc(tokenRef).catch(() => null);
-  const record: Record<string, unknown> = {
+  const record: DocumentData = {
     token, userId, platform: 'web', browser: browserName(),
-    userAgent: typeof navigator === 'undefined' ? '' : navigator.userAgent,
+    userAgent: 'navigator' in globalThis ? navigator.userAgent : '',
     active: true, activeSession: getSessionId(), updatedAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
   };
   if (!previous?.exists()) record.createdAt = serverTimestamp();

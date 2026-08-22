@@ -8,8 +8,10 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  type DocumentData,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { z } from 'zod';
 
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskCategory = 'system' | 'custom';
@@ -28,41 +30,60 @@ export interface TaskRecord {
   updatedAt: Date;
 }
 
-const toDate = (value: unknown): Date => {
+/** Firestore timestamp-like values accepted by toDate. */
+const timestampLikeValue = z.looseObject({
+  toDate: z.instanceof(Function).optional(),
+  seconds: z.number().optional(),
+});
+
+const toDate = <V>(value: V): Date => {
   if (value instanceof Date) return value;
-  if (typeof value === 'number') return new Date(value);
-  if (typeof value === 'string') {
-    const parsed = Date.parse(value);
+
+  const asNumber = z.number().safeParse(value);
+  if (asNumber.success) return new Date(asNumber.data);
+
+  const asString = z.string().safeParse(value);
+  if (asString.success) {
+    const parsed = Date.parse(asString.data);
     return Number.isNaN(parsed) ? new Date() : new Date(parsed);
   }
-  if (typeof value === 'object' && value) {
-    const record = value as { toDate?: () => Date; seconds?: number };
-    if (typeof record.toDate === 'function') return record.toDate();
-    if (typeof record.seconds === 'number') return new Date(record.seconds * 1000);
-  }
+
+  const record = timestampLikeValue.safeParse(value);
+  if (record.success && record.data.toDate instanceof Function) return record.data.toDate();
+  if (record.success && record.data.seconds !== undefined) return new Date(record.data.seconds * 1000);
   return new Date();
 };
 
-const mapTask = (id: string, data: Record<string, unknown>): TaskRecord => ({
-  id,
-  userId: typeof data.userId === 'string' ? data.userId : '',
-  title: typeof data.title === 'string' ? data.title : 'Untitled Task',
-  description: typeof data.description === 'string' ? data.description : '',
-  dueDate: toDate(data.dueDate),
-  priority:
-    data.priority === 'high' || data.priority === 'medium' || data.priority === 'low'
-      ? data.priority
-      : 'medium',
-  category: data.category === 'system' || data.category === 'custom' ? data.category : 'custom',
-  status: data.status === 'completed' ? 'completed' : 'todo',
-  createdAt: toDate(data.createdAt),
-  updatedAt: toDate(data.updatedAt),
+/** tasks collection document fields read by mapTask; parsing never throws. */
+const taskDocContract = z.looseObject({
+  userId: z.string().catch(''),
+  title: z.string().catch('Untitled Task'),
+  description: z.string().catch(''),
+  priority: z.enum(['high', 'medium', 'low']).catch('medium'),
+  category: z.enum(['system', 'custom']).catch('custom'),
+  status: z.string().catch('todo'),
 });
+
+const mapTask = (id: string, data: DocumentData): TaskRecord => {
+  const parsed = taskDocContract.parse(data);
+  return {
+    id,
+    userId: parsed.userId,
+    title: parsed.title,
+    description: parsed.description,
+    dueDate: toDate(data.dueDate),
+    priority: parsed.priority,
+    category: parsed.category,
+    status: parsed.status === 'completed' ? 'completed' : 'todo',
+    createdAt: toDate(data.createdAt),
+    updatedAt: toDate(data.updatedAt),
+  };
+};
 
 export const getUserTasks = async (userId: string): Promise<TaskRecord[]> => {
   const taskQuery = query(collection(db, 'tasks'), where('userId', '==', userId));
   const snap = await getDocs(taskQuery);
-  const tasks = snap.docs.map((entry) => mapTask(entry.id, entry.data() as Record<string, unknown>));
+  const tasks = snap.docs.map((entry) => mapTask(entry.id, entry.data()));
   tasks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   return tasks;
 };
@@ -83,7 +104,7 @@ export const createTask = async (
     dueDate,
     priority,
     category,
-    status: 'todo' as TaskStatus,
+    status: 'todo' satisfies TaskStatus,
   };
 
   const ref = await addDoc(collection(db, 'tasks'), {
@@ -115,12 +136,12 @@ export const updateTask = async (
   taskId: string,
   updates: Partial<Pick<TaskRecord, 'title' | 'description' | 'dueDate' | 'priority' | 'category' | 'status'>>,
 ): Promise<void> => {
-  const payload: Record<string, unknown> = {
+  const payload: DocumentData = {
     updatedAt: serverTimestamp(),
   };
 
-  if (typeof updates.title === 'string') payload.title = updates.title.trim();
-  if (typeof updates.description === 'string') payload.description = updates.description.trim();
+  if (updates.title !== undefined) payload.title = updates.title.trim();
+  if (updates.description !== undefined) payload.description = updates.description.trim();
   if (updates.dueDate instanceof Date) payload.dueDate = updates.dueDate;
   if (updates.priority) payload.priority = updates.priority;
   if (updates.category) payload.category = updates.category;

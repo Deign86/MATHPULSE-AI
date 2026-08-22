@@ -21,7 +21,7 @@ interface SupplementalBannerProps {
 
 // ─── Supplemental material links by subject ─────────────────
 
-const SUPPLEMENTAL_RESOURCES: Record<string, { label: string; description: string; icon: React.ReactNode }[]> = {
+const SUPPLEMENTAL_RESOURCES = {
   'General Mathematics': [
     { label: 'Functions Deep Dive', description: 'Interactive review of function types and graphs', icon: <TrendingUp size={14} /> },
     { label: 'Business Math Basics', description: 'Simple & compound interest practice', icon: <BookOpen size={14} /> },

@@ -36,7 +36,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
 
   if (!student) return null;
 
-  const achievementIconMap: Record<string, React.ReactNode> = {
+  const achievementIconMap = {
     trophy: <Trophy size={24} className="text-rose-500" />,
     flame: <Flame size={24} className="text-orange-500" />,
     star: <Star size={24} className="text-rose-400" />,

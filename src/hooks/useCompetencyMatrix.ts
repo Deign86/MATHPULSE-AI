@@ -262,6 +262,7 @@ function buildChartFromRawData(
 
     validModules.forEach((mod) => {
       const mp = moduleProgress[mod.id];
+      // SAFETY: fetchQuizResults returns the Firestore quiz-result records computeModuleScores consumes.
       const scores = computeModuleScores(
         mod.id,
         quizResults as Parameters<typeof computeModuleScores>[1],
@@ -289,6 +290,7 @@ function buildChartFromRawData(
 
   validModules.forEach((mod) => {
     const mp = moduleProgress[mod.id];
+    // SAFETY: fetchQuizResults returns the Firestore quiz-result records computeModuleScores consumes.
     const scores = computeModuleScores(
       mod.id,
       quizResults as Parameters<typeof computeModuleScores>[1],
@@ -300,6 +302,7 @@ function buildChartFromRawData(
         moduleTitle: mod.title,
         lessonsCompleted: [],
         quizzesCompleted: [],
+        // SAFETY: the fallback matches the Firestore module-progress record shape.
       } as Parameters<typeof computeModuleScores>[2]),
       validModules,
     );
@@ -324,7 +327,10 @@ function buildChartFromRawData(
 // ─── Helpers to derive data from progress document ────────────────────────────
 
 /** Maps curriculum module IDs to radar chart module IDs */
-const CURRICULUM_TO_MODULE: Record<string, string> = {
+interface CurriculumModuleMap {
+  [curriculumId: string]: string;
+}
+const CURRICULUM_TO_MODULE: CurriculumModuleMap = {
   'gm-q1-functions-graphs': 'gm-1',
   'gm-q1-patterns-sequences-series': 'gm-1',
   'gm-q1-business-finance': 'gm-2',
@@ -397,10 +403,15 @@ function buildQuizResultsFromProgress(
       totalQuestions: a.answers?.length || 0,
       correctAnswers: a.answers?.filter((ans) => ans.isCorrect).length || 0,
       questionType: 'multiple_choice' as const,
-      timestamp: a.completedAt instanceof Date ? a.completedAt : new Date(a.completedAt as unknown as string),
+      timestamp: a.completedAt instanceof Date ? a.completedAt : new Date(String(a.completedAt)),
       timeSpent: a.timeSpent || 0,
     } satisfies FirestoreQuizResult;
   });
+}
+
+/** Module progress records keyed by radar-chart module ID. */
+interface ModuleProgressMap {
+  [moduleId: string]: FirestoreModuleProgress;
 }
 
 /**
@@ -408,8 +419,9 @@ function buildQuizResultsFromProgress(
  */
 function buildModuleProgressFromProgress(
   progress: UserProgress,
-): Record<string, FirestoreModuleProgress> {
-  const result: Record<string, FirestoreModuleProgress> = {};
+): ModuleProgressMap {
+  // SAFETY: keys are dynamic curriculum module IDs; values are normalized FirestoreModuleProgress records.
+  const result = {} as ModuleProgressMap;
 
   if (!progress.subjects) return result;
 
@@ -433,7 +445,7 @@ function buildModuleProgressFromProgress(
       existing.sessionsCompleted += (mp.lessonsCompleted?.length || 0) + (mp.quizzesCompleted?.length || 0);
       existing.lessonsCompleted.push(...(mp.lessonsCompleted || []));
       existing.quizzesCompleted.push(...(mp.quizzesCompleted || []));
-      const lastAccess = mp.lastAccessedAt instanceof Date ? mp.lastAccessedAt : new Date(mp.lastAccessedAt as unknown as string);
+      const lastAccess = mp.lastAccessedAt instanceof Date ? mp.lastAccessedAt : new Date(String(mp.lastAccessedAt));
       if (lastAccess > existing.lastActive) existing.lastActive = lastAccess;
     }
   }

@@ -12,6 +12,7 @@ import {
 import { onDisconnect, ref as rtdbRef, serverTimestamp as rtdbServerTimestamp, set as rtdbSet } from 'firebase/database';
 import { httpsCallable } from 'firebase/functions';
 import { auth, cloudFunctions, db, realtimeDb } from '../lib/firebase';
+import { z } from 'zod';
 import {
   QuizBattleLifecycleEventType,
   QuizBattleLifecycleState,
@@ -225,7 +226,12 @@ type LocalQuizBattleStore = {
   queueStatus: QuizBattleQueueJoinResponse['status'];
 };
 
-const isBrowser = typeof window !== 'undefined';
+const isBrowser = 'window' in globalThis;
+
+/** Shape of Firebase callable errors we care about; parsing never throws. */
+const callableErrorContract = z
+  .looseObject({ code: z.string().optional(), message: z.string().optional() })
+  .catch({});
 
 const isDevLocalFallbackEnabled = (): boolean => {
   return isBrowser && Boolean(import.meta.env.DEV);
@@ -257,6 +263,7 @@ const readLocalStore = (userId: string): LocalQuizBattleStore => {
     const raw = window.localStorage.getItem(getLocalStoreKey(userId));
     if (!raw) return emptyStore;
 
+    // SAFETY: the fallback store is only written by this module as Partial<LocalQuizBattleStore>.
     const parsed = JSON.parse(raw) as Partial<LocalQuizBattleStore>;
 
     const history = Array.isArray(parsed.history)
@@ -297,16 +304,15 @@ const writeLocalStore = (userId: string, store: LocalQuizBattleStore): void => {
   }
 };
 
-const getFallbackCode = (error: unknown): string => {
-  const asRecord = (error as Record<string, unknown>) || {};
-  const codeValue = typeof asRecord.code === 'string' ? asRecord.code : '';
+const getFallbackCode = <E>(error: E): string => {
+  const codeValue = callableErrorContract.parse(error).code || '';
 
   if (!codeValue) return '';
 
   return codeValue.startsWith('functions/') ? codeValue.replace('functions/', '') : codeValue;
 };
 
-const shouldUseLocalFallbackForError = (error: unknown): boolean => {
+const shouldUseLocalFallbackForError = <E>(error: E): boolean => {
   if (!isDevLocalFallbackEnabled()) {
     return false;
   }
@@ -316,13 +322,9 @@ const shouldUseLocalFallbackForError = (error: unknown): boolean => {
     return true;
   }
 
-  const asRecord = (error as Record<string, unknown>) || {};
+  const parsedError = callableErrorContract.parse(error);
   const message = (
-    typeof asRecord.message === 'string'
-      ? asRecord.message
-      : error instanceof Error
-        ? error.message
-        : ''
+    parsedError.message ?? (error instanceof Error ? error.message : '')
   ).toLowerCase();
 
   if (!message) {
@@ -342,10 +344,17 @@ const randomInRange = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
+interface SimulatedBotScore {
+  scoreFor: number;
+  scoreAgainst: number;
+  accuracy: number;
+  averageResponseMs: number;
+}
+
 const computeSimulatedBotScore = (
   rounds: number,
   difficulty: QuizBattleSetupConfig['botDifficulty'],
-): { scoreFor: number; scoreAgainst: number; accuracy: number; averageResponseMs: number } => {
+): SimulatedBotScore => {
   const cappedRounds = Math.max(3, rounds);
   const difficultyPenalty =
     difficulty === 'easy' ? 0 : difficulty === 'medium' ? 1 : difficulty === 'hard' ? 2 : 1;
@@ -586,16 +595,15 @@ export const disconnectQuizBattlePresence = async (
   }
 };
 
-const mapCallableErrorMessage = (operation: string, error: unknown): string => {
+const mapCallableErrorMessage = <E>(operation: string, error: E): string => {
   const fallback = `Unable to continue while ${operation}. Please try again.`;
 
   if (error instanceof Error && error.message.startsWith('Timed out while')) {
     return error.message;
   }
 
-  const asRecord = (error as Record<string, unknown>) || {};
   const normalizedCode = getFallbackCode(error);
-  const messageValue = typeof asRecord.message === 'string' ? asRecord.message.trim() : '';
+  const messageValue = (callableErrorContract.parse(error).message || '').trim();
 
   if (normalizedCode === 'unauthenticated') {
     return 'Your session has expired. Sign in again before starting a battle.';
@@ -657,20 +665,28 @@ const invokeWithTimeout = async <T>(
   }
 };
 
-const parseDateValue = (value: unknown): Date => {
+/** Firestore timestamp-like shapes accepted by parseDateValue. */
+const timestampLikeValue = z.looseObject({
+  toDate: z.instanceof(Function).optional(),
+  seconds: z.number().optional(),
+});
+
+const parseDateValue = <V>(value: V): Date => {
   if (!value) return new Date();
   if (value instanceof Date) return value;
-  if (typeof value === 'string') {
-    const parsed = Date.parse(value);
-    return Number.isNaN(parsed) ? new Date() : new Date(parsed);
-  }
-  if (typeof value === 'number') return new Date(value);
 
-  if (typeof value === 'object') {
-    const ts = value as { toDate?: () => Date; seconds?: number };
-    if (typeof ts.toDate === 'function') return ts.toDate();
-    if (typeof ts.seconds === 'number') return new Date(ts.seconds * 1000);
+  const asNumber = z.number().safeParse(value);
+  if (asNumber.success) return new Date(asNumber.data);
+
+  const asString = z.string().safeParse(value);
+  if (asString.success) {
+    const parsedTime = Date.parse(asString.data);
+    return Number.isNaN(parsedTime) ? new Date() : new Date(parsedTime);
   }
+
+  const ts = timestampLikeValue.safeParse(value);
+  if (ts.success && ts.data.toDate instanceof Function) return ts.data.toDate();
+  if (ts.success && ts.data.seconds !== undefined) return new Date(ts.data.seconds * 1000);
 
   return new Date();
 };
@@ -750,6 +766,7 @@ export const getStudentBattleStats = async (userId: string): Promise<StudentBatt
       return defaultBattleStats(userId);
     }
 
+    // SAFETY: quizBattleStats documents are written by this service as Partial<StudentBattleStats>.
     const data = statsSnap.data() as Partial<StudentBattleStats>;
 
     const remoteStats: StudentBattleStats = {
@@ -792,6 +809,7 @@ export const subscribeToStudentBattleStats = (
         return;
       }
 
+      // SAFETY: quizBattleStats documents are written by this service as Partial<StudentBattleStats>.
       const data = snapshot.data() as Partial<StudentBattleStats>;
       callback({
         ...defaultBattleStats(userId),
@@ -871,6 +889,7 @@ export const getStudentBattleHistory = async (
     const snap = await getDocs(query(collection(db, 'quizBattleHistory'), ...constraints));
 
     const mapped = snap.docs.map((entry) =>
+      // SAFETY: quizBattleHistory documents are written by this service as QuizBattleMatchSummary.
       mapHistoryEntry(entry.id, entry.data() as Partial<QuizBattleMatchSummary>),
     );
 
@@ -883,7 +902,10 @@ export const getStudentBattleHistory = async (
       );
 
       const remoteFallback = fallbackSnap.docs
-        .map((entry) => mapHistoryEntry(entry.id, entry.data() as Partial<QuizBattleMatchSummary>))
+        .map((entry) =>
+          // SAFETY: quizBattleHistory documents are written by this service as QuizBattleMatchSummary.
+          mapHistoryEntry(entry.id, entry.data() as Partial<QuizBattleMatchSummary>),
+        )
         .sort((a, b) => b.endedAt.getTime() - a.endedAt.getTime());
 
       return mergeWithLocal(remoteFallback);
@@ -1279,6 +1301,7 @@ export const getStudentBattleLeaderboard = async (
 
     const snap = await getDocs(leaderboardQuery);
     return snap.docs.map((entry, index) => {
+      // SAFETY: quizBattleLeaderboard documents are written by this service as QuizBattleLeaderboardEntry.
       const data = entry.data() as Partial<QuizBattleLeaderboardEntry>;
       return {
         userId: data.userId || entry.id,

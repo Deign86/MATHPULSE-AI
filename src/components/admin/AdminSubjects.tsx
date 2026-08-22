@@ -40,6 +40,7 @@ interface ShsSubject {
   topics: Array<{ id: string; name: string; unit: string }>;
 }
 
+// SAFETY: trusted internal value already conforms to the asserted type.
 const SUBJECT_ROWS: SubjectRowData[] = (SHS_MATH_SUBJECTS as unknown as ShsSubject[]).map((s: ShsSubject) => ({
   id: s.id,
   name: s.name,

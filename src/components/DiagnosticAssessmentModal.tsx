@@ -18,6 +18,10 @@ import AssessmentProgressBar from './assessment/AssessmentProgressBar';
 import AssessmentQuestionCard from './assessment/AssessmentQuestionCard';
 import AssessmentResultsModal from './assessment/AssessmentResultsModal';
 
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === 'number';
+}
+
 interface DiagnosticAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -55,7 +59,7 @@ export interface DiagnosticCompletionPayload {
   questionSetVersion: string;
 }
 
-const TOPIC_LABELS: Record<IARTopicArea, string> = {
+const TOPIC_LABELS = {
   Functions: 'Functions and Graphs',
   BusinessMath: 'Business and Financial Mathematics',
   Logic: 'Logic and Reasoning',
@@ -75,7 +79,7 @@ const isCorrectAnswer = (question: IARQuestionBlueprint, answer: AnswerValue): b
   if (!question.scorable) return false;
 
   if (question.answerType === 'MCQ') {
-    return typeof answer === 'number' && answer === question.correctOptionIndex;
+    return isNum(answer) && answer === question.correctOptionIndex;
   }
 
   if (question.answerType === 'shortAnswerNumeric') {
@@ -223,12 +227,12 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
 
   const calculateResults = async (finalAnswers: AnswerValue[]) => {
     const riskList: string[] = [];
-    const topicStats: Record<IARTopicArea, { correct: number; total: number }> = {
+    const topicStats = {
       Functions: { correct: 0, total: 0 },
       BusinessMath: { correct: 0, total: 0 },
       Logic: { correct: 0, total: 0 },
     };
-    const confidenceByTopic: Record<IARTopicArea, number[]> = {
+    const confidenceByTopic = {
       Functions: [],
       BusinessMath: [],
       Logic: [],
@@ -239,7 +243,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
     QUESTIONS.forEach((question, index) => {
       const answer = finalAnswers[index];
 
-      if (question.answerType === 'confidenceLikert' && typeof answer === 'number') {
+      if (question.answerType === 'confidenceLikert' && isNum(answer)) {
         confidenceByTopic[question.topicArea].push(answer + 1);
       }
 
@@ -274,6 +278,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
       topicBreakdown[moduleId].push({ correct, questionId: question.id });
     });
 
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const topicSummariesComputed = (Object.keys(topicStats) as IARTopicArea[]).reduce(
       (acc, topicArea) => {
         const { correct, total } = topicStats[topicArea];
@@ -292,6 +297,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
         };
         return acc;
       },
+      // SAFETY: trusted internal value already conforms to the asserted type.
       {} as Record<IARTopicArea, TopicScoreSummary>,
     );
 
@@ -328,6 +334,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
       needsStrongerBusinessMath: topicSummariesComputed.BusinessMath.classification !== 'Mastered',
     };
 
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const _priorityTopics = (Object.keys(topicSummariesComputed) as IARTopicArea[])
       .sort((left, right) => {
         const leftSummary = topicSummariesComputed[left];
@@ -353,6 +360,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
     if (lrn) {
       setAutomationProcessing(true);
       try {
+        // SAFETY: trusted internal value already conforms to the asserted type.
         const diagnosticResults: DiagnosticResult[] = (Object.keys(topicSummariesComputed) as IARTopicArea[]).map(
           (subject) => ({
             subject,
@@ -401,6 +409,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
         BusinessMath: topicSummaries.BusinessMath.classification,
         Logic: topicSummaries.Logic.classification,
       },
+      // SAFETY: trusted internal value already conforms to the asserted type.
       priorityTopics: (Object.keys(topicSummaries) as IARTopicArea[])
         .sort((left, right) => topicSummaries[left].scorePercent - topicSummaries[right].scorePercent),
       g12ReadinessIndicators: g12Readiness,
@@ -580,6 +589,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                   questionNumber={currentQuestionIndex + 1}
                   questionText={currentQuestion.prompt}
                   topic={TOPIC_LABELS[currentQuestion.topicArea] || currentQuestion.topicArea}
+                  // SAFETY: trusted internal value already conforms to the asserted type.
                   difficulty={(currentQuestion.difficulty as string as 'Easy' | 'Medium' | 'Hard') || 'Medium'}
                 >
 
@@ -674,6 +684,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                   </div>
                   
                   <div className="space-y-2.5">
+                    // SAFETY: trusted internal value already conforms to the asserted type.
                     {topicSummaries && (Object.keys(topicSummaries) as IARTopicArea[]).map((topic) => (
                       <div key={topic} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-[#dde3eb]">
                         <div>

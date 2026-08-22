@@ -17,7 +17,7 @@ interface MathAnswerInputProps {
    Superscript helpers
    ──────────────────────────────────────────────────────────────── */
 
-const superscriptMap: Record<string, string> = {
+const superscriptMap = {
   '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
   '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
 };
@@ -37,7 +37,7 @@ function buildPreview(value: string): string {
   html = html.replace(/²/g, '<sup>2</sup>');
   html = html.replace(/³/g, '<sup>3</sup>');
   html = html.replace(/[⁰¹⁴⁵⁶⁷⁸⁹]/g, (ch) => {
-    const map: Record<string, string> = {
+    const map = {
       '⁰': '0', '¹': '1', '⁴': '4', '⁵': '5',
       '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
     };
@@ -213,6 +213,7 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
       {toolbarVisible && (
         <div
           className="fixed z-[60] bg-white border border-slate-200 rounded-xl shadow-xl px-3 py-3 flex flex-col gap-3 w-[220px] pointer-events-auto e-left-top"
+          // SAFETY: trusted internal value already conforms to the asserted type.
           style={{ ['--top' as any]: `${toolbarPos.top}px`, ['--left' as any]: `${toolbarPos.left}px` }}
           onMouseDown={(e) => e.preventDefault()}
         >

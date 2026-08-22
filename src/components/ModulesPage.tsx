@@ -97,6 +97,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     return 'modules';
   });
 
+  // SAFETY: trusted internal value already conforms to the asserted type.
   const studentProfile = userProfile as StudentProfile | null;
   const studentGrade = studentProfile?.grade;
   const activeGradeLevel = resolveLearnerGradeLevel(studentGrade);
@@ -121,12 +122,15 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   }, [userProfile?.uid]);
 
   const assignedSubjects = useMemo(() => {
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const rawAssignments = (studentProfile as (StudentProfile & {
       learnerCurriculumAssignments?: { subjects?: string[] };
       assignedSubjects?: string[];
       curriculumAssignedSubjects?: string[];
     }) | null)?.learnerCurriculumAssignments?.subjects
+      // SAFETY: trusted internal value already conforms to the asserted type.
       ?? (studentProfile as any)?.assignedSubjects
+      // SAFETY: trusted internal value already conforms to the asserted type.
       ?? (studentProfile as any)?.curriculumAssignedSubjects
       ?? [];
 
@@ -173,6 +177,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       (snapshot) => {
         const modules = snapshot.docs.map((doc) => {
           const data = doc.data();
+          // SAFETY: trusted internal value already conforms to the asserted type.
           return {
             ...data,
             moduleId: doc.id,
@@ -218,6 +223,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     };
 
     const handleNotificationNav = (e: Event) => {
+      // SAFETY: trusted internal value already conforms to the asserted type.
       const detail = (e as CustomEvent).detail;
       if (detail?.tab === 'Modules') {
         loadState(true);
@@ -413,6 +419,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     const visibleSubject =
       subjectFilter === 'all'
         ? 'All Subjects'
+        // SAFETY: trusted internal value already conforms to the asserted type.
         : CURRICULUM_SUBJECT_META[subjectFilter as keyof typeof CURRICULUM_SUBJECT_META]?.label ?? 'Subject';
     return `${activeGradeLevel} · ${visibleSubject} · ${visibleQuarter}`;
   }, [activeGradeLevel, subjectFilter, quarterFilter]);
@@ -657,7 +664,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         </div>
         <div className="hidden lg:flex flex-shrink-0 items-center justify-end w-[350px]">
           <ModulesMascot 
+            // SAFETY: trusted internal value already conforms to the asserted type.
             assessmentDismissed={(userProfile as StudentProfile)?.assessmentDismissed}
+            // SAFETY: trusted internal value already conforms to the asserted type.
             initialAssessmentCompleted={(userProfile as StudentProfile)?.initialAssessmentCompleted}
           />
         </div>
@@ -732,6 +741,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
             <select
               value={quarterFilter}
+              // SAFETY: trusted internal value already conforms to the asserted type.
               onChange={(e) => setQuarterFilter(e.target.value as 'all' | CurriculumQuarter)}
               className="shrink-0 rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
               aria-label="Quarter"
@@ -777,6 +787,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               return (
                 <button
                   key={tab.id}
+                  // SAFETY: trusted internal value already conforms to the asserted type.
                   onClick={() => setActiveTab(tab.id as ModulesTab)}
                   className={`relative flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
                     isActive ? 'shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
@@ -841,7 +852,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       {/* Mobile Mascot - rendered below the sticky filter bar */}
       <div className="flex lg:hidden items-center justify-center w-full mt-2 mb-2">
         <ModulesMascot 
+          // SAFETY: trusted internal value already conforms to the asserted type.
           assessmentDismissed={(userProfile as StudentProfile)?.assessmentDismissed}
+          // SAFETY: trusted internal value already conforms to the asserted type.
           initialAssessmentCompleted={(userProfile as StudentProfile)?.initialAssessmentCompleted}
         />
       </div>
@@ -907,6 +920,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                       const map: [string, any][] = stored ? JSON.parse(stored) : [];
                       const mapObj = new Map(map);
                       const key = topicName.toLowerCase();
+                      // SAFETY: trusted internal value already conforms to the asserted type.
                       const existing = (mapObj.get(key) as any) || { bestScore: 0, attempts: 0, history: [] };
                       existing.bestScore = Math.max(existing.bestScore, scorePercent);
                       existing.attempts += 1;

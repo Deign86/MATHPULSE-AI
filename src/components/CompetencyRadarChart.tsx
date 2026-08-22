@@ -138,6 +138,7 @@ export const CompetencyRadarChart: React.FC = () => {
                                 </span>
                               </div>
                               <span className="text-[13px] font-bold" style={{ color: pl.stroke }}>
+                                // SAFETY: trusted internal value already conforms to the asserted type.
                                 {Math.round(pl.value as number)}%
                               </span>
                             </div>

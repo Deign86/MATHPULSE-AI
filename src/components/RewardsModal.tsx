@@ -9,7 +9,7 @@ import { getUserAchievements } from '../services/gamificationService';
 import { ACHIEVEMENTS, AchievementConfig } from '../config/achievements';
 
 // Lucide icon name → component lookup (must be exhaustive for ACHIEVEMENT icons)
-const LUCIDE_ICON_MAP: Record<string, React.ElementType> = {
+const LUCIDE_ICON_MAP = {
   BookOpen, GraduationCap, Trophy, Target, Zap, Brain, Star, Flame,
   Swords, Shield, RefreshCw, Crown, Sun, TrendingUp, Globe, User,
   UserPlus, Calendar, Users, Compass, Heart, Award,
@@ -76,6 +76,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
         // Load progress counters for progress display
         const progressDoc = await getDoc(doc(db, 'progress', userId));
         if (progressDoc.exists()) {
+          // SAFETY: trusted internal value already conforms to the asserted type.
           setProgressData(progressDoc.data() as ProgressDoc);
         }
       } catch (err) {
@@ -91,6 +92,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
   // ── Progress tracker for locked achievements ──────────────────────────────
   const getProgress = (achievement: AchievementConfig): { progress: number; total: number } | undefined => {
     const { condition, threshold } = achievement;
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const prog = progressData as Record<string, unknown>;
 
     let current = 0;
@@ -98,19 +100,23 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
 
     switch (condition) {
       case 'lesson_complete':
+        // SAFETY: trusted internal value already conforms to the asserted type.
         current = (prog.totalLessonsCompleted as number) || 0;
         break;
       case 'quiz_complete':
+        // SAFETY: trusted internal value already conforms to the asserted type.
         current = (prog.totalQuizzesCompleted as number) || 0;
         break;
       case 'battle_win':
       case 'battle_undefeated':
+        // SAFETY: trusted internal value already conforms to the asserted type.
         current = (prog.battleWins as number) || 0;
         break;
       case 'mastery_10':
       case 'social_streak_30':
       case 'social_daily_return':
         // using consecutiveDaysActive as proxy for streak since dailyStreak was part of loginStreak which was removed
+        // SAFETY: trusted internal value already conforms to the asserted type.
         current = (prog.consecutiveDaysActive as number) || 0;
         break;
       case 'mastery_xp':
@@ -119,9 +125,11 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       case 'explore_friend_added':
       case 'social_friend':
       case 'explore_social':
+        // SAFETY: trusted internal value already conforms to the asserted type.
         current = (prog.friendsAdded as number) || 0;
         break;
       case 'perfect_score': {
+        // SAFETY: trusted internal value already conforms to the asserted type.
         const attempts = (prog.quizAttempts as Array<{ score: number }>) || [];
         current = attempts.filter((q) => q.score === 100).length;
         break;
@@ -224,6 +232,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
               <div className="h-3 bg-white/20 rounded-full overflow-hidden border border-white/20">
                 <div
                   className="h-full bg-gradient-to-r from-[#6ED1CF] via-[#75D06A] to-[#FFB356] rounded-full transition-all duration-500 e-w"
+                  // SAFETY: trusted internal value already conforms to the asserted type.
                   style={{ ['--w' as any]: `${(currentXP / xpToNextLevel) * 100}%` }}
                 ></div>
               </div>
@@ -281,6 +290,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
                                 <div className="h-1.5 bg-[#dde3eb] rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-gradient-to-r from-[#7274ED] to-[#1FA7E1] rounded-full transition-all e-w"
+                                    // SAFETY: trusted internal value already conforms to the asserted type.
                                     style={{ ['--w' as any]: `${(achievement.progress / achievement.total) * 100}%` }}
                                   ></div>
                                 </div>

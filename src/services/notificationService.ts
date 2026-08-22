@@ -12,21 +12,28 @@ import {
   serverTimestamp,
   onSnapshot,
   Unsubscribe,
+  type DocumentData,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { z } from 'zod';
 import { Notification } from '../types/models';
+
+/** Firestore timestamp-like values; parsing never throws. */
+const timestampLikeValue = z.looseObject({ toDate: z.instanceof(Function).optional() }).catch(null);
+
+const firestoreToDate = <V>(value: V): Date => {
+  if (value instanceof Date) return value;
+  const parsed = timestampLikeValue.safeParse(value);
+  return parsed.success && parsed.data.toDate instanceof Function ? parsed.data.toDate() : new Date();
+};
 
 const mapNotificationDoc = (docSnap: { id: string; data: () => any }): Notification => {
   const data = docSnap.data();
-  const createdAtRaw = data.createdAt;
-  const createdAt = typeof createdAtRaw?.toDate === 'function'
-    ? createdAtRaw.toDate()
-    : createdAtRaw instanceof Date
-      ? createdAtRaw
-      : new Date();
+  const createdAt = firestoreToDate(data.createdAt);
 
-  const actionUrl = (data.actionUrl ?? data.link ?? undefined) as string | undefined;
+  const actionUrl: string | undefined = data.actionUrl ?? data.link ?? undefined;
 
+  // SAFETY: notifications documents are written by this service to match Notification.
   return {
     ...(data as Omit<Notification, 'id' | 'createdAt' | 'actionUrl'>),
     id: docSnap.id,
@@ -53,11 +60,11 @@ export const createNotification = async (
       title,
       message,
       read: false,
-      ...(actionUrl ? { actionUrl } : {}),
+      actionUrl,
       createdAt: new Date(),
     };
 
-    const notificationData: Record<string, unknown> = {
+    const notificationData: DocumentData = {
       id: notification.id,
       userId: notification.userId,
       type: notification.type,
@@ -124,7 +131,7 @@ export const subscribeToUserNotifications = (
     unreadOnly?: boolean;
   } = {},
   onChange: (notifications: Notification[]) => void,
-  onError?: (error: unknown) => void
+  onError?: <E>(error: E) => void
 ): Unsubscribe => {
   if (!userId) {
     onChange([]);
@@ -262,11 +269,11 @@ export const sendToStudent = async (
       title,
       message,
       read: false,
-      ...(actionUrl ? { actionUrl } : {}),
+      actionUrl,
       createdAt: new Date(),
     };
 
-    const notificationData: Record<string, unknown> = {
+    const notificationData: DocumentData = {
       id: notification.id,
       userId: notification.userId,
       type: notification.type,

@@ -11,27 +11,40 @@ import type {
   QuizAnswerRecord,
 } from '../types/models';
 import { apiUrl } from '../config/env';
+import { z } from 'zod';
 
-const isMissingIndexError = (err: unknown): boolean => {
+/** Firebase error fields relevant for index detection; parsing never throws. */
+const firebaseErrorContract = z.looseObject({ code: z.string().optional() }).catch({});
+
+const isMissingIndexError = <E>(err: E): boolean => {
   if (!(err instanceof Error)) return false;
-  const code = (err as { code?: string }).code;
+  const code = firebaseErrorContract.parse(err).code;
   const message = (err.message || '').toLowerCase();
   return code === 'failed-precondition' && message.includes('requires an index');
 };
 
-const toMillis = (value: unknown): number => {
+/** Firestore timestamp-like values accepted by toMillis. */
+const timestampLikeValue = z.looseObject({
+  toMillis: z.instanceof(Function).optional(),
+  seconds: z.number().optional(),
+});
+
+const toMillis = <V>(value: V): number => {
   if (!value) return 0;
   if (value instanceof Date) return value.getTime();
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const parsed = Date.parse(value);
+
+  const asNumber = z.number().safeParse(value);
+  if (asNumber.success) return asNumber.data;
+
+  const asString = z.string().safeParse(value);
+  if (asString.success) {
+    const parsed = Date.parse(asString.data);
     return Number.isNaN(parsed) ? 0 : parsed;
   }
-  if (typeof value === 'object') {
-    const maybeTs = value as { toMillis?: () => number; seconds?: number };
-    if (typeof maybeTs.toMillis === 'function') return maybeTs.toMillis();
-    if (typeof maybeTs.seconds === 'number') return maybeTs.seconds * 1000;
-  }
+
+  const maybeTs = timestampLikeValue.safeParse(value);
+  if (maybeTs.success && maybeTs.data.toMillis instanceof Function) return maybeTs.data.toMillis();
+  if (maybeTs.success && maybeTs.data.seconds !== undefined) return maybeTs.data.seconds * 1000;
   return 0;
 };
 
@@ -50,7 +63,7 @@ export async function saveGeneratedQuiz(
     ...quiz,
     teacherId,
     createdAt: serverTimestamp(),
-    status: 'draft' as GeneratedQuizStatus,
+    status: 'draft' satisfies GeneratedQuizStatus,
   };
 
   if (options?.documentId) {
@@ -75,7 +88,7 @@ export async function updateQuizStatus(
 
 export async function publishQuiz(quizId: string): Promise<void> {
   await updateDoc(doc(db, 'generatedQuizzes', quizId), {
-    status: 'published' as GeneratedQuizStatus,
+    status: 'published' satisfies GeneratedQuizStatus,
     publishedAt: serverTimestamp(),
   });
 }
@@ -95,7 +108,7 @@ export async function assignQuizToStudent(
 ): Promise<void> {
   // Update quiz status
   await updateDoc(doc(db, 'generatedQuizzes', quizId), {
-    status: 'assigned' as GeneratedQuizStatus,
+    status: 'assigned' satisfies GeneratedQuizStatus,
     'metadata.assignedTo': lrn,
     assignedBy: teacherId,
     assignedAt: serverTimestamp(),
@@ -130,6 +143,7 @@ export async function assignQuizToStudent(
 export async function fetchGeneratedQuiz(quizId: string): Promise<GeneratedQuiz | null> {
   const quizDoc = await getDoc(doc(db, 'generatedQuizzes', quizId));
   if (!quizDoc.exists()) return null;
+  // SAFETY: generatedQuizzes documents are written by this service to match GeneratedQuiz.
   return { id: quizDoc.id, ...quizDoc.data() } as GeneratedQuiz;
 }
 
@@ -143,6 +157,7 @@ export async function fetchQuizzesByTeacher(teacherId: string): Promise<Generate
       orderBy('createdAt', 'desc'),
     );
     const snap = await getDocs(q);
+    // SAFETY: generatedQuizzes documents are written by this service to match GeneratedQuiz.
     return snap.docs.map((d) => ({ id: d.id, ...d.data() } as GeneratedQuiz));
   } catch (err) {
     if (!isMissingIndexError(err)) throw err;
@@ -150,9 +165,10 @@ export async function fetchQuizzesByTeacher(teacherId: string): Promise<Generate
     // Fallback for environments where composite index rollout is pending.
     const fallbackQuery = query(collection(db, 'generatedQuizzes'), where('teacherId', '==', teacherId));
     const fallbackSnap = await getDocs(fallbackQuery);
+    // SAFETY: generatedQuizzes documents are written by this service to match GeneratedQuiz.
     return fallbackSnap.docs
       .map((d) => ({ id: d.id, ...d.data() } as GeneratedQuiz))
-      .sort((a, b) => toMillis((b as { createdAt?: unknown }).createdAt) - toMillis((a as { createdAt?: unknown }).createdAt));
+      .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
   }
 }
 
@@ -266,7 +282,7 @@ export async function fetchAdaptiveQuiz(
       type: 'practice',
       completed: false,
       locked: false,
-      loadedQuestions: (data.questions ?? []) as AIQuizQuestion[],
+      loadedQuestions: data.questions ?? [],
       source: 'adaptive',
       generatedQuizId: '',
     };
@@ -335,7 +351,7 @@ export async function saveQuizResults(
     // Also update GeneratedQuiz status
     try {
       await updateDoc(doc(db, 'generatedQuizzes', generatedQuizId), {
-        status: 'completed' as GeneratedQuizStatus,
+        status: 'completed' satisfies GeneratedQuizStatus,
       });
     } catch {
       // non-critical

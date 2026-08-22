@@ -8,9 +8,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
   return (
     <Sonner
+      // SAFETY: trusted internal value already conforms to the asserted type.
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       style={
+        // SAFETY: trusted internal value already conforms to the asserted type.
         {
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",

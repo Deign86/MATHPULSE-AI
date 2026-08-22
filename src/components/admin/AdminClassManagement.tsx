@@ -40,6 +40,7 @@ const AdminClassManagement: React.FC = () => {
     try {
       // Load all classes
       const classSnap = await getDocs(collection(db, 'classrooms'));
+      // SAFETY: trusted internal value already conforms to the asserted type.
       const classData = classSnap.docs.map(d => ({ id: d.id, ...d.data() } as ClassRecord));
       setClasses(classData);
 

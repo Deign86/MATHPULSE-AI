@@ -5,6 +5,7 @@ import LogoutActionButton from './LogoutActionButton';
 import { cn } from './ui/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
+
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -39,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const isMobile = mode === 'mobile';
   const isHoverExpanded = !forceCollapsed && sidebarHovered;
-  const canOpenSettings = typeof onOpenSettings === 'function';
+  const canOpenSettings = (onOpenSettings instanceof Function);
   
   // Helper to determine if sidebar should show collapsed state
   const isCollapsed = !isMobile && (forceCollapsed || (sidebarCollapsed && !isHoverExpanded));

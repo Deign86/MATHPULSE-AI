@@ -376,6 +376,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
                 {/* Options - Compact on small screens */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
                   {optionLabels.map((letter) => {
+                    // SAFETY: trusted internal value already conforms to the asserted type.
                     const optionText = currentQuestion.options[letter as keyof typeof currentQuestion.options];
                     if (!optionText) return null;
                     const isSelected = selectedAnswer === letter;

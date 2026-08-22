@@ -66,7 +66,7 @@ interface TryItYourselfEngineProps {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PHASE_IDS: Phase[] = ['foundation', 'application', 'complexity', 'gauntlet'];
-const XP_DECAY: Record<number, number> = { 0: 1.0, 1: 0.7, 2: 0.4, 3: 0.2 };
+const XP_DECAY = { 0: 1.0, 1: 0.7, 2: 0.4, 3: 0.2 };
 const BASE_XP = 10;
 const BRUTE_FORCE_FLOOR = 2;
 const REVEAL_UNLOCK_MCQ = 2;
@@ -154,6 +154,7 @@ function getTopicIcons(title: string) {
 let _audioCtx: AudioContext | null = null;
 function getAudioContext(): AudioContext | null {
   if (_audioCtx && _audioCtx.state !== 'closed') return _audioCtx;
+  // SAFETY: trusted internal value already conforms to the asserted type.
   const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
   if (!AudioCtx) return null;
   _audioCtx = new AudioCtx();
@@ -457,6 +458,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
       xpEarned += qs.xpAwarded;
       if (qs.resolution === 'correct') correct++;
       if (qs.resolution === 'revealed') revealed++;
+      // SAFETY: trusted internal value already conforms to the asserted type.
       if (qs.attempts >= STRUGGLE_THRESHOLD) struggles.push((q as any).topic || (q as any).competencyCode || lessonTitle);
     });
     const result: RoundResult = { phase: PHASE_IDS[currentPhaseIdx], questionsCorrect: correct, questionsRevealed: revealed, xpEarned, struggleTopics: [...new Set(struggles)] };
@@ -494,6 +496,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
         const result = await fetchShadowRetries({ userId, sessionId, struggleTopics: struggles, subject, count: Math.min(2, struggles.length) });
         if (result.variants?.length) {
           nextQuestions = [...nextQuestions, ...result.variants.map(v => ({
+            // SAFETY: trusted internal value already conforms to the asserted type.
             id: v.id, type: v.type as Question['type'], question: v.question,
             options: v.options, correctAnswer: v.correctAnswer, explanation: v.explanation || '', hints: v.hints || [],
           }))];
@@ -515,6 +518,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
   const handleCompleteSession = useCallback(async () => {
     const allResults = questions.map(q => {
       const qs = questionStates[q.id];
+      // SAFETY: trusted internal value already conforms to the asserted type.
       return { questionId: String(q.id), resolution: (qs?.resolution || 'correct') as 'correct' | 'revealed', attempts: qs?.attempts || 1, hintsUsed: qs?.hintsUsed || 0, topic: lessonTitle };
     });
     let serverXP = totalXP;

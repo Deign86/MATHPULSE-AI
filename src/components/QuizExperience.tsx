@@ -453,6 +453,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const playSound = (type: 'correct' | 'incorrect' | 'complete' | 'combo') => {
     if (!isAudioEnabled) return;
     try {
+      // SAFETY: trusted internal value already conforms to the asserted type.
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;
       const ctx = new AudioContext();
@@ -1288,7 +1289,7 @@ return (
 
 // Helper functions to generate content per subject
 function getQuestionForSubject(subject: string, index: number): string {
-  const questions: { [key: string]: string[] } = {
+  const questions = {
     'Pre-Calculus': [
       'What is the domain of the function f(x) = √(x - 2)?',
       'Solve for x: 2^x = 16',
@@ -1365,7 +1366,7 @@ function normalizeSubjectName(subject: string): string {
 }
 
 function getOptionsForQuestion(subject: string, index: number): string[] {
-  const optionSets: { [key: string]: string[][] } = {
+  const optionSets = {
     'Pre-Calculus': [
       ['x ≥ 2', 'x ≤ 2', 'x ≥ 0', 'All real numbers'],
       ['x = 2', 'x = 4', 'x = 8', 'x = 16'],
@@ -1427,7 +1428,7 @@ function getOptionsForQuestion(subject: string, index: number): string[] {
 }
 
 function getCorrectAnswerForQuestion(subject: string, index: number): number {
-  const correctAnswers: { [key: string]: number[] } = {
+  const correctAnswers = {
     'Pre-Calculus': [
       0, // x ≥ 2
       1, // x = 4
@@ -1489,7 +1490,7 @@ function getCorrectAnswerForQuestion(subject: string, index: number): number {
 }
 
 function getExplanationForQuestion(subject: string, index: number, difficulty: string): string {
-  const explanations: { [key: string]: string[] } = {
+  const explanations = {
     'Pre-Calculus': [
       'The expression under the square root must be non-negative: x - 2 ≥ 0, so x ≥ 2.',
       'Since 2⁴ = 16, we get x = 4.',

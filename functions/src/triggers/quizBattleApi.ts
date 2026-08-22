@@ -5,6 +5,38 @@ import * as functions from "firebase-functions";
 import { resolveCurriculumVersionSetId } from "../config/diagnosticPolicies";
 import { createRuntimeCacheKey, runtimeCache } from "../services/runtimeCache";
 
+/** Firestore-style dynamic record: the owner type for untrusted key/value payloads. */
+type JsonObject = admin.firestore.DocumentData;
+
+/** Honest JSON value contract for decoded external payloads. */
+type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
+
+// ── Runtime type predicates (single source of truth for boundary narrowing) ──
+
+const isString = <T>(value: T): value is T & string => typeof value === "string";
+
+const isNumber = <T>(value: T): value is T & number => typeof value === "number";
+
+const isBoolean = <T>(value: T): value is T & boolean => typeof value === "boolean";
+
+const isFiniteNumber = <T>(value: T): value is T & number =>
+  typeof value === "number" && Number.isFinite(value);
+
+const isRecord = <T>(value: T): value is T & JsonObject =>
+  typeof value === "object" && value !== null;
+
+/** Diagnostic label for decoded payload shapes (logging only). */
+const jsonTypeName = <T>(value: T): string => {
+  if (Array.isArray(value)) return "array";
+  if (isString(value)) return "string";
+  if (isNumber(value)) return "number";
+  if (isBoolean(value)) return "boolean";
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+  if (isRecord(value)) return "object";
+  return "unknown";
+};
+
 const ALLOWED_SUBJECT_IDS = new Set(["gen-math", "stats-prob", "pre-calc", "basic-calc"]);
 const ALLOWED_DIFFICULTIES = new Set(["easy", "medium", "hard", "adaptive"]);
 const ALLOWED_QUEUE_TYPES = new Set(["public_matchmaking", "private_room"]);
@@ -20,7 +52,7 @@ const MAX_MATCHMAKING_PAIRS_PER_PASS = 20;
 const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
 const isEnvFlagEnabled = (raw: string | undefined, fallback = false): boolean => {
-  if (typeof raw !== "string") return fallback;
+  if (!isString(raw)) return fallback;
   const normalized = raw.trim().toLowerCase();
   if (!normalized) return fallback;
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
@@ -456,10 +488,7 @@ class QuizBattleGenerationError extends Error {
   }
 }
 
-const BOT_PROFILES: Record<
-  "easy" | "medium" | "hard" | "adaptive",
-  { accuracy: number; minResponseRatio: number; maxResponseRatio: number }
-> = {
+const BOT_PROFILES = {
   easy: { accuracy: 0.45, minResponseRatio: 0.62, maxResponseRatio: 0.95 },
   medium: { accuracy: 0.63, minResponseRatio: 0.45, maxResponseRatio: 0.82 },
   hard: { accuracy: 0.82, minResponseRatio: 0.28, maxResponseRatio: 0.65 },
@@ -764,43 +793,39 @@ const randomInRange = (min: number, max: number): number => {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === "object" && value !== null;
+const asString = <T>(value: T, fallback = ""): string => {
+  return isString(value) ? value.trim() : fallback;
 };
 
-const asString = (value: unknown, fallback = ""): string => {
-  return typeof value === "string" ? value.trim() : fallback;
+const asBoolean = <T>(value: T, fallback = false): boolean => {
+  return isBoolean(value) ? value : fallback;
 };
 
-const asBoolean = (value: unknown, fallback = false): boolean => {
-  return typeof value === "boolean" ? value : fallback;
-};
-
-const asNumber = (value: unknown, fallback: number): number => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
+const asNumber = <T>(value: T, fallback: number): number => {
+  if (isFiniteNumber(value)) return value;
   return fallback;
 };
 
-const asNullableNumber = (value: unknown): number | null => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
+const asNullableNumber = <T>(value: T): number | null => {
+  if (isFiniteNumber(value)) return value;
   return null;
 };
 
-const asTimestampMillis = (value: unknown, fallback = 0): number => {
+const asTimestampMillis = <T>(value: T, fallback = 0): number => {
   if (!value) return fallback;
   if (value instanceof admin.firestore.Timestamp) return value.toMillis();
-  if (isRecord(value) && typeof value.seconds === "number") return value.seconds * 1000;
-  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (isRecord(value) && isNumber(value.seconds)) return value.seconds * 1000;
+  if (isFiniteNumber(value)) return value;
   return fallback;
 };
 
-const parseGradeLevel = (raw: unknown): BattleGradeLevel | null => {
-  if (typeof raw === "number" && Number.isFinite(raw)) {
+const parseGradeLevel = <T>(raw: T): BattleGradeLevel | null => {
+  if (isFiniteNumber(raw)) {
     if (Math.floor(raw) === 11) return 11;
     if (Math.floor(raw) === 12) return 12;
   }
 
-  if (typeof raw !== "string") {
+  if (!isString(raw)) {
     return null;
   }
 
@@ -816,7 +841,7 @@ const toGradeLabel = (gradeLevel: BattleGradeLevel): BattleGradeLabel => {
 };
 
 const normalizeCurriculumVersion = (
-  rawVersion: unknown,
+  rawVersion: string | JsonObject,
   fallbackVersionSetId = "",
 ): BattleCurriculumVersion => {
   const direct = asString(rawVersion, "").toLowerCase();
@@ -852,12 +877,18 @@ const createDeterministicRandomIntFactory = (seedText: string): ((min: number, m
   };
 };
 
-const STATIC_BANK_GRADE_BY_SUBJECT: Record<string, BattleGradeLevel> = {
+const STATIC_BANK_GRADE_BY_SUBJECT = {
   "gen-math": 11,
   "stats-prob": 11,
   "pre-calc": 12,
   "basic-calc": 12,
-};
+} as const;
+
+type StaticBankSubjectKey = keyof typeof STATIC_BANK_GRADE_BY_SUBJECT;
+
+// SAFETY: lookup keys are subject ids from the fixed curriculum set mirrored by this table's keys.
+const staticBankGradeForSubject = (subjectId: string): BattleGradeLevel | undefined =>
+  STATIC_BANK_GRADE_BY_SUBJECT[subjectId as StaticBankSubjectKey];
 
 const buildProfileError = (reason: string, message: string): functions.https.HttpsError => {
   return new functions.https.HttpsError(
@@ -869,7 +900,7 @@ const buildProfileError = (reason: string, message: string): functions.https.Htt
 
 const mapUserDataToEligibility = (
   uid: string,
-  userData: Record<string, unknown>,
+  userData: JsonObject,
 ): BattlePlayerEligibility => {
   const gradeLevel = parseGradeLevel(userData.grade ?? userData.gradeLevel);
   if (!gradeLevel) {
@@ -896,7 +927,7 @@ const mapUserDataToEligibility = (
   };
 };
 
-const normalizeQuizBattleMode = (value: unknown): "online" | "bot" => {
+const normalizeQuizBattleMode = <T>(value: T): "online" | "bot" => {
   return asString(value, "bot") === "online" ? "online" : "bot";
 };
 
@@ -926,12 +957,18 @@ const shouldBlockStartDueToNonAiSource = (params: {
   return asString(params.questionSetSource, "") !== "ai";
 };
 
-const SUBJECT_LABELS: Record<string, string> = {
+const SUBJECT_LABELS = {
   "gen-math": "General Mathematics",
   "stats-prob": "Statistics and Probability",
   "pre-calc": "Pre-Calculus",
   "basic-calc": "Basic Calculus",
-};
+} as const;
+
+type SubjectLabelKey = keyof typeof SUBJECT_LABELS;
+
+// SAFETY: unknown subject ids fall back to the default label via ?? below.
+const subjectLabelFor = (subjectId: string): string =>
+  SUBJECT_LABELS[subjectId as SubjectLabelKey] ?? "Mathematics";
 
 const QUIZ_BATTLE_AI_CHAT_URL =
   process.env.QUIZ_BATTLE_AI_CHAT_URL ||
@@ -961,12 +998,12 @@ const QUIZ_BATTLE_AI_MAX_TOKENS = Number.isFinite(quizBattleAiMaxTokensRaw)
   ? Math.max(256, Math.min(4096, Math.floor(quizBattleAiMaxTokensRaw)))
   : 640;
 
-const extractAiErrorDetail = (data: unknown): string => {
+const extractAiErrorDetail = <T>(data: T): string => {
   if (!data) {
     return "";
   }
 
-  if (typeof data === "string") {
+  if (isString(data)) {
     return data.trim();
   }
 
@@ -989,7 +1026,7 @@ const extractAiErrorDetail = (data: unknown): string => {
   return "";
 };
 
-const shouldRetryWithoutStructuredJsonMode = (error: unknown, structuredJsonModeEnabled: boolean): boolean => {
+const shouldRetryWithoutStructuredJsonMode = <T>(error: T, structuredJsonModeEnabled: boolean): boolean => {
   if (!structuredJsonModeEnabled || !axios.isAxiosError(error)) {
     return false;
   }
@@ -1083,7 +1120,7 @@ const shuffleChoicesPreservingCorrect = (
   choices: string[],
   correctOptionIndex: number,
   randomInt: (min: number, max: number) => number = randomInRange,
-): { choices: string[]; correctOptionIndex: number } => {
+) => {
   const decorated = choices.map((choice, index) => ({
     choice,
     isCorrect: index === correctOptionIndex,
@@ -1129,7 +1166,7 @@ const shuffleChoicesPreservingCorrect = (
 const materializeQuestionSet = (
   candidates: BattleQuestionCandidate[],
   randomInt: (min: number, max: number) => number = randomInRange,
-): { questions: BattleQuestionPublic[]; answerKeys: number[]; difficulties: ("easy" | "medium" | "hard")[] } => {
+) => {
   const answerKeys: number[] = [];
   const difficulties: ("easy" | "medium" | "hard")[] = [];
   const questions = candidates.map((candidate, index) => {
@@ -1154,15 +1191,15 @@ const materializeQuestionSet = (
   };
 };
 
-const extractMessageContentText = (content: unknown): string => {
-  if (typeof content === "string") {
+const extractMessageContentText = <T>(content: T): string => {
+  if (isString(content)) {
     return content;
   }
 
   if (Array.isArray(content)) {
     const joined = content
       .map((entry) => {
-        if (typeof entry === "string") {
+        if (isString(entry)) {
           return entry;
         }
 
@@ -1186,7 +1223,7 @@ const extractMessageContentText = (content: unknown): string => {
   return "";
 };
 
-const extractChatCompletionText = (raw: unknown): string => {
+const extractChatCompletionText = <T>(raw: T): string => {
   if (!isRecord(raw)) return "";
 
   const choicesRaw = raw.choices;
@@ -1269,7 +1306,7 @@ const extractJsonPayloadCandidate = (rawText: string): string | null => {
   return trimmed.startsWith("{") || trimmed.startsWith("[") ? trimmed : null;
 };
 
-const parseJsonValue = (rawText: string): unknown => {
+const parseJsonValue = (rawText: string): JsonValue | null => {
   const candidate = extractJsonPayloadCandidate(rawText);
   if (!candidate) return null;
 
@@ -1280,7 +1317,7 @@ const parseJsonValue = (rawText: string): unknown => {
   }
 };
 
-const extractQuestionsArrayFromPayload = (payload: unknown): unknown[] | null => {
+const extractQuestionsArrayFromPayload = <T>(payload: T): JsonValue[] | null => {
   if (Array.isArray(payload)) {
     return payload;
   }
@@ -1332,8 +1369,8 @@ const buildGeneratedQuestionSetId = (questionFingerprints: string[]): string => 
   return `qb-ai-${Date.now()}-${digest}`;
 };
 
-const normalizeAiQuestionCandidate = (
-  rawQuestion: unknown,
+const normalizeAiQuestionCandidate = <T>(
+  rawQuestion: T,
   index: number,
   setup: NormalizedBattleSetup,
 ): BattleQuestionCandidate | null => {
@@ -1448,7 +1485,7 @@ const dedupeAiQuestionCandidates = (
   return deduped.slice(0, requiredRounds);
 };
 
-const classifyGenerationError = (error: unknown): QuizBattleGenerationError => {
+const classifyGenerationError = <T>(error: T): QuizBattleGenerationError => {
   if (error instanceof QuizBattleGenerationError) {
     return error;
   }
@@ -1490,10 +1527,10 @@ const classifyGenerationError = (error: unknown): QuizBattleGenerationError => {
 };
 
 type InvokeAiGenerationRequest = (
-  requestPayload: Record<string, unknown>,
+  requestPayload: JsonObject,
   timeoutMs: number,
   requestHeaders: Record<string, string>,
-) => Promise<unknown>;
+) => Promise<JsonValue>;
 
 interface GenerateAiQuestionSetOptions {
   invokeRequest?: InvokeAiGenerationRequest;
@@ -1506,7 +1543,7 @@ const invokeQuizBattleAiRequest: InvokeAiGenerationRequest = async (
   requestPayload,
   timeoutMs,
   requestHeaders,
-): Promise<unknown> => {
+): Promise<JsonValue> => {
   const response = await axios.post(QUIZ_BATTLE_AI_CHAT_URL, requestPayload, {
     timeout: timeoutMs,
     headers: requestHeaders,
@@ -1516,7 +1553,7 @@ const invokeQuizBattleAiRequest: InvokeAiGenerationRequest = async (
 
 const buildAiQuestionPrompt = (setup: NormalizedBattleSetup, requestedQuestionCount: number): string => {
   const requestedDifficulty = setup.mode === "bot" ? setup.botDifficulty : setup.difficulty;
-  const subjectLabel = SUBJECT_LABELS[setup.subjectId] || "Mathematics";
+  const subjectLabel = subjectLabelFor(setup.subjectId);
   const topicLabel = normalizeTopicLabel(setup.topicId);
 
   return [
@@ -1589,7 +1626,7 @@ const generateAiQuestionSet = async (
     });
 
     try {
-      const requestPayload: Record<string, unknown> = {
+      const requestPayload: JsonObject = {
         model: modelName,
         messages,
         stream: false,
@@ -1625,7 +1662,7 @@ const generateAiQuestionSet = async (
           topicId: setup.topicId,
           rounds: setup.rounds,
           responsePreview: text.slice(0, 1200),
-          parsedPayloadType: Array.isArray(payload) ? "array" : typeof payload,
+          parsedPayloadType: jsonTypeName(payload),
           parsedPayloadKeys: isRecord(payload) ? Object.keys(payload).slice(0, 20) : [],
           rawResponseKeys: isRecord(responseData) ? Object.keys(responseData).slice(0, 20) : [],
         });
@@ -1720,7 +1757,7 @@ const generateAiQuestionSet = async (
   throw new QuizBattleGenerationError(lastError.reason, lastError.message, lastError.retriable);
 };
 
-const normalizeRoundWinner = (raw: unknown): RoundWinner => {
+const normalizeRoundWinner = <T>(raw: T): RoundWinner => {
   const candidate = asString(raw);
   if (candidate === "playerA" || candidate === "playerB" || candidate === "draw") {
     return candidate;
@@ -1728,7 +1765,7 @@ const normalizeRoundWinner = (raw: unknown): RoundWinner => {
   return "draw";
 };
 
-const normalizeRoomStatus = (raw: unknown): RoomStatus => {
+const normalizeRoomStatus = <T>(raw: T): RoomStatus => {
   const candidate = asString(raw);
   if (candidate === "waiting" || candidate === "ready" || candidate === "cancelled" || candidate === "expired") {
     return candidate;
@@ -1736,7 +1773,7 @@ const normalizeRoomStatus = (raw: unknown): RoomStatus => {
   return "waiting";
 };
 
-const normalizeLifecycleEventType = (raw: unknown): LifecycleEventType => {
+const normalizeLifecycleEventType = <T>(raw: T): LifecycleEventType => {
   const candidate = asString(raw);
   if (
     candidate === "round_started" ||
@@ -1753,7 +1790,7 @@ const getRoundTimeLimitMs = (timePerQuestionSec: number): number => {
   return clamp(Math.floor(timePerQuestionSec), 10, 180) * 1000;
 };
 
-const createRoundTimingWindow = (timePerQuestionSec: number): { roundStartedAtMs: number; roundDeadlineAtMs: number } => {
+const createRoundTimingWindow = (timePerQuestionSec: number) => {
   const roundStartedAtMs = Date.now();
   return {
     roundStartedAtMs,
@@ -1761,7 +1798,7 @@ const createRoundTimingWindow = (timePerQuestionSec: number): { roundStartedAtMs
   };
 };
 
-const getRoundDeadlineAtMs = (data: Record<string, unknown>): number => {
+const getRoundDeadlineAtMs = (data: JsonObject): number => {
   const explicitDeadline = Math.floor(asNumber(data.roundDeadlineAtMs, 0));
   if (explicitDeadline > 0) return explicitDeadline;
 
@@ -1771,7 +1808,7 @@ const getRoundDeadlineAtMs = (data: Record<string, unknown>): number => {
   return roundStartedAtMs + getRoundTimeLimitMs(asNumber(data.timePerQuestionSec, 30));
 };
 
-const mapLifecycleState = (raw: unknown): MatchLifecycleStateResponse | undefined => {
+const mapLifecycleState = <T>(raw: T): MatchLifecycleStateResponse | undefined => {
   if (!isRecord(raw)) return undefined;
 
   const lifecycle: MatchLifecycleStateResponse = {
@@ -1784,7 +1821,7 @@ const mapLifecycleState = (raw: unknown): MatchLifecycleStateResponse | undefine
   const deadlineAtMs = Math.floor(asNumber(raw.deadlineAtMs, 0));
   if (deadlineAtMs > 0) lifecycle.deadlineAtMs = deadlineAtMs;
 
-  if (typeof raw.answeredCount === "number") {
+  if (isNumber(raw.answeredCount)) {
     lifecycle.answeredCount = clamp(Math.floor(raw.answeredCount), 0, 2);
   }
 
@@ -1794,8 +1831,8 @@ const mapLifecycleState = (raw: unknown): MatchLifecycleStateResponse | undefine
   const winner = normalizeRoundWinner(raw.winner);
   if (raw.winner !== undefined) lifecycle.winner = winner;
 
-  if (typeof raw.scoreA === "number") lifecycle.scoreA = Math.floor(raw.scoreA);
-  if (typeof raw.scoreB === "number") lifecycle.scoreB = Math.floor(raw.scoreB);
+  if (isNumber(raw.scoreA)) lifecycle.scoreA = Math.floor(raw.scoreA);
+  if (isNumber(raw.scoreB)) lifecycle.scoreB = Math.floor(raw.scoreB);
 
   const resolvedBy = asString(raw.resolvedBy);
   if (resolvedBy === "submission" || resolvedBy === "timer") {
@@ -1806,8 +1843,8 @@ const mapLifecycleState = (raw: unknown): MatchLifecycleStateResponse | undefine
 };
 
 const applyLifecycleEventsToUpdate = (
-  matchData: Record<string, unknown>,
-  updatePayload: Record<string, unknown>,
+  matchData: JsonObject,
+  updatePayload: JsonObject,
   events: LifecycleEventInput[],
 ): void => {
   if (events.length === 0) return;
@@ -1816,23 +1853,23 @@ const applyLifecycleEventsToUpdate = (
   const baseSequence = Math.max(0, Math.floor(asNumber(lifecycleRaw.sequence, 0)));
 
   const enrichedEvents = events.map((event, index) => {
-    const payload: Record<string, unknown> = {
+    const payload: JsonObject = {
       eventType: event.eventType,
       sequence: baseSequence + index + 1,
       roundNumber: Math.max(1, Math.floor(event.roundNumber)),
       occurredAtMs: Date.now(),
     };
 
-    if (typeof event.deadlineAtMs === "number" && event.deadlineAtMs > 0) {
+    if (isNumber(event.deadlineAtMs) && event.deadlineAtMs > 0) {
       payload.deadlineAtMs = Math.floor(event.deadlineAtMs);
     }
-    if (typeof event.answeredCount === "number") {
+    if (isNumber(event.answeredCount)) {
       payload.answeredCount = clamp(Math.floor(event.answeredCount), 0, 2);
     }
     if (event.lockedByStudentId) payload.lockedByStudentId = event.lockedByStudentId;
     if (event.winner) payload.winner = event.winner;
-    if (typeof event.scoreA === "number") payload.scoreA = Math.floor(event.scoreA);
-    if (typeof event.scoreB === "number") payload.scoreB = Math.floor(event.scoreB);
+    if (isNumber(event.scoreA)) payload.scoreA = Math.floor(event.scoreA);
+    if (isNumber(event.scoreB)) payload.scoreB = Math.floor(event.scoreB);
     if (event.resolvedBy) payload.resolvedBy = event.resolvedBy;
 
     return payload;
@@ -1872,7 +1909,7 @@ const xpForOutcome = (outcome: MatchOutcome): number => {
 
 
 
-const normalizeSourceType = (raw: unknown): BattleQuestionSourceType => {
+const normalizeSourceType = <T>(raw: T): BattleQuestionSourceType => {
   const value = asString(raw, "").toLowerCase();
   if (value === "premade" || value === "teacher-authored" || value === "reviewed-ai" || value === "imported") {
     return value;
@@ -1880,7 +1917,7 @@ const normalizeSourceType = (raw: unknown): BattleQuestionSourceType => {
   return "premade";
 };
 
-const resolveQuestionChoices = (rawQuestion: Record<string, unknown>): string[] => {
+const resolveQuestionChoices = (rawQuestion: JsonObject): string[] => {
   if (Array.isArray(rawQuestion.choices)) {
     return rawQuestion.choices.map((entry) => asString(entry)).filter((entry) => entry.length > 0);
   }
@@ -1896,7 +1933,7 @@ const resolveQuestionChoices = (rawQuestion: Record<string, unknown>): string[] 
   return [];
 };
 
-const resolveCorrectAnswerText = (rawQuestion: Record<string, unknown>, choices: string[]): string => {
+const resolveCorrectAnswerText = (rawQuestion: JsonObject, choices: string[]): string => {
   const direct = asString(rawQuestion.correctAnswer, "") || asString(rawQuestion.answer, "");
   if (direct) {
     if (/^[A-D]$/i.test(direct.trim())) {
@@ -1916,7 +1953,7 @@ const resolveCorrectAnswerText = (rawQuestion: Record<string, unknown>, choices:
 
 const normalizeCanonicalBattleQuestion = (
   docId: string,
-  rawQuestion: Record<string, unknown>,
+  rawQuestion: JsonObject,
 ): CanonicalBattleQuestion | null => {
   const subject = asString(rawQuestion.subject, asString(rawQuestion.subjectId, ""));
   if (!subject) return null;
@@ -2104,7 +2141,7 @@ const filterCanonicalPoolBySelector = (
         entry.curriculumTrack.toLowerCase().includes("shared");
       if (!sharedTagged) return false;
     } else {
-      if (typeof selector.gradeLevel === "number" && entry.gradeLevel !== selector.gradeLevel) return false;
+      if (isNumber(selector.gradeLevel) && entry.gradeLevel !== selector.gradeLevel) return false;
       if (selector.curriculumVersion && entry.curriculumVersion !== selector.curriculumVersion) return false;
     }
 
@@ -2174,8 +2211,8 @@ const buildStaticFallbackPool = (
     if (entry.subjectId !== selector.subjectId) return false;
 
     if (selector.sharedPoolMode !== "admin_shared") {
-      const gradeFromSubject = STATIC_BANK_GRADE_BY_SUBJECT[entry.subjectId];
-      if (typeof selector.gradeLevel === "number" && gradeFromSubject !== selector.gradeLevel) {
+      const gradeFromSubject = staticBankGradeForSubject(entry.subjectId);
+      if (isNumber(selector.gradeLevel) && gradeFromSubject !== selector.gradeLevel) {
         return false;
       }
     }
@@ -2262,7 +2299,7 @@ const fetchQuestionBankPool = async (
 
   const querySnap = tx ? await tx.get(baseQuery) : await baseQuery.get();
   const normalized = querySnap.docs
-    .map((entry) => normalizeCanonicalBattleQuestion(entry.id, entry.data() as Record<string, unknown>))
+    .map((entry) => normalizeCanonicalBattleQuestion(entry.id, entry.data() as JsonObject))
     .filter((entry): entry is CanonicalBattleQuestion => entry !== null);
 
   if (useRuntimeCache) {
@@ -2375,7 +2412,7 @@ const selectQuestionSet = async (params: {
   };
 };
 
-const getRoundDifficulties = (raw: unknown): ("easy" | "medium" | "hard")[] => {
+const getRoundDifficulties = <T>(raw: T): ("easy" | "medium" | "hard")[] => {
   if (!isRecord(raw)) return [];
   const diffs = raw.difficulties;
   if (!Array.isArray(diffs)) return [];
@@ -2386,7 +2423,7 @@ const getRoundDifficulties = (raw: unknown): ("easy" | "medium" | "hard")[] => {
 };
 
 const computeConsecutiveCorrect = (
-  roundResults: Record<string, unknown>[],
+  roundResults: JsonObject[],
   isPlayerA: boolean,
   currentRound: number,
 ): number => {
@@ -2433,7 +2470,7 @@ const simulateBotRoundOutcome = (
   };
 };
 
-const getRoundKeys = (raw: unknown): number[] => {
+const getRoundKeys = <T>(raw: T): number[] => {
   if (!isRecord(raw)) return [];
   const keys = raw.keys;
   if (!Array.isArray(keys)) return [];
@@ -2441,7 +2478,7 @@ const getRoundKeys = (raw: unknown): number[] => {
 };
 
 const mapStoredRoundResultForStudent = (
-  entry: Record<string, unknown>,
+  entry: JsonObject,
   isPlayerA: boolean,
   rounds: number,
 ): RoundResultRecord => {
@@ -2497,7 +2534,7 @@ const mapStoredRoundResultForStudent = (
 };
 
 const getOutcomeFromMetadata = (
-  metadata: Record<string, unknown>,
+  metadata: JsonObject,
   studentId: string,
   scoreFor: number,
   scoreAgainst: number,
@@ -2511,7 +2548,7 @@ const getOutcomeFromMetadata = (
 };
 
 const getXpFromMetadata = (
-  metadata: Record<string, unknown>,
+  metadata: JsonObject,
   studentId: string,
   fallbackOutcome: MatchOutcome,
 ): number => {
@@ -2522,7 +2559,7 @@ const getXpFromMetadata = (
 const mapMatchStateForStudent = (
   matchId: string,
   studentId: string,
-  data: Record<string, unknown>,
+  data: JsonObject,
 ): QuizBattleMatchStateResponse => {
   const playerAId = asString(data.playerAId);
   const isPlayerA = playerAId === studentId;
@@ -2612,7 +2649,7 @@ const mapMatchStateForStudent = (
 
 const mapGenerationAuditForStudent = (
   matchId: string,
-  data: Record<string, unknown>,
+  data: JsonObject,
 ): QuizBattleGenerationAuditResponse => {
   const statusRaw = asString(data.status, "ready");
   const status: MatchStatus = ["ready", "in_progress", "completed", "cancelled"].includes(statusRaw)
@@ -2652,7 +2689,7 @@ const mapGenerationAuditForStudent = (
 const mapRoomStateForStudent = (
   roomId: string,
   studentId: string,
-  data: Record<string, unknown>,
+  data: JsonObject,
 ): PrivateRoomStateResponse => {
   const participantIds = Array.isArray(data.participantIds)
     ? data.participantIds.map((entry) => asString(entry)).filter((entry) => entry.length > 0)
@@ -2682,7 +2719,7 @@ const loadUserBattleProfileFromTx = async (
   uid: string,
 ): Promise<BattlePlayerEligibility> => {
   const userSnap = await tx.get(db.collection("users").doc(uid));
-  const userData = userSnap.exists ? (userSnap.data() as Record<string, unknown>) : {};
+  const userData = userSnap.exists ? (userSnap.data() as JsonObject) : {};
   return mapUserDataToEligibility(uid, userData);
 };
 
@@ -2697,7 +2734,7 @@ const loadUserBattleProfile = async (
   }
 
   const userSnap = await db.collection("users").doc(uid).get();
-  const userData = userSnap.exists ? (userSnap.data() as Record<string, unknown>) : {};
+  const userData = userSnap.exists ? (userSnap.data() as JsonObject) : {};
   const profile = mapUserDataToEligibility(uid, userData);
   runtimeCache.set(cacheKey, profile, QUIZ_BATTLE_PROFILE_CACHE_TTL_MS);
   return profile;
@@ -2880,11 +2917,11 @@ const createBotMatchRecord = async (
 };
 
 const computeParticipantRoundMetrics = (
-  roundResults: Record<string, unknown>[],
+  roundResults: JsonObject[],
   isPlayerA: boolean,
   rounds: number,
   fallbackResponseMs: number,
-): { accuracy: number; averageResponseMs: number } => {
+) => {
   if (roundResults.length === 0) {
     return {
       accuracy: 0,
@@ -2932,7 +2969,7 @@ const finalizeCompletedMatch = async (
       throw new functions.https.HttpsError("not-found", "Match not found while finalizing.");
     }
 
-    const matchData = matchSnap.data() as Record<string, unknown>;
+    const matchData = matchSnap.data() as JsonObject;
     const status = asString(matchData.status, "ready");
 
     if (status !== "completed") {
@@ -2970,20 +3007,20 @@ const finalizeCompletedMatch = async (
     const rounds = clamp(Math.floor(asNumber(matchData.rounds, 1)), 1, 20);
     const timePerQuestionSec = clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180);
     const roundResultsRaw = Array.isArray(matchData.roundResults) ? matchData.roundResults : [];
-    const roundResults = roundResultsRaw.filter((entry) => isRecord(entry)) as Record<string, unknown>[];
+    const roundResults = roundResultsRaw.filter((entry) => isRecord(entry)) as JsonObject[];
     const fallbackResponseMs = timePerQuestionSec * 1000;
 
     const participantProfiles: Record<string, { displayName: string; photo: string }> = {};
-    const participantStats: Record<string, Record<string, unknown>> = {};
-    const participantUsers: Record<string, Record<string, unknown>> = {};
+    const participantStats: Record<string, JsonObject> = {};
+    const participantUsers: Record<string, JsonObject> = {};
 
     for (const participantId of participants) {
       const statsRef = db.collection("studentBattleStats").doc(participantId);
       const userRef = db.collection("users").doc(participantId);
       const [statsSnap, userSnap] = await Promise.all([tx.get(statsRef), tx.get(userRef)]);
 
-      participantStats[participantId] = statsSnap.exists ? (statsSnap.data() as Record<string, unknown>) : {};
-      participantUsers[participantId] = userSnap.exists ? (userSnap.data() as Record<string, unknown>) : {};
+      participantStats[participantId] = statsSnap.exists ? (statsSnap.data() as JsonObject) : {};
+      participantUsers[participantId] = userSnap.exists ? (userSnap.data() as JsonObject) : {};
       participantProfiles[participantId] = {
         displayName: asString(participantUsers[participantId].displayName, asString(participantUsers[participantId].name, "Student")),
         photo: asString(participantUsers[participantId].photo),
@@ -3007,7 +3044,7 @@ const finalizeCompletedMatch = async (
           : entry.playerBScoreBreakdown;
 
         if (isRecord(participantScoreBreakdown)) {
-          const breakdown = participantScoreBreakdown as Record<string, unknown>;
+          const breakdown = participantScoreBreakdown as JsonObject;
           if (breakdown.isCorrect === true || asNumber(breakdown.totalPointsAwarded, 0) > 0) {
             return sum + Math.floor(asNumber(breakdown.totalPointsAwarded, 0));
           }
@@ -3188,7 +3225,7 @@ const generateRoomCode = async (): Promise<string> => {
   );
 };
 
-const normalizeSetup = (rawInput: unknown): NormalizedBattleSetup => {
+const normalizeSetup = <T>(rawInput: T): NormalizedBattleSetup => {
   const input = isRecord(rawInput) ? rawInput : {};
 
   const modeRaw = asString(input.mode, "online");
@@ -3256,7 +3293,7 @@ const normalizeSetup = (rawInput: unknown): NormalizedBattleSetup => {
   };
 };
 
-const setupFromRoomData = (roomData: Record<string, unknown>): NormalizedBattleSetup => {
+const setupFromRoomData = (roomData: JsonObject): NormalizedBattleSetup => {
   const sharedPoolModeRaw = asString(roomData.sharedPoolMode, "grade_strict").toLowerCase();
   return {
     mode: "online",
@@ -3274,7 +3311,7 @@ const setupFromRoomData = (roomData: Record<string, unknown>): NormalizedBattleS
   };
 };
 
-const setupFromQueueData = (queueData: Record<string, unknown>): NormalizedBattleSetup => {
+const setupFromQueueData = (queueData: JsonObject): NormalizedBattleSetup => {
   const sharedPoolModeRaw = asString(queueData.sharedPoolMode, "grade_strict").toLowerCase();
   return {
     mode: "online",
@@ -3292,7 +3329,7 @@ const setupFromQueueData = (queueData: Record<string, unknown>): NormalizedBattl
   };
 };
 
-const setupFromMatchData = (matchData: Record<string, unknown>): NormalizedBattleSetup => {
+const setupFromMatchData = (matchData: JsonObject): NormalizedBattleSetup => {
   const mode = asString(matchData.mode, "online") === "bot" ? "bot" : "online";
   const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
   const matchDifficulty = asString(matchData.difficulty, "medium");
@@ -3347,7 +3384,7 @@ const acquireAiGenerationLease = async (
       throw new functions.https.HttpsError("not-found", "Match not found.");
     }
 
-    const matchData = matchSnap.data() as Record<string, unknown>;
+    const matchData = matchSnap.data() as JsonObject;
     const status = asString(matchData.status, "ready");
     if (status !== "ready") {
       return { status: "skip" };
@@ -3412,7 +3449,7 @@ const persistAiGenerationFailure = async (
       return;
     }
 
-    const matchData = matchSnap.data() as Record<string, unknown>;
+    const matchData = matchSnap.data() as JsonObject;
     const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
     const lockedAttemptId = asString(metadata.aiGenerationInFlightAttemptId, "");
 
@@ -3447,7 +3484,7 @@ const persistAiGenerationSuccess = async (
       return false;
     }
 
-    const matchData = matchSnap.data() as Record<string, unknown>;
+    const matchData = matchSnap.data() as JsonObject;
     const status = asString(matchData.status, "ready");
     if (status !== "ready") {
       return false;
@@ -3528,7 +3565,7 @@ const ensureAiQuestionSetForLiveStart = async (
 
     const matchSnap = await matchRef.get();
     if (matchSnap.exists) {
-      const matchData = matchSnap.data() as Record<string, unknown>;
+      const matchData = matchSnap.data() as JsonObject;
       const playerAId = asString(matchData.playerAId);
       const playerBId = asString(matchData.playerBId);
       const playerIds = [playerAId, playerBId].filter((id): id is string => !!id);
@@ -3563,7 +3600,7 @@ const ensureAiQuestionSetForLiveStart = async (
 
     if (!persisted) {
       const latestSnap = await matchRef.get();
-      const latestData = latestSnap.exists ? (latestSnap.data() as Record<string, unknown>) : {};
+      const latestData = latestSnap.exists ? (latestSnap.data() as JsonObject) : {};
       const latestMetadata = isRecord(latestData.metadata) ? latestData.metadata : {};
       if (asString(latestMetadata.questionSetSource, "") !== "ai") {
         throw new QuizBattleGenerationError(
@@ -3600,7 +3637,7 @@ const ensureAiQuestionSetForLiveStart = async (
   }
 };
 
-const queueCompatibilityKey = (queueData: Record<string, unknown>): string => {
+const queueCompatibilityKey = (queueData: JsonObject): string => {
   return [
     asString(queueData.mode, "online"),
     asString(queueData.queueType, "public_matchmaking"),
@@ -3616,7 +3653,7 @@ const queueCompatibilityKey = (queueData: Record<string, unknown>): string => {
   ].join("|");
 };
 
-const getPublicMatchmakingDeadlineMs = (data: Record<string, unknown>): number => {
+const getPublicMatchmakingDeadlineMs = (data: JsonObject): number => {
   const explicitDeadline = Math.floor(asNumber(data.expiresAt, 0));
   if (explicitDeadline > 0) {
     return explicitDeadline;
@@ -3640,7 +3677,7 @@ const getPublicMatchmakingDeadlineMs = (data: Record<string, unknown>): number =
   return 0;
 };
 
-const isPublicMatchmakingReadyMatch = (matchData: Record<string, unknown>): boolean => {
+const isPublicMatchmakingReadyMatch = (matchData: JsonObject): boolean => {
   const status = asString(matchData.status, "ready");
   if (status !== "ready") {
     return false;
@@ -3655,7 +3692,7 @@ const isPublicMatchmakingReadyMatch = (matchData: Record<string, unknown>): bool
   return asString(metadata.source, "") === "public_matchmaking";
 };
 
-const isExpiredPublicMatchmakingSession = (data: Record<string, unknown>): boolean => {
+const isExpiredPublicMatchmakingSession = (data: JsonObject): boolean => {
   const deadlineMs = getPublicMatchmakingDeadlineMs(data);
   return deadlineMs > 0 && Date.now() > deadlineMs;
 };
@@ -3672,7 +3709,7 @@ const cancelExpiredPublicMatchIfNeeded = async (
       return;
     }
 
-    const matchData = matchSnap.data() as Record<string, unknown>;
+    const matchData = matchSnap.data() as JsonObject;
     if (!isPublicMatchmakingReadyMatch(matchData) || !isExpiredPublicMatchmakingSession(matchData)) {
       return;
     }
@@ -3729,7 +3766,7 @@ const resolvePublicMatchmakingPass = async (
   const candidatesByKey = new Map<string, FirebaseFirestore.QueryDocumentSnapshot[]>();
 
   queueSnap.docs.forEach((entry) => {
-    const data = entry.data() as Record<string, unknown>;
+    const data = entry.data() as JsonObject;
     const status = asString(data.status, "searching");
     const mode = asString(data.mode, "online");
     const queueType = asString(data.queueType, "public_matchmaking");
@@ -3803,8 +3840,8 @@ const resolvePublicMatchmakingPass = async (
     if (paired >= maxPairs) break;
 
     const sorted = [...entries].sort((a, b) => {
-      const joinedA = asTimestampMillis((a.data() as Record<string, unknown>).joinedAt, 0);
-      const joinedB = asTimestampMillis((b.data() as Record<string, unknown>).joinedAt, 0);
+      const joinedA = asTimestampMillis((a.data() as JsonObject).joinedAt, 0);
+      const joinedB = asTimestampMillis((b.data() as JsonObject).joinedAt, 0);
       return joinedA - joinedB;
     });
 
@@ -3818,8 +3855,8 @@ const resolvePublicMatchmakingPass = async (
         const [firstSnap, secondSnap] = await Promise.all([tx.get(first.ref), tx.get(second.ref)]);
         if (!firstSnap.exists || !secondSnap.exists) return false;
 
-        const firstData = firstSnap.data() as Record<string, unknown>;
-        const secondData = secondSnap.data() as Record<string, unknown>;
+        const firstData = firstSnap.data() as JsonObject;
+        const secondData = secondSnap.data() as JsonObject;
 
         if (asString(firstData.status, "searching") !== "searching") return false;
         if (asString(secondData.status, "searching") !== "searching") return false;
@@ -3879,7 +3916,7 @@ const resolvePrivateRoomTimeoutPass = async (
   const now = Date.now();
   const roomRefs = new Map<string, FirebaseFirestore.DocumentReference>();
   [...waitingSnap.docs, ...readySnap.docs].forEach((entry) => {
-    const roomData = entry.data() as Record<string, unknown>;
+    const roomData = entry.data() as JsonObject;
     const participantIds = getParticipantIds(roomData.participantIds);
     const expiresAtMs = asTimestampMillis(roomData.expiresAt, 0);
     const updatedAtMs = asTimestampMillis(roomData.updatedAt, 0);
@@ -3928,7 +3965,7 @@ const resolvePrivateRoomTimeoutPass = async (
           return { expired: false, expiredEmpty: false, cancelledReadyMatch: false };
         }
 
-        const roomData = roomSnap.data() as Record<string, unknown>;
+        const roomData = roomSnap.data() as JsonObject;
         const roomStatus = normalizeRoomStatus(roomData.status);
         if (roomStatus !== "waiting" && roomStatus !== "ready") {
           return { expired: false, expiredEmpty: false, cancelledReadyMatch: false };
@@ -3955,7 +3992,7 @@ const resolvePrivateRoomTimeoutPass = async (
           const matchRef = db.collection("quizBattleMatches").doc(matchId);
           const matchSnap = await tx.get(matchRef);
           if (matchSnap.exists) {
-            const matchData = matchSnap.data() as Record<string, unknown>;
+            const matchData = matchSnap.data() as JsonObject;
             const matchStatus = asString(matchData.status, "ready");
 
             if (matchStatus === "ready") {
@@ -4007,7 +4044,7 @@ const resolvePrivateRoomTimeoutPass = async (
   };
 };
 
-const getParticipantIds = (raw: unknown): string[] => {
+const getParticipantIds = <T>(raw: T): string[] => {
   if (!Array.isArray(raw)) return [];
   return raw.map((entry) => asString(entry)).filter((entry) => entry.length > 0);
 };
@@ -4035,7 +4072,7 @@ const progressMatchTimerIfExpired = async (
 
     if (!matchSnap.exists) return;
 
-    const matchData = matchSnap.data() as Record<string, unknown>;
+    const matchData = matchSnap.data() as JsonObject;
     const status = asString(matchData.status, "ready");
     if (status !== "in_progress") return;
 
@@ -4055,7 +4092,7 @@ const progressMatchTimerIfExpired = async (
     const roundDeadlineAtMs = getRoundDeadlineAtMs(matchData);
     if (roundDeadlineAtMs <= 0) {
       const timing = createRoundTimingWindow(timePerQuestionSec);
-      const seedPayload: Record<string, unknown> = {
+      const seedPayload: JsonObject = {
         roundStartedAt: admin.firestore.FieldValue.serverTimestamp(),
         roundStartedAtMs: timing.roundStartedAtMs,
         roundDeadlineAtMs: timing.roundDeadlineAtMs,
@@ -4094,7 +4131,7 @@ const progressMatchTimerIfExpired = async (
       ? roundDifficulties[currentRound - 1]
       : "medium";
     const correctOptionIndex = roundKeys[currentRound - 1];
-    if (typeof correctOptionIndex !== "number" || correctOptionIndex < 0) {
+    if (!isNumber(correctOptionIndex) || correctOptionIndex < 0) {
       return;
     }
 
@@ -4109,8 +4146,8 @@ const progressMatchTimerIfExpired = async (
       tx.get(playerBSubRef),
     ]);
 
-    const playerASubData = playerASubSnap.exists ? (playerASubSnap.data() as Record<string, unknown>) : null;
-    const playerBSubData = playerBSubSnap.exists ? (playerBSubSnap.data() as Record<string, unknown>) : null;
+    const playerASubData = playerASubSnap.exists ? (playerASubSnap.data() as JsonObject) : null;
+    const playerBSubData = playerBSubSnap.exists ? (playerBSubSnap.data() as JsonObject) : null;
 
     const playerASelection = playerASubData
       ? normalizeSelection(asNullableNumber(playerASubData.selectedOptionIndex), optionsCount)
@@ -4165,7 +4202,7 @@ const progressMatchTimerIfExpired = async (
     const roundDeadlineForScoring = roundDeadlineAtMs > 0 ? roundDeadlineAtMs : roundStartedAtMs + timeLimitMs;
 
     const playerAStreak = computeConsecutiveCorrect(
-      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
       true,
       currentRound,
     );
@@ -4181,7 +4218,7 @@ const progressMatchTimerIfExpired = async (
     }
 
     const playerBStreak = computeConsecutiveCorrect(
-      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
       false,
       currentRound,
     );
@@ -4197,7 +4234,7 @@ const progressMatchTimerIfExpired = async (
     }
 
     const isFinalRound = currentRound >= totalRounds;
-    const updatePayload: Record<string, unknown> = {
+    const updatePayload: JsonObject = {
       scoreA,
       scoreB,
       roundResults: admin.firestore.FieldValue.arrayUnion(roundResult),
@@ -4276,7 +4313,7 @@ const progressAndFinalizeMatchIfNeeded = async (
   const latestMatchSnap = await matchRef.get();
   if (!latestMatchSnap.exists) return;
 
-  const latestData = latestMatchSnap.data() as Record<string, unknown>;
+  const latestData = latestMatchSnap.data() as JsonObject;
   if (asString(latestData.status) === "completed") {
     await finalizeCompletedMatch(db, matchRef, requestingStudentId);
   }
@@ -4292,7 +4329,7 @@ const requireStudentUid = async (
   const uid = context.auth.uid;
   const roleClaim = context.auth.token?.role;
 
-  if (typeof roleClaim === "string") {
+  if (isString(roleClaim)) {
     if (roleClaim !== "student") {
       throw new functions.https.HttpsError(
         "permission-denied",
@@ -4324,7 +4361,7 @@ const findPrivateRoomByCode = async (
   return roomSnap.docs[0];
 };
 
-const assertRoomParticipant = (studentId: string, roomData: Record<string, unknown>): void => {
+const assertRoomParticipant = (studentId: string, roomData: JsonObject): void => {
   const participantIds = getParticipantIds(roomData.participantIds);
   if (!participantIds.includes(studentId)) {
     throw new functions.https.HttpsError("permission-denied", "You are not a participant in this room.");
@@ -4372,7 +4409,7 @@ export const quizBattleJoinQueue = functions.https.onCall(async (data, context) 
   await resolvePublicMatchmakingPass(db, 2);
 
   const refreshed = await queueRef.get();
-  const refreshedData = refreshed.exists ? (refreshed.data() as Record<string, unknown>) : {};
+  const refreshedData = refreshed.exists ? (refreshed.data() as JsonObject) : {};
   const status = asString(refreshedData.status, "searching");
 
   return {
@@ -4415,8 +4452,8 @@ export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, co
     const candidateRooms = roomSnap.docs
       .map((doc) => ({
         doc,
-        data: doc.data() as Record<string, unknown>,
-        updatedMs: asTimestampMillis((doc.data() as Record<string, unknown>).updatedAt, 0),
+        data: doc.data(),
+        updatedMs: asTimestampMillis(doc.data().updatedAt, 0),
       }))
       .filter((entry) => {
         const status = normalizeRoomStatus(entry.data.status);
@@ -4439,7 +4476,7 @@ export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, co
       return;
     }
 
-    const roomData = roomSnap.data() as Record<string, unknown>;
+    const roomData = roomSnap.data() as JsonObject;
     const roomStatus = normalizeRoomStatus(roomData.status);
     if (roomStatus === "cancelled" || roomStatus === "expired") {
       return;
@@ -4459,7 +4496,7 @@ export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, co
       const matchSnap = await tx.get(matchRef);
 
       if (matchSnap.exists) {
-        const matchData = matchSnap.data() as Record<string, unknown>;
+        const matchData = matchSnap.data() as JsonObject;
         const matchStatus = asString(matchData.status, "ready");
 
         if (matchStatus === "in_progress" || matchStatus === "completed") {
@@ -4486,7 +4523,7 @@ export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, co
         ? currentOwnerStudentId
         : (nextParticipantIds.includes(currentOwnerStudentId) ? currentOwnerStudentId : nextParticipantIds[0]);
 
-    const roomUpdates: Record<string, unknown> = {
+    const roomUpdates: JsonObject = {
       participantIds: nextParticipantIds,
       status: nextParticipantIds.length === 0 ? ("cancelled" as RoomStatus) : ("waiting" as RoomStatus),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -4549,7 +4586,7 @@ export const quizBattleCreatePrivateRoom = functions.https.onCall(async (data, c
   });
 
   const roomSnap = await roomRef.get();
-  const roomData = roomSnap.data() as Record<string, unknown>;
+  const roomData = roomSnap.data() as JsonObject;
 
   return {
     success: true,
@@ -4573,7 +4610,7 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
   }
 
   const roomRef = roomDoc.ref;
-  let joinedRoom: Record<string, unknown> | null = null;
+  let joinedRoom: JsonObject | null = null;
 
   await db.runTransaction(async (tx) => {
     const roomSnap = await tx.get(roomRef);
@@ -4581,7 +4618,7 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
       throw new functions.https.HttpsError("not-found", "Private room no longer exists.");
     }
 
-    const roomData = roomSnap.data() as Record<string, unknown>;
+    const roomData = roomSnap.data() as JsonObject;
     const currentStatus = normalizeRoomStatus(roomData.status);
     const expiresAtMs = asTimestampMillis(roomData.expiresAt, 0);
 
@@ -4655,7 +4692,7 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
       throw new functions.https.HttpsError("already-exists", "Private room is full.");
     }
 
-    const roomUpdates: Record<string, unknown> = {
+    const roomUpdates: JsonObject = {
       participantIds: nextParticipants,
       sharedPoolMode,
       gradeLevel: asString(roomData.gradeLevel, joiningProfile.gradeLabel) || joiningProfile.gradeLabel,
@@ -4697,7 +4734,7 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
   });
 
   const latestRoomSnap = await roomRef.get();
-  const roomData = latestRoomSnap.data() as Record<string, unknown>;
+  const roomData = latestRoomSnap.data() as JsonObject;
   const matchId = asString(roomData.matchId, "");
 
   let match: QuizBattleMatchStateResponse | undefined;
@@ -4706,7 +4743,7 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
     await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
     const matchSnap = await matchRef.get();
     if (matchSnap.exists) {
-      match = mapMatchStateForStudent(matchId, studentId, matchSnap.data() as Record<string, unknown>);
+      match = mapMatchStateForStudent(matchId, studentId, matchSnap.data());
     }
   }
 
@@ -4741,7 +4778,7 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
     throw new functions.https.HttpsError("not-found", "Private room was not found.");
   }
 
-  const roomData = roomSnap.data() as Record<string, unknown>;
+  const roomData = roomSnap.data() as JsonObject;
   const roomStatus = normalizeRoomStatus(roomData.status);
   const expiresAtMs = asTimestampMillis(roomData.expiresAt, 0);
 
@@ -4752,7 +4789,7 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
         return;
       }
 
-      const latestRoomData = latestRoomSnap.data() as Record<string, unknown>;
+      const latestRoomData = latestRoomSnap.data() as JsonObject;
       const latestRoomStatus = normalizeRoomStatus(latestRoomData.status);
       const latestExpiresAtMs = asTimestampMillis(latestRoomData.expiresAt, 0);
       if ((latestRoomStatus !== "waiting" && latestRoomStatus !== "ready") || latestExpiresAtMs <= 0 || Date.now() <= latestExpiresAtMs) {
@@ -4764,7 +4801,7 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
         const matchRef = db.collection("quizBattleMatches").doc(matchId);
         const matchSnap = await tx.get(matchRef);
         if (matchSnap.exists) {
-          const matchData = matchSnap.data() as Record<string, unknown>;
+          const matchData = matchSnap.data() as JsonObject;
           if (asString(matchData.status, "ready") === "ready") {
             tx.update(matchRef, {
               status: "cancelled" as MatchStatus,
@@ -4800,7 +4837,7 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
     await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
     const matchSnap = await matchRef.get();
     if (matchSnap.exists) {
-      match = mapMatchStateForStudent(roomState.matchId, studentId, matchSnap.data() as Record<string, unknown>);
+      match = mapMatchStateForStudent(roomState.matchId, studentId, matchSnap.data());
     }
   }
 
@@ -4850,7 +4887,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
     throw new functions.https.HttpsError("not-found", "Match not found.");
   }
 
-  const preStartData = preStartSnap.data() as Record<string, unknown>;
+  const preStartData = preStartSnap.data() as JsonObject;
   const preStartStatus = asString(preStartData.status, "ready");
   if (preStartStatus === "ready") {
     const metadata = isRecord(preStartData.metadata) ? preStartData.metadata : {};
@@ -4869,7 +4906,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
     throw new functions.https.HttpsError("not-found", "Match not found.");
   }
 
-  const postGenerationData = postGenerationSnap.data() as Record<string, unknown>;
+  const postGenerationData = postGenerationSnap.data() as JsonObject;
   const postGenerationStatus = asString(postGenerationData.status, "ready");
   if (postGenerationStatus === "ready") {
     const postGenerationMetadata = isRecord(postGenerationData.metadata) ? postGenerationData.metadata : {};
@@ -4891,7 +4928,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
     await cancelExpiredPublicMatchIfNeeded(db, matchRef);
     const refreshedExpiredSnap = await matchRef.get();
     if (refreshedExpiredSnap.exists) {
-      return mapMatchStateForStudent(matchRef.id, studentId, refreshedExpiredSnap.data() as Record<string, unknown>);
+      return mapMatchStateForStudent(matchRef.id, studentId, refreshedExpiredSnap.data() as JsonObject);
     }
   }
 
@@ -4904,7 +4941,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
         throw new functions.https.HttpsError("not-found", "Match not found.");
       }
 
-      const matchData = matchSnap.data() as Record<string, unknown>;
+      const matchData = matchSnap.data() as JsonObject;
       const participantA = asString(matchData.playerAId);
       const participantB = asString(matchData.playerBId);
       const mode = normalizeQuizBattleMode(matchData.mode);
@@ -4947,7 +4984,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
       if (mode === "bot") {
         const timePerQuestionSec = clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180);
         const timing = createRoundTimingWindow(timePerQuestionSec);
-        const updatePayload: Record<string, unknown> = {
+        const updatePayload: JsonObject = {
           status: "in_progress" as MatchStatus,
           currentRound: 1,
           playerAReady: true,
@@ -4977,7 +5014,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
       const nextAReady = participantA === studentId ? true : currentAReady;
       const nextBReady = participantB === studentId ? true : currentBReady;
 
-      const updatePayload: Record<string, unknown> = {
+      const updatePayload: JsonObject = {
         playerAReady: nextAReady,
         playerBReady: nextBReady,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -5027,7 +5064,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
 
   return {
     success: true,
-    match: mapMatchStateForStudent(matchRef.id, studentId, matchSnap.data() as Record<string, unknown>),
+    match: mapMatchStateForStudent(matchRef.id, studentId, matchSnap.data()),
   };
 });
 
@@ -5048,7 +5085,7 @@ export const quizBattleGetMatchState = functions.https.onCall(async (data, conte
     throw new functions.https.HttpsError("not-found", "Match not found.");
   }
 
-  const matchData = matchSnap.data() as Record<string, unknown>;
+  const matchData = matchSnap.data() as JsonObject;
   const participantA = asString(matchData.playerAId);
   const participantB = asString(matchData.playerBId);
 
@@ -5062,7 +5099,7 @@ export const quizBattleGetMatchState = functions.https.onCall(async (data, conte
     if (refreshedExpiredSnap.exists) {
       return {
         success: true,
-        match: mapMatchStateForStudent(matchRef.id, studentId, refreshedExpiredSnap.data() as Record<string, unknown>),
+        match: mapMatchStateForStudent(matchRef.id, studentId, refreshedExpiredSnap.data() as JsonObject),
       };
     }
   }
@@ -5089,7 +5126,7 @@ export const quizBattleGetGenerationAudit = functions.https.onCall(async (data, 
     throw new functions.https.HttpsError("not-found", "Match not found.");
   }
 
-  const matchData = matchSnap.data() as Record<string, unknown>;
+  const matchData = matchSnap.data() as JsonObject;
   const participantA = asString(matchData.playerAId);
   const participantB = asString(matchData.playerBId);
 
@@ -5134,7 +5171,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       throw new functions.https.HttpsError("not-found", "Match not found.");
     }
 
-    const matchData = matchSnap.data() as Record<string, unknown>;
+    const matchData = matchSnap.data() as JsonObject;
     const participantA = asString(matchData.playerAId);
     const participantB = asString(matchData.playerBId);
     const mode = asString(matchData.mode, "bot") === "online" ? "online" : "bot";
@@ -5176,7 +5213,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       ? roundDifficulties[roundNumber - 1]
       : "medium";
     const correctOptionIndex = roundKeys[roundNumber - 1];
-    if (typeof correctOptionIndex !== "number" || correctOptionIndex < 0) {
+    if (!isNumber(correctOptionIndex) || correctOptionIndex < 0) {
       throw new functions.https.HttpsError("internal", "Round answer key missing.");
     }
 
@@ -5253,7 +5290,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       };
 
       const playerAStreak = computeConsecutiveCorrect(
-        (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+        (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
         true,
         roundNumber,
       );
@@ -5268,7 +5305,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       });
 
       const isFinalRound = roundNumber >= totalRounds;
-      const updatePayload: Record<string, unknown> = {
+      const updatePayload: JsonObject = {
         scoreA,
         scoreB,
         roundResults: admin.firestore.FieldValue.arrayUnion(roundResult),
@@ -5357,7 +5394,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       const seededRoundStartMs = existingRoundStartedAtMs > 0 ? existingRoundStartedAtMs : Date.now();
       const effectiveDeadlineAtMs = roundDeadlineAtMs > 0 ? roundDeadlineAtMs : seededRoundStartMs + timeLimitMs;
 
-      const waitingPayload: Record<string, unknown> = {
+      const waitingPayload: JsonObject = {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
@@ -5382,7 +5419,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       return;
     }
 
-    const opponentData = opponentSnap.data() as Record<string, unknown>;
+    const opponentData = opponentSnap.data() as JsonObject;
     const playerASelection = isPlayerA
       ? normalizedSelection
       : normalizeSelection(asNullableNumber(opponentData.selectedOptionIndex), optionsCount);
@@ -5422,7 +5459,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
     const deadlineMs = roundDeadlineAtMs > 0 ? roundDeadlineAtMs : roundStartedAtMs + timeLimitMs;
 
     const playerAStreak = computeConsecutiveCorrect(
-      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
       true,
       roundNumber,
     );
@@ -5437,7 +5474,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
     }
 
     const playerBStreak = computeConsecutiveCorrect(
-      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as Record<string, unknown>[],
+      (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
       false,
       roundNumber,
     );
@@ -5452,7 +5489,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
     }
 
     const isFinalRound = roundNumber >= totalRounds;
-    const updatePayload: Record<string, unknown> = {
+    const updatePayload: JsonObject = {
       scoreA,
       scoreB,
       roundResults: admin.firestore.FieldValue.arrayUnion(roundResult),
@@ -5523,7 +5560,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
     throw new functions.https.HttpsError("not-found", "Match not found after answer submission.");
   }
 
-  const mappedMatch = mapMatchStateForStudent(matchRef.id, studentId, matchSnap.data() as Record<string, unknown>);
+  const mappedMatch = mapMatchStateForStudent(matchRef.id, studentId, matchSnap.data());
   const roundResult = mappedMatch.roundResults.find((entry) => entry.roundNumber === roundNumber) || null;
 
   if (!completion && mappedMatch.status === "completed") {
@@ -5559,7 +5596,7 @@ export const quizBattleRequestRematch = functions.https.onCall(async (data, cont
     throw new functions.https.HttpsError("not-found", "Source match was not found.");
   }
 
-  const matchData = matchSnap.data() as Record<string, unknown>;
+  const matchData = matchSnap.data() as JsonObject;
   const participantA = asString(matchData.playerAId);
   if (participantA !== studentId) {
     throw new functions.https.HttpsError("permission-denied", "Only the initiating student can request rematch in this version.");
@@ -5615,7 +5652,7 @@ export const quizBattleHeartbeat = functions.https.onCall(async (data, context) 
   let effectiveResourceId = resourceId;
   let queueRef: FirebaseFirestore.DocumentReference | null = null;
   let roomRef: FirebaseFirestore.DocumentReference | null = null;
-  let roomData: Record<string, unknown> | null = null;
+  let roomData: JsonObject | null = null;
   let matchRef: FirebaseFirestore.DocumentReference | null = null;
 
   if (scope === "queue") {
@@ -5642,7 +5679,7 @@ export const quizBattleHeartbeat = functions.https.onCall(async (data, context) 
       throw new functions.https.HttpsError("not-found", "Room not found.");
     }
 
-    roomData = roomSnap.data() as Record<string, unknown>;
+    roomData = roomSnap.data() as JsonObject;
     assertRoomParticipant(studentId, roomData);
   }
 
@@ -5653,7 +5690,7 @@ export const quizBattleHeartbeat = functions.https.onCall(async (data, context) 
       throw new functions.https.HttpsError("not-found", "Match not found.");
     }
 
-    const matchData = matchSnap.data() as Record<string, unknown>;
+    const matchData = matchSnap.data() as JsonObject;
     const participantA = asString(matchData.playerAId);
     const participantB = asString(matchData.playerBId);
     if (studentId !== participantA && studentId !== participantB) {
@@ -5722,8 +5759,8 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
   const activeMatches = mergedMatches
     .map((doc) => ({
       doc,
-      data: doc.data() as Record<string, unknown>,
-      updatedMs: asTimestampMillis((doc.data() as Record<string, unknown>).updatedAt, 0),
+      data: doc.data(),
+      updatedMs: asTimestampMillis(doc.data().updatedAt, 0),
     }))
     .filter((entry) => {
       const status = asString(entry.data.status, "ready");
@@ -5739,7 +5776,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     await progressAndFinalizeMatchIfNeeded(db, active.doc.ref, studentId);
     const refreshedMatchSnap = await active.doc.ref.get();
     if (refreshedMatchSnap.exists) {
-      const refreshedData = refreshedMatchSnap.data() as Record<string, unknown>;
+      const refreshedData = refreshedMatchSnap.data() as JsonObject;
       return {
         success: true,
         sessionType: "match",
@@ -5754,7 +5791,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     };
   }
 
-  const queueData = queueSnap.exists ? (queueSnap.data() as Record<string, unknown>) : null;
+  const queueData = queueSnap.exists ? (queueSnap.data() as JsonObject) : null;
   const queueStatus = queueData ? asString(queueData.status, "searching") : "";
   const queueMatchId = queueData ? asString(queueData.matchId, "") : "";
 
@@ -5763,7 +5800,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
     const matchSnap = await matchRef.get();
     if (matchSnap.exists) {
-      const matchData = matchSnap.data() as Record<string, unknown>;
+      const matchData = matchSnap.data() as JsonObject;
       if (isPublicMatchmakingReadyMatch(matchData) && isExpiredPublicMatchmakingSession(matchData)) {
         return { success: true, sessionType: "idle" };
       }
@@ -5777,7 +5814,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
           matchId: queueMatchId,
           expiresAtMs: getPublicMatchmakingDeadlineMs(queueData),
         },
-        match: mapMatchStateForStudent(queueMatchId, studentId, matchSnap.data() as Record<string, unknown>),
+        match: mapMatchStateForStudent(queueMatchId, studentId, matchSnap.data()),
       };
     }
   }
@@ -5785,8 +5822,8 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
   const candidateRooms = roomSnap.docs
     .map((doc) => ({
       doc,
-      data: doc.data() as Record<string, unknown>,
-      updatedMs: asTimestampMillis((doc.data() as Record<string, unknown>).updatedAt, 0),
+      data: doc.data(),
+      updatedMs: asTimestampMillis(doc.data().updatedAt, 0),
     }))
     .filter((entry) => {
       const status = normalizeRoomStatus(entry.data.status);
@@ -5813,7 +5850,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
       await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
       const matchSnap = await matchRef.get();
       if (matchSnap.exists) {
-        match = mapMatchStateForStudent(room.matchId, studentId, matchSnap.data() as Record<string, unknown>);
+        match = mapMatchStateForStudent(room.matchId, studentId, matchSnap.data());
         return {
           success: true,
           sessionType: "match",
@@ -5834,7 +5871,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     await resolvePublicMatchmakingPass(db, 1);
     const refreshedQueueSnap = await queueRef.get();
     if (refreshedQueueSnap.exists) {
-      const refreshedQueueData = refreshedQueueSnap.data() as Record<string, unknown>;
+      const refreshedQueueData = refreshedQueueSnap.data();
       const refreshedStatus = asString(refreshedQueueData.status, "searching");
       const refreshedMatchId = asString(refreshedQueueData.matchId, "");
       if (refreshedStatus === "matched" && refreshedMatchId) {
@@ -5851,7 +5888,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
               matchId: refreshedMatchId,
               expiresAtMs: getPublicMatchmakingDeadlineMs(refreshedQueueData),
             },
-            match: mapMatchStateForStudent(refreshedMatchId, studentId, matchSnap.data() as Record<string, unknown>),
+            match: mapMatchStateForStudent(refreshedMatchId, studentId, matchSnap.data()),
           };
         }
       }

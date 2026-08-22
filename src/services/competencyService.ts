@@ -19,12 +19,41 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { z } from 'zod';
 import type {
   FirestoreQuizResult,
   FirestoreModuleProgress,
   CachedCompetencyMatrix,
 } from '../types/competency';
 import { subjects, getActiveSubjectIdsForGrade } from '../data/subjects';
+
+/** Numeric field accessor with fallback; parsing never throws. */
+const numOr = <V>(v: V, fallback = 0): number => {
+  const parsed = z.number().safeParse(v);
+  return parsed.success ? parsed.data : fallback;
+};
+
+/** Quiz attempt record shape from Firestore. */
+interface QuizAttemptRecord {
+  quizId?: string;
+  moduleId?: string;
+  subjectId?: string;
+  score?: number;
+  totalQuestions?: number;
+  correctAnswers?: number;
+  questionType?: string;
+  completedAt?: unknown;
+  timeSpent?: number;
+}
+
+/** Competency scores across 5 axes for a single module. */
+interface ModuleCompetencyScores {
+  overallMastery: number;
+  conceptGrasp: number;
+  application: number;
+  engagement: number;
+  consistency: number;
+}
 
 // ─── Palette for radar chart modules ─────────────────────────────────────────
 
@@ -65,7 +94,7 @@ export async function fetchQuizResults(userId: string): Promise<FirestoreQuizRes
         quizId: d.id,
         moduleId: data.moduleId || '',
         subjectId: data.subjectId || '',
-        score: typeof data.score === 'number' ? data.score : 0,
+        score: numOr(data.score),
         totalQuestions: data.totalQuestions || 0,
         correctAnswers: data.correctAnswers || 0,
         questionType: data.questionType || 'multiple_choice',
@@ -88,21 +117,25 @@ async function fetchQuizResultsFromProgress(userId: string): Promise<FirestoreQu
   const progressDoc = await getDoc(doc(db, 'progress', userId));
   if (!progressDoc.exists()) return [];
 
-  const data = progressDoc.data();
+  const data = progressDoc.data() as DocumentData;
   const attempts: FirestoreQuizResult[] = (data.quizAttempts || []).map(
-    (a: Record<string, unknown>, i: number) => ({
-      quizId: String(a.quizId || `attempt-${i}`),
-      moduleId: String(a.moduleId || a.quizId || ''),
-      subjectId: String(a.subjectId || ''),
-      score: typeof a.score === 'number' ? a.score : 0,
-      totalQuestions: (a.totalQuestions as number) || 0,
-      correctAnswers: typeof a.correctAnswers === 'number' ? a.correctAnswers : 0,
-      questionType: (a.questionType as FirestoreQuizResult['questionType']) || 'multiple_choice',
-      timestamp: a.completedAt
-        ? new Date(a.completedAt as string | number)
-        : new Date(),
-      timeSpent: (a.timeSpent as number) || 0,
-    }),
+    (a: DocumentData, i: number) => {
+      // SAFETY: quizAttempts entries are written by this app with the QuizAttemptRecord fields.
+      const qa = a as Partial<QuizAttemptRecord>;
+      // SAFETY: Firebase quiz-attempt records carry a questionType that maps to FirestoreQuizResult['questionType'].
+      const questionType = qa.questionType as FirestoreQuizResult['questionType'];
+      return {
+        quizId: String(qa.quizId || `attempt-${i}`),
+        moduleId: String(qa.moduleId || qa.quizId || ''),
+        subjectId: String(qa.subjectId || ''),
+        score: numOr(qa.score),
+        totalQuestions: numOr(qa.totalQuestions),
+        correctAnswers: numOr(qa.correctAnswers),
+        questionType: questionType || 'multiple_choice',
+        timestamp: qa.completedAt ? new Date(String(qa.completedAt)) : new Date(),
+        timeSpent: numOr(qa.timeSpent),
+      };
+    },
   );
   return attempts;
 }
@@ -162,13 +195,7 @@ export function computeModuleScores(
   quizResults: FirestoreQuizResult[],
   moduleProgress: FirestoreModuleProgress,
   allModules: { id: string; title: string; lessons: unknown[]; quizzes: unknown[] }[],
-): {
-  overallMastery: number;
-  conceptGrasp: number;
-  application: number;
-  engagement: number;
-  consistency: number;
-} {
+): ModuleCompetencyScores {
   const moduleQuizzes = quizResults.filter((q) => q.moduleId === moduleId);
 
   // Overall Mastery: average score across all quiz attempts for this module
@@ -215,7 +242,13 @@ export function computeModuleScores(
   if (moduleQuizzes.length < 2) {
     // Not enough data — assume moderate consistency
     const consistency = engagement > 50 ? 60 + engagement * 0.3 : engagement * 0.8;
-    return { overallMastery, conceptGrasp, application, engagement, consistency: Math.min(100, consistency) };
+    return {
+      overallMastery,
+      conceptGrasp,
+      application,
+      engagement,
+      consistency: Math.min(100, consistency),
+    };
   }
 
   const scores = moduleQuizzes.map((q) => q.score);

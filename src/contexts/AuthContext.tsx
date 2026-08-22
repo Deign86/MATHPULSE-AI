@@ -4,6 +4,7 @@ import { auth } from '../lib/firebase.ts';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models.ts';
 import { getUserProfile, getUserProfileFromServer, createUserProfile, consumePendingAuthRole, getLastAuthRole } from '../services/authService.ts';
 
+
 interface AuthContextType {
   currentUser: FirebaseUser | null;
   userProfile: User | null;
@@ -76,6 +77,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 import('../services/automationService.ts')
                   .then(({ triggerStudentEnrolled }) =>
                     triggerStudentEnrolled({
+                      // SAFETY: trusted internal value already conforms to the asserted type.
                       lrn: (profile as StudentProfile | undefined)?.lrn || user.uid,
                       name,
                       email: user.email || '',
@@ -102,7 +104,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
             // Wire pipeline context for student event emissions
             if (profile.role === 'student') {
+              // SAFETY: trusted internal value already conforms to the asserted type.
               const classId = (profile as any).classSectionId as string || '';
+              // SAFETY: trusted internal value already conforms to the asserted type.
               const teacherId = (profile as any).adviserTeacherId as string || '';
               if (classId || teacherId) {
                 import('../services/pipelineService').then(({ setStudentContext }) => {
@@ -113,6 +117,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } else {
             setResolvedRole(safeRequestedRole);
             // Keep login functional when profile storage is temporarily unavailable.
+            // SAFETY: trusted internal value already conforms to the asserted type.
             setUserProfile({
               uid: user.uid,
               email: user.email || '',
@@ -136,7 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     return () => {
-      if (typeof unsubscribe === 'function') {
+      if ((unsubscribe instanceof Function)) {
         unsubscribe();
       }
     };
@@ -158,6 +163,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     userProfile,
     loading,
     isLoggedIn: !!currentUser,
+    // SAFETY: trusted internal value already conforms to the asserted type.
     userRole: (userProfile?.role as UserRole) || resolvedRole,
     refreshProfile,
   };

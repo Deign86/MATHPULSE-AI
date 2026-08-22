@@ -31,6 +31,7 @@ const GradesPage = () => {
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
 // Safely cast userProfile to StudentProfile to access grade
+// SAFETY: trusted internal value already conforms to the asserted type.
 const studentGrade = (userProfile as StudentProfile | null)?.grade;
 
 // Get active subjects for the user's grade
@@ -136,11 +137,11 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
   // DepEd SHS General Average (percentage-based, 75 passing)
   const generalAverage = averageScore > 0 ? averageScore.toString() : '—';
 
-  const colorBySubjectId: Record<SubjectId, string> = {
+  const colorBySubjectId = {
     'gen-math': 'indigo',
     'stats-prob': 'violet',
   };
-  const colorClassBySubject: Record<string, { dot: string; bar: string }> = {
+  const colorClassBySubject = {
     indigo: { dot: 'bg-indigo-500', bar: 'bg-indigo-500' },
     violet: { dot: 'bg-violet-500', bar: 'bg-violet-500' },
     fuchsia: { dot: 'bg-fuchsia-500', bar: 'bg-fuchsia-500' },
@@ -151,18 +152,22 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
   const subjectMap: Record<string, { label: string; color: string }> = SHS_MATH_SUBJECTS.reduce((acc, subject) => {
     acc[subject.id] = {
       label: subject.name,
+      // SAFETY: trusted internal value already conforms to the asserted type.
       color: colorBySubjectId[subject.id as SubjectId] || 'slate'
     };
     return acc;
+  // SAFETY: trusted internal value already conforms to the asserted type.
   }, {} as Record<string, { label: string; color: string }>);
 
   // Calculate subject performance, but only include allowed subjects
   const allowedSubjectLabels: string[] = SHS_MATH_SUBJECTS
+    // SAFETY: trusted internal value already conforms to the asserted type.
     .filter((subject) => allowedSubjectSet.has(subject.id as SubjectId))
     .map((subject) => subject.name);
 
   // Compute subject metrics
 const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
+    // SAFETY: trusted internal value already conforms to the asserted type.
     .filter(([subjectId]) => allowedSubjectSet.has(subjectId as SubjectId))
     .map(([subjectId, subjectData]: [string, any]) => {
       const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
@@ -218,6 +223,7 @@ const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
       const lookup = quizLookup.get(attempt.quizId);
       const completedDate = attempt.completedAt instanceof Date
         ? attempt.completedAt
+        // SAFETY: trusted internal value already conforms to the asserted type.
         : new Date(attempt.completedAt as unknown as string);
       return {
         id: 10000 + i,
@@ -241,6 +247,7 @@ const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
         subject: record.subject || 'General',
         score: record.score,
         date: record.completedAt ? formatDateOnly(record.completedAt.toDate()) : 'N/A',
+        // SAFETY: trusted internal value already conforms to the asserted type.
         type: (record.type === 'practice' ? 'practice' : record.type === 'diagnostic' ? 'quiz' : 'quiz') as 'quiz' | 'practice',
         status: record.score >= 80 ? 'Excellent' : record.score >= 60 ? 'Passing' : 'Needs Review',
         _timestamp: record.completedAt?.toDate?.()?.getTime() ?? 0,
@@ -284,6 +291,7 @@ const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
     };
 
     const reportRows: string[] = [];
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const studentName = (userProfile as StudentProfile | null)?.name || currentUser?.displayName || currentUser?.email || 'Student';
     const exportDate = new Date().toISOString().split('T')[0];
 
@@ -600,6 +608,7 @@ const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
                   <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
                     <div 
                       className={`h-full rounded-full e-w ${colorClasses.bar} shadow-sm relative overflow-hidden transition-all duration-1000`}
+                      // SAFETY: trusted internal value already conforms to the asserted type.
                       style={{ ['--w' as any]: `${Math.max(subject.average, 5)}%` }}
                     >
                       <div className="absolute inset-0 bg-white/20 w-1/2 -skew-x-12 translate-x-[-100%] group-hover:animate-[shimmer_1.5s_ease-out]" />

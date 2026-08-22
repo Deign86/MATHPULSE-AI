@@ -5,7 +5,9 @@ import {
   setDoc,
   onSnapshot,
   serverTimestamp,
+  type DocumentData,
 } from 'firebase/firestore';
+import { z } from 'zod';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Platform Config Service — Dynamic subject availability (Firestore-backed)
@@ -30,7 +32,7 @@ const CONFIG_COLLECTION = 'platformConfig';
  * Build the default subject availability map from hardcoded fallbacks.
  * Used when no Firestore doc exists yet.
  */
-function getDefaultSubjectAvailability(): Record<string, SubjectAvailabilityEntry> {
+function getDefaultSubjectAvailability() {
   return {
     'gen-math': { available: true, pdfPath: null, lastUpdated: new Date() },
     'stats-prob': { available: true, pdfPath: null, lastUpdated: new Date() },
@@ -39,25 +41,32 @@ function getDefaultSubjectAvailability(): Record<string, SubjectAvailabilityEntr
   };
 }
 
-function convertTimestamps(data: Record<string, unknown>): PlatformSubjectsConfig {
-  const subjectsRaw = (data.subjects as Record<string, Record<string, unknown>>) || {};
+/** Firestore timestamp-like values; parsing never throws. */
+const timestampLikeValue = z.looseObject({ toDate: z.instanceof(Function).optional() }).catch(null);
+
+const firestoreToDate = <V>(value: V): Date => {
+  const parsed = timestampLikeValue.safeParse(value);
+  return parsed.success && parsed.data.toDate instanceof Function ? parsed.data.toDate() : new Date();
+};
+
+function convertTimestamps(data: DocumentData): PlatformSubjectsConfig {
+  // SAFETY: subjects maps are written by this service as SubjectAvailabilityEntry records.
+  const subjectsRaw: DocumentData = (data.subjects as DocumentData) || {};
   const subjects: Record<string, SubjectAvailabilityEntry> = {};
 
-  for (const [key, entry] of Object.entries(subjectsRaw)) {
+  for (const [key, value] of Object.entries(subjectsRaw)) {
+    // SAFETY: subjects entries are written by this service with SubjectAvailabilityEntry fields.
+    const entry: DocumentData = (value ?? {}) as DocumentData;
     subjects[key] = {
       available: Boolean(entry.available),
       pdfPath: entry.pdfPath ? String(entry.pdfPath) : null,
-      lastUpdated: entry.lastUpdated
-        ? (entry.lastUpdated as { toDate?: () => Date }).toDate?.() || new Date()
-        : new Date(),
+      lastUpdated: entry.lastUpdated ? firestoreToDate(entry.lastUpdated) : new Date(),
     };
   }
 
   return {
     subjects,
-    updatedAt: data.updatedAt
-      ? (data.updatedAt as { toDate?: () => Date }).toDate?.() || new Date()
-      : new Date(),
+    updatedAt: firestoreToDate(data.updatedAt),
     updatedBy: String(data.updatedBy || ''),
   };
 }
@@ -72,7 +81,7 @@ export async function getSubjectAvailability(): Promise<PlatformSubjectsConfig> 
     const snap = await getDoc(docRef);
 
     if (snap.exists()) {
-      return convertTimestamps(snap.data() as Record<string, unknown>);
+      return convertTimestamps(snap.data());
     }
 
     // No doc yet — return defaults
@@ -104,7 +113,7 @@ export function subscribeToSubjectAvailability(
     docRef,
     (snapshot) => {
       if (snapshot.exists()) {
-        onChange(convertTimestamps(snapshot.data() as Record<string, unknown>));
+        onChange(convertTimestamps(snapshot.data()));
       } else {
         onChange({
           subjects: getDefaultSubjectAvailability(),
@@ -137,8 +146,8 @@ export async function toggleSubjectAvailability(
     const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID);
     const snap = await getDoc(docRef);
 
-    const existingSubjects = snap.exists()
-      ? ((snap.data() as Record<string, unknown>).subjects as Record<string, Record<string, unknown>>) || {}
+    const existingSubjects: DocumentData = snap.exists()
+      ? snap.data().subjects || {}
       : {};
 
     await setDoc(
@@ -175,8 +184,8 @@ export async function updateSubjectPdfPath(
     const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID);
     const snap = await getDoc(docRef);
 
-    const existingSubjects = snap.exists()
-      ? ((snap.data() as Record<string, unknown>).subjects as Record<string, Record<string, unknown>>) || {}
+    const existingSubjects: DocumentData = snap.exists()
+      ? snap.data().subjects || {}
       : {};
 
     await setDoc(

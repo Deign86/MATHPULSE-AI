@@ -29,7 +29,7 @@ const SUBJECTS = [
   { id: 'basic-calc', name: 'Basic Calculus', shortName: 'BC', color: '#EF4444' },
 ];
 
-const TOPICS_BY_SUBJECT: Record<string, { name: string; unit: string }[]> = {
+const TOPICS_BY_SUBJECT = {
   'gen-math': [
     { name: 'Functions & Relations', unit: 'Functions' },
     { name: 'Rational Functions', unit: 'Functions' },
@@ -113,6 +113,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
 
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
+          // SAFETY: trusted internal value already conforms to the asserted type.
           const subjects = data.subjects as Record<string, { subjectId: string; progress: number }> || {};
 
           for (const [subjectId, subjectProg] of Object.entries(subjects)) {
@@ -254,12 +255,14 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
             <div key={subject.id} className="mb-5 last:mb-0">
               {/* Subject header */}
               <div className="flex items-center gap-2 mb-2">
+                // SAFETY: trusted internal value already conforms to the asserted type.
                 <div className="w-3 h-3 rounded-sm e-bg" style={{ ['--bg' as any]: subject.color }} />
                 <span className="text-xs font-bold text-[#0a1628]">{subject.name}</span>
                 <span className="text-[10px] text-slate-500 ml-1">Avg: {subjectAvg}%</span>
               </div>
 
               {/* Topic grid */}
+              // SAFETY: trusted internal value already conforms to the asserted type.
               <div className="grid gap-1 e-grid-cols" style={{ ['--grid-cols' as any]: `repeat(${topics.length}, minmax(0, 1fr))` }}>
                 {/* Labels row */}
                 {topics.map((topic, i) => (

@@ -17,11 +17,11 @@ interface DailyCheckInModalProps {
   timeUntilReset: string;
 }
 
-const rewardIcons: Record<string, React.ReactNode> = {
+const rewardIcons = {
   zap: <Zap size={18} className="text-amber-500" />, star: <Star size={18} className="text-yellow-500" />, sparkles: <Sparkles size={18} className="text-amber-500" />, shield: <Shield size={18} className="text-blue-500" />, lightbulb: <Lightbulb size={18} className="text-violet-500" />, flashlight: <Flashlight size={18} className="text-violet-500" />, timer: <Timer size={18} className="text-pink-500" />, rocket: <Rocket size={18} className="text-pink-500" />, flame: <Flame size={18} className="text-red-500" />, sprout: <Sprout size={18} className="text-emerald-500" />, search: <Search size={18} className="text-violet-500" />, castle: <Castle size={18} className="text-blue-500" />, 'book-open': <BookOpen size={18} className="text-violet-500" />,
 };
 
-const typeIcons: Record<string, React.ReactNode> = {
+const typeIcons = {
   xp: <Zap size={18} className="text-amber-500" />,
   coins: <Coins size={18} className="text-yellow-500" />,
   hint_token: <Lightbulb size={18} className="text-violet-500" />,
@@ -30,7 +30,7 @@ const typeIcons: Record<string, React.ReactNode> = {
   badge_unlock: <Zap size={18} className="text-emerald-500" />,
 };
 
-const rarityBadge: Record<string, string> = {
+const rarityBadge = {
   common: 'bg-slate-100 text-slate-500',
   rare: 'bg-blue-50 text-blue-500',
   epic: 'bg-amber-50 text-amber-500',

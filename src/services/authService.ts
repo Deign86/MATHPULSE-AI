@@ -11,8 +11,9 @@ import {
   updatePassword,
   deleteUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, getDocFromServer, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocFromServer, serverTimestamp, deleteDoc, type DocumentData } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { z } from 'zod';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
 
 /** Role-specific additional data passed during signup / profile creation. */
@@ -50,8 +51,33 @@ const ensurePublicSignupRole = (role: UserRole): void => {
   }
 };
 
-const toAuthServiceError = (error: unknown, fallbackMessage: string): AuthServiceError => {
-  const firebaseError = error as { code?: string; message?: string };
+/** Firebase auth/Firestore error fields we read; parsing never throws. */
+const firebaseErrorContract = z
+  .looseObject({ code: z.string().optional(), message: z.string().optional() })
+  .catch({});
+
+/** Avatar layer fields persisted under users/{uid}.avatarLayers; parsing never throws. */
+const avatarLayersContract = z
+  .looseObject({
+    top: z.string().optional(),
+    bottom: z.string().optional(),
+    shoes: z.string().optional(),
+    accessory: z.string().optional(),
+  })
+  .catch({});
+
+const logFirebaseError = <E>(label: string, error: E): void => {
+  const firebaseError = firebaseErrorContract.parse(error);
+  console.error(`[ERROR] ${label}:`, {
+    code: firebaseError.code,
+    message: firebaseError.message,
+    fullError: error,
+  });
+};
+
+const toAuthServiceError = <E>(error: E, fallbackMessage: string): AuthServiceError => {
+  const firebaseError = firebaseErrorContract.parse(error);
+  // SAFETY: AuthServiceError only augments Error with the optional code field assigned below.
   const serviceError = new Error(firebaseError.message || fallbackMessage) as AuthServiceError;
 
   if (firebaseError.code) {
@@ -117,13 +143,8 @@ export const signUpWithEmail = async (
     const userProfile = await createUserProfile(firebaseUser, role, additionalData);
 
     return userProfile;
-  } catch (error: unknown) {
-    const firebaseError = error as { code?: string; message?: string };
-    console.error('[ERROR] Error signing up:', {
-      code: firebaseError.code,
-      message: firebaseError.message,
-      fullError: error
-    });
+  } catch (error) {
+    logFirebaseError('Error signing up', error);
     throw toAuthServiceError(error, 'Failed to create account');
   }
 };
@@ -133,13 +154,8 @@ export const signUpWithEmail = async (
 export const signInWithEmail = async (email: string, password: string): Promise<void> => {
   try {
     await signInWithEmailAndPassword(auth, email, password);
-  } catch (error: unknown) {
-    const firebaseError = error as { code?: string; message?: string };
-    console.error('[ERROR] Error signing in:', {
-      code: firebaseError.code,
-      message: firebaseError.message,
-      fullError: error
-    });
+  } catch (error) {
+    logFirebaseError('Error signing in', error);
     throw toAuthServiceError(error, 'Failed to sign in');
   }
 };
@@ -225,7 +241,7 @@ export const createUserProfile = async (
           level: 1,
           currentXP: 0,
           totalXP: 0,
-          atRiskSubjects: [] as string[],
+          atRiskSubjects: [] satisfies string[],
           hasTakenDiagnostic: false,
           iarAssessmentState: 'not_started' as const,
           startingQuarterG11: 'Q1' as const,
@@ -238,7 +254,7 @@ export const createUserProfile = async (
           subject: additionalData.subject || 'Mathematics',
           yearsOfExperience: additionalData.yearsOfExperience || '0',
           qualification: additionalData.qualification || '',
-          students: [] as string[],
+          students: [] satisfies string[],
         };
       case 'admin':
         return {
@@ -254,7 +270,8 @@ export const createUserProfile = async (
   // Save to Firestore
   await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
 
-  return userProfile as unknown as User;
+  // SAFETY: this function writes users documents whose shape matches the User profile union.
+  return userProfile as User;
 };
 
 // Get user profile from Firestore
@@ -263,6 +280,7 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
     const docRef = doc(db, 'users', uid);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
+      // SAFETY: users documents are written by createUserProfile to match the User profile union.
       return { ...docSnap.data(), uid: docSnap.id } as User;
     }
     return null;
@@ -283,6 +301,7 @@ export const getUserProfileFromServer = async (uid: string): Promise<User | null
     const docRef = doc(db, 'users', uid);
     const docSnap = await getDocFromServer(docRef);
     if (docSnap.exists()) {
+      // SAFETY: users documents are written by createUserProfile to match the User profile union.
       return { ...docSnap.data(), uid: docSnap.id } as User;
     }
     return null;
@@ -307,28 +326,29 @@ export const updateUserProfile = async (
     }
 
     const baseAllowed = ['name', 'email', 'phone', 'photo', 'avatarLayers', 'gender'];
-    const roleAllowedMap: Record<UserRole, string[]> = {
+    const roleAllowedMap = {
       student: ['lrn', 'grade', 'section', 'school', 'enrollmentDate', 'major', 'gpa'],
       teacher: ['department', 'subject', 'yearsOfExperience', 'qualification'],
       admin: ['department', 'position'],
-    };
+    } satisfies Record<UserRole, string[]>;
 
     const allowedKeys = new Set([...baseAllowed, ...roleAllowedMap[currentProfile.role]]);
-    const sanitizedUpdates: Record<string, unknown> = {};
+    const sanitizedUpdates: DocumentData = {};
 
-    Object.entries(updates as Record<string, unknown>).forEach(([key, value]) => {
+    // SAFETY: only whitelisted keys from Partial<User>-shaped updates reach the payload below.
+    Object.entries(updates as DocumentData).forEach(([key, value]) => {
       if (value === undefined || !allowedKeys.has(key)) {
         return;
       }
 
-      if (key === 'avatarLayers' && typeof value === 'object' && value !== null) {
-        const avatarLayers = value as Record<string, unknown>;
+      if (key === 'avatarLayers' && value instanceof Object) {
+        const avatarLayers = avatarLayersContract.parse(value);
 
         sanitizedUpdates[key] = {
-          top: typeof avatarLayers.top === 'string' ? avatarLayers.top : '',
-          bottom: typeof avatarLayers.bottom === 'string' ? avatarLayers.bottom : '',
-          shoes: typeof avatarLayers.shoes === 'string' ? avatarLayers.shoes : '',
-          accessory: typeof avatarLayers.accessory === 'string' ? avatarLayers.accessory : '',
+          top: avatarLayers.top ?? '',
+          bottom: avatarLayers.bottom ?? '',
+          shoes: avatarLayers.shoes ?? '',
+          accessory: avatarLayers.accessory ?? '',
         };
 
         return;

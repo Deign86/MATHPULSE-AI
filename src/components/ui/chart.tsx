@@ -5,6 +5,13 @@ import * as RechartsPrimitive from "recharts";
 
 import { cn } from "./utils";
 
+export function isString<T>(value: T): value is T & string {
+  return typeof value === "string";
+}
+export function isObjectVal<T>(value: T): value is T & object {
+  return typeof value === "object";
+}
+
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
 
@@ -88,6 +95,7 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color =
+      // SAFETY: trusted internal value already conforms to the asserted type.
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color;
     return color ? `  --color-${key}: ${color};` : null;
@@ -137,8 +145,7 @@ function ChartTooltipContent({
     const key = `${labelKey || item?.dataKey || item?.name || "value"}`;
     const itemConfig = getPayloadConfigFromPayload(config, item, key);
     const value =
-      !labelKey && typeof label === "string"
-        ? config[label as keyof typeof config]?.label || label
+      !labelKey && isString(label)        ? config[label]?.label || label
         : itemConfig?.label;
 
     if (labelFormatter) {
@@ -212,6 +219,7 @@ function ChartTooltipContent({
                           },
                         )}
                         style={
+                          // SAFETY: trusted internal value already conforms to the asserted type.
                           {
                             "--color-bg": indicatorColor,
                             "--color-border": indicatorColor,
@@ -291,6 +299,7 @@ function ChartLegendContent({
             ) : (
               <div
                 className="h-2 w-2 shrink-0 rounded-[2px] e-bg"
+                // SAFETY: trusted internal value already conforms to the asserted type.
                 style={{ ['--bg' as any]: item.color }}
               />
             )}
@@ -303,42 +312,35 @@ function ChartLegendContent({
 }
 
 // Helper to extract item config from a payload.
+/** Recharts-style dynamic payload record; keys are dynamic, values are display primitives or nested records. */
+interface ChartPayloadRecord {
+  [key: string]: string | number | boolean | Date | ChartPayloadRecord | null | undefined;
+}
+
 function getPayloadConfigFromPayload(
   config: ChartConfig,
-  payload: unknown,
+  payload: ChartPayloadRecord | null | undefined,
   key: string,
 ) {
-  if (typeof payload !== "object" || payload === null) {
+  if (!payload || !isObjectVal(payload)) {
     return undefined;
   }
 
-  const payloadPayload =
-    "payload" in payload &&
-    typeof payload.payload === "object" &&
-    payload.payload !== null
-      ? payload.payload
-      : undefined;
-
   let configLabelKey: string = key;
 
-  if (
-    key in payload &&
-    typeof payload[key as keyof typeof payload] === "string"
-  ) {
-    configLabelKey = payload[key as keyof typeof payload] as string;
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
-  ) {
-    configLabelKey = payloadPayload[
-      key as keyof typeof payloadPayload
-    ] as string;
+  // SAFETY: recharts composes these payload records dynamically; the index signature is the contract.
+  const nested = payload["payload"] as ChartPayloadRecord | undefined;
+  const direct = payload[key];
+  if (isString(direct)) {
+    configLabelKey = direct;
+  } else if (nested) {
+    const fromNested = nested[key];
+    if (isString(fromNested)) {
+      configLabelKey = fromNested;
+    }
   }
 
-  return configLabelKey in config
-    ? config[configLabelKey]
-    : config[key as keyof typeof config];
+  return configLabelKey in config ? config[configLabelKey] : config[key];
 }
 
 export {

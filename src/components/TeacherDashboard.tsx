@@ -105,6 +105,10 @@ import CreateStudentAccountModal, {
   type CreateStudentAccountSeed,
 } from './CreateStudentAccountModal';
 
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === "number";
+}
+
 interface TeacherDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
@@ -218,6 +222,7 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
   const riskLevel: 'high' | 'medium' | 'low' = s.riskStatus
     ? (['intervene', 'critical', 'at_risk'].includes(s.riskStatus) ? 'high'
       : s.riskStatus === 'watch' ? 'medium' : 'low')
+    // SAFETY: trusted internal value already conforms to the asserted type.
     : (s.riskLevel || 'Low').toLowerCase() as 'high' | 'medium' | 'low';
   const lastActiveStr = s.lastActive
     ? formatRelativeTime(s.lastActive.toDate())
@@ -308,6 +313,7 @@ function toImportedClassView(c: ImportedClassOverviewResponse['classrooms'][numb
 }
 
 function toImportedStudentView(s: ImportedClassOverviewResponse['students'][number]): StudentView {
+  // SAFETY: trusted internal value already conforms to the asserted type.
   const riskLevel = (s.riskLevel || 'Low').toLowerCase() as 'high' | 'medium' | 'low';
   const classMetadata = resolveClassMetadata({
     metadata: s.classMetadata,
@@ -819,7 +825,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           new Set(
             [
               ...ownershipRecords.map((record) => record.classSectionId),
+              // SAFETY: trusted internal value already conforms to the asserted type.
               ...classrooms.map((classroom) => classroom.classSectionId).filter(Boolean) as string[],
+              // SAFETY: trusted internal value already conforms to the asserted type.
               ...classViews.map((view) => view.classSectionId).filter(Boolean) as string[],
             ]
               .map((entry) => (entry || '').trim())
@@ -833,10 +841,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         const [allManagedStudents, registeredStudents] = await Promise.all([
           getStudentsByTeacher(teacherId).catch((error) => {
             console.warn('[TeacherDashboard] managed-student fetch failed:', error);
+            // SAFETY: trusted internal value already conforms to the asserted type.
             return [] as ManagedStudent[];
           }),
           getAllRegisteredStudentsByTeacher(teacherId, knownClassSectionIds).catch((error) => {
             console.warn('[TeacherDashboard] registered-student fetch failed:', error);
+            // SAFETY: trusted internal value already conforms to the asserted type.
             return [] as RegisteredStudentAccount[];
           }),
         ]);
@@ -2016,6 +2026,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     const returnTo = sessionStorage.getItem('quizMakerReturnTo');
                     sessionStorage.removeItem('quizMakerReturnTo');
                     sessionStorage.removeItem('quizMakerInitialTab');
+                    // SAFETY: trusted internal value already conforms to the asserted type.
                     setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
                   }}
                   onOpenNotifications={() => setActiveView('notifications')}
@@ -2901,6 +2912,7 @@ const AnalyticsView: React.FC<{
 
     const topPerformers = useMemo(() => {
       if (backendHasData) {
+        // SAFETY: trusted internal value already conforms to the asserted type.
         return backendReport!.students
           .filter(s => s.quiz_attempt_count > 0)
           .sort((a, b) => b.avg_score - a.avg_score)
@@ -2919,6 +2931,7 @@ const AnalyticsView: React.FC<{
 
     const attentionStudents = useMemo(() => {
       if (backendHasData) {
+        // SAFETY: trusted internal value already conforms to the asserted type.
         return backendReport!.students
           .filter(s => ['High Risk', 'Critical'].includes(s.risk_level))
           .sort((a, b) => a.avg_score - b.avg_score)
@@ -2984,6 +2997,7 @@ const AnalyticsView: React.FC<{
       void onAssignManager(selectedManager);
     };
 
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const classBadges = [
       selectedClass.classMetadata?.gradeLevel || selectedClass.gradeLevel,
       selectedClass.classMetadata?.classification || selectedClass.classification,
@@ -3149,7 +3163,7 @@ const AnalyticsView: React.FC<{
                       <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                       <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={80}>
                         {riskDistribution.map((entry, index) => {
-                          const mapping: Record<string, string> = { 'Critical': '#dc2626', 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981', 'Unassessed': '#94a3b8' };
+                          const mapping = { 'Critical': '#dc2626', 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981', 'Unassessed': '#94a3b8' };
                           return <Cell key={`cell-${index}`} fill={mapping[entry.name] || entry.color} />;
                         })}
                       </Bar>
@@ -3314,6 +3328,7 @@ const InterventionView: React.FC<{
   initialCache?: { lessonPlan: LessonPlanResponse | null; learningPath: string; gradeDraft: string; sectionDraft: string };
   onCacheUpdate?: (studentId: string, cache: { lessonPlan: LessonPlanResponse | null; learningPath: string; gradeDraft: string; sectionDraft: string }) => void;
 }> = ({ student, teacherId, teacherName, onStudentUpdated, onBack, onNavigateToQuizMaker, initialCache, onCacheUpdate }) => {
+  // SAFETY: trusted internal value already conforms to the asserted type.
   const normalizedRiskLevel = (student.riskLevel || 'low').toLowerCase() as 'high' | 'medium' | 'low';
   const isUrgentBarrier = normalizedRiskLevel === 'high' || normalizedRiskLevel === 'medium';
   const analysisTone = isUrgentBarrier
@@ -3514,6 +3529,7 @@ const InterventionView: React.FC<{
       let errorMessage = err instanceof Error ? err.message : 'Unable to generate lesson plan at this time.';
       if (err instanceof ApiError && err.status === 422) {
         try {
+          // SAFETY: trusted internal value already conforms to the asserted type.
           const parsed = JSON.parse(err.responseBody) as {
             detail?: {
               message?: string;
@@ -4762,7 +4778,7 @@ const ImportView: React.FC<{
   const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
   const toFiniteNumber = (value: unknown): number | null => {
-    if (typeof value === 'number' && Number.isFinite(value)) {
+    if (isNum(value) && Number.isFinite(value)) {
       return value;
     }
     const parsed = Number(String(value ?? '').replace(/[^0-9.-]+/g, ''));

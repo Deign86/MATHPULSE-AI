@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as firestore from 'firebase/firestore';
 import {
   collection,
   doc,
@@ -12,61 +13,45 @@ import {
   deleteDoc,
   serverTimestamp,
   onSnapshot,
-  Timestamp,
 } from 'firebase/firestore';
-import { startOfDay, endOfDay } from 'date-fns';
+import type { DocumentReference, QuerySnapshot, DocumentData } from 'firebase/firestore';
+import * as dateFns from 'date-fns';
+import * as firebaseAuth from 'firebase/auth';
 
-vi.mock('firebase/firestore', () => {
-  const mockCollectionRef = { type: 'collection-ref' };
-  const mockDocRef = { id: 'mock-id' };
-  
-  // Create a proper Timestamp mock that supports instanceof checks
-  class MockTimestamp {
-    seconds: number;
-    nanoseconds: number;
-    
-    constructor(seconds: number, nanoseconds: number) {
-      this.seconds = seconds;
-      this.nanoseconds = nanoseconds;
-    }
-    
-    toDate() {
-      return new Date(this.seconds * 1000);
-    }
-    
-    static fromDate(date: Date) {
-      return new MockTimestamp(Math.floor(date.getTime() / 1000), 0);
-    }
-  }
+// The authenticated-user stub must be installed before the service module pulls
+// in @/lib/firebase, so the service-under-test is imported dynamically below.
+// SAFETY: stub Auth; exercised paths only read currentUser.uid.
+vi.spyOn(firebaseAuth, 'initializeAuth').mockImplementation(
+  () =>
+    // SAFETY: stub Auth; exercised paths only read currentUser.uid.
+    ({ currentUser: { uid: 'test-user-id' } }) as ReturnType<typeof firebaseAuth.initializeAuth>,
+);
 
-  return {
-    collection: vi.fn(() => mockCollectionRef),
-    doc: vi.fn(() => mockDocRef),
-    setDoc: vi.fn(),
-    getDocs: vi.fn(),
-    query: vi.fn((...args) => args),
-    where: vi.fn((...args) => ({ type: 'where', args })),
-    orderBy: vi.fn((...args) => ({ type: 'orderBy', args })),
-    limit: vi.fn((n: number) => ({ type: 'limit', count: n })),
-    updateDoc: vi.fn(() => Promise.resolve()),
-    deleteDoc: vi.fn(() => Promise.resolve()),
-    serverTimestamp: vi.fn(() => 'mock-server-timestamp'),
-    onSnapshot: vi.fn(),
-    Timestamp: MockTimestamp as any,
-  };
-});
+vi.spyOn(dateFns, 'startOfDay').mockImplementation((date) => date);
+vi.spyOn(dateFns, 'endOfDay').mockImplementation((date) => date);
 
-vi.mock('@/lib/firebase', () => ({
-  db: {},
-  auth: { currentUser: { uid: 'test-user-uid' } },
-}));
+const mockCollectionRef = { type: 'collection-ref' };
+const mockDocRef = { id: 'mock-id' };
 
-vi.mock('date-fns', () => ({
-  startOfDay: vi.fn((date: Date) => date),
-  endOfDay: vi.fn((date: Date) => date),
-}));
+// SAFETY: production code treats Firestore handles as opaque values, so plain
+// objects stand in for the members exercised by these tests.
+const docRefWith = (id: string) => ({ id }) as DocumentReference<DocumentData>;
+// SAFETY: same opaque-handle rationale as docRefWith.
+const snapshotWith = ({ docs, ...rest }: { docs: object[]; empty?: boolean }) =>
+  // SAFETY: opaque snapshot handle; only docs/empty are read.
+  ({ docs, ...rest }) as QuerySnapshot<DocumentData>;
 
-import {
+vi.spyOn(firestore, 'collection').mockImplementation(
+  // SAFETY: opaque collection handle.
+  () => mockCollectionRef as ReturnType<typeof collection>,
+);
+vi.spyOn(firestore, 'doc').mockImplementation(() => docRefWith('mock-id'));
+vi.spyOn(firestore, 'setDoc').mockImplementation(async () => undefined);
+vi.spyOn(firestore, 'getDocs').mockImplementation(async () => snapshotWith([]));
+vi.spyOn(firestore, 'updateDoc').mockImplementation(async () => undefined);
+vi.spyOn(firestore, 'deleteDoc').mockImplementation(async () => undefined);
+
+const {
   createNotification,
   getUserNotifications,
   markAsRead,
@@ -74,7 +59,7 @@ import {
   deleteNotification,
   subscribeToNotifications,
   hasCheckedInToday,
-} from './notificationFirestoreService';
+} = await import('./notificationFirestoreService');
 import type { NotificationPayload } from './types';
 
 describe('notificationFirestoreService', () => {
@@ -84,11 +69,8 @@ describe('notificationFirestoreService', () => {
 
   describe('createNotification', () => {
     it('creates a notification with correct data', async () => {
-      const mockDocRef = { id: 'notif-123' } as any;
-      const docMock = vi.mocked(doc);
-      docMock.mockReturnValue(mockDocRef);
-      const setDocMock = vi.mocked(setDoc);
-      setDocMock.mockResolvedValue(undefined);
+      const mockDocRef = docRefWith('notif-123');
+      vi.mocked(doc).mockReturnValue(mockDocRef);
 
       const payload: NotificationPayload = {
         userId: 'user-123',
@@ -112,15 +94,14 @@ describe('notificationFirestoreService', () => {
           isRead: false,
           metadata: { xpEarned: 20 },
           actionUrl: '/dashboard',
-        })
+        }),
       );
       expect(result).toBe('notif-123');
     });
 
     it('creates notification without optional fields', async () => {
-      const mockDocRef = { id: 'notif-456' } as any;
-      (doc as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockDocRef);
-      (setDoc as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      const mockDocRef = docRefWith('notif-456');
+      vi.mocked(doc).mockReturnValue(mockDocRef);
 
       const payload: NotificationPayload = {
         userId: 'user-456',
@@ -136,12 +117,12 @@ describe('notificationFirestoreService', () => {
         expect.not.objectContaining({
           metadata: expect.anything(),
           actionUrl: expect.anything(),
-        })
+        }),
       );
     });
 
     it('handles errors gracefully', async () => {
-      (setDoc as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Firestore error'));
+      vi.mocked(setDoc).mockRejectedValue(new Error('Firestore error'));
 
       const payload: NotificationPayload = {
         userId: 'user-123',
@@ -160,21 +141,18 @@ describe('notificationFirestoreService', () => {
         { id: 'notif-1', data: () => ({ userId: 'user-123', type: 'daily_checkin', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(2000, 0, 1) }) },
         { id: 'notif-2', data: () => ({ userId: 'user-123', type: 'streak_reminder', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(1000, 0, 1) }) },
       ];
-      const mockSnapshot = { docs: mockDocs } as any;
-      const getDocsMock = vi.mocked(getDocs);
-      getDocsMock.mockResolvedValue(mockSnapshot);
+      vi.mocked(getDocs).mockResolvedValue(snapshotWith(mockDocs));
 
       const result = await getUserNotifications('user-123', 2);
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe('notif-1'); // Newest first
       expect(result[1].id).toBe('notif-2');
-      expect(getDocsMock).toHaveBeenCalled();
+      expect(getDocs).toHaveBeenCalled();
     });
 
     it('returns empty array on error', async () => {
-      const getDocsMock2 = vi.mocked(getDocs);
-      getDocsMock2.mockRejectedValue(new Error('Query failed') as any);
+      vi.mocked(getDocs).mockRejectedValue(new Error('Query failed'));
 
       const result = await getUserNotifications('user-123');
 
@@ -190,7 +168,7 @@ describe('notificationFirestoreService', () => {
     });
 
     it('handles errors gracefully', async () => {
-      (updateDoc as unknown as ReturnType<typeof vi.fn>).mockReturnValue(Promise.reject(new Error('Update failed')));
+      vi.mocked(updateDoc).mockRejectedValue(new Error('Update failed'));
 
       // Dual-path: individual .catch() handlers swallow per-path errors
       await expect(markAsRead('user-123', 'notif-123')).resolves.toBeUndefined();
@@ -203,13 +181,10 @@ describe('notificationFirestoreService', () => {
         { ref: 'ref-1', data: () => ({ isRead: false }) },
         { ref: 'ref-2', data: () => ({ isRead: false }) },
       ];
-      const mockTopLevelDocs = [
-        { ref: 'ref-3', data: () => ({ isRead: false, read: false }) },
-      ];
-      (getDocs as unknown as ReturnType<typeof vi.fn>)
-        .mockResolvedValueOnce({ docs: mockSubcollectionDocs } as any)
-        .mockResolvedValueOnce({ docs: mockTopLevelDocs } as any);
-      (updateDoc as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      const mockTopLevelDocs = [{ ref: 'ref-3', data: () => ({ isRead: false, read: false }) }];
+      vi.mocked(getDocs)
+        .mockResolvedValueOnce(snapshotWith(mockSubcollectionDocs))
+        .mockResolvedValueOnce(snapshotWith(mockTopLevelDocs));
 
       await markAllAsRead('user-123');
 
@@ -228,24 +203,23 @@ describe('notificationFirestoreService', () => {
   describe('subscribeToNotifications', () => {
     it('returns an unsubscribe function', () => {
       const mockUnsubscribe = vi.fn();
-      (onSnapshot as unknown as ReturnType<typeof vi.fn>).mockImplementation((query, callback) => {
+      vi.mocked(onSnapshot).mockImplementation((_query, callback) => {
         // Simulate immediate callback with empty snapshot
-        callback({ docs: [] });
+        callback(snapshotWith([]));
         return mockUnsubscribe;
       });
 
       const callback = vi.fn();
       const unsubscribe = subscribeToNotifications('user-123', callback);
 
-      expect(typeof unsubscribe).toBe('function');
+      expect(unsubscribe).toBeTypeOf('function');
       expect(callback).toHaveBeenCalledWith([]);
     });
   });
 
   describe('hasCheckedInToday', () => {
     it('returns true if check-in exists for today', async () => {
-      const mockSnapshot = { empty: false, docs: [{ id: 'notif-1' }] } as any;
-      (getDocs as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(mockSnapshot);
+      vi.mocked(getDocs).mockResolvedValue(snapshotWith({ empty: false, docs: [{ id: 'notif-1' }] }));
 
       const result = await hasCheckedInToday('user-123');
 
@@ -254,8 +228,7 @@ describe('notificationFirestoreService', () => {
     });
 
     it('returns false if no check-in exists for today', async () => {
-      const mockSnapshot = { empty: true, docs: [] } as any;
-      (getDocs as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(mockSnapshot);
+      vi.mocked(getDocs).mockResolvedValue(snapshotWith({ empty: true, docs: [] }));
 
       const result = await hasCheckedInToday('user-123');
 
@@ -263,7 +236,7 @@ describe('notificationFirestoreService', () => {
     });
 
     it('returns false on error', async () => {
-      (getDocs as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Query failed'));
+      vi.mocked(getDocs).mockRejectedValue(new Error('Query failed'));
 
       const result = await hasCheckedInToday('user-123');
 

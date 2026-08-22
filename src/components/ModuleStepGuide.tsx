@@ -32,7 +32,7 @@ interface Props {
   onClose: () => void;
 }
 
-const STEP_ICONS: Record<string, React.ReactNode> = {
+const STEP_ICONS = {
   video_lesson: <Video className="w-5 h-5" />,
   practice: <PenTool className="w-5 h-5" />,
   assessment: <CheckCircle2 className="w-5 h-5" />,
@@ -40,7 +40,7 @@ const STEP_ICONS: Record<string, React.ReactNode> = {
   review: <RefreshCw className="w-5 h-5" />,
 };
 
-const DIFFICULTY_COLORS: Record<string, string> = {
+const DIFFICULTY_COLORS = {
   easy: 'bg-emerald-100 text-emerald-700',
   medium: 'bg-amber-100 text-amber-700',
   hard: 'bg-rose-100 text-rose-700',
@@ -72,6 +72,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
     title: section.title,
     topic,
     description: section.content,
+    // SAFETY: trusted internal value already conforms to the asserted type.
     difficulty: (section.difficulty as 'easy' | 'medium' | 'hard') || 'easy',
     duration_minutes: section.durationMinutes || 8,
     num_items: section.numItems ?? null,

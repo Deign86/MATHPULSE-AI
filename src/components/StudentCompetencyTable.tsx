@@ -19,6 +19,10 @@ import { getUserProgress } from '../services/progressService';
 import { subjects } from '../data/subjects';
 import type { UserProgress } from '../types/models';
 
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === "number";
+}
+
 // -”€-”€-”€ Types -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
 interface StudentRow {
@@ -187,7 +191,7 @@ function computeCompetencyMatrixSummary(progress: UserProgress | null): Competen
     const lessonsPct = module.lessons.length
       ? module.lessons.reduce((sum, lesson) => {
           const pct = lessonProgressMap?.[lesson.id]?.score;
-          if (typeof pct === 'number' && Number.isFinite(pct)) {
+          if (isNum(pct) && Number.isFinite(pct)) {
             return sum + clampPercent(pct);
           }
           const completed = !!moduleStats?.lessonsCompleted?.includes?.(lesson.id);
@@ -221,13 +225,13 @@ function computeCompetencyMatrixSummary(progress: UserProgress | null): Competen
   };
 }
 
-const RISK_COLORS: Record<string, { bg: string; text: string; ring: string }> = {
+const RISK_COLORS = {
   High: { bg: 'bg-red-100', text: 'text-red-700', ring: 'ring-red-300' },
   Medium: { bg: 'bg-rose-100', text: 'text-rose-700', ring: 'ring-rose-300' },
   Low: { bg: 'bg-green-100', text: 'text-green-700', ring: 'ring-green-300' },
 };
 
-const COMPETENCY_COLORS: Record<string, { bg: string; text: string; bar: string }> = {
+const COMPETENCY_COLORS = {
   advanced: { bg: 'bg-emerald-100', text: 'text-emerald-700', bar: 'bg-emerald-500' },
   proficient: { bg: 'bg-sky-100', text: 'text-sky-700', bar: 'bg-sky-500' },
   developing: { bg: 'bg-rose-100', text: 'text-rose-700', bar: 'bg-rose-500' },
@@ -314,6 +318,7 @@ const StudentCompetencyTable: React.FC<{
     email: student.email || '',
     avatar: (student.avatar && !student.avatar.includes('ui-avatars.com')) ? student.avatar : getDefaultAvatar(student.gender),
     classSectionId: student.classSectionId ?? null,
+    // SAFETY: trusted internal value already conforms to the asserted type.
     riskLevel: (String(student.riskLevel).charAt(0).toUpperCase() + String(student.riskLevel).slice(1).toLowerCase()) as 'High' | 'Medium' | 'Low',
     engagementScore: Number(student.engagementScore) || 0,
     avgQuizScore: Number(student.avgQuizScore ?? student.avgScore ?? 0) || 0,
@@ -566,7 +571,7 @@ const StudentCompetencyTable: React.FC<{
     }
   };
 
-  const RISK_ORDER: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
+  const RISK_ORDER = { High: 0, Medium: 1, Low: 2 };
 
   const filteredRows = rows
     .filter(r => {

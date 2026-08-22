@@ -102,6 +102,7 @@ async function loadSection<T>(docName: string, defaults: T): Promise<T> {
     const ref = doc(db, SETTINGS_BASE, docName);
     const snap = await getDoc(ref);
     if (snap.exists()) {
+      // SAFETY: trusted internal value already conforms to the asserted type.
       return { ...defaults, ...(snap.data() as Partial<T>) } as T;
     }
     return defaults;

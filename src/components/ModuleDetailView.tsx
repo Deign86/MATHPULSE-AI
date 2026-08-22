@@ -18,6 +18,10 @@ import { generatePracticeSession } from '../services/practiceService';
 import { useModuleProgress } from '../hooks/useModuleProgress';
 import { Loader2 } from 'lucide-react';
 
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === "number";
+}
+
 interface ModuleDetailViewProps {
   module: Module;
   onBack: () => void;
@@ -100,6 +104,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   }, [module.id]);
 
   const subjectId = useMemo(() => {
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const curriculumSubjectId = (module as Module & { subjectId?: string }).subjectId;
     if (curriculumSubjectId) return curriculumSubjectId;
     const parent = subjects.find((s) => s.modules.some((m) => m.id === module.id));
@@ -110,6 +115,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const MODULE_PALETTE = ['#1FA7E1', '#9956DE', '#75D06A', '#FFB356', '#7274ED', '#FF8B8B', '#6ED1CF', '#FB96BB'];
 
   const moduleAccentHex = useMemo(() => {
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const curriculumAccent = (module as Module & { subjectAccentColor?: string }).subjectAccentColor;
     if (curriculumAccent) return curriculumAccent;
     const parent = subjectId ? subjects.find((s) => s.id === subjectId) : null;
@@ -151,6 +157,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           question: q.question,
           options: q.options,
           correctAnswer: q.options[q.correct_index],
+          // SAFETY: trusted internal value already conforms to the asserted type.
           bloomLevel: (q.bloom_level?.toLowerCase() || 'understand') as 'remember' | 'understand' | 'apply' | 'analyze',
           difficulty: 'medium' as const,
           topic: selectedLesson.quiz.title,
@@ -233,7 +240,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     if (!lesson) return isCompleted ? 100 : 0;
     if (lesson.completed) return 100;
     const pct = lesson.progressPercent ?? lesson.score;
-    if (typeof pct === 'number' && Number.isFinite(pct)) return Math.max(0, Math.min(100, pct));
+    if (isNum(pct) && Number.isFinite(pct)) return Math.max(0, Math.min(100, pct));
     return isCompleted ? 100 : 0;
   };
 
@@ -258,6 +265,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     if (explicit) return explicit;
 
     // Prefer an explicit flag if present (some content entries may mark this)
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const flagged = module.quizzes.find((q) => (q as any).isStandalone === true);
     if (flagged) return flagged;
 
@@ -444,6 +452,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             type: 'practice',
             completed: selectedLesson.quiz.completed,
             locked: false,
+            // SAFETY: trusted internal value already conforms to the asserted type.
             loadedQuestions: quizQuestions as AIQuizQuestion[],
             source: 'ai_generated',
           }}

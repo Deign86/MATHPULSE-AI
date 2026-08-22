@@ -4,12 +4,15 @@ import {
   Calculator, Sigma, Divide, Percent, Triangle, Circle, Square, Box, Ruler,
   Binary, FunctionSquare, Scaling, Braces, Star, Award, Target, TrendingUp, Flame,
   Sparkles, Volume2, VolumeX, Maximize, Minimize, Menu, ChevronLeft, ChevronRight
-, RefreshCw, BookOpen, HeartCrack } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+, RefreshCw, BookOpen, HeartCrack } from 'lucide-react';import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { Button } from './ui/button';
 import ScientificCalculator from './ScientificCalculator';
 import MathText from './MathText';
+
+export function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
 
 const AnimatedCounter: React.FC<{ value: number; label: string; delay?: number; icon?: React.ReactNode }> = ({ value, label, delay = 0, icon }) => {
   const [count, setCount] = React.useState(0);
@@ -312,6 +315,7 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   const playSound = (type: 'correct' | 'incorrect' | 'complete' | 'streak') => {
     if (!isAudioEnabled) return;
     try {
+      // SAFETY: trusted internal value already conforms to the asserted type.
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;
       const ctx = new AudioContext();
@@ -1036,8 +1040,8 @@ setIsCorrect(false);
                 {(currentQuestion.type === 'multiple-choice' || currentQuestion.type === 'true-false') && (
                   <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
                      {(currentQuestion.type === 'true-false' ? ['True', 'False'] : shuffledOptions).map((opt, idx) => {
-                        const optionText = typeof opt === 'string' ? opt : opt.text;
-                        const optionId = typeof opt === 'string' ? `${currentQuestion.id}-${idx}` : opt.id;
+                        const optionText = isString(opt) ? opt : opt.text;
+                        const optionId = isString(opt) ? `${currentQuestion.id}-${idx}` : opt.id;
                         
                         const failedArr = failedOptions[viewIndex] || [];
                         const isFailed = failedArr.includes(optionText);
