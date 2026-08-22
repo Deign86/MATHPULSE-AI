@@ -22,6 +22,7 @@ function Progress({
       <ProgressPrimitive.Indicator
         data-slot="progress-indicator"
         className="bg-primary h-full e-w transition-all"
+        // SAFETY: trusted internal value already conforms to the asserted type.
         style={{ ['--w' as any]: `${value || 0}%` }}
       />
     </ProgressPrimitive.Root>

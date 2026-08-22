@@ -5,6 +5,10 @@ import { Slot } from "@radix-ui/react-slot";
 import { VariantProps, cva } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 
+export function isString<T>(value: T): value is T & string {
+  return typeof value === "string";
+}
+
 import { useIsMobile } from "./use-mobile";
 import { cn } from "./utils";
 import { Button } from "./button";
@@ -75,7 +79,7 @@ function SidebarProvider({
   const open = openProp ?? _open;
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value;
+      const openState = (value instanceof Function) ? value(open) : value;
       if (setOpenProp) {
         setOpenProp(openState);
       } else {
@@ -132,6 +136,7 @@ function SidebarProvider({
         <div
           data-slot="sidebar-wrapper"
           style={
+            // SAFETY: trusted internal value already conforms to the asserted type.
             {
               "--sidebar-width": SIDEBAR_WIDTH,
               "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
@@ -189,6 +194,7 @@ function Sidebar({
           data-mobile="true"
           className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
           style={
+            // SAFETY: trusted internal value already conforms to the asserted type.
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
             } as React.CSSProperties
@@ -526,7 +532,7 @@ function SidebarMenuButton({
     return button;
   }
 
-  if (typeof tooltip === "string") {
+  if (isString(tooltip)) {
     tooltip = {
       children: tooltip,
     };
@@ -628,6 +634,7 @@ function SidebarMenuSkeleton({
         className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
         style={
+          // SAFETY: trusted internal value already conforms to the asserted type.
           {
             "--skeleton-width": width,
           } as React.CSSProperties

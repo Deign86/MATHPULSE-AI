@@ -14,11 +14,21 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { z } from 'zod';
 import { UserRole } from '../types/models';
 import { initializeUserProgress } from './progressService';
 import { apiUrl } from '../config/env';
 
 const BATCH_SIZE = 400;
+
+/** Reset API response payload schema. */
+const resetResponseContract = z.looseObject({
+  detail: z.string().optional(),
+  role: z.string().optional(),
+  deletedDocs: z.number().optional(),
+  updatedDocs: z.number().optional(),
+  summary: z.string().optional(),
+});
 
 export interface ResetTestingDataParams {
   uid: string;
@@ -48,23 +58,24 @@ async function resetTestingDataViaBackend(params: ResetTestingDataParams): Promi
     },
     body: JSON.stringify({
       role: params.role,
-      ...(params.lrn ? { lrn: params.lrn } : {}),
+      ...{ lrn: params.lrn },
     }),
   });
 
   const payload = await response.json().catch(() => ({}));
+  const validated = resetResponseContract.safeParse(payload);
+  const data = validated.success ? validated.data : {};
   if (!response.ok) {
-    const detail = typeof payload?.detail === 'string' ? payload.detail : '';
-    throw new Error(detail || `Reset request failed with status ${response.status}.`);
+    throw new Error(data.detail || `Reset request failed with status ${response.status}.`);
   }
 
-  const role = typeof payload?.role === 'string' ? payload.role : params.role;
-  const deletedDocs = Number(payload?.deletedDocs ?? 0);
-  const updatedDocs = Number(payload?.updatedDocs ?? 0);
-  const summary = typeof payload?.summary === 'string'
-    ? payload.summary
-    : `${role} reset complete: ${deletedDocs} records deleted, ${updatedDocs} records reset.`;
+  // SAFETY: backend responds with ResetTestingDataResult shape; role is a valid UserRole or omitted (fallback to params.role).
+  const role = (data.role as UserRole) || params.role;
+  const deletedDocs = data.deletedDocs ?? 0;
+  const updatedDocs = data.updatedDocs ?? 0;
+  const summary = data.summary || `${role} reset complete: ${deletedDocs} records deleted, ${updatedDocs} records reset.`;
 
+  // SAFETY: return contract enforces role is the UserRole value from API or fallback.
   return {
     role: role as UserRole,
     deletedDocs,
@@ -134,14 +145,12 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
 
   // Preserve profile identity fields before reset
   const userSnap = await getDoc(doc(db, 'users', uid));
-  let preservedFields: Record<string, any> = {};
+  let preservedFields: DocumentData = {};
   if (userSnap.exists()) {
-    const data = userSnap.data();
-    preservedFields = {
-      ...(data.photo ? { photo: data.photo } : {}),
-      ...(data.avatarLayers ? { avatarLayers: data.avatarLayers } : {}),
-      ...(data.ownedAvatarItems ? { ownedAvatarItems: data.ownedAvatarItems } : {}),
-    };
+    const data = userSnap.data() as DocumentData;
+    if (data.photo) preservedFields.photo = data.photo;
+    if (data.avatarLayers) preservedFields.avatarLayers = data.avatarLayers;
+    if (data.ownedAvatarItems) preservedFields.ownedAvatarItems = data.ownedAvatarItems;
   }
 
   // Reset users/{uid} with all assessment fields cleared

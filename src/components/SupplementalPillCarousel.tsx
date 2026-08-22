@@ -260,6 +260,7 @@ const SupplementalPillCarousel: React.FC<SupplementalPillCarouselProps> = ({
         onOpenChange={setDrawerOpen}
         topicId={drawerTopicId}
         topicName={drawerTopicId ? getTopicLabel(drawerTopicId) : ''}
+        // SAFETY: trusted internal value already conforms to the asserted type.
         resolutionState={drawerResolutionState as ResolutionState}
         fallbackContent={drawerFallback}
         moduleId={drawerModuleId}

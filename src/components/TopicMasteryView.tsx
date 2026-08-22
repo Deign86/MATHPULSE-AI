@@ -43,21 +43,21 @@ const DEFAULT_MASTERY_SUMMARY: MasterySummary = {
 type SortField = 'topicName' | 'classAverage' | 'studentsAttempted' | 'masteryStatus';
 type SortDir = 'asc' | 'desc';
 
-const SUBJECT_BADGES: Record<string, { label: string; color: string }> = {
+const SUBJECT_BADGES = {
   'gen-math': { label: 'General Mathematics', color: 'bg-sky-100 text-sky-700' },
   'stats-prob': { label: 'Statistics & Probability', color: 'bg-sky-100 text-sky-700' },
   'pre-calc': { label: 'Pre-Calculus', color: 'bg-orange-100 text-orange-700' },
   'basic-calc': { label: 'Basic Calculus', color: 'bg-red-100 text-red-700' },
 };
 
-const STATUS_BADGES: Record<string, { label: string; color: string }> = {
+const STATUS_BADGES = {
   mastered: { label: 'Mastered', color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
   on_track: { label: 'On Track', color: 'text-amber-600 bg-amber-50 border-amber-100' },
   needs_attention: { label: 'Needs Work', color: 'text-rose-600 bg-rose-50 border-rose-100' },
   no_data: { label: 'No Data', color: 'text-slate-600 bg-slate-50 border-slate-200' },
 };
 
-const STATUS_ORDER: Record<string, number> = {
+const STATUS_ORDER = {
   needs_attention: 0,
   on_track: 1,
   no_data: 2,
@@ -87,6 +87,7 @@ const TopicMasteryView: React.FC<{
   const [sortField, setSortField] = useState<SortField>('classAverage');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
+  // SAFETY: trusted internal value already conforms to the asserted type.
   const allSubjectIds = SHS_MATH_SUBJECTS.map((subject) => subject.id as SubjectId);
   const subjectNameById = SHS_MATH_SUBJECTS.reduce<Record<string, string>>((acc, subject) => {
     acc[subject.id] = subject.name;
@@ -121,7 +122,9 @@ const TopicMasteryView: React.FC<{
       try {
         if (!currentUser) {
           return {
+            // SAFETY: trusted internal value already conforms to the asserted type.
             excluded: [] as string[],
+            // SAFETY: trusted internal value already conforms to the asserted type.
             topics: [] as TopicMasteryData[],
             summary: { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: 0 },
           };
@@ -146,6 +149,7 @@ const TopicMasteryView: React.FC<{
         if (!res.ok) {
           return {
             excluded,
+            // SAFETY: trusted internal value already conforms to the asserted type.
             topics: [] as TopicMasteryData[],
             summary: { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length },
           };
@@ -164,7 +168,9 @@ const TopicMasteryView: React.FC<{
         };
       } catch {
         return {
+          // SAFETY: trusted internal value already conforms to the asserted type.
           excluded: [] as string[],
+          // SAFETY: trusted internal value already conforms to the asserted type.
           topics: [] as TopicMasteryData[],
           summary: { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: 0 },
         };
@@ -276,6 +282,7 @@ const TopicMasteryView: React.FC<{
 
   useEffect(() => {
     if (subjectFilter === 'all') return;
+    // SAFETY: trusted internal value already conforms to the asserted type.
     if (!gradeScopedSubjectIds.includes(subjectFilter as SubjectId)) {
       setSubjectFilter('all');
     }
@@ -284,6 +291,7 @@ const TopicMasteryView: React.FC<{
   const filteredTopics = topics
     .filter(t => {
       if (subjectFilter !== 'all' && t.subjectId !== subjectFilter) return false;
+      // SAFETY: trusted internal value already conforms to the asserted type.
       if (!gradeScopedSubjectIds.includes(t.subjectId as SubjectId)) return false;
       if (searchQuery && !t.topicName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;

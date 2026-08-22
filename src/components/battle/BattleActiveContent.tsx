@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Users, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '../ui/utils';
 
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === "number";
+}
+
 interface BattleActiveContentProps {
   activeMatch: any;
   roundSecondsLeft: number;
@@ -98,7 +102,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
                 opponentPickedIdx = wrongIndices[lastRoundResult.roundNumber % wrongIndices.length];
               }
             } else {
-              opponentPickedIdx = typeof lastRoundResult.botSelectedIndex === 'number' ? lastRoundResult.botSelectedIndex : -1;
+              opponentPickedIdx = isNum(lastRoundResult.botSelectedIndex) ? lastRoundResult.botSelectedIndex : -1;
             }
           }
           

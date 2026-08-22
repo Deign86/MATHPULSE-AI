@@ -27,6 +27,7 @@ export const BattleFooter: React.FC<BattleFooterProps> = React.memo(({
     let cancelled = false;
     getUserProfile(opponentId).then((profile) => {
       if (!cancelled && profile?.avatarLayers) {
+        // SAFETY: trusted internal value already conforms to the asserted type.
         setOpponentLayers(profile.avatarLayers as AvatarLayers);
       }
     }).catch(() => {});

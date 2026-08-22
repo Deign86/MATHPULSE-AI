@@ -114,6 +114,7 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
               <div className="w-full h-1.5 md:h-2 rounded-full bg-black/20 overflow-hidden shadow-inner">
                  <div
                    className="h-full bg-white rounded-full transition-all duration-1000 ease-out e-w"
+                   // SAFETY: trusted internal value already conforms to the asserted type.
                    style={{ ['--w' as any]: `${module.progress > 0 ? module.progress : 0}%` }}
                  />
               </div>

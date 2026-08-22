@@ -8,7 +8,7 @@ interface AssessmentQuestionCardProps {
   children: React.ReactNode;
 }
 
-const difficultyColors: Record<string, string> = {
+const difficultyColors = {
   Easy: 'bg-emerald-100 text-emerald-700',
   Medium: 'bg-amber-100 text-amber-700',
   Hard: 'bg-red-100 text-red-700',

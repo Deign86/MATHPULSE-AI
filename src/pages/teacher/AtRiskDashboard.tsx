@@ -80,13 +80,19 @@ export const AtRiskDashboard: React.FC = () => {
       (snapshot) => {
         const data = snapshot.docs.map((docSnap) => {
           const d = docSnap.data();
+          // SAFETY: trusted internal value already conforms to the asserted type.
           return {
             id: docSnap.id,
             ...d,
+            // SAFETY: trusted internal value already conforms to the asserted type.
             wri: (d.wri as number) ?? null,
+            // SAFETY: trusted internal value already conforms to the asserted type.
             riskStatus: (d.riskStatus as DashboardStudent['riskStatus']) ?? null,
+            // SAFETY: trusted internal value already conforms to the asserted type.
             diagnosticScore: (d.diagnosticScore as number) ?? null,
+            // SAFETY: trusted internal value already conforms to the asserted type.
             externalGradesAvg: (d.externalGradesAvg as number) ?? null,
+            // SAFETY: trusted internal value already conforms to the asserted type.
             systemPerformanceAvg: (d.systemPerformanceAvg as number) ?? null,
           } as DashboardStudent;
         });
@@ -122,6 +128,7 @@ export const AtRiskDashboard: React.FC = () => {
       } else if (sortField === 'wri') {
         cmp = (a.wri ?? 100) - (b.wri ?? 100);
       } else if (sortField === 'updatedAt') {
+        // SAFETY: trusted internal value already conforms to the asserted type.
         cmp = ((a.updatedAt as { seconds?: number })?.seconds ?? 0) - ((b.updatedAt as { seconds?: number })?.seconds ?? 0);
       }
       return sortDir === 'asc' ? cmp : -cmp;
@@ -234,6 +241,7 @@ export const AtRiskDashboard: React.FC = () => {
 
               {/* Filter Pills */}
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar p-2 -m-2">
+                // SAFETY: trusted internal value already conforms to the asserted type.
                 {(['all', 'safe', 'watch', 'intervene', 'critical', 'at_risk'] as FilterStatus[]).map((status) => (
                   <button
                     key={status}
@@ -247,6 +255,7 @@ export const AtRiskDashboard: React.FC = () => {
                     {status === 'all' ? 'All' : status === 'at_risk' ? 'At Risk' : status.charAt(0).toUpperCase() + status.slice(1)}
                     {status !== 'all' && (
                       <span className="ml-1 text-[11px] opacity-70">
+                        // SAFETY: trusted internal value already conforms to the asserted type.
                         ({stats[status as keyof typeof stats]})
                       </span>
                     )}

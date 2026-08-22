@@ -17,6 +17,7 @@ import {
   serverTimestamp,
   onSnapshot,
   Timestamp,
+  type DocumentData,
 } from 'firebase/firestore';
 import { startOfDay, endOfDay } from 'date-fns';
 import { auth, db } from '@/lib/firebase';
@@ -33,8 +34,10 @@ function requireAuth(): string | null {
   return uid;
 }
 
-const mapNotificationDoc = (docSnap: { id: string; data: () => Record<string, unknown> }): Notification => {
+const mapNotificationDoc = (docSnap: { id: string; data: () => DocumentData }): Notification => {
   const data = docSnap.data();
+  // SAFETY: Firestore `createdAt` is written as serverTimestamp() (read back as Timestamp) or a Date;
+  // any other shape falls through to `new Date()` below.
   const createdAtRaw = data.createdAt as Timestamp | Date | undefined;
   const createdAt = createdAtRaw instanceof Timestamp
     ? createdAtRaw.toDate()
@@ -42,6 +45,7 @@ const mapNotificationDoc = (docSnap: { id: string; data: () => Record<string, un
       ? createdAtRaw
       : new Date();
 
+  // SAFETY: fields above were written by createNotification with exactly these Firestore types.
   return {
     id: docSnap.id,
     userId: data.userId as string,
@@ -50,7 +54,7 @@ const mapNotificationDoc = (docSnap: { id: string; data: () => Record<string, un
     message: data.message as string,
     isRead: Boolean(data.isRead ?? data.read ?? false),
     createdAt,
-    metadata: data.metadata as Record<string, unknown> | undefined,
+    metadata: data.metadata,
     actionUrl: data.actionUrl as string | undefined,
   };
 };
@@ -60,7 +64,7 @@ export const createNotification = async (payload: NotificationPayload): Promise<
   if (!uid) throw new Error('Cannot create notification — not authenticated');
   try {
     const notificationRef = doc(collection(db, 'notifications', payload.userId, 'items'));
-    const notificationData = {
+    const notificationData: DocumentData = {
       userId: payload.userId,
       type: payload.type,
       title: payload.title,
@@ -68,9 +72,9 @@ export const createNotification = async (payload: NotificationPayload): Promise<
       isRead: false,
       read: false,
       createdAt: serverTimestamp(),
-      ...(payload.metadata ? { metadata: payload.metadata } : {}),
-      ...(payload.actionUrl ? { actionUrl: payload.actionUrl } : {}),
     };
+    if (payload.metadata) notificationData.metadata = payload.metadata;
+    if (payload.actionUrl) notificationData.actionUrl = payload.actionUrl;
 
     await setDoc(notificationRef, notificationData);
     return notificationRef.id;
@@ -224,17 +228,19 @@ export const subscribeToNotifications = (
   const unsub2 = onSnapshot(topLevelQuery, (snapshot) => {
     topLevelResults = snapshot.docs.map((docSnap) => {
       const data = docSnap.data();
+      // SAFETY: legacy top-level docs store createdAt as Timestamp or Date; anything else falls back to now.
       const createdAtRaw = data.createdAt as Timestamp | Date | undefined;
       const createdAt = createdAtRaw instanceof Timestamp ? createdAtRaw.toDate() : createdAtRaw instanceof Date ? createdAtRaw : new Date();
+      // SAFETY: legacy docs may predate the typed writer; every field is defensively defaulted.
       return {
         id: docSnap.id,
         userId: data.userId as string,
         type: (data.type || 'message') as Notification['type'],
         title: data.title as string,
         message: data.message as string,
-        isRead: (data.isRead ?? data.read ?? false) as boolean,
+        isRead: Boolean(data.isRead ?? data.read ?? false),
         createdAt,
-        metadata: data.metadata as Record<string, unknown> | undefined,
+        metadata: data.metadata,
         actionUrl: (data.actionUrl || data.link) as string | undefined,
       };
     });

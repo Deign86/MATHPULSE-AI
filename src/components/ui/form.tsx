@@ -26,6 +26,7 @@ type FormFieldContextValue<
 };
 
 const FormFieldContext = React.createContext<FormFieldContextValue>(
+  // SAFETY: trusted internal value already conforms to the asserted type.
   {} as FormFieldContextValue,
 );
 
@@ -70,6 +71,7 @@ type FormItemContextValue = {
 };
 
 const FormItemContext = React.createContext<FormItemContextValue>(
+  // SAFETY: trusted internal value already conforms to the asserted type.
   {} as FormItemContextValue,
 );
 

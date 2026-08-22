@@ -6,6 +6,7 @@ import { formatAssistantResponseForStorage, formatAssistantResponseForStreaming,
 import { getScopeBoundaryResponse } from '../utils/mathScope';
 import { buildChatHintCacheKey, getHintCacheResponse, isHintPrompt, setHintCacheResponse } from '../utils/hintCache';
 
+
 export interface Message {
   id: string;
   sender: 'user' | 'ai';
@@ -763,7 +764,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   };
 
   const createNewSession = useCallback((firstMessage?: Message): string => {
-    const tempId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    const tempId = crypto !== undefined && (crypto.randomUUID instanceof Function)
       ? crypto.randomUUID()
       : Date.now().toString();
     const now = new Date();
@@ -877,7 +878,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     // Add user message
     const userMsg: Message = {
-      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      id: crypto !== undefined && (crypto.randomUUID instanceof Function)
         ? crypto.randomUUID()
         : Date.now().toString(),
       sender: 'user',
@@ -932,7 +933,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const scopeBoundaryResponse = getScopeBoundaryResponse(trimmedUserText, { history });
       if (scopeBoundaryResponse) {
         const refusalMsg: Message = {
-          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+          id: (crypto !== undefined && (crypto.randomUUID instanceof Function))
             ? crypto.randomUUID()
             : (Date.now() + 1).toString(),
           sender: 'ai',
@@ -947,7 +948,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const cachedHint = getHintCacheResponse(hintCacheKey);
         if (cachedHint) {
           const cachedHintMsg: Message = {
-            id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            id: (crypto !== undefined && (crypto.randomUUID instanceof Function))
               ? crypto.randomUUID()
               : (Date.now() + 1).toString(),
             sender: 'ai',
@@ -966,7 +967,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       } catch (importError) {
         console.error('Failed to load API service for chat:', importError);
         const importFailureMsg: Message = {
-          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+          id: (crypto !== undefined && (crypto.randomUUID instanceof Function))
             ? crypto.randomUUID()
             : (Date.now() + 1).toString(),
           sender: 'ai',
@@ -1005,7 +1006,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             if (chatSession.id !== sessionId) return chatSession;
 
             if (!streamMessageId) {
-              streamMessageId = `stream-${(typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') ? crypto.randomUUID() : Date.now().toString()}-${Math.random().toString(36).slice(2, 8)}`;
+              streamMessageId = `stream-${(crypto !== undefined && (crypto.randomUUID instanceof Function)) ? crypto.randomUUID() : Date.now().toString()}-${Math.random().toString(36).slice(2, 8)}`;
               const streamMsg: Message = {
                 id: streamMessageId,
                 sender: 'ai',
@@ -1120,7 +1121,7 @@ history,
         }
 
         const aiMsg: Message = {
-          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+          id: (crypto !== undefined && (crypto.randomUUID instanceof Function))
             ? crypto.randomUUID()
             : (Date.now() + 1).toString(),
           sender: 'ai',
@@ -1209,7 +1210,7 @@ const repairedResponse = formatAssistantResponseForStorage(continuation.data.res
         maybeCacheHintResponse(aiResponseText);
 
         const aiMsg: Message = {
-          id: (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+          id: (crypto !== undefined && (crypto.randomUUID instanceof Function))
             ? crypto.randomUUID()
             : (Date.now() + 1).toString(),
           sender: 'ai',

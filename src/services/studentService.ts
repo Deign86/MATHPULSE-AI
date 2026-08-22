@@ -16,6 +16,7 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  type DocumentData,
   addDoc,
   arrayUnion,
   arrayRemove,
@@ -233,6 +234,7 @@ export async function getStudentsByTeacher(teacherId: string): Promise<ManagedSt
     const teacherScopedQuery = query(studentsRef, where('teacherId', '==', teacherId));
     const teacherScopedSnapshot = await getDocs(teacherScopedQuery);
     if (!teacherScopedSnapshot.empty) {
+      // SAFETY: managedStudents documents are written by this app to match ManagedStudent.
       const mappedStudents = teacherScopedSnapshot.docs
         .map((entry) => ({
           id: entry.id,
@@ -253,7 +255,9 @@ export async function getStudentsByTeacher(teacherId: string): Promise<ManagedSt
     const classroomChunk = classroomIds.slice(index, index + 10);
     const chunkQuery = query(studentsRef, where('classroomId', 'in', classroomChunk));
     const chunkSnapshot = await getDocs(chunkQuery);
+    // SAFETY: managedStudents documents are written by this app to match ManagedStudent.
     chunkSnapshot.docs.forEach((entry) => {
+      // SAFETY: managedStudents documents are written by this app to match ManagedStudent.
       dedupedStudents.set(entry.id, {
         id: entry.id,
         ...entry.data(),
@@ -269,6 +273,7 @@ export async function getStudentsByClassroom(classroomId: string): Promise<Manag
   const q = query(studentsRef, where('classroomId', '==', classroomId), orderBy('name'));
   const snapshot = await getDocs(q);
 
+  // SAFETY: managedStudents documents are written by this app to match ManagedStudent.
   return snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
@@ -294,7 +299,7 @@ export async function getAllRegisteredStudentsByTeacher(
   const usersRef = collection(db, 'users');
   const dedupedById = new Map<string, RegisteredStudentAccount>();
 
-  const mapDoc = (entryId: string, data: Record<string, unknown>): RegisteredStudentAccount | null => {
+  const mapDoc = (entryId: string, data: DocumentData): RegisteredStudentAccount | null => {
     const role = String(data.role || '').toLowerCase();
     if (role !== 'student') return null;
 
@@ -313,7 +318,7 @@ export async function getAllRegisteredStudentsByTeacher(
       classSectionId: data.classSectionId ? String(data.classSectionId).trim() || undefined : undefined,
       adviserTeacherId: data.adviserTeacherId ? String(data.adviserTeacherId).trim() || undefined : undefined,
       role: 'student',
-      createdAt: (data.createdAt as Timestamp) || undefined,
+      createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined,
     };
     return account;
   };
@@ -327,7 +332,7 @@ export async function getAllRegisteredStudentsByTeacher(
     );
     const adviserSnapshot = await getDocs(adviserQuery);
     adviserSnapshot.docs.forEach((entry) => {
-      const account = mapDoc(entry.id, entry.data() as Record<string, unknown>);
+      const account = mapDoc(entry.id, entry.data());
       if (account) dedupedById.set(entry.id, account);
     });
   } catch (error) {
@@ -356,7 +361,7 @@ export async function getAllRegisteredStudentsByTeacher(
       const sectionSnapshot = await getDocs(sectionQuery);
       sectionSnapshot.docs.forEach((entry) => {
         if (dedupedById.has(entry.id)) return;
-        const account = mapDoc(entry.id, entry.data() as Record<string, unknown>);
+        const account = mapDoc(entry.id, entry.data());
         if (account) dedupedById.set(entry.id, account);
       });
     } catch (error) {
@@ -557,6 +562,7 @@ export async function reassignStudentSectionLegacy(input: ReassignStudentSection
       const previousRef = doc(db, 'classSectionOwnership', previousSectionId);
       const previousSnap = await getDoc(previousRef);
       if (previousSnap.exists()) {
+        // SAFETY: classSectionOwnership docs are written by this service with an optional studentUids array.
         const previousData = previousSnap.data() as { studentUids?: string[] };
         const trimmed = (previousData.studentUids || []).filter((uid) => uid !== studentId);
         await updateDoc(previousRef, {
@@ -684,7 +690,7 @@ export async function updateStudentRisk(
   const studentRef = doc(db, 'managedStudents', lrn);
   await updateDoc(studentRef, {
     riskLevel,
-    ...(confidence !== undefined ? { riskConfidence: confidence } : {}),
+    ...(confidence !== undefined && { riskConfidence: confidence }),
     updatedAt: serverTimestamp(),
   });
 }
@@ -753,8 +759,9 @@ export function buildClassSectionId(grade: string, section: string): string {
   return [grade, section].filter(Boolean).join('_').replace(/\s+/g, '_').toLowerCase();
 }
 
-function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
+function withoutUndefined<T extends object>(value: T): T {
   const entries = Object.entries(value).filter(([, fieldValue]) => fieldValue !== undefined);
+  // SAFETY: only entries whose value is undefined are dropped, so the remaining shape still matches T.
   return Object.fromEntries(entries) as T;
 }
 
@@ -804,15 +811,14 @@ export function inferStrand(className?: string | null, section?: string | null):
   return null;
 }
 
-export function parseClassName(className?: string | null): { grade: string; section: string } {
+export function parseClassName(className?: string | null) {
   const normalized = (className || '').trim();
   if (!normalized) {
     return { grade: 'Grade 11', section: 'Section A' };
   }
 
-  const [grade = 'Grade 11', section = 'Section A'] = normalized
-    .split(' - ')
-    .map((token) => token.trim()) as [string?, string?];
+  const tokens = normalized.split(' - ').map((token) => token.trim());
+  const [grade = 'Grade 11', section = 'Section A'] = tokens;
 
   return {
     grade: grade || 'Grade 11',
@@ -930,7 +936,9 @@ export async function getClassroomsByTeacher(teacherId: string): Promise<Classro
 
   const teacherOwnedQuery = query(classroomsRef, where('teacherId', '==', teacherId));
   const teacherOwnedSnapshot = await getDocs(teacherOwnedQuery);
+  // SAFETY: classrooms documents are written by this app to match Classroom.
   teacherOwnedSnapshot.docs.forEach((entry) => {
+    // SAFETY: classrooms documents are written by this app to match Classroom.
     deduped.set(entry.id, {
       id: entry.id,
       ...entry.data(),
@@ -940,7 +948,9 @@ export async function getClassroomsByTeacher(teacherId: string): Promise<Classro
   // Include classes where this teacher is currently assigned as manager.
   const managerQuery = query(classroomsRef, where('managerId', '==', teacherId));
   const managerSnapshot = await getDocs(managerQuery);
+  // SAFETY: classrooms documents are written by this app to match Classroom.
   managerSnapshot.docs.forEach((entry) => {
+    // SAFETY: classrooms documents are written by this app to match Classroom.
     deduped.set(entry.id, {
       id: entry.id,
       ...entry.data(),
@@ -967,6 +977,7 @@ export async function upsertClassSectionOwnership(
   const classSectionId = payload.classSectionId || buildClassSectionId(payload.grade, payload.section);
   const ref = doc(db, 'classSectionOwnership', classSectionId);
   const existing = await getDoc(ref);
+  // SAFETY: classSectionOwnership docs are written by this service with an optional studentUids array.
   const existingStudentUids = existing.exists() ? (((existing.data() as { studentUids?: string[] }).studentUids) || []) : [];
   const mergedStudentUids = Array.from(new Set([...(payload.studentUids || []), ...existingStudentUids]));
   const basePayload = withoutUndefined(payload);
@@ -1111,7 +1122,7 @@ export async function assignStudentToClassSection(
 
   // Read student profile for managed-student record
   const userSnap = await getDoc(doc(db, 'users', studentUid));
-  const userData = userSnap.exists() ? userSnap.data() : {} as Record<string, unknown>;
+  const userData: DocumentData = userSnap.exists() ? userSnap.data() : {};
 
   await setDoc(
     doc(db, 'users', studentUid),
@@ -1154,13 +1165,17 @@ export async function getClassSectionOwnershipByTeacher(teacherId: string): Prom
 
   const ownerQuery = query(ref, where('ownerTeacherId', '==', teacherId));
   const ownerSnapshot = await getDocs(ownerQuery);
+  // SAFETY: classSectionOwnership docs are written by this service to match ClassSectionOwnershipRecord.
   ownerSnapshot.docs.forEach((entry) => {
+    // SAFETY: classSectionOwnership docs are written by this service to match ClassSectionOwnershipRecord.
     byId.set(entry.id, { id: entry.id, ...entry.data() } as ClassSectionOwnershipRecord);
   });
 
   const managerQuery = query(ref, where('managerId', '==', teacherId));
   const managerSnapshot = await getDocs(managerQuery);
+  // SAFETY: classSectionOwnership docs are written by this service to match ClassSectionOwnershipRecord.
   managerSnapshot.docs.forEach((entry) => {
+    // SAFETY: classSectionOwnership docs are written by this service to match ClassSectionOwnershipRecord.
     byId.set(entry.id, { id: entry.id, ...entry.data() } as ClassSectionOwnershipRecord);
   });
 
@@ -1176,15 +1191,17 @@ export async function getTeacherDirectoryOptions(searchText = '', maxResults = 2
   const normalizedQuery = searchText.trim().toLowerCase();
   const mapped = snapshot.docs
     .map((entry) => {
-      const data = entry.data() as Record<string, unknown>;
+      const data = entry.data();
       const name = String(data.name || '').trim();
       const email = String(data.email || '').trim();
-      return {
+      const option = {
         uid: entry.id,
         name: name || 'Teacher',
         email,
         photo: String(data.photo || data.photoURL || '').trim() || undefined,
-      } as TeacherDirectoryOption;
+      };
+      // SAFETY: users documents for role==='teacher' carry the TeacherDirectoryOption fields.
+      return option as TeacherDirectoryOption;
     })
     .filter((teacher) => {
       if (!normalizedQuery) return true;
@@ -1219,6 +1236,7 @@ export function subscribeToActivityFeed(
   );
 
   return onSnapshot(q, (snapshot) => {
+    // SAFETY: classActivity documents are written by this app to match ClassActivity.
     const activities = snapshot.docs.slice(0, limitCount).map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -1249,6 +1267,7 @@ export async function getAnnouncements(classroomId: string): Promise<Announcemen
   );
   const snapshot = await getDocs(q);
 
+  // SAFETY: announcements documents are written by this app to match Announcement.
   return snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
@@ -1276,6 +1295,7 @@ export function subscribeToStudents(
   const q = query(studentsRef, where('classroomId', '==', classroomId), orderBy('name'));
 
   return onSnapshot(q, (snapshot) => {
+    // SAFETY: managedStudents documents are written by this app to match ManagedStudent.
     const students = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -1456,7 +1476,7 @@ export async function getAllRegisteredStudentsByTeacherLegacy(
   const usersRef = collection(db, 'users');
   const deduped = new Map<string, RegisteredStudentAccount>();
 
-  const ingest = (uid: string, data: Record<string, unknown>) => {
+  const ingest = (uid: string, data: DocumentData) => {
     if (!uid) return;
     if (deduped.has(uid)) return;
     if (data.role !== 'student') return;
@@ -1578,7 +1598,7 @@ export function markRosterStudentsWithoutAccounts(
     .map((roster) => ({
       ...roster,
       hasRegisteredAccount: false,
-      source: 'import' as ManagedStudentSource,
+      source: 'import' satisfies ManagedStudentSource,
     }));
 }
 

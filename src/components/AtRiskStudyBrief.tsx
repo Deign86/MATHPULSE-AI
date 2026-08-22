@@ -36,7 +36,7 @@ interface AtRiskStudyBriefProps {
   error?: string | null;
 }
 
-const BANNER_CONFIG: Record<ResolutionState, { icon: React.ReactNode; bg: string; text: string; message: string }> = {
+const BANNER_CONFIG = {
   coming_soon: {
     icon: <Clock size={16} />,
     bg: 'bg-amber-50 border-amber-200',

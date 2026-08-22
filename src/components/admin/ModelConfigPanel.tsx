@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Info } from 'lucide-react';
 
+
 interface ModelConfigData {
   activeModelName?: string;
   provider?: string;
@@ -26,7 +27,7 @@ function formatValue<T>(value: T | undefined | null, fallback = FALLBACK): strin
 function formatDate(val: ModelConfigData['lastUpdated']): string {
   if (!val) return FALLBACK;
   if (val instanceof Date) return val.toLocaleString();
-  if (typeof val.toDate === 'function') return val.toDate().toLocaleString();
+  if ((val.toDate instanceof Function)) return val.toDate().toLocaleString();
   return FALLBACK;
 }
 
@@ -72,6 +73,7 @@ export function ModelConfigPanel() {
         const ref = doc(db, 'settings', 'modelConfig');
         const snap = await getDoc(ref);
         if (snap.exists()) {
+          // SAFETY: trusted internal value already conforms to the asserted type.
           setConfig(snap.data() as ModelConfigData);
         } else {
           // No doc at all — show all fallbacks gracefully

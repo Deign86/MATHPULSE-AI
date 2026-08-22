@@ -48,6 +48,7 @@ export const getUserProgress = async (userId: string): Promise<UserProgress | nu
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
+      // SAFETY: Firestore snapshot data matches UserProgress shape written by this app.
       const data = docSnap.data();
       return {
         ...data,
@@ -79,6 +80,7 @@ export const subscribeToUserProgress = (
       }
 
       const data = snapshot.data();
+      // SAFETY: data is a UserProgress snapshot from Firestore.
       onChange({
         ...(data as UserProgress),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
@@ -126,6 +128,7 @@ export const recalculateAndUpdateModuleProgress = async (
     return 0;
   }
 
+  // SAFETY: Firestore snapshot data matches UserProgress shape written by this app.
   const data = progressSnap.data() as UserProgress;
   const moduleProgress = data.subjects?.[subjectId]?.modulesProgress?.[moduleId];
   if (!moduleProgress) {
@@ -592,7 +595,8 @@ const syncOverallRisk = async (userId: string, averageScore: number): Promise<vo
         const managedRef = doc(db, 'managedStudents', userId);
         const managedSnap = await getDoc(managedRef);
         if (managedSnap.exists()) {
-          const rs = managedSnap.data()?.riskStatus as string | undefined;
+                // SAFETY: riskStatus field from Firestore is parsed as string | undefined.
+    const rs = managedSnap.data()?.riskStatus as string | undefined;
           if (rs && ['intervene', 'critical', 'at_risk'].includes(rs)) {
             isAtRisk = true;
           }

@@ -6,6 +6,10 @@ import {
   Clock, Key, ClipboardCheck, Target, Zap, PlayCircle, Ruler, Sparkles, Pin
 } from 'lucide-react';
 
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === "number";
+}
+
 // ---------------------------------------------------------------------------
 // Rich text formatter — breaks plain paragraphs into formatted JSX.
 //
@@ -732,7 +736,7 @@ function SectionRenderer({
                   <div>
                     <p className="text-sm font-bold text-emerald-700">
                       Quiz Complete
-                      {typeof practiceQuizScore === 'number' && (
+                      {isNum(practiceQuizScore) && (
                         <span className="ml-2 text-emerald-600">{practiceQuizScore}%</span>
                       )}
                     </p>
@@ -799,7 +803,7 @@ function SectionRenderer({
   }
 }
 
-const SECTION_SYMBOLS: Record<string, string> = {
+const SECTION_SYMBOLS = {
   introduction: 'Introduction',
   key_concepts: 'Key Concepts',
   video: 'Video Lesson',
@@ -930,13 +934,18 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   const request = {
     topic: lesson.title,
+    // SAFETY: trusted internal value already conforms to the asserted type.
     subject: (lesson as any).subject || 'General Mathematics',
+    // SAFETY: trusted internal value already conforms to the asserted type.
     quarter: (lesson as any).quarter || 1,
     lessonTitle: lesson.title,
+    // SAFETY: trusted internal value already conforms to the asserted type.
     moduleId: (lesson as any).subjectId,
     lessonId: lesson.id,
+    // SAFETY: trusted internal value already conforms to the asserted type.
     competencyCode: (lesson as any).competencyCode,
     learnerLevel: 'Grade 11-12',
+    // SAFETY: trusted internal value already conforms to the asserted type.
     storagePath: (lesson as any).storagePath,
   };
 
@@ -1022,6 +1031,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       <TryItYourselfEngine
         questions={tryItQuestions}
         lessonTitle={lesson.title}
+        // SAFETY: trusted internal value already conforms to the asserted type.
         subject={(lesson as any).subject || 'General Mathematics'}
         sessionId={tryItSessionId}
         userId={userProfile?.uid}

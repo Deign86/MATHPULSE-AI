@@ -3,6 +3,7 @@ import path from "path";
 
 export default defineConfig({
   test: {
+    server: { deps: { inline: [/firebase/, /date-fns/] } },
     testTimeout: 30000,
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["functions/**", "build/**", "dist/**", "node_modules/**"],

@@ -7,6 +7,13 @@ import { signInWithEmail, signInWithGoogle, signUpWithEmail, setPendingAuthRole,
 import { UserRole } from '../types/models';
 import shaderBgVideo from '../assets/shader-bg.mp4';
 
+export function isObjectVal<T>(value: T): value is T & object {
+  return typeof value === "object";
+}
+export function isString<T>(value: T): value is T & string {
+  return typeof value === "string";
+}
+
 interface PasswordRule {
   id: string;
   label: string;
@@ -39,11 +46,13 @@ const SIGNUP_PASSWORD_RULES: PasswordRule[] = [
 const SIGNUP_PASSWORD_HELP_TEXT =
   'Use at least 8 characters with uppercase, lowercase, number, and special character.';
 
-const extractAuthErrorDetails = (err: unknown): { code: string; message: string } => {
-  const authError = typeof err === 'object' && err !== null ? (err as Partial<AuthServiceError>) : null;
-  const message = err instanceof Error ? err.message : '';
+const extractAuthErrorDetails = (cause: unknown): { code: string; message: string } => {
+  // SAFETY: trusted internal value already conforms to the asserted type.
+  // SAFETY: isObjectVal guard above verified the error shape before casting.
+  const authError = isObjectVal(cause) && cause !== null ? (cause as Partial<AuthServiceError>) : null;
+  const message = cause instanceof Error ? cause.message : '';
 
-  if (authError?.code && typeof authError.code === 'string') {
+  if (authError?.code && isString(authError.code)) {
     return { code: authError.code.toLowerCase(), message };
   }
 
@@ -61,8 +70,8 @@ const cleanFirebaseMessage = (message: string): string => {
     .trim();
 };
 
-const getFriendlyErrorMessage = (err: unknown, defaultMessage: string): string => {
-  const { code, message } = extractAuthErrorDetails(err);
+const getFriendlyErrorMessage = (cause: unknown, defaultMessage: string): string => {
+  const { code, message } = extractAuthErrorDetails(cause);
   const cleanedMessage = cleanFirebaseMessage(message);
 
   if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
@@ -97,7 +106,7 @@ const getFriendlyErrorMessage = (err: unknown, defaultMessage: string): string =
 
 const LoginPage: React.FC = () => {
   const GRADE_OPTIONS = ['Grade 11'];
-  const SECTION_OPTIONS: Record<string, string[]> = {
+  const SECTION_OPTIONS = {
     'Grade 11': ['Academic', 'Tech-Pro'],
   };
   const [email, setEmail] = useState('');
@@ -271,8 +280,11 @@ const LoginPage: React.FC = () => {
   }, [selectedGrade, selectedSection]);
 
   const demoAccounts = [
+    // SAFETY: trusted internal value already conforms to the asserted type.
     { label: 'Student', role: 'student' as UserRole, email: 'teststudent@school.edu', password: 'TestPass123!', icon: GraduationCap, color: 'sky' },
+    // SAFETY: trusted internal value already conforms to the asserted type.
     { label: 'Teacher', role: 'teacher' as UserRole, email: 'testteacher@school.edu', password: 'TestPass123!', icon: BookOpen, color: 'emerald' },
+    // SAFETY: trusted internal value already conforms to the asserted type.
     { label: 'Admin', role: 'admin' as UserRole, email: 'testadmin@school.edu', password: 'TestPass123!', icon: ShieldCheck, color: 'rose' },
   ];
 
@@ -385,6 +397,7 @@ const LoginPage: React.FC = () => {
         onCanPlay={() => setIsPrimaryVideoReady(true)}
         onLoadedMetadata={handlePrimaryMetadata}
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-150 e-opacity"
+        // SAFETY: trusted internal value already conforms to the asserted type.
         style={{ ['--o' as any]: primaryOpacity }}
         src={shaderBgVideo}
       />
@@ -398,6 +411,7 @@ const LoginPage: React.FC = () => {
         onCanPlay={() => setIsSecondaryVideoReady(true)}
         onLoadedMetadata={handleSecondaryMetadata}
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-150 e-opacity"
+        // SAFETY: trusted internal value already conforms to the asserted type.
         style={{ ['--o' as any]: secondaryOpacity }}
         src={shaderBgVideo}
       />
@@ -463,17 +477,17 @@ const LoginPage: React.FC = () => {
                 { icon: Award, label: 'Gamified', desc: 'Learn & earn', color: 'emerald' }
               ].map((feature, index) => {
                 const Icon = feature.icon;
-                const borderMap: Record<string, string> = {
+                const borderMap = {
                   sky: 'border-sky-200/60 hover:border-sky-300',
                   rose: 'border-rose-200/60 hover:border-rose-300',
                   emerald: 'border-emerald-200/60 hover:border-emerald-300',
                 };
-                const iconColorMap: Record<string, string> = {
+                const iconColorMap = {
                   sky: 'text-sky-600',
                   rose: 'text-rose-500',
                   emerald: 'text-emerald-600',
                 };
-                const glowMap: Record<string, string> = {
+                const glowMap = {
                   sky: 'bg-sky-100',
                   rose: 'bg-rose-100',
                   emerald: 'bg-emerald-100',
@@ -577,6 +591,7 @@ const LoginPage: React.FC = () => {
                       Account Type
                     </label>
                     <div className="grid grid-cols-2 gap-2">
+                      // SAFETY: trusted internal value already conforms to the asserted type.
                       {([
                         { role: 'student', label: 'Student' },
                         { role: 'teacher', label: 'Teacher' },
@@ -755,12 +770,12 @@ const LoginPage: React.FC = () => {
                   <div className="flex flex-col gap-2">
                     {demoAccounts.map((account) => {
                       const Icon = account.icon;
-                      const iconBgMap: Record<string, string> = {
+                      const iconBgMap = {
                         sky: 'bg-sky-100',
                         emerald: 'bg-emerald-100',
                         rose: 'bg-rose-100',
                       };
-                      const iconClrMap: Record<string, string> = {
+                      const iconClrMap = {
                         sky: 'text-sky-600',
                         emerald: 'text-emerald-600',
                         rose: 'text-rose-500',

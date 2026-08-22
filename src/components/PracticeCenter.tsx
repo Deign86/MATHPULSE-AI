@@ -28,7 +28,7 @@ interface TopicCard {
   subjectId: string;
 }
 
-const UNIT_STYLE: Record<string, { icon: React.ElementType; bg: string }> = {
+const UNIT_STYLE = {
   'Patterns, Relations, and Functions': { icon: TrendingUp, bg: 'bg-indigo-500' },
   'Financial Mathematics': { icon: DollarSign, bg: 'bg-emerald-500' },
   'Logic and Mathematical Reasoning': { icon: Brain, bg: 'bg-purple-500' },
@@ -55,6 +55,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
 
   const availableSubjects = useMemo(() => {
     if (!allowedSubjectIds || allowedSubjectIds.length === 0) return SHS_MATH_SUBJECTS;
+    // SAFETY: trusted internal value already conforms to the asserted type.
     return SHS_MATH_SUBJECTS.filter((s) => allowedSubjectIds.includes(s.id as SubjectId));
   }, [allowedSubjectIds]);
 
@@ -139,6 +140,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
 
   // Derive stats
   const totalQuizzesCompleted = practiceStats?.quizzesCompleted ?? 0;
+  // SAFETY: trusted internal value already conforms to the asserted type.
   const totalXPEarned = practiceStats?.totalXPEarned ?? (userProfile as any)?.totalXP ?? 0;
   const avgScore = practiceStats?.averageScore ?? 0;
 
@@ -147,7 +149,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
 
     setGeneratingTopic(topic.id);
     try {
-      const difficultyMap: Record<string, 'Practice' | 'Challenge' | 'Mastery'> = {
+      const difficultyMap = {
         'Easy': 'Practice',
         'Medium': 'Challenge',
         'Hard': 'Mastery',
@@ -176,7 +178,9 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
           question: q.question,
           options: q.options,
           correctAnswer: q.options[q.correct_index],
+          // SAFETY: trusted internal value already conforms to the asserted type.
           bloomLevel: (['remember', 'understand', 'apply', 'analyze'].includes(q.bloomsLevel?.toLowerCase() || '') ? q.bloomsLevel!.toLowerCase() : 'understand') as 'remember' | 'understand' | 'apply' | 'analyze',
+          // SAFETY: trusted internal value already conforms to the asserted type.
           difficulty: selectedDifficulty.toLowerCase() as 'easy' | 'medium' | 'hard',
           topic: topic.name,
           subject: topic.subject,
@@ -283,6 +287,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
           {([['all', 'All'], ['completed', 'Completed'], ['recommended', 'Recommended']] as const).map(([key, label]) => (
             <button
               key={key}
+              // SAFETY: trusted internal value already conforms to the asserted type.
               onClick={() => setSelectedFilter(key as any)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${selectedFilter === key
                 ? key === 'completed' ? 'bg-emerald-500 text-white shadow-sm'

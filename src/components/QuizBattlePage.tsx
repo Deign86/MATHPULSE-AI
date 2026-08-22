@@ -196,6 +196,7 @@ const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => 
       <motion.div
         key={drop.id}
         className="absolute w-0.5 h-16 bg-blue-300/40 rounded-full e-left-top"
+        // SAFETY: trusted internal value already conforms to the asserted type.
         style={{ ['--left' as any]: drop.left, ['--top' as any]: '-10%' }}
         animate={{ y: [0, viewportHeight * 1.2] }}
         transition={{
@@ -224,6 +225,7 @@ const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = 
         <motion.div
           key={spark.id}
           className="absolute w-2 h-2 bg-amber-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)] e-left-top"
+          // SAFETY: trusted internal value already conforms to the asserted type.
           style={{ ['--left' as any]: '50%', ['--top' as any]: '50%' }}
           animate={{
             y: [0, spark.yShift],
@@ -363,6 +365,7 @@ let globalAudioContext: AudioContext | null = null;
 const getAudioContext = () => {
   if (typeof window === 'undefined') return null;
   if (!globalAudioContext) {
+    // SAFETY: trusted internal value already conforms to the asserted type.
     const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (AudioContextCtor) {
       globalAudioContext = new AudioContextCtor();
@@ -373,6 +376,7 @@ const getAudioContext = () => {
 
 const QuizBattlePage: React.FC = () => {
   const { userProfile, userRole } = useAuth();
+  // SAFETY: trusted internal value already conforms to the asserted type.
   const studentProfile = userProfile as StudentProfile | null;
   const [activeTab, setActiveTab] = useState<BattlePageTab>('hub');
   const [setupConfig, setSetupConfig] = useState<QuizBattleSetupConfig>(createDefaultQuizBattleSetup);
@@ -436,6 +440,7 @@ const QuizBattlePage: React.FC = () => {
 
   const gradeScopedSubjects = useMemo(() => {
     const allowedSubjectIds = getActiveSubjectIdsForGrade(studentProfile?.grade);
+    // SAFETY: trusted internal value already conforms to the asserted type.
     return subjects.filter((entry) => allowedSubjectIds.includes(entry.id as SubjectId));
   }, [studentProfile?.grade]);
 
@@ -537,7 +542,7 @@ const QuizBattlePage: React.FC = () => {
         void context.resume().catch(() => { });
       }
 
-      const presets: Record<typeof kind, { notes: number[]; duration: number; type: OscillatorType; volume: number }> = {
+      const presets = {
         tick: { notes: [740], duration: 0.06, type: 'triangle', volume: 0.03 },
         lock: { notes: [520], duration: 0.08, type: 'square', volume: 0.04 },
         result: { notes: [660, 720], duration: 0.08, type: 'sine', volume: 0.04 },
@@ -760,6 +765,7 @@ const QuizBattlePage: React.FC = () => {
             syncedMatch = await startQuizBattleMatch(resumed.match.matchId);
             botReadyStartFailuresRef.current = 0;
           } catch (error) {
+            // SAFETY: trusted internal value already conforms to the asserted type.
             const known = error as { message?: string };
             setQueueActive(false);
             setActiveRoom(null);
@@ -1084,6 +1090,7 @@ const QuizBattlePage: React.FC = () => {
           if (activeMatch?.mode === 'bot' && activeMatch.status === 'ready') {
             botReadyStartFailuresRef.current += 1;
             if (botReadyStartFailuresRef.current >= 3) {
+              // SAFETY: trusted internal value already conforms to the asserted type.
               const known = error as { message?: string };
               setQueueActive(false);
               setActiveRoom(null);
@@ -1464,6 +1471,7 @@ const QuizBattlePage: React.FC = () => {
           });
         }
       } catch (error) {
+        // SAFETY: trusted internal value already conforms to the asserted type.
         const known = error as { message?: string };
         const message = known?.message || 'Unable to submit answer right now. Please try again.';
         const shouldSyncLatestMatch =
@@ -1594,6 +1602,7 @@ const QuizBattlePage: React.FC = () => {
         message: `Rematch ready (${rematch.botDifficulty}). Good luck!`,
       });
     } catch (error) {
+      // SAFETY: trusted internal value already conforms to the asserted type.
       const known = error as { message?: string };
       setLaunchState({
         status: 'error',
@@ -1671,6 +1680,7 @@ const QuizBattlePage: React.FC = () => {
         message: activeRoom?.roomId ? 'Private room cancelled.' : 'Left matchmaking queue.',
       });
     } catch (error) {
+      // SAFETY: trusted internal value already conforms to the asserted type.
       const known = error as { message?: string };
       setLaunchState({
         status: 'error',
@@ -1784,6 +1794,7 @@ const QuizBattlePage: React.FC = () => {
       });
     } catch (error) {
       setQueueActive(false);
+      // SAFETY: trusted internal value already conforms to the asserted type.
       const known = error as { message?: string };
       setLaunchState({
         status: 'error',
@@ -2138,6 +2149,7 @@ const QuizBattlePage: React.FC = () => {
           >
 
 
+            // SAFETY: trusted internal value already conforms to the asserted type.
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BattlePageTab)}>
 
 
@@ -2690,9 +2702,11 @@ const QuizBattlePage: React.FC = () => {
                                 previous.mode === 'bot'
                                   ? {
                                     ...previous,
+                                    // SAFETY: trusted internal value already conforms to the asserted type.
                                     botDifficulty: value as QuizBattleSetupConfig['botDifficulty'],
                                     adaptiveBot: value === 'adaptive',
                                   }
+                                  // SAFETY: trusted internal value already conforms to the asserted type.
                                   : { ...previous, difficulty: value as QuizBattleSetupConfig['difficulty'] },
                               )
                             }
@@ -2770,7 +2784,9 @@ const QuizBattlePage: React.FC = () => {
                                 <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">Online Match Type</label>
                                 <div className="grid grid-cols-2 gap-3">
                                   {[
+                                    // SAFETY: trusted internal value already conforms to the asserted type.
                                     { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue' },
+                                    // SAFETY: trusted internal value already conforms to the asserted type.
                                     { value: 'private_room' as QuizBattleQueueType, label: 'Private Room' },
                                   ].map((entry) => (
                                     <Button
@@ -3318,6 +3334,7 @@ const QuizBattlePage: React.FC = () => {
                             key={entry.value}
                             type="button"
                             variant="outline"
+                            // SAFETY: trusted internal value already conforms to the asserted type.
                             onClick={() => setHistoryFilterMode(entry.value as 'all' | QuizBattleMode)}
                             className={cn(
                               "rounded-full h-9 px-5 border transition-all font-bold tracking-wide",

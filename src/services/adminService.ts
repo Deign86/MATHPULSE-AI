@@ -14,6 +14,8 @@ import {
   where,
   serverTimestamp,
   setDoc,
+  type DocumentData,
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getDefaultAvatar } from '../utils/avatarUtils';
@@ -25,6 +27,8 @@ import {
   apiService,
   type AdminBulkActionApiResponse,
   type AdminBulkActionRequestApi,
+  type AdminCreateUserApiRequest,
+  type AdminUpdateUserApiRequest,
   type AdminUserApiRecord,
 } from './apiService';
 
@@ -109,8 +113,12 @@ export interface AdminBulkActionResult {
     message: string;
   }>;
   warnings: string[];
-  exportRows: Record<string, unknown>[];
+  exportRows: ExportRow[];
 }
+
+/** CSV-safe cell values for bulk-action export rows. */
+type ExportCell = string | number | boolean | null;
+interface ExportRow { [column: string]: ExportCell }
 
 export interface CreateAdminUserInput {
   name: string;
@@ -139,8 +147,10 @@ export interface CreateAdminUserResult {
   } | null;
 }
 
-export type AuditSeverity = 'Info' | 'Warning' | 'Error' | 'Critical';
-export type AuditCategory = 'Auth' | 'User' | 'Content' | 'System' | 'Data';
+const AUDIT_SEVERITIES = ['Info', 'Warning', 'Error', 'Critical'] as const;
+const AUDIT_CATEGORIES = ['Auth', 'User', 'Content', 'System', 'Data'] as const;
+export type AuditSeverity = (typeof AUDIT_SEVERITIES)[number];
+export type AuditCategory = (typeof AUDIT_CATEGORIES)[number];
 
 export interface AuditLogEntry {
   id: string;
@@ -193,19 +203,58 @@ export interface TopPerformer {
 
 // ─── Helpers ─────────────────────────────────────────────────
 
+/** Firestore timestamp-shaped value. */
+interface TimestampLike { toDate?: () => Date }
+/** Field values this service consumes from Firestore documents. */
+type DocValue = string | number | boolean | null | TimestampLike | DocValue[];
+
+const isString = (v: DocValue | undefined | null): v is string => typeof v === 'string';
+const isNumber = (v: DocValue | undefined | null): v is number => typeof v === 'number';
+const isTimestamp = (v: DocValue | undefined | null): v is TimestampLike =>
+  v !== null && typeof v === 'object' && 'toDate' in v;
+
+/** Parse an unvalidated Firestore payload into a doc-field map. */
+function asDoc(data: DocumentData): Record<string, DocValue> {
+  // SAFETY: Firestore documents are external input; every field access parses via isString/isNumber/isTimestamp guards.
+  return data as Record<string, DocValue>;
+}
+
+function str(v: DocValue | undefined | null, fallback = ''): string {
+  return isString(v) ? v : fallback;
+}
+
+function num(v: DocValue | undefined | null, fallback = 0): number {
+  return isNumber(v) ? v : fallback;
+}
+
+/** Read an enum-like string field, falling back when the stored value is not allowed. */
+function oneOf<T extends string>(allowed: readonly T[], v: DocValue | undefined | null, fallback: T): T {
+  const s = str(v);
+  // SAFETY: membership-checked against the closed union before narrowing.
+  return (allowed as readonly string[]).includes(s) ? (s as T) : fallback;
+}
+
+/** Extract a Firestore-style error code from an unknown thrown value. */
+function codeOf(cause: unknown): string | undefined {
+  if (cause !== null && Object.prototype.hasOwnProperty.call(cause, 'code')) {
+    // SAFETY: presence-checked code field read defensively; non-string codes are ignored.
+    const code = (cause as { code?: DocValue }).code;
+    return isString(code) ? code : undefined;
+  }
+  return undefined;
+}
+
 function capitalizeRole(role: string): string {
   if (!role) return 'Student';
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
-function getDepartmentFromProfile(data: Record<string, unknown>): string {
+function getDepartmentFromProfile(data: Record<string, DocValue>): string {
   if (data.role === 'student') {
-    const grade = (data.grade as string) || '';
-    const section = (data.section as string) || '';
-    return [grade, section].filter(Boolean).join(' - ') || 'Student';
+    return [str(data.grade), str(data.section)].filter(Boolean).join(' - ') || 'Student';
   }
-  if (data.role === 'teacher') return (data.department as string) || 'Mathematics';
-  if (data.role === 'admin') return (data.department as string) || 'System';
+  if (data.role === 'teacher') return str(data.department, 'Mathematics');
+  if (data.role === 'admin') return str(data.department, 'System');
   return '';
 }
 
@@ -279,19 +328,20 @@ function mapAdminUserRecord(record: AdminUserApiRecord): AdminUser {
   };
 }
 
-function extractApiErrorMessage(error: unknown): string {
-  if (error instanceof ApiError) {
+function extractApiErrorMessage(cause: unknown): string {
+  if (cause instanceof ApiError) {
     try {
-      const parsed = JSON.parse(error.responseBody) as { detail?: string };
-      if (parsed?.detail && typeof parsed.detail === 'string') {
+      // SAFETY: responseBody is backend JSON; the detail field is validated with isString before use.
+      const parsed = JSON.parse(cause.responseBody) as { detail?: DocValue };
+      if (isString(parsed?.detail)) {
         return parsed.detail;
       }
     } catch {
       // Fall through to status-based message.
     }
-    return `Request failed (${error.status}).`;
+    return `Request failed (${cause.status}).`;
   }
-  return error instanceof Error ? error.message : 'Request failed.';
+  return cause instanceof Error ? cause.message : 'Request failed.';
 }
 
 // ─── User Management ─────────────────────────────────────────
@@ -349,18 +399,23 @@ export async function getAllUsers(): Promise<AdminUser[]> {
 /** Update a user via backend admin API. */
 export async function updateAdminUser(uid: string, updates: Partial<AdminUser>): Promise<void> {
   try {
-    await apiService.updateAdminUser(uid, {
-      ...(updates.name !== undefined ? { name: updates.name } : {}),
-      ...(updates.role !== undefined ? { role: updates.role } : {}),
-      ...(updates.status !== undefined ? { status: updates.status } : {}),
-      ...(updates.department !== undefined ? { department: updates.department } : {}),
-      ...(updates.grade !== undefined ? { grade: updates.grade } : {}),
-      ...(updates.section !== undefined ? { section: updates.section } : {}),
-      ...(updates.lrn !== undefined ? { lrn: updates.lrn } : {}),
-    });
+    await apiService.updateAdminUser(uid, buildAdminUpdatePayload(updates));
   } catch (error) {
     throw new Error(extractApiErrorMessage(error));
   }
+}
+
+/** Build the API payload, adding only the fields that are explicitly set. */
+function buildAdminUpdatePayload(updates: Partial<AdminUser>): AdminUpdateUserApiRequest {
+  const payload: AdminUpdateUserApiRequest = {};
+  if (updates.name !== undefined) payload.name = updates.name;
+  if (updates.role !== undefined) payload.role = updates.role;
+  if (updates.status !== undefined) payload.status = updates.status;
+  if (updates.department !== undefined) payload.department = updates.department;
+  if (updates.grade !== undefined) payload.grade = updates.grade;
+  if (updates.section !== undefined) payload.section = updates.section;
+  if (updates.lrn !== undefined) payload.lrn = updates.lrn;
+  return payload;
 }
 
 /** Delete a user account through backend (Auth + Firestore profile). */
@@ -381,7 +436,7 @@ export async function deleteAdminUser(uid: string): Promise<void> {
  */
 export async function createAdminUser(input: CreateAdminUserInput): Promise<CreateAdminUserResult> {
   try {
-    const response = await apiService.createAdminUser({
+    const payload: AdminCreateUserApiRequest = {
       name: input.name.trim(),
       email: input.email.trim().toLowerCase(),
       password: input.password,
@@ -390,8 +445,10 @@ export async function createAdminUser(input: CreateAdminUserInput): Promise<Crea
       status: input.status,
       grade: input.grade.trim(),
       section: input.section.trim(),
-      ...(input.lrn?.trim() ? { lrn: input.lrn.trim() } : {}),
-    });
+    };
+    const lrn = input.lrn?.trim();
+    if (lrn) payload.lrn = lrn;
+    const response = await apiService.createAdminUser(payload);
 
     if (!response.success || !response.userCreated || !response.uid) {
       throw new Error(response.message || 'Failed to create user account.');
@@ -459,14 +516,14 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     const accessQ = query(collection(db, 'accessAuditLogs'), orderBy('timestamp', 'desc'), limit(100));
     const accessSnap = await getDocs(accessQ);
     const accessEntries: AuditLogEntry[] = accessSnap.docs.map(d => {
-      const data = d.data() as Record<string, unknown>;
+      const data = asDoc(d.data());
       
       const success = data.success !== false;
       const severity: AuditSeverity = !success ? 'Error' : 'Info';
       
-      const actionRaw = (data.action as string) || '';
+      const actionRaw = str(data.action);
       let category: AuditCategory = 'System';
-      const module = data.module as string;
+      const module = str(data.module);
       if (module === 'admin' || actionRaw.startsWith('admin_')) category = 'User';
       else if (actionRaw.includes('login') || actionRaw.includes('auth')) category = 'Auth';
       else if (actionRaw.includes('upload') || actionRaw.includes('course')) category = 'Content';
@@ -474,12 +531,12 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
       return {
         id: d.id,
         severity,
-        timestamp: typeof data.timestamp === 'string'
+        timestamp: isString(data.timestamp)
         ? data.timestamp
-        : timestampToString(data.timestamp as { toDate?: () => Date }),
+        : timestampToString(isTimestamp(data.timestamp) ? data.timestamp : null),
         user: { 
           name: (() => {
-            const raw = (data.actorName as string) || (data.actorEmail as string) || (data.teacherEmail as string) || (data.teacherId as string) || 'SYSTEM';
+            const raw = str(data.actorName) || str(data.actorEmail) || str(data.teacherEmail) || str(data.teacherId) || 'SYSTEM';
             if (raw === 'Unknown' || !raw) return 'SYSTEM';
             // If it's an email, extract a readable name from the local part
             if (raw.includes('@')) {
@@ -488,12 +545,12 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
             }
             return raw;
           })(),
-          role: capitalizeRole((data.actorRole as string) || (data.role as string) || 'System'), 
+          role: capitalizeRole(str(data.actorRole, str(data.role, 'System'))), 
           avatar: null 
         },
         action: actionRaw,
         category,
-        details: (data.description as string) || (data.status ? `Status: ${data.status}` : ''),
+        details: str(data.description, data.status ? `Status: ${str(data.status)}` : ''),
       };
     });
 
@@ -501,20 +558,21 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     const auditQ = query(collection(db, 'auditLogs'), orderBy('timestampRaw', 'desc'), limit(50));
     const auditSnap = await getDocs(auditQ);
     const auditEntries: AuditLogEntry[] = auditSnap.docs.map(d => {
-      const data = d.data() as Record<string, unknown>;
-      const rawUser = data.user as { name?: string; role?: string; avatar?: string | null } | undefined;
+      const data = asDoc(d.data());
+      // SAFETY: audit writer stores a {name, role, avatar} object; fields fall back below.
+      const rawUser = data.user as { name?: DocValue; role?: DocValue; avatar?: string | null } | undefined;
       return {
         id: `audit-${d.id}`,
-        severity: (data.severity as AuditSeverity) || 'Info',
-        timestamp: (data.timestamp as string) || timestampToString(data.timestampRaw as { toDate?: () => Date }),
+        severity: oneOf(AUDIT_SEVERITIES, data.severity, 'Info'),
+        timestamp: str(data.timestamp) || timestampToString(isTimestamp(data.timestampRaw) ? data.timestampRaw : null),
         user: {
-          name: rawUser?.name || 'SYSTEM',
-          role: rawUser?.role || 'System',
+          name: str(rawUser?.name, 'SYSTEM'),
+          role: str(rawUser?.role, 'System'),
           avatar: rawUser?.avatar ?? null,
         },
-        action: (data.action as string) || '',
-        category: (data.category as AuditCategory) || 'System',
-        details: (data.details as string) || '',
+        action: str(data.action),
+        category: oneOf(AUDIT_CATEGORIES, data.category, 'System'),
+        details: str(data.details),
       };
     });
 
@@ -524,8 +582,8 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
       .slice(0, 100);
   } catch (err: unknown) {
     // Log only unexpected errors, not permission-denied (which is expected for non-admin/teacher)
-    const error = err as { code?: string };
-    if (error?.code === 'permission-denied' || error?.code === 'firestore/permission-denied') {
+    const errorCode = codeOf(err);
+    if (errorCode === 'permission-denied' || errorCode === 'firestore/permission-denied') {
       return [];
     }
     console.error('[adminService] getAuditLogs error:', err);
@@ -560,29 +618,29 @@ export async function getModules(): Promise<ContentModule[]> {
     const q = query(collection(db, 'modules'), orderBy('createdAt', 'desc'));
     const snap = await getDocs(q);
     return snap.docs.map(d => {
-      const data = d.data() as Record<string, unknown>;
-      const createdAt = data.createdAt as { toDate?: () => Date } | undefined;
+      const data = asDoc(d.data());
+      const createdAt = isTimestamp(data.createdAt) ? data.createdAt : undefined;
       return {
         id: d.id,
-        title: (data.title as string) || '',
-        subject: (data.subject as string) || '',
-        type: (data.type as ContentModule['type']) || 'Video',
-        difficulty: (data.difficulty as ContentModule['difficulty']) || 'Beginner',
-        status: (data.status as ContentModule['status']) || 'Draft',
-        assigned: (data.assigned as number) || 0,
+        title: str(data.title),
+        subject: str(data.subject),
+        type: oneOf(['Video', 'Quiz', 'Document'] as const, data.type, 'Video'),
+        difficulty: oneOf(['Beginner', 'Intermediate', 'Advanced', 'N/A'] as const, data.difficulty, 'Beginner'),
+        status: oneOf(['Published', 'Draft', 'Archived'] as const, data.status, 'Draft'),
+        assigned: num(data.assigned),
         created:
           (createdAt?.toDate?.()?.toLocaleDateString() ??
-            ((data.created as string) || 'Unknown')),
+            (str(data.created, 'Unknown'))),
         // RAG fields
-        ragEnabled: data.ragEnabled as boolean | undefined,
-        ragDocumentUrl: data.ragDocumentUrl as string | undefined,
-        ragChunkSize: data.ragChunkSize as number | undefined,
-        ragChunkOverlap: data.ragChunkOverlap as number | undefined,
-        ragEmbeddingModel: data.ragEmbeddingModel as string | undefined,
-        ragTopK: data.ragTopK as number | undefined,
-        ragNamespace: data.ragNamespace as string | undefined,
-        ragIndexStatus: data.ragIndexStatus as ContentModule['ragIndexStatus'] | undefined,
-        ragLastIndexedAt: data.ragLastIndexedAt as string | undefined,
+        ragEnabled: data.ragEnabled === true ? true : undefined,
+        ragDocumentUrl: str(data.ragDocumentUrl) || undefined,
+        ragChunkSize: num(data.ragChunkSize) || undefined,
+        ragChunkOverlap: num(data.ragChunkOverlap) || undefined,
+        ragEmbeddingModel: str(data.ragEmbeddingModel) || undefined,
+        ragTopK: num(data.ragTopK) || undefined,
+        ragNamespace: str(data.ragNamespace) || undefined,
+        ragIndexStatus: oneOf(['pending', 'indexed', 'failed', 'not_indexed'] as const, data.ragIndexStatus, 'not_indexed'),
+        ragLastIndexedAt: str(data.ragLastIndexedAt) || undefined,
       };
     });
   } catch (err) {
@@ -631,7 +689,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const atRiskUserIds = new Set<string>();
 
     usersSnap.docs.forEach(d => {
-      const data = d.data() as Record<string, unknown>;
+      const data = asDoc(d.data());
       if (data.role === 'student') {
         totalStudents++;
         if (data.overallRisk === 'High') {
@@ -648,8 +706,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     try {
       const managedSnap = await getDocs(collection(db, 'managedStudents'));
       managedSnap.docs.forEach(d => {
-        const data = d.data() as Record<string, unknown>;
-        const riskStatus = data.riskStatus as string | undefined;
+        const data = asDoc(d.data());
+        const riskStatus = str(data.riskStatus);
         if (riskStatus && ['intervene', 'critical', 'at_risk'].includes(riskStatus)) {
           if (!atRiskUserIds.has(d.id)) {
             atRiskStudents++;
@@ -676,8 +734,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       const progressSnap = await getDocs(collection(db, 'progress'));
       const scores: number[] = [];
       progressSnap.docs.forEach(d => {
-        const data = d.data() as Record<string, unknown>;
-        if (typeof data.averageScore === 'number') scores.push(data.averageScore);
+        const data = asDoc(d.data());
+        if (isNumber(data.averageScore)) scores.push(data.averageScore);
       });
       avgPerformance =
         scores.length > 0
@@ -710,20 +768,23 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
 /** Get top N students ordered by level descending. */
 export async function getTopPerformers(n = 3): Promise<TopPerformer[]> {
-  const mapDocToPerformer = (d: { id: string; data: () => Record<string, unknown> }): TopPerformer => {
-    const data = d.data();
-    const level = (data.level as number) || 1;
-    const currentXP = (data.currentXP as number) || 0;
+  const mapDocToPerformer = (d: QueryDocumentSnapshot): TopPerformer => {
+    const data = asDoc(d.data());
+    const level = num(data.level, 1);
+    const currentXP = num(data.currentXP);
     // Rough performance estimate: clamp level*8 to [0,100]
     const performance = Math.min(100, level * 8 + Math.round(currentXP / 100));
+    const gender = data.gender;
     return {
       id: d.id,
-      name: (data.name as string) || 'Student',
+      name: str(data.name, 'Student'),
       avatar:
-        (data.photo as string) ||
-        (data.photoURL as string) ||
-        getDefaultAvatar((data.gender as 'male' | 'female' | 'prefer_not_to_say') || null),
-      class: (data.grade as string) || 'Math',
+        str(data.photo) ||
+        str(data.photoURL) ||
+        getDefaultAvatar(
+          gender === 'male' || gender === 'female' || gender === 'prefer_not_to_say' ? gender : null,
+        ),
+      class: str(data.grade, 'Math'),
       performance,
       level,
     };
@@ -747,7 +808,7 @@ export async function getTopPerformers(n = 3): Promise<TopPerformer[]> {
     const snap = await getDocs(q);
     return sortAndTrim(snap.docs.map(mapDocToPerformer));
   } catch (err) {
-    const errorCode = (err as { code?: string } | null)?.code;
+    const errorCode = codeOf(err);
     if (errorCode === 'failed-precondition') {
       try {
         // Fallback avoids composite-index requirements by sorting in memory.
@@ -817,14 +878,13 @@ export async function getWeeklyActivity(): Promise<WeeklyActivityData[]> {
 
     const xpSnap = await getDocs(collection(db, 'xpActivities'));
     xpSnap.docs.forEach(d => {
-      const data = d.data() as Record<string, unknown>;
-      const ts = data.timestamp as { toDate?: () => Date } | undefined;
-      if (!ts?.toDate) return;
-      const date = ts.toDate();
+      const data = asDoc(d.data());
+      if (!isTimestamp(data.timestamp)) return;
+      const date = data.timestamp.toDate();
       const daysAgo = Math.floor((now.getTime() - date.getTime()) / 86400000);
       if (daysAgo < 0 || daysAgo > 6) return;
       const idx = 6 - daysAgo;
-      const type = data.type as string;
+      const type = str(data.type);
       // AI-driven activities vs manual
       if (type === 'lesson_complete' || type === 'quiz_complete') {
         result[idx].ai++;
@@ -845,23 +905,28 @@ export async function getWeeklyActivity(): Promise<WeeklyActivityData[]> {
   }
 }
 
+/** Per-subject enrollment aggregation. */
+interface SubjectStat { enrolled: number; totalProgress: number }
+interface SubjectStatMap { [subId: string]: SubjectStat }
+
 /** Get subject breakdown with real enrollment and average progress from progress collection. */
 export async function getSubjectBreakdown(): Promise<SubjectBreakdownItem[]> {
   try {
     const progressSnap = await getDocs(collection(db, 'progress'));
-    const subjectStats: Record<string, { enrolled: number; totalProgress: number }> = {
+    const subjectStats: SubjectStatMap = {
       'gen-math': { enrolled: 0, totalProgress: 0 },
       'stats-prob': { enrolled: 0, totalProgress: 0 },
     };
 
     progressSnap.docs.forEach(d => {
-      const data = d.data() as Record<string, unknown>;
-      const subjects = data.subjects as Record<string, { progress?: number }> | undefined;
+      const data = asDoc(d.data());
+      // SAFETY: progress docs store a subject-id map with optional numeric progress; entries parse via num().
+      const subjects = data.subjects as Record<string, { progress?: unknown }> | undefined;
       if (!subjects) return;
       Object.entries(subjects).forEach(([subId, subData]) => {
         if (subjectStats[subId]) {
           subjectStats[subId].enrolled++;
-          subjectStats[subId].totalProgress += subData?.progress ?? 0;
+          subjectStats[subId].totalProgress += num(subData?.progress);
         }
       });
     });
@@ -898,7 +963,7 @@ export async function getPriorityAttention(): Promise<PriorityAttentionData> {
 
     const usersSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
     usersSnap.docs.forEach(d => {
-      const data = d.data() as Record<string, unknown>;
+      const data = asDoc(d.data());
       if (data.overallRisk === 'High') { atRiskCount++; counted.add(d.id); }
     });
 
@@ -906,8 +971,8 @@ export async function getPriorityAttention(): Promise<PriorityAttentionData> {
     try {
       const managedSnap = await getDocs(collection(db, 'managedStudents'));
       managedSnap.docs.forEach(d => {
-        const data = d.data() as Record<string, unknown>;
-        const rs = data.riskStatus as string | undefined;
+        const data = asDoc(d.data());
+        const rs = str(data.riskStatus);
         if (rs && ['intervene', 'critical', 'at_risk'].includes(rs) && !counted.has(d.id)) {
           atRiskCount++;
           counted.add(d.id);
@@ -932,9 +997,9 @@ export async function getGlobalMastery(): Promise<GlobalMasteryData> {
     let count = 0;
 
     progressSnap.docs.forEach(d => {
-      const data = d.data() as Record<string, unknown>;
-      const avg = data.averageScore as number | undefined;
-      if (typeof avg === 'number') {
+      const data = asDoc(d.data());
+      const avg = data.averageScore;
+      if (isNumber(avg)) {
         totalScore += avg;
         count++;
         if (avg >= 60) passed++;
@@ -964,9 +1029,9 @@ export async function getDifficultyDistribution(): Promise<DifficultyDistributio
     let advanced = 0;
 
     progressSnap.docs.forEach(d => {
-      const data = d.data() as Record<string, unknown>;
-      const avg = data.averageScore as number | undefined;
-      if (typeof avg !== 'number') { foundational++; return; }
+      const data = asDoc(d.data());
+      const avg = data.averageScore;
+      if (!isNumber(avg)) { foundational++; return; }
       if (avg < 50) foundational++;
       else if (avg < 80) intermediate++;
       else advanced++;
@@ -1011,12 +1076,12 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
     const atRiskIds = new Set<string>();
 
     usersSnap.docs.forEach(d => {
-      const data = d.data() as Record<string, unknown>;
+      const data = asDoc(d.data());
       if (data.role === 'student') {
         totalStudents++;
         if (data.overallRisk === 'High') { atRiskStudents++; atRiskIds.add(d.id); }
-        if ((data.streak as number) > 0) activeStreaks++;
-        totalXPEarned += (data.totalXP as number) || 0;
+        if (num(data.streak) > 0) activeStreaks++;
+        totalXPEarned += num(data.totalXP);
       }
       if (data.role === 'teacher') totalTeachers++;
     });
@@ -1025,8 +1090,8 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
     try {
       const managedSnap = await getDocs(collection(db, 'managedStudents'));
       managedSnap.docs.forEach(d => {
-        const data = d.data() as Record<string, unknown>;
-        const rs = data.riskStatus as string | undefined;
+        const data = asDoc(d.data());
+        const rs = str(data.riskStatus);
         if (rs && ['intervene', 'critical', 'at_risk'].includes(rs) && !atRiskIds.has(d.id)) {
           atRiskStudents++;
           atRiskIds.add(d.id);
@@ -1052,11 +1117,12 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       const progressSnap = await getDocs(collection(db, 'progress'));
       const scores: number[] = [];
       progressSnap.docs.forEach(d => {
-        const data = d.data() as Record<string, unknown>;
-        const attempts = data.quizAttempts as Array<{ score?: number }> | undefined;
+        const data = asDoc(d.data());
+        // SAFETY: progress docs store a quiz-attempt list with optional numeric scores; parsed via isNumber.
+        const attempts = data.quizAttempts as Array<{ score?: unknown }> | undefined;
         if (attempts?.length) {
           totalQuizzesTaken += attempts.length;
-          attempts.forEach(a => { if (typeof a.score === 'number') scores.push(a.score); });
+          attempts.forEach(a => { if (isNumber(a.score)) scores.push(a.score); });
         }
       });
       avgQuizScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;

@@ -42,7 +42,7 @@ const AdminAnalytics: React.FC = () => {
 
   useEffect(() => { loadData(); }, []);
 
-  const timeRangeLabels: Record<TimeRange, string> = {
+  const timeRangeLabels = {
     '7d': '7 Days',
     '30d': '30 Days',
     '90d': '90 Days',
@@ -73,6 +73,7 @@ const AdminAnalytics: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-white rounded-xl p-1 shadow-sm border border-slate-200/60">
+            // SAFETY: trusted internal value already conforms to the asserted type.
             {(Object.entries(timeRangeLabels) as [TimeRange, string][]).map(([key, label]) => (
               <button
                 key={key}

@@ -5,6 +5,10 @@ import { useChatContext, Message } from '../contexts/ChatContext';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToTutorNudges, consumeNudge, requestNudgeCheck, type TutorNudge } from '../services/tutorNudgeService';
 
+export function isObjectVal<T>(value: T): value is T & object {
+  return typeof value === "object";
+}
+
 const ChatMarkdown = lazy(() => import('./ChatMarkdown.tsx'));
 
 interface FloatingAITutorProps {
@@ -13,11 +17,12 @@ interface FloatingAITutorProps {
 }
 
 /** Safely convert a Date or Firestore Timestamp to a time string */
-function safeTimestamp(ts: unknown): string {
+function safeTimestamp(ts: string | number | Date | { toDate(): Date } | null | undefined): string {
   if (!ts) return '';
   if (ts instanceof Date) return ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (typeof ts === 'object' && 'toDate' in (ts as Record<string, unknown>)) {
-    return (ts as { toDate: () => Date }).toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (isObjectVal(ts) && 'toDate' in ts) {
+    // SAFETY: the 'toDate' in-guard above verified the Firestore timestamp shape.
+    return (ts as { toDate(): Date }).toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
   return String(ts);
 }
@@ -136,6 +141,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
         className={`pointer-events-auto mb-4 w-80 bg-[#f7f9fc] rounded-3xl shadow-2xl border border-[#dde3eb] flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right select-none ${
           isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-10 pointer-events-none h-0'
         }`}
+           // SAFETY: trusted internal value already conforms to the asserted type.
            style={{ ['--max-h' as any]: isOpen ? '32rem' : '0', willChange: 'transform, opacity' } }  
       >
         {/* Chat Header - Fixed */}

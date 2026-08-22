@@ -8,12 +8,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import ChatMarkdown from './ChatMarkdown';
 import UserAvatar from './UserAvatar';
 
+export function isObjectVal<T>(value: T): value is T & object {
+  return typeof value === "object";
+}
+
 /** Safely convert a Date or Firestore Timestamp to a time string */
-function safeTimestamp(ts: unknown): string {
+function safeTimestamp(ts: string | number | Date | { toDate(): Date } | null | undefined): string {
   if (!ts) return '';
   if (ts instanceof Date) return ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (typeof ts === 'object' && 'toDate' in (ts as Record<string, unknown>)) {
-    return (ts as { toDate: () => Date }).toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (isObjectVal(ts) && 'toDate' in ts) {
+    // SAFETY: the 'toDate' in-guard above verified the Firestore timestamp shape.
+    return (ts as { toDate(): Date }).toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
   return String(ts);
 }

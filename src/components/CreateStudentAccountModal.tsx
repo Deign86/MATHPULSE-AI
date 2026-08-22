@@ -4,6 +4,7 @@ import { Check, Copy, Loader2, RefreshCw, ShieldAlert, UserPlus, X } from 'lucid
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import {
+
   createStudentAccountFromRoster,
   type CreateStudentFromRosterResult,
 } from '../services/studentService';
@@ -38,11 +39,11 @@ const DEFAULT_EMAIL_DOMAIN = 'school.mathpulse.local';
 
 function generateTemporaryPassword(length = 10): string {
   const cryptoRef =
-    typeof globalThis !== 'undefined' && typeof globalThis.crypto !== 'undefined'
+    globalThis !== undefined && globalThis.crypto !== undefined
       ? globalThis.crypto
       : undefined;
 
-  if (cryptoRef && typeof cryptoRef.getRandomValues === 'function') {
+  if (cryptoRef && (cryptoRef.getRandomValues instanceof Function)) {
     const buffer = new Uint32Array(length);
     cryptoRef.getRandomValues(buffer);
     let output = '';
