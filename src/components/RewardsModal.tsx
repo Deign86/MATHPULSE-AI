@@ -7,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getUserAchievements } from '../services/gamificationService';
 import { ACHIEVEMENTS, AchievementConfig } from '../config/achievements';
+import { recordGet } from '../utils/memberOf';
 
 // Lucide icon name → component lookup (must be exhaustive for ACHIEVEMENT icons)
 const LUCIDE_ICON_MAP = {
@@ -135,7 +136,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
 
   // ── Build achievement items from ACHIEVEMENTS config ───────────────────────
   const achievementItems: AchievementItem[] = ACHIEVEMENTS.map((a) => {
-    const Icon = LUCIDE_ICON_MAP[a.icon.name] ?? Award;
+    const Icon = recordGet(LUCIDE_ICON_MAP, a.icon.name) ?? Award;
     const unlocked = unlockedIds.has(a.id);
     const progressInfo = getProgress(a);
 

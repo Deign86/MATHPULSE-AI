@@ -42,7 +42,7 @@ function getDefaultSubjectAvailability() {
 }
 
 /** Firestore timestamp-like values; parsing never throws. */
-const timestampLikeValue = z.looseObject({ toDate: z.instanceof(Function).optional() }).catch(null);
+const timestampLikeValue = z.looseObject({ toDate: z.instanceof(Function).optional() }).catch({});
 
 const firestoreToDate = <V>(value: V): Date => {
   const parsed = timestampLikeValue.safeParse(value);

@@ -558,7 +558,7 @@ const QuizBattlePage: React.FC = () => {
         loss: { notes: [260, 220], duration: 0.14, type: 'sawtooth', volume: 0.045 },
         streak: { notes: [780, 920], duration: 0.09, type: 'triangle', volume: 0.045 },
         multiplier: { notes: [660, 880, 1120], duration: 0.08, type: 'triangle', volume: 0.05 },
-      };
+      } satisfies Record<string, { notes: number[]; duration: number; type: OscillatorType; volume: number }>;
 
       const preset = presets[kind];
       const now = context.currentTime;

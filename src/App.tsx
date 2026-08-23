@@ -787,7 +787,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
 
     allowedKeys.forEach((key) => {
       if (data[key] !== undefined) {
-        updates[key] = data[key];
+        Object.assign(updates, { [key]: data[key] });
       }
     });
 

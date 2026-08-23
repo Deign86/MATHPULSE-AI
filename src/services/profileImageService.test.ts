@@ -7,7 +7,7 @@ vi.spyOn(firebaseAuth, 'getAuth').mockImplementation(
   () => ({ currentUser: null }) as ReturnType<typeof firebaseAuth.getAuth>,
 );
 
-const profileImageService = await import('../profileImageService');
+const profileImageService = await import('./profileImageService');
 
 describe('profileImageService', () => {
   it('accepts supported image files within the size limit', () => {

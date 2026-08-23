@@ -143,7 +143,7 @@ export const AtRiskDashboard: React.FC = () => {
     const intervene = students.filter((s) => s.riskStatus === 'intervene').length;
     const critical = students.filter((s) => s.riskStatus === 'critical').length;
     const atRisk = students.filter((s) => s.riskStatus === 'at_risk').length;
-    return { total, safe, watch, intervene, critical, atRisk };
+    return { total, safe, watch, intervene, critical, at_risk: atRisk };
   }, [students]);
 
   // SAFETY: these literals are exactly the FilterStatus members rendered by the filter pills.
@@ -218,7 +218,7 @@ export const AtRiskDashboard: React.FC = () => {
           />
           <StatCard
             label="At Risk"
-            value={stats.atRisk}
+            value={stats.at_risk}
             icon={<Skull className="w-4 h-4 text-white" />}
             gradient="bg-gradient-to-br from-[#6b7280] to-[#4b5563]"
             shadowColor="rgba(107,114,128,0.2)"

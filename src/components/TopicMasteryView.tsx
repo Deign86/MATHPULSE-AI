@@ -10,6 +10,7 @@ import { GRADE_LEVELS, SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type Subj
 import { cacheKeys } from '../utils/cacheKeys';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { apiUrl } from '../config/env';
+import { recordGet } from '../utils/memberOf';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -526,7 +527,7 @@ const TopicMasteryView: React.FC<{
                   filteredTopics.map((topic) => {
                     const isSelected = selectedTopics.has(topic.topicName);
                     const statusInfo = STATUS_BADGES[topic.masteryStatus] || STATUS_BADGES['no_data'];
-                    const subjectInfo = SUBJECT_BADGES[topic.subjectId] || { label: topic.subjectId.toUpperCase(), color: 'bg-[#f8fafc] text-[#64748b]' };
+                    const subjectInfo = recordGet(SUBJECT_BADGES, topic.subjectId) ?? { label: topic.subjectId.toUpperCase(), color: 'bg-[#f8fafc] text-[#64748b]' };
                     const avgColor = topic.classAverage < 60 ? 'bg-rose-500' : topic.classAverage < 85 ? 'bg-amber-500' : 'bg-emerald-500';
 
                     const rowBg = topic.isExcluded

@@ -66,7 +66,7 @@ interface TryItYourselfEngineProps {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PHASE_IDS: Phase[] = ['foundation', 'application', 'complexity', 'gauntlet'];
-const XP_DECAY = { 0: 1.0, 1: 0.7, 2: 0.4, 3: 0.2 };
+const XP_DECAY = [1.0, 0.7, 0.4, 0.2] as const;
 const BASE_XP = 10;
 const BRUTE_FORCE_FLOOR = 2;
 const REVEAL_UNLOCK_MCQ = 2;

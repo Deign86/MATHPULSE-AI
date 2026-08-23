@@ -16,7 +16,7 @@ const adaptStaticSubject = (staticSubject: {
   semester: string;
   color: string;
   pdfAvailable: boolean;
-  topics: Array<{ id: string; name: string; unit: string }>;
+  topics: ReadonlyArray<{ id: string; name: string; unit: string }>;
 }): CurriculumSubject => ({
   id: staticSubject.id,
   code: staticSubject.code,

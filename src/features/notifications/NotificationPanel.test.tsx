@@ -4,23 +4,23 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import * as notificationContextNs from './NotificationContext';
 import * as notificationItemNs from './NotificationItem';
+import type { Notification } from './types';
 
 // Mutable context fixtures read by the context seam on every render.
-let notificationsValue: Array<{ id: string; title: string; message: string; isRead: boolean; createdAt: Date; type: string }> = [];
+let notificationsValue: Notification[] = [];
 let unreadCountValue = 0;
 let isLoadingValue = false;
 const markAllAsReadMock = vi.fn();
 
 // Context seam: spy on the real hook; the fixtures above drive each scenario.
-vi.spyOn(notificationContextNs, 'useNotifications').mockImplementation(
-  // SAFETY: the partial stub only omits context fields the panel never reads.
-  () => ({
-    notifications: notificationsValue,
-    unreadCount: unreadCountValue,
-    isLoading: isLoadingValue,
-    markAllAsRead: markAllAsReadMock,
-  }) as ReturnType<typeof notificationContextNs.useNotifications>,
-);
+vi.spyOn(notificationContextNs, 'useNotifications').mockImplementation(() => ({
+  notifications: notificationsValue,
+  unreadCount: unreadCountValue,
+  isLoading: isLoadingValue,
+  markAsRead: vi.fn(),
+  markAllAsRead: markAllAsReadMock,
+  deleteNotification: vi.fn(),
+}));
 
 // Item seam: rendered-but-inert stub keyed by notification id.
 // SAFETY: the stub preserves the notification prop contract consumed by the panel.
@@ -46,8 +46,8 @@ describe('NotificationPanel', () => {
 
   it('renders notifications when not loading', () => {
     notificationsValue = [
-      { id: 'notif-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },
-      { id: 'notif-2', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(), type: 'streak_reminder' },
+      { id: 'notif-1', userId: 'user-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },
+      { id: 'notif-2', userId: 'user-1', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(), type: 'streak_reminder' },
     ];
     unreadCountValue = 1;
     isLoadingValue = false;
@@ -94,7 +94,7 @@ describe('NotificationPanel', () => {
 
   it('calls markAllAsRead when button clicked', () => {
     notificationsValue = [
-      { id: 'notif-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },
+      { id: 'notif-1', userId: 'user-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },
     ];
     unreadCountValue = 1;
     isLoadingValue = false;

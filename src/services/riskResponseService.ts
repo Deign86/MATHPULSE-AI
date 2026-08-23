@@ -3,6 +3,7 @@
 // Each band triggers a different automated response when WRI status changes.
 
 import { doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { recordGet } from '../utils/memberOf';
 import { db } from '../lib/firebase';
 import type { StudentRiskProfile } from '../types/models';
 
@@ -183,7 +184,7 @@ export async function notifyTeacher(
     return;
   }
 
-  const messageFn = TEACHER_ALERT_MESSAGES[status];
+  const messageFn = recordGet(TEACHER_ALERT_MESSAGES, status);
   if (!messageFn) return;
 
   const message = messageFn(studentName, wri);

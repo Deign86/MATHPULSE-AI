@@ -36,7 +36,7 @@ type CachedJsonValue = string | number | boolean | null | CachedJsonValue[] | { 
 const isRecord = <V>(value: V): value is V & { [key: string]: CachedJsonValue } =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isHintCacheEntry = <V>(value: V): value is HintCacheEntry => {
+const isHintCacheEntry = (value: CachedJsonValue): value is HintCacheEntry & CachedJsonValue => {
   if (!isRecord(value)) return false;
   return typeof value.value === 'string'
     && typeof value.expiresAt === 'number'

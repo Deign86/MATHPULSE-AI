@@ -10,6 +10,7 @@ import {
   where,
   limit,
   Unsubscribe,
+  type FirestoreError,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { CalendarEvent } from '../types/models';
@@ -31,8 +32,8 @@ const mapCalendarEventDoc = (docSnap: { id: string; data: () => any }): Calendar
 
   const toDate = (value: any): Date | undefined => {
     if (!value) return undefined;
-    if (hasToDate(value)) return value.toDate();
     if (value instanceof Date) return value;
+    if (hasToDate(value)) return value.toDate();
     return undefined;
   };
 

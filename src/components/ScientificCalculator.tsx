@@ -3,6 +3,7 @@ import { X, GripHorizontal, ChevronDown, ChevronUp, Keyboard } from 'lucide-reac
 import { motion, AnimatePresence } from 'motion/react';
 import { apiService } from '../services/apiService';
 import type { CalculatorResponse } from '../services/apiService';
+import { recordGet } from '../utils/memberOf';
 
 /* ────────────────────────────────────────────────────────────────
    Types
@@ -100,7 +101,7 @@ function toPostfix(tokens: string[], mode: AngleMode): string[] {
   const output: string[] = [];
   const opStack: string[] = [];
 
-  const precedence = { '+': 1, '-': 1, '×': 2, '÷': 2, '*': 2, '/': 2, '%': 2, '^': 4 };
+  const precedence = { '+': 1, '-': 1, '×': 2, '÷': 2, '*': 2, '/': 2, '%': 2, '^': 4 } as const;
   const rightAssoc = new Set(['^']);
   const funcs = new Set([
     'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
@@ -147,13 +148,13 @@ function toPostfix(tokens: string[], mode: AngleMode): string[] {
         output.push(opStack.pop()!);
       }
     } else if (token in precedence) {
-      const prec = precedence[token];
+      const prec = recordGet(precedence, token) ?? 0;
       while (
         opStack.length &&
         opStack[opStack.length - 1] !== '(' &&
         opStack[opStack.length - 1] in precedence &&
-        (precedence[opStack[opStack.length - 1]] > prec ||
-          (precedence[opStack[opStack.length - 1]] === prec && !rightAssoc.has(token)))
+        ((recordGet(precedence, opStack[opStack.length - 1]) ?? 0) > prec ||
+          (recordGet(precedence, opStack[opStack.length - 1]) ?? 0) === prec && !rightAssoc.has(token))
       ) {
         output.push(opStack.pop()!);
       }

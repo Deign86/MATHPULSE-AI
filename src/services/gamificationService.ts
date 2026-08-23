@@ -10,20 +10,12 @@ import {
   limit,
   updateDoc,
   serverTimestamp,
-  type FieldValue,
   increment,
   arrayUnion,
-  onSnapshot
+  onSnapshot,
+  type UpdateData,
+  type DocumentData
 } from 'firebase/firestore';
-
-/** XP doc fields updated when awarding experience. */
-interface XpUpdatePayload {
-  currentXP: number;
-  totalXP: number;
-  level: number;
-  updatedAt: FieldValue | null;
-  xpMultiplier?: number;
-}
 import { db } from '../lib/firebase';
 import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
 import { checkAndAwardAchievements } from './achievementCheckerService';
@@ -78,8 +70,7 @@ export const awardXP = async (
     }
 
     // Update user data - ensure we're ALWAYS incrementing from the previous value, never resetting to a hardcoded constant
-    // SAFETY: the payload mirrors the user-doc XP fields; serverTimestamp sentinels are written as-is.
-    const updatePayload: XpUpdatePayload = {
+    const updatePayload: UpdateData<DocumentData> = {
       currentXP: currentXP, // MUST be previous + increment, never a fixed value like 50
       totalXP: totalXP,     // MUST be previous + increment, never a fixed value like 50
       level: newLevel,
