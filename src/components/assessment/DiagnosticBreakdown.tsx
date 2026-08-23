@@ -54,10 +54,23 @@ interface QuestionWithText extends DiagnosticResponse {
   question_text?: string;
 }
 
+/** Per-domain score block persisted in a diagnostic result document. */
+interface DomainScoreSummary {
+  percentage: number;
+  correct: number;
+  total: number;
+  mastery_level?: string;
+}
+
+/** Overall risk classification persisted in a diagnostic result document. */
+interface RiskProfileSummary {
+  overall_risk?: string;
+}
+
 const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode, isOpen = true, onClose }) => {
   const [responses, setResponses] = useState<QuestionWithText[]>([]);
-  const [domainScores, setDomainScores] = useState<Record<string, any>>({});
-  const [riskProfile, setRiskProfile] = useState<Record<string, any>>({});
+  const [domainScores, setDomainScores] = useState<Record<string, DomainScoreSummary>>({});
+  const [riskProfile, setRiskProfile] = useState<RiskProfileSummary>({});
   const [analysis, setAnalysis] = useState<DiagnosticAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(true);
@@ -314,7 +327,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                 </h2>
               </div>
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(domainScores).map(([domain, scores]: [string, any]) => (
+                {Object.entries(domainScores).map(([domain, scores]) => (
                   <div key={domain} className="border border-slate-100 rounded-xl p-4">
                     <p className="text-sm font-semibold text-slate-700 mb-2">{domain}</p>
                     <div className="flex items-end gap-2">

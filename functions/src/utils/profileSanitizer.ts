@@ -12,13 +12,17 @@
  */
 
 const NAME_MAX_LENGTH = 100;
+import type { firestore } from "firebase-admin";
+
+const isText = <T>(value: T): value is T & string => typeof value === "string";
+
 const PHONE_MAX_LENGTH = 20;
 const PHONE_PATTERN = /^\+?[0-9 ()\-.]{7,20}$/;
 
 /** Remove characters used to open HTML/script tags. Keeps Unicode letters,
  *  diacritics, hyphens, apostrophes, and whitespace untouched. */
-export function sanitizeName(value: unknown): string | null {
-  if (typeof value !== "string") return null;
+export function sanitizeName<T>(value: T): string | null {
+  if (!isText(value)) return null;
   const stripped = value.replace(/[<>]/g, "").trim();
   if (stripped.length === 0) return null;
   return stripped.slice(0, NAME_MAX_LENGTH);
@@ -27,8 +31,8 @@ export function sanitizeName(value: unknown): string | null {
 /** Phone numbers must be digits with optional + and common separators.
  *  Returns the original (trimmed) when valid, an empty string when the
  *  field should be cleared, or null when the input is not a string. */
-export function sanitizePhone(value: unknown): string | null {
-  if (typeof value !== "string") return null;
+export function sanitizePhone<T>(value: T): string | null {
+  if (!isText(value)) return null;
   const trimmed = value.trim();
   if (trimmed.length === 0) return "";
   // Strip HTML tag chars first so an XSS payload becomes a clearly-invalid
@@ -55,7 +59,7 @@ export interface ProfileSanitizationResult {
  * false the caller should skip the write to avoid infinite trigger loops.
  */
 export function sanitizeProfileFields(
-  data: Record<string, unknown>
+  data: firestore.DocumentData
 ): ProfileSanitizationResult {
   const patches: Record<string, string> = {};
 

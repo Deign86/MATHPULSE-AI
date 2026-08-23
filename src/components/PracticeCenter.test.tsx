@@ -2,39 +2,38 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import * as authNs from '../contexts/AuthContext';
+import * as practiceServiceNs from '../services/practiceService';
 import PracticeCenter from './PracticeCenter';
 
-vi.mock('../contexts/AuthContext', () => ({
-  useAuth: () => ({ userProfile: { uid: 'user-1', totalXP: 0 } }),
-}));
+// Auth seam: spy on the real hook so PracticeCenter sees a signed-in student.
+vi.spyOn(authNs, 'useAuth').mockReturnValue({
+  currentUser: null,
+  userProfile: null,
+  loading: false,
+  isLoggedIn: true,
+  userRole: 'student',
+  refreshProfile: async () => {},
+});
 
-vi.mock('../services/practiceService', () => ({
-  fetchPracticeStats: vi.fn(() => Promise.resolve({
-    quizzesCompleted: 0,
-    totalXPEarned: 0,
-    averageScore: 0,
-    recentSessions: [],
-    competencyBreakdown: {},
-  })),
-  generatePracticeSession: vi.fn(),
-}));
+vi.spyOn(practiceServiceNs, 'fetchPracticeStats').mockResolvedValue({
+  quizzesCompleted: 0,
+  totalXPEarned: 0,
+  averageScore: 0,
+  recentSessions: [],
+  competencyBreakdown: {},
+});
 
-vi.mock('../data/subjects', () => ({
-  SHS_MATH_SUBJECTS: [
-    {
-      id: 'gen-math',
-      name: 'General Mathematics',
-      topics: [
-        { id: 'gen-math-001', name: 'Functions', unit: 'Patterns' },
-      ],
-    },
-  ],
-}));
+vi.spyOn(practiceServiceNs, 'generatePracticeSession').mockResolvedValue({
+  session_id: 'test-session',
+  questions: [],
+  generated_at: '2026-01-01T00:00:00Z',
+});
 
 describe('PracticeCenter', () => {
   it('renders topic cards from curriculum', async () => {
     render(<PracticeCenter userId="user-1" />);
-    expect(await screen.findByText('Functions')).toBeInTheDocument();
+    expect(await screen.findByText('Functions as Mathematical Models')).toBeInTheDocument();
   });
 
   it('renders stats cards', async () => {

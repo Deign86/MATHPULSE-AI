@@ -3,7 +3,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { auth, storage } from '../lib/firebase';
 import app from '../lib/firebase';
 
-export const PROFILE_PICTURE_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+export const PROFILE_PICTURE_ALLOWED_TYPES: readonly string[] = ['image/png', 'image/jpeg', 'image/webp'];
 export const PROFILE_PICTURE_MAX_BYTES = 2 * 1024 * 1024;
 export const PROFILE_PICTURE_OUTPUT_SIZE = 256;
 
@@ -39,7 +39,7 @@ export const buildProfilePictureStoragePath = (uid: string, fileName: string, ti
 };
 
 export const validateProfilePictureFile = (file: FileValidationTarget): string | null => {
-  if (!PROFILE_PICTURE_ALLOWED_TYPES.includes(file.type as (typeof PROFILE_PICTURE_ALLOWED_TYPES)[number])) {
+  if (!PROFILE_PICTURE_ALLOWED_TYPES.includes(file.type)) {
     return 'Only PNG, JPEG, and WebP images are allowed.';
   }
 

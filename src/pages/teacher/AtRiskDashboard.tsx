@@ -146,6 +146,9 @@ export const AtRiskDashboard: React.FC = () => {
     return { total, safe, watch, intervene, critical, atRisk };
   }, [students]);
 
+  // SAFETY: these literals are exactly the FilterStatus members rendered by the filter pills.
+  const FILTER_STATUSES: FilterStatus[] = ['all', 'safe', 'watch', 'intervene', 'critical', 'at_risk'];
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -241,8 +244,7 @@ export const AtRiskDashboard: React.FC = () => {
 
               {/* Filter Pills */}
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar p-2 -m-2">
-                // SAFETY: trusted internal value already conforms to the asserted type.
-                {(['all', 'safe', 'watch', 'intervene', 'critical', 'at_risk'] as FilterStatus[]).map((status) => (
+                {FILTER_STATUSES.map((status) => (
                   <button
                     key={status}
                     onClick={() => setFilterStatus(status)}
@@ -255,8 +257,7 @@ export const AtRiskDashboard: React.FC = () => {
                     {status === 'all' ? 'All' : status === 'at_risk' ? 'At Risk' : status.charAt(0).toUpperCase() + status.slice(1)}
                     {status !== 'all' && (
                       <span className="ml-1 text-[11px] opacity-70">
-                        // SAFETY: trusted internal value already conforms to the asserted type.
-                        ({stats[status as keyof typeof stats]})
+                        ({stats[status]})
                       </span>
                     )}
                   </button>

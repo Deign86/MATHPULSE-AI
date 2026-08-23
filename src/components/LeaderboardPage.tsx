@@ -38,6 +38,9 @@ interface LeaderboardPageProps {
 
 type TimeFilter = 'daily' | 'weekly' | 'all';
 
+// SAFETY: these literals are exactly the TimeFilter members rendered by the segmented control.
+const TIME_FILTERS: TimeFilter[] = ['daily', 'weekly', 'all'];
+
 const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onBack: _onBack }) => {
   const { currentUser, userProfile } = useAuth();
   // SAFETY: trusted internal value already conforms to the asserted type.
@@ -236,8 +239,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
 
         {/* Time Filters - Segmented Pill based on Reference Image 1 */}
         <div className="bg-slate-800/5 backdrop-blur-md rounded-full p-1 flex gap-1 mb-3 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] border border-slate-800/10 w-full max-w-[340px]">
-          // SAFETY: trusted internal value already conforms to the asserted type.
-          {(['daily', 'weekly', 'all'] as TimeFilter[]).map((mode) => (
+          {TIME_FILTERS.map((mode) => (
             <button
               key={mode}
               onClick={() => setTimeFilter(mode)}

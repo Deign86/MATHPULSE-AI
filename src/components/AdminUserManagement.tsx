@@ -34,7 +34,10 @@ import {
   addAuditLog,
   type AdminUser,
   type AdminBulkActionType,
+  type AdminBulkActionInput,
+  type ExportRow,
 } from '../services/adminService';
+import { memberOf } from '../utils/memberOf';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 import {
@@ -359,7 +362,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     setExcludedUserIds(new Set());
   }, []);
 
-  const downloadExportRows = useCallback((rows: Record<string, unknown>[]) => {
+  const downloadExportRows = useCallback((rows: ExportRow[]) => {
     if (!rows.length) {
       toast.info('No rows were returned for export.');
       return;
@@ -372,7 +375,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       }, new Set<string>()),
     );
     const csv = [
-      headers.map(csvEscape).join(','),
+      headers.map((key) => csvEscape(key)).join(','),
       ...rows.map((row) => headers.map((key) => csvEscape(row[key])).join(',')),
     ].join('\n');
 
@@ -400,11 +403,10 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     },
   ) => {
     const explicitUserIds = options.userIds;
-    const filterPayload = {
-      ...(activeFilters.search ? { search: activeFilters.search } : {}),
-      ...(activeFilters.role ? { role: activeFilters.role } : {}),
-      ...(activeFilters.status ? { status: activeFilters.status } : {}),
-    };
+    const filterPayload: NonNullable<AdminBulkActionInput['filters']> = {};
+    if (activeFilters.search) filterPayload.search = activeFilters.search;
+    if (activeFilters.role) filterPayload.role = activeFilters.role;
+    if (activeFilters.status) filterPayload.status = activeFilters.status;
 
     if (!explicitUserIds && selectedCount === 0) {
       toast.error('Select at least one user before applying a bulk action.');
@@ -413,25 +415,23 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
     setIsProcessingBulkAction(true);
     try {
-      const result = await applyAdminBulkAction({
-        action,
-        ...(explicitUserIds
-          ? { userIds: explicitUserIds }
-          : allFilteredSelected
-            ? {
-                userIds: [],
-                excludeUserIds: Array.from(excludedUserIds),
-                filters: filterPayload,
-              }
-            : {
-                userIds: Array.from(selectedUserIds),
-              }),
-        ...(options.role ? { role: options.role } : {}),
-        ...(options.status ? { status: options.status } : {}),
-        ...(options.grade ? { grade: options.grade } : {}),
-        ...(options.section ? { section: options.section } : {}),
-        ...(options.exportFormat ? { exportFormat: options.exportFormat } : {}),
-      });
+      const payload: AdminBulkActionInput = { action };
+      if (explicitUserIds) {
+        payload.userIds = explicitUserIds;
+      } else if (allFilteredSelected) {
+        payload.userIds = [];
+        payload.excludeUserIds = Array.from(excludedUserIds);
+        payload.filters = filterPayload;
+      } else {
+        payload.userIds = Array.from(selectedUserIds);
+      }
+      if (options.role) payload.role = options.role;
+      if (options.status) payload.status = options.status;
+      if (options.grade) payload.grade = options.grade;
+      if (options.section) payload.section = options.section;
+      if (options.exportFormat) payload.exportFormat = options.exportFormat;
+
+      const result = await applyAdminBulkAction(payload);
 
       if (action === 'export') {
         downloadExportRows(result.exportRows);
@@ -563,18 +563,20 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       }
     }
 
+    interface AdminUserProfilePayload {
+      name: string;
+      role: string;
+      status: string;
+      department?: string;
+      grade: string;
+      section: string;
+      lrn?: string;
+    }
+
     setSaving(true);
     try {
       if (editingUser) {
-        const updatePayload: {
-          name: string;
-          role: string;
-          status: string;
-          department?: string;
-          grade: string;
-          section: string;
-          lrn?: string;
-        } = {
+        const updatePayload: AdminUserProfilePayload = {
           name: formData.name,
           role: formData.role,
           status: formData.status,
@@ -949,8 +951,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <div className="flex flex-wrap items-center gap-2 flex-1">
               {/* Compact Bulk Tools */}
               <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                // SAFETY: trusted internal value already conforms to the asserted type.
-                <Select value={bulkRoleTarget} onValueChange={(value) => setBulkRoleTarget(value as 'Student' | 'Teacher' | 'Admin')}>
+                <Select value={bulkRoleTarget} onValueChange={(value) => setBulkRoleTarget(memberOf(['Student', 'Teacher', 'Admin'] as const, value, 'Student'))}>
                   <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
                     <SelectValue />
                   </SelectTrigger>
@@ -964,8 +965,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               </div>
 
               <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                // SAFETY: trusted internal value already conforms to the asserted type.
-                <Select value={bulkStatusTarget} onValueChange={(value) => setBulkStatusTarget(value as 'Active' | 'Inactive')}>
+                <Select value={bulkStatusTarget} onValueChange={(value) => setBulkStatusTarget(memberOf(['Active', 'Inactive'] as const, value, 'Active'))}>
                   <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
                     <SelectValue />
                   </SelectTrigger>

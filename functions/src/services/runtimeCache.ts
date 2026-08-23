@@ -12,10 +12,15 @@ interface RuntimeCacheOptions {
 const DEFAULT_TTL_MS = 60 * 1000;
 const DEFAULT_MAX_ENTRIES = 800;
 
-const normalizeKeyPart = (value: unknown): string => {
+const isText = <T>(value: T): value is T & string => typeof value === "string";
+
+const isScalarValue = <T>(value: T): value is T & (number | boolean) =>
+  typeof value === "number" || typeof value === "boolean";
+
+const normalizeKeyPart = <T>(value: T): string => {
   if (value === null || value === undefined) return "-";
-  if (typeof value === "string") return value.trim().toLowerCase();
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (isText(value)) return value.trim().toLowerCase();
+  if (isScalarValue(value)) return String(value);
 
   try {
     return JSON.stringify(value);
@@ -50,6 +55,7 @@ export class RuntimeCache {
     }
 
     entry.lastAccessedAt = now;
+    // SAFETY: set<T> stores values under the same key with matching T; cache is module-private.
     return entry.value as T;
   }
 

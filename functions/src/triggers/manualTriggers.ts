@@ -10,6 +10,10 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+
+const isText = <T>(value: T): value is T & string => typeof value === "string";
+
+const isNumber = <T>(value: T): value is T & number => typeof value === "number";
 import { processDiagnosticCompletion } from "../automations/diagnosticProcessor";
 import { processQuizSubmission } from "../automations/quizProcessor";
 import {
@@ -39,7 +43,7 @@ export const manualProcessStudent = functions.https.onCall(
     }
 
     const { lrn, deepDiagnosticAction, actionReason } = data;
-    if (!lrn || typeof lrn !== "string") {
+    if (!isText(lrn)) {
       throw new functions.https.HttpsError(
         "invalid-argument",
         "lrn is required and must be a string.",
@@ -156,7 +160,7 @@ export const manualProcessQuiz = functions.https.onCall(
     }
 
     const { resultId } = data;
-    if (!resultId || typeof resultId !== "string") {
+    if (!isText(resultId)) {
       throw new functions.https.HttpsError(
         "invalid-argument",
         "resultId is required.",
@@ -244,9 +248,9 @@ export const manualBackfillCurriculumVersion = functions.https.onCall(
 
     const mode: BackfillMode = data?.mode === "commit" ? "commit" : "dry-run";
     const confirmCommit = data?.confirmCommit === true;
-    const pageSize = typeof data?.pageSize === "number" ? Math.max(50, Math.min(500, data.pageSize)) : 200;
-    const sampleSize = typeof data?.sampleSize === "number" ? Math.max(1, Math.min(25, data.sampleSize)) : 10;
-    const maxDocsPerCollection = typeof data?.maxDocsPerCollection === "number"
+    const pageSize = isNumber(data?.pageSize) ? Math.max(50, Math.min(500, data.pageSize)) : 200;
+    const sampleSize = isNumber(data?.sampleSize) ? Math.max(1, Math.min(25, data.sampleSize)) : 10;
+    const maxDocsPerCollection = isNumber(data?.maxDocsPerCollection)
       ? Math.max(1, data.maxDocsPerCollection)
       : undefined;
 
@@ -300,7 +304,7 @@ interface ManualReassessmentCallableContext {
 }
 
 interface ManualRequestReassessmentHandlerInput {
-  data?: Record<string, unknown>;
+  data?: admin.firestore.DocumentData;
   context: ManualReassessmentCallableContext;
   db: FirebaseFirestore.Firestore;
   requestReassessment?: typeof requestReassessmentForStudent;
@@ -339,8 +343,8 @@ export async function handleManualRequestReassessment(
     );
   }
 
-  const inputUserId = typeof payload.userId === "string" ? payload.userId.trim() : "";
-  const inputLrn = typeof payload.lrn === "string" ? payload.lrn.trim() : "";
+  const inputUserId = isText(payload.userId) ? payload.userId.trim() : "";
+  const inputLrn = isText(payload.lrn) ? payload.lrn.trim() : "";
 
   if (!inputUserId && !inputLrn) {
     throw new functions.https.HttpsError(
@@ -375,9 +379,8 @@ export async function handleManualRequestReassessment(
   ];
 
   const requestedReasonCodes = Array.isArray(payload.reasonCodes)
-    ? payload.reasonCodes.filter((item: unknown): item is ReassessmentReasonCode =>
-      typeof item === "string" &&
-        allowedReasonCodes.includes(item as ReassessmentReasonCode),
+    ? payload.reasonCodes.filter((item): item is ReassessmentReasonCode =>
+      isText(item) && allowedReasonCodes.includes(item),
     )
     : [];
 
@@ -385,7 +388,7 @@ export async function handleManualRequestReassessment(
     ? requestedReasonCodes
     : ["manual_teacher_admin"];
 
-  const reason = typeof payload.reason === "string" ? payload.reason : undefined;
+  const reason = isText(payload.reason) ? payload.reason : undefined;
 
   const result = await requestReassessment({
     db,

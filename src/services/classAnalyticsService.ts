@@ -58,13 +58,13 @@ export interface ClassAnalyticsReport {
 
 // ─── Helpers ──────────────────────────────────────────────────
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+async function getAuthHeaders(): Promise<Headers> {
+  const headers = new Headers({ 'Content-Type': 'application/json' });
   const currentUser = auth.currentUser;
   if (currentUser) {
     try {
       const idToken = await currentUser.getIdToken(false);
-      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+      if (idToken) headers.set('Authorization', `Bearer ${idToken}`);
     } catch { /* non-critical */ }
   }
   return headers;

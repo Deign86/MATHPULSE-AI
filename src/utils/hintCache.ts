@@ -5,8 +5,11 @@ interface HintCacheEntry {
   expiresAt: number;
 }
 
-interface HintCacheStorageShape {
-  entries: Record<string, HintCacheEntry>;
+/** Keyed set of cached hint entries persisted to sessionStorage. */
+interface HintCacheEntryMap { [promptKey: string]: HintCacheEntry }
+
+interface HintCacheStorageFile {
+  entries: HintCacheEntryMap;
 }
 
 interface BuildHintCacheKeyInput {
@@ -21,20 +24,26 @@ const HISTORY_CONTEXT_WINDOW = 4;
 
 const hintCacheMemory = new Map<string, HintCacheEntry>();
 
-const isBrowser = (): boolean => typeof window !== 'undefined';
+const hasWindow = 'window' in globalThis;
+
+const isBrowser = (): boolean => hasWindow;
 
 const nowMs = (): number => Date.now();
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+/** JSON-safe value as produced by JSON.parse of cached payloads. */
+type CachedJsonValue = string | number | boolean | null | CachedJsonValue[] | { [key: string]: CachedJsonValue };
+
+const isRecord = <V>(value: V): value is V & { [key: string]: CachedJsonValue } =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isHintCacheEntry = (value: unknown): value is HintCacheEntry =>
-  isRecord(value)
-  && typeof value.value === 'string'
-  && typeof value.expiresAt === 'number'
-  && Number.isFinite(value.expiresAt);
+const isHintCacheEntry = <V>(value: V): value is HintCacheEntry => {
+  if (!isRecord(value)) return false;
+  return typeof value.value === 'string'
+    && typeof value.expiresAt === 'number'
+    && Number.isFinite(value.expiresAt);
+};
 
-const readStorage = (): HintCacheStorageShape => {
+const readStorage = (): HintCacheStorageFile => {
   if (!isBrowser()) {
     return { entries: {} };
   }
@@ -42,12 +51,12 @@ const readStorage = (): HintCacheStorageShape => {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return { entries: {} };
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed: unknown = JSON.parse(raw);
     if (!isRecord(parsed) || !isRecord(parsed.entries)) {
       return { entries: {} };
     }
 
-    const entries: Record<string, HintCacheEntry> = {};
+    const entries: HintCacheEntryMap = {};
     for (const [key, entry] of Object.entries(parsed.entries)) {
       if (!isHintCacheEntry(entry)) {
         continue;
@@ -70,20 +79,20 @@ const readStorage = (): HintCacheStorageShape => {
   }
 };
 
-const writeStorage = (entries: Record<string, HintCacheEntry>): void => {
+const writeStorage = (entries: HintCacheEntryMap): void => {
   if (!isBrowser()) return;
 
   try {
-    const payload: HintCacheStorageShape = { entries };
+    const payload: HintCacheStorageFile = { entries };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
     // Ignore storage quota/errors and keep in-memory cache only.
   }
 };
 
-const pruneExpiredEntries = (entries: Record<string, HintCacheEntry>): Record<string, HintCacheEntry> => {
+const pruneExpiredEntries = (entries: HintCacheEntryMap): HintCacheEntryMap => {
   const currentTime = nowMs();
-  const nextEntries: Record<string, HintCacheEntry> = {};
+  const nextEntries: HintCacheEntryMap = {};
 
   for (const [key, entry] of Object.entries(entries)) {
     if (entry.expiresAt > currentTime && entry.value.trim()) {
@@ -94,7 +103,7 @@ const pruneExpiredEntries = (entries: Record<string, HintCacheEntry>): Record<st
   return nextEntries;
 };
 
-const updateMemoryFromStorage = (entries: Record<string, HintCacheEntry>): void => {
+const updateMemoryFromStorage = (entries: HintCacheEntryMap): void => {
   hintCacheMemory.clear();
   for (const [key, value] of Object.entries(entries)) {
     hintCacheMemory.set(key, value);

@@ -126,6 +126,7 @@ export function normalizeWorkbook(input: {
     learners,
     quarterlyRecords: input.quarterSheets.map((sheet) => ({
       sheetName: sheet.sheetName,
+      // SAFETY: quarter sheets are keyed by this parser's own normalized QuarterType labels.
       quarter: sheet.quarter as QuarterType,
       gradingWeights: sheet.gradingWeights,
       assessmentColumns: sheet.assessmentColumns,

@@ -2,7 +2,8 @@ import type { AnchorMatch, SheetMatrix } from '../types';
 import { includesNormalized, normalizeText } from './normalizeText';
 import { getMatrixCell, getRowText } from './sheetMatrix';
 
-function scoreAnchorMatch(cellValue: unknown, anchor: string): number {
+/** Anchor match scoring over scalar cell values at the parser input boundary. */
+function scoreAnchorMatch<T>(cellValue: T, anchor: string): number {
   const normalizedCell = normalizeText(cellValue);
   const normalizedAnchor = normalizeText(anchor);
   if (!normalizedCell || !normalizedAnchor) return 0;

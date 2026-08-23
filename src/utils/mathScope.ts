@@ -222,8 +222,8 @@ function extractLatestUserIntentFromContext(context?: ScopeBoundaryContext): str
 
 function isGreetingOrThanksBoundaryResponse(response: string): boolean {
   return (
-    (GREETING_RESPONSES as readonly string[]).includes(response)
-    || (THANKS_RESPONSES as readonly string[]).includes(response)
+    GREETING_RESPONSES.includes(response)
+    || THANKS_RESPONSES.includes(response)
   );
 }
 

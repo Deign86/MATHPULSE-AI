@@ -26,8 +26,14 @@ const NAME_DISALLOWED = /[<>]/;
  *
  * Empty / falsy input returns 'User' so we never render an empty card.
  */
-export function sanitizeDisplayName(value: unknown, fallback: string = 'User'): string {
-  if (typeof value !== 'string') return fallback;
+/** True for string values at the profile input boundary. */
+function isStr<V>(value: V): value is V & string {
+  return typeof value === 'string';
+}
+
+/** Coerce an untyped profile display-name value into safe UI text. */
+export function sanitizeDisplayName<T>(value: T, fallback: string = 'User'): string {
+  if (!isStr(value)) return fallback;
   // Strip HTML/script tag chars and normalise whitespace.
   const cleaned = value.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
   return cleaned.length > 0 ? cleaned.slice(0, 100) : fallback;

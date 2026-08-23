@@ -20,16 +20,15 @@ interface RiskBadgeProps {
   className?: string;
 }
 
-const STATUS_CONFIG: Record<
-  NonNullable<RiskStatus> | 'null',
-  {
-    label: string;
-    color: string;
-    dotColor: string;
-    icon: React.ElementType;
-    description: string;
-  }
-> = {
+interface StatusConfigEntry {
+  label: string;
+  color: string;
+  dotColor: string;
+  icon: React.ElementType;
+  description: string;
+}
+
+const STATUS_CONFIG = {
   safe: {
     label: 'On Track',
     color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -72,7 +71,7 @@ const STATUS_CONFIG: Record<
     icon: HelpCircle,
     description: 'Assessment not yet completed',
   },
-};
+} satisfies Record<NonNullable<RiskStatus> | 'null', StatusConfigEntry>;
 
 const SIZE_CONFIG = {
   sm: 'text-xs px-2 py-0.5 gap-1',

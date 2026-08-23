@@ -330,9 +330,9 @@ export interface UploadResponse {
 }
 
 /** JSON-compatible field values exchanged with the backend API. */
-type ApiFieldValue = string | number | boolean | null | { toDate?: () => Date } | ApiFieldValue[];
+export type ApiFieldValue = string | number | boolean | null | { toDate?: () => Date } | ApiFieldValue[];
 /** Free-form API payload object (metadata, checks, export rows). */
-interface ApiPayloadObject { [field: string]: ApiFieldValue }
+export interface ApiPayloadObject { [field: string]: ApiFieldValue }
 
 export interface RiskRefreshMonitorJob {
   refreshId: string;
@@ -1293,7 +1293,7 @@ export async function apiFetch<T>(
           headers.set('Authorization', `Bearer ${idToken}`);
         }
       } catch (err) {
-        logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err);
+        logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err instanceof Error ? err : { caught: String(err) });
       }
     }
 
@@ -1375,7 +1375,7 @@ async function apiFetchBlob(
           headers.set('Authorization', `Bearer ${idToken}`);
         }
       } catch (err) {
-        logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err);
+        logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err instanceof Error ? err : { caught: String(err) });
       }
     }
 
@@ -1584,7 +1584,7 @@ export const apiService = {
             headers.set('Authorization', `Bearer ${idToken}`);
           }
         } catch (err) {
-          logApiError('/api/chat/stream', 'POST', 'Failed to acquire Firebase ID token', err);
+          logApiError('/api/chat/stream', 'POST', 'Failed to acquire Firebase ID token', err instanceof Error ? err : { caught: String(err) });
         }
       }
 
@@ -2383,7 +2383,7 @@ export const apiService = {
         throw new Error('Lesson generation completed without a valid result payload.');
       }
       // SAFETY: async lesson-plan task payloads mirror the synchronous LessonPlanResponse contract.
-      return payload as unknown as LessonPlanResponse;
+      return payload as LessonPlanResponse;
     }
 
     return apiFetch<LessonPlanResponse>(
@@ -2639,7 +2639,7 @@ export const apiService = {
   /** Trigger data import automation */
   async automationDataImported(payload: {
     teacherId: string;
-    students: Record<string, unknown>[];
+    students: ApiPayloadObject[];
     columnMapping: Record<string, string>;
   }): Promise<ApiPayloadObject> {
     validateRequired('/api/automation/data-imported', {
@@ -2738,12 +2738,11 @@ export const apiService = {
     error?: string;
   }> => {
     const reingestToken = auth.currentUser ? await auth.currentUser.getIdToken() : undefined;
+    const headers = new Headers({ 'Content-Type': 'application/json' });
+    if (reingestToken) headers.set('Authorization', `Bearer ${reingestToken}`);
     return apiFetch('/api/admin/reingest-pdf', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(reingestToken ? { Authorization: `Bearer ${reingestToken}` } : {}),
-      },
+      headers,
       body: JSON.stringify({ subjectId, storagePath }),
     });
   },
@@ -2819,7 +2818,7 @@ export const apiService = {
 
   /** Fetch paginated students for a past class record upload */
   async fetchUploadStudents(uploadId: string, params?: { limit?: number; after?: string }): Promise<{
-    uploadId: string; sectionId: string; students: Array<Record<string, unknown>>; hasMore: boolean;
+    uploadId: string; sectionId: string; students: Array<ApiPayloadObject>; hasMore: boolean;
   }> {
     const search = new URLSearchParams();
     if (params?.limit) search.set('limit', String(params.limit));

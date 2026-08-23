@@ -22,10 +22,7 @@ export const MEDIUM_RISK_RATIO = 0.50;
 
 // ─── Remedial Quiz Configuration ──────────────────────────────
 
-export const REMEDIAL_CONFIG: Record<
-  string,
-  { questions: number; dist: { easy: number; medium: number; hard: number } }
-> = {
+export const REMEDIAL_CONFIG: RemedialConfigMap = {
   High: { questions: 15, dist: { easy: 60, medium: 30, hard: 10 } },
   Medium: { questions: 12, dist: { easy: 50, medium: 35, hard: 15 } },
   Low: { questions: 10, dist: { easy: 40, medium: 40, hard: 20 } },
@@ -63,6 +60,7 @@ export const INITIAL_GAMIFICATION = {
   currentXP: 0,
   totalXP: 0,
   hasTakenDiagnostic: false,
+  // SAFETY: empty array literal is already precisely typed as string[].
   atRiskSubjects: [] as string[],
 };
 
@@ -105,7 +103,13 @@ export const DEFAULT_IAR_WORKFLOW_MODE: IARWorkflowMode =
  * Baseline minimum deep-diagnostic item counts per subject area.
  * This is used only when mode is `iar_plus_diagnostic`.
  */
-export const DEEP_DIAGNOSTIC_MIN_ITEMS_BY_SUBJECT: Record<string, number> = {
+interface RemedialConfigEntry { questions: number; dist: { easy: number; medium: number; hard: number }; }
+
+interface RemedialConfigMap { [key: string]: RemedialConfigEntry; }
+
+interface MinItemsMap { [key: string]: number; }
+
+export const DEEP_DIAGNOSTIC_MIN_ITEMS_BY_SUBJECT: MinItemsMap = {
   "gen-math": 12,
   "stats-prob": 10,
   "pre-calc": 10,

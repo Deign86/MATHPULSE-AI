@@ -1,26 +1,20 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import * as firebaseAuth from 'firebase/auth';
 
-vi.mock('../lib/firebase', () => ({
-  auth: { currentUser: null },
-  storage: {},
-  db: {},
-  cloudFunctions: {},
-  default: { options: { projectId: 'test-project' } },
-}));
+// Spy on the Firebase SDK instead of mocking the app's lib/firebase module.
+// SAFETY: stub Auth; exercised paths only read currentUser (null here).
+vi.spyOn(firebaseAuth, 'getAuth').mockImplementation(
+  () => ({ currentUser: null }) as ReturnType<typeof firebaseAuth.getAuth>,
+);
 
-import {
-  PROFILE_PICTURE_MAX_BYTES,
-  buildProfilePictureStoragePath,
-  sanitizeProfilePictureFileName,
-  validateProfilePictureFile,
-} from './profileImageService';
+const profileImageService = await import('../profileImageService');
 
 describe('profileImageService', () => {
   it('accepts supported image files within the size limit', () => {
     expect(
-      validateProfilePictureFile({
+      profileImageService.validateProfilePictureFile({
         name: 'avatar.png',
-        size: PROFILE_PICTURE_MAX_BYTES,
+        size: profileImageService.PROFILE_PICTURE_MAX_BYTES,
         type: 'image/png',
       }),
     ).toBeNull();
@@ -28,7 +22,7 @@ describe('profileImageService', () => {
 
   it('rejects unsupported file types', () => {
     expect(
-      validateProfilePictureFile({
+      profileImageService.validateProfilePictureFile({
         name: 'avatar.gif',
         size: 1000,
         type: 'image/gif',
@@ -38,20 +32,20 @@ describe('profileImageService', () => {
 
   it('rejects files above the maximum size', () => {
     expect(
-      validateProfilePictureFile({
+      profileImageService.validateProfilePictureFile({
         name: 'avatar.webp',
-        size: PROFILE_PICTURE_MAX_BYTES + 1,
+        size: profileImageService.PROFILE_PICTURE_MAX_BYTES + 1,
         type: 'image/webp',
       }),
     ).toBe('Profile pictures must be 2MB or smaller.');
   });
 
   it('sanitizes file names for storage', () => {
-    expect(sanitizeProfilePictureFileName('My Portrait (Final).JPG')).toBe('my-portrait-final.jpg');
+    expect(profileImageService.sanitizeProfilePictureFileName('My Portrait (Final).JPG')).toBe('my-portrait-final.jpg');
   });
 
   it('builds the expected storage path', () => {
-    expect(buildProfilePictureStoragePath('uid-123', 'My Portrait.JPG', 123456789)).toBe(
+    expect(profileImageService.buildProfilePictureStoragePath('uid-123', 'My Portrait.JPG', 123456789)).toBe(
       'profile-pictures/uid-123/123456789-my-portrait.jpg',
     );
   });

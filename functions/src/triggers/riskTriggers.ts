@@ -20,6 +20,8 @@ const DEFAULT_WEIGHTS = { w1: 0.30, w2: 0.40, w3: 0.30 };
 
 // ─── Helpers ───────────────────────────────────────────────────
 
+const isNumberValue = <T>(value: T): value is T & number => typeof value === "number";
+
 function deriveRiskStatus(wri: number | null): "safe" | "watch" | "intervene" | "critical" | "at_risk" | null {
   if (wri === null || wri === undefined) return null;
   if (wri >= WRI_SAFE_THRESHOLD) return "safe";
@@ -47,16 +49,16 @@ async function applyRiskResponse(
   const studentRef = db.collection("users").doc(studentId);
   const studentSnap = await studentRef.get();
   const studentData = studentSnap.exists ? studentSnap.data() : {};
-  const teacherId = studentData?.teacherId as string | undefined;
+  const teacherId = studentData?.teacherId;
   const studentName =
-    (studentData?.displayName as string) ||
-    (studentData?.name as string) ||
+    studentData?.displayName ||
+    studentData?.name ||
     studentId;
 
   functions.logger.info(`[RISK_RESPONSE] ${studentId}: ${previousStatus ?? "null"} → ${newStatus}`, { wri });
 
   // Build the update payload for the student doc
-  const updatePayload: Record<string, any> = {};
+  const updatePayload: admin.firestore.DocumentData = {};
 
   switch (newStatus) {
     case "watch":
@@ -103,16 +105,16 @@ async function applyRiskResponse(
 
   // Teacher notifications for intervene / critical / at_risk
   if (teacherId && (newStatus === "intervene" || newStatus === "critical" || newStatus === "at_risk")) {
-    const titles: Record<string, string> = {
+    const titles = {
       intervene: "Student Intervention Needed",
       critical: "Urgent: Student Critical",
       at_risk: "Emergency: Student At Risk",
-    };
-    const messages: Record<string, string> = {
+    } satisfies Record<string, string>;
+    const messages = {
       intervene: `${studentName} is approaching the intervention threshold (WRI: ${wri ?? "N/A"}). Remedial modules have been activated. Please review their progress.`,
       critical: `${studentName} requires urgent attention (WRI: ${wri ?? "N/A"}). A structured intervention checklist has been generated. Please act soon.`,
       at_risk: `${studentName} is at critical risk of failing (WRI: ${wri ?? "N/A"}). Your acknowledgment is required before their learning path continues.`,
-    };
+    } satisfies Record<string, string>;
 
     try {
       await createNotification({
@@ -183,13 +185,13 @@ async function generateTutorCheckIn(
     .limit(3)
     .get();
 
-  const recentScores = recentScoresSnap.docs.map((d) => d.data().score as number).filter((s): s is number => !isNaN(s));
+  const recentScores = recentScoresSnap.docs.map((d) => d.data().score).filter((s): s is number => typeof s === "number" && !isNaN(s));
   const avgRecent = recentScores.length > 0
     ? Math.round((recentScores.reduce((a, b) => a + b, 0) / recentScores.length) * 10) / 10
     : null;
 
   // Build contextual message
-  const messages: Record<string, string> = {
+  const messages = {
     watch: `Hi ${studentName}! I noticed your recent quiz scores have been a bit lower than usual (${avgRecent ?? "N/A"}%). Let's take a moment to review any tricky concepts together. You've got this! `,
     intervene: `${studentName}, your teacher and I are here to help. Your WRI is ${wri ?? "N/A"} — let's focus on one topic at a time. I've unlocked some extra hints for your next quiz. `,
     critical: `${studentName}, I'm worried about your progress. Your recent scores (${avgRecent ?? "N/A"}%) suggest you might be struggling. Please start a remedial module or reach out to your teacher today. We're here for you. ❤️`,
@@ -248,12 +250,18 @@ async function generateTutorCheckIn(
   functions.logger.info(`[RISK_RESPONSE] ${studentId}: tutor check-in sent → ${status}`);
 }
 
+interface WriComputation {
+  wri: number | null;
+  riskStatus: "safe" | "watch" | "intervene" | "critical" | "at_risk" | null;
+  pending: boolean;
+}
+
 function computeWRI(
   diagnosticScore: number | null,
   externalGradesAvg: number | null,
   systemPerformanceAvg: number | null,
   weights: { w1: number; w2: number; w3: number },
-): { wri: number | null; riskStatus: "safe" | "watch" | "intervene" | "critical" | "at_risk" | null; pending: boolean } {
+): WriComputation {
   const D = diagnosticScore;
   const G = externalGradesAvg ?? D;
   const P = systemPerformanceAvg ?? D;
@@ -286,7 +294,7 @@ async function recalcStudentWRI(studentId: string): Promise<void> {
 
   // Query activityScores subcollection
   const activityScoresSnap = await studentRef.collection("activityScores").get();
-  const activityScores = activityScoresSnap.docs.map((d) => d.data().score as number | undefined).filter((s): s is number => s !== undefined);
+  const activityScores = activityScoresSnap.docs.map((d) => d.data().score).filter((s): s is number => typeof s === "number" && !isNaN(s));
   const systemPerformanceAvg = activityScores.length > 0
     ? Math.round((activityScores.reduce((a, b) => a + b, 0) / activityScores.length) * 10) / 10
     : data.systemPerformanceAvg ?? null;
@@ -296,7 +304,7 @@ async function recalcStudentWRI(studentId: string): Promise<void> {
   const externalGrades = externalGradesSnap.docs.map((d) => {
     const gd = d.data();
     const score = gd.score ?? gd.grade ?? gd.value;
-    return typeof score === "number" ? score : undefined;
+    return isNumberValue(score) ? score : undefined;
   }).filter((s): s is number => s !== undefined);
   const externalGradesAvg = externalGrades.length > 0
     ? Math.round((externalGrades.reduce((a, b) => a + b, 0) / externalGrades.length) * 10) / 10
@@ -309,11 +317,11 @@ async function recalcStudentWRI(studentId: string): Promise<void> {
   };
 
   const diagnosticScore = data.diagnosticScore ?? null;
-  const previousStatus = data.riskStatus as "safe" | "watch" | "intervene" | "critical" | "at_risk" | null ?? null;
+  const previousStatus = data.riskStatus ?? null;
 
   const { wri, riskStatus, pending } = computeWRI(diagnosticScore, externalGradesAvg, systemPerformanceAvg, weights);
 
-  const updatePayload: Record<string, any> = {
+  const updatePayload: admin.firestore.DocumentData = {
     systemPerformanceAvg,
     externalGradesAvg,
     wri,

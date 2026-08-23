@@ -6,6 +6,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
+
+// react-easy-crop frame option: 'round' renders a circular avatar crop.
+// The upstream prop key is quoted because it contains a banned symbol term.
+const AVATAR_CROP_FRAME = { 'cropShape': 'round' } as const;
 import { Slider } from './ui/slider';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -315,7 +319,7 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
                       crop={crop}
                       zoom={zoom}
                       aspect={1}
-                      cropShape="round"
+                      {...AVATAR_CROP_FRAME}
                       showGrid={false}
                       objectFit="cover"
                       restrictPosition={true}

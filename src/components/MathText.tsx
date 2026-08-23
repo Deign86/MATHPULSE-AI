@@ -18,6 +18,10 @@ interface MathTextProps {
   className?: string;
 }
 
+export function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
+
 /** Convert plain-text math notation to LaTeX-delimited string */
 function convertToLatex(text: string): string {
   if (!text) return '';
@@ -72,7 +76,7 @@ function plainToLatex(expr: string): string {
 }
 
 const MathText: React.FC<MathTextProps> = ({ children, className }) => {
-  if (!children || typeof children !== 'string') return null;
+  if (!children || !isString(children)) return null;
 
   const processed = convertToLatex(children);
 

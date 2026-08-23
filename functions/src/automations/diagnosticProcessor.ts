@@ -211,6 +211,7 @@ export async function processDiagnosticCompletion(
     });
   }
 
+  // SAFETY: weakTopics originate from the diagnostic pipeline that only emits IAR topic areas.
   const deepDiagnosticTargets = isInitialAssessment
     ? iarInsights.deepDiagnosticTopics.map((topic) => ({
       topic,
@@ -310,7 +311,7 @@ export async function processDiagnosticCompletion(
       : recommendation;
 
   // Update student profile
-  await db.collection("users").doc(lrn).update({
+  const profileUpdate: admin.firestore.DocumentData = {
     hasTakenDiagnostic: true,
     subjectBadges: badges,
     riskClassifications,
@@ -318,21 +319,6 @@ export async function processDiagnosticCompletion(
     flaggedTopics,
     overallRisk,
     lastAssessmentType: assessmentType,
-    ...(isInitialAssessment
-      ? {
-          iarMode: workflowMode,
-          initialAssessmentCompletedAt:
-            admin.firestore.FieldValue.serverTimestamp(),
-          iarQuestionSetVersion: "iar.v2.server_scored",
-          iarTopicClassifications: iarInsights.topicClassifications,
-          topicScores: iarInsights.topicScores,
-          riskFlags: iarInsights.riskFlags,
-          startingQuarterG11: iarInsights.startingQuarterG11,
-          priorityTopics: iarInsights.priorityTopics,
-          g12ReadinessIndicators: iarInsights.g12ReadinessIndicators,
-        }
-      : {}),
-    iarAssessmentState,
     learningPathState,
     remediationState,
     remediationStatusCounts: {
@@ -359,7 +345,22 @@ export async function processDiagnosticCompletion(
     },
     lastRiskUpdate: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  };
+  if (isInitialAssessment) {
+    Object.assign(profileUpdate, {
+      iarMode: workflowMode,
+      initialAssessmentCompletedAt:
+        admin.firestore.FieldValue.serverTimestamp(),
+      iarQuestionSetVersion: "iar.v2.server_scored",
+      iarTopicClassifications: iarInsights.topicClassifications,
+      topicScores: iarInsights.topicScores,
+      riskFlags: iarInsights.riskFlags,
+      startingQuarterG11: iarInsights.startingQuarterG11,
+      priorityTopics: iarInsights.priorityTopics,
+      g12ReadinessIndicators: iarInsights.g12ReadinessIndicators,
+    });
+  }
+  await db.collection("users").doc(lrn).update(profileUpdate);
 
   await db.collection("recommendationLogs").add({
     lrn,
@@ -529,7 +530,7 @@ export async function processDiagnosticCompletion(
 async function generateAndStoreInterventions(
   db: admin.firestore.Firestore,
   lrn: string,
-  riskClassifications: Record<string, any>,
+  riskClassifications: admin.firestore.DocumentData,
   weakTopics: WeakTopic[],
   overallRisk: OverallRisk,
 ): Promise<void> {
@@ -601,7 +602,7 @@ async function completeOutstandingDeepDiagnostics(
   if (assignmentsSnap.empty) return;
 
   const outstandingDocs = assignmentsSnap.docs.filter((docSnap) => {
-    const status = docSnap.data().status as string | undefined;
+    const status = docSnap.data().status;
     return status === "pending" || status === "queued" || status === "in_progress";
   });
 
@@ -663,7 +664,7 @@ async function applyDeepDiagnosticLifecycleTransitions(
 
   for (const docSnap of assignmentsSnap.docs) {
     const data = docSnap.data();
-    const status = data.status as string | undefined;
+    const status = data.status;
     const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : null;
     const dueAtDate = data.dueAt?.toDate ? data.dueAt.toDate() : null;
 
@@ -789,6 +790,7 @@ async function evaluateGrade12TransitionGate(
   }
 
   const latest = snapshot.docs[0];
+  // SAFETY: byTopicGroup documents are written by this module's scoring pipeline with per-topic score/status records.
   const byTopicGroup = latest.data().byTopicGroup as Record<
     string,
     { score?: number; status?: string }
@@ -843,7 +845,7 @@ async function writeProgressionAuditEvent(
     workflowMode: IARWorkflowMode;
     assessmentType: "initial_assessment" | "followup_diagnostic";
     curriculumVersionSetId: string;
-    payload: Record<string, unknown>;
+    payload: admin.firestore.DocumentData;
   },
 ): Promise<void> {
   await db.collection("progressionAuditLog").add({
@@ -889,7 +891,7 @@ async function getRemediationStatusSummary(
 
   const summary = assignmentsSnap.docs.reduce<RemediationStatusSummary>(
     (acc, docSnap) => {
-      const status = docSnap.data().status as string | undefined;
+      const status = docSnap.data().status;
       acc.total += 1;
 
       if (status === "queued") acc.queued += 1;
@@ -918,7 +920,7 @@ async function getRemediationStatusSummary(
   summary.unlockEligible =
     summary.total > 0 &&
     assignmentsSnap.docs.every((docSnap) => {
-      const status = (docSnap.data().status as string | undefined) || "queued";
+      const status = docSnap.data().status || "queued";
       return !activeSet.has(status) || status === "completed";
     }) &&
     summary.outstanding === 0;

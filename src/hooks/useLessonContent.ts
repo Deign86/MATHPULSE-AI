@@ -83,7 +83,7 @@ export function useLessonContent(
         ...request,
         lessonId,
         userId,
-      } as RagLessonRequest);
+      });
 
       setSections(data.sections);
       setSources(data.sources || []);

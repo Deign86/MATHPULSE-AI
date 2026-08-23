@@ -11,6 +11,8 @@ export function isObjectVal<T>(value: T): value is T & object {
 
 const ChatMarkdown = lazy(() => import('./ChatMarkdown.tsx'));
 
+const hasWindow = 'window' in globalThis;
+
 interface FloatingAITutorProps {
   constraintsRef: React.RefObject<HTMLDivElement | null>;
   onFullScreen: () => void;
@@ -32,7 +34,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
   const { currentUser, userRole } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(() => {
-    if (typeof window === 'undefined') return false;
+    if (!hasWindow) return false;
     return window.localStorage.getItem('floating_ai_tutor_minimized') === '1';
   });
   const [currentMessage, setCurrentMessage] = useState('');
@@ -59,7 +61,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
   }, [currentUser?.uid, userRole]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!hasWindow) return;
     window.localStorage.setItem('floating_ai_tutor_minimized', isMinimized ? '1' : '0');
   }, [isMinimized]);
 

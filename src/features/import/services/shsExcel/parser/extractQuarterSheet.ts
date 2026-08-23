@@ -150,6 +150,7 @@ function parseRowValues(
     const colIndex = colMeta.column ? getColumnIndex(colMeta.column) : -1;
     if (colIndex < 0) return;
     const value = getMatrixCell(sheet, row, colIndex)?.displayValue;
+    // SAFETY: matrix cells hold scalar display values written by this parser.
     ww[colMeta.key] = (value as number | string | null) ?? null;
   });
   if (Object.keys(ww).length > 0) rowRecord.writtenWorks = ww;
@@ -159,12 +160,14 @@ function parseRowValues(
     const colIndex = colMeta.column ? getColumnIndex(colMeta.column) : -1;
     if (colIndex < 0) return;
     const value = getMatrixCell(sheet, row, colIndex)?.displayValue;
+    // SAFETY: matrix cells hold scalar display values written by this parser.
     pt[colMeta.key] = (value as number | string | null) ?? null;
   });
   if (Object.keys(pt).length > 0) rowRecord.performanceTasks = pt;
 
   if (assessmentColumns.quarterlyAssessment?.column) {
     const qaCol = getColumnIndex(assessmentColumns.quarterlyAssessment.column);
+    // SAFETY: matrix cells hold scalar display values written by this parser.
     rowRecord.quarterlyAssessment = (getMatrixCell(sheet, row, qaCol)?.displayValue as number | string | null) ?? null;
   }
 
@@ -175,6 +178,7 @@ function parseRowValues(
     if (!colMeta.column) return;
     const colIndex = getColumnIndex(colMeta.column);
     if (colIndex < 0) return;
+    // SAFETY: matrix cells hold scalar display values written by this parser.
     const value = (getMatrixCell(sheet, row, colIndex)?.displayValue as number | string | null) ?? null;
     derivedValues[colMeta.key] = value;
 

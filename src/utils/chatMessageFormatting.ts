@@ -1,4 +1,8 @@
 const CODE_SEGMENT_PATTERN = /(```[\s\S]*?```|`[^`\n]+`)/g;
+
+export function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
 const MATH_SEGMENT_PATTERN = /(\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|\[(?![^[]*\]\()[^\]]+\]|(?<!\]\()\([^()\n]+\))/g;
 const BARE_TEX_PATTERN = /\\(?:checkmark|quad|qquad|therefore|because|implies|iff|lambda|sigma|omega|epsilon|rho|phi|psi|tau|infty|partial|nabla|sum|prod|int|boxed\{[^{}]+\}|frac\{[^{}]+\}\{[^{}]+\}|sqrt\{[^{}]+\}|[a-zA-Z]+(?:_[a-zA-Z0-9]+|_\{[^{}]+\})?(?:\^[a-zA-Z0-9]+|\^\{[^{}]+\})?|[∑∏∫∂∇∞]|(?:[∑∏∫]_(?:[a-zA-Z0-9]+|\{[^{}]+\})|\^[a-zA-Z0-9]+|\^\{[^{}]+\}))/g;
 const THINK_TAG_BLOCK_PATTERN = /<\s*think\b[^>]*>[\s\S]*?<\s*\/\s*think\s*>/gi;
@@ -51,7 +55,7 @@ function pruneThinkingPreamble(input: string): string {
   }
 
   const markerMatch = FINAL_SECTION_MARKER_PATTERN.exec(normalized);
-  if (markerMatch && typeof markerMatch.index === 'number') {
+  if (markerMatch) {
     return normalized.slice(markerMatch.index).trim();
   }
 
@@ -68,7 +72,7 @@ function pruneThinkingPreamble(input: string): string {
 }
 
 export function stripThinkTags(input: string, options: ThinkTagStripOptions = {}): string {
-  if (!input || typeof input !== 'string') {
+  if (!input || !isString(input)) {
     return '';
   }
 
@@ -189,7 +193,7 @@ function normalizeMultilineBrackets(input: string): string {
  * (for example \boxed{3}) are rendered as math instead of plain text.
  */
 export function normalizeChatMarkdownForRender(input: string): string {
-  if (!input || typeof input !== 'string') {
+  if (!input || !isString(input)) {
     return '';
   }
 

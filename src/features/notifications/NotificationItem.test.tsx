@@ -2,46 +2,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
+import * as dateFnsNs from 'date-fns';
+import * as lucideNs from 'lucide-react';
+import * as notificationContextNs from './NotificationContext';
 
-// Mock date-fns
-vi.mock('date-fns', () => ({
-  formatDistanceToNow: vi.fn(() => '2 hours ago'),
-}));
+// Icon seam: replace every lucide icon used by NotificationItem with an inert stub.
+const MockIcon = ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
+  <div data-testid={testId}>Icon</div>
+);
+const MockTrash = ({ onClick }: { onClick?: () => void }) => (
+  <button data-testid="trash2-icon" onClick={onClick}>Trash</button>
+);
 
-// Mock lucide-react icons
-vi.mock('lucide-react', () => {
-  const MockIcon = ({ 'data-testid': testId }: { 'data-testid': string }) => (
-    <div data-testid={testId}>Icon</div>
-  );
-  return {
-    Trophy: MockIcon,
-    TrendingUp: MockIcon,
-    ClipboardCheck: MockIcon,
-    CheckCircle: MockIcon,
-    Flame: MockIcon,
-    Bell: MockIcon,
-    Megaphone: MockIcon,
-    BookOpen: MockIcon,
-    Zap: MockIcon,
-    AlertCircle: MockIcon,
-    AlertTriangle: MockIcon,
-    Trash2: ({ onClick }: { onClick?: () => void }) => (
-      <button data-testid="trash2-icon" onClick={onClick}>Trash</button>
-    ),
-  };
-});
+vi.spyOn(lucideNs, 'Trophy').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'TrendingUp').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'ClipboardCheck').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'CheckCircle').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'Flame').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'Bell').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'Megaphone').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'BookOpen').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'Zap').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'AlertCircle').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'AlertTriangle').mockImplementation(MockIcon);
+vi.spyOn(lucideNs, 'Trash2').mockImplementation(MockTrash);
 
-// Mock NotificationContext
+// Date seam: fixed relative-time label keeps snapshots deterministic.
+vi.spyOn(dateFnsNs, 'formatDistanceToNow').mockReturnValue('2 hours ago');
+
+// Context seam: spy on the real hook so markAsRead/deleteNotification are observable.
 const mockMarkAsRead = vi.fn();
 const mockDeleteNotification = vi.fn();
-vi.mock('./NotificationContext', () => ({
-  useNotifications: () => ({
-    markAsRead: mockMarkAsRead,
-    deleteNotification: mockDeleteNotification,
-  }),
-}));
+// SAFETY: the partial stub only omits context fields NotificationItem never reads.
+vi.spyOn(notificationContextNs, 'useNotifications').mockReturnValue({
+  markAsRead: mockMarkAsRead,
+  deleteNotification: mockDeleteNotification,
+} as ReturnType<typeof notificationContextNs.useNotifications>);
 
-// Import after mocks
 import { NotificationItem } from './NotificationItem';
 import type { Notification } from './types';
 

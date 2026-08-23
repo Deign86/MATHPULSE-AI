@@ -12,7 +12,11 @@ interface LearningPathDecision {
   reasonCode: string;
 }
 
-const SUBJECT_TO_G11_TOPIC: Record<string, string> = {
+interface TopicMap { [key: string]: string; }
+
+interface TopicListMap { [key: string]: string[]; }
+
+const SUBJECT_TO_G11_TOPIC: TopicMap = {
   "gen-math": "g11-q1-functions-foundations",
   "stats-prob": "g11-q3-interest-annuities",
   "pre-calc": "g11-q2-inverse-functions",
@@ -22,7 +26,7 @@ const SUBJECT_TO_G11_TOPIC: Record<string, string> = {
   Logic: "g11-q4-logic-propositions",
 };
 
-const LEGACY_TOPIC_TO_CANONICAL: Record<string, string> = {
+const LEGACY_TOPIC_TO_CANONICAL: TopicMap = {
   functions_foundations: "g11-q1-functions-foundations",
   rational_functions: "g11-q1-rational-functions",
   inverse_functions: "g11-q2-inverse-functions",
@@ -47,7 +51,7 @@ const G11_TOPIC_SEQUENCE_CANONICAL: string[] = [
   "g11-q4-syllogisms-proof-disproof",
 ];
 
-const SUBJECT_TO_G12_TOPIC: Record<string, string> = {
+const SUBJECT_TO_G12_TOPIC: TopicMap = {
   "finite-math-1": "g12-fm1-q1-counting",
   "finite_math_1": "g12-fm1-q1-counting",
   "finite-math-2": "g12-fm2-q1-matrices",
@@ -58,7 +62,7 @@ const SUBJECT_TO_G12_TOPIC: Record<string, string> = {
   "adv-stat": "g12-advstat-q1-probability-review",
 };
 
-const LEGACY_TOPIC_TO_G12_CANONICAL: Record<string, string> = {
+const LEGACY_TOPIC_TO_G12_CANONICAL: TopicMap = {
   g12_fm1_q1_counting: "g12-fm1-q1-counting",
   g12_fm1_q2_probability: "g12-fm1-q2-probability",
   g12_fm1_q3_decision: "g12-fm1-q3-decision",
@@ -88,7 +92,7 @@ const G12_TOPIC_SEQUENCE_CANONICAL: string[] = [
   "g12-advstat-q4-data-storytelling",
 ];
 
-const G12_PREREQUISITES: Record<string, string[]> = {
+const G12_PREREQUISITES: TopicListMap = {
   "g12-fm1-q2-probability": ["g12-fm1-q1-counting"],
   "g12-fm1-q3-decision": ["g12-fm1-q2-probability"],
   "g12-fm1-q4-project": ["g12-fm1-q3-decision"],

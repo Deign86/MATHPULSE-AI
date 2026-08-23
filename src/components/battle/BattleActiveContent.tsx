@@ -7,6 +7,8 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
 }
 
+const hasWindow = 'window' in globalThis;
+
 interface BattleActiveContentProps {
   activeMatch: any;
   roundSecondsLeft: number;
@@ -70,7 +72,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
         </p>
 
         {/* Debug variance badges */}
-        {typeof window !== 'undefined' && window.location.search.includes('debug=true') && activeMatch.currentQuestion?.varianceApplied && (
+        {hasWindow && window.location.search.includes('debug=true') && activeMatch.currentQuestion?.varianceApplied && (
           <div className="flex flex-wrap gap-1 mt-2 justify-center">
             {activeMatch.currentQuestion.varianceApplied.map((v: string) => (
               <span

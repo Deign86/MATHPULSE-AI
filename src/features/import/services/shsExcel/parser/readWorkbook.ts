@@ -2,6 +2,10 @@ import * as XLSX from 'xlsx';
 import type { MergeRange, RawSheetSnapshot, WorkbookReadResult } from './types';
 import { buildSheetMatrix } from './utils/sheetMatrix';
 
+export function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
+
 function cloneMerges(merges: XLSX.Range[] | undefined): MergeRange[] {
   if (!merges || merges.length === 0) return [];
   return merges.map((merge) => ({
@@ -13,6 +17,7 @@ function cloneMerges(merges: XLSX.Range[] | undefined): MergeRange[] {
 function toRawSheetSnapshot(sheet: XLSX.WorkSheet): RawSheetSnapshot {
   const raw: RawSheetSnapshot = {
     ref: sheet['!ref'],
+    // SAFETY: xlsx merge metadata is a Range list or absent; cloneMerges tolerates undefined.
     merges: cloneMerges(sheet['!merges'] as XLSX.Range[] | undefined),
     cells: {},
   };
@@ -20,13 +25,14 @@ function toRawSheetSnapshot(sheet: XLSX.WorkSheet): RawSheetSnapshot {
   Object.keys(sheet)
     .filter((key) => !key.startsWith('!'))
     .forEach((address) => {
+      // SAFETY: non-meta sheet keys are always cell address entries in the xlsx model.
       const cell = sheet[address] as XLSX.CellObject | undefined;
       if (!cell) return;
 
       const hasMeaningfulValue =
         cell.v !== undefined
-        || (typeof cell.w === 'string' && cell.w.trim().length > 0)
-        || (typeof cell.f === 'string' && cell.f.trim().length > 0);
+        || (isString(cell.w) && cell.w.trim().length > 0)
+        || (isString(cell.f) && cell.f.trim().length > 0);
 
       if (!hasMeaningfulValue) {
         return;

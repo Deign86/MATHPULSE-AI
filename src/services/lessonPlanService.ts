@@ -28,6 +28,7 @@ export async function saveGeneratedLessonPlan(
   },
 ): Promise<string> {
   const lessonRef = doc(collection(db, 'generatedLessonPlans'));
+  // SAFETY: 'draft' is a member of the GeneratedLessonPlanStatus union persisted with the draft.
   await setDoc(lessonRef, {
     ...lesson,
     teacherId,
@@ -48,36 +49,50 @@ export async function publishLessonPlan(lessonId: string): Promise<void> {
     throw new Error('Lesson draft not found. Save draft before publishing.');
   }
 
+  // SAFETY: draft docs are written by saveLessonDraft above with the GeneratedLessonPlanRecord field set.
   const data = snapshot.data() as Partial<GeneratedLessonPlanRecord>;
   if (!data.publishReady) {
     throw new Error('Lesson is not publish-ready. Resolve source legitimacy and validation issues first.');
   }
 
   await updateDoc(lessonRef, {
+    // SAFETY: 'published' is a member of the GeneratedLessonPlanStatus union.
     status: 'published' as GeneratedLessonPlanStatus,
     publishedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 }
 
+/** Caller-facing request shape for grounded lesson-plan generation. */
+interface LessonPlanGroundingRequest {
+  gradeLevel: string;
+  subject?: string;
+  quarter?: number;
+  moduleUnit?: string;
+  lessonTitle?: string;
+  learningCompetency?: string;
+  learnerLevel?: string;
+  classSectionId?: string;
+  className?: string;
+  materialId?: string;
+  focusTopics?: string[];
+  topicCount?: number;
+  preferImportedTopics?: boolean;
+  allowReviewSources?: boolean;
+  allowUnverifiedLesson?: boolean;
+}
+
+/** Request payload sent to the lesson-plan API, extended with curriculum grounding metadata. */
+interface LessonPlanPayload extends LessonPlanGroundingRequest {
+  curriculumContext?: string;
+  curriculumRetrievalConfidence?: number;
+  curriculumRetrievalBand?: 'high' | 'medium' | 'low';
+  curriculumRetrievalQuery?: string;
+  needsReview?: boolean;
+}
+
 export async function generateLessonPlanWithCurriculumGrounding(
-  request: {
-    gradeLevel: string;
-    subject?: string;
-    quarter?: number;
-    moduleUnit?: string;
-    lessonTitle?: string;
-    learningCompetency?: string;
-    learnerLevel?: string;
-    classSectionId?: string;
-    className?: string;
-    materialId?: string;
-    focusTopics?: string[];
-    topicCount?: number;
-    preferImportedTopics?: boolean;
-    allowReviewSources?: boolean;
-    allowUnverifiedLesson?: boolean;
-  },
+  request: LessonPlanGroundingRequest,
   useRAG: boolean = true,
 ): Promise<LessonPlanResponse & { curriculumSources?: CurriculumSource[]; curriculumContext?: string }> {
   const topic = request.learningCompetency || request.lessonTitle || (request.focusTopics && request.focusTopics[0]) || 'general mathematics';
@@ -111,7 +126,7 @@ export async function generateLessonPlanWithCurriculumGrounding(
     }
   }
 
-  const payload = {
+  const payload: LessonPlanPayload = {
     ...request,
     subject,
     quarter,
@@ -122,27 +137,6 @@ export async function generateLessonPlanWithCurriculumGrounding(
     curriculumRetrievalBand: retrievalBand,
     curriculumRetrievalQuery: retrievalQuery,
     needsReview,
-  } as unknown as {
-    gradeLevel: string;
-    subject?: string;
-    quarter?: number;
-    moduleUnit?: string;
-    lessonTitle?: string;
-    learningCompetency?: string;
-    learnerLevel?: string;
-    classSectionId?: string;
-    className?: string;
-    materialId?: string;
-    focusTopics?: string[];
-    topicCount?: number;
-    preferImportedTopics?: boolean;
-    allowReviewSources?: boolean;
-    allowUnverifiedLesson?: boolean;
-    curriculumContext?: string;
-    curriculumRetrievalConfidence?: number;
-    curriculumRetrievalBand?: 'high' | 'medium' | 'low';
-    curriculumRetrievalQuery?: string;
-    needsReview?: boolean;
   };
 
   const lessonPlan = await apiService.generateLessonPlan(payload);

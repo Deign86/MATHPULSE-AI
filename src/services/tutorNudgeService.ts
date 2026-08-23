@@ -72,12 +72,11 @@ export async function requestNudgeCheck(studentId: string): Promise<void> {
   try {
     const { auth } = await import('../lib/firebase');
     const token = await auth.currentUser?.getIdToken();
+    const headers = new Headers({ 'Content-Type': 'application/json' });
+    if (token) headers.set('Authorization', `Bearer ${token}`);
     await fetch(apiUrl(`/api/pipeline/nudge/${studentId}`), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers,
     });
   } catch {
     // Non-critical, fail silently

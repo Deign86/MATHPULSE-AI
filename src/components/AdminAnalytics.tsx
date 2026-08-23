@@ -49,6 +49,9 @@ const AdminAnalytics: React.FC = () => {
     '12m': '12 Months',
   };
 
+  // SAFETY: timeRangeLabels is keyed by exactly the TimeRange members.
+  const timeRangeEntries = Object.entries(timeRangeLabels) as [TimeRange, string][];
+
   const kpis = [
     { label: 'Total Active Users', value: loadingKPIs ? null : (summary?.totalActiveUsers ?? 0).toLocaleString(), icon: Users, bg: 'bg-[#4f46e5]', shadow: 'shadow-indigo-500/20' },
     { label: 'Avg. Quiz Score', value: loadingKPIs ? null : `${summary?.avgQuizScore ?? 0}%`, icon: Target, bg: 'bg-[#10b981]', shadow: 'shadow-emerald-500/20' },
@@ -73,8 +76,7 @@ const AdminAnalytics: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-white rounded-xl p-1 shadow-sm border border-slate-200/60">
-            // SAFETY: trusted internal value already conforms to the asserted type.
-            {(Object.entries(timeRangeLabels) as [TimeRange, string][]).map(([key, label]) => (
+            {timeRangeEntries.map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setTimeRange(key)}

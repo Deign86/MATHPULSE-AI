@@ -1,5 +1,14 @@
 import * as admin from "firebase-admin";
 
+type ProfileData = admin.firestore.DocumentData;
+
+const isText = <T>(value: T): value is T & string => typeof value === "string";
+
+const hasToDate = <T>(value: T): value is T & { toDate: () => Date } =>
+  typeof value === "object" && value !== null && "toDate" in value;
+
+const isNumber = <T>(value: T): value is T & number => typeof value === "number";
+
 export type ReassessmentReasonCode =
   | "grade_level_changed"
   | "strand_changed"
@@ -13,13 +22,15 @@ export interface ReassessmentRequestInput {
   source: "profile_change" | "manual" | "scheduled_inactivity";
   actorId?: string;
   actorRole?: "teacher" | "admin" | "system";
-  metadata?: Record<string, unknown>;
+  metadata?: ProfileData;
 }
 
 interface InactivityAnchor {
   field: string;
   date: Date;
 }
+
+interface InactivityReassessmentDecision { shouldQueue: boolean; inactivityDays: number; anchorField?: string; }
 
 const COMPLETED_ASSESSMENT_STATES = new Set([
   "completed",
@@ -28,46 +39,45 @@ const COMPLETED_ASSESSMENT_STATES = new Set([
   "deep_diagnostic_in_progress",
 ]);
 
-function normalizeComparableValue(value: unknown): string {
-  if (typeof value !== "string") return "";
+function normalizeComparableValue<T>(value: T): string {
+  if (!isText(value)) return "";
   return value.trim().toLowerCase();
 }
 
-function toDate(value: unknown): Date | null {
+function toDate<T>(value: T): Date | null {
   if (!value) return null;
 
   if (value instanceof Date) return value;
-  if (typeof value === "string" || typeof value === "number") {
+  if (isText(value) || isNumber(value)) {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  if (typeof value === "object" && value !== null && "toDate" in value) {
-    const maybeTs = value as { toDate?: () => Date };
-    const date = maybeTs.toDate?.();
+  if (hasToDate(value)) {
+    const date = value.toDate();
     return date instanceof Date ? date : null;
   }
 
   return null;
 }
 
-function extractGradeValue(data: Record<string, unknown>): string {
+function extractGradeValue(data: ProfileData): string {
   return normalizeComparableValue(data.grade || data.gradeLevel);
 }
 
-function extractStrandValue(data: Record<string, unknown>): string {
+function extractStrandValue(data: ProfileData): string {
   return normalizeComparableValue(data.strand || data.track || data.major);
 }
 
-export function hasCompletedInitialAssessment(data: Record<string, unknown>): boolean {
+export function hasCompletedInitialAssessment(data: ProfileData): boolean {
   const hasTakenDiagnostic = data.hasTakenDiagnostic === true;
-  const state = typeof data.iarAssessmentState === "string" ? data.iarAssessmentState : "";
+  const state = isText(data.iarAssessmentState) ? data.iarAssessmentState : "";
   return hasTakenDiagnostic || COMPLETED_ASSESSMENT_STATES.has(state);
 }
 
 export function detectProfileReassessmentReasons(
-  beforeData: Record<string, unknown>,
-  afterData: Record<string, unknown>,
+  beforeData: ProfileData,
+  afterData: ProfileData,
 ): ReassessmentReasonCode[] {
   const reasons: ReassessmentReasonCode[] = [];
 
@@ -86,7 +96,7 @@ export function detectProfileReassessmentReasons(
   return reasons;
 }
 
-export function resolveInactivityAnchor(data: Record<string, unknown>): InactivityAnchor | null {
+export function resolveInactivityAnchor(data: ProfileData): InactivityAnchor | null {
   const candidateFields = [
     "lastActiveAt",
     "lastLoginAt",
@@ -115,10 +125,10 @@ export function calculateInactivityDays(anchorDate: Date, referenceDate: Date): 
 }
 
 export function shouldQueueInactivityReassessment(
-  data: Record<string, unknown>,
+  data: ProfileData,
   inactivityThresholdDays: number,
   referenceDate: Date,
-): { shouldQueue: boolean; inactivityDays: number; anchorField?: string } {
+): InactivityReassessmentDecision {
   if (inactivityThresholdDays <= 0) {
     return { shouldQueue: false, inactivityDays: 0 };
   }
@@ -168,7 +178,7 @@ export async function requestReassessmentForStudent(
     throw new Error(`User ${userId} does not exist.`);
   }
 
-  const userData = userSnap.data() as Record<string, unknown>;
+  const userData: ProfileData = userSnap.data() ?? {};
   if (userData.role !== "student") {
     return { wasUpdated: false, reasonCodes: [] };
   }
@@ -226,6 +236,8 @@ export async function requestReassessmentForStudent(
 
   return {
     wasUpdated: true,
+    // SAFETY: mergedReasonCodes only ever contains values from the ReassessmentReasonCode
+    // union written by this module or parsed from documents this module wrote.
     reasonCodes: mergedReasonCodes as ReassessmentReasonCode[],
   };
 }

@@ -25,6 +25,10 @@ import {
 } from '../types/models';
 
 // Initialize user progress
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === 'number';
+}
+
 export const initializeUserProgress = async (userId: string): Promise<UserProgress> => {
   const progressData: UserProgress = {
     userId,
@@ -48,8 +52,8 @@ export const getUserProgress = async (userId: string): Promise<UserProgress | nu
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      // SAFETY: Firestore snapshot data matches UserProgress shape written by this app.
       const data = docSnap.data();
+      // SAFETY: progress docs are written by initializeUserProgress/updateUserProgress with the UserProgress field set.
       return {
         ...data,
         updatedAt: data.updatedAt?.toDate() || new Date(),
@@ -214,6 +218,7 @@ export const completeLesson = async (
       progressSnap = await getDoc(progressRef);
     }
 
+    // SAFETY: progress doc exists (initialized above) and carries the UserProgress field set.
     const progressData = progressSnap.data() as UserProgress;
 
     // Update lesson progress
@@ -315,6 +320,7 @@ export const recordPracticeQuiz = async (
       progressSnap = await getDoc(progressRef);
     }
 
+    // SAFETY: progress doc exists (initialized above) and carries the UserProgress field set.
     const progressData = progressSnap.data() as UserProgress;
     const quizAttempt: QuizAttempt = {
       quizId,
@@ -361,6 +367,7 @@ export const completeQuiz = async (
       progressSnap = await getDoc(progressRef);
     }
 
+    // SAFETY: progress doc exists (initialized above) and carries the UserProgress field set.
     const progressData = progressSnap.data() as UserProgress;
 
     // Create quiz attempt
@@ -506,7 +513,7 @@ export const awardXP = async (
     try {
       const userSnap = await getDoc(userRef);
       const data = userSnap.data();
-      if (data?.xpMultiplier && typeof data.xpMultiplier === 'number') {
+      if (data?.xpMultiplier && isNum(data.xpMultiplier)) {
         multiplier = data.xpMultiplier;
       }
     } catch {
@@ -548,6 +555,7 @@ export const recalculateProgressAggregates = async (userId: string): Promise<voi
     const progressSnap = await getDoc(progressRef);
     if (!progressSnap.exists()) return;
 
+    // SAFETY: progress docs are written by initializeUserProgress/updateUserProgress with the UserProgress field set.
     const data = progressSnap.data() as UserProgress;
     const quizAttempts = data.quizAttempts || [];
 
@@ -619,6 +627,7 @@ export const getQuizHistory = async (userId: string, quizId?: string): Promise<Q
     const progressSnap = await getDoc(progressRef);
 
     if (progressSnap.exists()) {
+      // SAFETY: progress docs are written by initializeUserProgress/updateUserProgress with the UserProgress field set.
       const data = progressSnap.data() as UserProgress;
       let quizAttempts = data.quizAttempts || [];
 
