@@ -61,16 +61,16 @@ const StatCard: React.FC<{
   };
 
   return (
-    <div className={`relative overflow-hidden rounded-[24px] p-5 text-white shadow-lg transition-all hover:scale-[1.02] ${variants[variant]}`}>
+    <div className={`relative overflow-hidden rounded-[24px] p-3.5 sm:p-5 text-white shadow-lg transition-all hover:scale-[1.02] min-w-0 ${variants[variant]}`}>
       <div className="absolute -right-4 -top-4 opacity-10">
         <Icon size={100} />
       </div>
-      <div className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-        <Icon size={16} />
+      <div className="absolute right-3.5 top-3.5 sm:right-4 sm:top-4 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/20 flex items-center justify-center">
+        <Icon size={14} className="sm:w-4 sm:h-4" />
       </div>
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{title}</p>
-      <h3 className="text-2xl font-black mt-2 leading-none">{value}</h3>
-      <p className="text-[10px] font-bold mt-4 opacity-70 uppercase tracking-widest">{subtitle}</p>
+      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-[0.2em] opacity-80 truncate">{title}</p>
+      <h3 className="text-xl sm:text-2xl font-black mt-1.5 sm:mt-2 leading-none truncate">{value}</h3>
+      <p className="text-[9px] sm:text-[10px] font-bold mt-3 sm:mt-4 opacity-70 uppercase tracking-widest truncate">{subtitle}</p>
       
       {/* Subject Card Styling Circle */}
       <div className="absolute -bottom-8 -left-8 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
@@ -213,8 +213,8 @@ const AdminAuditLog: React.FC = () => {
   const visibleRangeEnd = Math.min(currentPage * pageSize, filteredLogs.length);
 
   return (
-    <div className="flex flex-col min-h-full animate-in fade-in duration-500">
-      <div className="flex-1 space-y-8 pt-6 xl:pt-8 pb-6 px-1 max-w-[1600px] mx-auto w-full">
+    <div className="flex flex-col min-h-full w-full max-w-full overflow-x-hidden animate-in fade-in duration-500">
+      <div className="flex-1 space-y-6 sm:space-y-8 pt-4 sm:pt-6 xl:pt-8 pb-6 px-1 max-w-[1600px] mx-auto w-full">
         {/* ── 1. Action Header Bar ── */}
         <div className="flex items-center justify-between px-2 shrink-0">
           <div className="flex items-center gap-3">
@@ -226,14 +226,14 @@ const AdminAuditLog: React.FC = () => {
              <button 
                onClick={loadLogs} 
                disabled={loading}
-               className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-purple-600 shadow-sm transition-all active:scale-95 group"
+               className="p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-purple-600 shadow-sm transition-all active:scale-95 group"
                title="Synchronize logs"
              >
                <RefreshCw size={14} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
              </button>
              <button 
                disabled
-               className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-60 cursor-not-allowed"
+               className="flex items-center gap-2 px-4 py-2 min-h-[40px] bg-white border border-slate-200 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-60 cursor-not-allowed"
              >
                <Download size={14} /> Export Logs
              </button>
@@ -241,7 +241,7 @@ const AdminAuditLog: React.FC = () => {
         </div>
 
         {/* ── 2. Performance Metric Pods ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0">
           <StatCard
             title="Total Events"
             value={loading ? '...' : logs.length}
@@ -274,7 +274,7 @@ const AdminAuditLog: React.FC = () => {
       </div>{/* End flex-1 stats wrapper */}
 
       {/* ── 3. High-Fidelity Filtering Area ── */}
-        <div className="sticky top-0 z-40 -mx-[24px] xl:-mx-[32px] px-[24px] xl:px-[32px] pt-4 pb-4 bg-[#f8fafc] backdrop-blur-sm">
+        <div className="sticky top-0 z-40 px-2 sm:px-4 pt-3 sm:pt-4 pb-3 sm:pb-4 bg-[#f8fafc] backdrop-blur-sm w-full">
           <div className="flex flex-col xl:flex-row items-center gap-3">
               {/* Global Search */}
               <div className="relative flex-1 w-full group">

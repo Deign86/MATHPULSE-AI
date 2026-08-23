@@ -46,16 +46,12 @@ export const awardXP = async (
     const currentLevel = userData.level || 1;
 
     let newLevel = currentLevel;
-    const accumulatedXP = totalXP;
     let leveledUp = false;
 
     // Determine correct level purely based on absolute lifetime totalXP 
     // instead of spending currency (currentXP) for levels
     while (true) {
-      const requiredForNext = Math.floor(100 * Math.pow(1.5, newLevel - 1));
-      
-      // We calculate their expected absolute total XP for newLevels from 1 upwards
-      // simplified iterative check:
+      // Sum of per-level requirements floor(100·1.5^(i-1)) for levels 1..newLevel.
       let sumRequired = 0;
       for (let i = 1; i <= newLevel; i++) {
         sumRequired += Math.floor(100 * Math.pow(1.5, i - 1));
