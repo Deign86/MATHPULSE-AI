@@ -35,6 +35,14 @@ import { awardXP, unlockAvatarItem } from './gamificationService';
 
 const MILESTONE_STREAKS = new Set([7, 14, 30, 60, 100]);
 
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === 'number';
+}
+
+export function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
+
 const INITIAL_STATE: DailyRewardState = {
   lastClaimedDate: '',
   lastClaimedWeekSeed: 0,
@@ -88,11 +96,13 @@ export async function getDailyRewardState(userId: string): Promise<DailyRewardSt
       return { ...INITIAL_STATE };
     }
 
+    // SAFETY: reward docs are written by this service's transaction with the DailyRewardState field set.
     const data = snap.data() as Partial<DailyRewardState>;
     const currentWeekSeed = getWeekSeed();
 
     // If week changed, reset claimedDays but preserve streak/shields/tokens
     if (data.lastClaimedWeekSeed && data.lastClaimedWeekSeed !== currentWeekSeed) {
+      // SAFETY: week-rollover branch reuses the just-read doc whose fields match DailyRewardState.
       return {
         ...(data as DailyRewardState),
         claimedDays: [],
@@ -100,6 +110,7 @@ export async function getDailyRewardState(userId: string): Promise<DailyRewardSt
       };
     }
 
+    // SAFETY: same-doc merge below only overrides known DailyRewardState fields.
     return {
       ...INITIAL_STATE,
       ...data,
@@ -158,6 +169,7 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
         };
         tx.set(rewardRef, state);
       } else {
+        // SAFETY: reward doc inside an existing week was written by this service's transaction.
         state = { ...INITIAL_STATE, ...rewardSnap.data() } as DailyRewardState;
       }
 
@@ -204,7 +216,7 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
 
       switch (reward.type) {
         case 'xp': {
-          const baseXP = typeof reward.value === 'number' ? reward.value : parseInt(reward.value, 10) || 0;
+          const baseXP = isNum(reward.value) ? reward.value : parseInt(reward.value, 10) || 0;
           multiplierApplied = isMultiplierActive(state.activeMultiplier)
             ? (state.activeMultiplier?.multiplier ?? 1)
             : 1;
@@ -212,17 +224,17 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
           break;
         }
         case 'hint_token': {
-          const hintAmount = typeof reward.value === 'number' ? reward.value : parseInt(reward.value, 10) || 0;
+          const hintAmount = isNum(reward.value) ? reward.value : parseInt(reward.value, 10) || 0;
           state.hintTokens += hintAmount;
           break;
         }
         case 'streak_shield': {
-          const shieldAmount = typeof reward.value === 'number' ? reward.value : parseInt(reward.value, 10) || 0;
+          const shieldAmount = isNum(reward.value) ? reward.value : parseInt(reward.value, 10) || 0;
           state.streakShields += shieldAmount;
           break;
         }
         case 'xp_multiplier': {
-          const durationMinutes = typeof reward.value === 'number' ? reward.value : parseInt(reward.value, 10) || 60;
+          const durationMinutes = isNum(reward.value) ? reward.value : parseInt(reward.value, 10) || 60;
           const multiplierValue = reward.id.includes('2') ? 2.0 : 1.5;
           const expiresAt = new Date();
           expiresAt.setMinutes(expiresAt.getMinutes() + durationMinutes);
@@ -298,7 +310,7 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
     }
 
     // Handle badge unlock outside transaction
-    if (reward.type === 'badge_unlock' && typeof reward.value === 'string') {
+    if (reward.type === 'badge_unlock' && isString(reward.value)) {
       try {
         await unlockAvatarItem(userId, reward.value);
       } catch (badgeError) {

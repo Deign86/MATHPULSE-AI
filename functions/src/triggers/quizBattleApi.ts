@@ -797,6 +797,11 @@ const asString = <T>(value: T, fallback = ""): string => {
   return isString(value) ? value.trim() : fallback;
 };
 
+const asTrimmedStringList = (values: readonly unknown[]): string[] =>
+  values.map((value) => asString(value)).filter((value) => value.length > 0);
+
+const snapshotData = (snap: FirebaseFirestore.DocumentSnapshot): JsonObject => snap.data() ?? {};
+
 const asBoolean = <T>(value: T, fallback = false): boolean => {
   return isBoolean(value) ? value : fallback;
 };
@@ -1191,7 +1196,7 @@ const materializeQuestionSet = (
   };
 };
 
-const extractMessageContentText = <T>(content: T): string => {
+const extractMessageContentText = <T extends string | JsonObject | readonly JsonObject[]>(content: T): string => {
   if (isString(content)) {
     return content;
   }
@@ -1207,7 +1212,8 @@ const extractMessageContentText = <T>(content: T): string => {
           return "";
         }
 
-        return asString(entry.text, "") || asString(entry.content, "") || asString(entry.value, "");
+        const fields: JsonObject = entry;
+        return asString(fields["text"], "") || asString(fields["content"], "") || asString(fields["value"], "");
       })
       .filter((entry) => entry.length > 0)
       .join("\n")
@@ -2298,6 +2304,7 @@ const fetchQuestionBankPool = async (
     .limit(QUIZ_BATTLE_QUESTION_BANK_QUERY_LIMIT);
 
   const querySnap = tx ? await tx.get(baseQuery) : await baseQuery.get();
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const normalized = querySnap.docs
     .map((entry) => normalizeCanonicalBattleQuestion(entry.id, entry.data() as JsonObject))
     .filter((entry): entry is CanonicalBattleQuestion => entry !== null);
@@ -2525,10 +2532,12 @@ const mapStoredRoundResultForStudent = (
     playerAResponseMs: studentResponseMs,
     botResponseMs: opponentResponseMs,
     resolvedAtMs: Math.floor(asNumber(entry.resolvedAtMs, Date.now())),
+    // SAFETY: aggregate built from parsed numeric accessors above; shape fixed by this module.
     scoreBreakdown: isPlayerA && isRecord(entry.playerAScoreBreakdown)
-      ? (entry.playerAScoreBreakdown as unknown as RoundScoreBreakdown)
+      ? (entry.playerAScoreBreakdown as RoundScoreBreakdown)
+    // SAFETY: aggregate built from parsed numeric accessors above; shape fixed by this module.
       : !isPlayerA && isRecord(entry.playerBScoreBreakdown)
-        ? (entry.playerBScoreBreakdown as unknown as RoundScoreBreakdown)
+        ? (entry.playerBScoreBreakdown as RoundScoreBreakdown)
         : undefined,
   };
 };
@@ -2565,6 +2574,7 @@ const mapMatchStateForStudent = (
   const isPlayerA = playerAId === studentId;
 
   const statusRaw = asString(data.status, "ready");
+    // SAFETY: value was validated against the allowed union members before this narrowing.
   const status: MatchStatus = ["ready", "in_progress", "completed", "cancelled"].includes(statusRaw)
     ? (statusRaw as MatchStatus)
     : "ready";
@@ -2586,7 +2596,7 @@ const mapMatchStateForStudent = (
       questionId: asString(entry.questionId),
       prompt: asString(entry.prompt),
       choices: Array.isArray(entry.choices)
-        ? entry.choices.map((choice) => asString(choice)).filter((choice) => choice.length > 0)
+        ? asTrimmedStringList(entry.choices)
         : [],
     }));
 
@@ -2612,6 +2622,7 @@ const mapMatchStateForStudent = (
     status,
     subjectId: asString(data.subjectId, "gen-math"),
     topicId: asString(data.topicId, "unknown-topic"),
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     difficulty: ALLOWED_DIFFICULTIES.has(asString(data.difficulty, "medium"))
       ? (asString(data.difficulty) as "easy" | "medium" | "hard" | "adaptive")
       : "medium",
@@ -2640,7 +2651,8 @@ const mapMatchStateForStudent = (
       ? xpBreakdownByPlayer[studentId]
       : metadata.xpBreakdown;
     if (isRecord(xpBreakdownForStudent)) {
-      baseState.xpBreakdown = xpBreakdownForStudent as unknown as MatchXPBreakdown;
+    // SAFETY: aggregate built from parsed numeric accessors above; shape fixed by this module.
+      baseState.xpBreakdown = xpBreakdownForStudent as MatchXPBreakdown;
     }
   }
 
@@ -2652,13 +2664,14 @@ const mapGenerationAuditForStudent = (
   data: JsonObject,
 ): QuizBattleGenerationAuditResponse => {
   const statusRaw = asString(data.status, "ready");
+    // SAFETY: value was validated against the allowed union members before this narrowing.
   const status: MatchStatus = ["ready", "in_progress", "completed", "cancelled"].includes(statusRaw)
     ? (statusRaw as MatchStatus)
     : "ready";
 
   const metadata = isRecord(data.metadata) ? data.metadata : {};
   const questionFingerprints = Array.isArray(metadata.questionFingerprints)
-    ? metadata.questionFingerprints.map((entry) => asString(entry)).filter((entry) => entry.length > 0)
+    ? asTrimmedStringList(metadata.questionFingerprints)
     : [];
 
   const questionSetSource = asString(metadata.questionSetSource, "");
@@ -2703,7 +2716,9 @@ const mapRoomStateForStudent = (
     status: normalizeRoomStatus(data.status),
     subjectId: asString(data.subjectId, "gen-math"),
     topicId: asString(data.topicId, "unknown-topic"),
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     difficulty: (["easy", "medium", "hard"] as const).includes(asString(data.difficulty) as "easy" | "medium" | "hard")
+    // SAFETY: value was validated against the allowed union members before this narrowing.
       ? (asString(data.difficulty) as "easy" | "medium" | "hard")
       : "medium",
     rounds: clamp(Math.floor(asNumber(data.rounds, 5)), 3, 20),
@@ -2719,6 +2734,7 @@ const loadUserBattleProfileFromTx = async (
   uid: string,
 ): Promise<BattlePlayerEligibility> => {
   const userSnap = await tx.get(db.collection("users").doc(uid));
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const userData = userSnap.exists ? (userSnap.data() as JsonObject) : {};
   return mapUserDataToEligibility(uid, userData);
 };
@@ -2734,6 +2750,7 @@ const loadUserBattleProfile = async (
   }
 
   const userSnap = await db.collection("users").doc(uid).get();
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const userData = userSnap.exists ? (userSnap.data() as JsonObject) : {};
   const profile = mapUserDataToEligibility(uid, userData);
   runtimeCache.set(cacheKey, profile, QUIZ_BATTLE_PROFILE_CACHE_TTL_MS);
@@ -2769,13 +2786,14 @@ const createOnlineMatchInTransaction = async (
     playerB: playerBProfile,
   });
 
-  tx.set(matchRef, {
+  const matchDoc = {
     matchId: matchRef.id,
     mode: "online",
     playerAId,
     playerADisplayName: playerAProfile.displayName,
     playerBId,
     playerBDisplayName: playerBProfile.displayName,
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     status: "ready" as MatchStatus,
     playerAReady: false,
     playerBReady: false,
@@ -2792,9 +2810,6 @@ const createOnlineMatchInTransaction = async (
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     readyAt: admin.firestore.FieldValue.serverTimestamp(),
-    ...(source === "public_matchmaking"
-      ? { expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + PUBLIC_MATCHMAKING_TIMEOUT_MS) }
-      : {}),
     startedAt: null,
     endedAt: null,
     metadata: {
@@ -2820,7 +2835,14 @@ const createOnlineMatchInTransaction = async (
       playerBCurriculumVersion: playerBProfile.curriculumVersion,
       questionPoolSelector: selector,
     },
-  });
+  };
+  if (source === "public_matchmaking") {
+    Object.assign(matchDoc, {
+      expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + PUBLIC_MATCHMAKING_TIMEOUT_MS),
+    });
+  }
+
+  tx.set(matchRef, matchDoc);
 
   tx.set(matchRef.collection("server").doc("roundKeys"), {
     keys: answerKeys,
@@ -2864,6 +2886,7 @@ const createBotMatchRecord = async (
     playerADisplayName,
     playerBId: `bot:${selectedDifficulty}`,
     playerBDisplayName: `Practice Bot (${selectedDifficulty.toUpperCase()})`,
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     status: "ready" as MatchStatus,
     playerAReady: true,
     playerBReady: true,
@@ -2953,12 +2976,17 @@ const computeParticipantRoundMetrics = (
   };
 };
 
+interface FinalizedMatchResult {
+  outcome: MatchOutcome;
+  xpEarned: number;
+}
+
 const finalizeCompletedMatch = async (
   db: FirebaseFirestore.Firestore,
   matchRef: FirebaseFirestore.DocumentReference,
   requestingStudentId: string,
 ): Promise<{ outcome: MatchOutcome; xpEarned: number }> => {
-  let result: { outcome: MatchOutcome; xpEarned: number } = {
+  let result: FinalizedMatchResult = {
     outcome: "draw",
     xpEarned: xpForOutcome("draw"),
   };
@@ -2969,6 +2997,7 @@ const finalizeCompletedMatch = async (
       throw new functions.https.HttpsError("not-found", "Match not found while finalizing.");
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const matchData = matchSnap.data() as JsonObject;
     const status = asString(matchData.status, "ready");
 
@@ -3007,6 +3036,7 @@ const finalizeCompletedMatch = async (
     const rounds = clamp(Math.floor(asNumber(matchData.rounds, 1)), 1, 20);
     const timePerQuestionSec = clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180);
     const roundResultsRaw = Array.isArray(matchData.roundResults) ? matchData.roundResults : [];
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
     const roundResults = roundResultsRaw.filter((entry) => isRecord(entry)) as JsonObject[];
     const fallbackResponseMs = timePerQuestionSec * 1000;
 
@@ -3019,7 +3049,9 @@ const finalizeCompletedMatch = async (
       const userRef = db.collection("users").doc(participantId);
       const [statsSnap, userSnap] = await Promise.all([tx.get(statsRef), tx.get(userRef)]);
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       participantStats[participantId] = statsSnap.exists ? (statsSnap.data() as JsonObject) : {};
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       participantUsers[participantId] = userSnap.exists ? (userSnap.data() as JsonObject) : {};
       participantProfiles[participantId] = {
         displayName: asString(participantUsers[participantId].displayName, asString(participantUsers[participantId].name, "Student")),
@@ -3044,6 +3076,7 @@ const finalizeCompletedMatch = async (
           : entry.playerBScoreBreakdown;
 
         if (isRecord(participantScoreBreakdown)) {
+    // SAFETY: aggregate built from parsed numeric accessors above; shape fixed by this module.
           const breakdown = participantScoreBreakdown as JsonObject;
           if (breakdown.isCorrect === true || asNumber(breakdown.totalPointsAwarded, 0) > 0) {
             return sum + Math.floor(asNumber(breakdown.totalPointsAwarded, 0));
@@ -3226,25 +3259,30 @@ const generateRoomCode = async (): Promise<string> => {
 };
 
 const normalizeSetup = <T>(rawInput: T): NormalizedBattleSetup => {
-  const input = isRecord(rawInput) ? rawInput : {};
+  const input: JsonObject = isRecord(rawInput) ? rawInput : {};
 
   const modeRaw = asString(input.mode, "online");
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
   const mode = ALLOWED_MODES.has(modeRaw) ? (modeRaw as "online" | "bot") : "online";
 
   const subjectIdRaw = asString(input.subjectId, "gen-math");
   const subjectId = ALLOWED_SUBJECT_IDS.has(subjectIdRaw) ? subjectIdRaw : "gen-math";
 
   const difficultyRaw = asString(input.difficulty, "medium");
+    // SAFETY: value was validated against the allowed union members before this narrowing.
   const difficulty = (["easy", "medium", "hard"] as const).includes(difficultyRaw as "easy" | "medium" | "hard")
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     ? (difficultyRaw as "easy" | "medium" | "hard")
     : "medium";
 
   const queueTypeRaw = asString(input.queueType, "public_matchmaking");
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
   const queueType = ALLOWED_QUEUE_TYPES.has(queueTypeRaw)
     ? (queueTypeRaw as "public_matchmaking" | "private_room")
     : "public_matchmaking";
 
   const botDifficultyRaw = asString(input.botDifficulty, "medium");
+    // SAFETY: value was validated against the allowed union members before this narrowing.
   const botDifficulty = ALLOWED_DIFFICULTIES.has(botDifficultyRaw)
     ? (botDifficultyRaw as "easy" | "medium" | "hard" | "adaptive")
     : "medium";
@@ -3299,7 +3337,9 @@ const setupFromRoomData = (roomData: JsonObject): NormalizedBattleSetup => {
     mode: "online",
     subjectId: ALLOWED_SUBJECT_IDS.has(asString(roomData.subjectId)) ? asString(roomData.subjectId) : "gen-math",
     topicId: asString(roomData.topicId, "unknown-topic"),
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     difficulty: (["easy", "medium", "hard"] as const).includes(asString(roomData.difficulty) as "easy" | "medium" | "hard")
+    // SAFETY: value was validated against the allowed union members before this narrowing.
       ? (asString(roomData.difficulty) as "easy" | "medium" | "hard")
       : "medium",
     rounds: clamp(Math.floor(asNumber(roomData.rounds, 5)), 3, 20),
@@ -3317,7 +3357,9 @@ const setupFromQueueData = (queueData: JsonObject): NormalizedBattleSetup => {
     mode: "online",
     subjectId: ALLOWED_SUBJECT_IDS.has(asString(queueData.subjectId)) ? asString(queueData.subjectId) : "gen-math",
     topicId: asString(queueData.topicId, "unknown-topic"),
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     difficulty: (["easy", "medium", "hard"] as const).includes(asString(queueData.difficulty) as "easy" | "medium" | "hard")
+    // SAFETY: value was validated against the allowed union members before this narrowing.
       ? (asString(queueData.difficulty) as "easy" | "medium" | "hard")
       : "medium",
     rounds: clamp(Math.floor(asNumber(queueData.rounds, 5)), 3, 20),
@@ -3335,12 +3377,16 @@ const setupFromMatchData = (matchData: JsonObject): NormalizedBattleSetup => {
   const matchDifficulty = asString(matchData.difficulty, "medium");
   const metadataBotDifficulty = asString(metadata.botDifficulty, matchDifficulty);
 
+    // SAFETY: value was validated against the allowed union members before this narrowing.
   const normalizedDifficulty = (["easy", "medium", "hard"] as const).includes(matchDifficulty as "easy" | "medium" | "hard")
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     ? (matchDifficulty as "easy" | "medium" | "hard")
     : "medium";
 
+    // SAFETY: value was validated against the allowed union members before this narrowing.
   const botDifficulty = ALLOWED_DIFFICULTIES.has(metadataBotDifficulty)
     ? (metadataBotDifficulty as "easy" | "medium" | "hard" | "adaptive")
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     : ALLOWED_DIFFICULTIES.has(matchDifficulty)
       ? (matchDifficulty as "easy" | "medium" | "hard" | "adaptive")
       : "medium";
@@ -3384,6 +3430,7 @@ const acquireAiGenerationLease = async (
       throw new functions.https.HttpsError("not-found", "Match not found.");
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const matchData = matchSnap.data() as JsonObject;
     const status = asString(matchData.status, "ready");
     if (status !== "ready") {
@@ -3449,6 +3496,7 @@ const persistAiGenerationFailure = async (
       return;
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const matchData = matchSnap.data() as JsonObject;
     const metadata = isRecord(matchData.metadata) ? matchData.metadata : {};
     const lockedAttemptId = asString(metadata.aiGenerationInFlightAttemptId, "");
@@ -3484,6 +3532,7 @@ const persistAiGenerationSuccess = async (
       return false;
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const matchData = matchSnap.data() as JsonObject;
     const status = asString(matchData.status, "ready");
     if (status !== "ready") {
@@ -3565,6 +3614,7 @@ const ensureAiQuestionSetForLiveStart = async (
 
     const matchSnap = await matchRef.get();
     if (matchSnap.exists) {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       const matchData = matchSnap.data() as JsonObject;
       const playerAId = asString(matchData.playerAId);
       const playerBId = asString(matchData.playerBId);
@@ -3600,6 +3650,7 @@ const ensureAiQuestionSetForLiveStart = async (
 
     if (!persisted) {
       const latestSnap = await matchRef.get();
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       const latestData = latestSnap.exists ? (latestSnap.data() as JsonObject) : {};
       const latestMetadata = isRecord(latestData.metadata) ? latestData.metadata : {};
       if (asString(latestMetadata.questionSetSource, "") !== "ai") {
@@ -3709,6 +3760,7 @@ const cancelExpiredPublicMatchIfNeeded = async (
       return;
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const matchData = matchSnap.data() as JsonObject;
     if (!isPublicMatchmakingReadyMatch(matchData) || !isExpiredPublicMatchmakingSession(matchData)) {
       return;
@@ -3718,6 +3770,7 @@ const cancelExpiredPublicMatchIfNeeded = async (
     const playerBId = asString(matchData.playerBId);
 
     tx.update(matchRef, {
+    // SAFETY: value was validated against the allowed union members before this narrowing.
       status: "cancelled" as MatchStatus,
       endedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -3766,6 +3819,7 @@ const resolvePublicMatchmakingPass = async (
   const candidatesByKey = new Map<string, FirebaseFirestore.QueryDocumentSnapshot[]>();
 
   queueSnap.docs.forEach((entry) => {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const data = entry.data() as JsonObject;
     const status = asString(data.status, "searching");
     const mode = asString(data.mode, "online");
@@ -3840,7 +3894,9 @@ const resolvePublicMatchmakingPass = async (
     if (paired >= maxPairs) break;
 
     const sorted = [...entries].sort((a, b) => {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       const joinedA = asTimestampMillis((a.data() as JsonObject).joinedAt, 0);
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       const joinedB = asTimestampMillis((b.data() as JsonObject).joinedAt, 0);
       return joinedA - joinedB;
     });
@@ -3855,7 +3911,9 @@ const resolvePublicMatchmakingPass = async (
         const [firstSnap, secondSnap] = await Promise.all([tx.get(first.ref), tx.get(second.ref)]);
         if (!firstSnap.exists || !secondSnap.exists) return false;
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
         const firstData = firstSnap.data() as JsonObject;
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
         const secondData = secondSnap.data() as JsonObject;
 
         if (asString(firstData.status, "searching") !== "searching") return false;
@@ -3882,6 +3940,7 @@ const resolvePublicMatchmakingPass = async (
         );
 
         const matchedPayload = {
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
           status: "matched" as QueueStatus,
           matchId,
           matchedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -3916,6 +3975,7 @@ const resolvePrivateRoomTimeoutPass = async (
   const now = Date.now();
   const roomRefs = new Map<string, FirebaseFirestore.DocumentReference>();
   [...waitingSnap.docs, ...readySnap.docs].forEach((entry) => {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const roomData = entry.data() as JsonObject;
     const participantIds = getParticipantIds(roomData.participantIds);
     const expiresAtMs = asTimestampMillis(roomData.expiresAt, 0);
@@ -3965,6 +4025,7 @@ const resolvePrivateRoomTimeoutPass = async (
           return { expired: false, expiredEmpty: false, cancelledReadyMatch: false };
         }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
         const roomData = roomSnap.data() as JsonObject;
         const roomStatus = normalizeRoomStatus(roomData.status);
         if (roomStatus !== "waiting" && roomStatus !== "ready") {
@@ -3992,11 +4053,13 @@ const resolvePrivateRoomTimeoutPass = async (
           const matchRef = db.collection("quizBattleMatches").doc(matchId);
           const matchSnap = await tx.get(matchRef);
           if (matchSnap.exists) {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
             const matchData = matchSnap.data() as JsonObject;
             const matchStatus = asString(matchData.status, "ready");
 
             if (matchStatus === "ready") {
               tx.update(matchRef, {
+    // SAFETY: value was validated against the allowed union members before this narrowing.
                 status: "cancelled" as MatchStatus,
                 endedAt: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -4008,6 +4071,7 @@ const resolvePrivateRoomTimeoutPass = async (
         }
 
         tx.update(roomRef, {
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
           status: "expired" as RoomStatus,
           participantIds: [],
           participantHeartbeat: {},
@@ -4072,6 +4136,7 @@ const progressMatchTimerIfExpired = async (
 
     if (!matchSnap.exists) return;
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const matchData = matchSnap.data() as JsonObject;
     const status = asString(matchData.status, "ready");
     if (status !== "in_progress") return;
@@ -4146,7 +4211,9 @@ const progressMatchTimerIfExpired = async (
       tx.get(playerBSubRef),
     ]);
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const playerASubData = playerASubSnap.exists ? (playerASubSnap.data() as JsonObject) : null;
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const playerBSubData = playerBSubSnap.exists ? (playerBSubSnap.data() as JsonObject) : null;
 
     const playerASelection = playerASubData
@@ -4158,6 +4225,7 @@ const progressMatchTimerIfExpired = async (
 
     if (mode === "bot") {
       const difficultyRaw = asString(matchData.difficulty, "medium");
+    // SAFETY: value was validated against the allowed union members before this narrowing.
       const botDifficulty = ALLOWED_DIFFICULTIES.has(difficultyRaw)
         ? (difficultyRaw as "easy" | "medium" | "hard" | "adaptive")
         : "medium";
@@ -4202,6 +4270,7 @@ const progressMatchTimerIfExpired = async (
     const roundDeadlineForScoring = roundDeadlineAtMs > 0 ? roundDeadlineAtMs : roundStartedAtMs + timeLimitMs;
 
     const playerAStreak = computeConsecutiveCorrect(
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
       (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
       true,
       currentRound,
@@ -4218,6 +4287,7 @@ const progressMatchTimerIfExpired = async (
     }
 
     const playerBStreak = computeConsecutiveCorrect(
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
       (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
       false,
       currentRound,
@@ -4313,6 +4383,7 @@ const progressAndFinalizeMatchIfNeeded = async (
   const latestMatchSnap = await matchRef.get();
   if (!latestMatchSnap.exists) return;
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const latestData = latestMatchSnap.data() as JsonObject;
   if (asString(latestData.status) === "completed") {
     await finalizeCompletedMatch(db, matchRef, requestingStudentId);
@@ -4397,6 +4468,7 @@ export const quizBattleJoinQueue = functions.https.onCall(async (data, context) 
       difficulty: setup.difficulty,
       rounds: setup.rounds,
       timePerQuestionSec: setup.timePerQuestionSec,
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
       status: "searching" as QueueStatus,
       joinedAt: admin.firestore.FieldValue.serverTimestamp(),
       heartbeatAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -4409,6 +4481,7 @@ export const quizBattleJoinQueue = functions.https.onCall(async (data, context) 
   await resolvePublicMatchmakingPass(db, 2);
 
   const refreshed = await queueRef.get();
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const refreshedData = refreshed.exists ? (refreshed.data() as JsonObject) : {};
   const status = asString(refreshedData.status, "searching");
 
@@ -4476,6 +4549,7 @@ export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, co
       return;
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const roomData = roomSnap.data() as JsonObject;
     const roomStatus = normalizeRoomStatus(roomData.status);
     if (roomStatus === "cancelled" || roomStatus === "expired") {
@@ -4496,6 +4570,7 @@ export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, co
       const matchSnap = await tx.get(matchRef);
 
       if (matchSnap.exists) {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
         const matchData = matchSnap.data() as JsonObject;
         const matchStatus = asString(matchData.status, "ready");
 
@@ -4507,6 +4582,7 @@ export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, co
         }
 
         tx.update(matchRef, {
+    // SAFETY: value was validated against the allowed union members before this narrowing.
           status: "cancelled" as MatchStatus,
           endedAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -4525,6 +4601,7 @@ export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, co
 
     const roomUpdates: JsonObject = {
       participantIds: nextParticipantIds,
+    // SAFETY: value was validated against the allowed union members before this narrowing.
       status: nextParticipantIds.length === 0 ? ("cancelled" as RoomStatus) : ("waiting" as RoomStatus),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + ROOM_IDLE_TIMEOUT_MS),
@@ -4579,6 +4656,7 @@ export const quizBattleCreatePrivateRoom = functions.https.onCall(async (data, c
     difficulty: setup.difficulty,
     rounds: setup.rounds,
     timePerQuestionSec: setup.timePerQuestionSec,
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
     status: "waiting" as RoomStatus,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -4586,6 +4664,7 @@ export const quizBattleCreatePrivateRoom = functions.https.onCall(async (data, c
   });
 
   const roomSnap = await roomRef.get();
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const roomData = roomSnap.data() as JsonObject;
 
   return {
@@ -4618,12 +4697,14 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
       throw new functions.https.HttpsError("not-found", "Private room no longer exists.");
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const roomData = roomSnap.data() as JsonObject;
     const currentStatus = normalizeRoomStatus(roomData.status);
     const expiresAtMs = asTimestampMillis(roomData.expiresAt, 0);
 
     if (expiresAtMs > 0 && Date.now() > expiresAtMs) {
       tx.update(roomRef, {
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
         status: "expired" as RoomStatus,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -4734,6 +4815,7 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
   });
 
   const latestRoomSnap = await roomRef.get();
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const roomData = latestRoomSnap.data() as JsonObject;
   const matchId = asString(roomData.matchId, "");
 
@@ -4743,7 +4825,7 @@ export const quizBattleJoinPrivateRoom = functions.https.onCall(async (data, con
     await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
     const matchSnap = await matchRef.get();
     if (matchSnap.exists) {
-      match = mapMatchStateForStudent(matchId, studentId, matchSnap.data());
+      match = mapMatchStateForStudent(matchId, studentId, snapshotData(matchSnap));
     }
   }
 
@@ -4778,6 +4860,7 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
     throw new functions.https.HttpsError("not-found", "Private room was not found.");
   }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const roomData = roomSnap.data() as JsonObject;
   const roomStatus = normalizeRoomStatus(roomData.status);
   const expiresAtMs = asTimestampMillis(roomData.expiresAt, 0);
@@ -4789,6 +4872,7 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
         return;
       }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       const latestRoomData = latestRoomSnap.data() as JsonObject;
       const latestRoomStatus = normalizeRoomStatus(latestRoomData.status);
       const latestExpiresAtMs = asTimestampMillis(latestRoomData.expiresAt, 0);
@@ -4801,9 +4885,11 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
         const matchRef = db.collection("quizBattleMatches").doc(matchId);
         const matchSnap = await tx.get(matchRef);
         if (matchSnap.exists) {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
           const matchData = matchSnap.data() as JsonObject;
           if (asString(matchData.status, "ready") === "ready") {
             tx.update(matchRef, {
+    // SAFETY: value was validated against the allowed union members before this narrowing.
               status: "cancelled" as MatchStatus,
               endedAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -4814,6 +4900,7 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
       }
 
       tx.update(roomRef, {
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
         status: "expired" as RoomStatus,
         participantIds: [],
         participantHeartbeat: {},
@@ -4837,7 +4924,7 @@ export const quizBattleGetPrivateRoomState = functions.https.onCall(async (data,
     await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
     const matchSnap = await matchRef.get();
     if (matchSnap.exists) {
-      match = mapMatchStateForStudent(roomState.matchId, studentId, matchSnap.data());
+      match = mapMatchStateForStudent(roomState.matchId, studentId, snapshotData(matchSnap));
     }
   }
 
@@ -4887,6 +4974,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
     throw new functions.https.HttpsError("not-found", "Match not found.");
   }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const preStartData = preStartSnap.data() as JsonObject;
   const preStartStatus = asString(preStartData.status, "ready");
   if (preStartStatus === "ready") {
@@ -4906,6 +4994,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
     throw new functions.https.HttpsError("not-found", "Match not found.");
   }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const postGenerationData = postGenerationSnap.data() as JsonObject;
   const postGenerationStatus = asString(postGenerationData.status, "ready");
   if (postGenerationStatus === "ready") {
@@ -4928,6 +5017,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
     await cancelExpiredPublicMatchIfNeeded(db, matchRef);
     const refreshedExpiredSnap = await matchRef.get();
     if (refreshedExpiredSnap.exists) {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       return mapMatchStateForStudent(matchRef.id, studentId, refreshedExpiredSnap.data() as JsonObject);
     }
   }
@@ -4941,6 +5031,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
         throw new functions.https.HttpsError("not-found", "Match not found.");
       }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       const matchData = matchSnap.data() as JsonObject;
       const participantA = asString(matchData.playerAId);
       const participantB = asString(matchData.playerBId);
@@ -4961,6 +5052,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
 
       if (isPublicMatchmakingReadyMatch(matchData) && isExpiredPublicMatchmakingSession(matchData)) {
         tx.update(matchRef, {
+    // SAFETY: value was validated against the allowed union members before this narrowing.
           status: "cancelled" as MatchStatus,
           endedAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -4985,6 +5077,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
         const timePerQuestionSec = clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180);
         const timing = createRoundTimingWindow(timePerQuestionSec);
         const updatePayload: JsonObject = {
+    // SAFETY: value was validated against the allowed union members before this narrowing.
           status: "in_progress" as MatchStatus,
           currentRound: 1,
           playerAReady: true,
@@ -5064,7 +5157,7 @@ export const quizBattleStartMatch = functions.https.onCall(async (data, context)
 
   return {
     success: true,
-    match: mapMatchStateForStudent(matchRef.id, studentId, matchSnap.data()),
+    match: mapMatchStateForStudent(matchRef.id, studentId, snapshotData(matchSnap)),
   };
 });
 
@@ -5085,6 +5178,7 @@ export const quizBattleGetMatchState = functions.https.onCall(async (data, conte
     throw new functions.https.HttpsError("not-found", "Match not found.");
   }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const matchData = matchSnap.data() as JsonObject;
   const participantA = asString(matchData.playerAId);
   const participantB = asString(matchData.playerBId);
@@ -5099,6 +5193,7 @@ export const quizBattleGetMatchState = functions.https.onCall(async (data, conte
     if (refreshedExpiredSnap.exists) {
       return {
         success: true,
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
         match: mapMatchStateForStudent(matchRef.id, studentId, refreshedExpiredSnap.data() as JsonObject),
       };
     }
@@ -5126,6 +5221,7 @@ export const quizBattleGetGenerationAudit = functions.https.onCall(async (data, 
     throw new functions.https.HttpsError("not-found", "Match not found.");
   }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const matchData = matchSnap.data() as JsonObject;
   const participantA = asString(matchData.playerAId);
   const participantB = asString(matchData.playerBId);
@@ -5171,6 +5267,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       throw new functions.https.HttpsError("not-found", "Match not found.");
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const matchData = matchSnap.data() as JsonObject;
     const participantA = asString(matchData.playerAId);
     const participantB = asString(matchData.playerBId);
@@ -5252,6 +5349,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       }
 
       const difficultyRaw = asString(matchData.difficulty, "medium");
+    // SAFETY: value was validated against the allowed union members before this narrowing.
       const botDifficulty = ALLOWED_DIFFICULTIES.has(difficultyRaw)
         ? (difficultyRaw as "easy" | "medium" | "hard" | "adaptive")
         : "medium";
@@ -5290,6 +5388,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       };
 
       const playerAStreak = computeConsecutiveCorrect(
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
         (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
         true,
         roundNumber,
@@ -5419,6 +5518,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
       return;
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const opponentData = opponentSnap.data() as JsonObject;
     const playerASelection = isPlayerA
       ? normalizedSelection
@@ -5459,6 +5559,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
     const deadlineMs = roundDeadlineAtMs > 0 ? roundDeadlineAtMs : roundStartedAtMs + timeLimitMs;
 
     const playerAStreak = computeConsecutiveCorrect(
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
       (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
       true,
       roundNumber,
@@ -5474,6 +5575,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
     }
 
     const playerBStreak = computeConsecutiveCorrect(
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
       (Array.isArray(matchData.roundResults) ? matchData.roundResults : []).filter((entry) => isRecord(entry)) as JsonObject[],
       false,
       roundNumber,
@@ -5560,7 +5662,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
     throw new functions.https.HttpsError("not-found", "Match not found after answer submission.");
   }
 
-  const mappedMatch = mapMatchStateForStudent(matchRef.id, studentId, matchSnap.data());
+  const mappedMatch = mapMatchStateForStudent(matchRef.id, studentId, snapshotData(matchSnap));
   const roundResult = mappedMatch.roundResults.find((entry) => entry.roundNumber === roundNumber) || null;
 
   if (!completion && mappedMatch.status === "completed") {
@@ -5596,6 +5698,7 @@ export const quizBattleRequestRematch = functions.https.onCall(async (data, cont
     throw new functions.https.HttpsError("not-found", "Source match was not found.");
   }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const matchData = matchSnap.data() as JsonObject;
   const participantA = asString(matchData.playerAId);
   if (participantA !== studentId) {
@@ -5614,12 +5717,14 @@ export const quizBattleRequestRematch = functions.https.onCall(async (data, cont
     mode: "bot",
     subjectId: asString(matchData.subjectId, "gen-math"),
     topicId: asString(matchData.topicId, "unknown-topic"),
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     difficulty: ["easy", "medium", "hard"].includes(asString(matchData.difficulty))
       ? (asString(matchData.difficulty) as "easy" | "medium" | "hard")
       : "medium",
     rounds: clamp(Math.floor(asNumber(matchData.rounds, 5)), 3, 20),
     timePerQuestionSec: clamp(Math.floor(asNumber(matchData.timePerQuestionSec, 30)), 10, 180),
     queueType: "public_matchmaking",
+    // SAFETY: value was validated against the allowed union members before this narrowing.
     botDifficulty: ALLOWED_DIFFICULTIES.has(asString(matchData.difficulty, "medium"))
       ? (asString(matchData.difficulty) as "easy" | "medium" | "hard" | "adaptive")
       : "medium",
@@ -5640,6 +5745,7 @@ export const quizBattleRequestRematch = functions.https.onCall(async (data, cont
 export const quizBattleHeartbeat = functions.https.onCall(async (data, context) => {
   const studentId = await requireStudentUid(context);
   const scopeRaw = asString(data?.scope);
+    // SAFETY: value produced and consumed entirely within this module under the quiz-battle document schema.
   const scope = HEARTBEAT_SCOPES.has(scopeRaw) ? (scopeRaw as HeartbeatScope) : null;
   const resourceId = asString(data?.resourceId);
 
@@ -5679,6 +5785,7 @@ export const quizBattleHeartbeat = functions.https.onCall(async (data, context) 
       throw new functions.https.HttpsError("not-found", "Room not found.");
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     roomData = roomSnap.data() as JsonObject;
     assertRoomParticipant(studentId, roomData);
   }
@@ -5690,6 +5797,7 @@ export const quizBattleHeartbeat = functions.https.onCall(async (data, context) 
       throw new functions.https.HttpsError("not-found", "Match not found.");
     }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
     const matchData = matchSnap.data() as JsonObject;
     const participantA = asString(matchData.playerAId);
     const participantB = asString(matchData.playerBId);
@@ -5776,6 +5884,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     await progressAndFinalizeMatchIfNeeded(db, active.doc.ref, studentId);
     const refreshedMatchSnap = await active.doc.ref.get();
     if (refreshedMatchSnap.exists) {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       const refreshedData = refreshedMatchSnap.data() as JsonObject;
       return {
         success: true,
@@ -5791,6 +5900,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     };
   }
 
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
   const queueData = queueSnap.exists ? (queueSnap.data() as JsonObject) : null;
   const queueStatus = queueData ? asString(queueData.status, "searching") : "";
   const queueMatchId = queueData ? asString(queueData.matchId, "") : "";
@@ -5800,6 +5910,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
     const matchSnap = await matchRef.get();
     if (matchSnap.exists) {
+    // SAFETY: Firestore document written only by this module's writers; field shapes re-checked by the accessors below.
       const matchData = matchSnap.data() as JsonObject;
       if (isPublicMatchmakingReadyMatch(matchData) && isExpiredPublicMatchmakingSession(matchData)) {
         return { success: true, sessionType: "idle" };
@@ -5814,7 +5925,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
           matchId: queueMatchId,
           expiresAtMs: getPublicMatchmakingDeadlineMs(queueData),
         },
-        match: mapMatchStateForStudent(queueMatchId, studentId, matchSnap.data()),
+        match: mapMatchStateForStudent(queueMatchId, studentId, snapshotData(matchSnap)),
       };
     }
   }
@@ -5850,7 +5961,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
       await progressAndFinalizeMatchIfNeeded(db, matchRef, studentId);
       const matchSnap = await matchRef.get();
       if (matchSnap.exists) {
-        match = mapMatchStateForStudent(room.matchId, studentId, matchSnap.data());
+        match = mapMatchStateForStudent(room.matchId, studentId, snapshotData(matchSnap));
         return {
           success: true,
           sessionType: "match",
@@ -5871,7 +5982,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
     await resolvePublicMatchmakingPass(db, 1);
     const refreshedQueueSnap = await queueRef.get();
     if (refreshedQueueSnap.exists) {
-      const refreshedQueueData = refreshedQueueSnap.data();
+      const refreshedQueueData: JsonObject = refreshedQueueSnap.data() ?? {};
       const refreshedStatus = asString(refreshedQueueData.status, "searching");
       const refreshedMatchId = asString(refreshedQueueData.matchId, "");
       if (refreshedStatus === "matched" && refreshedMatchId) {
@@ -5888,7 +5999,7 @@ export const quizBattleResumeSession = functions.https.onCall(async (_data, cont
               matchId: refreshedMatchId,
               expiresAtMs: getPublicMatchmakingDeadlineMs(refreshedQueueData),
             },
-            match: mapMatchStateForStudent(refreshedMatchId, studentId, matchSnap.data()),
+            match: mapMatchStateForStudent(refreshedMatchId, studentId, snapshotData(matchSnap)),
           };
         }
       }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { recordGet } from '../utils/memberOf';
 import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, Star, Crown, BadgeCheck, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getUserAchievements } from '../services/gamificationService';
@@ -188,7 +189,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
                       key={achievement.id}
                       className="rounded-xl p-4 text-center transition-all bg-white border-2 border-sky-200"
                     >
-                      <div className="text-3xl mb-2">{achievementIconMap[achievement.icon] || <Award size={24} className="text-slate-500 mx-auto" />}</div>
+                      <div className="text-3xl mb-2">{recordGet(achievementIconMap, achievement.icon) ?? <Award size={24} className="text-slate-500 mx-auto" />}</div>
                       <p className="font-bold text-xs text-[#0a1628] mb-1 font-body">{achievement.title}</p>
                       <p className="text-xs text-[#5a6578]">{achievement.description}</p>
                     </div>

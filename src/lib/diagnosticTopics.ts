@@ -1,16 +1,16 @@
 export type DiagnosticTopicKey = 'Functions' | 'BusinessMath' | 'Logic';
 
-export const DIAGNOSTIC_TOPIC_LABELS: Record<DiagnosticTopicKey, string> = {
+export const DIAGNOSTIC_TOPIC_LABELS = {
   Functions: 'Functions and Graphs',
   BusinessMath: 'Business and Financial Mathematics',
   Logic: 'Logic and Reasoning',
-};
+} satisfies Record<DiagnosticTopicKey, string>;
 
-export const TOPIC_TO_MODULE_ID: Record<DiagnosticTopicKey, string> = {
+export const TOPIC_TO_MODULE_ID = {
   Functions: 'gm-q2-functions-graphs',
   BusinessMath: 'gm-q1-business-finance',
   Logic: 'gm-q4-propositions-syllogisms-fallacies',
-};
+} satisfies Record<DiagnosticTopicKey, string>;
 
 export const normalizeDiagnosticTopic = (value: string): DiagnosticTopicKey | null => {
   const normalized = value.trim().toLowerCase();

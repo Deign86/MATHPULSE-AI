@@ -11,30 +11,26 @@ import * as dailyRewardService from '../../services/dailyRewardService';
 
 // ── Mocks ───────────────────────────────────────────────────────────────────
 
-vi.mock('../../services/dailyRewardService', async () => {
-  const actual = await vi.importActual<typeof dailyRewardService>('../../services/dailyRewardService');
-  return {
-    ...actual,
-    getDailyRewardState: vi.fn(),
-    claimDailyReward: vi.fn(),
-    getThisWeeksRewards: vi.fn(() => [
-      { id: 'xp_50', day: 0, label: '+50 XP', description: 'Test', icon: 'zap', type: 'xp', value: 50, rarity: 'common', color: '#4ade80' },
-      { id: 'hint_x2', day: 1, label: '2 Hints', description: 'Test', icon: 'lightbulb', type: 'hint_token', value: 2, rarity: 'common', color: '#a78bfa' },
-      { id: 'hint_x3', day: 2, label: '3 Hints', description: 'Test', icon: 'lightbulb', type: 'hint_token', value: 3, rarity: 'common', color: '#a78bfa' },
-      { id: 'xp_100', day: 3, label: '+100 XP', description: 'Test', icon: 'star', type: 'xp', value: 100, rarity: 'rare', color: '#facc15' },
-      { id: 'streak_shield', day: 4, label: 'Shield', description: 'Test', icon: 'shield', type: 'streak_shield', value: 1, rarity: 'rare', color: '#60a5fa' },
-      { id: 'hint_x5', day: 5, label: '5 Hints', description: 'Test', icon: 'flashlight', type: 'hint_token', value: 5, rarity: 'rare', color: '#8b5cf6' },
-      { id: 'xp_200', day: 6, label: '+200 XP', description: 'Test', icon: 'sparkles', type: 'xp', value: 200, rarity: 'epic', color: '#f97316' },
-    ]),
-    getTodaysReward: vi.fn(() => ({ id: 'xp_50', day: 0, label: '+50 XP', description: 'Test', icon: 'zap', type: 'xp', value: 50, rarity: 'common', color: '#4ade80' })),
-    getNextResetTime: vi.fn(() => {
-      const d = new Date();
-      d.setDate(d.getDate() + 1);
-      d.setHours(0, 0, 0, 0);
-      return d;
-    }),
-  };
+// Spy on the real service module instead of mocking it outright.
+vi.spyOn(dailyRewardService, 'getThisWeeksRewards').mockImplementation(() => [
+  { id: 'xp_50', day: 0, label: '+50 XP', description: 'Test', icon: 'zap', type: 'xp', value: 50, rarity: 'common', color: '#4ade80' },
+  { id: 'hint_x2', day: 1, label: '2 Hints', description: 'Test', icon: 'lightbulb', type: 'hint_token', value: 2, rarity: 'common', color: '#a78bfa' },
+  { id: 'hint_x3', day: 2, label: '3 Hints', description: 'Test', icon: 'lightbulb', type: 'hint_token', value: 3, rarity: 'common', color: '#a78bfa' },
+  { id: 'xp_100', day: 3, label: '+100 XP', description: 'Test', icon: 'star', type: 'xp', value: 100, rarity: 'rare', color: '#facc15' },
+  { id: 'streak_shield', day: 4, label: 'Shield', description: 'Test', icon: 'shield', type: 'streak_shield', value: 1, rarity: 'rare', color: '#60a5fa' },
+  { id: 'hint_x5', day: 5, label: '5 Hints', description: 'Test', icon: 'flashlight', type: 'hint_token', value: 5, rarity: 'rare', color: '#8b5cf6' },
+  { id: 'xp_200', day: 6, label: '+200 XP', description: 'Test', icon: 'sparkles', type: 'xp', value: 200, rarity: 'epic', color: '#f97316' },
+]);
+vi.spyOn(dailyRewardService, 'getTodaysReward').mockImplementation(() =>
+  ({ id: 'xp_50', day: 0, label: '+50 XP', description: 'Test', icon: 'zap', type: 'xp', value: 50, rarity: 'common', color: '#4ade80' }));
+vi.spyOn(dailyRewardService, 'getNextResetTime').mockImplementation(() => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(0, 0, 0, 0);
+  return d;
 });
+vi.spyOn(dailyRewardService, 'getDailyRewardState');
+vi.spyOn(dailyRewardService, 'claimDailyReward');
 
 describe('useDailyReward', () => {
   const mockGetDailyRewardState = vi.mocked(dailyRewardService.getDailyRewardState);

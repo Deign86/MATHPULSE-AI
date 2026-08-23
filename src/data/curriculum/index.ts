@@ -11,6 +11,7 @@ export function buildLessonFromCurriculum(lessonId: string, fallbackTitle?: stri
     };
   }
 
+  // SAFETY: curriculum lesson fields mirror the Lesson surface consumed by module pages.
   return {
     lessonId: curriculum.lessonId,
     title: curriculum.lessonTitle,
@@ -28,6 +29,7 @@ export function enrichLessonWithCurriculum(lesson: Lesson, lessonId: string): Le
   const curriculum = getLessonById(lessonId);
   if (!curriculum) return lesson;
 
+  // SAFETY: the enrichment spread only overrides Lesson display fields with curriculum values.
   return {
     ...lesson,
     id: lessonId,

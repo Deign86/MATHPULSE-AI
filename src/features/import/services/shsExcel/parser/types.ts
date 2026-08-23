@@ -222,9 +222,20 @@ export interface InputDataExtraction {
   warnings: string[];
 }
 
+/** JSON-safe scalar stored in an Excel-derived reference row. */
+export type ReferenceCellValue = string | number | boolean | null;
+
+/** One "weight of components" reference row: label plus arbitrary per-column weights. */
+export interface ComponentWeightRow {
+  sourceRow: number;
+  raw: string;
+  sourceSheet?: string;
+  [columnKey: string]: ReferenceCellValue | undefined;
+}
+
 export interface ReferenceSheetExtraction {
   sheetName: string;
-  componentWeights: Array<Record<string, unknown>>;
+  componentWeights: ComponentWeightRow[];
   attachmentRules: string[];
   helperNotes: string[];
   signatures: ParsedSignature[];
@@ -307,7 +318,7 @@ export type ImportedShsWorkbook = {
     learnerGrades: ParsedLearnerGradeRow[];
   }>;
   references: {
-    componentWeights?: Array<Record<string, unknown>>;
+    componentWeights?: ComponentWeightRow[];
     attachmentRules?: string[];
     helperNotes?: string[];
     signatures?: Array<{

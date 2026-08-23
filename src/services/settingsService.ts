@@ -19,6 +19,7 @@ import { auth, db } from '../lib/firebase';
 import { clearQueryClientCache } from '../lib/queryClient';
 import { DEFAULT_USER_SETTINGS, UserSettings } from '../types/models';
 import { clearHintCache } from '../utils/hintCache';
+import type { ApiFieldValue } from './apiService';
 import {
   AdminSystemConfig,
   DEFAULT_ADMIN_SYSTEM_CONFIG,
@@ -28,6 +29,7 @@ import {
 
 const SETTINGS_DOC_ID = 'preferences';
 
+// SAFETY: defaults are app-defined JSON; the clone preserves the UserSettings shape.
 const deepCloneDefaults = (): UserSettings => JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)) as UserSettings;
 
 const mergeSettings = (incoming?: Partial<UserSettings> | null): UserSettings => {
@@ -88,6 +90,7 @@ export const getUserSettings = async (uid: string): Promise<UserSettings> => {
     return defaults;
   }
 
+  // SAFETY: settings docs are written by saveSettings below with the UserSettings field set.
   return mergeSettings(snapshot.data() as Partial<UserSettings>);
 };
 
@@ -154,6 +157,7 @@ export const applySettingsFromCache = (): void => {
   try {
     const cached = localStorage.getItem(APPEARANCE_CACHE_KEY);
     if (!cached) return;
+    // SAFETY: cache entries are written by this service from a validated appearance object.
     const appearance = JSON.parse(cached) as UserSettings['appearance'];
     const root = document.documentElement;
     root.style.setProperty('--font-size', `${appearance.fontSize}px`);
@@ -181,7 +185,18 @@ export const clearClientCache = async (): Promise<void> => {
   }
 };
 
-export const exportUserDataSnapshot = async (uid: string): Promise<Record<string, unknown>> => {
+/** JSON-ready Firestore document copy included in user data exports. */
+export interface ExportedUserDoc { [field: string]: ApiFieldValue }
+
+/** Full user data export payload serialized directly to a downloadable file. */
+export interface UserDataSnapshot {
+  exportedAt: string;
+  user: ExportedUserDoc | null;
+  settings: ExportedUserDoc | UserSettings;
+  collections: Record<string, ExportedUserDoc[]>;
+}
+
+export const exportUserDataSnapshot = async (uid: string): Promise<UserDataSnapshot> => {
   const userRef = doc(db, 'users', uid);
   const userSnap = await getDoc(userRef);
   const settingsSnap = await getDoc(settingsDocRef(uid));
@@ -211,7 +226,7 @@ export const exportUserDataSnapshot = async (uid: string): Promise<Record<string
     exportedAt: new Date().toISOString(),
     user: userSnap.exists() ? { id: userSnap.id, ...userSnap.data() } : null,
     settings: settingsSnap.exists() ? settingsSnap.data() : deepCloneDefaults(),
-    collections: byUserId.reduce<Record<string, unknown[]>>((acc, entry) => {
+    collections: byUserId.reduce<Record<string, ExportedUserDoc[]>>((acc, entry) => {
       acc[entry.collectionName] = entry.items;
       return acc;
     }, {}),
@@ -268,6 +283,7 @@ const teacherPrefsRef = (uid: string) =>
 export const getTeacherPreferences = async (uid: string): Promise<TeacherPreferences> => {
   const snap = await getDoc(teacherPrefsRef(uid));
   if (!snap.exists()) return { ...DEFAULT_TEACHER_PREFERENCES };
+  // SAFETY: preference docs are written by updateTeacherPreferences with the TeacherPreferences field set.
   return { ...DEFAULT_TEACHER_PREFERENCES, ...(snap.data() as Partial<TeacherPreferences>) };
 };
 
@@ -293,6 +309,7 @@ const systemConfigRef = () => doc(db, 'system', 'config');
 export const getAdminSystemConfig = async (): Promise<AdminSystemConfig> => {
   const snap = await getDoc(systemConfigRef());
   if (!snap.exists()) return { ...DEFAULT_ADMIN_SYSTEM_CONFIG };
+  // SAFETY: system config docs are written by this service with the AdminSystemConfig field set.
   return { ...DEFAULT_ADMIN_SYSTEM_CONFIG, ...(snap.data() as Partial<AdminSystemConfig>) };
 };
 

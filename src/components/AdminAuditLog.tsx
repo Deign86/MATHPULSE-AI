@@ -7,6 +7,7 @@ import {
   ListFilter, ArrowRight, Clock, ShieldCheck, Activity,
   Filter, FilterX, Download, RotateCcw
 } from 'lucide-react';
+import { recordGet } from '../utils/memberOf';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import {
@@ -290,7 +291,7 @@ const AdminAuditLog: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                   <SelectTrigger className="w-[200px] bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 rounded-xl h-12 shadow-md shadow-slate-200/40 px-4">
-                    <span className="truncate">{CATEGORY_LABELS[selectedCategory] || selectedCategory}</span>
+                    <span className="truncate">{recordGet(CATEGORY_LABELS, selectedCategory) ?? selectedCategory}</span>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200">
                     <SelectItem value="All Categories" className="font-bold">All Categories</SelectItem>
@@ -304,7 +305,7 @@ const AdminAuditLog: React.FC = () => {
 
                 <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
                   <SelectTrigger className="w-[200px] bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 rounded-xl h-12 shadow-md shadow-slate-200/40 px-4">
-                    <span className="truncate">{SEVERITY_LABELS[selectedSeverity] || selectedSeverity}</span>
+                    <span className="truncate">{recordGet(SEVERITY_LABELS, selectedSeverity) ?? selectedSeverity}</span>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200">
                     <SelectItem value="All Severities" className="font-bold">All Severities</SelectItem>
@@ -317,7 +318,7 @@ const AdminAuditLog: React.FC = () => {
 
                 <Select value={selectedRole} onValueChange={setSelectedRole}>
                   <SelectTrigger className="w-[200px] bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 rounded-xl h-12 shadow-md shadow-slate-200/40 px-4">
-                    <span className="truncate">{ROLE_LABELS[selectedRole] || selectedRole}</span>
+                    <span className="truncate">{recordGet(ROLE_LABELS, selectedRole) ?? selectedRole}</span>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-slate-200">
                     <SelectItem value="All Roles" className="font-bold">All Roles</SelectItem>

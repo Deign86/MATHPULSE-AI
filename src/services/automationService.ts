@@ -22,6 +22,7 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
+import type { ApiPayloadObject } from './apiService';
 import { db } from '../lib/firebase';
 import { createNotification } from './notificationService';
 import { initializeUserProgress } from './progressService';
@@ -86,7 +87,7 @@ export interface StudentEnrollmentPayload {
 
 export interface DataImportPayload {
   teacherId: string;
-  students: Record<string, unknown>[];
+  students: ApiPayloadObject[];
   columnMapping: Record<string, string>;
 }
 
@@ -107,6 +108,7 @@ export async function getPendingDeepDiagnosticCount(lrn: string): Promise<number
 
   const snap = await getDocs(pendingQ);
   return snap.docs.filter((docSnap) => {
+    // SAFETY: assignment docs store status as a workflow string.
     const status = docSnap.data().status as string | undefined;
     return status === 'pending' || status === 'queued' || status === 'in_progress' || status === 'expired';
   }).length;
@@ -144,6 +146,7 @@ export async function triggerDiagnosticCompleted(
       const batch = writeBatch(db);
       let hasUpdates = false;
       for (const assignmentDoc of assignmentsSnap.docs) {
+        // SAFETY: assignment docs store status as a workflow string.
         const status = assignmentDoc.data().status as string | undefined;
         if (status === 'pending' || status === 'queued') {
           batch.update(assignmentDoc.ref, {

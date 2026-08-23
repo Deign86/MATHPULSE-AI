@@ -317,24 +317,27 @@ interface ChartPayloadRecord {
   [key: string]: string | number | boolean | Date | ChartPayloadRecord | null | undefined;
 }
 
-function getPayloadConfigFromPayload(
+function getPayloadConfigFromPayload<P extends object>(
   config: ChartConfig,
-  payload: ChartPayloadRecord | null | undefined,
+  payloadItem: P | null | undefined,
   key: string,
 ) {
-  if (!payload || !isObjectVal(payload)) {
+  if (!payloadItem || !isObjectVal(payloadItem)) {
     return undefined;
   }
 
+  // SAFETY: recharts composes these payload records dynamically; the index signature is the contract.
+  const payload = payloadItem as ChartPayloadRecord;
+
   let configLabelKey: string = key;
 
-  // SAFETY: recharts composes these payload records dynamically; the index signature is the contract.
-  const nested = payload["payload"] as ChartPayloadRecord | undefined;
+  const nested = payload["payload"];
   const direct = payload[key];
   if (isString(direct)) {
     configLabelKey = direct;
-  } else if (nested) {
-    const fromNested = nested[key];
+  } else if (nested && isObjectVal(nested)) {
+    // SAFETY: recharts nests payload records dynamically; the index signature is the contract.
+    const fromNested = (nested as ChartPayloadRecord)[key];
     if (isString(fromNested)) {
       configLabelKey = fromNested;
     }

@@ -143,8 +143,11 @@ export const AtRiskDashboard: React.FC = () => {
     const intervene = students.filter((s) => s.riskStatus === 'intervene').length;
     const critical = students.filter((s) => s.riskStatus === 'critical').length;
     const atRisk = students.filter((s) => s.riskStatus === 'at_risk').length;
-    return { total, safe, watch, intervene, critical, atRisk };
+    return { total, safe, watch, intervene, critical, at_risk: atRisk };
   }, [students]);
+
+  // SAFETY: these literals are exactly the FilterStatus members rendered by the filter pills.
+  const FILTER_STATUSES: FilterStatus[] = ['all', 'safe', 'watch', 'intervene', 'critical', 'at_risk'];
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -215,7 +218,7 @@ export const AtRiskDashboard: React.FC = () => {
           />
           <StatCard
             label="At Risk"
-            value={stats.atRisk}
+            value={stats.at_risk}
             icon={<Skull className="w-4 h-4 text-white" />}
             gradient="bg-gradient-to-br from-[#6b7280] to-[#4b5563]"
             shadowColor="rgba(107,114,128,0.2)"
@@ -241,8 +244,7 @@ export const AtRiskDashboard: React.FC = () => {
 
               {/* Filter Pills */}
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar p-2 -m-2">
-                // SAFETY: trusted internal value already conforms to the asserted type.
-                {(['all', 'safe', 'watch', 'intervene', 'critical', 'at_risk'] as FilterStatus[]).map((status) => (
+                {FILTER_STATUSES.map((status) => (
                   <button
                     key={status}
                     onClick={() => setFilterStatus(status)}
@@ -255,8 +257,7 @@ export const AtRiskDashboard: React.FC = () => {
                     {status === 'all' ? 'All' : status === 'at_risk' ? 'At Risk' : status.charAt(0).toUpperCase() + status.slice(1)}
                     {status !== 'all' && (
                       <span className="ml-1 text-[11px] opacity-70">
-                        // SAFETY: trusted internal value already conforms to the asserted type.
-                        ({stats[status as keyof typeof stats]})
+                        ({stats[status]})
                       </span>
                     )}
                   </button>

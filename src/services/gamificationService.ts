@@ -12,7 +12,9 @@ import {
   serverTimestamp,
   increment,
   arrayUnion,
-  onSnapshot
+  onSnapshot,
+  type UpdateData,
+  type DocumentData
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
@@ -68,7 +70,7 @@ export const awardXP = async (
     }
 
     // Update user data - ensure we're ALWAYS incrementing from the previous value, never resetting to a hardcoded constant
-    const updatePayload: Record<string, any> = {
+    const updatePayload: UpdateData<DocumentData> = {
       currentXP: currentXP, // MUST be previous + increment, never a fixed value like 50
       totalXP: totalXP,     // MUST be previous + increment, never a fixed value like 50
       level: newLevel,
@@ -218,6 +220,7 @@ export const getXPActivities = async (
     const snapshot = await getDocs(activitiesQuery);
     return snapshot.docs.map(doc => {
       const data = doc.data();
+      // SAFETY: XP activity docs are written by awardXP with the XPActivity field set.
       return {
         ...data,
         timestamp: data.timestamp?.toDate() || new Date(),

@@ -10,7 +10,10 @@ export interface SubjectMeta {
   color: string;
 }
 
-export const SUBJECT_DISPLAY: Record<string, SubjectMeta> = {
+/" Display metadata per subject id, including legacy and extended subjects. */
+export interface SubjectDisplayMap { [subjectId: string]: SubjectMeta }
+
+export const SUBJECT_DISPLAY: SubjectDisplayMap = {
   'gen-math':    { id: 'gen-math',    name: 'General Mathematics',       shortLabel: 'Gen Math',     color: '#3B82F6' },
   'stats-prob':  { id: 'stats-prob',  name: 'Statistics and Probability', shortLabel: 'Stats & Prob', color: '#0ea5e9' },
   'business-math': { id: 'business-math', name: 'Business Mathematics', shortLabel: 'Business Math', color: '#166534' },
@@ -19,7 +22,9 @@ export const SUBJECT_DISPLAY: Record<string, SubjectMeta> = {
 };
 
 // Common aliases that appear in AI-generated text or legacy data
-const ALIASES: Record<string, string> = {
+/** Alias text to canonical subject id. */
+interface SubjectAliasMap { [alias: string]: string }
+const ALIASES: SubjectAliasMap = {
   'gm': 'gen-math',
   'gen_math': 'gen-math',
   'gen math': 'gen-math',

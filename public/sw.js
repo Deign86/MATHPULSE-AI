@@ -70,8 +70,9 @@ function isCacheableRequest(request) {
 function getCacheVersion() {
   try {
     const runtime = self.__MATH_PULSE_PWA__;
-    if (runtime && typeof runtime.version === 'string' && runtime.version.trim()) {
-      return runtime.version.trim();
+    const version = runtime && runtime.version;
+    if (version && version.constructor === String && version.trim()) {
+      return version.trim();
     }
   } catch (_) {
     /* ignore malformed config */

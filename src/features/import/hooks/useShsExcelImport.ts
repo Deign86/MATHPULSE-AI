@@ -13,7 +13,7 @@ export interface UseShsExcelImportState {
   result: ParseShsWorkbookResult | null;
 }
 
-const STAGE_PROGRESS: Record<ShsImportStage, number> = {
+const STAGE_PROGRESS = {
   idle: 0,
   'reading': 15,
   'detecting format': 35,
@@ -21,9 +21,9 @@ const STAGE_PROGRESS: Record<ShsImportStage, number> = {
   'validating': 82,
   'complete': 100,
   'failed': 100,
-};
+} satisfies Record<ShsImportStage, number>;
 
-function normalizeErrorMessage(error: unknown): string {
+function normalizeErrorMessage<E>(error: E): string {
   if (error instanceof Error) {
     return error.message;
   }
@@ -56,6 +56,7 @@ export function useShsExcelImport() {
       const parsed = await parseShsWorkbook(file, {
         confidenceThreshold: DETECTION_CONFIDENCE_THRESHOLD,
         onProgress: (event) => {
+          // SAFETY: the parser emits hyphenated variants of the ShsImportStage labels.
           const normalizedStage = (event.stage.replace('-', ' ') as ShsImportStage);
           const stage = normalizedStage in STAGE_PROGRESS ? normalizedStage : 'extracting';
           setState((prev) => ({

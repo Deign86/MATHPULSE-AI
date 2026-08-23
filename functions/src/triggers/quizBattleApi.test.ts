@@ -27,7 +27,19 @@ const BASE_SETUP = {
   sharedPoolMode: "grade_strict" as const,
 };
 
-const snapshotEnv = (): Record<string, string | undefined> => ({
+interface EnvSnapshot { [key: string]: string | undefined; }
+
+interface JsonRecord { [key: string]: string | number | boolean | JsonRecord | JsonRecord[] | null; }
+
+const isRecordValue = <T>(value: T): value is T & JsonRecord =>
+  typeof value === "object" && value !== null;
+
+const isNumberValue = <T>(value: T): value is T & number => typeof value === "number";
+
+const hasErrorReason = <T>(error: T, reason: string): boolean =>
+  isRecordValue(error) && error.reason === reason;
+
+const snapshotEnv = (): EnvSnapshot => ({
   QUIZ_BATTLE_AI_MODEL: process.env.QUIZ_BATTLE_AI_MODEL,
   QUIZ_BATTLE_AI_TOKEN: process.env.QUIZ_BATTLE_AI_TOKEN,
   QUIZ_BATTLE_AI_MAX_TOKENS: process.env.QUIZ_BATTLE_AI_MAX_TOKENS,
@@ -36,7 +48,7 @@ const snapshotEnv = (): Record<string, string | undefined> => ({
   HUGGINGFACE_API_TOKEN: process.env.HUGGINGFACE_API_TOKEN,
 });
 
-const restoreEnv = (snapshot: Record<string, string | undefined>): void => {
+const restoreEnv = (snapshot: EnvSnapshot): void => {
   Object.entries(snapshot).forEach(([key, value]) => {
     if (value === undefined) {
       delete process.env[key];
@@ -46,7 +58,9 @@ const restoreEnv = (snapshot: Record<string, string | undefined>): void => {
   });
 };
 
-const buildValidPayload = (questionCount: number): unknown => {
+interface AiQuestionSetPayload { choices: Array<{ message: { content: string } }>; }
+
+const buildValidPayload = (questionCount: number): AiQuestionSetPayload => {
   const questions = [...Array(questionCount)].map((_, index) => ({
     questionId: `ai-q-${index + 1}`,
     prompt: `Question ${index + 1}: Solve for x in ${index + 2}x = ${2 * (index + 2)}.`,
@@ -240,10 +254,7 @@ test("does not fall back to bank when AI generation fails", async () => {
         },
         randomInt: () => 0,
       }),
-      (error: unknown) => {
-        const asRecord = error as Record<string, unknown>;
-        return asRecord.reason === "ai_unknown_error";
-      },
+      (error) => hasErrorReason(error, "ai_unknown_error"),
     );
   } finally {
     restoreEnv(envSnapshot);
@@ -299,7 +310,7 @@ test("retries with relaxed JSON mode after 400 rejection", async () => {
 
     let invokeCount = 0;
     const recordedSleeps: number[] = [];
-    const payloads: Array<Record<string, unknown>> = [];
+    const payloads: JsonRecord[] = [];
 
     const generated = await generateAiQuestionSet(BASE_SETUP, {
       invokeRequest: async (requestPayload) => {
@@ -341,8 +352,11 @@ test("retries with relaxed JSON mode after 400 rejection", async () => {
     assert.equal(recordedSleeps[0], 300);
     assert.ok(payloads[0]?.response_format);
     assert.equal(payloads[1]?.response_format, undefined);
-    assert.ok(typeof payloads[0]?.max_tokens === "number");
-    assert.ok((payloads[0]?.max_tokens as number) < 1000);
+    const firstMaxTokens = payloads[0]?.max_tokens;
+    if (!isNumberValue(firstMaxTokens)) {
+      assert.fail("max_tokens must be a number");
+    }
+    assert.ok(firstMaxTokens < 1000);
     assert.equal(generated.attempts, 2);
     assert.equal(generated.questions.length, BASE_SETUP.rounds);
   } finally {
@@ -394,10 +408,7 @@ test("fails when dedupe cannot satisfy required rounds", async () => {
         },
         randomInt: () => 0,
       }),
-      (error: unknown) => {
-        const asRecord = error as Record<string, unknown>;
-        return asRecord.reason === "ai_insufficient_unique_questions";
-      },
+      (error) => hasErrorReason(error, "ai_insufficient_unique_questions"),
     );
   } finally {
     restoreEnv(envSnapshot);

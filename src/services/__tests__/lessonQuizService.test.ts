@@ -1,11 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as apiService from '../apiService';
 import { generateLessonQuiz, getQuestionCountForQuiz } from '../lessonQuizService';
 
-// Correct path: vi.mock resolves relative to the test file (services/__tests__/),
-// so ../apiService points to services/apiService.ts
-vi.mock('../apiService', () => ({
-  apiFetch: vi.fn().mockRejectedValue(new Error('Mock API error for test')),
-}));
+// Spy on the real module instead of mocking it outright.
+vi.spyOn(apiService, 'apiFetch').mockRejectedValue(new Error('Mock API error for test'));
+
+beforeEach(() => {
+  vi.mocked(apiService.apiFetch).mockClear();
+});
 
 describe('lessonQuizService', () => {
   describe('generateLessonQuiz', () => {

@@ -2,27 +2,29 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
+import * as notificationContextNs from './NotificationContext';
+import * as notificationPanelNs from './NotificationPanel';
 
-// Top-level mock variables (hoisted with vi.mock)
+// Mutable unread-count fixture read by the context seam on every render.
 let unreadCountValue = 0;
 
-// Mock NotificationContext - must be before imports
-vi.mock('./NotificationContext', () => ({
-  useNotifications: vi.fn(() => ({ unreadCount: unreadCountValue })),
-  NotificationProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
+// Context seam: spy on the real hook; unreadCountValue drives the badge.
+// SAFETY: the partial stub only omits context fields the bell never reads.
+vi.spyOn(notificationContextNs, 'useNotifications').mockImplementation(
+  () => ({ unreadCount: unreadCountValue }) as ReturnType<typeof notificationContextNs.useNotifications>,
+);
 
-// Mock NotificationPanel
-vi.mock('./NotificationPanel', () => ({
-  NotificationPanel: ({ onClose }: { onClose: () => void }) => (
+// Panel seam: rendered-but-inert stub isolates bell toggle behavior.
+// SAFETY: the stub preserves the onClose prop contract consumed by the bell.
+vi.spyOn(notificationPanelNs, 'NotificationPanel').mockImplementation(
+  (({ onClose }: { onClose: () => void }) => (
     <div data-testid="panel">
       Panel Content
       <button onClick={onClose}>Close</button>
     </div>
-  ),
-}));
+  )) as typeof notificationPanelNs.NotificationPanel,
+);
 
-// Import after mocks
 import { NotificationBell } from './NotificationBell';
 
 describe('NotificationBell', () => {

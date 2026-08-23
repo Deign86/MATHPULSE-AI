@@ -95,6 +95,7 @@ describe('getScopeBoundaryResponse', () => {
       ],
     });
     expect(response).not.toBeNull();
+    // SAFETY: not.toBeNull() above guarantees a concrete redirect response string.
     expect(NON_MATH_REDIRECT_RESPONSES).toContain(response as string);
   });
 
@@ -105,30 +106,35 @@ describe('getScopeBoundaryResponse', () => {
       ],
     });
     expect(response).not.toBeNull();
+    // SAFETY: not.toBeNull() above guarantees a concrete redirect response string.
     expect(NON_MATH_REDIRECT_RESPONSES).toContain(response as string);
   });
 
   it('returns a friendly greeting response', () => {
     const response = getScopeBoundaryResponse('hello');
     expect(response).not.toBeNull();
+    // SAFETY: not.toBeNull() above guarantees a concrete greeting response string.
     expect(GREETING_RESPONSES).toContain(response as string);
   });
 
   it('returns a friendly thanks response', () => {
     const response = getScopeBoundaryResponse('thanks for the help');
     expect(response).not.toBeNull();
+    // SAFETY: not.toBeNull() above guarantees a concrete thanks response string.
     expect(THANKS_RESPONSES).toContain(response as string);
   });
 
   it('returns a friendly non-math redirect response', () => {
     const response = getScopeBoundaryResponse('Who is Elon Musk?');
     expect(response).not.toBeNull();
+    // SAFETY: not.toBeNull() above guarantees a concrete redirect response string.
     expect(NON_MATH_REDIRECT_RESPONSES).toContain(response as string);
   });
 
   it('returns a redirect response for empty input', () => {
     const response = getScopeBoundaryResponse('');
     expect(response).not.toBeNull();
+    // SAFETY: not.toBeNull() above guarantees a concrete redirect response string.
     expect(NON_MATH_REDIRECT_RESPONSES).toContain(response as string);
   });
 });

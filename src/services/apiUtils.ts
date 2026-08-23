@@ -1,5 +1,6 @@
 // src/services/apiUtils.ts
 // Shared API utilities: retry logic, timeout handling, error classification, logging
+import type { ApiFieldValue } from './apiService';
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -96,8 +97,12 @@ export interface ApiLogEntry {
   attempt?: number;
   durationMs?: number;
   message: string;
-  details?: unknown;
+  details?: ApiLogDetails;
 }
+
+/** Structured log detail values: errors, primitives, or nested records/arrays of the same. */
+export type ApiLogDetails = string | number | boolean | null | Error | readonly ApiLogDetails[] | ApiLogDetailsRecord;
+export interface ApiLogDetailsRecord { [key: string]: ApiLogDetails }
 
 function logApi(entry: ApiLogEntry): void {
   const prefix = `[API ${entry.level.toUpperCase()}] ${entry.timestamp} ${entry.method} ${entry.endpoint}`;
@@ -114,25 +119,31 @@ function logApi(entry: ApiLogEntry): void {
   }
 }
 
-export function logApiInfo(endpoint: string, method: string, message: string, details?: unknown): void {
+export function logApiInfo(endpoint: string, method: string, message: string, details?: ApiLogDetails): void {
   logApi({ timestamp: new Date().toISOString(), level: 'info', endpoint, method, message, details });
 }
 
-export function logApiWarn(endpoint: string, method: string, message: string, details?: unknown): void {
+export function logApiWarn(endpoint: string, method: string, message: string, details?: ApiLogDetails): void {
   logApi({ timestamp: new Date().toISOString(), level: 'warn', endpoint, method, message, details });
 }
 
-export function logApiError(endpoint: string, method: string, message: string, details?: unknown): void {
+export function logApiError(endpoint: string, method: string, message: string, details?: ApiLogDetails): void {
   logApi({ timestamp: new Date().toISOString(), level: 'error', endpoint, method, message, details });
 }
 
 // ─── Timeout wrapper ─────────────────────────────────────────
 
+/** Cancellable fetch handle: the in-flight response promise plus an explicit abort handle. */
+export interface TimeoutFetchHandle {
+  promise: Promise<Response>;
+  abort: () => void;
+}
+
 export function fetchWithTimeout(
   url: string,
   options: RequestInit,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
-): { promise: Promise<Response>; abort: () => void } {
+): TimeoutFetchHandle {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -226,6 +237,7 @@ export async function retryFetch<T>(
       // ── Success ──
       if (response.ok) {
         logApiInfo(url, method, `${response.status} in ${durationMs}ms`, { attempt });
+        // SAFETY: callers supply the expected response contract via the generic parameter on apiFetch.
         return (await response.json()) as T;
       }
 
@@ -337,9 +349,12 @@ export async function withFallback<T>(
 
 // ─── Request body validation helpers ─────────────────────────
 
+/** Scalar request-body field values accepted by the validation helpers. */
+export type ApiFieldInput = ApiFieldValue | undefined;
+
 export function validateRequired(
   endpoint: string,
-  fields: Record<string, unknown>,
+  fields: Record<string, ApiFieldInput>,
 ): void {
   const missing = Object.entries(fields)
     .filter(([, v]) => v === undefined || v === null || v === '')
@@ -357,7 +372,7 @@ export function validateRange(
   min: number,
   max: number,
 ): void {
-  if (typeof value !== 'number' || isNaN(value) || value < min || value > max) {
+  if (Number.isNaN(value) || value < min || value > max) {
     throw new ApiValidationError(
       endpoint,
       `${fieldName} must be a number between ${min} and ${max}, got ${value}`,

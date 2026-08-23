@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer, CheckCircle2, Gift, Star, Sparkles, Rocket, Flame, Sprout, Search, BookOpen, Flashlight, Castle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RewardDefinition } from '../types/rewards';
+import { recordGet } from '../utils/memberOf';
 
 interface DailyCheckInModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ const typeIcons = {
 
 const rarityBadge = {
   common: 'bg-slate-100 text-slate-500',
+  uncommon: 'bg-emerald-50 text-emerald-500',
   rare: 'bg-blue-50 text-blue-500',
   epic: 'bg-amber-50 text-amber-500',
 };
@@ -166,7 +168,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
 
                 {/* Rarity badge */}
                 <div className="absolute top-5 right-1 z-10">
-                  <span className={`text-[8px] font-bold uppercase px-1 rounded ${rarityBadge[reward.rarity]}`}>
+                  <span className={`text-[8px] font-bold uppercase px-1 rounded ${recordGet(rarityBadge, reward.rarity) ?? ''}`}>
                     {reward.rarity}
                   </span>
                 </div>
@@ -210,7 +212,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                         borderColor: reward.color + '40',
                       }}
                     >
-                      <span className="text-lg">{rewardIcons[reward.icon] ?? typeIcons[reward.type]}</span>
+                      <span className="text-lg">{recordGet(rewardIcons, reward.icon) ?? recordGet(typeIcons, reward.type)}</span>
                     </div>
 
                     <div className={`font-black text-xs leading-none mt-0.5 text-center ${today ? 'text-amber-600' : claimed ? 'text-slate-500' : 'text-slate-600'}`}>
@@ -239,7 +241,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
 
               {/* Rarity badge */}
               <div className="absolute top-6 right-2 z-10">
-                <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded ${rarityBadge[day7.rarity]}`}>
+                <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded ${recordGet(rarityBadge, day7.rarity) ?? ''}`}>
                   {day7.rarity}
                 </span>
               </div>
@@ -275,7 +277,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                         borderColor: day7.color + '40',
                       }}
                     >
-                      <span className="text-2xl">{rewardIcons[day7.icon] ?? typeIcons[day7.type]}</span>
+                      <span className="text-2xl">{recordGet(rewardIcons, day7.icon) ?? recordGet(typeIcons, day7.type)}</span>
                     </div>
                     <span className={`font-black text-sm ${isToday(6) ? 'text-amber-600' : 'text-slate-600'}`}>{day7.label}</span>
                   </div>

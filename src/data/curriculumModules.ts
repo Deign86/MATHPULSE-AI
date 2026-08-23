@@ -100,7 +100,7 @@ export type CurriculumModuleRuntime = Module & {
   moduleStatus: ModuleStatus;
 };
 
-interface SubjectMeta {
+export interface SubjectMeta {
   id: CurriculumSubjectId;
   label: string;
   color: string;
@@ -120,7 +120,7 @@ const CURRICULUM_SOURCES: CurriculumSourceMeta[] = [
   },
 ];
 
-const SUBJECT_META: Record<CurriculumSubjectId, SubjectMeta> = {
+const SUBJECT_META = {
   'gen-math': {
     id: 'gen-math',
     label: 'General Mathematics',
@@ -139,11 +139,11 @@ const SUBJECT_META: Record<CurriculumSubjectId, SubjectMeta> = {
     color: '#6b21a8',
     accent: '#a855f7',
   },
-};
+} satisfies Record<CurriculumSubjectId, SubjectMeta>;
 
-const SCHOOL_PROGRAM_DEFAULT_SUBJECTS_BY_GRADE: Record<GradeLevel, CurriculumSubjectId[]> = {
+const SCHOOL_PROGRAM_DEFAULT_SUBJECTS_BY_GRADE = {
   'Grade 11': ['gen-math'],
-};
+} satisfies Record<GradeLevel, CurriculumSubjectId[]>;
 
 const COMPETENCY_VERBS_G11 = 'Foundational competency flow with guided examples, step-by-step vocabulary support, and scaffolded checkpoints.';
 
@@ -263,6 +263,7 @@ function makeLessons(module: CurriculumModuleBlueprint, activeGradeLevel: GradeL
 locked: false,
       description: `${competency.code} · ${competency.outcome}`,
       competencyCode: competency.code,
+      // SAFETY: module subject ids are constrained to the Lesson subject union at build time.
       subjectId: module.subjectId as Lesson['subjectId'],
       subject: module.subject,
       quarter: parseInt(module.quarter.replace('Q', '')),
@@ -316,6 +317,7 @@ function normalizeGradeLevel(rawGrade?: string | null): GradeLevel {
     const gradeNum = parseInt(match[1], 10);
     // Only Grade 11 is supported; default invalid values to Grade 11
     if (gradeNum >= 11 && gradeNum <= 12) {
+      // SAFETY: the range check above proves this is a supported GradeLevel label.
       return `Grade ${gradeNum}` as GradeLevel;
     }
     return 'Grade 11';
@@ -325,6 +327,7 @@ function normalizeGradeLevel(rawGrade?: string | null): GradeLevel {
   if (/^grade\s*\d{1,2}$/i.test(value)) {
     const num = parseInt(value.replace(/grade\s*/i, ''), 10);
     if (num >= 11 && num <= 12) {
+      // SAFETY: the range check above proves this is a supported GradeLevel label.
       return `Grade ${num}` as GradeLevel;
     }
   }
