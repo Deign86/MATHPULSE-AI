@@ -372,17 +372,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Content */}
           <div className="flex-1 flex flex-col min-h-0">
             {/* Mobile tab-bar — shown only on mobile */}
-            <div className="sm:hidden flex items-center border-b border-[#dde3eb] bg-slate-50 overflow-x-auto no-scrollbar px-2">
+            <div className="sm:hidden flex items-center border-b border-[#dde3eb] bg-slate-50 overflow-x-auto no-scrollbar px-2 snap-x snap-mandatory">
               {sections.map((section) => {
                 const Icon = section.icon;
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`flex flex-col items-center gap-0.5 px-3 py-2.5 shrink-0 text-xs font-medium border-b-2 transition-colors ${
+                    className={`flex flex-col items-center justify-center gap-1 px-3.5 py-2.5 shrink-0 text-xs font-medium border-b-2 transition-colors min-h-[44px] snap-start ${
                       activeSection === section.id
-                        ? 'border-sky-600 text-sky-700'
-                        : 'border-transparent text-slate-500'
+                        ? 'border-sky-600 text-sky-700 bg-sky-50/50'
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
                     }`}
                   >
                     <Icon size={16} />
@@ -1074,13 +1074,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-[#dde3eb] bg-[#edf1f7] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0">
+            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-[#dde3eb] bg-[#edf1f7] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0 sticky bottom-0 z-10">
               <p className="text-xs text-slate-500 font-body text-center sm:text-left">MathPulse AI v2.1.0</p>
               <div className="flex gap-2 w-full sm:w-auto">
-                <Button variant="outline" onClick={handleCancel} className="rounded-lg border-[#dde3eb] flex-1 sm:flex-none" disabled={isSaving}>
+                <Button variant="outline" onClick={handleCancel} className="rounded-lg border-[#dde3eb] flex-1 sm:flex-none min-h-[44px]" disabled={isSaving}>
                   Cancel
                 </Button>
-                <Button onClick={handleSaveChanges} className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex-1 sm:flex-none" disabled={isSaving}>
+                <Button onClick={handleSaveChanges} className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex-1 sm:flex-none min-h-[44px]" disabled={isSaving}>
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>

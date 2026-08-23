@@ -161,7 +161,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {isMobile && onRequestClose && (
             <button
               onClick={onRequestClose}
-              className="p-2 hover:bg-[#dde3eb] rounded-lg transition-colors text-[#5a6578]"
+              className="p-2.5 hover:bg-[#dde3eb] rounded-xl transition-colors text-[#5a6578] min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Close navigation"
             >
               <X size={20} />

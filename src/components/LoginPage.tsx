@@ -695,10 +695,11 @@ const LoginPage: React.FC = () => {
                     <motion.button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
                       whileTap={{ scale: 0.9 }}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                      {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                     </motion.button>
                   </div>
                   {isSignUp && password.length > 0 && !passwordMeetsSignupRequirements && (
@@ -734,7 +735,7 @@ const LoginPage: React.FC = () => {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-body font-semibold py-3 rounded-xl shadow-lg shadow-purple-600/25 hover:shadow-pink-500/35 hover:scale-[1.02] transition-all text-sm group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-body font-semibold py-3 min-h-[44px] rounded-xl shadow-lg shadow-purple-600/25 hover:shadow-pink-500/35 hover:scale-[1.02] transition-all text-sm group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <motion.span
                       className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0"
@@ -756,7 +757,7 @@ const LoginPage: React.FC = () => {
                       setIsSignUp(!isSignUp);
                       setError(null);
                     }}
-                    className="text-sm text-slate-400 hover:text-sky-500 font-body font-medium transition-colors"
+                    className="text-sm text-slate-500 hover:text-sky-600 font-body font-medium transition-colors min-h-[44px] py-2 px-3 inline-flex items-center justify-center"
                   >
                     {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Create one"}
                   </button>
