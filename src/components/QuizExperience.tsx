@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { recordGet } from '../utils/memberOf';
 import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, XCircle, Zap, Trophy, Target, Clock, Star, TrendingUp, Award, Flame, ChevronRight, Edit3, Sparkles, Volume2, VolumeX, Maximize, Minimize, ChevronLeft, Heart, Key, Check, HelpCircle, RefreshCw, BookOpen, HeartCrack } from 'lucide-react';
@@ -1347,7 +1348,7 @@ function getQuestionForSubject(subject: string, index: number): string {
 
   // Normalize subject name to match keys
   const normalizedSubject = normalizeSubjectName(subject);
-  const subjectQuestions = questions[normalizedSubject] || questions['General Mathematics'];
+  const subjectQuestions = recordGet(questions, normalizedSubject) ?? questions['General Mathematics'];
   return subjectQuestions[index % subjectQuestions.length];
 }
 
@@ -1423,7 +1424,7 @@ function getOptionsForQuestion(subject: string, index: number): string[] {
   };
 
   const normalizedSubject = normalizeSubjectName(subject);
-  const subjectOptions = optionSets[normalizedSubject] || optionSets['General Mathematics'];
+  const subjectOptions = recordGet(optionSets, normalizedSubject) ?? optionSets['General Mathematics'];
   return subjectOptions[index % subjectOptions.length];
 }
 
@@ -1485,7 +1486,7 @@ function getCorrectAnswerForQuestion(subject: string, index: number): number {
   };
 
   const normalizedSubject = normalizeSubjectName(subject);
-  const answers = correctAnswers[normalizedSubject] || correctAnswers['General Mathematics'];
+  const answers = recordGet(correctAnswers, normalizedSubject) ?? correctAnswers['General Mathematics'];
   return answers[index % answers.length];
 }
 
@@ -1547,7 +1548,7 @@ function getExplanationForQuestion(subject: string, index: number, difficulty: s
   };
 
   const normalizedSubject = normalizeSubjectName(subject);
-  const subjectExplanations = explanations[normalizedSubject] || explanations['General Mathematics'];
+  const subjectExplanations = recordGet(explanations, normalizedSubject) ?? explanations['General Mathematics'];
   return subjectExplanations[index % subjectExplanations.length];
 }
 

@@ -49,6 +49,8 @@ import { cacheKeys } from '../utils/cacheKeys';
 import {
   CURRICULUM_SUBJECT_META,
   type CurriculumModuleRuntime,
+  type CurriculumSubjectId,
+  type SubjectMeta,
   type CurriculumQuarter,
   getCurriculumModulesForLearner,
   resolveLearnerGradeLevel,
@@ -417,7 +419,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const curriculumContextLabel = useMemo(() => {
     const visibleQuarter = quarterFilter === 'all' ? 'All Quarters' : quarterFilter;
-    const subjectMeta = recordGet(CURRICULUM_SUBJECT_META, subjectFilter);
+    const subjectMeta = recordGet<CurriculumSubjectId, SubjectMeta>(CURRICULUM_SUBJECT_META, subjectFilter);
     const visibleSubject =
       subjectFilter === 'all'
         ? 'All Subjects'

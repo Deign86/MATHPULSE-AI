@@ -19,19 +19,14 @@ vi.spyOn(firebaseApp, 'initializeApp').mockImplementation(
   () => ({ name: 'mock-app' }) as FirebaseApp,
 );
 
-const authStub = () => ({
-  currentUser: null,
-  onAuthStateChanged: () => () => {},
-});
+const authStub = (): Auth => {
+  const stub: Partial<Auth> = { currentUser: null, onAuthStateChanged: () => () => {} };
+  // SAFETY: stub Auth; exercised paths only touch currentUser/onAuthStateChanged.
+  return stub as Auth;
+};
 
-vi.spyOn(firebaseAuth, 'getAuth').mockImplementation(
-  // SAFETY: stub Auth; exercised paths only touch currentUser/onAuthStateChanged.
-  () => authStub() as Auth,
-);
-vi.spyOn(firebaseAuth, 'initializeAuth').mockImplementation(
-  // SAFETY: stub Auth; exercised paths only touch currentUser/onAuthStateChanged.
-  () => authStub() as Auth,
-);
+vi.spyOn(firebaseAuth, 'getAuth').mockImplementation(() => authStub());
+vi.spyOn(firebaseAuth, 'initializeAuth').mockImplementation(() => authStub());
 vi.spyOn(firebaseAuth, 'browserLocalPersistence', 'get').mockReturnValue(
   // SAFETY: persistence value is only passed back into initializeAuth stubs.
   {} as typeof firebaseAuth.browserLocalPersistence,
@@ -45,7 +40,7 @@ vi.spyOn(firebaseAuth, 'inMemoryPersistence', 'get').mockReturnValue(
   {} as typeof firebaseAuth.inMemoryPersistence,
 );
 vi.spyOn(firebaseAuth, 'onAuthStateChanged').mockImplementation(vi.fn());
-vi.spyOn(firebaseAuth, 'signOut').mockImplementation(async () => stub({}));
+vi.spyOn(firebaseAuth, 'signOut').mockImplementation(async () => undefined);
 vi.spyOn(firebaseAuth, 'signInWithEmailAndPassword').mockImplementation(vi.fn());
 vi.spyOn(firebaseAuth, 'createUserWithEmailAndPassword').mockImplementation(vi.fn());
 vi.spyOn(firebaseAuth, 'sendPasswordResetEmail').mockImplementation(vi.fn());

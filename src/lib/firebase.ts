@@ -90,11 +90,13 @@ function buildAuthInstance() {
     } catch {
       // Test environment or unconfigured Firebase — return a safe stub with Auth methods
       // SAFETY: call sites only use the Auth surface above; the stub satisfies that subset.
-      return {
+      const authStub: Partial<ReturnType<typeof initializeAuth>> = {
         currentUser: null,
         onAuthStateChanged: () => () => {},
         signOut: async () => {},
-      } as ReturnType<typeof initializeAuth>;
+      };
+      // SAFETY: call sites only use the Auth surface above; the stub satisfies that subset.
+      return authStub as ReturnType<typeof initializeAuth>;
     }
   }
 }

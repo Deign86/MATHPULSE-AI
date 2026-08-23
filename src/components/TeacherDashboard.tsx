@@ -104,6 +104,7 @@ import type { CalendarEvent } from '../types/models';
 import CreateStudentAccountModal, {
   type CreateStudentAccountSeed,
 } from './CreateStudentAccountModal';
+import { recordGet } from '../utils/memberOf';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -3172,7 +3173,7 @@ const AnalyticsView: React.FC<{
                       <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={80}>
                         {riskDistribution.map((entry, index) => {
                           const mapping = { 'Critical': '#dc2626', 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981', 'Unassessed': '#94a3b8' };
-                          return <Cell key={`cell-${index}`} fill={mapping[entry.name] || entry.color} />;
+                          return <Cell key={`cell-${index}`} fill={recordGet(mapping, entry.name) ?? entry.color} />;
                         })}
                       </Bar>
                     </BarChart>

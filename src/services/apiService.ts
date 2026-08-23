@@ -330,7 +330,15 @@ export interface UploadResponse {
 }
 
 /** JSON-compatible field values exchanged with the backend API. */
-export type ApiFieldValue = string | number | boolean | null | { toDate?: () => Date } | ApiFieldValue[];
+export type ApiFieldValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { toDate?: () => Date }
+  /** Flat primitive record (e.g. diagnostic result rows). */
+  | { [key: string]: string | number | boolean | null | (string | number | boolean | null)[] }
+  | ApiFieldValue[];
 /** Free-form API payload object (metadata, checks, export rows). */
 export interface ApiPayloadObject { [field: string]: ApiFieldValue }
 
@@ -2382,8 +2390,9 @@ export const apiService = {
       if (!isObj(payload)) {
         throw new Error('Lesson generation completed without a valid result payload.');
       }
+      const taskResult: object = payload;
       // SAFETY: async lesson-plan task payloads mirror the synchronous LessonPlanResponse contract.
-      return payload as LessonPlanResponse;
+      return taskResult as LessonPlanResponse;
     }
 
     return apiFetch<LessonPlanResponse>(

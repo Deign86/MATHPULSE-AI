@@ -40,5 +40,6 @@ export function resolveCellValue(
   const snapshot = resolveCellSnapshot(sheet, address, mergedRootMap);
   if (!snapshot) return undefined;
   if (snapshot.w !== undefined) return snapshot.w;
-  return snapshot.v;
+  // SAFETY: the parser only emits primitive sheet cell values, matching ReferenceCellValue.
+  return snapshot.v as ReferenceCellValue | undefined;
 }

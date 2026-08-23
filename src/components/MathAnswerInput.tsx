@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Calculator } from 'lucide-react';
+import { recordGet } from '../utils/memberOf';
 
 /* ────────────────────────────────────────────────────────────────
    Props
@@ -41,7 +42,7 @@ function buildPreview(value: string): string {
       '⁰': '0', '¹': '1', '⁴': '4', '⁵': '5',
       '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
     };
-    return `<sup>${map[ch] ?? ch}</sup>`;
+    return `<sup>${recordGet(map, ch) ?? ch}</sup>`;
   });
   html = html.replace(/√/g, '√');
   html = html.replace(/π/g, 'π');
@@ -115,8 +116,9 @@ const MathAnswerInput: React.FC<MathAnswerInputProps> = ({
           return;
         }
         // Digit → superscript
-        if (/^[0-9]$/.test(key) && superscriptMap[key]) {
-          insertAtCursor(superscriptMap[key]);
+        const superscript = recordGet(superscriptMap, key);
+        if (/^[0-9]$/.test(key) && superscript !== undefined) {
+          insertAtCursor(superscript);
           awaitingExponent.current = false;
           e.preventDefault();
           return;

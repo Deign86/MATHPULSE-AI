@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import MathAnswerInput from './MathAnswerInput';
 import ScientificCalculator from './ScientificCalculator';
+import { recordGet } from '../utils/memberOf';
 import { Brain, CheckCircle, ChevronRight, AlertTriangle, Calculator, BarChart3, TrendingUp, X } from 'lucide-react';
 import { triggerDiagnosticCompleted, DiagnosticResult, IARWorkflowMode, DiagnosticQuestionResult } from '../services/automationService';
 import {
@@ -243,10 +244,11 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
       BusinessMath: { correct: 0, total: 0 },
       Logic: { correct: 0, total: 0 },
     };
+    const emptyScoreList = (): number[] => [];
     const confidenceByTopic = {
-      Functions: [],
-      BusinessMath: [],
-      Logic: [],
+      Functions: emptyScoreList(),
+      BusinessMath: emptyScoreList(),
+      Logic: emptyScoreList(),
     };
 
     const questionBreakdown: Record<string, DiagnosticQuestionResult[]> = {};
@@ -255,7 +257,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
       const answer = finalAnswers[index];
 
       if (question.answerType === 'confidenceLikert' && isNum(answer)) {
-        confidenceByTopic[question.topicArea].push(answer + 1);
+        recordGet(confidenceByTopic, question.topicArea)?.push(answer + 1);
       }
 
       if (!question.scorable) return;

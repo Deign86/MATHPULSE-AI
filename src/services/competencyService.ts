@@ -118,10 +118,9 @@ async function fetchQuizResultsFromProgress(userId: string): Promise<FirestoreQu
   if (!progressDoc.exists()) return [];
 
   const data = progressDoc.data() ?? {};
-  const attempts: FirestoreQuizResult[] = (data.quizAttempts || []).map(
-    (a, i) => {
-      // SAFETY: quizAttempts entries are written by this app with the QuizAttemptRecord fields.
-      const qa = a as Partial<QuizAttemptRecord>;
+  // SAFETY: quizAttempts entries are written by this app with the QuizAttemptRecord fields.
+  const attempts: FirestoreQuizResult[] = ((data.quizAttempts ?? []) as Partial<QuizAttemptRecord>[]).map(
+    (qa, i) => {
       // SAFETY: Firebase quiz-attempt records carry a questionType that maps to FirestoreQuizResult['questionType'].
       const questionType = qa.questionType as FirestoreQuizResult['questionType'];
       return {

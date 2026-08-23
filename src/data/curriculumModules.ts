@@ -100,7 +100,7 @@ export type CurriculumModuleRuntime = Module & {
   moduleStatus: ModuleStatus;
 };
 
-interface SubjectMeta {
+export interface SubjectMeta {
   id: CurriculumSubjectId;
   label: string;
   color: string;

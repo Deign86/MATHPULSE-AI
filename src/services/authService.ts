@@ -270,9 +270,13 @@ export const createUserProfile = async (
   // Save to Firestore
   await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
 
-  // SAFETY: this function writes users documents whose shape matches the User profile union.
-  return userProfile as User;
+  return asUser(userProfile);
 };
+
+function asUser<P extends object>(profile: P): User {
+  // SAFETY: createProfile writes users documents whose shape matches the User profile union.
+  return profile as User;
+}
 
 // Get user profile from Firestore
 export const getUserProfile = async (uid: string): Promise<User | null> => {

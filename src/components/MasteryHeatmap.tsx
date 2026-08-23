@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Grid3X3, ChevronDown, Info, TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { recordGet } from '../utils/memberOf';
 import { cacheKeys } from '../utils/cacheKeys';
 
 // ─── Types ──────────────────────────────────────────────────
@@ -117,7 +118,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
           const subjects = data.subjects as Record<string, { subjectId: string; progress: number }> || {};
 
           for (const [subjectId, subjectProg] of Object.entries(subjects)) {
-            const topics = TOPICS_BY_SUBJECT[subjectId] || [];
+            const topics = recordGet(TOPICS_BY_SUBJECT, subjectId) ?? [];
             const mastery = subjectProg?.progress ?? 0;
 
             for (const topic of topics) {
@@ -131,7 +132,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
 
         const cells: HeatmapCell[] = [];
         for (const subject of SUBJECTS) {
-          const topics = TOPICS_BY_SUBJECT[subject.id] || [];
+          const topics = recordGet(TOPICS_BY_SUBJECT, subject.id) ?? [];
           for (const topic of topics) {
             const key = `${subject.id}::${topic.name}`;
             const agg = aggMap[key];
@@ -245,7 +246,7 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
       {/* Heatmap Grid */}
       <div className="overflow-x-auto">
         {filteredSubjects.map(subject => {
-          const topics = TOPICS_BY_SUBJECT[subject.id] || [];
+          const topics = recordGet(TOPICS_BY_SUBJECT, subject.id) ?? [];
           const subjectData = allData.filter(c => c.subject === subject.id);
           const subjectAvg = subjectData.length > 0
             ? Math.round(subjectData.reduce((s, c) => s + c.mastery, 0) / subjectData.length)

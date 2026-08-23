@@ -689,6 +689,8 @@ export interface GeneratedQuiz {
   };
   status: GeneratedQuizStatus;
   source: GeneratedQuizSource;
+  /** Firestore server timestamp written on create; present on documents read back. */
+  createdAt?: { toMillis(): number } | Date | string | number;
 }
 
 /** Answer record saved per-question when a student completes a quiz */
