@@ -113,7 +113,7 @@ const AdminAnalytics: React.FC = () => {
       </div>
 
       {/* ── KPI Stat Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {kpis.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
@@ -122,14 +122,14 @@ const AdminAnalytics: React.FC = () => {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: idx * 0.05 }}
-              className={`relative overflow-hidden ${kpi.bg} ${kpi.shadow} p-5 rounded-[28px] text-white flex flex-col gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg`}
+              className={`relative overflow-hidden ${kpi.bg} ${kpi.shadow} p-3.5 sm:p-5 rounded-[24px] sm:rounded-[28px] text-white flex flex-col gap-2 sm:gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg min-w-0`}
             >
               <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
               <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-700 delay-75 ease-out" />
               <div className="relative z-10 flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{kpi.label}</p>
-                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm group-hover:bg-white/30 transition-colors">
-                  <Icon size={14} />
+                <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-[0.2em] opacity-80 truncate">{kpi.label}</p>
+                <div className="bg-white/20 p-1.5 sm:p-2 rounded-xl backdrop-blur-sm group-hover:bg-white/30 transition-colors shrink-0">
+                  <Icon size={13} className="sm:w-3.5 sm:h-3.5" />
                 </div>
               </div>
               {loadingKPIs ? (
@@ -137,7 +137,7 @@ const AdminAnalytics: React.FC = () => {
                   <Loader2 size={18} className="animate-spin opacity-60" />
                 </div>
               ) : (
-                <h3 className="relative z-10 text-3xl font-display font-black leading-none tracking-tight">{kpi.value}</h3>
+                <h3 className="relative z-10 text-2xl sm:text-3xl font-display font-black leading-none tracking-tight">{kpi.value}</h3>
               )}
             </motion.div>
           );

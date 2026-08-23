@@ -1394,8 +1394,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* WIZARD STEPPER */}
           {!generating && step !== 'results' && (
-            <div className="w-full px-[24px] xl:px-[32px] mb-8">
-              <div className="flex items-center justify-between bg-white/80 backdrop-blur-[12px] rounded-2xl border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] p-1.5">
+            <div className="w-full px-3 sm:px-[24px] xl:px-[32px] mb-4 sm:mb-8">
+              <div className="flex items-center justify-between bg-white/80 backdrop-blur-[12px] rounded-2xl border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] p-1.5 overflow-x-auto no-scrollbar gap-1">
                 {[
                   { id: 'setup', label: 'Setup' },
                   { id: 'topics', label: 'Topics' },
@@ -1409,7 +1409,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   return (
                     <div
                       key={s.id}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl transition-all duration-500 ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-xl transition-all duration-500 min-w-0 ${
                         isCurrent
                           ? 'bg-purple-50/80 shadow-[0_1px_3px_rgba(168,85,247,0.1)]'
                           : isCompleted
@@ -1418,7 +1418,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       }`}
                     >
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 ${
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] sm:text-[12px] font-bold shrink-0 ${
                           isCurrent
                             ? 'bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-white shadow-md'
                             : isCompleted
@@ -1429,8 +1429,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                         {isCompleted ? <Check size={13} strokeWidth={3} /> : idx + 1}
                       </div>
                       <span
-                        className={`text-[13px] font-bold whitespace-nowrap ${
-                          isCurrent ? 'text-[#9333ea]' : isCompleted ? 'text-[#1e293b]' : 'text-[#64748b]'
+                        className={`text-xs sm:text-[13px] font-bold whitespace-nowrap truncate ${
+                          isCurrent ? 'text-[#9333ea] inline' : isCompleted ? 'text-[#1e293b] hidden sm:inline' : 'text-[#64748b] hidden sm:inline'
                         }`}
                       >
                         {s.label}

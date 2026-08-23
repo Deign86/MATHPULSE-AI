@@ -243,7 +243,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
             <button
               key={mode}
               onClick={() => setTimeFilter(mode)}
-              className={`flex-1 py-1.5 rounded-full text-[13px] md:text-sm font-semibold transition-all capitalize inline-flex justify-center items-center ${timeFilter === mode
+              className={`flex-1 py-2 min-h-[40px] rounded-full text-[13px] md:text-sm font-semibold transition-all capitalize inline-flex justify-center items-center ${timeFilter === mode
                 ? 'bg-white text-purple-700 shadow-md border border-white/50 backdrop-blur-lg'
                 : 'text-slate-600 hover:text-purple-700 hover:bg-white/50'
                 }`}

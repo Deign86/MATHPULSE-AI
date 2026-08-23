@@ -103,7 +103,7 @@ const AdminSubjects: React.FC = () => {
       )}
 
       {/* Stats Grid - Bento Style */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
           { 
             label: 'Total Subjects', 
@@ -134,15 +134,15 @@ const AdminSubjects: React.FC = () => {
             shadow: 'shadow-purple-500/20' 
           },
         ].map((stat, idx) => (
-          <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-5 rounded-[28px] text-white flex flex-col gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg`}>
+          <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-3.5 sm:p-5 rounded-[24px] sm:rounded-[28px] text-white flex flex-col gap-2 sm:gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg min-w-0`}>
             <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
             <div className="relative z-10 flex items-center justify-between">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{stat.label}</p>
-              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
-                <stat.icon size={14} />
+              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-[0.2em] opacity-80 truncate">{stat.label}</p>
+              <div className="bg-white/20 p-1.5 sm:p-2 rounded-xl backdrop-blur-sm shrink-0">
+                <stat.icon size={13} className="sm:w-3.5 sm:h-3.5" />
               </div>
             </div>
-            <h3 className="relative z-10 text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
+            <h3 className="relative z-10 text-2xl sm:text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
           </div>
         ))}
       </div>
@@ -155,8 +155,8 @@ const AdminSubjects: React.FC = () => {
       )}
 
       {/* Subject Table - Premium Integrated */}
-      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 overflow-hidden relative">
-        <Table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 overflow-hidden overflow-x-auto relative w-full">
+        <Table className="w-full text-left border-collapse min-w-[720px]">
           <TableHeader>
             <TableRow className="bg-[#9956DE] hover:bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-md">
               <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Subject Identity</TableHead>
@@ -216,7 +216,7 @@ const AdminSubjects: React.FC = () => {
                   </TableCell>
 
                   <TableCell className="px-6 py-5">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-h-[44px] min-w-[44px]">
                       <Switch
                         checked={isAvailable}
                         onCheckedChange={(checked: boolean) => handleToggle(subject.id, checked)}

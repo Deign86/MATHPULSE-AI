@@ -367,7 +367,7 @@ const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
         <div className="bg-white rounded-[1.2rem] sm:rounded-[2rem] border border-slate-100 p-4 sm:p-8 shadow-[0_8px_24px_-10px_rgba(0,0,0,0.05)] relative overflow-hidden group hover:border-indigo-100 transition-colors">
           <div className="absolute -right-6 -top-6 sm:-right-8 sm:-top-8 w-20 h-20 sm:w-32 sm:h-32 bg-indigo-50 rounded-full group-hover:scale-110 transition-transform duration-500" />
           <div className="relative">
