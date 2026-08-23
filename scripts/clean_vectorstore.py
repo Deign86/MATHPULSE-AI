@@ -19,18 +19,5 @@ subjects = Counter(m.get('subject', 'unknown') for m in results['metadatas'])
 for subject, count in subjects.most_common():
     print(f'  {subject}: {count}')
 
-# Delete chunks from removed PDFs
-removed_subjects = ['Finite Mathematics 1', 'Finite Mathematics 2', 'Organization and Management']
-for subject in removed_subjects:
-    ids_to_delete = []
-    for i, meta in enumerate(results['metadatas']):
-        if meta.get('subject') == subject:
-            ids_to_delete.append(results['ids'][i])
-    
-    if ids_to_delete:
-        print(f"\nDeleting {len(ids_to_delete)} chunks from {subject}...")
-        collection.delete(ids=ids_to_delete)
-    else:
-        print(f"\nNo chunks found for {subject}")
-
+print("\nNo subject-specific deletion performed; the SSHS corpus is the source of truth.")
 print(f"\nRemaining chunks: {collection.count()}")

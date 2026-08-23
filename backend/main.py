@@ -7652,22 +7652,13 @@ async def upload_class_records(
                 elif ext in {".xlsx", ".xls"}:
                     df = pd.read_excel(io.BytesIO(contents))
                 elif ext == ".pdf":
-                    import pdfplumber
-                    with pdfplumber.open(io.BytesIO(contents)) as pdf:
-                        if len(pdf.pages) > UPLOAD_MAX_PDF_PAGES:
-                            raise HTTPException(
-                                status_code=413,
-                                detail=f"PDF has too many pages. Max allowed pages: {UPLOAD_MAX_PDF_PAGES}",
-                            )
-                        tables = []
-                        for page in pdf.pages:
-                            page_tables = page.extract_tables()
-                            if page_tables:
-                                tables.extend(page_tables)
-                        if tables and len(tables[0]) > 1:
-                            df = pd.DataFrame(tables[0][1:], columns=tables[0][0])
-                        else:
-                            raise HTTPException(status_code=400, detail="No tables found in PDF")
+                    from rag.liteparse_utils import extract_text
+                    parsed_text = extract_text(contents)
+                    rows = [line.split("|") for line in parsed_text.splitlines() if "|" in line]
+                    if len(rows) > 1:
+                        df = pd.DataFrame(rows[1:], columns=rows[0])
+                    else:
+                        raise HTTPException(status_code=400, detail="No tables found in PDF")
                 else:
                     raise HTTPException(
                         status_code=400,
@@ -8433,21 +8424,8 @@ async def upload_course_materials(
                 file_hash = hashlib.sha256(contents).hexdigest()
 
                 if ext == ".pdf":
-                    import pdfplumber
-
-                    with pdfplumber.open(io.BytesIO(contents)) as pdf:
-                        if len(pdf.pages) > UPLOAD_MAX_PDF_PAGES:
-                            raise HTTPException(
-                                status_code=413,
-                                detail=f"PDF has too many pages. Max allowed pages: {UPLOAD_MAX_PDF_PAGES}",
-                            )
-
-                        page_texts: List[str] = []
-                        for page in pdf.pages:
-                            text = page.extract_text() or ""
-                            if text.strip():
-                                page_texts.append(text)
-                        extracted_text = "\n\n".join(page_texts)
+                    from rag.liteparse_utils import extract_text
+                    extracted_text = extract_text(contents)
                 elif ext == ".docx":
                     import importlib
 
