@@ -189,8 +189,8 @@ async function requestReassessmentForStudent(
 interface ProfileReassessmentHandlerInput {
   db: FirebaseFirestore.Firestore;
   userId: string;
-  beforeData: Record<string, unknown>;
-  afterData: Record<string, unknown>;
+  beforeData: FirebaseFirestore.DocumentData;
+  afterData: FirebaseFirestore.DocumentData;
   requestReassessment?: typeof requestReassessmentForStudent;
   sendNotification?: typeof createNotification;
 }
@@ -308,7 +308,7 @@ export async function handleInactivityReassessmentSweep(
 
     for (const docSnap of page.docs) {
       scanned += 1;
-      const userData = docSnap.data() as Record<string, unknown>;
+      const userData = docSnap.data() ?? {};
       const inactivityDecision = shouldQueueInactivityReassessment(
         userData,
         inactivityThresholdDays,
@@ -361,8 +361,8 @@ export const onStudentProfileUpdated = functions.firestore
   .document("users/{userId}")
   .onUpdate(async (change, context) => {
     const userId = context.params.userId;
-    const beforeData = change.before.data() as Record<string, unknown>;
-    const afterData = change.after.data() as Record<string, unknown>;
+    const beforeData = change.before.data() ?? {};
+    const afterData = change.after.data() ?? {};
 
     // ── Defence-in-depth: sanitize user-controlled text fields ─────────────
     // Mirrors the client-side Zod rules. If the document was written through
@@ -396,8 +396,8 @@ export const onStudentProfileUpdated = functions.firestore
     });
 
     // Update leaderboard collection when XP, name, or photo changes
-    const beforeXP = beforeData.totalXP as number || 0;
-    const afterXP = afterData.totalXP as number || 0;
+    const beforeXP = Number(beforeData.totalXP) || 0;
+    const afterXP = Number(afterData.totalXP) || 0;
     if (beforeXP !== afterXP || beforeData.name !== afterData.name || beforeData.level !== afterData.level || beforeData.photo !== afterData.photo) {
       const leaderboardRef = db.collection("leaderboard").doc(userId);
       await leaderboardRef.set({
@@ -444,7 +444,7 @@ export const runInactivityReassessmentSweep = functions.pubsub
 async function syncUserToLeaderboard(
   db: FirebaseFirestore.Firestore,
   userId: string,
-  userData: Record<string, unknown>
+  userData: FirebaseFirestore.DocumentData
 ): Promise<void> {
   const leaderboardRef = db.collection("leaderboard").doc(userId);
   await leaderboardRef.set({

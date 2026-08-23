@@ -11,6 +11,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import CompositeAvatar, { AvatarLayers } from './CompositeAvatar';
 import { MOCK_INVENTORY, EXCLUSIVE_DISPLAY_ITEMS } from '../data/avatarData';
 import { StudentProfile } from '../types/models';
+import { memberOf } from '../utils/memberOf';
 
 export function isString<T>(value: T): value is T & string {
   return typeof value === "string";
@@ -43,6 +44,9 @@ const AVATAR_SAVE_TIMEOUT_MS = 20_000;
 
 type AvatarInventoryItem = (typeof MOCK_INVENTORY)[number];
 type TabCategory = 'top' | 'bottom' | 'shoes' | 'accessory' | 'exclusive';
+
+// SAFETY: these literals are the TabCategory members; memberOf narrows untyped tab callbacks onto the union.
+const TAB_CATEGORIES = ['top', 'bottom', 'shoes', 'accessory', 'exclusive'] as const;
 
 const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModules, unsavedChangesRef, onConfirmLeave, pendingNavigation, onCancelNavigation }) => {
   const { userProfile, refreshProfile, currentUser } = useAuth();
@@ -82,8 +86,14 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
 
   // Show leave modal when parent requests navigation while unsaved
   useEffect(() => { if (pendingNavigation && hasUnsavedChanges) setShowLeaveModal(true); }, [pendingNavigation, hasUnsavedChanges]);
-  // SAFETY: trusted internal value already conforms to the asserted type.
-  useEffect(() => { if (userProfile && userProfile.role === 'student') { const sp = userProfile as StudentProfile; setOwnedItems(sp.ownedAvatarItems || []); setCurrentXP(sp.currentXP || 0); } }, [userProfile]);
+  useEffect(() => {
+    if (userProfile && userProfile.role === 'student') {
+      // SAFETY: the role check above proves this profile carries the student avatar/XP fields.
+      const studentProfile = userProfile as StudentProfile;
+      setOwnedItems(studentProfile.ownedAvatarItems || []);
+      setCurrentXP(studentProfile.currentXP || 0);
+    }
+  }, [userProfile]);
   useEffect(() => { const initial: AvatarLayers = { top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID, bottom: userProfile?.avatarLayers?.bottom || '', shoes: userProfile?.avatarLayers?.shoes || '', accessory: userProfile?.avatarLayers?.accessory || '' }; setEquipped(initial); setSavedEquipped(initial); }, [userProfile?.uid]);
   useEffect(() => { if (!avatarSpeech) { const timer = setInterval(() => { if (Math.random() > 0.6) setAvatarSpeech(ENCOURAGEMENT_PHRASES[Math.floor(Math.random() * ENCOURAGEMENT_PHRASES.length)]); }, 5000); return () => clearInterval(timer); } }, [avatarSpeech]);
   useEffect(() => { if (avatarSpeech) { const timer = setTimeout(() => setAvatarSpeech(null), 3500); return () => clearTimeout(timer); } }, [avatarSpeech]);
@@ -289,8 +299,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
               </div>
             </div>
 
-            // SAFETY: trusted internal value already conforms to the asserted type.
-            <Tabs.Root value={activeCategory} onValueChange={(v) => setActiveCategory(v as TabCategory)} className="flex flex-col flex-1 min-h-0">
+            <Tabs.Root value={activeCategory} onValueChange={(v) => setActiveCategory(memberOf(TAB_CATEGORIES, v, 'top'))} className="flex flex-col flex-1 min-h-0">
               <Tabs.List className="flex flex-nowrap shrink-0 justify-start space-x-1 mb-3 bg-white shadow-sm p-1 rounded-full border border-slate-100 w-fit overflow-x-auto max-w-full scrollbar-hide">
                 {categories.map((cat) => (
                   <Tabs.Trigger key={cat.id} value={cat.id} className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-bold text-[13px] hover:bg-slate-50 transition-all outline-none whitespace-nowrap ${cat.id === 'exclusive' ? 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white [&_svg]:data-[state=active]:text-white text-amber-600' : 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-sky-500 data-[state=active]:text-white text-slate-500'}`}>

@@ -21,7 +21,7 @@ const seen = new Set();
 const DEFAULT_ICON = '/mathpulse_logo.png';
 const DEFAULT_BADGE = '/mathpulse_logo.png';
 function safeInternalRoute(value) {
-  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return null;
+  if (!value || value.constructor !== String || !value.startsWith('/') || value.startsWith('//')) return null;
   if (/[\\\r\n]/.test(value) || /[a-z][a-z\d+.-]*:/i.test(value)) return null;
   try {
     const url = new URL(value, self.location.origin);

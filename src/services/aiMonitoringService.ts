@@ -59,6 +59,14 @@ export async function fetchAIMonitoringSummary(): Promise<AIMonitoringSummary> {
   return apiFetch<AIMonitoringSummary>('/api/admin/ai-monitoring/summary');
 }
 
-export async function triggerMonitoringRefresh(): Promise<{ success: boolean; updatedAt: string; pricingUsed: Record<string, unknown> }> {
+/** Refresh result reported by the AI monitoring admin endpoint. */
+interface MonitoringRefreshResult {
+  success: boolean;
+  updatedAt: string;
+  /** Pricing snapshot values keyed by model identifier. */
+  pricingUsed: { [model: string]: string | number | boolean };
+}
+
+export async function triggerMonitoringRefresh(): Promise<MonitoringRefreshResult> {
   return apiFetch('/api/admin/ai-monitoring/refresh', { method: 'POST' });
 }
