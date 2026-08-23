@@ -104,7 +104,7 @@ export const createTask = async (
     dueDate,
     priority,
     category,
-    status: 'todo' satisfies TaskStatus,
+    status: 'todo' as const,
   };
 
   const ref = await addDoc(collection(db, 'tasks'), {

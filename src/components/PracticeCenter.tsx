@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Award, Clock, Target, Zap, Trophy, BookOpen, PenTool, Loader2, TrendingUp, DollarSign, Brain, Dice5, BarChart3, Crosshair, FlaskConical, ScatterChart, CheckCircle, History, X } from 'lucide-react';
+import { recordGet } from '../utils/memberOf';
+import { Award, Clock, Target, Zap, Trophy, BookOpen, PenTool, Loader2, TrendingUp, DollarSign, Brain, Dice5, BarChart3, Crosshair, FlaskConical, ScatterChart, CheckCircle, History, X, type LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Quiz, QuizAnswerRecord } from './QuizExperience';
 import { useAuth } from '../contexts/AuthContext';
@@ -40,7 +41,7 @@ const UNIT_STYLE = {
 };
 
 function getUnitStyle(unit: string) {
-  return UNIT_STYLE[unit] || { icon: PenTool, bg: 'bg-slate-500' };
+  return recordGet(UNIT_STYLE, unit) ?? { icon: PenTool, bg: 'bg-slate-500' };
 }
 
 const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, searchQuery = '', allowedSubjectIds, atRiskTopics = [] }) => {
@@ -153,7 +154,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
         'Easy': 'Practice',
         'Medium': 'Challenge',
         'Hard': 'Mastery',
-      };
+      } as const;
 
       const response = await generatePracticeSession({
         userId,
