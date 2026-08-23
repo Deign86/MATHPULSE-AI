@@ -174,9 +174,12 @@ async function main() {
 
     // Source 2: progress.subjects.*.modulesProgress (for lesson/quiz completion counts)
     const subjects = data.subjects || {};
+    // SAFETY: Firestore progress docs are parsed permissively during this one-off backfill.
     const moduleCompletions: Record<string, { lessons: string[]; quizzes: string[] }> = {};
+    // SAFETY: Firestore progress docs are parsed permissively during this one-off backfill.
     for (const [, subjectData] of Object.entries(subjects) as [string, any][]) {
       const modulesProgress = subjectData?.modulesProgress || {};
+      // SAFETY: module progress entries are parsed permissively during this one-off backfill.
       for (const [mpId, mp] of Object.entries(modulesProgress) as [string, any][]) {
         const modId = resolveModuleId(mpId);
         if (!modId) continue;

@@ -20,6 +20,7 @@ import {
   type DifficultyLevel,
   type CourseMaterialTopicMapTopic,
   type AsyncTaskStatusResponse,
+  type ApiFieldValue,
 } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import BloomsTaxonomyModal from './BloomsTaxonomyModal';
@@ -140,6 +141,25 @@ const DIFFICULTY_COLORS = {
   medium: 'text-rose-600',
   hard: 'text-red-600',
 };
+
+function typedEntries<K extends string, V>(record: Record<K, V>): [K, V][] {
+  // SAFETY: Object.entries of a literal-keyed record yields exactly its declared [K, V] tuples.
+  return Object.entries(record) as [K, V][];
+}
+
+function recordGet<K extends string, V extends string | number | boolean | object>(record: Readonly<Record<K, V>>, key: string): V | undefined {
+  // SAFETY: membership is proven via hasOwnProperty before indexing with the narrowed key.
+  return Object.prototype.hasOwnProperty.call(record, key) ? record[key as K] : undefined;
+}
+
+const isRecordValue = <T extends object>(v: T | null | undefined): v is T =>
+  v !== null && typeof v === 'object';
+
+/** Boundary cast for payloads whose fields are parsed defensively by the caller. */
+function asPayload<T extends object>(value: Record<string, ApiFieldValue | undefined>): T {
+  // SAFETY: callers validate the payload shape field-by-field immediately after this boundary cast.
+  return value as T;
+}
 
 // ─── Component ──────────────────────────────────────────────
 
@@ -545,11 +565,10 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       .then(async (task) => {
         if (cancelled) return;
         const payload = task.result;
-        if (!payload || typeof payload !== 'object') {
+        if (!isRecordValue(payload)) {
           throw new Error('Quiz generation completed without a valid result payload.');
         }
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        const resultPayload = payload as unknown as QuizGenerationResponse;
+        const resultPayload = asPayload<QuizGenerationResponse>(payload);
         setQuizResult(resultPayload);
         setStep('results');
         setGenerationProgress(100);
@@ -564,7 +583,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
           toast.error(saveErr instanceof Error ? saveErr.message : 'Quiz generated but failed to save to library');
         }
       })
-      .catch((err: unknown) => {
+      .catch((err: Error) => {
         if (cancelled) return;
 
         if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -734,22 +753,25 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     const effectiveGrade = sourceRequest?.gradeLevel || selectedGrade;
     const effectiveTopics = sourceRequest?.topics || selectedTopics;
 
-    const questions: AIQuizQuestion[] = result.questions.map((q, i) => ({
-      id: `q_${Date.now()}_${i}`,
-      // SAFETY: trusted internal value already conforms to the asserted type.
-      questionType: (q.questionType as AIQuizQuestion['questionType']) || 'identification',
-      question: q.question,
-      ...(q.options ? { options: q.options } : {}),
-      correctAnswer: q.correctAnswer,
-      // SAFETY: trusted internal value already conforms to the asserted type.
-      bloomLevel: (q.bloomLevel as AIQuizQuestion['bloomLevel']) || 'understand',
-      // SAFETY: trusted internal value already conforms to the asserted type.
-      difficulty: (q.difficulty as AIQuizQuestion['difficulty']) || 'medium',
-      topic: q.topic,
-      subject: effectiveGrade,
-      points: q.points,
-      explanation: q.explanation,
-    }));
+    const questions: AIQuizQuestion[] = result.questions.map((q, i) => {
+      const question: AIQuizQuestion = {
+        id: `q_${Date.now()}_${i}`,
+        // SAFETY: trusted internal value already conforms to the asserted type.
+        questionType: (q.questionType as AIQuizQuestion['questionType']) || 'identification',
+        question: q.question,
+        correctAnswer: q.correctAnswer,
+        // SAFETY: trusted internal value already conforms to the asserted type.
+        bloomLevel: (q.bloomLevel as AIQuizQuestion['bloomLevel']) || 'understand',
+        // SAFETY: trusted internal value already conforms to the asserted type.
+        difficulty: (q.difficulty as AIQuizQuestion['difficulty']) || 'medium',
+        topic: q.topic,
+        subject: effectiveGrade,
+        points: q.points,
+        explanation: q.explanation,
+      };
+      if (q.options) question.options = q.options;
+      return question;
+    });
 
     return {
       title: `${effectiveGrade} Quiz – ${effectiveTopics.length > 0 ? effectiveTopics.slice(0, 2).join(', ') : 'Mixed Topics'}`,
@@ -1044,7 +1066,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
   const renderQuestionCard = (q: QuizQuestionGenerated, index: number, showAnswer: boolean) => {
     const isExpanded = expandedQuestion === index;
-    const bloom = BLOOM_COLORS[q.bloomLevel?.toLowerCase()] || BLOOM_COLORS['remember'];
+    const bloomKeyRaw = q.bloomLevel?.toLowerCase();
+    // SAFETY: the in-check proves membership; non-members fall back to 'remember'.
+    const bloom = BLOOM_COLORS[bloomKeyRaw && bloomKeyRaw in BLOOM_COLORS ? bloomKeyRaw as keyof typeof BLOOM_COLORS : 'remember'];
     const hoverBorder = q.bloomLevel?.toLowerCase() === 'remember' ? 'hover:border-purple-200'
       : q.bloomLevel?.toLowerCase() === 'understand' ? 'hover:border-blue-200'
       : q.bloomLevel?.toLowerCase() === 'apply' ? 'hover:border-amber-200'
@@ -1158,8 +1182,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
                 {/* Footer metadata */}
                 <div className="flex gap-6 text-[12px] font-medium text-[#64748b] mt-5 pt-4 border-t border-slate-100">
-                  // SAFETY: trusted internal value already conforms to the asserted type.
-                  <span className="flex items-center gap-1.5"><FileText size={14} /> <strong className="text-[#1e293b]">Type:</strong> {QUESTION_TYPE_LABELS[q.questionType as QuestionType]?.label || q.questionType}</span>
+                  <span className="flex items-center gap-1.5"><FileText size={14} /> <strong className="text-[#1e293b]">Type:</strong> {recordGet(QUESTION_TYPE_LABELS, q.questionType)?.label || q.questionType}</span>
                   <span className="flex items-center gap-1.5"><Brain size={14} /> <strong className="text-[#1e293b]">Bloom:</strong> {q.bloomLevel}</span>
                 </div>
               </div>
@@ -1592,8 +1615,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Question Types</h3>
                 </div>
                 <div className="p-4 grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  // SAFETY: trusted internal value already conforms to the asserted type.
-                  {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, typeof QUESTION_TYPE_LABELS[QuestionType]][]).map(([type, info]) => {
+                  {(typedEntries(QUESTION_TYPE_LABELS)).map(([type, info]) => {
                     const isSelected = selectedTypes.includes(type);
                     return (
                       <button
@@ -1632,8 +1654,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Bloom's Taxonomy Levels</h3>
                 </div>
                 <div className="p-6 flex flex-wrap gap-4">
-                  // SAFETY: trusted internal value already conforms to the asserted type.
-                  {(Object.entries(BLOOM_LABELS) as [BloomLevel, typeof BLOOM_LABELS[BloomLevel]][]).map(([level, info]) => {
+                  {(typedEntries(BLOOM_LABELS)).map(([level, info]) => {
                     const isSelected = selectedBlooms.includes(level);
                     return (
                       <button
@@ -1658,8 +1679,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Difficulty Distribution</h3>
                 </div>
                 <div className="p-8 space-y-8">
-                  // SAFETY: trusted internal value already conforms to the asserted type.
-                  {(Object.entries(difficultyDist) as [DifficultyLevel, number][]).map(([level, pct]) => {
+                  {(typedEntries(difficultyDist)).map(([level, pct]) => {
                     const colorMap = { easy: 'bg-emerald-400', medium: 'bg-amber-400', hard: 'bg-rose-400' };
                     const hoverColorMap = { easy: 'text-emerald-600', medium: 'text-amber-500', hard: 'text-rose-500' };
                     const borderMap = { easy: 'group-hover:border-emerald-200', medium: 'group-hover:border-amber-200', hard: 'group-hover:border-rose-200' };
@@ -1830,8 +1850,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <div className="space-y-3 text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.difficultyBreakdown).map(([d, c]) => (
                       <div key={d} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
-                        // SAFETY: trusted internal value already conforms to the asserted type.
-                        <span className={`font-bold capitalize ${DIFFICULTY_COLORS[d as DifficultyLevel] || 'text-[#475569]'}`}>{d}</span>
+                        <span className={`font-bold capitalize ${recordGet(DIFFICULTY_COLORS, d) ?? 'text-[#475569]'}`}>{d}</span>
                         <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
                       </div>
                     ))}
@@ -1853,8 +1872,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <div className="space-y-3 text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.questionTypeBreakdown).map(([t, c]) => (
                       <div key={t} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
-                        // SAFETY: trusted internal value already conforms to the asserted type.
-                        <span className="text-[#1e293b] font-semibold">{QUESTION_TYPE_LABELS[t as QuestionType]?.label || t}</span>
+                        <span className="text-[#1e293b] font-semibold">{recordGet(QUESTION_TYPE_LABELS, t)?.label || t}</span>
                         <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
                       </div>
                     ))}

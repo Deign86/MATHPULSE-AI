@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import { signInWithEmail, signInWithGoogle, signUpWithEmail, setPendingAuthRole, type AuthServiceError } from '../services/authService';
 import { UserRole } from '../types/models';
 import shaderBgVideo from '../assets/shader-bg.mp4';
+import { recordGet } from '../utils/memberOf';
 
 export function isObjectVal<T>(value: T): value is T & object {
   return typeof value === "object";
@@ -46,7 +47,19 @@ const SIGNUP_PASSWORD_RULES: PasswordRule[] = [
 const SIGNUP_PASSWORD_HELP_TEXT =
   'Use at least 8 characters with uppercase, lowercase, number, and special character.';
 
-const extractAuthErrorDetails = (cause: unknown): { code: string; message: string } => {
+/** Details extracted from an auth failure, used to pick a friendly message. */
+interface AuthErrorDetails {
+  code: string;
+  message: string;
+}
+
+// SAFETY: 'student' and 'teacher' are both members of the UserRole enum.
+const ACCOUNT_TYPE_OPTIONS: { role: UserRole; label: string }[] = [
+  { role: 'student', label: 'Student' },
+  { role: 'teacher', label: 'Teacher' },
+];
+
+const extractAuthErrorDetails = (cause: unknown): AuthErrorDetails => {
   // SAFETY: trusted internal value already conforms to the asserted type.
   // SAFETY: isObjectVal guard above verified the error shape before casting.
   const authError = isObjectVal(cause) && cause !== null ? (cause as Partial<AuthServiceError>) : null;
@@ -273,7 +286,7 @@ const LoginPage: React.FC = () => {
   const secondaryOpacity = activeVideoLayer === 'secondary' ? leadOpacity : trailOpacity;
 
   useEffect(() => {
-    const gradeSections = SECTION_OPTIONS[selectedGrade] || [];
+    const gradeSections = recordGet(SECTION_OPTIONS, selectedGrade) ?? [];
     if (gradeSections.length > 0 && !gradeSections.includes(selectedSection)) {
       setSelectedSection(gradeSections[0]);
     }
@@ -495,14 +508,14 @@ const LoginPage: React.FC = () => {
                 return (
                   <motion.div
                     key={index}
-                    className={`bg-white/80 backdrop-blur-xl border ${borderMap[feature.color]} rounded-xl p-3 lg:p-4 transition-all cursor-pointer group shadow-md shadow-slate-900/[0.04]`}
+                    className={`bg-white/80 backdrop-blur-xl border ${recordGet(borderMap, feature.color) ?? ''} rounded-xl p-3 lg:p-4 transition-all cursor-pointer group shadow-md shadow-slate-900/[0.04]`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 + index * 0.1 }}
                     whileHover={{ scale: 1.03, y: -4 }}
                   >
-                    <div className={`w-7 h-7 lg:w-9 lg:h-9 rounded-lg ${glowMap[feature.color]} flex items-center justify-center mx-auto lg:mx-0 mb-2 lg:mb-3`}>
-                      <Icon size={15} className={iconColorMap[feature.color]} />
+                    <div className={`w-7 h-7 lg:w-9 lg:h-9 rounded-lg ${recordGet(glowMap, feature.color) ?? ''} flex items-center justify-center mx-auto lg:mx-0 mb-2 lg:mb-3`}>
+                      <Icon size={15} className={recordGet(iconColorMap, feature.color) ?? ''} />
                     </div>
                     <h3 className="text-xs lg:text-sm font-display font-semibold text-slate-800 mb-0.5">{feature.label}</h3>
                     <p className="text-[10px] lg:text-xs text-slate-400 font-body">{feature.desc}</p>
@@ -591,11 +604,7 @@ const LoginPage: React.FC = () => {
                       Account Type
                     </label>
                     <div className="grid grid-cols-2 gap-2">
-                      // SAFETY: trusted internal value already conforms to the asserted type.
-                      {([
-                        { role: 'student', label: 'Student' },
-                        { role: 'teacher', label: 'Teacher' },
-                      ] as { role: UserRole; label: string }[]).map((roleOption) => {
+                      {ACCOUNT_TYPE_OPTIONS.map((roleOption) => {
                         const isActive = selectedRole === roleOption.role;
                         return (
                           <button
@@ -631,7 +640,7 @@ const LoginPage: React.FC = () => {
                           className="w-full pl-11 pr-4 py-2.5 rounded-lg bg-slate-100/70 border border-slate-200/80 text-slate-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all appearance-none"
                           required
                         >
-                          {(SECTION_OPTIONS[selectedGrade] || []).map((section) => (
+                          {(recordGet(SECTION_OPTIONS, selectedGrade) ?? []).map((section) => (
                             <option key={section} value={section}>{section}</option>
                           ))}
                         </select>
@@ -789,8 +798,8 @@ const LoginPage: React.FC = () => {
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.99 }}
                         >
-                          <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${iconBgMap[account.color]}`}>
-                            <Icon size={15} className={iconClrMap[account.color]} />
+                          <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${recordGet(iconBgMap, account.color) ?? ''}`}>
+                            <Icon size={15} className={recordGet(iconClrMap, account.color) ?? ''} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-body font-semibold text-slate-700 group-hover:text-sky-600 transition-colors">{account.label} Account</p>

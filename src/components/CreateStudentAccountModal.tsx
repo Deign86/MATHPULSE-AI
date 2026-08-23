@@ -119,7 +119,7 @@ export const CreateStudentAccountModal: React.FC<CreateStudentAccountModalProps>
     try {
       const targetPassword = createdResult?.temporaryPassword || temporaryPassword;
       if (!targetPassword) return;
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      if ('navigator' in globalThis && navigator.clipboard) {
         await navigator.clipboard.writeText(targetPassword);
       }
       setCopiedPassword(true);

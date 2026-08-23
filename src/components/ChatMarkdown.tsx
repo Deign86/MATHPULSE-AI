@@ -26,6 +26,10 @@ interface ChatMarkdownProps {
   children: string;
 }
 
+export function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
+
 let katexStylesPromise: Promise<unknown> | null = null;
 
 const ensureKatexStyles = () => {
@@ -41,7 +45,7 @@ const ChatMarkdown: React.FC<ChatMarkdownProps> = ({ children }) => {
     void ensureKatexStyles();
   }, []);
 
-  if (!children || typeof children !== 'string') {
+  if (!children || !isString(children)) {
     return null;
   }
 

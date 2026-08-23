@@ -28,7 +28,7 @@ applySettingsFromCache();
  * must not overwrite each other.
  */
 function registerAppServiceWorker(): void {
-  if (typeof window === 'undefined' || !('serviceWorker' in navigator) || Capacitor.isNativePlatform()) return;
+  if (!('window' in globalThis) || !('serviceWorker' in navigator) || Capacitor.isNativePlatform()) return;
 
   const shouldRegister =
     import.meta.env.PROD || import.meta.env.VITE_ENABLE_SW_IN_DEV === 'true';
@@ -57,7 +57,7 @@ try {
 
 // Global error handlers — catch unhandled errors and promise rejections
 // that would otherwise result in silent failures or blank screens.
-if (typeof window !== 'undefined') {
+if ('window' in globalThis) {
   window.addEventListener('error', (event) => {
     console.error('[global] Uncaught error:', event.error?.message ?? event.message);
   });

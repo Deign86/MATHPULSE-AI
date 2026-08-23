@@ -77,16 +77,24 @@ export interface VideoSearchResponse {
   cached: boolean;
 }
 
+/** True for non-null object values; lets error-body handling branch without loose casts. */
+function isObjectLike<V>(value: V): value is V & object {
+  return typeof value === 'object' && value !== null;
+}
+
+/** Error thrown for non-OK API responses; carries the HTTP status and parsed body. */
+interface LessonApiError extends Error {
+  status: number;
+  body?: string | object;
+}
+
 async function apiFetch<T>(endpoint: string, options?: RequestInit, forceRefresh: boolean = false): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options?.headers as Record<string, string> || {}),
-  };
+  const headers = new Headers(options?.headers);
   const currentUser = auth.currentUser;
   if (currentUser) {
     try {
       const idToken = await currentUser.getIdToken(forceRefresh);
-      if (idToken) headers['Authorization'] = `Bearer ${idToken}`;
+      if (idToken) headers.set('Authorization', `Bearer ${idToken}`);
     } catch (err) {
       console.error('[lessonService] Failed to get Firebase ID token:', err);
       throw new Error('Authentication failed. Please sign in again.');
@@ -110,9 +118,10 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit, forceRefresh
     } catch {
       errorBody = await res.text();
     }
+    // SAFETY: non-OK API errors carry their status and raw body alongside the standard Error contract.
     const error = new Error(
-      typeof errorBody === 'object' ? JSON.stringify(errorBody) : errorBody
-    ) as any;
+      isObjectLike(errorBody) ? JSON.stringify(errorBody) : String(errorBody)
+    ) as LessonApiError;
     error.status = res.status;
     error.body = errorBody;
     throw error;

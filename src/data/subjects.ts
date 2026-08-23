@@ -67,13 +67,13 @@ export type GradeLevel = 'Grade 11';
 
 export const GRADE_LEVELS: GradeLevel[] = ['Grade 11'];
 
-export const SUBJECTS_BY_GRADE: Record<GradeLevel, (typeof SHS_MATH_SUBJECTS)[number][]> = {
+export const SUBJECTS_BY_GRADE = {
   'Grade 11': [...SHS_MATH_SUBJECTS],
-};
+} satisfies Record<GradeLevel, (typeof SHS_MATH_SUBJECTS)[number][]>;
 
-export const ACTIVE_SUBJECT_IDS_BY_GRADE: Record<GradeLevel, SubjectId[]> = {
+export const ACTIVE_SUBJECT_IDS_BY_GRADE = {
   'Grade 11': ['gen-math', 'stats-prob'],
-};
+} satisfies Record<GradeLevel, SubjectId[]>;
 
 export function normalizeGradeLevel(rawGrade?: string | null): GradeLevel | null {
   if (!rawGrade) return null;
@@ -87,6 +87,7 @@ export function normalizeGradeLevel(rawGrade?: string | null): GradeLevel | null
 export function getActiveSubjectIdsForGrade(rawGrade?: string | null): SubjectId[] {
   const gradeLevel = normalizeGradeLevel(rawGrade);
   if (!gradeLevel) {
+    // SAFETY: every SHS_MATH_SUBJECTS entry id is a member of the SubjectId union.
     return SHS_MATH_SUBJECTS.map((subject) => subject.id as SubjectId);
   }
   return ACTIVE_SUBJECT_IDS_BY_GRADE[gradeLevel];

@@ -10,9 +10,21 @@ import {
   limit,
   updateDoc,
   serverTimestamp,
+  type FieldValue,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ChatMessage, ChatSession } from '../types/models';
+
+/** Firestore payload for a new chat message; the timestamp uses the server sentinel. */
+interface ChatMessagePayload {
+  id: string;
+  userId: string;
+  role: ChatMessage['role'];
+  content: string;
+  sessionId: string;
+  timestamp: FieldValue | null;
+  context?: ChatMessage['context'];
+}
 
 // Create chat session
 export const createChatSession = async (
@@ -57,6 +69,7 @@ export const getUserChatSessions = async (userId: string): Promise<ChatSession[]
     const snapshot = await getDocs(sessionsQuery);
     return snapshot.docs.map(doc => {
       const data = doc.data();
+      // SAFETY: session docs are written by createChatSession with the ChatSession field set.
       return {
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
@@ -76,6 +89,7 @@ export const getChatSession = async (sessionId: string): Promise<ChatSession | n
     
     if (sessionDoc.exists()) {
       const data = sessionDoc.data();
+      // SAFETY: session docs are written by createChatSession with the ChatSession field set.
       return {
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
@@ -109,8 +123,10 @@ export const addMessageToSession = async (
       role,
       content,
       timestamp: new Date(),
-      ...(context ? { context } : {}),
     };
+    if (context) {
+      message.context = context;
+    }
 
     // Get session to get userId
     const sessionDoc = await getDoc(doc(db, 'chatSessions', sessionId));
@@ -119,7 +135,7 @@ export const addMessageToSession = async (
     }
 
     // Build Firestore payload, excluding undefined values
-    const payload: Record<string, unknown> = {
+    const payload: ChatMessagePayload = {
       id: message.id,
       userId: message.userId,
       role: message.role,
@@ -159,6 +175,7 @@ export const getSessionMessages = async (sessionId: string, userId: string): Pro
     const snapshot = await getDocs(messagesQuery);
     return snapshot.docs.map(doc => {
       const data = doc.data();
+      // SAFETY: message docs are written by addMessageToSession with the ChatMessage field set.
       return {
         ...data,
         timestamp: data.timestamp?.toDate() || new Date(),

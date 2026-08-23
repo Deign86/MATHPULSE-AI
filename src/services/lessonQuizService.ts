@@ -10,6 +10,9 @@ interface LessonQuizParams {
   questionCount?: number;
 }
 
+/** Per-strategy retrieval confidence scores returned alongside generated questions. */
+interface RetrievalConfidence { [strategy: string]: number }
+
 interface QuizGenerationResponse {
   questions: Array<{
     id: number;
@@ -21,7 +24,7 @@ interface QuizGenerationResponse {
     hints?: string[];
     bloomLevel?: string;
   }>;
-  retrievalConfidence: Record<string, unknown>;
+  retrievalConfidence: RetrievalConfidence;
   sourceChunks: number;
   generatedAt: string;
 }
@@ -120,6 +123,7 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
     }
 
     // Map API response to InteractiveLesson Question type
+    // SAFETY: the quiz API returns question/type/bloom values already constrained to the Question unions.
     return response.questions.map((q) => ({
       id: q.id,
       type: q.type as Question['type'],

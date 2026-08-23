@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Sparkles, ChevronRight, X, AlertTriangle, TrendingUp, Brain } from 'lucide-react';
+import { recordGet } from '../utils/memberOf';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -145,7 +146,7 @@ const CompactBanner: React.FC<SupplementalBannerProps> = ({ quizSubject, atRiskS
 
   if (!isAtRisk || !subjectKey) return null;
 
-  const resources = SUPPLEMENTAL_RESOURCES[subjectKey] || [];
+  const resources = recordGet(SUPPLEMENTAL_RESOURCES, subjectKey) ?? [];
 
   return (
     <motion.div
@@ -190,7 +191,7 @@ const ResultsBanner: React.FC<SupplementalBannerProps> = ({ quizSubject, quizSco
   // Show banner if score < 70% OR if subject is at-risk
   if (quizScore >= 70 && !isAtRisk) return null;
 
-  const resources = subjectKey ? (SUPPLEMENTAL_RESOURCES[subjectKey] || []) : [];
+  const resources = subjectKey ? (recordGet(SUPPLEMENTAL_RESOURCES, subjectKey) ?? []) : [];
   const isLowScore = quizScore < 70;
 
   return (

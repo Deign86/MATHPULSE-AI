@@ -10,9 +10,17 @@ import {
   where,
   limit,
   Unsubscribe,
+  type FirestoreError,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { CalendarEvent } from '../types/models';
+
+/** True when the value is a Firestore timestamp-like object exposing toDate(). */
+function hasToDate<V>(value: V): value is V & { toDate: () => Date } {
+  if (typeof value !== 'object' || value === null) return false;
+  // SAFETY: Firestore timestamps expose an optional toDate() converter on object values.
+  return typeof ((value as { toDate?: unknown }).toDate) === 'function';
+}
 
 const mapCalendarEventDoc = (docSnap: { id: string; data: () => any }): CalendarEvent => {
   const data = docSnap.data();
@@ -24,11 +32,12 @@ const mapCalendarEventDoc = (docSnap: { id: string; data: () => any }): Calendar
 
   const toDate = (value: any): Date | undefined => {
     if (!value) return undefined;
-    if (typeof value?.toDate === 'function') return value.toDate();
     if (value instanceof Date) return value;
+    if (hasToDate(value)) return value.toDate();
     return undefined;
   };
 
+  // SAFETY: calendar event docs are written by addCalendarEvent with the CalendarEvent field set.
   return {
     ...(data as Omit<CalendarEvent, 'id' | 'startTime' | 'endTime' | 'createdAt' | 'updatedAt'>),
     id: docSnap.id,
@@ -91,7 +100,7 @@ export const subscribeToUserCalendarEvents = (
     limitCount?: number;
   } = {},
   onChange: (events: CalendarEvent[]) => void,
-  onError?: (error: unknown) => void,
+  onError?: (error: FirestoreError) => void,
 ): Unsubscribe => {
   if (!userId) {
     onChange([]);

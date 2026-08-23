@@ -104,6 +104,7 @@ import type { CalendarEvent } from '../types/models';
 import CreateStudentAccountModal, {
   type CreateStudentAccountSeed,
 } from './CreateStudentAccountModal';
+import { recordGet } from '../utils/memberOf';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -219,11 +220,12 @@ function toClassView(c: Classroom): ClassView {
 
 function toStudentView(s: ManagedStudent, className: string): StudentView {
   // Prefer WRI riskStatus (PR 110) over legacy riskLevel field
+  // SAFETY: ManagedStudent.riskLevel is a trusted internal label; lowercasing maps High/Medium/Low onto the view union.
+  const legacyRiskLevel = ((s.riskLevel || 'Low').toLowerCase()) as 'high' | 'medium' | 'low';
   const riskLevel: 'high' | 'medium' | 'low' = s.riskStatus
     ? (['intervene', 'critical', 'at_risk'].includes(s.riskStatus) ? 'high'
       : s.riskStatus === 'watch' ? 'medium' : 'low')
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    : (s.riskLevel || 'Low').toLowerCase() as 'high' | 'medium' | 'low';
+    : legacyRiskLevel;
   const lastActiveStr = s.lastActive
     ? formatRelativeTime(s.lastActive.toDate())
     : 'Unknown';
@@ -410,12 +412,19 @@ function toUploadedStudentView(
   };
 }
 
+/** Class identity resolved from an uploaded roster, with fallbacks applied. */
+interface UploadedClassContext {
+  classSectionId: string;
+  className: string;
+  classMetadata: ClassSectionMetadata;
+}
+
 function resolveUploadedClassContext(
   result: UploadResponse,
   fallbackClassSectionId?: string,
   fallbackClassName?: string,
   fallbackClassMetadata?: ClassSectionMetadata | null,
-): { classSectionId: string; className: string; classMetadata: ClassSectionMetadata } {
+): UploadedClassContext {
   const responseMetadata = resolveClassMetadata({
     metadata: result.dashboardSync?.classMetadata || result.classMetadata || fallbackClassMetadata,
     classSectionId: result.dashboardSync?.classSectionId || fallbackClassSectionId,
@@ -3164,7 +3173,7 @@ const AnalyticsView: React.FC<{
                       <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={80}>
                         {riskDistribution.map((entry, index) => {
                           const mapping = { 'Critical': '#dc2626', 'High Risk': '#f43f5e', 'Medium Risk': '#f59e0b', 'Low Risk': '#10b981', 'Unassessed': '#94a3b8' };
-                          return <Cell key={`cell-${index}`} fill={mapping[entry.name] || entry.color} />;
+                          return <Cell key={`cell-${index}`} fill={recordGet(mapping, entry.name) ?? entry.color} />;
                         })}
                       </Bar>
                     </BarChart>
@@ -4777,7 +4786,7 @@ const ImportView: React.FC<{
 
   const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
-  const toFiniteNumber = (value: unknown): number | null => {
+  const toFiniteNumber = (value: number | string | null | undefined): number | null => {
     if (isNum(value) && Number.isFinite(value)) {
       return value;
     }

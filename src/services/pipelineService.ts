@@ -4,11 +4,12 @@
 
 import { auth } from '../lib/firebase';
 import { apiUrl } from '../config/env';
+import type { ApiFieldValue } from './apiService';
 
 export interface PipelineEvent {
   student_id: string;
   event_type: 'diagnostic' | 'quiz' | 'battle' | 'lesson' | 'module' | 'session';
-  event_data: Record<string, unknown>;
+  event_data: Record<string, ApiFieldValue | undefined>;
   occurred_at: string;
   class_id: string;
   teacher_id: string;

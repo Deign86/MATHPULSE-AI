@@ -119,7 +119,8 @@ function formatContent(raw: string): React.ReactNode {
   const isFormula  = (l: string) => MATH_RE.test(l) && l.trim().length < 120;
 
   // Callout type → color scheme
-  const calloutScheme = (prefix: string): { bg: string; border: string; text: string; label: React.ReactNode } => {
+  interface CalloutScheme { bg: string; border: string; text: string; label: React.ReactNode }
+  const calloutScheme = (prefix: string): CalloutScheme => {
     const p = prefix.toLowerCase();
     if (/formula|theorem|property|rule/.test(p))
       return { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', label: <Ruler aria-hidden="true" size={14} /> };
@@ -309,10 +310,9 @@ interface LessonViewerProps {
 // An "example" sub-line is a short line immediately after an objective that
 // starts with "Example:" or "e.g." or is wrapped in parentheses.
 // ---------------------------------------------------------------------------
-function parseIntroContent(raw: string): {
-  welcome: string;
-  objectives: { text: string; example?: string }[];
-} {
+interface LessonObjective { text: string; example?: string }
+interface LessonIntroContent { welcome: string; objectives: LessonObjective[] }
+function parseIntroContent(raw: string): LessonIntroContent {
   if (!raw?.trim()) return { welcome: '', objectives: [] };
 
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);

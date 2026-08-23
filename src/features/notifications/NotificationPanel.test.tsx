@@ -2,37 +2,34 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
+import * as notificationContextNs from './NotificationContext';
+import * as notificationItemNs from './NotificationItem';
+import type { Notification } from './types';
 
-// Top-level variables for mocks (hoisted with vi.mock)
-let notificationsValue: any[] = [];
+// Mutable context fixtures read by the context seam on every render.
+let notificationsValue: Notification[] = [];
 let unreadCountValue = 0;
 let isLoadingValue = false;
-let markAllAsReadMock: any;
+const markAllAsReadMock = vi.fn();
 
-// Mock NotificationContext - must be before imports
-vi.mock('./NotificationContext', () => ({
-  useNotifications: vi.fn(() => ({
-    notifications: notificationsValue,
-    unreadCount: unreadCountValue,
-    isLoading: isLoadingValue,
-    markAllAsRead: markAllAsReadMock,
-  })),
-  NotificationProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+// Context seam: spy on the real hook; the fixtures above drive each scenario.
+vi.spyOn(notificationContextNs, 'useNotifications').mockImplementation(() => ({
+  notifications: notificationsValue,
+  unreadCount: unreadCountValue,
+  isLoading: isLoadingValue,
+  markAsRead: vi.fn(),
+  markAllAsRead: markAllAsReadMock,
+  deleteNotification: vi.fn(),
 }));
 
-// Mock NotificationItem
-vi.mock('./NotificationItem', () => ({
-  NotificationItem: ({ notification }: { notification: { id: string; title: string } }) => (
+// Item seam: rendered-but-inert stub keyed by notification id.
+// SAFETY: the stub preserves the notification prop contract consumed by the panel.
+vi.spyOn(notificationItemNs, 'NotificationItem').mockImplementation(
+  (({ notification }: { notification: { id: string; title: string } }) => (
     <div data-testid={`item-${notification.id}`}>{notification.title}</div>
-  ),
-}));
+  )) as typeof notificationItemNs.NotificationItem,
+);
 
-// Mock date-fns
-vi.mock('date-fns', () => ({
-  formatDistanceToNow: vi.fn(() => '2 hours ago'),
-}));
-
-// Import after mocks
 import { NotificationPanel } from './NotificationPanel';
 
 describe('NotificationPanel', () => {
@@ -41,7 +38,6 @@ describe('NotificationPanel', () => {
     notificationsValue = [];
     unreadCountValue = 0;
     isLoadingValue = false;
-    markAllAsReadMock = vi.fn();
   });
 
   afterEach(() => {
@@ -50,8 +46,8 @@ describe('NotificationPanel', () => {
 
   it('renders notifications when not loading', () => {
     notificationsValue = [
-      { id: 'notif-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },
-      { id: 'notif-2', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(), type: 'streak_reminder' },
+      { id: 'notif-1', userId: 'user-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },
+      { id: 'notif-2', userId: 'user-1', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(), type: 'streak_reminder' },
     ];
     unreadCountValue = 1;
     isLoadingValue = false;
@@ -98,7 +94,7 @@ describe('NotificationPanel', () => {
 
   it('calls markAllAsRead when button clicked', () => {
     notificationsValue = [
-      { id: 'notif-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },
+      { id: 'notif-1', userId: 'user-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },
     ];
     unreadCountValue = 1;
     isLoadingValue = false;

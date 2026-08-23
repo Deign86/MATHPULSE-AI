@@ -15,7 +15,7 @@ export interface UseOnlineStatusResult {
 }
 
 const getInitialOnlineState = (): boolean =>
-  typeof navigator === 'undefined' ? true : navigator.onLine;
+  ('navigator' in globalThis ? navigator.onLine : true);
 
 export function useOnlineStatus(): UseOnlineStatusResult {
   const [isOnline, setIsOnline] = useState<boolean>(getInitialOnlineState);

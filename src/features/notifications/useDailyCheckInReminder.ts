@@ -26,6 +26,7 @@ export function useDailyCheckInReminder(userId: string | null): void {
 
         await notify({
           userId,
+          // SAFETY: 'streak_reminder' is a member of the NotificationType union.
           type: 'streak_reminder' as NotificationType,
           title: "Don't forget your daily check-in!",
           message: 'Check in today to keep your streak alive and earn bonus XP.',

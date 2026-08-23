@@ -64,10 +64,10 @@ export const LEARNER_ROW_STOP_TOKENS = [
   'WEIGHT OF COMPONENTS',
 ] as const;
 
-export const QUARTER_HINTS: Record<QuarterType, string[]> = {
+export const QUARTER_HINTS = {
   FIRST: ['FIRST QUARTER', '1ST QUARTER', 'Q1'],
   SECOND: ['SECOND QUARTER', '2ND QUARTER', 'Q2'],
-};
+} satisfies Record<QuarterType, string[]>;
 
 export const SHEET_NAME_HINTS = {
   inputData: ['input data'],
@@ -78,7 +78,10 @@ export const SHEET_NAME_HINTS = {
   lookup: ['look up', 'lookup', 'reference'],
 };
 
-export const METADATA_ANCHORS: Record<string, string[]> = {
+/** Anchor phrase lists keyed by workbook metadata field. */
+export interface MetadataAnchorMap { [field: string]: string[] }
+
+export const METADATA_ANCHORS: MetadataAnchorMap = {
   region: ['REGION'],
   division: ['DIVISION'],
   schoolName: ['SCHOOL NAME'],

@@ -43,7 +43,18 @@ export interface BackfillRunOptions {
   maxDocsPerCollection?: number;
 }
 
-type BackfillPatch = Record<string, unknown>;
+type BackfillPatch = admin.firestore.DocumentData;
+
+const isText = <T>(value: T): value is T & string => typeof value === "string";
+
+const isNumber = <T>(value: T): value is T & number => typeof value === "number";
+
+const hasToDate = <T>(value: T): value is T & { toDate: () => Date } =>
+  typeof value === "object" && value !== null && "toDate" in value;
+
+interface AllowedPatchFields extends Record<BackfillCollectionName, Set<string>> {}
+
+interface PatchCheckResult { isValid: boolean; errors: string[]; }
 
 const TARGET_COLLECTIONS: BackfillCollectionName[] = [
   "recommendationLogs",
@@ -53,7 +64,7 @@ const TARGET_COLLECTIONS: BackfillCollectionName[] = [
 ];
 
 const ACTIVE_DEEP_DIAGNOSTIC_STATUSES = new Set(["queued", "pending", "in_progress"]);
-const ALLOWED_PATCH_FIELDS: Record<BackfillCollectionName, Set<string>> = {
+const ALLOWED_PATCH_FIELDS: AllowedPatchFields = {
   recommendationLogs: new Set(["curriculumVersionSetId"]),
   learningPaths: new Set(["curriculumVersionSetId"]),
   assignedQuizzes: new Set(["curriculumVersionSetId"]),
@@ -68,28 +79,27 @@ const DEFAULT_PAGE_SIZE = 200;
 const DEFAULT_SAMPLE_SIZE = 10;
 const MAX_BATCH_WRITES = 450;
 
-function parseDateLike(value: unknown): Date | null {
+function parseDateLike<T>(value: T): Date | null {
   if (!value) return null;
 
   if (value instanceof Date) {
     return Number.isFinite(value.getTime()) ? value : null;
   }
 
-  const timestampLike = value as { toDate?: () => Date };
-  if (typeof timestampLike.toDate === "function") {
-    const converted = timestampLike.toDate();
+  if (hasToDate(value)) {
+    const converted = value.toDate();
     return Number.isFinite(converted.getTime()) ? converted : null;
   }
 
   return null;
 }
 
-function isMissingVersionTag(value: unknown): boolean {
-  return typeof value !== "string" || value.trim().length === 0;
+function isMissingVersionTag<T>(value: T): boolean {
+  return !isText(value) || value.trim().length === 0;
 }
 
 function resolveDocGradeLevel(data: admin.firestore.DocumentData): string {
-  return typeof data.gradeLevel === "string" && data.gradeLevel.trim().length > 0
+  return isText(data.gradeLevel) && data.gradeLevel.trim().length > 0
     ? data.gradeLevel
     : "Grade 11";
 }
@@ -116,7 +126,7 @@ export function buildBackfillPatch(
   }
 
   if (collectionName === "deepDiagnosticAssignments") {
-    const status = typeof data.status === "string" ? data.status : "queued";
+    const status = isText(data.status) ? data.status : "queued";
     const isActive = ACTIVE_DEEP_DIAGNOSTIC_STATUSES.has(status);
 
     if (isActive && !parseDateLike(data.dueAt)) {
@@ -135,7 +145,7 @@ export function validateBackfillPatch(
   collectionName: BackfillCollectionName,
   data: admin.firestore.DocumentData,
   patch: BackfillPatch,
-): { isValid: boolean; errors: string[] } {
+): PatchCheckResult {
   const errors: string[] = [];
   const allowed = ALLOWED_PATCH_FIELDS[collectionName];
 
@@ -146,13 +156,13 @@ export function validateBackfillPatch(
   }
 
   if (Object.prototype.hasOwnProperty.call(patch, "curriculumVersionSetId")) {
-    if (typeof patch.curriculumVersionSetId !== "string" || !patch.curriculumVersionSetId) {
+    if (!isText(patch.curriculumVersionSetId)) {
       errors.push("curriculumVersionSetId patch must be a non-empty string");
     }
   }
 
   if (collectionName === "deepDiagnosticAssignments") {
-    const status = typeof data.status === "string" ? data.status : "queued";
+    const status = isText(data.status) ? data.status : "queued";
     const isActive = ACTIVE_DEEP_DIAGNOSTIC_STATUSES.has(status);
 
     if (!isActive && Object.prototype.hasOwnProperty.call(patch, "dueAt")) {
@@ -209,14 +219,14 @@ async function processCollection(
 
   while (continuePaging) {
     if (
-      typeof options.maxDocsPerCollection === "number" &&
+      isNumber(options.maxDocsPerCollection) &&
       scannedInCollection >= options.maxDocsPerCollection
     ) {
       continuePaging = false;
       continue;
     }
 
-    const remaining = typeof options.maxDocsPerCollection === "number"
+    const remaining = isNumber(options.maxDocsPerCollection)
       ? Math.max(options.maxDocsPerCollection - scannedInCollection, 0)
       : pageSize;
 
@@ -321,10 +331,7 @@ export async function runCurriculumVersionBackfill(
   };
 }
 
-export function runBackfillPatchSanityChecks(): {
-  isValid: boolean;
-  errors: string[];
-} {
+export function runBackfillPatchSanityChecks(): PatchCheckResult {
   const now = new Date("2026-03-29T00:00:00.000Z");
   const checks: Array<{
     collectionName: BackfillCollectionName;

@@ -2,6 +2,7 @@
 // Student-side modal for working through a teacher-uploaded module step (mirrors InterventionStepGuide)
 
 import React, { useState } from 'react';
+import { recordGet } from '../utils/memberOf';
 import { X, Clock, Video, PenTool, CheckCircle2, MessageCircle, RefreshCw, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { InterventionVideoStep } from './intervention/InterventionVideoStep';
@@ -130,7 +131,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
-                {STEP_ICONS[detectedType] || <PenTool className="w-5 h-5" />}
+                {recordGet(STEP_ICONS, detectedType) ?? <PenTool className="w-5 h-5" />}
               </div>
               <div>
                 <h2 className="text-[15px] font-bold text-[#1e293b]">{moduleTitle}</h2>
@@ -140,7 +141,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                     <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-mono rounded">{section.competencyTag}</span>
                   )}
                   {section.difficulty && (
-                    <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${DIFFICULTY_COLORS[section.difficulty] || DIFFICULTY_COLORS.easy}`}>
+                    <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${recordGet(DIFFICULTY_COLORS, section.difficulty) ?? DIFFICULTY_COLORS.easy}`}>
                       {section.difficulty}
                     </span>
                   )}

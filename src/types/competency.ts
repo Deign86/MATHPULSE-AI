@@ -20,24 +20,24 @@ export type CompetencyAxisKey =
 /**
  * Display labels for each competency axis
  */
-export const COMPETENCY_AXIS_LABELS: Record<CompetencyAxisKey, string> = {
+export const COMPETENCY_AXIS_LABELS = {
   overallMastery: 'Overall Mastery',
   conceptGrasp: 'Concept Grasp',
   application: 'Application',
   engagement: 'Engagement',
   consistency: 'Consistency',
-};
+} satisfies Record<CompetencyAxisKey, string>;
 
 /**
  * Radar chart metrics keys (used as Recharts dataKey)
  */
-export const RADAR_METRIC_KEYS: Record<CompetencyAxisKey, string> = {
+export const RADAR_METRIC_KEYS = {
   overallMastery: 'progress',
   conceptGrasp: 'concept',
   application: 'application',
   engagement: 'engagement',
   consistency: 'consistency',
-};
+} satisfies Record<CompetencyAxisKey, string>;
 
 /**
  * Single axis score value (0-100)

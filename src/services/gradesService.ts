@@ -98,7 +98,8 @@ export const saveAssessmentResult = async (params: SaveAssessmentParams): Promis
         lastUpdated: Timestamp.now()
       };
     } else {
-      const prev = summarySnap.data() as GradeSummary;
+      // SAFETY: grade summary docs are written by this function with the GradeSummary field set.
+    const prev = summarySnap.data() as GradeSummary;
       const newCount = (prev.quizzesCompleted || 0) + 1;
       const newTotal = ((prev.averageScore || 0) * (prev.quizzesCompleted || 0)) + score;
       const newAverage = newTotal / newCount;
@@ -133,6 +134,7 @@ export const saveAssessmentResult = async (params: SaveAssessmentParams): Promis
     const newDocRef = doc(assessmentsCol);
     assessmentId = newDocRef.id;
 
+    // SAFETY: serverTimestamp() sentinels resolve to Firestore Timestamps on write.
     const record: Omit<AssessmentRecord, 'id'> = {
       title: params.title,
       subject: targetSubject,
@@ -161,6 +163,7 @@ export const subscribeToGradeSummary = (
   const summaryRef = doc(db, 'users', uid, 'gradeSummary', 'current');
   return onSnapshot(summaryRef, (docSnap) => {
     if (docSnap.exists()) {
+      // SAFETY: grade summary docs are written by this service with the GradeSummary field set.
       onChange(docSnap.data() as GradeSummary);
     } else {
       onChange(null);
@@ -184,6 +187,7 @@ export const subscribeToAssessments = (
   return onSnapshot(q, (snapshot) => {
     const results: AssessmentRecord[] = [];
     snapshot.forEach((docSnap) => {
+      // SAFETY: assessment records are written by recordAssessment with the AssessmentRecord field set.
       results.push({ id: docSnap.id, ...docSnap.data() } as AssessmentRecord);
     });
     onChange(results);

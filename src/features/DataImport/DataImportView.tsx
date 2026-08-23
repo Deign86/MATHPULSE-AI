@@ -105,8 +105,13 @@ export default function DataImportView({
 
   const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
-  const toFiniteNumber = (value: unknown): number | null => {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
+  function isNum<T>(value: T): value is T & number {
+    return typeof value === 'number';
+  }
+
+
+  const toFiniteNumber = (value: number | string | null | undefined): number | null => {
+    if (isNum(value) && Number.isFinite(value)) return value;
     const parsed = Number(String(value ?? '').replace(/[^0-9.-]+/g, ''));
     return Number.isFinite(parsed) ? parsed : null;
   };

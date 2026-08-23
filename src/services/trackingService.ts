@@ -13,13 +13,16 @@ import { db } from '../lib/firebase';
 /**
  * Interface representing a module activity log
  */
+/** JSON-safe activity metadata values keyed by field name. */
+export interface ModuleActivityMetadata { [key: string]: string | number | boolean | null }
+
 export interface ModuleActivity {
   id?: string;
   userId: string;
   activityType: 'quiz_generated' | 'chat_session' | 'lesson_view' | 'quiz_completed';
   moduleId?: string;
   topicId?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: ModuleActivityMetadata;
   timestamp: Timestamp;
 }
 
@@ -147,6 +150,7 @@ export const getModuleActivity = async (
     q = query(q, ...constraints);
     const querySnapshot = await getDocs(q);
 
+    // SAFETY: activity docs are written by this module's log helpers with the ModuleActivity field set.
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -187,11 +191,13 @@ export const getAtRiskStudents = async (
     const strugglingUsers = new Map<string, string[]>();
 
     querySnapshot.docs.forEach(doc => {
+      // SAFETY: activity docs are written by this module's log helpers with the ModuleActivity field set.
       const data = doc.data() as ModuleActivity;
       activeUsers.add(data.userId);
 
       // Check for low scores if minScore is provided
       if (minScore !== undefined && data.activityType === 'quiz_completed') {
+        // SAFETY: quiz_completed metadata scores are written as numbers by logQuizCompleted.
         const score = data.metadata?.score as number | undefined;
         if (score !== undefined && score < minScore) {
           const reasons = strugglingUsers.get(data.userId) || [];

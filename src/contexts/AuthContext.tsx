@@ -5,7 +5,7 @@ import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '..
 import { getUserProfile, getUserProfileFromServer, createUserProfile, consumePendingAuthRole, getLastAuthRole } from '../services/authService.ts';
 
 
-interface AuthContextType {
+export interface AuthContextType {
   currentUser: FirebaseUser | null;
   userProfile: User | null;
   loading: boolean;

@@ -65,7 +65,9 @@ export interface DiagnosticPolicyEvaluation {
   };
 }
 
-export const CURRICULUM_VERSION_SET_BY_GRADE: Record<string, string> = {
+interface CurriculumVersionSetMap { [key: string]: string; }
+
+export const CURRICULUM_VERSION_SET_BY_GRADE: CurriculumVersionSetMap = {
   "Grade 11": "g11-core-genmath-legacy-detail-strengthened-structure",
   "Grade 12": "g12-math-electives-strengthened-template",
 };
@@ -74,7 +76,9 @@ export function resolveCurriculumVersionSetId(gradeLevel: string): string {
   return CURRICULUM_VERSION_SET_BY_GRADE[gradeLevel] || CURRICULUM_VERSION_SET_BY_GRADE["Grade 11"];
 }
 
-export const TOPIC_GROUP_ALIASES: Record<string, string[]> = {
+interface TopicGroupAliasMap { [key: string]: string[]; }
+
+export const TOPIC_GROUP_ALIASES: TopicGroupAliasMap = {
   "g11-q1-functions-foundations": ["g11-q1-functions-foundations", "functions_foundations"],
   "g11-q1-rational-functions": ["g11-q1-rational-functions", "rational_functions"],
   "g11-q2-inverse-functions": ["g11-q2-inverse-functions", "inverse_functions"],

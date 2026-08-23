@@ -21,7 +21,10 @@ import {
 import type { Notification } from './types';
 import { useNotifications } from './NotificationContext';
 
-const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+/** Lucide icon rendered per notification category key. */
+interface NotificationIconMap { [category: string]: React.ComponentType<{ size?: number; className?: string }> }
+
+const iconMap: NotificationIconMap = {
   achievement_unlocked: Trophy,
   level_up: TrendingUp,
   quiz_result: ClipboardCheck,

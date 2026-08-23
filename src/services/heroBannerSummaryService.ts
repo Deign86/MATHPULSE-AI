@@ -205,12 +205,10 @@ function _capitalizeRisk(risk: string): string {
   }
 }
 
-function _toDate(value: unknown): Date {
+/** Coerce Firestore timestamp-ish banner values into concrete Dates. */
+function _toDate(value: Date | Timestamp | string | number | null | undefined): Date {
   if (!value) return new Date();
   if (value instanceof Date) return value;
   if (value instanceof Timestamp) return value.toDate();
-  if (typeof value === 'string' || typeof value === 'number') {
-    return new Date(value);
-  }
-  return new Date();
+  return new Date(value);
 }

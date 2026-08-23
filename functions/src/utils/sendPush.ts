@@ -59,14 +59,24 @@ const INVALID_TOKEN_CODES = new Set([
   "messaging/invalid-argument",
 ]);
 
+const isText = <T>(value: T): value is T & string => typeof value === "string";
+
+const isNumberValue = <T>(value: T): value is T & number => typeof value === "number";
+
+const isRecordValue = <T>(value: T): value is T & admin.firestore.DocumentData =>
+  typeof value === "object" && value !== null;
+
+const hasToMillis = <T>(value: T): value is T & { toMillis: () => number } =>
+  isRecordValue(value) && typeof value.toMillis === "function";
+
 /** FCM error classification is exported so callers/tests cannot duplicate it. */
-export function isInvalidTokenError(code: unknown): boolean {
-  return typeof code === "string" && INVALID_TOKEN_CODES.has(code);
+export function isInvalidTokenError<T>(code: T): boolean {
+  return isText(code) && INVALID_TOKEN_CODES.has(code);
 }
 
 /** Only app-relative routes are accepted. Query strings and hashes are retained. */
-export function sanitizeAppRoute(value: unknown): string | null {
-  if (typeof value !== "string" || value.length === 0 || value[0] !== "/") return null;
+export function sanitizeAppRoute<T>(value: T): string | null {
+  if (!isText(value) || value.length === 0 || value[0] !== "/") return null;
   if (value.startsWith("//") || /[\\\r\n]/.test(value)) return null;
   if (/^[a-z][a-z\d+.-]*:/i.test(value)) return null;
   return value;
@@ -87,7 +97,7 @@ function addResults(target: PushResult, value: PushResult): void {
   target.duplicate += value.duplicate;
 }
 
-function isToken(value: unknown): value is string {
+function isToken<T>(value: T): value is T & string {
   // FCM registration tokens are opaque, but cannot contain whitespace/control chars.
   return typeof value === "string" && value.length > 0 && value.length <= 4096 && !/\s/.test(value);
 }
@@ -99,8 +109,8 @@ function stableEventId(userId: string, payload: PushPayload): string {
 }
 
 /** Assignment IDs are opaque document IDs, never arbitrary user input. */
-export function isValidAssignmentId(value: unknown): value is string {
-  return typeof value === "string" && ASSIGNMENT_ID_PATTERN.test(value);
+export function isValidAssignmentId<T>(value: T): value is T & string {
+  return isText(value) && ASSIGNMENT_ID_PATTERN.test(value);
 }
 
 /** A one-way token identifier suitable for delivery state documents and diagnostics. */
@@ -112,19 +122,19 @@ function deliveryId(eventId: string, userId: string): string {
   return Buffer.from(`${eventId}\u0000${userId}`).toString("base64url").replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 150);
 }
 
-function dateValue(value: unknown): number {
+function dateValue<T>(value: T): number {
   if (value instanceof Date) return value.getTime();
-  if (typeof value === "number") return value;
-  if (value && typeof (value as { toMillis?: () => number }).toMillis === "function") return (value as { toMillis: () => number }).toMillis();
+  if (isNumberValue(value)) return value;
+  if (hasToMillis(value)) return value.toMillis();
   return 0;
 }
 
-function validTime(value: unknown): value is string {
-  return typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+function validTime<T>(value: T): value is T & string {
+  return isText(value) && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
 /** Returns whether a local clock is within a possibly overnight quiet period. */
-export function isWithinQuietHours(date: Date, start: unknown, end: unknown, timeZone = "Asia/Manila"): boolean {
+export function isWithinQuietHours<T>(date: Date, start: T, end: T, timeZone = "Asia/Manila"): boolean {
   if (!validTime(start) || !validTime(end) || start === end) return false;
   let local: string;
   try {
@@ -140,15 +150,15 @@ export function isWithinQuietHours(date: Date, start: unknown, end: unknown, tim
 
 interface PreferenceDecision { allowed: boolean; }
 
-export function resolvePushPreferenceData(data: Record<string, unknown> | undefined, type: PushNotificationType, now = new Date()): PreferenceDecision {
+export function resolvePushPreferenceData(data: admin.firestore.DocumentData | undefined, type: PushNotificationType, now = new Date()): PreferenceDecision {
   if (!data) return { allowed: true };
-  const push = (data.pushPreferences || {}) as Record<string, unknown>;
+  const push = data.pushPreferences || {};
   if (push.pushEnabled === false || push[type] === false) return { allowed: false };
   // System alerts are allowed during quiet hours. Other categories are deferred/suppressed.
   if (type !== "system") {
-    const notifications = (data.notifications || {}) as Record<string, unknown>;
-    const quiet = (notifications.quietHours || {}) as Record<string, unknown>;
-    if (isWithinQuietHours(now, quiet.start, quiet.end, typeof quiet.timeZone === "string" ? quiet.timeZone : "Asia/Manila")) return { allowed: false };
+    const notifications = data.notifications || {};
+    const quiet = notifications.quietHours || {};
+    if (isWithinQuietHours(now, quiet.start, quiet.end, isText(quiet.timeZone) ? quiet.timeZone : "Asia/Manila")) return { allowed: false };
   }
   return { allowed: true };
 }
@@ -171,7 +181,7 @@ async function claimDelivery(userId: string, eventId: string): Promise<"claimed"
   await admin.firestore().runTransaction(async (transaction) => {
     const snap = await transaction.get(ref);
     const old = snap.exists ? snap.data() || {} : {};
-    const status = old.status as string | undefined;
+    const status = old.status;
     const fresh = dateValue(old.expiresAt) > now;
     const processingFresh = status === "processing" && now - dateValue(old.processingAt) < PROCESSING_TIMEOUT_MS;
     // Delivered claims suppress trigger retries. A fresh processing claim is
@@ -205,13 +215,15 @@ async function finishDelivery(userId: string, eventId: string, status: "delivere
  * Build the data-only payload consumed by public/firebase-messaging-sw.js.
  * Do not add a `notification` field here: the worker owns background display.
  */
-export function buildPushData(payload: PushPayload): Record<string, string> {
+interface PushDataPayload { [key: string]: string; }
+
+export function buildPushData(payload: PushPayload): PushDataPayload {
   const url = sanitizeAppRoute(payload.url || "/");
   if (!url) throw new Error("Push URL must be a single-leading-slash app route");
   if (payload.notificationType === "assignment" && !isValidAssignmentId(payload.assignmentId)) {
     throw new Error("Assignment notifications require a valid assignmentId");
   }
-  return {
+  const data: PushDataPayload = {
     title: String(payload.title),
     body: String(payload.body),
     icon: String(payload.icon || DEFAULT_ICON),
@@ -220,8 +232,9 @@ export function buildPushData(payload: PushPayload): Record<string, string> {
     eventId: String(payload.eventId || ""),
     url,
     notificationType: String(payload.notificationType),
-    ...(payload.assignmentId ? { assignmentId: payload.assignmentId } : {}),
   };
+  if (payload.assignmentId) data.assignmentId = payload.assignmentId;
+  return data;
 }
 
 function chunks<T>(values: T[], size: number): T[][] {
@@ -234,7 +247,9 @@ export function chunkTokens(tokens: string[], size = MAX_BATCH): string[][] {
   return chunks(tokens, Math.min(Math.max(1, size), MAX_BATCH));
 }
 
-export function dedupeTokens(tokens: string[]): { tokens: string[]; duplicate: number; malformed: number } {
+interface DedupeTokensResult { tokens: string[]; duplicate: number; malformed: number; }
+
+export function dedupeTokens(tokens: string[]): DedupeTokensResult {
   const unique: string[] = [];
   const seen = new Set<string>();
   let duplicate = 0;
@@ -263,11 +278,13 @@ async function persistTokenDelivery(eventId: string, userId: string, token: stri
   // The hash is the only token-derived value persisted or emitted. Raw tokens never
   // enter Firestore delivery state or logs.
   await admin.firestore().collection("_pushDeliveries").doc(deliveryId(eventId, userId))
-    .collection("tokens").doc(hashPushToken(token)).set({
-      status,
-      ...(code ? { errorCode: code } : {}),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
+  const update: admin.firestore.DocumentData = {
+    status,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (code) update.errorCode = code;
+  await admin.firestore().collection("_pushDeliveries").doc(deliveryId(eventId, userId))
+    .collection("tokens").doc(hashPushToken(token)).set(update, { merge: true });
 }
 
 async function terminalTokenHashes(eventId: string, userId: string, tokens: string[]): Promise<Set<string>> {
@@ -421,7 +438,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
 
 export async function sendPushToUsers(userIds: string[], payload: PushPayload): Promise<PushResult> {
   const result = emptyPushResult();
-  const validIds = userIds.filter((id) => typeof id === "string" && id.length > 0);
+  const validIds = userIds.filter((id) => id.length > 0);
   const unique = Array.from(new Set(validIds));
   result.duplicate += validIds.length - unique.length;
   for (let i = 0; i < unique.length; i += RECIPIENT_CONCURRENCY) {
@@ -435,7 +452,7 @@ export type PushRole = "student" | "teacher" | "admin";
 
 /** Server-only role fan-out. It is intentionally not exposed as a callable endpoint. */
 export async function sendPushToRole(role: PushRole, payload: PushPayload): Promise<PushResult> {
-  if (!(["student", "teacher", "admin"] as string[]).includes(role)) return emptyPushResult();
+  if (!["student", "teacher", "admin"].includes(role)) return emptyPushResult();
   const snap = await admin.firestore().collection("users").where("role", "==", role).get();
   return sendPushToUsers(snap.docs.map((doc) => doc.id), payload);
 }

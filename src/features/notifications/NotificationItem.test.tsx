@@ -2,46 +2,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
+import * as dateFnsNs from 'date-fns';
+import * as notificationContextNs from './NotificationContext';
 
-// Mock date-fns
-vi.mock('date-fns', () => ({
-  formatDistanceToNow: vi.fn(() => '2 hours ago'),
-}));
+// Date seam: fixed relative-time label keeps snapshots deterministic.
+vi.spyOn(dateFnsNs, 'formatDistanceToNow').mockReturnValue('2 hours ago');
 
-// Mock lucide-react icons
-vi.mock('lucide-react', () => {
-  const MockIcon = ({ 'data-testid': testId }: { 'data-testid': string }) => (
-    <div data-testid={testId}>Icon</div>
-  );
-  return {
-    Trophy: MockIcon,
-    TrendingUp: MockIcon,
-    ClipboardCheck: MockIcon,
-    CheckCircle: MockIcon,
-    Flame: MockIcon,
-    Bell: MockIcon,
-    Megaphone: MockIcon,
-    BookOpen: MockIcon,
-    Zap: MockIcon,
-    AlertCircle: MockIcon,
-    AlertTriangle: MockIcon,
-    Trash2: ({ onClick }: { onClick?: () => void }) => (
-      <button data-testid="trash2-icon" onClick={onClick}>Trash</button>
-    ),
-  };
-});
-
-// Mock NotificationContext
+// Context seam: spy on the real hook so markAsRead/deleteNotification are observable.
 const mockMarkAsRead = vi.fn();
 const mockDeleteNotification = vi.fn();
-vi.mock('./NotificationContext', () => ({
-  useNotifications: () => ({
-    markAsRead: mockMarkAsRead,
-    deleteNotification: mockDeleteNotification,
-  }),
-}));
+vi.spyOn(notificationContextNs, 'useNotifications').mockReturnValue({
+  notifications: [],
+  unreadCount: 0,
+  isLoading: false,
+  markAsRead: mockMarkAsRead,
+  markAllAsRead: vi.fn(),
+  deleteNotification: mockDeleteNotification,
+});
 
-// Import after mocks
 import { NotificationItem } from './NotificationItem';
 import type { Notification } from './types';
 
@@ -106,10 +84,8 @@ describe('NotificationItem', () => {
     const notification = createNotification();
     render(<NotificationItem notification={notification} />);
 
-    const deleteButton = screen.getByTestId('trash2-icon').closest('button');
-    if (deleteButton) {
-      fireEvent.click(deleteButton);
-    }
+    const deleteButton = screen.getByRole('button', { name: 'Delete notification' });
+    fireEvent.click(deleteButton);
     expect(mockDeleteNotification).toHaveBeenCalledWith('notif-123');
   });
 

@@ -18,7 +18,7 @@ export type AssessmentCategory =
 
 export type Difficulty = 1 | 2 | 3; // 1=basic, 2=standard, 3=challenge
 
-export const ASSESSMENT_CATEGORY_LABELS: Record<AssessmentCategory, string> = {
+export const ASSESSMENT_CATEGORY_LABELS = {
   functions: 'Functions and Graphs',
   sequences: 'Sequences and Series',
   logic: 'Logic and Reasoning',
@@ -27,7 +27,7 @@ export const ASSESSMENT_CATEGORY_LABELS: Record<AssessmentCategory, string> = {
   'number-theory': 'Number Theory',
   'business-math': 'Business Mathematics',
   'finite-math': 'Finite Mathematics',
-};
+} satisfies Record<AssessmentCategory, string>;
 
 // ─── Core Interfaces ─────────────────────────────────────────────────────
 
@@ -278,9 +278,16 @@ export function getCategoriesForGrade(gradeLevel: string): AssessmentCategory[] 
   return ['functions', 'sequences', 'number-theory', 'business-math', 'finite-math'];
 }
 
+/** Competency buckets computed from a diagnostic result. */
+export interface ProficiencyBuckets {
+  strengths: string[];
+  weaknesses: string[];
+  borderline: string[];
+}
+
 export function calculateProficiencyProfile(
   competencyScores: Record<string, CompetencyScore>
-): { strengths: string[]; weaknesses: string[]; borderline: string[] } {
+): ProficiencyBuckets {
   const strengths: string[] = [];
   const weaknesses: string[] = [];
   const borderline: string[] = [];
@@ -304,7 +311,9 @@ export function getSuggestedModuleFromWeaknesses(weaknesses: string[]): string {
   }
 
   // Map competencies to suggested modules
-  const weaknessToModule: Record<string, string> = {
+  /** Weakness competency id to recommended module id. */
+  interface WeaknessModuleMap { [competencyId: string]: string }
+  const weaknessToModule: WeaknessModuleMap = {
     'functions-evaluation': 'gen-math-q1',
     'functions-domain-range': 'gen-math-q1',
     'functions-piecewise': 'gen-math-q2',

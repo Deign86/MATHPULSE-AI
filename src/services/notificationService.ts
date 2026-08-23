@@ -19,7 +19,7 @@ import { z } from 'zod';
 import { Notification } from '../types/models';
 
 /** Firestore timestamp-like values; parsing never throws. */
-const timestampLikeValue = z.looseObject({ toDate: z.instanceof(Function).optional() }).catch(null);
+const timestampLikeValue = z.looseObject({ toDate: z.instanceof(Function).optional() }).catch({});
 
 const firestoreToDate = <V>(value: V): Date => {
   if (value instanceof Date) return value;

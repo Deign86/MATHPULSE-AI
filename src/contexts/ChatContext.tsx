@@ -985,13 +985,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const shouldRunHeuristicRepairFlow = shouldAttemptCompletionRepair(trimmedUserText);
       const expectedEndMarker = extractExpectedEndMarker(trimmedUserText);
       const shouldRunAnyRepairFlow = shouldRunHeuristicRepairFlow || Boolean(expectedEndMarker);
-      const completionOptions: ChatCompletionOptions | undefined = {
+      const completionOptions: ChatCompletionOptions | undefined = expectedEndMarker ? {
         sessionId,
-        ...(expectedEndMarker ? {
-          expectedEndMarker,
-          completionMode: 'marker' as const,
-        } : {}),
-      };
+        expectedEndMarker,
+        completionMode: 'marker' as const,
+      } : { sessionId };
 
       const isAnswerIncomplete = (answer: string): boolean =>
         isAnswerStillIncomplete(trimmedUserText, answer, expectedEndMarker, shouldRunHeuristicRepairFlow);

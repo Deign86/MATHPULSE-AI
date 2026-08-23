@@ -18,11 +18,13 @@ export interface MatchXPBreakdown {
   scoringVersion: "v2";
 }
 
-export const DIFFICULTY_MULTIPLIERS: Record<"easy" | "medium" | "hard", number> = {
+interface MatchXPResult { xpBreakdown: MatchXPBreakdown; actualXPAwarded: number; }
+
+export const DIFFICULTY_MULTIPLIERS = {
   easy: 1.0,
   medium: 1.15,
   hard: 1.30,
-};
+} satisfies Record<"easy" | "medium" | "hard", number>;
 
 export const XP_CAP_PER_BATTLE = 140;
 export const DAILY_BATTLE_XP_CAP = 500;
@@ -60,7 +62,7 @@ export const computeMatchXP = (params: {
   outcome: MatchOutcome;
   totalPointsEarned: number;
   battleXPEarnedToday: number;
-}): { xpBreakdown: MatchXPBreakdown; actualXPAwarded: number } => {
+}): MatchXPResult => {
   const { outcome, totalPointsEarned, battleXPEarnedToday } = params;
   const baseMatchXP = outcome === "win" ? 60 : outcome === "draw" ? 40 : 20;
   const performanceXP = Math.floor(totalPointsEarned * 0.08);

@@ -1,7 +1,13 @@
 import { runDiagnosticPolicySanityChecks, resolveCurriculumVersionSetId } from "../config/diagnosticPolicies";
 import { runBackfillPatchSanityChecks } from "./backfillCurriculumVersion";
 
-const ALLOWED_LIFECYCLE_TRANSITIONS: Record<string, string[]> = {
+interface StringListMap { [key: string]: string[]; }
+
+interface CheckResult { isValid: boolean; errors: string[]; }
+
+interface VersionPropagationCheckResult extends CheckResult { defaultVersionsByGrade: Record<string, string>; }
+
+const ALLOWED_LIFECYCLE_TRANSITIONS: StringListMap = {
   pending: ["queued", "in_progress", "completed", "expired"],
   queued: ["in_progress", "completed", "expired"],
   in_progress: ["completed", "expired"],
@@ -9,7 +15,7 @@ const ALLOWED_LIFECYCLE_TRANSITIONS: Record<string, string[]> = {
   completed: [],
 };
 
-const VERSION_PROPAGATION_CONTRACT: Record<string, string[]> = {
+const VERSION_PROPAGATION_CONTRACT: StringListMap = {
   deepDiagnosticAssignments: ["curriculumVersionSetId", "lifecycleVersion"],
   recommendationLogs: ["curriculumVersionSetId"],
   learningPaths: ["curriculumVersionSetId"],
@@ -40,7 +46,7 @@ export interface RuntimeCheckResult {
   };
 }
 
-function checkLifecycleTransitionMatrix(): { isValid: boolean; errors: string[] } {
+function checkLifecycleTransitionMatrix(): CheckResult {
   const errors: string[] = [];
 
   for (const [from, nextStates] of Object.entries(ALLOWED_LIFECYCLE_TRANSITIONS)) {
@@ -65,11 +71,7 @@ function checkLifecycleTransitionMatrix(): { isValid: boolean; errors: string[] 
   };
 }
 
-function checkVersionPropagationContract(): {
-  isValid: boolean;
-  errors: string[];
-  defaultVersionsByGrade: Record<string, string>;
-} {
+function checkVersionPropagationContract(): VersionPropagationCheckResult {
   const errors: string[] = [];
 
   for (const [collectionName, fields] of Object.entries(VERSION_PROPAGATION_CONTRACT)) {
@@ -98,7 +100,7 @@ function checkVersionPropagationContract(): {
     isValid: errors.length === 0,
     errors,
     defaultVersionsByGrade,
-  };
+  } satisfies VersionPropagationCheckResult;
 }
 
 export function runTargetedRuntimeChecks(): RuntimeCheckResult {

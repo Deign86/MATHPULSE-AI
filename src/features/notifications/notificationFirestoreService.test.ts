@@ -27,8 +27,8 @@ vi.spyOn(firebaseAuth, 'initializeAuth').mockImplementation(
     ({ currentUser: { uid: 'test-user-id' } }) as ReturnType<typeof firebaseAuth.initializeAuth>,
 );
 
-vi.spyOn(dateFns, 'startOfDay').mockImplementation((date) => date);
-vi.spyOn(dateFns, 'endOfDay').mockImplementation((date) => date);
+vi.spyOn(dateFns, 'startOfDay').mockImplementation((date) => new Date(date));
+vi.spyOn(dateFns, 'endOfDay').mockImplementation((date) => new Date(date));
 
 const mockCollectionRef = { type: 'collection-ref' };
 const mockDocRef = { id: 'mock-id' };
@@ -47,7 +47,7 @@ vi.spyOn(firestore, 'collection').mockImplementation(
 );
 vi.spyOn(firestore, 'doc').mockImplementation(() => docRefWith('mock-id'));
 vi.spyOn(firestore, 'setDoc').mockImplementation(async () => undefined);
-vi.spyOn(firestore, 'getDocs').mockImplementation(async () => snapshotWith([]));
+vi.spyOn(firestore, 'getDocs').mockImplementation(async () => snapshotWith({ docs: [] }));
 vi.spyOn(firestore, 'updateDoc').mockImplementation(async () => undefined);
 vi.spyOn(firestore, 'deleteDoc').mockImplementation(async () => undefined);
 
@@ -141,7 +141,7 @@ describe('notificationFirestoreService', () => {
         { id: 'notif-1', data: () => ({ userId: 'user-123', type: 'daily_checkin', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(2000, 0, 1) }) },
         { id: 'notif-2', data: () => ({ userId: 'user-123', type: 'streak_reminder', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(1000, 0, 1) }) },
       ];
-      vi.mocked(getDocs).mockResolvedValue(snapshotWith(mockDocs));
+      vi.mocked(getDocs).mockResolvedValue(snapshotWith({ docs: mockDocs }));
 
       const result = await getUserNotifications('user-123', 2);
 
@@ -168,7 +168,8 @@ describe('notificationFirestoreService', () => {
     });
 
     it('handles errors gracefully', async () => {
-      vi.mocked(updateDoc).mockRejectedValue(new Error('Update failed'));
+      vi.mocked(updateDoc).mockRejectedValueOnce(new Error('Update failed'));
+      vi.mocked(updateDoc).mockRejectedValueOnce(new Error('Update failed'));
 
       // Dual-path: individual .catch() handlers swallow per-path errors
       await expect(markAsRead('user-123', 'notif-123')).resolves.toBeUndefined();
@@ -183,8 +184,8 @@ describe('notificationFirestoreService', () => {
       ];
       const mockTopLevelDocs = [{ ref: 'ref-3', data: () => ({ isRead: false, read: false }) }];
       vi.mocked(getDocs)
-        .mockResolvedValueOnce(snapshotWith(mockSubcollectionDocs))
-        .mockResolvedValueOnce(snapshotWith(mockTopLevelDocs));
+        .mockResolvedValueOnce(snapshotWith({ docs: mockSubcollectionDocs }))
+        .mockResolvedValueOnce(snapshotWith({ docs: mockTopLevelDocs }));
 
       await markAllAsRead('user-123');
 
@@ -203,11 +204,20 @@ describe('notificationFirestoreService', () => {
   describe('subscribeToNotifications', () => {
     it('returns an unsubscribe function', () => {
       const mockUnsubscribe = vi.fn();
-      vi.mocked(onSnapshot).mockImplementation((_query, callback) => {
+      type SnapshotCallback = (snapshot: QuerySnapshot<DocumentData>) => void;
+      const onSnapshotImpl = (
+        _query: Parameters<typeof onSnapshot>[0],
+        onNext: SnapshotCallback,
+      ): (() => void) => {
         // Simulate immediate callback with empty snapshot
-        callback(snapshotWith([]));
+        onNext(snapshotWith({ docs: [] }));
         return mockUnsubscribe;
-      });
+      };
+      const onSnapshotSpy = vi.spyOn(firestore, 'onSnapshot');
+      onSnapshotSpy.mockImplementation(
+        // SAFETY: service exercises only the (query, onNext) overload of onSnapshot.
+        onSnapshotImpl as typeof onSnapshot,
+      );
 
       const callback = vi.fn();
       const unsubscribe = subscribeToNotifications('user-123', callback);

@@ -40,10 +40,14 @@ export type OverallRisk = "High" | "Medium" | "Low";
 /**
  * Classify each subject as "At Risk" or "On Track" based on score.
  */
+export interface SubjectRiskClassificationMap { [key: string]: SubjectRiskClassification; }
+
+interface SubjectBadgeMap { [key: string]: string; }
+
 export function classifySubjectRisks(
   results: SubjectScore[],
-): Record<string, SubjectRiskClassification> {
-  const classifications: Record<string, SubjectRiskClassification> = {};
+): SubjectRiskClassificationMap {
+  const classifications: SubjectRiskClassificationMap = {};
 
   for (const { subject, score } of results) {
     if (score < AT_RISK_THRESHOLD) {
@@ -135,11 +139,11 @@ export function calculateOverallRisk(
  * user profile `subjectBadges` field.
  */
 export function extractBadges(
-  classifications: Record<string, SubjectRiskClassification>,
-): Record<string, string> {
+  classifications: SubjectRiskClassificationMap,
+): SubjectBadgeMap {
   const badges: Record<string, string> = {};
   for (const [subject, data] of Object.entries(classifications)) {
-    badges[subject] = data.status;
+    badges[subject] = String(data.status);
   }
   return badges;
 }

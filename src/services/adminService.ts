@@ -28,6 +28,8 @@ import {
   type AdminBulkActionApiResponse,
   type AdminBulkActionRequestApi,
   type AdminCreateUserApiRequest,
+  type ApiFieldValue,
+  type ApiPayloadObject,
   type AdminUpdateUserApiRequest,
   type AdminUserApiRecord,
 } from './apiService';
@@ -117,8 +119,21 @@ export interface AdminBulkActionResult {
 }
 
 /** CSV-safe cell values for bulk-action export rows. */
-type ExportCell = string | number | boolean | null;
-interface ExportRow { [column: string]: ExportCell }
+export type ExportCell = string | number | boolean | null;
+export interface ExportRow { [column: string]: ExportCell }
+
+const isExportCell = (v: ApiFieldValue | null | undefined): v is ExportCell =>
+  v === null || typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
+const asExportCell = (v: ApiFieldValue | null | undefined): ExportCell => (isExportCell(v) ? v : v == null ? null : String(v));
+
+/** Normalize loose backend export rows into the CSV-safe ExportRow contract. */
+function parseExportRows(rows: readonly ApiPayloadObject[] | undefined): ExportRow[] {
+  return (rows ?? []).map((row) => {
+    const out: ExportRow = {};
+    for (const [key, value] of Object.entries(row)) out[key] = asExportCell(value);
+    return out;
+  });
+}
 
 export interface CreateAdminUserInput {
   name: string;
@@ -204,9 +219,26 @@ export interface TopPerformer {
 // ─── Helpers ─────────────────────────────────────────────────
 
 /** Firestore timestamp-shaped value. */
-interface TimestampLike { toDate?: () => Date }
+interface TimestampLike { toDate: () => Date }
 /** Field values this service consumes from Firestore documents. */
 type DocValue = string | number | boolean | null | TimestampLike | DocValue[];
+
+/** Parse a Firestore progress-doc subject map without blind casts. */
+function asProgressMap(v: DocValue | undefined): Record<string, { progress?: DocValue }> | undefined {
+  if (v === null || v === undefined || !isObjectRecord(v)) return undefined;
+  // SAFETY: progress docs store a subject-id map; each value re-parsed via num() below.
+  return v as Record<string, { progress?: DocValue }>;
+}
+
+/** Parse a Firestore quiz-attempt list without blind casts. */
+function asAttemptList(v: DocValue | undefined): Array<{ score?: DocValue }> | undefined {
+  if (!Array.isArray(v)) return undefined;
+  // SAFETY: attempt entries are records with optional numeric scores; scores parsed via isNumber.
+  return v.filter(isObjectRecord) as Array<{ score?: DocValue }>;
+}
+
+const isObjectRecord = <T extends DocValue>(v: T | undefined | null): v is T & Record<string, DocValue> =>
+  v !== null && typeof v === 'object' && !Array.isArray(v);
 
 const isString = (v: DocValue | undefined | null): v is string => typeof v === 'string';
 const isNumber = (v: DocValue | undefined | null): v is number => typeof v === 'number';
@@ -491,7 +523,7 @@ export async function applyAdminBulkAction(input: AdminBulkActionInput): Promise
       summary: response.summary,
       results: response.results,
       warnings: response.warnings || [],
-      exportRows: response.export?.rows || [],
+      exportRows: parseExportRows(response.export?.rows),
     };
   } catch (error) {
     throw new Error(extractApiErrorMessage(error));
@@ -920,8 +952,7 @@ export async function getSubjectBreakdown(): Promise<SubjectBreakdownItem[]> {
 
     progressSnap.docs.forEach(d => {
       const data = asDoc(d.data());
-      // SAFETY: progress docs store a subject-id map with optional numeric progress; entries parse via num().
-      const subjects = data.subjects as Record<string, { progress?: unknown }> | undefined;
+      const subjects = asProgressMap(data.subjects);
       if (!subjects) return;
       Object.entries(subjects).forEach(([subId, subData]) => {
         if (subjectStats[subId]) {
@@ -1118,8 +1149,7 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       const scores: number[] = [];
       progressSnap.docs.forEach(d => {
         const data = asDoc(d.data());
-        // SAFETY: progress docs store a quiz-attempt list with optional numeric scores; parsed via isNumber.
-        const attempts = data.quizAttempts as Array<{ score?: unknown }> | undefined;
+        const attempts = asAttemptList(data.quizAttempts);
         if (attempts?.length) {
           totalQuizzesTaken += attempts.length;
           attempts.forEach(a => { if (isNumber(a.score)) scores.push(a.score); });

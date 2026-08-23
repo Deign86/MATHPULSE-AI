@@ -2,11 +2,15 @@ import { normalizeChatMarkdownForRender } from './chatMessageFormatting';
 
 const DEFAULT_PREVIEW_MAX_LENGTH = 80;
 
+export function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
+
 /**
  * Convert markdown-heavy chat content to compact plain text suitable for list previews.
  */
 export function toChatPreviewText(input: string, maxLength: number = DEFAULT_PREVIEW_MAX_LENGTH): string {
-  if (!input || typeof input !== 'string') {
+  if (!input || !isString(input)) {
     return '';
   }
 

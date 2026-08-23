@@ -16,7 +16,7 @@ const adaptStaticSubject = (staticSubject: {
   semester: string;
   color: string;
   pdfAvailable: boolean;
-  topics: Array<{ id: string; name: string; unit: string }>;
+  topics: ReadonlyArray<{ id: string; name: string; unit: string }>;
 }): CurriculumSubject => ({
   id: staticSubject.id,
   code: staticSubject.code,
@@ -64,7 +64,7 @@ export function useCurriculum(gradeLevel?: string): UseCurriculumResult {
       } else {
         // Fall back to static
         // [useCurriculum] No Firestore data, using static
-        const staticData = (SHS_MATH_SUBJECTS as unknown as CurriculumSubject[]).filter(
+        const staticData = SHS_MATH_SUBJECTS.filter(
           (s) => !gradeLevel || s.gradeLevel === gradeLevel,
         );
         setSubjects(staticData.map(adaptStaticSubject));
@@ -73,7 +73,7 @@ export function useCurriculum(gradeLevel?: string): UseCurriculumResult {
     } catch (e) {
       // Fall back to static on error
       console.warn('[useCurriculum] API failed, using static:', e);
-      const staticData = (SHS_MATH_SUBJECTS as unknown as CurriculumSubject[]).filter(
+      const staticData = SHS_MATH_SUBJECTS.filter(
         (s) => !gradeLevel || s.gradeLevel === gradeLevel,
       );
       setSubjects(staticData.map(adaptStaticSubject));
@@ -116,7 +116,7 @@ export function useCurriculum(gradeLevel?: string): UseCurriculumResult {
  * Use useCurriculum() for Firestore-backed data.
  */
 export function useStaticCurriculum() {
-  const staticSubjects = (SHS_MATH_SUBJECTS as unknown as CurriculumSubject[]).map(
+  const staticSubjects = SHS_MATH_SUBJECTS.map(
     adaptStaticSubject,
   );
 

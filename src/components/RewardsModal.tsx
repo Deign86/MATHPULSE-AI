@@ -7,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getUserAchievements } from '../services/gamificationService';
 import { ACHIEVEMENTS, AchievementConfig } from '../config/achievements';
+import { recordGet } from '../utils/memberOf';
 
 // Lucide icon name → component lookup (must be exhaustive for ACHIEVEMENT icons)
 const LUCIDE_ICON_MAP = {
@@ -92,32 +93,26 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
   // ── Progress tracker for locked achievements ──────────────────────────────
   const getProgress = (achievement: AchievementConfig): { progress: number; total: number } | undefined => {
     const { condition, threshold } = achievement;
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    const prog = progressData as Record<string, unknown>;
 
     let current = 0;
     let target = threshold ?? 1;
 
     switch (condition) {
       case 'lesson_complete':
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        current = (prog.totalLessonsCompleted as number) || 0;
+        current = progressData.totalLessonsCompleted || 0;
         break;
       case 'quiz_complete':
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        current = (prog.totalQuizzesCompleted as number) || 0;
+        current = progressData.totalQuizzesCompleted || 0;
         break;
       case 'battle_win':
       case 'battle_undefeated':
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        current = (prog.battleWins as number) || 0;
+        current = progressData.battleWins || 0;
         break;
       case 'mastery_10':
       case 'social_streak_30':
       case 'social_daily_return':
         // using consecutiveDaysActive as proxy for streak since dailyStreak was part of loginStreak which was removed
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        current = (prog.consecutiveDaysActive as number) || 0;
+        current = progressData.consecutiveDaysActive || 0;
         break;
       case 'mastery_xp':
         current = totalXP;
@@ -125,12 +120,10 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       case 'explore_friend_added':
       case 'social_friend':
       case 'explore_social':
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        current = (prog.friendsAdded as number) || 0;
+        current = progressData.friendsAdded || 0;
         break;
       case 'perfect_score': {
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        const attempts = (prog.quizAttempts as Array<{ score: number }>) || [];
+        const attempts = progressData.quizAttempts || [];
         current = attempts.filter((q) => q.score === 100).length;
         break;
       }
@@ -143,7 +136,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
 
   // ── Build achievement items from ACHIEVEMENTS config ───────────────────────
   const achievementItems: AchievementItem[] = ACHIEVEMENTS.map((a) => {
-    const Icon = LUCIDE_ICON_MAP[a.icon.name] ?? Award;
+    const Icon = recordGet(LUCIDE_ICON_MAP, a.icon.name) ?? Award;
     const unlocked = unlockedIds.has(a.id);
     const progressInfo = getProgress(a);
 

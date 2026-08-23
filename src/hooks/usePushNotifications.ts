@@ -14,7 +14,10 @@ import {
 } from '@/services/pushNotificationService';
 
 const seenEvents = new Set<string>();
-const typeNames: Record<string, string> = {
+
+/** Human-readable labels per push notification category key. */
+interface PushCategoryLabels { [category: string]: string }
+const typeNames: PushCategoryLabels = {
   achievement: 'achievement', quiz_battle: 'quiz battle', daily_reward: 'daily reward',
   assignment: 'assignment', grade_posted: 'grade update', streak_reminder: 'streak reminder',
   leaderboard: 'leaderboard', system: 'system announcement',
@@ -39,7 +42,7 @@ export function usePushNotifications(): UsePushNotificationsResult {
   const uidRef = useRef<string | null>(null);
   const [status, setStatus] = useState<PushStatus>(() => {
     const capability = getPushCapability();
-    return pushStatus(typeof Notification === 'undefined' ? undefined : Notification.permission, capability.supported, false);
+    return pushStatus('Notification' in globalThis ? Notification.permission : undefined, capability.supported, false);
   });
 
   const refresh = useCallback(async () => {
@@ -114,11 +117,15 @@ export function usePushNotifications(): UsePushNotificationsResult {
   useEffect(() => {
     if (!currentUser?.uid || status !== 'enabled') return;
     return onForegroundMessage((payload) => {
+      // SAFETY: FCM data payloads are string key/value maps by contract.
       const data = (payload.data || {}) as Record<string, string>;
       const key = eventKey(payload);
       if (seenEvents.has(key)) return;
       seenEvents.add(key);
-      if (seenEvents.size > 500) seenEvents.delete(seenEvents.values().next().value as string);
+      if (seenEvents.size > 500) {
+        const oldestKey = seenEvents.values().next().value;
+        if (oldestKey !== undefined) seenEvents.delete(oldestKey);
+      }
       const title = payload.notification?.title || data.title || 'MathPulse AI';
       const body = payload.notification?.body || data.body || '';
       const category = data.notificationType;
@@ -131,8 +138,9 @@ export function usePushNotifications(): UsePushNotificationsResult {
   }, [currentUser?.uid, navigate, status]);
 
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    if (!('navigator' in globalThis) || !('serviceWorker' in navigator)) return;
     const handleMessage = (event: MessageEvent) => {
+      // SAFETY: only this app's service worker posts NOTIFICATION_CLICK messages with this shape.
       const data = event.data as { type?: string; url?: unknown; eventId?: string } | null;
       if (!data || data.type !== 'NOTIFICATION_CLICK') return;
       const key = data.eventId || String(data.url || '/');

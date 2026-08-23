@@ -207,6 +207,7 @@ export function sliceMatrix2D(
     const rowValues: Array<string | number | boolean | null> = [];
     for (let col = range.s.c; col <= range.e.c; col += 1) {
       const cell = getMatrixCell(matrix, row, col);
+      // SAFETY: matrix cells hold scalar display values written by this parser.
       rowValues.push((cell?.displayValue as string | number | boolean | null) ?? null);
     }
     output.push(rowValues);
