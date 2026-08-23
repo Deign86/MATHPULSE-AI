@@ -21,7 +21,7 @@
 
 importScripts('/pwa-config.js');
 
-const DEFAULT_VERSION = '1.0.0';
+const DEFAULT_VERSION = '1.1.0-curriculum-sot';
 
 // Same-origin static shell entries that are safe to precache. Do NOT add API
 // or Firebase endpoints here.

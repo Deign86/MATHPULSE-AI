@@ -18,10 +18,10 @@ The Space must remain bootable without curriculum data. All ingestion is additiv
 |---|---|
 | Frontend curriculum | Hardcoded TypeScript in `src/data/curriculumModules.ts` (30 module blueprints, 3 DepEd SHS subjects), `src/data/curriculumTemplates.ts` (official competency listings), `src/data/curriculumValidation.ts`, `src/types/models.ts` (type contracts). |
 | Backend curriculum | Optional RAG pipeline: `backend/rag/curriculum_rag.py` queries a ChromaDB vectorstore; `backend/rag/vectorstore_loader.py` singleton- loads ChromaDB + SentenceTransformer embedder (`BAAI/bge-small-en-v1.5`). |
-| Ingestion | `scripts/ingest_curriculum.py` (duplicated in `backend/scripts/`) — PDF-to-vectorstore pipeline using `pdfplumber` → `RecursiveCharacterTextSplitter` → metadata heuristics → ChromaDB. Triggered optionally in `backend/startup.sh`. |
+| Ingestion | Canonical `scripts/ingest_curriculum.py` recursively reads LiteParse-generated Markdown from `datasets/curriculum/sshs_learning_resources/` and falls back to LiteParse PDF parsing, then uses `RecursiveCharacterTextSplitter` → metadata heuristics → ChromaDB. |
 | Data storage | Firestore (primary, NoSQL), ChromaDB (vector), in-memory caches. **No relational DB, no ORM models.** |
 | Startup | `backend/startup_validation.py` runs 5-phase validation (files, imports, env, config, inference client). Ingestion is skipped if no PDFs found — app boots normally. |
-| Content sources | PDFs downloaded at runtime from HuggingFace repo (`CURRICULUM_SOURCE_REPO_ID`) or placed manually in `datasets/curriculum/`. Currently empty (only `.gitkeep`). |
+| Content sources | DepEd SSHS modules in `datasets/curriculum/sshs_learning_resources/`; optional HuggingFace download remains supported through `CURRICULUM_SOURCE_REPO_ID`. |
 | Deployment | Docker multi-stage build → HuggingFace Spaces. **Content changes currently require a rebuild or HF repo update.** |
 
 ---

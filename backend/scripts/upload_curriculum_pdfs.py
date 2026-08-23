@@ -153,12 +153,11 @@ def upload_pdfs():
 def index_pdfs():
     """Extract text from PDFs, chunk, embed, and store in ChromaDB."""
     try:
-        from pypdf import PdfReader
         import chromadb
         from sentence_transformers import SentenceTransformer
         from firebase_admin import firestore
     except ImportError:
-        print("ERROR: Missing dependencies. Run: pip install pypdf chromadb sentence-transformers firebase-admin")
+        print("ERROR: Missing dependencies. Run: pip install liteparse chromadb sentence-transformers firebase-admin")
         return
 
     chroma_path = os.getenv("CHROMA_PERSIST_PATH", "./datasets/vectorstore")
@@ -168,7 +167,7 @@ def index_pdfs():
         name="curriculum_chunks",
         metadata={"hnsw:space": "cosine"},
     )
-    embedder = SentenceTransformer("BAAI/bge-base-en-v1.5")
+    embedder = SentenceTransformer(os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"))
     
     try:
         import firebase_admin
@@ -199,8 +198,8 @@ def index_pdfs():
             continue
 
         try:
-            reader = PdfReader(str(local_path))
-            full_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+            from rag.liteparse_utils import extract_text
+            full_text = extract_text(local_path)
 
             if not full_text.strip():
                 print(f"[WARN] {filename} has no extractable text")
