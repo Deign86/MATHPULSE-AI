@@ -506,20 +506,20 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
               </div>
 
               {/* Footer Actions */}
-              <div className="border-t border-[#dde3eb] p-5 bg-[#edf1f7]">
+              <div className="border-t border-[#dde3eb] p-4 sm:p-5 bg-[#edf1f7] sticky bottom-0 z-10">
                 <div className="flex gap-3 justify-end">
                   {!isEditing ? (
                     <>
                       <Button
                         onClick={onClose}
                         variant="outline"
-                        className="px-5 py-2 rounded-lg border-[#d1cec6] hover:bg-white font-body font-medium text-[#5a6578]"
+                        className="px-5 py-2.5 min-h-[44px] rounded-lg border-[#d1cec6] hover:bg-white font-body font-medium text-[#5a6578]"
                       >
                         Close
                       </Button>
                       <Button
                         onClick={() => setIsEditing(true)}
-                        className="px-5 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold"
+                        className="px-5 py-2.5 min-h-[44px] rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold"
                       >
                         Edit Profile
                       </Button>
@@ -529,13 +529,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                       <Button
                         onClick={handleCancel}
                         variant="outline"
-                        className="px-5 py-2 rounded-lg border-[#d1cec6] hover:bg-white font-body font-medium text-[#5a6578]"
+                        className="px-5 py-2.5 min-h-[44px] rounded-lg border-[#d1cec6] hover:bg-white font-body font-medium text-[#5a6578]"
                       >
                         Cancel
                       </Button>
                       <Button
                         onClick={handleSave}
-                        className="px-5 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold flex items-center gap-2"
+                        className="px-5 py-2.5 min-h-[44px] rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold flex items-center gap-2"
                       >
                         <Save size={16} />
                         Save Changes

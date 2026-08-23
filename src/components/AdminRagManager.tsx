@@ -139,12 +139,12 @@ const AdminRagManager: React.FC = () => {
       </div>
 
       {/* Actions Bar */}
-      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 p-3.5 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 w-full min-w-0">
         <Button
           onClick={fetchDocuments}
           disabled={loading}
           variant="outline"
-          className="gap-2"
+          className="gap-2 min-h-[40px] flex-1 sm:flex-initial text-xs"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           Refresh
@@ -153,31 +153,31 @@ const AdminRagManager: React.FC = () => {
           onClick={handleReingest}
           disabled={!!actionLoading}
           variant="outline"
-          className="gap-2"
+          className="gap-2 min-h-[40px] flex-1 sm:flex-initial text-xs"
         >
           {actionLoading === 'reingest' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
           Re-ingest All PDFs
         </Button>
-        <div className="flex-1" />
+        <div className="hidden sm:block sm:flex-1" />
         {!confirmPurge ? (
           <Button
             onClick={() => setConfirmPurge(true)}
             variant="outline"
-            className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+            className="gap-2 text-red-600 border-red-200 hover:bg-red-50 min-h-[40px] w-full sm:w-auto text-xs"
           >
             <Trash2 size={14} />
             Purge All
           </Button>
         ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-red-600 font-medium flex items-center gap-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs text-red-600 font-medium flex items-center gap-1">
               <AlertTriangle size={14} /> This will delete ALL RAG content
             </span>
-            <Button onClick={handlePurgeAll} disabled={actionLoading === 'purge'} className="bg-red-600 hover:bg-red-700 text-white gap-2">
+            <Button onClick={handlePurgeAll} disabled={actionLoading === 'purge'} className="bg-red-600 hover:bg-red-700 text-white gap-2 min-h-[40px] text-xs">
               {actionLoading === 'purge' ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
               Confirm Purge
             </Button>
-            <Button onClick={() => setConfirmPurge(false)} variant="outline">Cancel</Button>
+            <Button onClick={() => setConfirmPurge(false)} variant="outline" className="min-h-[40px] text-xs">Cancel</Button>
           </div>
         )}
       </div>
@@ -217,7 +217,7 @@ const AdminRagManager: React.FC = () => {
                   onClick={() => handleDeleteSubject(group.subject)}
                   disabled={!!actionLoading}
                   variant="outline"
-                  className="gap-2 text-red-600 border-red-200 hover:bg-red-50 text-xs h-8"
+                  className="gap-2 text-red-600 border-red-200 hover:bg-red-50 text-xs min-h-[38px]"
                 >
                   {actionLoading === `subject:${group.subject}` ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
                   Remove Subject
@@ -236,7 +236,8 @@ const AdminRagManager: React.FC = () => {
                     <button
                       onClick={() => handleDeleteSource(file.source_file)}
                       disabled={!!actionLoading}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      className="p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      aria-label={`Delete ${file.source_file}`}
                     >
                       {actionLoading === `source:${file.source_file}` ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     </button>

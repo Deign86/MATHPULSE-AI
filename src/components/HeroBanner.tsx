@@ -89,14 +89,14 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           <h1 className="text-2xl md:text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1.5 tracking-tight leading-[1.1]">
             {getGreeting()}, {userName}!
           </h1>
-          <p className="text-slate-500 mb-2 md:mb-1 text-sm md:text-sm font-body font-bold pr-[155px] md:pr-0">Today is a great day to move one step forward in math mastery.</p>
-          <p className="text-xs md:text-xs text-slate-400 font-body mb-5 md:mb-4 pr-[150px] md:pr-0">Focus on your next recommended lesson and keep your momentum.</p>
+          <p className="text-slate-500 mb-2 md:mb-1 text-sm md:text-sm font-body font-bold pr-20 sm:pr-24 md:pr-0">Today is a great day to move one step forward in math mastery.</p>
+          <p className="text-xs md:text-xs text-slate-400 font-body mb-5 md:mb-4 pr-20 sm:pr-24 md:pr-0">Focus on your next recommended lesson and keep your momentum.</p>
 
           <motion.button
             onClick={onContinueLearning}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="mt-2 md:mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-3 md:py-2 rounded-xl font-body font-bold text-base md:text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex justify-center md:justify-start items-center gap-2 group w-auto md:w-auto"
+            className="mt-2 md:mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-3 md:py-2 rounded-xl font-body font-bold text-base md:text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex justify-center md:justify-start items-center gap-2 group w-auto md:w-auto min-h-[44px]"
           >
             Continue Learning
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -165,7 +165,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       )}
 
       <div
-        className="absolute right-0 bottom-0 lg:right-10 w-[160px] md:w-[150px] lg:w-[270px] pointer-events-none z-20"
+        className="absolute right-0 bottom-0 lg:right-10 w-[110px] sm:w-[140px] md:w-[150px] lg:w-[270px] pointer-events-none z-20"
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
       >
         <div className="relative w-full aspect-[4/5] translate-y-[10%] md:translate-y-[21%] lg:translate-y-[19%] drop-shadow-2xl">
