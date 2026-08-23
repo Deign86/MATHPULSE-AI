@@ -9,6 +9,7 @@ import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId, subject
 import { useCurriculum } from '../hooks/useCurriculum';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { memberOf, recordGet } from '../utils/memberOf';
 
 const DiagnosticBreakdown = lazy(() => import('./assessment/DiagnosticBreakdown'));
 
@@ -36,7 +37,7 @@ const studentGrade = (userProfile as StudentProfile | null)?.grade;
 
 // Get active subjects for the user's grade
 const allowedSubjectIds = getActiveSubjectIdsForGrade(studentGrade);
-const allowedSubjectSet = new Set(allowedSubjectIds);
+const allowedSubjectSet: Set<string> = new Set(allowedSubjectIds);
 
 const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
 
@@ -149,26 +150,22 @@ const { isLoading: curriculumLoading } = useCurriculum(studentGrade);
     slate: { dot: 'bg-slate-500', bar: 'bg-slate-500' },
   };
 
-  const subjectMap: Record<string, { label: string; color: string }> = SHS_MATH_SUBJECTS.reduce((acc, subject) => {
+  const subjectMap = SHS_MATH_SUBJECTS.reduce<Record<string, { label: string; color: string }>>((acc, subject) => {
     acc[subject.id] = {
       label: subject.name,
-      // SAFETY: trusted internal value already conforms to the asserted type.
-      color: colorBySubjectId[subject.id as SubjectId] || 'slate'
+      color: recordGet(colorBySubjectId, subject.id) || 'slate'
     };
     return acc;
-  // SAFETY: trusted internal value already conforms to the asserted type.
-  }, {} as Record<string, { label: string; color: string }>);
+  }, {});
 
   // Calculate subject performance, but only include allowed subjects
   const allowedSubjectLabels: string[] = SHS_MATH_SUBJECTS
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    .filter((subject) => allowedSubjectSet.has(subject.id as SubjectId))
+    .filter((subject) => allowedSubjectSet.has(subject.id))
     .map((subject) => subject.name);
 
   // Compute subject metrics
 const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    .filter(([subjectId]) => allowedSubjectSet.has(subjectId as SubjectId))
+    .filter(([subjectId]) => allowedSubjectSet.has(subjectId))
     .map(([subjectId, subjectData]: [string, any]) => {
       const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
       
@@ -221,10 +218,7 @@ const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
     });
     return userProgress.quizAttempts.map((attempt, i) => {
       const lookup = quizLookup.get(attempt.quizId);
-      const completedDate = attempt.completedAt instanceof Date
-        ? attempt.completedAt
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        : new Date(attempt.completedAt as unknown as string);
+      const completedDate = new Date(attempt.completedAt);
       return {
         id: 10000 + i,
         title: lookup?.title || attempt.quizId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -592,7 +586,7 @@ const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
             
             <div className="space-y-7">
               {displaySubjectPerformance.map((subject, idx) => {
-                const colorClasses = colorClassBySubject[subject.color] || colorClassBySubject.slate;
+                const colorClasses = recordGet(colorClassBySubject, subject.color) || colorClassBySubject.slate;
                 return (
                   <div key={idx} className="group">
                   <div className="flex justify-between items-end mb-3">

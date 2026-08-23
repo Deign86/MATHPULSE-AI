@@ -96,7 +96,7 @@ export async function processQuizSubmission(
 
   const userData = userSnap.data()!;
   const existingBadges: Record<string, string> = userData.subjectBadges || {};
-  const existingClassifications: Record<string, any> = userData.riskClassifications || {};
+  const existingClassifications: admin.firestore.DocumentData = userData.riskClassifications || {};
   const existingAtRisk: string[] = userData.atRiskSubjects || [];
   const previousStatus = existingClassifications[subject]?.status;
 

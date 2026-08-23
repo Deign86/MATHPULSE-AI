@@ -6,6 +6,8 @@ import {
   Sparkles, Volume2, VolumeX, Maximize, Minimize, Menu, ChevronLeft, ChevronRight
 , RefreshCw, BookOpen, HeartCrack } from 'lucide-react';import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
+
+const hasWindow = 'window' in globalThis;
 import { Button } from './ui/button';
 import ScientificCalculator from './ScientificCalculator';
 import MathText from './MathText';
@@ -248,8 +250,8 @@ const InteractiveLesson: React.FC<InteractiveLessonProps> = ({
   const [showRainStorm, setShowRainStorm] = useState(false);
   const [showDrawSparks, setShowDrawSparks] = useState(false);
   const [confettiFired, setConfettiFired] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
-  const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [viewportHeight, setViewportHeight] = useState(hasWindow ? window.innerHeight : 800);
+  const [viewportWidth, setViewportWidth] = useState(hasWindow ? window.innerWidth : 1200);
   const [answerHistory, setAnswerHistory] = useState<boolean[]>([]);
   const [startTime] = useState(Date.now());
   const [streakBonusXP, setStreakBonusXP] = useState(0);

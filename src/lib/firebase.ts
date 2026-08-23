@@ -47,8 +47,11 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-  ...(databaseUrl ? { databaseURL: databaseUrl } : {}),
 };
+
+if (databaseUrl) {
+  Object.assign(firebaseConfig, { databaseURL: databaseUrl });
+}
 
 if (!firebaseConfig.apiKey) {
   console.error('[ERROR] Firebase API key is missing! Copy .env.example to .env.local and fill in your values.');
@@ -69,10 +72,13 @@ if (import.meta.env.DEV) {
 // Guard against undefined persistence types in test environments where
 // firebase/auth may be partially mocked (test-setup.ts provides only
 // getAuth + initializeAuth).
+const hasWindow = 'window' in globalThis;
+
 function buildAuthInstance() {
   try {
-    const hasValidPersistence = typeof browserLocalPersistence !== 'undefined';
-    if (typeof window !== 'undefined' && hasValidPersistence) {
+    // SAFETY: test-setup mocks of firebase/auth may omit the persistence exports.
+    const hasValidPersistence = Boolean(browserLocalPersistence);
+    if (hasWindow && hasValidPersistence) {
       return initializeAuth(app, {
         persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
       });
@@ -83,11 +89,12 @@ function buildAuthInstance() {
       return getAuth(app);
     } catch {
       // Test environment or unconfigured Firebase — return a safe stub with Auth methods
+      // SAFETY: call sites only use the Auth surface above; the stub satisfies that subset.
       return {
         currentUser: null,
         onAuthStateChanged: () => () => {},
         signOut: async () => {},
-      } as unknown as ReturnType<typeof initializeAuth>;
+      } as ReturnType<typeof initializeAuth>;
     }
   }
 }
@@ -100,6 +107,7 @@ function buildDbInstance() {
       return getFirestore(app);
     } catch {
       // Test environment or unconfigured Firebase — return a safe stub
+      // SAFETY: Firestore is unused in the unconfigured test environment.
       return {} as ReturnType<typeof initializeFirestore>;
     }
   }
@@ -130,7 +138,7 @@ export const isRealtimeDbEnabled = Boolean(databaseUrl);
 // Wrapped in try/catch to prevent ERR_BLOCKED_BY_CLIENT from crashing the app
 // when ad/tracking blockers block Firebase Analytics telemetry URLs.
 let analytics = null;
-if (typeof window !== 'undefined' && firebaseConfig.measurementId && !firebaseConfig.measurementId.startsWith('your')) {
+if (hasWindow && firebaseConfig.measurementId && !firebaseConfig.measurementId.startsWith('your')) {
   try {
     analytics = getAnalytics(app);
   } catch {

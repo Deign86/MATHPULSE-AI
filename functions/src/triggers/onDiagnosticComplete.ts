@@ -14,8 +14,8 @@ import { processDiagnosticCompletion } from "../automations/diagnosticProcessor"
 
 interface DiagnosticTriggerContext {
   lrn: string;
-  diagnosticData: Record<string, any>;
-  updateSnapshot: (payload: Record<string, unknown>) => Promise<unknown>;
+  diagnosticData: admin.firestore.DocumentData;
+  updateSnapshot: (payload: admin.firestore.DocumentData) => Promise<void>;
   processDiagnostic: typeof processDiagnosticCompletion;
 }
 
@@ -118,7 +118,9 @@ export const onDiagnosticComplete = functions.firestore
     await handleDiagnosticCompleteSnapshotCreate({
       lrn,
       diagnosticData,
-      updateSnapshot: (payload) => snapshot.ref.update(payload),
+      updateSnapshot: async (payload) => {
+        await snapshot.ref.update(payload);
+      },
       processDiagnostic: processDiagnosticCompletion,
     });
 

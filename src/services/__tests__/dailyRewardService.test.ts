@@ -121,7 +121,7 @@ describe('getWeekSeed', () => {
     // 2026-05-07 is a Thursday in week 19 of 2026
     vi.setSystemTime(new Date('2026-05-07T12:00:00Z'));
     const seed = getWeekSeed();
-    expect(typeof seed).toBe('number');
+    expect(Number.isFinite(seed)).toBe(true);
     expect(seed).toBeGreaterThan(202600);
     expect(seed).toBeLessThan(202653);
   });

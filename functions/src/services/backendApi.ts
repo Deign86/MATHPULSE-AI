@@ -6,6 +6,7 @@
  * (risk prediction, learning-path generation, etc.).
  */
 
+import type { firestore } from "firebase-admin";
 import axios, { AxiosError } from "axios";
 import * as functions from "firebase-functions";
 import {
@@ -26,7 +27,7 @@ export interface RiskPredictionRequest {
 export interface RiskPredictionResponse {
   riskLevel: string;
   confidence: number;
-  analysis: Record<string, any>;
+  analysis: firestore.DocumentData;
 }
 
 export interface LearningPathRequest {
@@ -40,8 +41,8 @@ export interface LearningPathResponse {
 }
 
 export interface InterventionRequest {
-  riskClassifications: Record<string, any>;
-  weakTopics: any[];
+  riskClassifications: firestore.DocumentData;
+  weakTopics: unknown[];
   lrn: string;
 }
 
@@ -62,6 +63,7 @@ async function callWithRetry<T>(
       });
       return response.data;
     } catch (err) {
+      // SAFETY: axios rejects with AxiosError instances; status guarded by optional chaining.
       const axiosErr = err as AxiosError;
       const status = axiosErr.response?.status;
 

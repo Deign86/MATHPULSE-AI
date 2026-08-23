@@ -50,7 +50,13 @@ function getTopicLabel(moduleId: string): string {
     moduleId.split('-').slice(2).join(' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function getChipStyle(resolutionState: AtRiskResolutionState): { style: React.CSSProperties; icon: React.ReactNode } {
+/** Presentation bundle for a supplemental pill chip, keyed by resolution state. */
+interface ChipPresentation {
+  style: React.CSSProperties;
+  icon: React.ReactNode;
+}
+
+function getChipStyle(resolutionState: AtRiskResolutionState): ChipPresentation {
   switch (resolutionState) {
     case 'coming_soon':
       return {

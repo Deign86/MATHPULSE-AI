@@ -66,6 +66,7 @@ export async function getLatestAssessmentResult(studentId: string): Promise<Asse
 
   const docSnap = snapshot.docs[0];
   const data = docSnap.data();
+  // SAFETY: assessment docs are written only by this app's completion flow, matching AssessmentResult.
   return {
     ...data,
     completedAt: data.completedAt?.toDate?.()?.toISOString() || data.completedAt,

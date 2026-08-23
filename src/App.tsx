@@ -127,6 +127,7 @@ const App = () => {
   }, [isLoggedIn, userRole]);
   
   // Gamification State (derived from Firebase user profile)
+  // SAFETY: student sessions always carry a StudentProfile; teacher/admin roles never read these fields.
   const studentProfile = userProfile as StudentProfile;
   const [userLevel, setUserLevel] = useState(studentProfile?.level || 1);
   const [currentXP, setCurrentXP] = useState(studentProfile?.currentXP || 0);
@@ -137,18 +138,25 @@ const App = () => {
     sumRequiredForCurrentLevel += Math.floor(100 * Math.pow(1.5, i - 1));
   }
   const progressXPInLevel = Math.max(0, totalXP - sumRequiredForCurrentLevel);
+  // SAFETY: React.CSSProperties omits CSS custom properties; the XP fill width is asserted at the style boundary.
+  const xpFillStyle = { '--w': `${Math.max(0, Math.min(100, (progressXPInLevel / xpToNextLevel) * 100))}%` } as React.CSSProperties;
   // (Streak derived from Daily Reward system via RightSidebar)
 
   // Curriculum data for navigation
   const activeGradeLevel = resolveLearnerGradeLevel(studentProfile?.grade);
   const assignedSubjects = useMemo(() => {
-    const rawAssignments = (studentProfile as (StudentProfile & {
+    // SAFETY: learner curriculum fields are optional profile extensions persisted by the import flow.
+    const curriculumAssignments = studentProfile as (StudentProfile & {
       learnerCurriculumAssignments?: { subjects?: string[] };
+    }) | null;
+    // SAFETY: legacy assigned-subject lists are optional string arrays on the profile.
+    const assignedLists = studentProfile as (StudentProfile & {
       assignedSubjects?: string[];
       curriculumAssignedSubjects?: string[];
-    }) | null)?.learnerCurriculumAssignments?.subjects
-      ?? (studentProfile as any)?.assignedSubjects
-      ?? (studentProfile as any)?.curriculumAssignedSubjects
+    }) | null;
+    const rawAssignments = curriculumAssignments?.learnerCurriculumAssignments?.subjects
+      ?? assignedLists?.assignedSubjects
+      ?? assignedLists?.curriculumAssignedSubjects
       ?? [];
     return Array.isArray(rawAssignments) ? rawAssignments : [];
   }, [studentProfile]);
@@ -166,7 +174,10 @@ const App = () => {
   const [sidebarRevertState, setSidebarRevertState] = useState<{ collapsed: boolean }>({ collapsed: false });
 
   // URL path mapping for tab navigation
-  const tabToPath: Record<string, string> = {
+  /** Tab label to URL path for sidebar navigation routes. */
+  interface RouteTabMap { [route: string]: string }
+
+  const tabToPath: RouteTabMap = {
     'Dashboard': '/',
     'Modules': '/modules',
     'AI Chat': '/chat',
@@ -177,7 +188,7 @@ const App = () => {
     'Avatar Studio': '/avatar',
   };
 
-  const pathToTab: Record<string, string> = {
+  const pathToTab: RouteTabMap = {
     '/': 'Dashboard',
     '/modules': 'Modules',
     '/chat': 'AI Chat',
@@ -254,7 +265,7 @@ const App = () => {
   const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([]);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>(studentProfile?.atRiskSubjects || []);
   const [priorityTopics, setPriorityTopics] = useState<DiagnosticTopicKey[]>(
-    (studentProfile?.priorityTopics || []) as DiagnosticTopicKey[],
+    studentProfile?.priorityTopics || [],
   );
   const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0');
 
@@ -367,7 +378,7 @@ const App = () => {
       setCurrentXP(studentProfile.currentXP || 0);
       setTotalXP(studentProfile.totalXP || 0);
       setAtRiskSubjects(studentProfile.atRiskSubjects || []);
-      setPriorityTopics((studentProfile.priorityTopics || []) as DiagnosticTopicKey[]);
+      setPriorityTopics(studentProfile.priorityTopics || []);
       setProfileReady(true);
     } else if (userRole !== 'student') {
       setProfileReady(true);
@@ -387,16 +398,13 @@ const App = () => {
       }
     };
 
-    const requestIdle = (
-      window as {
-        requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
-      }
-    ).requestIdleCallback;
-    const cancelIdle = (
-      window as {
-        cancelIdleCallback?: (handle: number) => void;
-      }
-    ).cancelIdleCallback;
+    // SAFETY: requestIdleCallback/cancelIdleCallback are not in the standard TS DOM lib; feature-detected here.
+    const idleAwareWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    const requestIdle = idleAwareWindow.requestIdleCallback;
+    const cancelIdle = idleAwareWindow.cancelIdleCallback;
 
     const timeoutId = window.setTimeout(revealShell, 800);
     const frameId = window.requestAnimationFrame(() => {
@@ -755,7 +763,7 @@ const App = () => {
       return;
     }
 
-    const updates: Record<string, unknown> = {};
+    const updates: Partial<ProfileSaveData> = {};
 const allowedKeys: Array<keyof ProfileSaveData> = [
       'name',
       'email',
@@ -784,8 +792,8 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
     });
 
     try {
-      await updateUserProfile(userProfile.uid, updates as ProfileSaveData);
-      setProfileOverrides((prev) => ({ ...prev, ...(updates as ProfileSaveData) }));
+      await updateUserProfile(userProfile.uid, updates);
+      setProfileOverrides((prev) => ({ ...prev, ...updates }));
       setShowProfileModal(false);
       setShowSettingsModal(false);
       toast.success('Profile updated successfully');
@@ -861,8 +869,10 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
       throw new Error('No active profile found.');
     }
 
+    // SAFETY: student sessions always carry a StudentProfile with the LRN field.
+    const studentLrn = (studentProfile as StudentProfile | undefined)?.lrn;
     const lrn = userRole === 'student'
-      ? (studentProfile as StudentProfile | undefined)?.lrn || userProfile.uid
+      ? studentLrn || userProfile.uid
       : undefined;
 
     // Immediately delete diagnostic documents BEFORE resetting state.
@@ -917,7 +927,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
       enrollmentDate: studentProfile.enrollmentDate,
       major: studentProfile.major,
       gpa: computedGpa,
-    } : {}),
+    } : undefined),
     ...profileOverrides,
   } : {
     uid: undefined,
@@ -987,6 +997,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
   // Listen for notification-driven navigation events
   useEffect(() => {
     const handleNotificationNavigate = (e: Event) => {
+      // SAFETY: navigation events are dispatched by this app's notification flows as CustomEvent with a detail object.
       const detail = (e as CustomEvent).detail;
       if (detail?.tab && isLoggedIn) {
         handleStudentNavigation(detail.tab);
@@ -1220,7 +1231,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                     <span className="text-xs font-display font-bold text-violet-700 whitespace-nowrap">{currentXP} XP</span>
                   </div>
                   <div className="h-1.5 flex-1 min-w-0 bg-violet-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-violet-500 rounded-full transition-all e-w" style={{ ['--w' as any]: `${Math.max(0, Math.min(100, (progressXPInLevel / xpToNextLevel) * 100))}%` }} />
+                    <div className="h-full bg-violet-500 rounded-full transition-all e-w" style={xpFillStyle} />
                   </div>
                 </button>
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">

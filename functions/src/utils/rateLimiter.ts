@@ -8,7 +8,9 @@
 import * as admin from "firebase-admin";
 
 // Rate limits per function type
-const RATE_LIMITS: Record<string, number> = {
+interface RateLimitMap { [key: string]: number; }
+
+const RATE_LIMITS: RateLimitMap = {
   // AI tutor / chatbot functions: 20 calls/minute
   ai_tutor: 20,
   chatbot: 20,
@@ -111,6 +113,7 @@ export async function checkRateLimit(
       const now = Date.now();
 
       if (docSnapshot.exists) {
+        // SAFETY: rate-limit docs are written by this transaction with the RateLimitDoc shape.
         const data = docSnapshot.data() as RateLimitDoc;
         const windowStart = data.windowStart || now;
         const windowMs = WINDOW_SECONDS * 1000;
@@ -186,6 +189,7 @@ export async function checkRateLimitOrThrow(
   const result = await checkRateLimit(uid, functionName, role);
 
   if (!result.allowed) {
+    // SAFETY: RateLimitError extends Error with retryAfterSeconds only; no other shape is required.
     const error = new Error(
       `RATE_LIMIT_EXCEEDED: ${result.retryAfterSeconds} seconds`
     ) as RateLimitError;
@@ -237,6 +241,7 @@ export async function rateLimitBefore(
  * HttpsError-compatible rate limit error for Cloud Functions
  */
 export function createRateLimitError(retryAfterSeconds: number): RateLimitError {
+  // SAFETY: RateLimitError extends Error with retryAfterSeconds only; no other shape is required.
   const error = new Error(
     `Too many requests. Please try again in ${retryAfterSeconds} seconds.`
   ) as RateLimitError;

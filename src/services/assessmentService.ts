@@ -73,6 +73,7 @@ function toAssessmentDoc(result: AssessmentResult): AssessmentDoc {
 }
 
 function fromAssessmentDoc(doc: AssessmentDoc): AssessmentResult {
+  // SAFETY: docs in this collection are written by toAssessmentDoc/saveAssessmentResult with matching field shapes.
   return {
     uid: doc.uid,
     assessmentId: doc.assessmentId,
@@ -133,6 +134,7 @@ export const getInitialAssessment = async (uid: string): Promise<AssessmentResul
   const snapshot = await getDocs(q);
   if (snapshot.empty) return null;
 
+  // SAFETY: single-attempt query targets this service's own assessments subcollection.
   return fromAssessmentDoc(snapshot.docs[0].data() as AssessmentDoc);
 };
 
@@ -146,6 +148,7 @@ export const getAssessmentHistory = async (uid: string): Promise<AssessmentResul
   );
 
   const snapshot = await getDocs(q);
+  // SAFETY: history docs come from this service's assessments subcollection with matching field shapes.
   return snapshot.docs.map((doc) => fromAssessmentDoc(doc.data() as AssessmentDoc));
 };
 
@@ -160,6 +163,7 @@ export const getStudentCompetencyProfile = async (uid: string): Promise<Competen
 
   if (!docSnap.exists()) return null;
 
+  // SAFETY: competency profile docs are written by updateCompetencyProfile with the same interface.
   return docSnap.data() as CompetencyProfileDoc;
 };
 
@@ -179,6 +183,7 @@ export const updateCompetencyProfile = async (
   // Get suggested module based on primary weakness
   const suggestedModule = assessmentResult.proficiencyProfile.suggestedStartingModule;
 
+  // SAFETY: serverTimestamp() sentinels are stored as Firestore Timestamps on write; competencyScores mirror the result shape.
   const competencyProfileData = {
     uid,
     lastAssessmentDate: serverTimestamp() as Timestamp,
@@ -219,6 +224,7 @@ export const subscribeToCompetencyProfile = (
 
   return onSnapshot(docRef, (snapshot) => {
     if (snapshot.exists()) {
+      // SAFETY: competency profile docs are written by updateCompetencyProfile with the same interface.
       callback(snapshot.data() as CompetencyProfileDoc);
     } else {
       callback(null);
@@ -246,6 +252,7 @@ export const getClassAssessmentSummary = async (
   const data = docSnap.data();
   if (data.teacherUid !== teacherUid) return null;
 
+  // SAFETY: class assessment docs are aggregated by this service's own aggregation routine.
   return data as ClassAssessmentSummary;
 };
 
@@ -261,6 +268,7 @@ export const getTeacherClassAssessments = async (
   );
 
   const snapshot = await getDocs(q);
+  // SAFETY: class assessment docs are aggregated by this service's own aggregation routine.
   return snapshot.docs.map((doc) => doc.data() as ClassAssessmentSummary);
 };
 

@@ -54,6 +54,7 @@ import {
   resolveLearnerGradeLevel,
 } from '../data/curriculumModules';
 import { getRagAnalysisContext } from '../services/apiService';
+import { recordGet } from '../utils/memberOf';
 import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import { getStudentCompetencyProfile } from '../services/assessmentService';
 import type { CompetencyProfileDoc } from '../types/assessment';
@@ -416,11 +417,11 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const curriculumContextLabel = useMemo(() => {
     const visibleQuarter = quarterFilter === 'all' ? 'All Quarters' : quarterFilter;
+    const subjectMeta = recordGet(CURRICULUM_SUBJECT_META, subjectFilter);
     const visibleSubject =
       subjectFilter === 'all'
         ? 'All Subjects'
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        : CURRICULUM_SUBJECT_META[subjectFilter as keyof typeof CURRICULUM_SUBJECT_META]?.label ?? 'Subject';
+        : subjectMeta?.label ?? 'Subject';
     return `${activeGradeLevel} · ${visibleSubject} · ${visibleQuarter}`;
   }, [activeGradeLevel, subjectFilter, quarterFilter]);
 

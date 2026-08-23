@@ -2,27 +2,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import * as authNs from '@/contexts/AuthContext';
 import { useNotifications } from './NotificationContext';
 import { NotificationProvider } from './NotificationContext';
-import { subscribeToNotifications, markAsRead, markAllAsRead, deleteNotification } from './notificationFirestoreService';
+import * as notificationFirestoreNs from './notificationFirestoreService';
+import * as dailyCheckInNs from './useDailyCheckInReminder';
 
-vi.mock('./notificationFirestoreService', () => ({
-  subscribeToNotifications: vi.fn(),
-  markAsRead: vi.fn(),
-  markAllAsRead: vi.fn(),
-  deleteNotification: vi.fn(),
-}));
+// Auth seam: spy on the real hook so the provider sees a signed-in user.
+// SAFETY: the partial stub only omits auth fields the notification context never reads.
+vi.spyOn(authNs, 'useAuth').mockReturnValue({
+  currentUser: { uid: 'user-123' },
+  userProfile: null,
+  loading: false,
+  isLoggedIn: true,
+  userRole: 'student',
+  refreshProfile: async () => {},
+} as ReturnType<typeof authNs.useAuth>);
 
-vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: vi.fn(() => ({
-    currentUser: { uid: 'user-123' },
-  })),
-  AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
+// Reminder hook seam stays inert so notifications drive the context alone.
+vi.spyOn(dailyCheckInNs, 'useDailyCheckInReminder').mockReturnValue(undefined);
 
-vi.mock('./useDailyCheckInReminder', () => ({
-  useDailyCheckInReminder: vi.fn(),
-}));
+// Firestore seams: spy on the real functions; each test sets its own behavior.
+const subscribeToNotificationsSpy = vi.spyOn(notificationFirestoreNs, 'subscribeToNotifications');
+vi.spyOn(notificationFirestoreNs, 'markAsRead');
+vi.spyOn(notificationFirestoreNs, 'markAllAsRead');
+vi.spyOn(notificationFirestoreNs, 'deleteNotification');
 
 describe('NotificationContext', () => {
   beforeEach(() => {
@@ -31,7 +35,7 @@ describe('NotificationContext', () => {
 
   it('provides notifications context to children', async () => {
     const mockUnsubscribe = vi.fn();
-    (subscribeToNotifications as unknown as ReturnType<typeof vi.fn>).mockImplementation((userId, callback) => {
+    subscribeToNotificationsSpy.mockImplementation((userId, callback) => {
       callback([
         {
           id: 'notif-1',
@@ -83,7 +87,7 @@ describe('NotificationContext', () => {
   });
 
   it('calls markAsRead when invoked', async () => {
-    (subscribeToNotifications as unknown as ReturnType<typeof vi.fn>).mockImplementation((userId, callback) => {
+    subscribeToNotificationsSpy.mockImplementation((userId, callback) => {
       callback([]);
       return vi.fn();
     });
@@ -102,11 +106,11 @@ describe('NotificationContext', () => {
     const button = screen.getByText('Mark Read');
     button.click();
 
-    expect(markAsRead).toHaveBeenCalledWith('user-123', 'notif-123');
+    expect(notificationFirestoreNs.markAsRead).toHaveBeenCalledWith('user-123', 'notif-123');
   });
 
   it('calls markAllAsRead when invoked', async () => {
-    (subscribeToNotifications as unknown as ReturnType<typeof vi.fn>).mockImplementation((userId, callback) => {
+    subscribeToNotificationsSpy.mockImplementation((userId, callback) => {
       callback([]);
       return vi.fn();
     });
@@ -125,6 +129,6 @@ describe('NotificationContext', () => {
     const button = screen.getByText('Mark All Read');
     button.click();
 
-    expect(markAllAsRead).toHaveBeenCalledWith('user-123');
+    expect(notificationFirestoreNs.markAllAsRead).toHaveBeenCalledWith('user-123');
   });
 });

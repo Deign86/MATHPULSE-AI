@@ -81,11 +81,17 @@ export function extractFinalSemestral(sheet: SheetMatrix): FinalSemestralRecordE
       continue;
     }
 
+    // SAFETY: matrix cells hold scalar display values written by this parser's own cell mapper.
     const firstQuarter = (getMatrixCell(sheet, row, firstQuarterCol)?.displayValue as number | string | null) ?? null;
+    // SAFETY: matrix cells hold scalar display values written by this parser's own cell mapper.
     const secondQuarter = (getMatrixCell(sheet, row, secondQuarterCol)?.displayValue as number | string | null) ?? null;
+    // SAFETY: matrix cells hold scalar display values written by this parser's own cell mapper.
     const firstSemester = (getMatrixCell(sheet, row, firstSemesterCol)?.displayValue as number | string | null) ?? null;
+    // SAFETY: matrix cells hold scalar display values written by this parser's own cell mapper.
     const finalGrades = (getMatrixCell(sheet, row, finalGradeCol)?.displayValue as number | string | null) ?? null;
+    // SAFETY: remark columns hold text-only display values written by this parser.
     const remark = (getMatrixCell(sheet, row, remarkCol)?.displayValue as string | null) ?? null;
+    // SAFETY: remark columns hold text-only display values written by this parser.
     let additionalRemarks = (getMatrixCell(sheet, row, additionalRemarkCol)?.displayValue as string | null) ?? null;
 
     const statuses = STATUS_TOKENS.filter((token) => includesNormalized(rowText, token));

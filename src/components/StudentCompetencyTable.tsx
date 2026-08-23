@@ -245,7 +245,14 @@ const COMPETENCY_MATRIX_ITEMS: Array<{ key: keyof CompetencyMatrixSummary; short
   { key: 'consistency', short: 'S', label: 'Consistency', header: 'Consistency' },
 ];
 
-function getMatrixScoreTone(score: number): { bg: string; text: string; ring: string } {
+/** Tailwind tone classes applied to competency matrix score cells. */
+interface MatrixScoreTone {
+  bg: string;
+  text: string;
+  ring: string;
+}
+
+function getMatrixScoreTone(score: number): MatrixScoreTone {
   const clamped = clampPercent(score);
 
   if (clamped >= 80) {

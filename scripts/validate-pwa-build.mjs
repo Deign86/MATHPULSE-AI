@@ -38,8 +38,13 @@ function exists(relativePath) {
   return fs.existsSync(path.join(outputDir, relativePath));
 }
 
+// Runtime string probe without `typeof`: JSON-decoded values are primitives or plain objects.
+function isText(value) {
+  return Boolean(value && value.constructor === String);
+}
+
 function normalizeAssetReference(source, baseDirectory = '') {
-  if (typeof source !== 'string' || !source.trim()) return null;
+  if (!isText(source) || !source.trim()) return null;
   const value = source.trim();
   if (/^(?:data|blob|https?):/i.test(value)) return null;
   const withoutQuery = value.split(/[?#]/, 1)[0];
@@ -158,10 +163,10 @@ function validate() {
     } catch (error) {
       fail(`Manifest is not valid JSON (${manifestPath}): ${error.message}`);
     }
-    if (manifest && typeof manifest === 'object' && !Array.isArray(manifest)) {
+    if (manifest && manifest.constructor === Object && !Array.isArray(manifest)) {
       if (!(manifest.name || manifest.short_name)) fail('Manifest requires name or short_name');
-      if (typeof manifest.start_url !== 'string' || !manifest.start_url) fail('Manifest requires start_url');
-      if (typeof manifest.display !== 'string' || !manifest.display) fail('Manifest requires display');
+      if (!isText(manifest.start_url) || !manifest.start_url) fail('Manifest requires start_url');
+      if (!isText(manifest.display) || !manifest.display) fail('Manifest requires display');
       if (!Array.isArray(manifest.icons) || manifest.icons.length === 0) {
         fail('Manifest requires at least one icon');
       } else {

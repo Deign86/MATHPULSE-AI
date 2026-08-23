@@ -10,16 +10,14 @@ export type RiskStatus = NonNullable<StudentRiskProfile['riskStatus']>;
 
 // ─── Teacher Alert Messages ───────────────────────────────────────────────────
 
-export const TEACHER_ALERT_MESSAGES: Partial<
-  Record<RiskStatus, (studentName: string, wri: number) => string>
-> = {
+export const TEACHER_ALERT_MESSAGES = {
   intervene: (name, wri) =>
     `${name} is approaching the intervention threshold (WRI: ${wri}). Remedial modules have been activated. Please review their progress.`,
   critical: (name, wri) =>
     `${name} requires urgent attention (WRI: ${wri}). A structured intervention checklist has been generated. Please act soon.`,
   at_risk: (name, wri) =>
     `${name} is at critical risk of failing (WRI: ${wri}). Your acknowledgment is required before their learning path continues.`
-};
+} satisfies Partial<Record<RiskStatus, (studentName: string, wri: number) => string>>;
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
@@ -172,11 +170,13 @@ export async function notifyTeacher(
   }
 
   const data = snap.data();
+  // SAFETY: user docs store teacherId/displayName/name as scalar strings.
   const teacherId = data?.teacherId as string | undefined;
-  const studentName =
-    (data?.displayName as string) ||
-    (data?.name as string) ||
-    studentId;
+  // SAFETY: user docs store teacherId/displayName/name as scalar strings.
+  const displayName = data?.displayName as string | undefined;
+  // SAFETY: user docs store teacherId/displayName/name as scalar strings.
+  const legacyName = data?.name as string | undefined;
+  const studentName = displayName || legacyName || studentId;
 
   if (!teacherId) {
     console.warn(`[riskResponse] notifyTeacher: no teacherId for ${studentId}`);

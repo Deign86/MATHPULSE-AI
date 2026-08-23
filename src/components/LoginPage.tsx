@@ -46,7 +46,19 @@ const SIGNUP_PASSWORD_RULES: PasswordRule[] = [
 const SIGNUP_PASSWORD_HELP_TEXT =
   'Use at least 8 characters with uppercase, lowercase, number, and special character.';
 
-const extractAuthErrorDetails = (cause: unknown): { code: string; message: string } => {
+/** Details extracted from an auth failure, used to pick a friendly message. */
+interface AuthErrorDetails {
+  code: string;
+  message: string;
+}
+
+// SAFETY: 'student' and 'teacher' are both members of the UserRole enum.
+const ACCOUNT_TYPE_OPTIONS: { role: UserRole; label: string }[] = [
+  { role: 'student', label: 'Student' },
+  { role: 'teacher', label: 'Teacher' },
+];
+
+const extractAuthErrorDetails = (cause: unknown): AuthErrorDetails => {
   // SAFETY: trusted internal value already conforms to the asserted type.
   // SAFETY: isObjectVal guard above verified the error shape before casting.
   const authError = isObjectVal(cause) && cause !== null ? (cause as Partial<AuthServiceError>) : null;
@@ -591,11 +603,7 @@ const LoginPage: React.FC = () => {
                       Account Type
                     </label>
                     <div className="grid grid-cols-2 gap-2">
-                      // SAFETY: trusted internal value already conforms to the asserted type.
-                      {([
-                        { role: 'student', label: 'Student' },
-                        { role: 'teacher', label: 'Teacher' },
-                      ] as { role: UserRole; label: string }[]).map((roleOption) => {
+                      {ACCOUNT_TYPE_OPTIONS.map((roleOption) => {
                         const isActive = selectedRole === roleOption.role;
                         return (
                           <button

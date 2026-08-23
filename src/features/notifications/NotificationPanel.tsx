@@ -18,6 +18,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // SAFETY: pointer events outside the panel always carry a DOM event target Node.
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
         onClose();
       }

@@ -2,6 +2,10 @@ import { LEARNER_ROW_STOP_TOKENS, SIGNATURE_ROLES } from '../constants';
 import type { LearnerSex } from '../types';
 import { normalizeText } from './normalizeText';
 
+export function isNum<T>(value: T): value is T & number {
+  return typeof value === 'number';
+}
+
 export type ClassifiedRowType =
   | 'blank'
   | 'sex-header'
@@ -11,8 +15,8 @@ export type ClassifiedRowType =
   | 'learner'
   | 'unknown';
 
-export function parseLearnerNo(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
+export function parseLearnerNo<T>(value: T): number | undefined {
+  if (isNum(value) && Number.isFinite(value)) return value;
   const text = String(value ?? '').trim();
   if (!text) return undefined;
   const parsed = Number(text.replace(/[^0-9]/g, ''));

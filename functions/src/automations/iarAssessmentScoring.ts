@@ -65,11 +65,11 @@ function classificationRank(value: TopicClassification): number {
 }
 
 function inferScoreFromResults(topic: IARTopicArea, results: SubjectScore[]): number {
-  const fallbackAliases: Record<IARTopicArea, string[]> = {
+  const fallbackAliases = {
     Functions: ["Functions", "gen-math", "pre-calc"],
     BusinessMath: ["BusinessMath", "stats-prob"],
     Logic: ["Logic", "basic-calc"],
-  };
+  } satisfies Record<IARTopicArea, string[]>;
 
   const aliasSet = new Set(fallbackAliases[topic]);
   const found = results.find((item) => aliasSet.has(item.subject));
@@ -163,11 +163,11 @@ export function deriveIARAssessmentInsights(
   };
 
   const firstPriority = priorityTopics[0];
-  const startingQuarterByTopic: Record<IARTopicArea, "Q1" | "Q2" | "Q3" | "Q4"> = {
+  const startingQuarterByTopic = {
     Functions: "Q1",
     BusinessMath: "Q3",
     Logic: "Q4",
-  };
+  } satisfies Record<IARTopicArea, "Q1" | "Q2" | "Q3" | "Q4">;
 
   const recommendationReasonCode = riskFlags.some((flag) => flag.startsWith("high_risk:"))
     ? "iar_high_risk_detected"

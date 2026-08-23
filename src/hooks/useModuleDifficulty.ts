@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import type { CurriculumModuleRuntime } from '../data/curriculumModules';
 
 export type ModuleDifficulty = 'normal' | 'easier' | 'remedial';
 
@@ -34,10 +35,13 @@ export function useModuleDifficulty(userId: string | null): ModuleDifficultyStat
         }
 
         const data = snap.data();
-        const difficulty = (data?.moduleDifficulty as ModuleDifficulty) || 'normal';
+        const rawDifficulty = data?.moduleDifficulty;
+        const difficulty = rawDifficulty === 'normal' || rawDifficulty === 'easier' || rawDifficulty === 'remedial'
+          ? rawDifficulty
+          : 'normal';
 
         setState({
-          difficulty: ['normal', 'easier', 'remedial'].includes(difficulty) ? difficulty : 'normal',
+          difficulty,
           loading: false,
         });
       },
@@ -62,10 +66,10 @@ export function useModuleDifficulty(userId: string | null): ModuleDifficultyStat
  * NOTE: This filters based on optional `tags` and `difficulty` fields.
  * If the curriculum data does not include these fields, all modules are returned.
  */
-export function filterModulesByDifficulty<T extends Record<string, any>>(
-  modules: T[],
+export function filterModulesByDifficulty(
+  modules: Array<CurriculumModuleRuntime & { tags?: string[]; difficulty?: string }>,
   difficulty: ModuleDifficulty
-): T[] {
+): CurriculumModuleRuntime[] {
   if (difficulty === 'normal') return modules;
 
   if (difficulty === 'easier') {

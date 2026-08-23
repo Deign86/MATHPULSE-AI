@@ -108,7 +108,13 @@ function extractLearners(matrix: SheetMatrix): ParsedLearner[] {
   return learners;
 }
 
-function extractAttachmentAndHelperNotes(matrix: SheetMatrix): { attachmentRules: string[]; helperNotes: string[] } {
+/** Attachment rule and helper note lines collected from the input sheet. */
+interface AttachmentHelperNotes {
+  attachmentRules: string[];
+  helperNotes: string[];
+}
+
+function extractAttachmentAndHelperNotes(matrix: SheetMatrix): AttachmentHelperNotes {
   const attachmentRules: string[] = [];
   const helperNotes: string[] = [];
 

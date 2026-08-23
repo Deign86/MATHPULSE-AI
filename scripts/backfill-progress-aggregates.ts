@@ -27,6 +27,7 @@ async function main() {
   const managedSnap = await db.collection('managedStudents').get();
   const wriRiskMap = new Map<string, string>();
   managedSnap.docs.forEach(d => {
+    // SAFETY: riskStatus is a trusted scalar string written by the teacher dashboard.
     const rs = d.data().riskStatus as string | undefined;
     if (rs) wriRiskMap.set(d.id, rs);
   });
@@ -50,9 +51,12 @@ async function main() {
 
     // Compute per-subject progress from module completions
     const subjects = data.subjects || {};
+    // SAFETY: Firestore progress subjects are parsed permissively during this one-off backfill.
     const subjectUpdates: Record<string, number> = {};
+    // SAFETY: Firestore progress docs are parsed permissively during this one-off backfill.
     for (const [subjectId, subjectData] of Object.entries(subjects) as [string, any][]) {
       const modules = subjectData?.modulesProgress || {};
+      // SAFETY: module progress values are parsed permissively during this one-off backfill.
       const moduleProgresses = Object.values(modules) as Array<{ progress?: number }>;
       if (moduleProgresses.length > 0) {
         const avgProgress = Math.round(

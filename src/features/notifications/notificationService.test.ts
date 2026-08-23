@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createNotification } from './notificationFirestoreService';
+import * as notificationFirestoreNs from './notificationFirestoreService';
 import { notify } from './notificationService';
 import type { NotificationPayload } from './types';
 
-vi.mock('./notificationFirestoreService', () => ({
-  createNotification: vi.fn(),
-}));
+// Firestore seam: spy on the real createNotification so notify()'s wiring is exercised.
+vi.spyOn(notificationFirestoreNs, 'createNotification');
 
 describe('notificationService', () => {
   beforeEach(() => {
@@ -14,7 +13,8 @@ describe('notificationService', () => {
 
   describe('notify', () => {
     it('calls createNotification with the payload', async () => {
-      (createNotification as unknown as ReturnType<typeof vi.fn>).mockResolvedValue('notif-123');
+      const createNotificationSpy = vi.mocked(notificationFirestoreNs.createNotification);
+      createNotificationSpy.mockResolvedValue('notif-123');
 
       const payload: NotificationPayload = {
         userId: 'user-123',
@@ -27,12 +27,12 @@ describe('notificationService', () => {
 
       await notify(payload);
 
-      expect(createNotification).toHaveBeenCalledWith(payload);
+      expect(createNotificationSpy).toHaveBeenCalledWith(payload);
     });
 
     it('handles errors gracefully', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      (createNotification as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Firestore error'));
+      vi.mocked(notificationFirestoreNs.createNotification).mockRejectedValue(new Error('Firestore error'));
 
       const payload: NotificationPayload = {
         userId: 'user-123',
@@ -52,7 +52,7 @@ describe('notificationService', () => {
     });
 
     it('does not throw on error', async () => {
-      (createNotification as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Firestore error'));
+      vi.mocked(notificationFirestoreNs.createNotification).mockRejectedValue(new Error('Firestore error'));
 
       const payload: NotificationPayload = {
         userId: 'user-123',

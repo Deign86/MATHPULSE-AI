@@ -251,19 +251,22 @@ const MasteryHeatmap: React.FC<MasteryHeatmapProps> = ({ title = 'Platform-Wide 
             ? Math.round(subjectData.reduce((s, c) => s + c.mastery, 0) / subjectData.length)
             : 0;
 
+          // SAFETY: React.CSSProperties omits CSS custom properties; these internal theme values are asserted at the style boundary.
+          const subjectCellStyle = { '--bg': subject.color } as React.CSSProperties;
+          // SAFETY: React.CSSProperties omits CSS custom properties; the column count is an internal layout value.
+          const gridColumnsStyle = { '--grid-cols': `repeat(${topics.length}, minmax(0, 1fr))` } as React.CSSProperties;
+
           return (
             <div key={subject.id} className="mb-5 last:mb-0">
               {/* Subject header */}
               <div className="flex items-center gap-2 mb-2">
-                // SAFETY: trusted internal value already conforms to the asserted type.
-                <div className="w-3 h-3 rounded-sm e-bg" style={{ ['--bg' as any]: subject.color }} />
+                <div className="w-3 h-3 rounded-sm e-bg" style={subjectCellStyle} />
                 <span className="text-xs font-bold text-[#0a1628]">{subject.name}</span>
                 <span className="text-[10px] text-slate-500 ml-1">Avg: {subjectAvg}%</span>
               </div>
 
               {/* Topic grid */}
-              // SAFETY: trusted internal value already conforms to the asserted type.
-              <div className="grid gap-1 e-grid-cols" style={{ ['--grid-cols' as any]: `repeat(${topics.length}, minmax(0, 1fr))` }}>
+              <div className="grid gap-1 e-grid-cols" style={gridColumnsStyle}>
                 {/* Labels row */}
                 {topics.map((topic, i) => (
                   <div key={`label-${i}`} className="text-center">

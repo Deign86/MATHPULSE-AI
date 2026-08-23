@@ -147,7 +147,7 @@ async function resetStudentTestingData(uid: string, lrn?: string): Promise<{ del
   const userSnap = await getDoc(doc(db, 'users', uid));
   let preservedFields: DocumentData = {};
   if (userSnap.exists()) {
-    const data = userSnap.data() as DocumentData;
+    const data = userSnap.data() ?? {};
     if (data.photo) preservedFields.photo = data.photo;
     if (data.avatarLayers) preservedFields.avatarLayers = data.avatarLayers;
     if (data.ownedAvatarItems) preservedFields.ownedAvatarItems = data.ownedAvatarItems;

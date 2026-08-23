@@ -458,8 +458,9 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
       xpEarned += qs.xpAwarded;
       if (qs.resolution === 'correct') correct++;
       if (qs.resolution === 'revealed') revealed++;
-      // SAFETY: trusted internal value already conforms to the asserted type.
-      if (qs.attempts >= STRUGGLE_THRESHOLD) struggles.push((q as any).topic || (q as any).competencyCode || lessonTitle);
+      // SAFETY: phase questions come from trusted curriculum blueprints; topic/competencyCode are optional metadata.
+      const qMeta = q as { topic?: string; competencyCode?: string };
+      if (qs.attempts >= STRUGGLE_THRESHOLD) struggles.push(qMeta.topic || qMeta.competencyCode || lessonTitle);
     });
     const result: RoundResult = { phase: PHASE_IDS[currentPhaseIdx], questionsCorrect: correct, questionsRevealed: revealed, xpEarned, struggleTopics: [...new Set(struggles)] };
     setCurrentRoundResult(result);
@@ -495,11 +496,12 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
       try {
         const result = await fetchShadowRetries({ userId, sessionId, struggleTopics: struggles, subject, count: Math.min(2, struggles.length) });
         if (result.variants?.length) {
-          nextQuestions = [...nextQuestions, ...result.variants.map(v => ({
-            // SAFETY: trusted internal value already conforms to the asserted type.
+          // SAFETY: the shadow-retry service returns variant questions already shaped like Question; only `type` arrives widened as string.
+          const retryVariants = result.variants.map((v): Question => ({
             id: v.id, type: v.type as Question['type'], question: v.question,
             options: v.options, correctAnswer: v.correctAnswer, explanation: v.explanation || '', hints: v.hints || [],
-          }))];
+          }));
+          nextQuestions = [...nextQuestions, ...retryVariants];
         }
       } catch { /* shadow retry fetch is non-critical */ }
     }

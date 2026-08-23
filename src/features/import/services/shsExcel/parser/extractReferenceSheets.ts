@@ -1,5 +1,5 @@
 import { STATUS_TOKENS } from './constants';
-import type { ParsedSignature, ReferenceSheetExtraction, SheetMatrix } from './types';
+import type { ComponentWeightRow, ParsedSignature, ReferenceSheetExtraction, SheetMatrix } from './types';
 import { findAllAnchors } from './utils/findAnchors';
 import { includesNormalized } from './utils/normalizeText';
 import { getMatrixCell, getRowText } from './utils/sheetMatrix';
@@ -22,8 +22,8 @@ function extractSignatures(sheet: SheetMatrix): ParsedSignature[] {
   return signatures;
 }
 
-function extractComponentWeights(sheet: SheetMatrix): Array<Record<string, unknown>> {
-  const rows: Array<Record<string, unknown>> = [];
+function extractComponentWeights(sheet: SheetMatrix): ComponentWeightRow[] {
+  const rows: ComponentWeightRow[] = [];
   let inWeightBlock = false;
 
   for (let row = sheet.startRow; row <= sheet.endRow; row += 1) {
@@ -40,7 +40,7 @@ function extractComponentWeights(sheet: SheetMatrix): Array<Record<string, unkno
 
     if (!inWeightBlock) continue;
 
-    const record: Record<string, unknown> = {
+    const record: ComponentWeightRow = {
       sourceRow: row + 1,
       raw: rowText,
     };
@@ -62,7 +62,7 @@ function extractComponentWeights(sheet: SheetMatrix): Array<Record<string, unkno
 export function extractReferenceSheets(sheets: SheetMatrix[]): ReferenceSheetExtraction {
   const warnings: string[] = [];
   const signatures: ParsedSignature[] = [];
-  const componentWeights: Array<Record<string, unknown>> = [];
+  const componentWeights: ComponentWeightRow[] = [];
   const attachmentRules: string[] = [];
   const helperNotes: string[] = [];
 

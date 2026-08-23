@@ -21,7 +21,18 @@ export type AdminCreateUserField =
   | 'section'
   | 'lrn';
 
-export type AdminCreateUserValidationErrors = Partial<Record<AdminCreateUserField, string>>;
+/** Per-field validation messages for the admin create-user form. */
+export interface AdminCreateUserValidationErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  role?: string;
+  status?: string;
+  grade?: string;
+  section?: string;
+  lrn?: string;
+}
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_UPPER_REGEX = /[A-Z]/;

@@ -14,6 +14,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+const hasWindow = 'window' in globalThis;
+
 /**
  * The `beforeinstallprompt` event is not part of the standard TypeScript DOM
  * lib yet, so it is typed locally and cast where the browser dispatches it.
@@ -43,7 +45,7 @@ export interface UsePwaInstallResult {
 }
 
 const isIosDevice = (): boolean => {
-  if (typeof navigator === 'undefined') return false;
+  if (!('navigator' in globalThis)) return false;
   const ua = navigator.userAgent;
   const iosTouch =
     /iphone|ipad|ipod/i.test(ua) ||
@@ -52,11 +54,12 @@ const isIosDevice = (): boolean => {
 };
 
 const isStandaloneDisplay = (): boolean => {
-  if (typeof window === 'undefined') return false;
+  if (!hasWindow) return false;
   const standaloneCss =
     window.matchMedia('(display-mode: standalone)').matches ||
     window.matchMedia('(display-mode: fullscreen)').matches ||
     window.matchMedia('(display-mode: minimal-ui)').matches;
+  // SAFETY: the iOS-only `standalone` flag is not in the standard Navigator type.
   const iosStandalone = (navigator as IosNavigator | undefined)?.standalone === true;
   return standaloneCss || iosStandalone;
 };
@@ -72,6 +75,7 @@ export function usePwaInstall(): UsePwaInstallResult {
       // Prevent the mini-infobar from appearing automatically; the app
       // surfaces its own install button instead.
       event.preventDefault();
+      // SAFETY: this handler is registered only for beforeinstallprompt events dispatched by the browser.
       setInstallPrompt(event as BeforeInstallPromptEvent);
     };
 

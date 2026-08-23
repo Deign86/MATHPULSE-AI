@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+// SAFETY: the repo-owned webmanifest always carries these PWA fields.
 const manifest = JSON.parse(
   readFileSync(resolve(process.cwd(), 'public/manifest.webmanifest'), 'utf8'),
 ) as {

@@ -29,19 +29,7 @@ interface SubjectRowData {
   color: string;
 }
 
-interface ShsSubject {
-  id: string;
-  code: string;
-  name: string;
-  gradeLevel: string;
-  semester: string;
-  color: string;
-  pdfAvailable?: boolean;
-  topics: Array<{ id: string; name: string; unit: string }>;
-}
-
-// SAFETY: trusted internal value already conforms to the asserted type.
-const SUBJECT_ROWS: SubjectRowData[] = (SHS_MATH_SUBJECTS as unknown as ShsSubject[]).map((s: ShsSubject) => ({
+const SUBJECT_ROWS: SubjectRowData[] = SHS_MATH_SUBJECTS.map((s) => ({
   id: s.id,
   name: s.name,
   code: s.code,

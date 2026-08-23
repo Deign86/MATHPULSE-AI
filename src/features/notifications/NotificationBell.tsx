@@ -14,6 +14,7 @@ export const NotificationBell: React.FC = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // SAFETY: pointer events outside the bell always carry a DOM event target Node.
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }

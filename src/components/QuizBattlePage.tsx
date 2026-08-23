@@ -28,6 +28,7 @@ import {
   Flag,
 } from 'lucide-react';
 import { WarpBackground } from './ui/warp-background';
+import { memberOf } from '../utils/memberOf';
 import CompositeAvatar from './CompositeAvatar';
 import { useAuth } from '../contexts/AuthContext';
 import { getActiveSubjectIdsForGrade, subjects, type SubjectId } from '../data/subjects';
@@ -292,6 +293,13 @@ const AnimatedCounter: React.FC<{ value: number; label: string; delay?: number; 
 
 type BattlePageTab = 'hub' | 'setup' | 'battle' | 'history' | 'stats' | 'leaderboard';
 
+const BATTLE_PAGE_TABS = ['hub', 'setup', 'battle', 'history', 'stats', 'leaderboard'] as const;
+const QUIZ_BATTLE_DIFFICULTIES = ['easy', 'medium', 'hard', 'adaptive'] as const;
+
+// Environment probes: these globals exist only in browser runtimes (SSR-safe).
+const hasWindow = 'window' in globalThis;
+const hasDocument = 'document' in globalThis;
+
 type LaunchState =
   | { status: 'idle' }
   | { status: 'validating' }
@@ -363,7 +371,7 @@ const describeLifecycleEvent = (
 let globalAudioContext: AudioContext | null = null;
 
 const getAudioContext = () => {
-  if (typeof window === 'undefined') return null;
+  if (!hasWindow) return null;
   if (!globalAudioContext) {
     // SAFETY: trusted internal value already conforms to the asserted type.
     const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -389,11 +397,11 @@ const QuizBattlePage: React.FC = () => {
   const [queueWaitSeconds, setQueueWaitSeconds] = useState(0);
   const [queueTimeoutDeadlineAtMs, setQueueTimeoutDeadlineAtMs] = useState<number | null>(null);
   const [battleSoundEnabled, setBattleSoundEnabled] = useState(() => {
-    if (typeof window === 'undefined') return true;
+    if (!hasWindow) return true;
     return window.localStorage.getItem('quiz_battle_sound_enabled') !== '0';
   });
   const [battleSoundVolume, setBattleSoundVolume] = useState(() => {
-    if (typeof window === 'undefined') return 0.7;
+    if (!hasWindow) return 0.7;
     const stored = Number(window.localStorage.getItem('quiz_battle_sound_volume') || '0.7');
     if (!Number.isFinite(stored)) return 0.7;
     return clampNumber(stored, 0, 1);
@@ -532,7 +540,7 @@ const QuizBattlePage: React.FC = () => {
   }, [lastRoundResult, playerRoundStreak]);
 
   const playBattleTone = useCallback((kind: 'tick' | 'lock' | 'result' | 'win' | 'loss' | 'streak' | 'multiplier') => {
-    if (!battleSoundEnabled || battleSoundVolume <= 0 || typeof window === 'undefined') return;
+    if (!battleSoundEnabled || battleSoundVolume <= 0 || !hasWindow) return;
 
     try {
       const context = getAudioContext();
@@ -580,7 +588,7 @@ const QuizBattlePage: React.FC = () => {
   }, [battleSoundEnabled, battleSoundVolume]);
 
   const handleCopyRoomCode = useCallback(async (roomCode: string) => {
-    if (!roomCode || typeof window === 'undefined') return;
+    if (!roomCode || !hasWindow) return;
 
     try {
       await window.navigator.clipboard.writeText(roomCode);
@@ -772,7 +780,7 @@ const QuizBattlePage: React.FC = () => {
             setActiveMatch(null);
             setActiveTab('setup');
             setConnectionState(
-              typeof window !== 'undefined' && window.navigator.onLine ? 'connected' : 'disconnected',
+              hasWindow && window.navigator.onLine ? 'connected' : 'disconnected',
             );
             setLaunchState({
               status: 'error',
@@ -830,17 +838,17 @@ const QuizBattlePage: React.FC = () => {
   }, [studentProfile?.uid, syncQuizBattleSession]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!hasWindow) return;
     window.localStorage.setItem('quiz_battle_sound_enabled', battleSoundEnabled ? '1' : '0');
   }, [battleSoundEnabled]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!hasWindow) return;
     window.localStorage.setItem('quiz_battle_sound_volume', battleSoundVolume.toFixed(2));
   }, [battleSoundVolume]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (!hasWindow) return undefined;
 
     const syncViewport = () => {
       const width = window.innerWidth;
@@ -859,7 +867,7 @@ const QuizBattlePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (typeof document === 'undefined') return undefined;
+    if (!hasDocument) return undefined;
 
     const syncFullscreen = () => {
       setIsFullscreen(Boolean(document.fullscreenElement));
@@ -929,7 +937,7 @@ const QuizBattlePage: React.FC = () => {
   }, [activeRoom, clearPublicMatchmakingSession, queueActive, queueTimeoutDeadlineAtMs]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (!hasWindow) {
       return;
     }
 
@@ -1965,7 +1973,7 @@ const QuizBattlePage: React.FC = () => {
               onToggleSound={() => setBattleSoundEnabled((previous) => !previous)}
               isFullscreen={isFullscreen}
               onToggleFullscreen={() => {
-                if (typeof document === 'undefined') return;
+                if (!hasDocument) return;
                 if (document.fullscreenElement) {
                   document.exitFullscreen().catch((error) => {
                     console.warn('Fullscreen mode unavailable or blocked by browser (exit):', error);
@@ -2149,8 +2157,7 @@ const QuizBattlePage: React.FC = () => {
           >
 
 
-            // SAFETY: trusted internal value already conforms to the asserted type.
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BattlePageTab)}>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(memberOf(BATTLE_PAGE_TABS, value, 'hub'))}>
 
 
               <TabsContent value="hub" className="mt-0 outline-none">
@@ -2702,12 +2709,10 @@ const QuizBattlePage: React.FC = () => {
                                 previous.mode === 'bot'
                                   ? {
                                     ...previous,
-                                    // SAFETY: trusted internal value already conforms to the asserted type.
-                                    botDifficulty: value as QuizBattleSetupConfig['botDifficulty'],
+                                    botDifficulty: memberOf(QUIZ_BATTLE_DIFFICULTIES, value, previous.botDifficulty),
                                     adaptiveBot: value === 'adaptive',
                                   }
-                                  // SAFETY: trusted internal value already conforms to the asserted type.
-                                  : { ...previous, difficulty: value as QuizBattleSetupConfig['difficulty'] },
+                                  : { ...previous, difficulty: memberOf(['easy', 'medium', 'hard'] as const, value, previous.difficulty) },
                               )
                             }
                           >

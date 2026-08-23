@@ -22,6 +22,10 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === 'number';
 }
 
+export function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
+
 interface DiagnosticAssessmentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -72,6 +76,10 @@ const BASE_COMPLETION_PAYLOAD: Omit<DiagnosticCompletionPayload, 'status'> = {
 
 const QUESTIONS = getDepEdIARQuestionBlueprint();
 
+// SAFETY: IAR blueprint difficulties are trusted internal labels passed through to the question card unchanged.
+const toCardDifficulty = (difficulty: string): 'Easy' | 'Medium' | 'Hard' =>
+  (difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard';
+
 const normalizeText = (value: string): string =>
   value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -83,7 +91,7 @@ const isCorrectAnswer = (question: IARQuestionBlueprint, answer: AnswerValue): b
   }
 
   if (question.answerType === 'shortAnswerNumeric') {
-    if (typeof answer !== 'string') return false;
+    if (!isString(answer)) return false;
     const parsed = Number(answer);
     if (Number.isNaN(parsed)) return false;
 
@@ -94,7 +102,7 @@ const isCorrectAnswer = (question: IARQuestionBlueprint, answer: AnswerValue): b
   }
 
   if (question.answerType === 'shortAnswerText') {
-    if (typeof answer !== 'string') return false;
+    if (!isString(answer)) return false;
     const normalized = normalizeText(answer);
     return (question.acceptableTextAnswers || []).some(
       (candidate) => normalizeText(candidate) === normalized,
@@ -136,6 +144,9 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
   const [g12Readiness, setG12Readiness] = useState<G12ReadinessIndicators | null>(null);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>([]);
   const [_automationProcessing, setAutomationProcessing] = useState(false);
+
+  // SAFETY: topicSummaries is keyed by IARTopicArea, so its own keys are valid topic areas.
+  const summaryTopics = topicSummaries ? (Object.keys(topicSummaries) as IARTopicArea[]) : [];
 
   // Reset state when opened
   React.useEffect(() => {
@@ -589,8 +600,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                   questionNumber={currentQuestionIndex + 1}
                   questionText={currentQuestion.prompt}
                   topic={TOPIC_LABELS[currentQuestion.topicArea] || currentQuestion.topicArea}
-                  // SAFETY: trusted internal value already conforms to the asserted type.
-                  difficulty={(currentQuestion.difficulty as string as 'Easy' | 'Medium' | 'Hard') || 'Medium'}
+                  difficulty={toCardDifficulty(currentQuestion.difficulty)}
                 >
 
                 {(currentQuestion.answerType === 'MCQ' || currentQuestion.answerType === 'confidenceLikert') && (
@@ -684,8 +694,7 @@ const DiagnosticAssessmentModal: React.FC<DiagnosticAssessmentModalProps> = ({
                   </div>
                   
                   <div className="space-y-2.5">
-                    // SAFETY: trusted internal value already conforms to the asserted type.
-                    {topicSummaries && (Object.keys(topicSummaries) as IARTopicArea[]).map((topic) => (
+                    {topicSummaries && summaryTopics.map((topic) => (
                       <div key={topic} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-[#dde3eb]">
                         <div>
                           <p className="font-medium text-sm text-[#0a1628]">{TOPIC_LABELS[topic]}</p>
