@@ -110,12 +110,7 @@ export default function DataImportView({
   }
 
 
-  export function isNum<T>(value: T): value is T & number {
-    return typeof value === 'number';
-  }
-
-
-  const toFiniteNumber = (value: number | string): number | null => {
+  const toFiniteNumber = (value: number | string | null | undefined): number | null => {
     if (isNum(value) && Number.isFinite(value)) return value;
     const parsed = Number(String(value ?? '').replace(/[^0-9.-]+/g, ''));
     return Number.isFinite(parsed) ? parsed : null;
