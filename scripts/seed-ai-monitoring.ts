@@ -62,7 +62,9 @@ async function seed() {
   let fullPriceCost = 0;
   let totalCacheHit = 0;
   let totalCacheMiss = 0;
-  const features: Record<string, unknown>[] = [];
+  /** AI monitoring feature rows keyed by feature id. */
+  interface FeatureUsageRow { [field: string]: string | number | boolean }
+  const features: FeatureUsageRow[] = [];
 
   for (const f of FEATURES) {
     const reqs = Math.round(totalRequests * f.share);

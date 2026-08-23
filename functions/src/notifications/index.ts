@@ -13,16 +13,20 @@
 
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import { sendPushToUser, sendPushToUsers, sanitizeAppRoute, isValidAssignmentId, type PushResult } from "../utils/sendPush";
+import { sendPushToUser, sendPushToUsers, sanitizeAppRoute, isValidAssignmentId, type PushResult, type PushPayload } from "../utils/sendPush";
 
-type AnyDoc = Record<string, unknown>;
+type AnyDoc = admin.firestore.DocumentData;
 
-function asString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
+const isText = <T>(value: T): value is T & string => typeof value === "string";
+
+function asString<T>(value: T, fallback = ""): string {
+  return isText(value) ? value : fallback;
 }
 
-function asNumber(value: unknown, fallback = 0): number {
-  return typeof value === "number" ? value : fallback;
+const isNumberValue = <T>(value: T): value is T & number => typeof value === "number";
+
+function asNumber<T>(value: T, fallback = 0): number {
+  return isNumberValue(value) ? value : fallback;
 }
 
 function eventId(prefix: string, value: string): string {
@@ -37,7 +41,7 @@ function manilaDate(date = new Date()): string {
  * Authorization helper for a trusted classSectionOwnership document. The
  * teacher-writable managedStudents.teacherId field is deliberately ignored.
  */
-export function canTeacherNotifyStudent(callerUid: string, callerRole: unknown, ownership: AnyDoc | null, targetRole: unknown, targetStudentId?: string): boolean {
+export function canTeacherNotifyStudent<C, T>(callerUid: string, callerRole: C, ownership: AnyDoc | null, targetRole: T, targetStudentId?: string): boolean {
   if (targetRole !== "student") return false;
   if (callerRole === "admin") return true;
   if (callerRole !== "teacher" || !ownership) return false;
@@ -62,7 +66,7 @@ function mergeResult(target: PushResult, value: PushResult): void {
 export const onAchievementUnlocked = functions.firestore
   .document("users/{userId}/achievements/{achievementId}")
   .onCreate(async (snap, context) => {
-    const data = (snap.data() || {}) as AnyDoc;
+    const data = snap.data() ?? {};
     if (!data) return;
     if (data.unlockedAt === undefined && data.unlocked !== true) return;
 
@@ -89,8 +93,8 @@ export const onAchievementUnlocked = functions.firestore
 export const onQuizBattleUpdate = functions.firestore
   .document("quizBattleMatches/{battleId}")
   .onWrite(async (change, context) => {
-    const after = (change.after.exists ? change.after.data() : null) as AnyDoc | null;
-    const before = (change.before.exists ? change.before.data() : null) as AnyDoc | null;
+    const after = change.after.exists ? change.after.data() ?? {} : null;
+    const before = change.before.exists ? change.before.data() ?? {} : null;
     if (!after) return;
 
     const battleId = context.params.battleId;
@@ -155,7 +159,7 @@ export const onQuizBattleUpdate = functions.firestore
 export const onGradePosted = functions.firestore
   .document("assessmentResults/{studentId}/attempts/{attemptId}")
   .onCreate(async (snap, context) => {
-    const data = (snap.data() || {}) as AnyDoc;
+    const data = snap.data() ?? {};
     const studentId = context.params.studentId;
     if (!studentId) return;
 
@@ -382,7 +386,7 @@ export const sendTestPush = functions.https.onCall(async (data, context) => {
   if (caller.data()?.role !== "admin") {
     throw new functions.https.HttpsError("permission-denied", "Only administrators may send test pushes.");
   }
-  const requestId = typeof data?.requestId === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(data.requestId) ? data.requestId : `${Date.now()}`;
+  const requestId = isText(data?.requestId) && /^[A-Za-z0-9_-]{1,100}$/.test(data.requestId) ? data.requestId : `${Date.now()}`;
   return sendPushToUser(context.auth.uid, {
     title: "MathPulse Test Notification",
     body: "Push notifications are working! You'll receive updates here.",
@@ -413,7 +417,9 @@ const PUSH_RELAYED_INAPP_TYPES = new Set([
   "streak_milestone",
 ]);
 
-const INAPP_TO_FCM: Record<string, "achievement" | "system" | "grade_posted" | "assignment"> = {
+interface InAppToFcmMap { [key: string]: "achievement" | "system" | "grade_posted" | "assignment"; }
+
+const INAPP_TO_FCM: InAppToFcmMap = {
   achievement_unlocked: "achievement",
   level_up: "system",
   quiz_result: "grade_posted",
@@ -425,9 +431,9 @@ const INAPP_TO_FCM: Record<string, "achievement" | "system" | "grade_posted" | "
 export const onInAppNotificationCreated = functions.firestore
   .document("notifications/{userId}/items/{notificationId}")
   .onCreate(async (snap, context) => {
-    const data = (snap.data() || {}) as AnyDoc;
+    const data = snap.data() ?? {};
     const inAppType = asString(data.type);
-    const metadata = (data.metadata as Record<string, unknown> | undefined) || {};
+    const metadata: AnyDoc = data.metadata || {};
 
     // Echo guard
     if (metadata.source === "fcm_foreground") return;
@@ -441,13 +447,15 @@ export const onInAppNotificationCreated = functions.firestore
     const assignmentId = asString(metadata.assignmentId) || asString(data.assignmentId) || asString(data.quizId);
     if (fcmType === "assignment" && !isValidAssignmentId(assignmentId)) return;
 
-    await sendPushToUser(context.params.userId, {
+    const pushPayload: PushPayload = {
       title,
       body,
       url,
       tag: `inapp-${context.params.notificationId}`,
       eventId: eventId("inapp", `${context.params.userId}:${context.params.notificationId}`),
-      ...(fcmType === "assignment" ? { assignmentId } : {}),
       notificationType: fcmType,
-    });
+    };
+    if (fcmType === "assignment") pushPayload.assignmentId = assignmentId;
+
+    await sendPushToUser(context.params.userId, pushPayload);
   });

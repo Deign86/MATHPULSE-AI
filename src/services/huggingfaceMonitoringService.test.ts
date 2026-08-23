@@ -1,15 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DeepSeekMonitoringData, DeepSeekMonitoringResponse } from '../types/hfMonitoring';
-
-const { mockApiFetch } = vi.hoisted(() => ({
-  mockApiFetch: vi.fn(),
-}));
-
-vi.mock('./apiService', () => ({
-  apiFetch: mockApiFetch,
-}));
-
+import * as apiService from './apiService';
 import { fetchDeepSeekMonitoringData, mapStatusToHealth, resolveHealthStatus, probeModelLatency } from './deepseekMonitoringService';
+
+// Spy on the real apiService instead of mocking the module.
+const mockApiFetch = vi.spyOn(apiService, 'apiFetch');
 
 const mockMonitoringData: DeepSeekMonitoringData = {
   modelId: 'deepseek-chat',

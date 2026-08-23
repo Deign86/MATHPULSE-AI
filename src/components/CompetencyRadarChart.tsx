@@ -129,7 +129,10 @@ export const CompetencyRadarChart: React.FC = () => {
                           {payload[0].payload.metric}
                         </p>
                         <div className="flex flex-col gap-1.5">
-                          {payload.map((pl) => (
+                          {payload.map((pl) => {
+                            // SAFETY: this radar chart's series are numeric; recharts types payload values loosely.
+                            const roundedValue = Math.round(pl.value as number);
+                            return (
                             <div key={pl.name} className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: pl.stroke }} />
@@ -138,11 +141,11 @@ export const CompetencyRadarChart: React.FC = () => {
                                 </span>
                               </div>
                               <span className="text-[13px] font-bold" style={{ color: pl.stroke }}>
-                                // SAFETY: trusted internal value already conforms to the asserted type.
-                                {Math.round(pl.value as number)}%
+                                {roundedValue}%
                               </span>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );
