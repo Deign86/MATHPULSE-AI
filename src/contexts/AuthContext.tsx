@@ -51,9 +51,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
+    let fallbackTimer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+      setLoading(false);
+    }, 1200);
+
     let unsubscribe: (() => void) | undefined;
     try {
       unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (fallbackTimer) {
+          clearTimeout(fallbackTimer);
+          fallbackTimer = undefined;
+        }
         setLoading(true);
         setCurrentUser(user);
 
@@ -141,6 +149,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     return () => {
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+      }
       if ((unsubscribe instanceof Function)) {
         unsubscribe();
       }
