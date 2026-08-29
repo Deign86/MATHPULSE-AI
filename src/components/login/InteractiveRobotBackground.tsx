@@ -7,21 +7,15 @@ interface InteractiveRobotBackgroundProps {
 }
 
 const SCRUB_START = 0.0;
-const SCRUB_END = 2.5; // Monotonic head-turn from left (0s) to right (2.5s)
-const IDLE_START = 7.4; // Neutral forward position
-const IDLE_END = 8.4; // Peak cute head-tilt position
-const IDLE_TIMEOUT_MS = 2500; // Start idle head-tilt after 2.5s of inactivity
+const SCRUB_END = 2.5; // Monotonic continuous head-turn from Left (0s) to Right (2.5s)
+const SPEED = 3.5; // Constant maximum turn velocity (timeline seconds per real second)
 
 export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProps> = ({
   onLoaded,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const targetTimeRef = useRef<number>(1.25); // Start at center looking forward
+  const targetTimeRef = useRef<number>(1.25); // Default to center looking forward
   const lastTimeRef = useRef<number>(0);
-  const lastActivityTimeRef = useRef<number>(Date.now());
-  const isIdleRef = useRef<boolean>(false);
-  const idleCurrentTimeRef = useRef<number>(IDLE_START);
-  const idleDirectionRef = useRef<number>(1); // 1 = forward, -1 = reverse (boomerang)
   const isRafActive = useRef<boolean>(false);
 
   const [isReady, setIsReady] = useState(false);
@@ -32,7 +26,7 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
     setIsTouchDevice(isTouch);
   }, []);
 
-  // Main RAF tick: handles constant-velocity mouse scrubbing and seamless boomerang idle animation
+  // Main RAF tick: smoothly tracks cursor position at consistent, natural velocity
   const step = useCallback((now: number) => {
     const video = videoRef.current;
     if (!video) {
@@ -46,72 +40,25 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
     const dt = Math.max(0.001, Math.min(0.05, (now - lastTimeRef.current) / 1000));
     lastTimeRef.current = now;
 
-    const timeSinceActivity = Date.now() - lastActivityTimeRef.current;
-    const shouldBeIdle = !isTouchDevice && timeSinceActivity > IDLE_TIMEOUT_MS;
+    const target = targetTimeRef.current;
+    const current = video.currentTime;
+    const diff = target - current;
+    const maxStep = SPEED * dt;
 
-    if (shouldBeIdle) {
-      // ─── IDLE MODE: 100% Seamless Boomerang (Ping-Pong) Loop (Zero Cuts) ───
-      if (!isIdleRef.current) {
-        isIdleRef.current = true;
-        idleCurrentTimeRef.current = IDLE_START;
-        idleDirectionRef.current = 1;
-      }
-
-      // Smooth 0.75x organic speed for natural, gentle lifelike movement
-      const IDLE_PLAYBACK_SPEED = 0.75;
-      idleCurrentTimeRef.current += dt * IDLE_PLAYBACK_SPEED * idleDirectionRef.current;
-
-      // Boomerang ping-pong bounce:
-      // Forward: 7.4s (neutral) → 8.4s (peak tilt & smile)
-      // Reverse: 8.4s (peak tilt & smile) → 7.4s (neutral)
-      if (idleCurrentTimeRef.current >= IDLE_END) {
-        idleCurrentTimeRef.current = IDLE_END;
-        idleDirectionRef.current = -1; // Reverse backward smoothly
-      } else if (idleCurrentTimeRef.current <= IDLE_START) {
-        idleCurrentTimeRef.current = IDLE_START;
-        idleDirectionRef.current = 1; // Play forward smoothly
-      }
-
+    if (Math.abs(diff) > 0.015) {
+      const delta = Math.sign(diff) * Math.min(Math.abs(diff), maxStep);
+      const nextTime = Math.max(SCRUB_START, Math.min(SCRUB_END, current + delta));
       if (!video.seeking) {
-        video.currentTime = idleCurrentTimeRef.current;
+        video.currentTime = nextTime;
       }
       requestAnimationFrame(step);
     } else {
-      // ─── ACTIVE MODE: Constant-velocity monotonic cursor tracking ───
-      isIdleRef.current = false;
-      const target = targetTimeRef.current;
-      const current = video.currentTime;
-
-      // If video was playing in the idle range (> SCRUB_END), snap back to target
-      if (current > SCRUB_END) {
-        if (!video.seeking) {
-          video.currentTime = target;
-        }
-        requestAnimationFrame(step);
-        return;
+      if (!video.seeking && Math.abs(current - target) > 0.001) {
+        video.currentTime = target;
       }
-
-      const diff = target - current;
-
-      // Constant maximum velocity: 3.5s timeline / second
-      const SPEED = 3.5;
-      const maxStep = SPEED * dt;
-
-      if (Math.abs(diff) > 0.02) {
-        const delta = Math.sign(diff) * Math.min(Math.abs(diff), maxStep);
-        const nextTime = Math.max(SCRUB_START, Math.min(SCRUB_END, current + delta));
-        if (!video.seeking) {
-          video.currentTime = nextTime;
-        }
-        requestAnimationFrame(step);
-      } else {
-        if (!video.seeking && Math.abs(current - target) > 0.001) {
-          video.currentTime = target;
-        }
-        requestAnimationFrame(step);
-      }
+      isRafActive.current = false;
     }
-  }, [isTouchDevice]);
+  }, []);
 
   const startLoop = useCallback(() => {
     if (!isRafActive.current) {
@@ -126,21 +73,12 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
     if (isTouchDevice) return;
 
     const handlePointerMove = (e: MouseEvent | PointerEvent) => {
-      const wasIdle = isIdleRef.current;
-      lastActivityTimeRef.current = Date.now();
-      isIdleRef.current = false;
-
       const normalizedX = e.clientX / window.innerWidth;
       const clampedX = Math.max(0, Math.min(1, normalizedX));
 
+      // Pure monotonic mapping: 0% (Left) -> 0.0s, 50% (Center) -> 1.25s, 100% (Right) -> 2.5s
       const newTarget = SCRUB_START + clampedX * (SCRUB_END - SCRUB_START);
       targetTimeRef.current = newTarget;
-
-      if (wasIdle && videoRef.current) {
-        idleCurrentTimeRef.current = IDLE_START;
-        idleDirectionRef.current = 1;
-        videoRef.current.currentTime = newTarget;
-      }
 
       startLoop();
     };
@@ -177,7 +115,7 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
       aria-hidden="true"
       className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0 bg-[#3a236a]"
     >
-      {/* ─── Video with Interactive Scrubbing + 100% Seamless Boomerang Idle Loop ─── */}
+      {/* ─── Video with Pure Consistent Cursor-Controlled Scrubbing ─── */}
       <video
         ref={videoRef}
         muted
