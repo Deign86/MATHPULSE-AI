@@ -35,7 +35,7 @@ Keep native write/edit/delete tools for file mutations when no lean-ctx replacem
 - Quiz Battle uses Firebase Realtime Database for matchmaking queue
 - IAR workflow states: `not_started`, `in_progress`, `completed`, `skipped_unassessed`, `deep_diagnostic_required`, `deep_diagnostic_in_progress`, `placed`
 - AI model routing: `prod` profile uses deepseek-reasoner for RAG lessons, deepseek-chat for other tasks
-- RAG vector store: `datasets/vectorstore/` with `BAAI/bge-small-en-v1.5` embeddings
+- RAG source of truth: `datasets/curriculum/sshs_learning_resources/` (DepEd SSHS modules, LiteParse Markdown/PDF); Chroma vector store at `datasets/vectorstore/` uses `BAAI/bge-small-en-v1.5` embeddings
 
 ## Known Scripts
 

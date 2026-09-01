@@ -3,7 +3,6 @@ import logging
 import os
 from typing import List, Tuple, Optional
 from pydantic import BaseModel
-import pdfplumber
 from docx import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -31,30 +30,13 @@ class Chunk(BaseModel):
     chunk_index: int
 
 def parse_pdf(file_bytes: bytes) -> Tuple[str, List[str]]:
-    """Extract text and outline from a PDF file using pdfplumber."""
-    text_content = []
-    outline = []
-    
+    """Extract text from a PDF with LiteParse."""
     try:
-        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-            # Try to get native outline/bookmarks
-            if pdf.doc.catalog and 'Outlines' in pdf.doc.catalog:
-                # Simplistic extraction of native outlines if available
-                # Often outlines are complex nested dictionaries in pdfplumber, 
-                # so we stick to basic text extraction for headings if this fails.
-                pass
-                
-            for page in pdf.pages:
-                extracted = page.extract_text()
-                if extracted:
-                    text_content.append(extracted)
-                    
-        full_text = "\n\n".join(text_content)
-        # Fallback outline: we'll leave it empty unless we parse formatting.
-        return full_text, outline
-    except Exception as e:
-        logger.error(f"Error parsing PDF: {e}")
-        raise ValueError(f"Failed to parse PDF: {str(e)}")
+        from rag.liteparse_utils import extract_text
+        return extract_text(file_bytes), []
+    except Exception as error:
+        logger.error("Error parsing PDF: %s", error)
+        raise ValueError(f"Failed to parse PDF: {error}") from error
 
 def parse_docx(file_bytes: bytes) -> Tuple[str, List[str]]:
     """Extract text and outline from a DOCX file using python-docx."""

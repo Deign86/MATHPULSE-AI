@@ -129,6 +129,8 @@ See [PWA architecture and deployment documentation](docs/PWA.md).
 | **KaTeX** | Latest | Math rendering (loaded globally) |
 
 ### Backend
+
+Curriculum RAG uses the DepEd SSHS corpus in `datasets/curriculum/sshs_learning_resources/`. The canonical `scripts/ingest_curriculum.py` prefers LiteParse-generated Markdown and falls back to LiteParse PDF parsing, writing the `curriculum_chunks` Chroma collection with `BAAI/bge-small-en-v1.5` embeddings.
 | Technology | Version | Purpose |
 |---|---|---|
 | **FastAPI** | ≥0.104 | High-performance Python API framework with automatic OpenAPI docs and `CORSMiddleware` |
@@ -136,7 +138,7 @@ See [PWA architecture and deployment documentation](docs/PWA.md).
 | **DeepSeek API** | — | AI inference via OpenAI-compatible client (`openai` package) |
 | **pandas** | ≥2.1 | Data processing for file uploads |
 | **openpyxl** | ≥3.1 | Excel file parsing |
-| **pdfplumber** | ≥0.10 | PDF table extraction |
+| **LiteParse** | ≥2.4.0 | Local PDF/document parsing for curriculum and uploads |
 | **python-docx** | ≥1.0 | DOCX document parsing |
 | **XGBoost / scikit-learn** | — | Supervised risk classification model |
 
