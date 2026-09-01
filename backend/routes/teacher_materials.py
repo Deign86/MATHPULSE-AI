@@ -99,39 +99,11 @@ def _generate_module_id(title: str, teacher_id: str) -> str:
 
 
 def _parse_pdf(contents: bytes) -> tuple[str, List[str]]:
-    """Extract text + headings from PDF using pdfplumber."""
-    import pdfplumber
+    """Extract text from PDF with LiteParse."""
+    from rag.liteparse_utils import extract_text
 
-    outlines: List[str] = []
-    page_texts: List[str] = []
-
-    with pdfplumber.open(io.BytesIO(contents)) as pdf:
-        for page in pdf.pages:
-            # Extract headings from pdfplumber's extracted words
-            text = page.extract_text() or ""
-            if text.strip():
-                page_texts.append(text)
-            # Try to get outlines/headings
-            try:
-                outline_pages = page.outline
-                if outline_pages:
-                    for item in outline_pages:
-                        if isinstance(item, dict):
-                            title = item.get("title", "")
-                            if title.strip():
-                                outlines.append(title.strip())
-                        elif isinstance(item, list):
-                            for sub in item:
-                                if isinstance(sub, dict):
-                                    title = sub.get("title", "")
-                                    if title.strip():
-                                        outlines.append(title.strip())
-            except Exception:
-                pass
-
-    text = "\n\n".join(page_texts)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text, outlines
+    text = re.sub(r"\s+", " ", extract_text(contents)).strip()
+    return text, []
 
 
 def _parse_docx(contents: bytes) -> tuple[str, List[str]]:

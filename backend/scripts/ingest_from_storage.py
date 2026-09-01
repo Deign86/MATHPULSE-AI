@@ -95,31 +95,9 @@ def chunk_text_preserve_pages(text: str, page_starts: List[int], chunk_size: int
 
 def extract_pdf_text_and_pages(pdf_bytes: bytes) -> tuple[str, List[int]]:
     """Extract text from PDF bytes, returning full text and page start positions."""
-    try:
-        from pypdf import PdfReader
-    except ImportError:
-        try:
-            import PyPDF2 as PdfReaderModule
-            from PyPDF2 import PdfReader
-        except ImportError:
-            logger.error("No PDF library available. Install: pip install pypdf")
-            return "", []
+    from rag.liteparse_utils import extract_text_and_pages
 
-    import io
-    reader = PdfReader(io.BytesIO(pdf_bytes))
-    pages: List[str] = []
-    for page in reader.pages:
-        text = page.extract_text() or ""
-        pages.append(text)
-
-    page_starts = []
-    position = 0
-    for page_text in pages:
-        page_starts.append(position)
-        position += len(page_text) + 1
-
-    full_text = "\n".join(pages)
-    return full_text, page_starts
+    return extract_text_and_pages(pdf_bytes)
 
 
 def get_firestore_client():
@@ -153,7 +131,7 @@ def ingest_from_firebase_storage(force_reindex: bool = False):
         from sentence_transformers import SentenceTransformer
         import chromadb
     except ImportError:
-        logger.error("Missing dependencies. Install: pip install chromadb sentence-transformers pypdf")
+        logger.error("Missing dependencies. Install: pip install chromadb sentence-transformers liteparse")
         return
 
     chroma_path = os.getenv("CURRICULUM_VECTORSTORE_DIR", "datasets/vectorstore")
@@ -162,7 +140,7 @@ def ingest_from_firebase_storage(force_reindex: bool = False):
         name="curriculum_chunks",
         metadata={"hnsw:space": "cosine"},
     )
-    embedder = SentenceTransformer("BAAI/bge-base-en-v1.5")
+    embedder = SentenceTransformer(os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"))
 
     db = get_firestore_client()
 
