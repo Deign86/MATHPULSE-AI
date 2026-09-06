@@ -7,14 +7,14 @@ interface InteractiveRobotBackgroundProps {
 }
 
 const SCRUB_START = 0.0;
-const SCRUB_END = 2.5; // Monotonic continuous head-turn from Left (0s) to Right (2.5s)
-const SPEED = 3.5; // Constant maximum turn velocity (timeline seconds per real second)
+const SCRUB_END = 2.3; // Calibrated monotonic head-turn from Left (0.0s) -> Center (1.15s) -> Right (2.3s)
+const SPEED = 4.5; // Natural turn velocity (timeline seconds per real second; full 2.3s sweep across viewport in ~0.5s)
 
 export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProps> = ({
   onLoaded,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const targetTimeRef = useRef<number>(1.25); // Default to center looking forward
+  const targetTimeRef = useRef<number>(1.15); // Default to center looking forward
   const lastTimeRef = useRef<number>(0);
   const isRafActive = useRef<boolean>(false);
 
@@ -45,15 +45,15 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
     const diff = target - current;
     const maxStep = SPEED * dt;
 
-    if (Math.abs(diff) > 0.015) {
-      const delta = Math.sign(diff) * Math.min(Math.abs(diff), maxStep);
-      const nextTime = Math.max(SCRUB_START, Math.min(SCRUB_END, current + delta));
+    if (Math.abs(diff) > 0.01 || video.seeking) {
       if (!video.seeking) {
+        const delta = Math.sign(diff) * Math.min(Math.abs(diff), maxStep);
+        const nextTime = Math.max(SCRUB_START, Math.min(SCRUB_END, current + delta));
         video.currentTime = nextTime;
       }
       requestAnimationFrame(step);
     } else {
-      if (!video.seeking && Math.abs(current - target) > 0.001) {
+      if (Math.abs(current - target) > 0.001) {
         video.currentTime = target;
       }
       isRafActive.current = false;
@@ -76,7 +76,7 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
       const normalizedX = e.clientX / window.innerWidth;
       const clampedX = Math.max(0, Math.min(1, normalizedX));
 
-      // Pure monotonic mapping: 0% (Left) -> 0.0s, 50% (Center) -> 1.25s, 100% (Right) -> 2.5s
+      // Monotonic mapping: 0% (Left) -> 0.0s, 50% (Center) -> 1.15s, 100% (Right) -> 2.3s
       const newTarget = SCRUB_START + clampedX * (SCRUB_END - SCRUB_START);
       targetTimeRef.current = newTarget;
 

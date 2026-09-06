@@ -6,10 +6,10 @@ This directory contains the optimized production video derivatives for the inter
 
 | File Name | Resolution | Codec / Format | GOP / Keyframe | Purpose & Usage |
 |---|---|---|---|---|
-| `mascot-robot-scrub.mp4` | 1920×1080 (1080p) | H.264 (libx264) | All-Intra (`-g 1`, every frame is I-frame) | **Primary interactive runtime video**. Provides instant sub-millisecond timeline scrubbing driven by horizontal mouse movement. |
-| `mascot-robot-hero.mp4` | 1920×1080 (1080p) | H.264 (libx264) | Standard GOP (`+faststart`) | High-efficiency standard web playback derivative. |
-| `mascot-robot-hero.webm` | 1920×1080 (1080p) | VP9 | Standard GOP | Modern web format derivative for Chromium/Firefox. |
-| `mascot-robot-hero-mobile.mp4` | 1280×720 (720p) | H.264 (libx264) | Standard GOP | Lightweight derivative for touch/mobile devices. |
+| `mascot-robot-scrub.mp4` | 1920×1080 (1080p) @ 60fps | H.264 (NVENC, RTX 4050) | Short GOP (`-g 15`, keyframe every 0.25s) | **Primary interactive runtime video**. Motion-interpolated 24→60fps (`minterpolate` MCI/AOBMC) from `White_robot_turns_head_1080p_202609061811.mp4`; NVDEC decode + NVENC encode, `+faststart`. Timeline scrubbing driven by horizontal mouse movement (0.0–2.3s Left→Right). |
+| `mascot-robot-hero.mp4` | 1920×1080 (1080p) @ 60fps | H.264 (NVENC, RTX 4050) | Standard GOP (`-g 120`, `+faststart`) | High-efficiency standard web playback derivative, transcoded from the 60fps scrub master. |
+| `mascot-robot-hero.webm` | 1920×1080 (1080p) @ 60fps | VP9 (QuickSync, Intel UHD) | Standard GOP | Modern web format derivative for Chromium/Firefox, transcoded from the 60fps scrub master. |
+| `mascot-robot-hero-mobile.mp4` | 1280×720 (720p) @ 60fps | H.264 (NVENC, RTX 4050) | Standard GOP | Lightweight derivative for touch/mobile devices, downscaled from the 60fps scrub master. |
 | `mascot-robot-poster.webp` | 1920×1080 | WebP | Single frame (Quality 90) | Ultra-fast initial paint poster. |
 | `mascot-robot-poster.png` | 1920×1080 | PNG | Single frame | Lossless fallback poster. |
 | `mascot-robot-source-original.mp4` | 1280×720 | H.264 (Google Source) | Original | Raw unprocessed master source provided for the character animation (`White_robot_turns_head_202608300334.mp4`). |
