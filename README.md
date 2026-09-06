@@ -1,184 +1,237 @@
-<div align="center">
+<p align="center">
+  <img src="public/mathpulse_final_logo.png" alt="MathPulse AI" width="120" height="120" />
+</p>
 
-# 🧮 MathPulse AI
+<h1 align="center">MathPulse AI</h1>
 
-### AI-Powered Math Education Platform
+<p align="center">
+  <strong>The AI-powered math studio for Filipino Senior High STEM.</strong><br/>
+  Personalized lessons. AI tutor. Quiz battles. Real-time class analytics.<br/>
+  Installable PWA + native Android, running on Firebase.
+</p>
 
-[![PWA](https://img.shields.io/badge/PWA-installable-9956DE?logo=pwa&logoColor=white)](docs/PWA.md)
-[![Android APK](https://img.shields.io/badge/Android%20APK-Download%20v1.0.0-3DDC84?logo=android&logoColor=white)](https://github.com/Deign86/MATHPULSE-AI/releases/tag/v1.0.0-android)
+<p align="center">
+  <a href="https://mathpulse-ai-2026.web.app">
+    <img src="https://img.shields.io/badge/Live_Demo-Try_it_now-9956DE?style=flat&logo=firebase&logoColor=white" alt="Live Demo" />
+  </a>
+  <a href="https://github.com/Deign86/MATHPULSE-AI/releases/tag/v1.0.0-android">
+    <img src="https://img.shields.io/badge/Android%20APK-Download%20v1.0.0-3DDC84?style=flat&logo=android&logoColor=white" alt="Android APK" />
+  </a>
+  <a href="docs/PWA.md">
+    <img src="https://img.shields.io/badge/PWA-installable-9956DE?style=flat&logo=pwa&logoColor=white" alt="PWA" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat" alt="License" />
+  </a>
+</p>
 
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Capacitor](https://img.shields.io/badge/Capacitor-7.1-119EFF?logo=capacitor&logoColor=white)](https://capacitorjs.com)
-[![Firebase](https://img.shields.io/badge/Firebase-12-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite&logoColor=white)](https://vitejs.dev)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![DeepSeek](https://img.shields.io/badge/DeepSeek-API-171PA1?logo=robot&logoColor=white)](https://deepseek.com)
-[![GitNexus](https://img.shields.io/badge/GitNexus-Analyzed-8A2BE2?logo=git&logoColor=white)](https://github.com/waybarrios/gitnexus)
-[![Graphify](https://img.shields.io/badge/Graphify-Mapped-00C853?logo=graphviz&logoColor=white)](https://github.com/waybarrios/graphify)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<p align="center">
+  <a href="https://react.dev">
+    <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=white" alt="React" />
+  </a>
+  <a href="https://www.typescriptlang.org">
+    <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat&logo=typescript&logoColor=white" alt="TypeScript" />
+  </a>
+  <a href="https://capacitorjs.com">
+    <img src="https://img.shields.io/badge/Capacitor-7.1-119EFF?style=flat&logo=capacitor&logoColor=white" alt="Capacitor" />
+  </a>
+  <a href="https://firebase.google.com">
+    <img src="https://img.shields.io/badge/Firebase-12-FFCA28?style=flat&logo=firebase&logoColor=black" alt="Firebase" />
+  </a>
+  <a href="https://fastapi.tiangolo.com">
+    <img src="https://img.shields.io/badge/FastAPI-0.104-009688?style=flat&logo=fastapi&logoColor=white" alt="FastAPI" />
+  </a>
+  <a href="https://vitejs.dev">
+    <img src="https://img.shields.io/badge/Vite-6.3-646CFF?style=flat&logo=vite&logoColor=white" alt="Vite" />
+  </a>
+  <a href="https://tailwindcss.com">
+    <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+  </a>
+  <a href="https://deepseek.com">
+    <img src="https://img.shields.io/badge/DeepSeek-API-7B3FE4?style=flat" alt="DeepSeek" />
+  </a>
+</p>
 
-An interactive, gamified, installable Progressive Web App (PWA) and native Android APK featuring AI-powered tutoring via DeepSeek, role-based dashboards, and personalized learning paths for students, teachers, and administrators. The frontend is built, served, and deployed from this repository through Firebase Hosting; it does not require a hosted Hugging Face frontend. The project spans **573 source files** across a React + TypeScript frontend, native Android Capacitor wrapper, FastAPI Python backend, and Firebase Cloud Functions — mapped as a knowledge graph of **16,882 code symbols** with **26,955 relationships** organized into **580 functional communities** and **300 execution flow chains**.
+<p align="center">
+  <a href="https://mathpulse-ai-2026.web.app">Live Demo</a> •
+  <a href="docs/PWA.md">PWA</a> •
+  <a href="#download">Download</a> •
+  <a href="#features">Features</a> •
+  <a href="#-api-reference">API</a> •
+  <a href="#-contributing">Contributing</a>
+</p>
 
-[Features](#-features) · [Android APK](#-android-native-app-apk) · [PWA](docs/PWA.md) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Architecture](#-architecture) · [API Reference](#-api-reference) · [Contributing](#-contributing)
+<br/>
 
-</div>
+<p align="center">
+  <a href="https://mathpulse-ai-2026.web.app">
+    <img src="docs/screenshots/02-student-dashboard.png" alt="MathPulse AI student dashboard" width="800" />
+  </a>
+</p>
+
+<p align="center">
+  <em>Click the image above to open the live app on <a href="https://mathpulse-ai-2026.web.app">mathpulse-ai-2026.web.app</a> — sign in with a 1-click demo account, no setup required.</em>
+</p>
+
+<br/>
+
+<p align="center">
+  <img src="docs/screenshots/03-modules.png" alt="DepEd-aligned curriculum modules" width="800" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/04-ai-chat.png" alt="L.O.L.I. AI math tutor chat" width="800" />
+</p>
+
+<br/>
+
+## What is MathPulse AI?
+
+MathPulse AI is an **installable, gamified learning platform** for SHS math — a free, repository-owned alternative to generic tutoring apps, purpose-built around the **DepEd Strengthened SHS curriculum**. Students get diagnostic assessments, AI-generated study plans, RAG-grounded lessons, and a 24/7 AI tutor. Teachers get at-risk detection and class analytics. Admins get platform-wide oversight and AI cost monitoring.
+
+- **Curriculum-first** — modules load directly from DepEd SHS guides (General Math, Business Math, Statistics & Probability); RAG lesson generation cites real teaching-module sources
+- **L.O.L.I. AI tutor** — Logical Operations & Learning Intelligence, powered by DeepSeek with streaming, continuation repair, and KaTeX math rendering
+- **Gamified to the core** — XP, exponential leveling, 7-day reward cycles, streaks, 12+ achievements, Quiz Battle PvP, leaderboards
+- **Three role studios** — student, teacher, and admin dashboards, each with its own sidebar, metrics, and tools
+- **Runs anywhere** — installable PWA (offline-capable), native Android APK via Capacitor, Docker self-host
 
 ---
 
-## 🤖 Android Native App (APK)
+## Try it live
 
-MathPulse AI is available as a standalone native Android application powered by [Capacitor](https://capacitorjs.com):
+No install, no keys. Open the deploy and pick a demo account:
 
-- **Direct APK Download**: Download the latest build from [GitHub Releases](https://github.com/Deign86/MATHPULSE-AI/releases/tag/v1.0.0-android) (`MathPulse-AI-debug.apk`).
-- **Firebase Native Integration**: Fully integrated with Firebase Auth, Cloud Firestore, and Realtime Database for project `mathpulse-ai-2026`.
-- **Adaptive Launcher Icon**: Pixel-perfect launcher icons with safe-zone margin scaling for all modern Android launchers and home screens.
-- **Hardware Back-Button Navigation**: Closes active modals/drawers first, then navigates back through pages before exiting at the root dashboard.
-- **Safe-Area & Notch Insets**: Full edge-to-edge layout support with dynamic viewport handling (`100dvh`).
+| Account | 1-Click login | Lands on |
+| ------- | ------------- | -------- |
+| **Student** | `teststudent@school.edu` | Dashboard, Curriculum Modules, L.O.L.I. chat, Quiz Battle, Leaderboards |
+| **Teacher** | `testteacher@school.edu` | Class dashboard (12 students, at-risk flags), Class Analytics, AI Quiz Maker, Data Import |
+| **Admin** | `testadmin@school.edu` | Platform overview, User/Class Management, RAG Manager, AI Monitoring, Audit Log |
 
-```bash
-# Build web assets & sync with Capacitor
-npm run build
-npm run cap:sync
+> **[Open the live app →](https://mathpulse-ai-2026.web.app)**
+>
+> Screenshots in this README were captured from that deploy with Chrome DevTools (`docs/screenshots/`, re-capture anytime with `node scripts/capture-readme-screenshots.mjs`).
 
-# Compile Debug APK
-npm run android:debug
+---
 
-# Open project in Android Studio
-npm run cap:android
-```
+## Download
 
-See the complete [Android Setup & Release Guide](docs/ANDROID_APK_SETUP.md) for signing keys, Google Play AAB builds, and local development.
+| Platform | Download |
+| -------- | -------- |
+| Web / PWA (any device) | [Open live app](https://mathpulse-ai-2026.web.app), then **Install** from the browser or in-app install button |
+| Android | [Download APK](https://github.com/Deign86/MATHPULSE-AI/releases/tag/v1.0.0-android) (`MathPulse-AI-debug.apk`) |
+| Self-host | `docker compose up` (frontend `:3000` + backend `:8000`) |
 
-## 📱 Progressive Web App
+> **[View all binaries →](https://github.com/Deign86/MATHPULSE-AI/releases)**
+>
+> **Android details** — Firebase-native (Auth, Firestore, Realtime DB), adaptive launcher icon, hardware back-button handling, edge-to-edge safe-area layout. Full guide: [Android Setup & Release Guide](docs/ANDROID_APK_SETUP.md).
+>
+> **PWA details** — versioned app-shell service worker, offline fallback, conservative caching (no auth/API caching), iOS Add-to-Home-Screen guidance. Full guide: [PWA docs](docs/PWA.md).
 
-MathPulse AI is production-ready as an installable PWA:
+---
 
-- App manifest with 192px, 512px, maskable, and Apple touch icons.
-- Versioned app-shell service worker with offline navigation fallback.
-- Conservative caching that excludes authenticated API responses and private user data.
-- Desktop install button in the authenticated header when browser installation is available.
-- iOS Add to Home Screen guidance and responsive safe-area support.
-- Online/offline status banner with network-dependent operations kept honest.
-- Firebase Hosting deployment with SPA rewrites and correct PWA cache headers.
+## Features
 
-See [PWA architecture and deployment documentation](docs/PWA.md).
+### Student studio
 
-## ✨ Features
+Gamified home base: hero greeting with Continue Learning, Start Learning module cards with progress, Competency Matrix radar, Rewards & Achievements, Quiz Battle entry, and live Leaderboards — with the floating L.O.L.I. tutor one tap away.
 
-### 🎓 For Students
-- **Diagnostic Assessments** — Skill-level evaluation on first login to identify at-risk subjects and customize the learning journey
-- **Personalized Learning Paths** — AI-generated study plans tailored to individual skill levels and weaknesses
-- **Interactive Lessons** — Step-by-step lessons across Algebra, Geometry, Calculus, Trigonometry, Statistics, and more
-- **Quiz Experiences** — Timed quizzes with instant feedback, detailed explanations, and score tracking
-- **AI Chat Tutor** — On-demand math help via DeepSeek with smart streaming, continuation detection, and automatic completion repair
-- **Floating AI Tutor** — Always-accessible AI help widget available from any page
-- **Daily Check-In** — 7-day reward cycle with escalating XP (20 → 100 XP), Firestore-backed streak tracking
-- **Gamification System** — Earn XP, level up (exponential curve), maintain daily streaks, and unlock 12+ achievements
-- **XP Notifications** — Real-time animated XP gain notifications
-- **Rewards & Achievements** — Track and showcase unlocked achievements with XP rewards
-- **Leaderboard** — Compete with peers via global and section-based rankings
-- **Grades Page** — View academic performance and grade breakdowns
-- **Tasks Board** — Manage assigned tasks with priority levels and status tracking (todo/in-progress/completed)
-- **Module & Subject Views** — Detailed module breakdowns and subject overviews with progress indicators
-- **Profile Customization** — Edit profile with avatar selection
-- **Notification Center** — Real-time in-app notifications (achievements, reminders, alerts, grades) via Firestore subscriptions
-- **Search** — Quick search across platform content
-- **Settings** — Personalize app preferences
+- **Diagnostic Assessments** — skill-level evaluation on first login; at-risk subjects shape the whole journey
+- **Personalized Learning Paths** — AI-generated study plans built from weaknesses and priority topics
+- **Curriculum Modules** — DepEd-aligned lessons and quizzes with source citations, search, and subject/quarter/competency filters
+- **L.O.L.I. AI Chat Tutor** — DeepSeek-powered help with smart streaming, continuation detection, completion repair, think-tag stripping, and offline fallback answers
+- **Quiz Battle** — real-time PvP matchmaking over Firebase Realtime Database
+- **Daily Rewards** — 7-day claim cycle (XP boosts, streak shields, hint tokens) with Firestore streak tracking
+- **Gamification** — XP, exponential levels, streaks, 12+ achievements, animated XP toasts, global + section leaderboards
+- **Grades, Tasks, Profile, Avatar Studio** — grade breakdowns, kanban task board, editable profile, unlockable avatar gear
+- **Notifications & Settings** — real-time Firestore notification center, personal preferences, scientific calculator (`Alt+K`)
 
-### 👩‍🏫 For Teachers
-- **Teacher Dashboard** — Monitor student progress and performance at a glance
-- **Student Management** — View individual student profiles with detailed academic metrics and at-risk indicators
-- **AI-Generated Insights** — Daily AI-powered class analytics with actionable recommendations
-- **Risk Classification** — Dual pipeline: DeepSeek structured-output classification and supervised ML scoring (XGBoost/RandomForest with SHAP explanations)
-- **Task Assignment** — Create and manage student tasks and assignments
-- **Smart File Import** — Upload CSV/Excel/PDF class records with AI-powered column detection
-- **Performance Analytics** — Track class-wide and per-student metrics with interactive charts
+### Teacher studio
 
-### 🔧 For Administrators
-- **Admin Dashboard** — Platform-wide analytics and management tools
-- **User Management** — Create, edit, and manage all user accounts across roles
-- **Content Management** — Administer educational content and curriculum
-- **Audit Logs** — Track all administrative actions with severity levels for accountability
-- **System Settings** — Configure platform-wide settings, feature flags, and AI model routing
+<p align="center">
+  <img src="docs/screenshots/05-teacher-dashboard.png" alt="Teacher dashboard with class stats and AI insight" width="800" />
+</p>
 
-## 🛠 Tech Stack
+Mission control for a class: headcount, class average, engagement, and at-risk counts up top; AI insight banner calling out students falling behind; class cards with risk badges; calendar + live activity stream on the rail.
 
-### Frontend
-| Technology | Version | Purpose |
-|---|---|---|
-| **React** | 18.3.1 | UI framework with functional components and hooks |
-| **TypeScript** | 5.9.3 | Type-safe development |
-| **Capacitor** | 7.1.2 | Cross-platform native runtime bridge for Android APK & iOS |
-| **Vite** | 6.3.5 | Fast dev server, HMR, optimized builds (`@vitejs/plugin-react-swc`) |
-| **Tailwind CSS** | 4.1.18 | Utility-first CSS — integrated via dedicated `@tailwindcss/vite` plugin (no PostCSS) |
-| **Radix UI** | Latest | Accessible, unstyled component primitives (48+ UI components) |
-| **Motion for React** | 12.38 | Animations and transitions — `AnimatePresence`, `motion.div`, layout animations |
-| **Recharts** | 2.15.4 | Data visualization — `PieChart`, `BarChart`, `LineChart` with custom labels |
-| **Lucide React** | 0.487.0 | Icon library |
-| **Sonner** | 2.0.7 | Toast notifications |
-| **React Hook Form** | 7.74.0 | Form state management |
-| **Zod** | 4.3.6 | Schema validation |
-| **canvas-confetti** | Latest | Celebration animations |
-| **embla-carousel-react** | 8.6.0 | Carousel component |
-| **vaul** | 1.1.2 | Drawer component |
-| **cmdk** | 1.1.1 | Command palette |
-| **jsPDF + html2canvas** | Latest | Client-side PDF generation |
-| **date-fns** | 3.6.0 | Date manipulation |
-| **KaTeX** | Latest | Math rendering (loaded globally) |
+- **Teacher Dashboard** — 12-student overview with AI-generated daily insight and review-student shortcut
+- **Risk Classification** — dual pipeline: DeepSeek structured-output labels + supervised XGBoost/RandomForest scoring with SHAP explanations
+- **Class Analytics & Topic Mastery** — per-student and class-wide metrics, topic performance views, competency tracking
+- **AI Quiz Maker & Question Bank** — import-grounded generation from uploaded class materials
+- **Smart Data Import** — CSV/Excel/PDF class records with AI column detection
+- **Task Assignment & Calendar** — create assignments, track them on the class calendar
 
-### Backend
+### Admin studio
 
-Curriculum RAG uses the DepEd SSHS corpus in `datasets/curriculum/sshs_learning_resources/`. The canonical `scripts/ingest_curriculum.py` prefers LiteParse-generated Markdown and falls back to LiteParse PDF parsing, writing the `curriculum_chunks` Chroma collection with `BAAI/bge-small-en-v1.5` embeddings.
-| Technology | Version | Purpose |
-|---|---|---|
-| **FastAPI** | ≥0.104 | High-performance Python API framework with automatic OpenAPI docs and `CORSMiddleware` |
-| **Uvicorn** | ≥0.24 | ASGI server |
-| **DeepSeek API** | — | AI inference via OpenAI-compatible client (`openai` package) |
-| **pandas** | ≥2.1 | Data processing for file uploads |
-| **openpyxl** | ≥3.1 | Excel file parsing |
-| **LiteParse** | ≥2.4.0 | Local PDF/document parsing for curriculum and uploads |
-| **python-docx** | ≥1.0 | DOCX document parsing |
-| **XGBoost / scikit-learn** | — | Supervised risk classification model |
+<p align="center">
+  <img src="docs/screenshots/06-admin-dashboard.png" alt="Admin dashboard with platform overview and AI model status" width="800" />
+</p>
 
-### Infrastructure
-| Technology | Purpose |
-|---|---|
-| **Firebase Auth** | Email/password & Google OAuth authentication |
-| **Cloud Firestore** | NoSQL real-time database for all app data |
-| **Firebase Storage** | File and media storage |
-| **Firebase Analytics** | Usage tracking (optional) |
-| **Firebase Cloud Functions** | Event-driven automation (TypeScript) |
-| **Docker** | Containerized deployment (frontend + backend) |
-| **Firebase Hosting** | Production PWA hosting with HTTPS and SPA fallback |
-| **Nginx / Docker** | Self-hosted production alternative |
-| **Hugging Face Space** | Existing FastAPI backend API hosting |
+Platform-wide command deck: active students/teachers/classes, XP event volume, at-risk alerts, AI-vs-manual activity chart, model success-rate monitor with health check, top-performer mastery cards, and subject breakdowns.
 
-### AI Models (Current Runtime)
+- **Platform Overview** — students, teachers, classes, XP events, at-risk alerts at a glance
+- **User & Class Management** — create, edit, and manage accounts across all roles
+- **Content & RAG Manager** — administer curriculum content; upload/reingest PDFs into the Chroma vector store
+- **AI Monitoring** — DeepSeek success rate, error counts, retries, per-model cost tracking; runtime profile switching (`dev` / `budget` / `prod`) without redeploys
+- **Audit Log & System Settings** — severity-tagged admin action log, feature flags, maintenance mode
 
-#### DeepSeek Models (`config/models.yaml`)
-| Model | Primary Use |
-|---|---|
-| **deepseek-chat** | Global default for all tasks: chat, verification, lesson/quiz generation, learning paths, daily insights, risk classification |
+### AI models (current runtime)
+
+| Model | Primary use |
+| ----- | ----------- |
+| **deepseek-chat** | Global default: chat, verification, lesson/quiz generation, learning paths, daily insights, risk classification |
 | **deepseek-reasoner** | Extended reasoning for complex RAG and curriculum search tasks |
 
-Runtime model override system with Firestore persistence. Model profiles: `dev`, `budget`, `prod` — switchable via admin panel at runtime without redeployment.
+Runtime routing (`backend/services/inference_client.py`) dispatches with fallback chains; profiles switchable live from the admin panel. Risk also has a supervised ML path (XGBoost/RandomForest, `models/risk_classifier.joblib`, trained via `/api/predict-risk/train-model`).
 
-#### Risk Classification Models
-| Model | Method |
-|---|---|
-| **DeepSeek (structured output)** | Zero-shot risk classification via chat completion with JSON schema enforcement |
-| **XGBoostClassifier / RandomForestClassifier** | Supervised risk model; serialized to `models/risk_classifier.joblib`, trained via `/api/predict-risk/train-model` |
+---
 
-## 🚀 Getting Started
+## Tech Stack
+
+### Frontend
+
+| Technology | Version | Purpose |
+| ---------- | ------- | ------- |
+| **React** | 18.3.1 | UI framework, functional components + hooks |
+| **TypeScript** | 5.9.3 | Strict-mode type safety, discriminated role types |
+| **Capacitor** | 7.1.2 | Native Android/iOS bridge |
+| **Vite** | 6.3.5 | Dev server, HMR, optimized builds |
+| **Tailwind CSS** | 4.1.18 | Utility-first styling via `@tailwindcss/vite` |
+| **Radix UI** | Latest | 48+ accessible component primitives |
+| **Motion** | 12.38 | Animations, layout transitions |
+| **Recharts** | 2.15.4 | Charts and analytics visuals |
+| **KaTeX** | Latest | Math rendering (global CSS, tolerant parsing) |
+| **Zustand / TanStack Query** | Latest / 5 | Client state / server state |
+
+### Backend & AI
+
+| Technology | Purpose |
+| ---------- | ------- |
+| **FastAPI + Uvicorn** | 64-route Python API with OpenAPI docs, CORS, rate limiting |
+| **DeepSeek API** | Inference via OpenAI-compatible client (`prod` profile: reasoner for RAG, chat elsewhere) |
+| **Chroma + `BAAI/bge-small-en-v1.5`** | Curriculum vector store (`datasets/vectorstore/`, `curriculum_chunks` collection) |
+| **LiteParse** | Local PDF/document parsing for ingestion and uploads |
+| **XGBoost / scikit-learn** | Supervised risk classification with SHAP explanations |
+
+### Infrastructure
+
+| Technology | Purpose |
+| ---------- | ------- |
+| **Firebase Auth** | Email/password + Google OAuth (`mathpulse-ai-2026`) |
+| **Cloud Firestore** | All app data (users, progress, XP, chats, notifications) |
+| **Realtime Database** | Quiz Battle matchmaking queue |
+| **Firebase Hosting** | Production PWA hosting, SPA rewrites, PWA cache headers |
+| **Cloud Functions (Node 22)** | Diagnostic processing, risk analysis, notifications, XP scoring |
+| **Docker / Nginx** | Self-hosted production alternative |
+
+---
+
+## Getting Started
 
 ### Prerequisites
-- **Node.js** ≥ 18
-- **npm** ≥ 9
-- **Python** ≥ 3.10 (for backend)
-- A **Firebase** project ([Firebase Console](https://console.firebase.google.com/))
-- A **DeepSeek API key** (for AI features) — get one at [platform.deepseek.com](https://platform.deepseek.com)
+
+- **Node.js** ≥ 18 · **npm** ≥ 9 · **Python** ≥ 3.10
+- A **Firebase** project ([console](https://console.firebase.google.com/))
+- A **DeepSeek API key** ([platform.deepseek.com](https://platform.deepseek.com))
 
 ### Installation
 
@@ -193,9 +246,7 @@ Runtime model override system with Firestore persistence. Model profiles: `dev`,
    npm install
    ```
 
-3. **Configure environment variables**
-
-   Create a `.env.local` file in the project root:
+3. **Configure environment variables** — create `.env.local`:
    ```env
    # Firebase (required)
    VITE_FIREBASE_API_KEY=your_api_key
@@ -210,341 +261,152 @@ Runtime model override system with Firestore persistence. Model profiles: `dev`,
    DEEPSEEK_BASE_URL=https://api.deepseek.com
 
    # Backend API (optional — defaults to same-origin /api)
-   # Set absolute URL only when frontend and backend deploy separately.
    VITE_API_URL=/api
    VITE_APP_VERSION=1.0.0
 
-   # Import-grounded generation rollout flags (frontend)
+   # Import-grounded generation flags (frontend)
    VITE_ENABLE_IMPORT_GROUNDED_QUIZ=true
    VITE_ENABLE_IMPORT_GROUNDED_LESSON=true
    VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS=true
    VITE_ENABLE_ASYNC_GENERATION=true
    ```
 
-   For production PWA deployment, build the repository-owned frontend and deploy `build/` to Firebase Hosting:
-   ```bash
-   npm run build
-   npx firebase deploy --only hosting
-   ```
-   Configure Firebase Hosting secrets and the backend `CORS_ORIGINS` value for the deployed HTTPS origin. See [PWA deployment documentation](docs/PWA.md).
-
 4. **Start the frontend dev server**
    ```bash
    npm run dev
    ```
-   The app will open at `http://localhost:3000`. Runs `predev` first (sync models + mypy typecheck, no pytest).
+   Opens at `http://localhost:5173`.
 
 5. **Set up the backend** (optional, for AI features)
    ```bash
    cd backend
    pip install -r requirements.txt
    export DEEPSEEK_API_KEY=your_deepseek_api_key
-   export ENABLE_IMPORT_GROUNDED_QUIZ=true
-   export ENABLE_IMPORT_GROUNDED_LESSON=true
-   export ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS=true
    uvicorn main:app --reload --host 0.0.0.0 --port 7860
    ```
-   > **Note:** The local backend is optional for frontend development. Set `VITE_API_URL=http://127.0.0.1:8000` when running FastAPI separately, or leave the default `/api` when using the Docker/Nginx proxy.
+   > Set `VITE_API_URL=http://127.0.0.1:8000` when running FastAPI separately, or keep `/api` behind the Docker/Nginx proxy.
 
-### Build for Production
+### Build & deploy
+
 ```bash
-npm run build
-```
-Output will be in the `build/` directory.
-
-### Backend Regression Gate (Local)
-```bash
-# Full checks: pytest tests + mypy
-npm run check:backend
-
-# Quick mypy only (no pytest — used by npm run dev predev)
-npm run check:backend:dev
-
-# Fast pytest on critical test file only
-npm run check:backend:quick
+npm run build                        # → build/
+npx firebase deploy --only hosting   # PWA → Firebase Hosting
 ```
 
-## 🏗 Architecture
+### Backend regression gate
 
-### Codebase Scale
+```bash
+npm run check:backend         # pytest + mypy
+npm run check:backend:dev     # mypy only (fast, runs on predev)
+npm run check:backend:quick   # critical test file only
+```
 
-The project has been mapped as a full knowledge graph using **GitNexus** — spanning 573 source files, 16,882 code symbols, and 26,955 relationships. The graph analysis identified **580 functional communities** (high-cohesion clusters) and **300 execution flow chains** that trace call patterns from UI to backend to infrastructure.
+---
+
+## Architecture
+
+Mapped as a knowledge graph with **GitNexus** — 573 source files, 16,882 symbols, 26,955 relationships, 580 functional communities, 300 execution-flow chains. Deepest call chains (7–8 steps) run UI → API service → backend route → AI inference → Firestore.
 
 | Metric | Value |
-|---|---|
+| ------ | ----- |
 | Source files | 573 |
 | Code symbols | 16,882 |
 | Symbol relationships | 26,955 |
 | Functional communities | 580 |
 | Execution flow chains | 300 |
 
-**Largest functional communities by symbol count:** Radix UI primitives + shadcn/ui components (131 symbols, 0.71 cohesion), Cloud Function triggers (118, 0.98), Backend services (54, 0.65), Frontend page components (51, 0.58), SHS Excel parser pipeline (48, 0.96), Automation engine (25, 0.86), RAG pipeline (22, 0.84).
+**Key patterns** — service-layer abstraction (components never touch Firestore directly), discriminated role types (`StudentProfile | TeacherProfile | AdminProfile`), `AuthContext`/`ChatContext` + `onSnapshot` realtime listeners, async task queue for heavy generation (`POST /api/lesson|quiz/generate-async` → `GET /api/tasks/{id}`).
 
-**Execution flow depth** — the deepest call chains (7–8 steps) span frontend components → API service layer → backend routes → AI inference → Firestore, confirming a clean service-oriented architecture. Notable flows: `ModulesPage → FetchWithTimeout → IsRetryableStatus → ApiError` (8 steps, cross-community), `SendMessage → NormalizeEscapedThinkTags → FindLastMatchEnd` (7 steps, AI chat), `Generate_diagnostic → _resolve_vectorstore_dir → Get_deepseek_client` (6 steps, RAG-enhanced diagnostic).
+**Firestore collections** — `users/` (role-discriminated), `progress/`, `xpActivities/`, `achievements/`, `notifications/`, `tasks/`, `chatSessions/`, `chatMessages/`.
 
-### DeepSeek AI Integration
+**Cloud Functions** (`functions/src/`) — diagnostic orchestration, rule-based risk analysis, notification fan-out, remedial quiz building, learning-path engine, IAR scoring, reassessment. **Pre-deploy gates** (`pre_deploy_check.py`, `startup_validation.py`) verify imports, env vars, config parsing, and inference-client init.
 
-The backend was migrated from HuggingFace Inference API to DeepSeek API. Key changes:
-
-- **DeepSeek client** (`services/ai_client.py`) wraps the OpenAI-compatible client for DeepSeek endpoints
-- **Runtime model routing** (`backend/services/inference_client.py`) dispatches tasks to configured models with fallback chains
-- **Model profiles** (`dev`, `budget`, `prod`) switchable at runtime via admin API
-- **Structured output** for risk classification replaces BART zero-shot classification
-- `HF_TOKEN` is no longer required for AI inference (retained only for HuggingFace dataset operations)
-
-### Firebase Cloud Functions (`functions/src/`)
-
-Event-driven automation triggers for student lifecycle:
-
-| Module | Trigger | Purpose |
-|---|---|---|
-| `diagnosticProcessor.ts` | `POST /api/automation/diagnostic-completed` | Orchestrates full post-diagnostic workflow: risk classification, badges, weak topics, ML scoring, learning paths, remedial quizzes, interventions |
-| `riskAnalyzer.ts` | Internal | Rule-based subject risk classification (At Risk / On Track) with configurable thresholds |
-| `notificationSender.ts` | Internal | Creates Firestore notification documents (grade, reminder, message, achievement) |
-| `quizProcessor.ts` | Internal | Builds remedial quiz configurations from risk profiles |
-| `learningPathEngine.ts` | Internal | Recommends next topic groups based on risk profile and weak areas |
-| `iarAssessmentScoring.ts` | Internal | Initial Assessment Results scoring with topic-level insights |
-| `reassessmentEngine.ts` | Internal | Handles student reassessment logic |
-
-Risk thresholds: `AT_RISK_THRESHOLD` = 60%, configurable per-topic weak topic thresholds.
-
-### Async Generation + Task Queue
-
-Heavy generation requests (lessons, quizzes) are processed asynchronously:
-
-```
-POST /api/lesson/generate-async    → { taskId }
-POST /api/quiz/generate-async      → { taskId }
-GET  /api/tasks/{task_id}          → { status, result?, error? }
-GET  /api/tasks?limit=50&status=completed
-POST /api/tasks/{task_id}/cancel
-```
-
-Enable via `ENABLE_ASYNC_GENERATION=true`, `ASYNC_TASK_TTL_SECONDS=3600`.
-
-### Codebase Health & Quality
-
-**Type Safety** — TypeScript 5.9 strict mode across all frontend code, with Zod 4 validation schemas and discriminated union role types (`StudentRole`, `TeacherRole`, `AdminRole`).
-
-**Test Coverage** — Frontend uses Vitest with testing library patterns across key components (ModulesPage, ChatMarkdown, PracticeCenter, notification workflows). Backend has 20+ test files covering API routes, services, RAG pipeline, risk classification, and email templates. Cloud Functions include integration tests for automation triggers and quiz battle flows.
-
-**Linting & Formatting** — ESLint 8 with TypeScript-aware rules, Prettier 3 for consistent formatting. Pre-commit hooks via `predev` script.
-
-**Pre-Deployment Validation** — `backend/pre_deploy_check.py` and `backend/startup_validation.py` gate every deployment:
-- File structure and import integrity
-- Environment variables (`DEEPSEEK_API_KEY`, model IDs)
-- Configuration file parsing
-- InferenceClient initialization
-
-**CI/CD** — Repository CI validates frontend, backend, and Functions code. The frontend is built from this repository and deployed as a PWA through Firebase Hosting or the production Docker/Nginx image. The existing FastAPI backend remains hosted at `https://deign86-mathpulse-api-v3test.hf.space`; GitHub Actions no longer deploys or manages that Space. Docker Compose provides full-stack local orchestration.
-
-### Chat Reliability Features
-
-- **Smart streaming** with real-time chunk display
-- **Continuation detection** — recognizes "go", "continue", "yes", etc. to extend incomplete answers
-- **End-marker detection** — waits for `</answer>`, `<done>`, etc. before concluding
-- **Automatic completion repair** — retries with alternate prompts on truncated responses
-- **Fallback responses** — offline math tutor responses when backend is unavailable
-- **Think-tag stripping** — removes `<think>` blocks from DeepSeek reasoner output
-
-### Math Rendering Pipeline
-
-- Proper LaTeX delimiters: `$...$` (inline), `$$...$$` (display)
-- Bare TeX command wrapping (`\boxed{}`, `\frac{}`, etc.) for proper rendering
-- Multiline bracket normalization for display math
-- KaTeX CSS loaded globally, rehype-katex tolerant of malformed input
-
-### Directory Structure
 ```
 MATHPULSE-AI/
-├── config/                     # Shared model/inference configuration (cohesion: 0.89)
-│   ├── env.sample
-│   └── models.yaml
-├── src/
-│   ├── components/              # 51 page-level UI components (cohesion: 0.58)
-│   ├── components/ui/          # 48 Radix UI + shadcn primitives (cohesion: 0.71)
-│   ├── contexts/               # AuthContext, ChatContext
-│   ├── features/
-│   │   └── notifications/      # NotificationBell, NotificationPanel, service layer
-│   ├── services/                # 40+ Firebase + FastAPI service modules
-│   ├── data/                    # Curriculum data, subjects, diagnostic policies (cohesion: 0.89)
-│   ├── types/                   # Shared frontend models (discriminated union role types)
-│   ├── styles/                  # Styling system and globals
-│   ├── hooks/                   # 13 custom hooks (cohesion: 0.88)
-│   ├── utils/                   # Math rendering, scope detection, streaming utils
-│   ├── App.tsx
-│   └── main.tsx
-├── backend/
-│   ├── routes/                  # 64 API routes across 15+ route modules
-│   ├── rag/                     # Chroma vector store, curriculum retrieval, PDF ingestion (cohesion: 0.84)
-│   ├── services/                # DeepSeek inference, analytics, intervention engine (cohesion: 0.65)
-│   ├── tests/                   # 20+ test files
-│   ├── config/                  # Backend-local model/env mirrors
-│   ├── middleware/              # Rate limiter
-│   ├── analytics.py             # Risk, competency, recommendation engines
-│   ├── automation_engine.py     # Event-driven automation workflows
-│   ├── main.py                  # FastAPI API surface
-│   ├── startup_validation.py    # Startup guardrail checks
-│   └── pre_deploy_check.py      # Deployment safety checks
-├── functions/
-│   └── src/                     # 118-symbol Cloud Function module (cohesion: 0.98)
-│       ├── automations/         # Diagnostic processing, risk analysis, quiz scoring
-│       ├── triggers/            # Firestore lifecycle triggers + quiz battle API
-│       ├── notifications/       # FCM push notification pipelines
-│       ├── scoring/             # XP scoring engine
-│       ├── services/            # Backend API client, runtime cache
-│       └── utils/               # Rate limiting, push utilities, sanitization
-├── android/                    # Native Android platform (Capacitor 7 wrapper, Gradle, adaptive icons)
-├── docs/                       # Project documentation (PWA.md, ANDROID_APK_SETUP.md)
-├── jobs/                        # Offline eval + synthetic generation jobs
-├── datasets/                    # Evaluation + metadata datasets
-│   └── vectorstore/             # Chroma DB with BAAI/bge-small-en-v1.5 embeddings
-├── scripts/                     # Utility scripts (backend gate, seed users, model sync)
-├── services/                    # Shared Python services (email, inference, provisioning)
-├── features/import/             # SHS Excel parser pipeline (48 symbols, cohesion: 0.96)
-├── docker-compose.yml
-├── Dockerfile
-├── nginx.conf
-├── firebase.json
-└── firestore.rules
+├── src/                  # React frontend (components, services, stores, data, features)
+├── backend/              # FastAPI (routes/, rag/, services/, tests/)
+├── functions/            # Cloud Functions (automations, triggers, scoring)
+├── android/              # Capacitor native wrapper
+├── datasets/             # DepEd SSHS corpus + Chroma vector store
+├── scripts/              # Gates, seeds, model sync, screenshot capture
+├── docs/                 # PWA, Android, contracts — plus docs/screenshots/
+├── docker-compose.yml  / Dockerfile / nginx.conf / firebase.json
 ```
 
-### Key Design Patterns
-
-- **Service Layer Abstraction** — All Firebase/API operations are isolated in `src/services/`. Components never make direct Firestore calls.
-- **Role-Based Access** — Single `users` collection with discriminated union types (`StudentProfile | TeacherProfile | AdminProfile`) controlling UI rendering and data access.
-- **Context-Based State** — `AuthContext` for global auth state (`useAuth()` hook), `ChatContext` for AI chat sessions, component-level `useState` for UI state.
-- **Real-Time Data** — Firebase `onSnapshot` listeners for live data updates and notification subscriptions.
-- **Animation Architecture** — Motion for React (`motion/react`) with `AnimatePresence` for enter/exit transitions and layout animations.
-- **Tailwind CSS v4** — Zero-config styling via `@tailwindcss/vite` plugin (replaces PostCSS-based setup from Tailwind v3).
-
-### Firestore Collections
-```
-users/              → User profiles (role-discriminated: student | teacher | admin)
-progress/           → Learning progress per user (lessons, quizzes, modules)
-xpActivities/       → XP earning history (lesson_complete, quiz_complete, streak_bonus)
-achievements/       → User achievements (12+ types with conditions)
-notifications/      → User notifications (achievement, message, grade, reminder, alerts)
-tasks/              → Student tasks (priority levels, kanban statuses)
-chatSessions/       → AI chat sessions (per user)
-chatMessages/       → Chat message history (user/assistant/system roles)
-```
-
-### Firebase Project
-- **Project ID:** `mathpulse-ai-2026`
-- **Auth:** Email/Password + Google OAuth
-- **Config:** `src/lib/firebase.ts` (env vars with hardcoded fallbacks)
+---
 
 ## 📡 API Reference
 
-The FastAPI backend exposes **64 routes** across 15+ route modules:
+The FastAPI backend exposes **64 routes** across 15+ modules (interactive docs at `/docs` or `/redoc` when running):
 
 | Route Module | Routes | Domain |
-|---|---|---|
+| ------------ | ------ | ------ |
 | `rag_routes.py` | 8 | RAG lesson generation, health, document management |
 | `class_analytics_routes.py` | 6 | Class analytics, student views, topic performance |
-| `class_records_router.py` | 6 | SHS class record upload, AI-powered column detection, reports |
-| `pipeline_routes.py` | 5 | Student intelligence pipeline, nudges, profile recompute |
+| `class_records_router.py` | 6 | SHS record upload, AI column detection, reports |
+| `pipeline_routes.py` | 5 | Student intelligence pipeline, nudges, recompute |
 | `admin_routes.py` | 4 | Admin PDF upload/reingest, school analytics |
-| `intervention_routes.py` | 3 | Student intervention plans, stepped guides, PDF export |
+| `intervention_routes.py` | 3 | Intervention plans, stepped guides, PDF export |
 | `deepseek_rag_routes.py` | 3 | Weakness detection, module previews, study tips |
-| `quiz_battle.py` | 3 | Quiz battle PDF ingestion, bank status, results |
-| `practice.py` | 3 | Practice session generation, submission, stats, history |
+| `quiz_battle.py` | 3 | Quiz battle ingestion, bank status, results |
+| `practice.py` | 3 | Practice generation, submission, stats, history |
 | `diagnostic.py` | 1 | Full diagnostic + RAG analysis |
 | `risk_router.py` | 2 | Risk computation (single + batch) |
 | `quiz_generation_routes.py` | 1 | AI quiz generation |
 | `ai_monitoring.py` | 2 | DeepSeek monitoring + cost tracking |
 
-Served from a single FastAPI `app` instance with CORS middleware, rate limiting, and startup validation. Interactive docs at `/docs` (Swagger UI) or `/redoc`.
-
-### Endpoint Reference
-
 | Method | Endpoint | Description |
-|---|---|---|
-| `GET`  | `/` | Root info (name, version, docs link) |
-| `GET`  | `/health` | Health check with model status |
-| `POST` | `/api/chat` | AI Math Tutor conversation (DeepSeek-powered, streaming capable) |
-| `POST` | `/api/chat/stream` | Streaming tutor responses (SSE) |
-| `POST` | `/api/verify-solution` | Full multi-method verification of a math solution |
-| `POST` | `/api/predict-risk` | Single student risk classification (DeepSeek structured output) |
-| `POST` | `/api/predict-risk/enhanced` | Supervised ML risk scoring with optional LLM intervention recommendations |
-| `POST` | `/api/predict-risk/batch` | Batch risk prediction for multiple students |
-| `POST` | `/api/risk/train-model` | Train/retrain supervised risk model (admin) |
-| `POST` | `/api/learning-path` | Generate personalized learning path by weaknesses |
-| `POST` | `/api/analytics/daily-insight` | Generate daily AI insights for teacher dashboard |
-| `POST` | `/api/lesson/generate` | Generate class lesson plans grounded on imported topics + class signals |
-| `POST` | `/api/lesson/generate-async` | Async lesson generation submission |
-| `POST` | `/api/quiz/preview` | Preview quiz items before full generation |
-| `POST` | `/api/quiz/generate` | Generate import-grounded or curriculum quiz sets |
-| `POST` | `/api/quiz/generate-async` | Async quiz generation submission |
-| `GET`  | `/api/tasks/{task_id}` | Poll async task status/result |
-| `GET`  | `/api/tasks` | List async tasks by status/user scope |
-| `POST` | `/api/tasks/{task_id}/cancel` | Cancel queued/running async task |
-| `GET`  | `/api/ops/inference-metrics` | Admin inference routing + fallback metrics |
-| `GET`  | `/api/hf/monitoring` | DeepSeek API health + usage metrics |
-| `POST` | `/api/upload/class-records` | Upload and parse class records (CSV/XLSX/PDF) with AI column detection |
-| `GET`  | `/api/upload/class-records/risk-refresh/recent` | Recent class-record risk refresh jobs |
-| `POST` | `/api/upload/course-materials` | Upload and parse course materials (PDF/DOCX/TXT) with topic extraction |
-| `GET`  | `/api/upload/course-materials/recent` | Recent course-material artifacts |
-| `GET`  | `/api/course-materials/topics` | Normalized topic map from imported materials |
-| `POST` | `/api/feedback/import-grounded` | Submit import-grounded feedback events |
-| `GET`  | `/api/feedback/import-grounded/summary` | Aggregate pilot telemetry summaries |
-| `GET`  | `/api/import-grounded/access-audit` | Access-audit log query for import workflows |
-| `POST` | `/api/automation/diagnostic-completed` | Trigger diagnostic completion automation workflow |
-| `POST` | `/api/automation/quiz-submitted` | Trigger post-quiz automation workflow |
-| `POST` | `/api/automation/student-enrolled` | Trigger student enrollment automation |
-| `GET`  | `/api/admin/model-config` | Get current model config + available profiles |
-| `POST` | `/api/admin/model-config/profile` | Switch model profile (dev/budget/prod) |
-| `POST` | `/api/admin/model-config/override` | Set individual model override |
-| `DELETE` | `/api/admin/model-config/reset` | Clear all model overrides |
+| ------ | -------- | ----------- |
+| `GET` | `/health` | Health check with model status |
+| `POST` | `/api/chat` / `/api/chat/stream` | AI tutor conversation (SSE streaming) |
+| `POST` | `/api/verify-solution` | Multi-method math solution verification |
+| `POST` | `/api/predict-risk` | Risk classification (DeepSeek structured output) |
+| `POST` | `/api/predict-risk/enhanced` | ML risk scoring + LLM interventions |
+| `POST` | `/api/learning-path` | Personalized path from weaknesses |
+| `POST` | `/api/analytics/daily-insight` | Daily teacher-dashboard insights |
+| `POST` | `/api/lesson/generate` | Import-grounded lesson plans |
+| `POST` | `/api/quiz/generate` | Curriculum/grounded quiz sets |
+| `POST` | `/api/lesson|quiz/generate-async` | Async generation → `{ taskId }` |
+| `GET` | `/api/tasks/{task_id}` | Poll async task status/result |
+| `POST` | `/api/upload/class-records` | CSV/XLSX/PDF upload + AI column detection |
+| `POST` | `/api/automation/diagnostic-completed` | Post-diagnostic workflow trigger |
+| `GET` | `/api/admin/model-config` | Model config + profiles |
+| `POST` | `/api/admin/model-config/profile` | Switch profile (`dev`/`budget`/`prod`) |
 
-Interactive API documentation is available at `/docs` (Swagger UI) or `/redoc` when the backend is running.
+**Math verification pipeline** — self-consistency (3 samples, agreement-scored), sandboxed Python code verification, and a low-temperature LLM judge.
 
-### Math Verification System
+---
 
-The backend includes a multi-method verification pipeline to reduce math hallucinations:
-
-| Method | How It Works |
-|---|---|
-| **Self-Consistency** | Generates 3 independent responses (temp=0.7), extracts final answers, checks agreement. Confidence: high (100% agree), medium (≥60%), low (<60%). |
-| **Code Verification** | Asks the model to write Python code that numerically verifies the answer, then executes it in a sandboxed environment. |
-| **LLM Judge** | A second LLM call (temp=0.1) reviews the solution for correct formula usage, arithmetic accuracy, and logical reasoning. Returns a confidence score. |
-
-## 🎮 Gamification System
+## Gamification System
 
 | Feature | Details |
-|---|---|
-| **XP Rewards** | Fixed XP per action (e.g., 50 XP per lesson completion) |
-| **Daily Check-In** | 7-day cycle, escalating XP (20 → 100 XP), streak bonuses |
-| **Leveling** | Exponential curve: `XP_needed = 100 × 1.5^(level - 1)` |
-| **Streaks** | Daily login tracking with bonus XP (5 XP × streak days, max 50) |
-| **Achievements** | Unlocked via specific user actions and milestones |
+| ------- | ------- |
+| **XP Rewards** | Fixed XP per action (e.g., 50 XP per lesson) |
+| **Daily Check-In** | 7-day cycle, escalating XP (20 → 100 XP) + streak bonuses |
+| **Leveling** | Exponential curve: `XP_needed = 100 × 1.5^(level − 1)` |
+| **Streaks** | Daily login tracking (5 XP × streak days, max 50) |
+| **Achievements** | 12+ unlockable milestones |
 | **Leaderboard** | Global and section-based rankings |
+
+---
 
 ## 🐳 Docker
 
-The project includes Docker support for consistent development and production environments.
-
 ```bash
-# Development mode (hot reload for frontend + backend)
-docker compose up
-
-# Production mode (Nginx serving optimized build)
-docker compose --profile prod up
-
-# Stop all services
-docker compose down
+docker compose up                 # dev: hot reload frontend + backend
+docker compose --profile prod up  # prod: Nginx serving optimized build
+docker compose down               # stop
 ```
 
 | Service | Port | Description |
-|---|---|---|
-| Frontend (dev) | `3000` | Vite dev server with hot reload |
-| Backend | `8000` | FastAPI (mapped from container port 7860) |
-| Production | `80` | Nginx serving production build |
+| ------- | ---- | ----------- |
+| Frontend (dev) | `3000` | Vite dev server |
+| Backend | `8000` | FastAPI (container `:7860`) |
+| Production | `80` | Nginx production build |
+
+---
 
 ## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -552,16 +414,13 @@ Contributions are welcome! Please follow these steps:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### Code Conventions
-- **Components**: PascalCase in `src/components/`
-- **Services**: camelCase in `src/services/`
-- **Types**: Centralized in `src/types/models.ts`
-- **Imports**: Relative paths (no path aliases)
-- **Styling**: Tailwind CSS utility classes, mobile-first responsive design
+**Conventions** — PascalCase components in `src/components/`, camelCase services in `src/services/`, shared types in `src/types/models.ts`, Tailwind utilities (mobile-first), all API calls through `src/services/apiService.ts` + `src/config/env.ts`.
+
+---
 
 ## 📄 License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
 ## 👥 Authors
 
@@ -570,5 +429,5 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ---
 
 <div align="center">
-  <sub>Built with ❤️ for math education</sub>
+  <sub>Built with ❤️ for math education · Screenshots from the <a href="https://mathpulse-ai-2026.web.app">live deploy</a></sub>
 </div>
