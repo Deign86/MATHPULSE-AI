@@ -73,6 +73,14 @@
   <em>Click the image above to open the live app on <a href="https://mathpulse-ai-2026.web.app">mathpulse-ai-2026.web.app</a> — sign in with a 1-click demo account, no setup required.</em>
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/login-bot-look.gif" alt="Login mascot follows cursor left to right" width="800" />
+</p>
+
+<p align="center">
+  <em>Login mascot tracks the cursor — move left to right and the bot looks left to right.</em>
+</p>
+
 <br/>
 
 <p align="center">
@@ -109,7 +117,7 @@ No install, no keys. Open the deploy and pick a demo account:
 
 > **[Open the live app →](https://mathpulse-ai-2026.web.app)**
 >
-> Screenshots in this README were captured from that deploy with Chrome DevTools (`docs/screenshots/`, re-capture anytime with `node scripts/capture-readme-screenshots.mjs`).
+> Screenshots in this README were captured from that deploy with Chrome DevTools (`docs/screenshots/`, re-capture anytime with `node scripts/capture-readme-screenshots.mjs`; login bot GIF with `node scripts/capture-login-bot-gif.mjs` + ffmpeg).
 
 ---
 
