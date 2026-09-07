@@ -18,7 +18,10 @@ interface UseStudentRiskOptions {
   autoRecalc?: boolean;
 }
 
+export type StudentRiskHookStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unassessed';
+
 export interface UseStudentRiskResult {
+  status: StudentRiskHookStatus;
   wri: number | null;
   riskStatus: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | null;
   diagnosticScore: number | null;
@@ -31,13 +34,9 @@ export interface UseStudentRiskResult {
   error: string | null;
   recalculate: () => Promise<void>;
   updateWeights: (weights: WRIWeights) => Promise<void>;
-  breakdown: {
-    diagnostic: number | null;
-    external: number | null;
-    system: number | null;
-  };
   pendingAssessment: boolean;
 }
+
 
 /**
  * Subscribe to a student's risk profile in real-time via Firestore onSnapshot.
@@ -137,7 +136,19 @@ export function useStudentRisk(
     [studentId, profile]
   );
 
+  const pendingAssessment = Boolean(!profile || profile.diagnosticScore === null || profile.diagnosticScore === undefined);
+  const status: StudentRiskHookStatus = !studentId
+    ? 'idle'
+    : loading
+      ? 'loading'
+      : error
+        ? 'error'
+        : pendingAssessment
+          ? 'unassessed'
+          : 'ready';
+
   return {
+    status,
     wri: profile?.wri ?? null,
     riskStatus: profile?.riskStatus ?? null,
     diagnosticScore: profile?.diagnosticScore ?? null,
@@ -150,11 +161,6 @@ export function useStudentRisk(
     error,
     recalculate,
     updateWeights,
-    breakdown: {
-      diagnostic: profile?.diagnosticScore ?? null,
-      external: profile?.externalGradesAvg ?? null,
-      system: profile?.systemPerformanceAvg ?? null,
-    },
-    pendingAssessment: profile?.diagnosticScore === null,
+    pendingAssessment,
   };
-}
+}

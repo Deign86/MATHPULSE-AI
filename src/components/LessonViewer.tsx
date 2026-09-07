@@ -265,7 +265,7 @@ function inlineFormat(text: string): React.ReactNode {
   return parts.length > 0 ? <>{parts}</> : text;
 }
 import { VideoLessonSection } from './notebook/VideoLessonSection';
-import InteractiveLesson, { Question } from './InteractiveLesson';
+import type { Question } from '@/types/curriculum';
 import TryItYourselfEngine from './TryItYourselfEngine';
 import { generateLessonQuiz } from '../services/lessonQuizService';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1018,7 +1018,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     return <ErrorPanel message={error} onRetry={retry} isOffline={isOffline} />;
   }
 
-  // Derive lesson number from lessonId for the TryItYourselfPage title
+  // Derive lesson number from lessonId for the TryItYourselfEngine
   const lessonNumMatch = String(lesson.id || '').match(/\d+/);
   const lessonNumber = lessonNumMatch ? lessonNumMatch[0] : '1';
 

@@ -30,10 +30,18 @@ async def get_questions_for_battle(
 
     Uses Firestore random_seed field for pseudo-random ordering.
     If fewer than `count` questions exist, returns all available.
+
+    Firestore path: question_bank/{grade_level}/topics/{topic}/questions/{docId}
+    (alternating collection/document segments — 5 segments total).
     """
     db = _get_db()
-    collection_path = f"question_bank/{grade_level}/{topic}/questions"
-    collection_ref = db.collection(collection_path)
+    collection_ref = (
+        db.collection("question_bank")
+        .document(str(grade_level))
+        .collection("topics")
+        .document(topic)
+        .collection("questions")
+    )
 
     # Pseudo-random query using random_seed >= random threshold
     threshold = random.random()
@@ -57,13 +65,8 @@ async def get_questions_for_battle(
         docs.extend(list(fallback_query.stream()))
 
     questions = [doc.to_dict() for doc in docs]
-    # Ensure all required fields are present
-    valid_questions = []
-    for q in questions:
-        if q and all(k in q for k in ("question", "choices", "correct_answer", "difficulty")):
-            valid_questions.append(q)
-
-    return valid_questions
+    required_fields = ("question", "choices", "correct_answer", "difficulty")
+    return [q for q in questions if q and all(k in q for k in required_fields)]
 
 
 async def cache_session_questions(
@@ -73,24 +76,21 @@ async def cache_session_questions(
     grade_level: int,
     topic: str,
 ) -> None:
-    """Cache varied questions for a battle session with 24-hour TTL."""
+    """Cache varied questions for a battle session with 24-hour TTL.
+
+    Questions are inlined as a list field in the root session document
+    (1 Firestore write vs. N subcollection batch writes).
+    """
     db = _get_db()
     session_ref = db.collection("quiz_battle_sessions").document(session_id)
-
     session_ref.set({
         "player_ids": player_ids,
         "grade_level": grade_level,
         "topic": topic,
+        "questions": questions,
         "created_at": firestore.SERVER_TIMESTAMP,
         "variance_cached_until": datetime.now(timezone.utc) + timedelta(hours=24),
     })
-
-    # Write questions to subcollection
-    batch = db.batch()
-    for idx, q in enumerate(questions):
-        q_ref = session_ref.collection("questions").document(str(idx))
-        batch.set(q_ref, q)
-    batch.commit()
 
 
 async def get_cached_session(session_id: str) -> Optional[List[Dict]]:
@@ -115,9 +115,7 @@ async def get_cached_session(session_id: str) -> Optional[List[Dict]]:
             cached_until = datetime.fromtimestamp(cached_until.timestamp(), tz=timezone.utc)
 
         if cached_until > datetime.now(timezone.utc):
-            # Return cached questions
-            q_docs = db.collection("quiz_battle_sessions").document(session_id).collection("questions").stream()
-            questions = [doc.to_dict() for doc in q_docs]
+            questions: List[Dict] = data.get("questions") or []
             return questions if questions else None
 
     return None

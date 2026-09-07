@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter
 
 from services.ai_client import REASONER_MODEL, CHAT_MODEL
-from services.deepseek_client import is_enabled, rag_grounded_completion, parse_json_response
+from services.inference_client import is_enabled, rag_grounded_completion, parse_json_response
 from rag.curriculum_rag import (
     retrieve_curriculum_context,
     build_analysis_curriculum_context,

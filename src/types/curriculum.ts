@@ -27,3 +27,17 @@ export interface CurriculumGroundedProblemResponse {
   competencyReference: string;
   sources: CurriculumSource[];
 }
+
+export type QuestionType = 'multiple-choice' | 'true-false' | 'fill-in-blank';
+
+export interface Question {
+  id: number;
+  type: QuestionType;
+  question: string;
+  options?: string[];
+  correctAnswer: string;
+  explanation?: string;
+  optionExplanations?: { [key: string]: string };
+  hints?: string[];
+  bloomLevel?: 'remember' | 'understand' | 'apply' | 'analyze' | 'evaluate';
+}

@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from services.ai_client import CHAT_MODEL
-from services.deepseek_client import is_enabled, rag_grounded_completion, parse_json_response
+from services.inference_client import is_enabled, rag_grounded_completion, parse_json_response
 from rag.curriculum_rag import (
     retrieve_curriculum_context,
     format_retrieved_chunks,

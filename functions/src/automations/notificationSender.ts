@@ -28,15 +28,26 @@ export async function createNotification(
 ): Promise<string> {
   const db = admin.firestore();
 
-  const notifRef = await db.collection("notifications").add({
+  const notificationRecord: admin.firestore.DocumentData = {
     userId: payload.userId,
     type: payload.type,
     title: payload.title,
     message: payload.message,
     link: payload.link || null,
+    actionUrl: payload.link || null,
+    isRead: false,
     read: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  };
+  if (payload.studentId) notificationRecord.studentId = payload.studentId;
+  if (payload.wri !== undefined) notificationRecord.wri = payload.wri;
+  if (payload.riskStatus) notificationRecord.riskStatus = payload.riskStatus;
+
+  const notifRef = await db
+    .collection("notifications")
+    .doc(payload.userId)
+    .collection("items")
+    .add(notificationRecord);
 
   functions.logger.info("[NOTIFY] Notification created", {
     userId: payload.userId,
@@ -58,16 +69,28 @@ export async function sendBatchNotifications(
   const ids: string[] = [];
 
   for (const notif of notifications) {
-    const ref = db.collection("notifications").doc();
-    batch.set(ref, {
+    const ref = db
+      .collection("notifications")
+      .doc(notif.userId)
+      .collection("items")
+      .doc();
+
+    const notificationRecord: admin.firestore.DocumentData = {
       userId: notif.userId,
       type: notif.type,
       title: notif.title,
       message: notif.message,
       link: notif.link || null,
+      actionUrl: notif.link || null,
+      isRead: false,
       read: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    };
+    if (notif.studentId) notificationRecord.studentId = notif.studentId;
+    if (notif.wri !== undefined) notificationRecord.wri = notif.wri;
+    if (notif.riskStatus) notificationRecord.riskStatus = notif.riskStatus;
+
+    batch.set(ref, notificationRecord);
     ids.push(ref.id);
   }
 

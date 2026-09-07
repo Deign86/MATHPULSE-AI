@@ -1,4 +1,4 @@
-import type { Question } from '../components/InteractiveLesson';
+import type { Question } from '@/types/curriculum';
 import { apiFetch } from './apiService';
 
 interface LessonQuizParams {
