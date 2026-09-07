@@ -4,7 +4,7 @@ import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circ
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
-import InteractiveLesson, { Question } from './InteractiveLesson';
+import type { Question } from '@/types/curriculum';
 import QuizExperience, { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import LessonViewer from './LessonViewer';
 import { subjects, Module, Lesson, Quiz } from '../data/subjects';

@@ -39,7 +39,7 @@ export interface InterventionPlan {
   student_name: string;
   grade_level: string;
   section: string;
-  risk_level: 'Low Risk' | 'Medium Risk' | 'High Risk' | 'Critical' | 'Unassessed';
+  risk_level: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | 'pending_assessment' | 'Low Risk' | 'Medium Risk' | 'High Risk' | 'Critical' | 'Unassessed';
   avg_score: number;
   engagement_level: 'Low' | 'Medium' | 'High';
   last_active: string | null;

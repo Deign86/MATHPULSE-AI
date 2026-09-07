@@ -125,15 +125,23 @@ class TestQuestionBankService:
                 "difficulty": "easy",
                 "random_seed": 0.5,
             }
-            mock_collection = MagicMock()
-            mock_collection.where.return_value.order_by.return_value.limit.return_value.stream.return_value = [mock_doc]
-            mock_collection.where.return_value.order_by.return_value.limit.return_value.stream.return_value = [mock_doc]
-            mock_db.return_value.collection.return_value = mock_collection
+            # New path: db.collection("question_bank").document(grade).collection("topics").document(topic).collection("questions")
+            # MagicMock auto-chains, so navigate to the questions collection via the chained call
+            mock_questions_col = (
+                mock_db.return_value
+                .collection.return_value   # "question_bank"
+                .document.return_value     # grade_level doc
+                .collection.return_value   # "topics"
+                .document.return_value     # topic doc
+                .collection.return_value   # "questions"
+            )
+            mock_questions_col.where.return_value.order_by.return_value.limit.return_value.stream.return_value = [mock_doc]
 
             from services.question_bank_service import get_questions_for_battle
             questions = await get_questions_for_battle(8, "linear_equations", 1)
             assert len(questions) == 1
             assert questions[0]["question"] == "What is 2+2?"
+
 
     @pytest.mark.asyncio
     async def test_cache_session_questions(self):

@@ -2,11 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   computeRisk,
   classifyWRI,
+  toCanonicalRiskTier,
   riskStatusToOverallRisk,
   isAtRiskByScore,
   computeSystemPerformance,
   DEFAULT_WEIGHTS,
 } from './riskEngine';
+
 
 describe('riskEngine', () => {
   describe('classifyWRI', () => {
@@ -36,6 +38,29 @@ describe('riskEngine', () => {
     });
   });
 
+  describe('toCanonicalRiskTier', () => {
+    it('normalizes legacy and mixed-case risk status strings', () => {
+      expect(toCanonicalRiskTier('safe')).toBe('safe');
+      expect(toCanonicalRiskTier('Low')).toBe('safe');
+      expect(toCanonicalRiskTier('Low Risk')).toBe('safe');
+      expect(toCanonicalRiskTier('on_track')).toBe('safe');
+      expect(toCanonicalRiskTier('watch')).toBe('watch');
+      expect(toCanonicalRiskTier('Moderate')).toBe('watch');
+      expect(toCanonicalRiskTier('Medium Risk')).toBe('watch');
+      expect(toCanonicalRiskTier('intervene')).toBe('intervene');
+      expect(toCanonicalRiskTier('High')).toBe('intervene');
+      expect(toCanonicalRiskTier('High Risk')).toBe('intervene');
+      expect(toCanonicalRiskTier('critical')).toBe('critical');
+      expect(toCanonicalRiskTier('urgent')).toBe('critical');
+      expect(toCanonicalRiskTier('at_risk')).toBe('at_risk');
+      expect(toCanonicalRiskTier('failing')).toBe('at_risk');
+      expect(toCanonicalRiskTier('pending_assessment')).toBe('pending_assessment');
+      expect(toCanonicalRiskTier('Unassessed')).toBe('pending_assessment');
+      expect(toCanonicalRiskTier(null)).toBe('pending_assessment');
+      expect(toCanonicalRiskTier(undefined)).toBe('pending_assessment');
+    });
+  });
+
   describe('riskStatusToOverallRisk', () => {
     it('maps statuses correctly', () => {
       expect(riskStatusToOverallRisk('safe')).toBe('Low');
@@ -43,11 +68,13 @@ describe('riskEngine', () => {
       expect(riskStatusToOverallRisk('intervene')).toBe('High');
       expect(riskStatusToOverallRisk('critical')).toBe('Critical');
       expect(riskStatusToOverallRisk('at_risk')).toBe('Critical');
+      expect(riskStatusToOverallRisk('pending_assessment')).toBe('Unassessed');
+      expect(riskStatusToOverallRisk(null)).toBe('Unassessed');
     });
   });
 
   describe('computeRisk', () => {
-    it('returns null WRI and Low overall risk when diagnosticScore is null', () => {
+    it('returns null WRI and Unassessed overall risk when diagnosticScore is null', () => {
       const res = computeRisk({
         diagnosticScore: null,
         externalGradesAvg: 80,
@@ -55,7 +82,7 @@ describe('riskEngine', () => {
       });
       expect(res.wri).toBeNull();
       expect(res.riskStatus).toBeNull();
-      expect(res.overallRisk).toBe('Low');
+      expect(res.overallRisk).toBe('Unassessed');
     });
 
     it('computes standard weights correctly (safe)', () => {

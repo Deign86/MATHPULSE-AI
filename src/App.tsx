@@ -6,7 +6,6 @@ import { ProgressGate } from './components/ProgressGate.tsx';
 import { ChatProvider } from './contexts/ChatContext.tsx';
 import { useAuth } from './contexts/AuthContext.tsx';
 import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPassword } from './services/authService.ts';
-import { createNotification } from './services/notificationService.ts';
 import { awardXP } from './services/gamificationService.ts';
 import { updateCompetencyProfile } from './services/assessmentService.ts';
 import { getUserProgress } from './services/progressService.ts';

@@ -1160,23 +1160,10 @@ class RequestMiddleware(BaseHTTPMiddleware):
                 },
                 headers={"X-Request-ID": request_id},
             )
-        except Exception as exc:
-            duration = round(time.time() - start, 3)
-            logger.error(f"[{request_id}] Unhandled error after {duration}s: {exc}")
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "detail": "Internal server error",
-                    "error": type(exc).__name__,
-                    "message": str(exc),
-                    "requestId": request_id,
-                },
-                headers={"X-Request-ID": request_id},
-            )
 
 
-app.add_middleware(RequestMiddleware)
 app.add_middleware(AuthMiddleware)
+app.add_middleware(RequestMiddleware)
 
 # Set up rate limiting with slowapi
 if HAS_RATE_LIMITING and setup_rate_limiting:  # type: ignore[truthy-function]

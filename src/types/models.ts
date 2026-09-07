@@ -699,6 +699,7 @@ export interface QuizAnswerRecord {
   answer: string;
   correct: boolean;
   timeSpent: number;
+  selectedOptionIndex?: number;
 }
 
 // Review Types

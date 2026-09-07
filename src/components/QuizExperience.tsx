@@ -199,6 +199,8 @@ export interface Quiz {
 export interface QuizAnswerRecord {
   questionId: string;
   answer: string;       // selected option text
+  answerText?: string;
+  selectedOptionIndex?: number;
   correct: boolean;
   timeSpent: number;     // milliseconds
 }
@@ -332,7 +334,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [streak, setStreak] = useState(0);
   const [comboMultiplier, setComboMultiplier] = useState(1);
   const [answers, setAnswers] = useState<(number | null)[]>([]);
-  const [answerRecords, setAnswerRecords] = useState<{ questionId: string; answer: string; correct: boolean; timeSpent: number }[]>([]);
+  const [answerRecords, setAnswerRecords] = useState<QuizAnswerRecord[]>([]);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [showResults, setShowResults] = useState(false);
   const [confettiFired, setConfettiFired] = useState(false);
@@ -573,12 +575,23 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
       ? validateTextAnswer(textAnswer, currentQuestion.correctAnswerText || '', currentQuestion.questionType || '')
       : activeAnswerIdx === currentQuestion.correctAnswer;
 
+    const selectedOptionText = !isNonMC && activeAnswerIdx !== null && currentQuestion.options?.[activeAnswerIdx] != null
+      ? currentQuestion.options[activeAnswerIdx]
+      : '';
+    const answerText = isNonMC ? textAnswer : selectedOptionText;
     const finalAnswer = isNonMC ? textAnswer : String(activeAnswerIdx);
     const timeSpentQ = Math.round((Date.now() - questionStartTime) / 1000);
 
     setAnswerRecords((prev) => [
       ...prev,
-      { questionId: currentQuestion.id, answer: finalAnswer, correct: isCorrect, timeSpent: timeSpentQ },
+      {
+        questionId: currentQuestion.id,
+        answer: finalAnswer,
+        answerText,
+        selectedOptionIndex: activeAnswerIdx ?? undefined,
+        correct: isCorrect,
+        timeSpent: timeSpentQ,
+      },
     ]);
 
     const newAnswers = [...answers];

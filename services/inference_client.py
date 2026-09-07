@@ -674,30 +674,6 @@ class InferenceClient:
             return self.interactive_timeout_sec
         return self.background_timeout_sec
 
-    def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
-        parts: List[str] = []
-        for msg in messages:
-            role = (msg.get("role") or "user").strip().lower()
-            content = (msg.get("content") or "").strip()
-            if not content or role in {"tool", "function"}:
-                continue
-            prefix = "USER"
-            if role == "system":
-                prefix = "SYSTEM"
-            elif role == "assistant":
-                prefix = "ASSISTANT"
-            parts.append(f"{prefix}:\n{content}")
-        parts.append("ASSISTANT:")
-        return "\n\n".join(parts)
-
-    def _latest_user_message(self, messages: List[Dict[str, str]]) -> str:
-        for msg in reversed(messages):
-            role = (msg.get("role") or "").strip().lower()
-            content = (msg.get("content") or "").strip()
-            if role == "user" and content:
-                return content
-        return self._messages_to_prompt(messages)
-
     def _call_deepseek(self, req: InferenceRequest, fallback_depth: int) -> str:
         """Call DeepSeek API with OpenAI-compatible chat completions."""
         if not self.ds_api_key:
@@ -880,155 +856,75 @@ class InferenceClient:
 
         raise RuntimeError(f"DeepSeek call failed after {max_retries} attempts")
 
-    def _call_local_space(self, req: InferenceRequest, *, provider: str, route: str, fallback_depth: int) -> str:
-        target_model = req.model or self.default_model
-        url = f"{self.local_space_url.rstrip('/')}{self.local_generate_path}"
 
-        prompt = self._messages_to_prompt(req.messages)
-        payload: Dict[str, object] = {
-            "data": [
-                prompt,
-                [],
-                req.temperature,
-                req.top_p,
-                req.max_new_tokens,
-            ]
-        }
-        headers = {"Content-Type": "application/json"}
+DEEPSEEK_ENABLED = os.getenv("DEEPSEEK_ENABLED", "true").lower() in ("true", "1", "yes")
+_MAX_RETRIES = 3
+_BACKOFF_DELAYS = [2, 4, 8]
 
-        timeout = self._timeout_for(req, provider)
 
-        self._record_attempt(
-            task_type=req.task_type,
-            provider=provider,
-            route=route,
-            fallback_depth=fallback_depth,
-        )
-        start = time.perf_counter()
+def is_enabled() -> bool:
+    return DEEPSEEK_ENABLED
 
+
+def rag_grounded_completion(
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    temperature: float = 0.2,
+) -> Optional[str]:
+    """Call DeepSeek with retry on 429. Returns response text or None if disabled/failed."""
+    if not is_enabled():
+        LOGGER.info("[DEEPSEEK] Disabled via DEEPSEEK_ENABLED flag, skipping.")
+        return None
+
+    client = get_deepseek_client()
+
+    for attempt in range(_MAX_RETRIES):
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=timeout)
-        except Exception as exc:
-            latency_ms = (time.perf_counter() - start) * 1000
-            log_model_call(
-                LOGGER,
-                provider=provider,
-                model=target_model,
-                endpoint=url,
-                latency_ms=latency_ms,
-                input_tokens=None,
-                output_tokens=None,
-                status="error",
-                error_class=exc.__class__.__name__,
-                error_message=str(exc),
-                task_type=req.task_type,
-                request_tag=req.request_tag,
-                retry_attempt=1,
-                fallback_depth=fallback_depth,
-                route=route,
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=temperature,
             )
-            self._bump_metric("requests_error", 1)
-            raise
+            usage = response.usage
+            if usage:
+                LOGGER.info(
+                    "[DEEPSEEK] model=%s prompt_tokens=%d completion_tokens=%d total=%d",
+                    model,
+                    usage.prompt_tokens,
+                    usage.completion_tokens,
+                    usage.total_tokens,
+                )
+            return response.choices[0].message.content or ""
+        except RateLimitError:
+            delay = _BACKOFF_DELAYS[attempt] if attempt < len(_BACKOFF_DELAYS) else 8
+            LOGGER.warning("[DEEPSEEK] 429 rate limited, retry %d/%d in %ds", attempt + 1, _MAX_RETRIES, delay)
+            time.sleep(delay)
+        except Exception as e:
+            LOGGER.error("[DEEPSEEK] Call failed: %s", e)
+            return None
 
-        latency_ms = (time.perf_counter() - start) * 1000
-        self._bump_bucket("status_code_counts", str(resp.status_code), 1)
+    LOGGER.error("[DEEPSEEK] All %d retries exhausted.", _MAX_RETRIES)
+    return None
 
-        if resp.status_code != 200:
-            self._bump_metric("requests_error", 1)
-            raise RuntimeError(f"Local Space error {resp.status_code}: {resp.text}")
 
-        data = resp.json()
-        event_id = data.get("event_id")
-        if not event_id:
-            return self._extract_text(data)
-
-        result_url = f"{self.local_space_url.rstrip('/')}/gradio_api/call/generate/{event_id}"
-        result_resp = requests.get(result_url, timeout=req.timeout_sec or self.local_timeout_sec)
-        if result_resp.status_code != 200:
-            raise RuntimeError(f"Local Space result error {result_resp.status_code}: {result_resp.text}")
-
-        line_data = None
-        for line in result_resp.text.splitlines():
-            if line.startswith("data:"):
-                line_data = line.split("data:", 1)[1].strip()
-
-        if not line_data:
-            raise RuntimeError("Local Space result stream missing data")
-
-        parsed = json.loads(line_data)
-        output_payload = parsed if isinstance(parsed, dict) else {"data": parsed}
-        text = self._extract_text(output_payload)
-        log_model_call(
-            LOGGER,
-            provider=provider,
-            model=target_model,
-            endpoint=url,
-            latency_ms=latency_ms,
-            input_tokens=None,
-            output_tokens=None,
-            status="ok",
-            task_type=req.task_type,
-            request_tag=req.request_tag,
-            retry_attempt=1,
-            fallback_depth=fallback_depth,
-            route=route,
-        )
-        self._bump_metric("requests_ok", 1)
-        return text
-
-    def _extract_text(self, data: object) -> str:
-        """Extract clean text from inference response, stripping JSON artifacts."""
-        if isinstance(data, list) and data:
-            first = data[0]
-            if isinstance(first, dict):
-                val = (first.get("generated_text") or "").strip()
-                if val:
-                    return self._clean_response_text(val)
-
-        if isinstance(data, dict):
-            direct = (data.get("generated_text") or "").strip()
-            if direct:
-                return self._clean_response_text(direct)
-
-            choices = data.get("choices", [])
-            if choices:
-                message = choices[0].get("message", {})
-                msg = (message.get("content") or "").strip()
-                if msg:
-                    return self._clean_response_text(msg)
-                reasoning = (message.get("reasoning") or "").strip()
-                if reasoning:
-                    return self._clean_response_text(reasoning)
-
-            generic_data = data.get("data")
-            if isinstance(generic_data, list) and generic_data:
-                first = generic_data[0]
-                if isinstance(first, str) and first.strip():
-                    return self._clean_response_text(first.strip())
-
-        raise RuntimeError(f"Unexpected inference response format: {data}")
-
-    def _clean_response_text(self, text: str) -> str:
-        """Strip JSON braces, template artifacts, and whitespace from response text."""
-        text = text.strip()
-
-        if text.startswith("{") and text.endswith("}"):
-            try:
-                parsed = json.loads(text)
-                if isinstance(parsed, dict):
-                    if "content" in parsed:
-                        text = str(parsed["content"]).strip()
-                    elif "text" in parsed:
-                        text = str(parsed["text"]).strip()
-            except json.JSONDecodeError:
-                text = text.strip("{}")
-
-        if text.startswith("```json") or text.startswith("```"):
-            text = re.sub(r"^```(?:json)?", "", text).strip()
-        if text.endswith("```"):
-            text = text[:-3].strip()
-
-        return text.strip()
+def parse_json_response(text: Optional[str]) -> Optional[dict]:
+    """Attempt to parse JSON from DeepSeek response, handling markdown fences."""
+    if not text:
+        return None
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.split("\n")
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        cleaned = "\n".join(lines)
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        LOGGER.warning("[DEEPSEEK] Failed to parse JSON response")
+        return None
 
 
 def create_default_client(firestore_client: Optional[Any] = None) -> InferenceClient:

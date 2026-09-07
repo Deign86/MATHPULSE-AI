@@ -153,6 +153,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     }),
     [searchQuery, roleFilter, statusFilter, sectionFilter],
   );
+  const filters = activeFilters;
 
   const clearSelection = useCallback(() => {
     setSelectedUserIds(new Set());
@@ -199,7 +200,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       return false;
     }
     if (allFilteredSelected) {
-      return !activeFilters.role || activeFilters.role.toLowerCase() === 'student';
+      return activeFilters.role?.toLowerCase() === 'student';
     }
     if (selectedUsers.length !== selectedUserIds.size) {
       return false;
@@ -240,9 +241,10 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       const pageData = await getAdminUsersPage({
         page: targetPage,
         pageSize,
-        searchQuery: activeFilters.search,
-        roleFilter: activeFilters.role,
-        statusFilter: activeFilters.status,
+        searchQuery: filters.search,
+        roleFilter: filters.role,
+        statusFilter: filters.status,
+        sectionFilter: filters.section,
       });
       setUsers(pageData.users);
       setCurrentPage(pageData.total === 0 ? 1 : pageData.page);
@@ -263,7 +265,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [pageSize, activeFilters.search, activeFilters.role, activeFilters.status]);
+  }, [pageSize, filters.search, filters.role, filters.status, filters.section]);
 
   useEffect(() => {
     loadUsers(currentPage);
@@ -404,9 +406,10 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   ) => {
     const explicitUserIds = options.userIds;
     const filterPayload: NonNullable<AdminBulkActionInput['filters']> = {};
-    if (activeFilters.search) filterPayload.search = activeFilters.search;
-    if (activeFilters.role) filterPayload.role = activeFilters.role;
-    if (activeFilters.status) filterPayload.status = activeFilters.status;
+    if (filters.search) filterPayload.search = filters.search;
+    if (filters.role) filterPayload.role = filters.role;
+    if (filters.status) filterPayload.status = filters.status;
+    if (filters.section) filterPayload.section = filters.section;
 
     if (!explicitUserIds && selectedCount === 0) {
       toast.error('Select at least one user before applying a bulk action.');
@@ -477,9 +480,10 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       setIsProcessingBulkAction(false);
     }
   }, [
-    activeFilters.search,
-    activeFilters.role,
-    activeFilters.status,
+    filters.search,
+    filters.role,
+    filters.status,
+    filters.section,
     allFilteredSelected,
     excludedUserIds,
     selectedUserIds,
