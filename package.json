@@ -122,6 +122,7 @@
             "lint:ox": "oxlint",
             "lint:anti-slop": "oxlint --quiet",
             "check:anti-slop": "oxlint --quiet",
+            "gate:check": "node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md",
             "setup:hooks": "node scripts/setup-git-hooks.mjs",
             "prepare": "node scripts/setup-git-hooks.mjs",
             "lint:fix": "eslint src --ext .ts,.tsx --fix",
