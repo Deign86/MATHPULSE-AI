@@ -8,6 +8,8 @@ from fastapi import Request
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded as SlowAPIRateLimitExceeded
 
+RateLimitExceeded = SlowAPIRateLimitExceeded
+
 logger = logging.getLogger("mathpulse.ratelimit")
 
 # Environment-based configuration with defaults

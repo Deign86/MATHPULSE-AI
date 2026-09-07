@@ -79,6 +79,13 @@ interface ModulesPageProps {
 
 type ModulesTab = 'modules' | 'recommended' | 'practice' | 'teacher_uploaded';
 
+/** Discriminated union for the current rendered view within ModulesPage. */
+type ModulesPageView =
+  | { kind: 'library' }
+  | { kind: 'module_detail'; module: CurriculumModuleRuntime }
+  | { kind: 'quiz'; quiz: QuizExperienceQuiz }
+  | { kind: 'teacher_module'; module: TeacherUploadedModule };
+
 const QUARTER_FILTERS: Array<'all' | CurriculumQuarter> = ['all', 'Q1', 'Q2', 'Q3', 'Q4'];
 
 const ModulesPage: React.FC<ModulesPageProps> = ({
@@ -159,6 +166,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const practiceQuizEndRef = React.useRef<((quiz: QuizExperienceQuiz, answers: QuizAnswerRecord[]) => void) | null>(null);
   const [learningPathContext, setLearningPathContext] = useState<string | null>(null);
   const [learningPathLoading, setLearningPathLoading] = useState(false);
+
+  const currentView: ModulesPageView = selectedQuiz
+    ? { kind: 'quiz', quiz: selectedQuiz }
+    : selectedTeacherModule
+    ? { kind: 'teacher_module', module: selectedTeacherModule }
+    : selectedModule
+    ? { kind: 'module_detail', module: selectedModule }
+    : { kind: 'library' };
 
   // Competency profile state for personalized module filtering
   const [competencyProfile, setCompetencyProfile] = useState<CompetencyProfileDoc | null>(null);
@@ -940,11 +955,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                         (q.loadedQuestions || []).map((lq) => [lq.id, lq])
                       );
                       const submitAnswers = answers.map((a) => {
-                        const lq = questionMap.get(a.questionId);
-                        const selectedIndex = lq?.options?.findIndex(
-                          (opt) => opt.trim().toLowerCase() === a.answer.trim().toLowerCase()
-                        ) ?? 0;
-                        return { question_id: a.questionId, selected_index: selectedIndex };
+                        const currentQuestion = questionMap.get(a.questionId);
+                        const selected_index = a.selectedOptionIndex ?? (currentQuestion?.options && currentQuestion.options.findIndex((opt) => opt === a.answer) !== -1 ? currentQuestion.options.findIndex((opt) => opt === a.answer) : 0);
+                        return { question_id: a.questionId, selected_index };
                       });
 
                       const result = await submitPracticeSession({

@@ -161,18 +161,17 @@ describe('notificationFirestoreService', () => {
   });
 
   describe('markAsRead', () => {
-    it('updates notification isRead to true on both paths', async () => {
+    it('updates notification isRead to true on subcollection', async () => {
       await markAsRead('user-123', 'notif-123');
 
-      expect(updateDoc).toHaveBeenCalledTimes(2);
+      expect(updateDoc).toHaveBeenCalledTimes(1);
+      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { isRead: true, read: true });
     });
 
-    it('handles errors gracefully', async () => {
-      vi.mocked(updateDoc).mockRejectedValueOnce(new Error('Update failed'));
+    it('handles errors by throwing', async () => {
       vi.mocked(updateDoc).mockRejectedValueOnce(new Error('Update failed'));
 
-      // Dual-path: individual .catch() handlers swallow per-path errors
-      await expect(markAsRead('user-123', 'notif-123')).resolves.toBeUndefined();
+      await expect(markAsRead('user-123', 'notif-123')).rejects.toThrow('Update failed');
     });
   });
 
@@ -182,22 +181,19 @@ describe('notificationFirestoreService', () => {
         { ref: 'ref-1', data: () => ({ isRead: false }) },
         { ref: 'ref-2', data: () => ({ isRead: false }) },
       ];
-      const mockTopLevelDocs = [{ ref: 'ref-3', data: () => ({ isRead: false, read: false }) }];
-      vi.mocked(getDocs)
-        .mockResolvedValueOnce(snapshotWith({ docs: mockSubcollectionDocs }))
-        .mockResolvedValueOnce(snapshotWith({ docs: mockTopLevelDocs }));
+      vi.mocked(getDocs).mockResolvedValueOnce(snapshotWith({ docs: mockSubcollectionDocs }));
 
       await markAllAsRead('user-123');
 
-      expect(updateDoc).toHaveBeenCalledTimes(3);
+      expect(updateDoc).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('deleteNotification', () => {
-    it('deletes the notification document from both paths', async () => {
+    it('deletes the notification document from subcollection', async () => {
       await deleteNotification('user-123', 'notif-123');
 
-      expect(deleteDoc).toHaveBeenCalledTimes(2);
+      expect(deleteDoc).toHaveBeenCalledTimes(1);
     });
   });
 

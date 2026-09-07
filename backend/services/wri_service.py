@@ -23,6 +23,34 @@ from typing import Optional
 DEFAULT_WEIGHTS = {"w1": 0.30, "w2": 0.40, "w3": 0.30}
 WEIGHT_TOLERANCE = 0.001
 
+CANONICAL_RISK_BANDS = ("safe", "watch", "intervene", "critical", "at_risk")
+CANONICAL_RISK_STATUSES = ("safe", "watch", "intervene", "critical", "at_risk", "pending_assessment")
+
+
+def normalize_risk_band(band: Optional[str]) -> str:
+    """Normalize legacy or mixed-case risk status strings to canonical 5-band WRI format."""
+    if not band:
+        return "pending_assessment"
+    normalized = band.strip().lower().replace("-", "_").replace(" ", "_")
+    if normalized in CANONICAL_RISK_STATUSES:
+        return normalized
+    tier_map = {
+        "low": "safe",
+        "low_risk": "safe",
+        "on_track": "safe",
+        "moderate": "watch",
+        "medium": "watch",
+        "medium_risk": "watch",
+        "high": "intervene",
+        "high_risk": "intervene",
+        "urgent": "critical",
+        "failing": "at_risk",
+        "unassessed": "pending_assessment",
+        "pending": "pending_assessment",
+    }
+    return tier_map.get(normalized, "pending_assessment")
+
+
 
 def compute_wri(
     d: Optional[float],

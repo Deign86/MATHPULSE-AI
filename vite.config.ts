@@ -1,93 +1,8 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
-import type { EsbuildTransformOptions } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
-const CSS_PROBE_ENV = 'VITE_CSS_TIMING_PROBE';
-const CSS_PROBE_THRESHOLD_MS = 25;
-
-const isCssResource = (id: string) => /\.(css|pcss|postcss|scss|sass|less|styl|stylus)(?:$|\?)/.test(id);
-
-const normalizeIdForLog = (id: string) => {
-  const withoutQuery = id.split('?')[0] ?? id;
-  return withoutQuery.replace(/\\/g, '/');
-};
-
-const createCssTimingProbePlugins = (): Plugin[] => {
-  if (process.env[CSS_PROBE_ENV] !== '1') {
-    return [];
-  }
-
-  const cssProbePlugin: Plugin = {
-    name: 'mathpulse-css-probe',
-    apply: 'serve',
-    configureServer(server) {
-      const originalTransformRequest = server.transformRequest.bind(server);
-      // SAFETY: the wrapper preserves the exact transformRequest signature; only timing is added.
-      server.transformRequest = (async (url, options) => {
-        const target = String(url);
-        if (!isCssResource(target)) {
-          return originalTransformRequest(url, options);
-        }
-
-        const transformStart = performance.now();
-        try {
-          return await originalTransformRequest(url, options);
-        } finally {
-          const transformDuration = performance.now() - transformStart;
-          if (transformDuration >= CSS_PROBE_THRESHOLD_MS) {
-            // Timing log only when CSS_PROBE_THRESHOLD_MS is exceeded
-          }
-        }
-      }) as typeof server.transformRequest;
-
-      // SAFETY: the probe only wraps transform timing; arguments pass through untouched.
-      const pluginContainer = server.pluginContainer as {
-        transform: (code: string, id: string, options?: EsbuildTransformOptions) => Promise<{ code?: string } | null>;
-      };
-      const originalPluginTransform = pluginContainer.transform.bind(pluginContainer);
-      // SAFETY: the wrapper preserves the plugin container transform signature; only timing is added.
-      pluginContainer.transform = (async (code, id, options) => {
-        if (!isCssResource(id)) {
-          return originalPluginTransform(code, id, options);
-        }
-
-        const transformStart = performance.now();
-        try {
-          return await originalPluginTransform(code, id, options);
-        } finally {
-          const transformDuration = performance.now() - transformStart;
-          if (transformDuration >= CSS_PROBE_THRESHOLD_MS) {
-            // Timing log only when CSS_PROBE_THRESHOLD_MS is exceeded
-          }
-        }
-      }) as typeof pluginContainer.transform;
-
-      server.middlewares.use((req, res, next) => {
-        const url = req.url?.split('?')[0] ?? '';
-        if (!url.endsWith('.css')) {
-          next();
-          return;
-        }
-
-        const requestStart = performance.now();
-        res.on('finish', () => {
-          const duration = performance.now() - requestStart;
-          if (duration >= CSS_PROBE_THRESHOLD_MS) {
-            // Timing log only when CSS_PROBE_THRESHOLD_MS is exceeded
-          }
-        });
-
-        next();
-      });
-    },
-  };
-
-  return [cssProbePlugin];
-};
-
-const cssTimingProbePlugins = createCssTimingProbePlugins();
 
 /**
  * Generates `/firebase-config.js` (consumed by `public/firebase-messaging-sw.js`)
@@ -190,7 +105,7 @@ const pwaSwConfigPlugin = (): Plugin => {
 };
 
 export default defineConfig({
-  plugins: [...cssTimingProbePlugins, react(), tailwindcss(), fcmConfigPlugin(), pwaSwConfigPlugin()],
+  plugins: [react(), tailwindcss(), fcmConfigPlugin(), pwaSwConfigPlugin()],
   optimizeDeps: {
     include: [
       'firebase/app',

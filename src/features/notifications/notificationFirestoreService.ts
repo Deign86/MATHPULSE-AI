@@ -106,19 +106,8 @@ export const getUserNotifications = async (
 export const markAsRead = async (userId: string, notificationId: string): Promise<void> => {
   if (!requireAuth()) return;
   try {
-    // Update subcollection (new structure) — uses isRead field
     const subRef = doc(db, 'notifications', userId, 'items', notificationId);
-    const subUpdate = updateDoc(subRef, { isRead: true }).catch((e) =>
-      console.warn('[firestore] markAsRead subcollection skipped:', e)
-    );
-
-    // Also update top-level (legacy structure) — uses read field
-    const topRef = doc(db, 'notifications', notificationId);
-    const topUpdate = updateDoc(topRef, { isRead: true, read: true }).catch((e) =>
-      console.warn('[firestore] markAsRead top-level skipped:', e)
-    );
-
-    await Promise.all([subUpdate, topUpdate]);
+    await updateDoc(subRef, { isRead: true, read: true });
   } catch (error) {
     console.error('[notificationFirestoreService] Error marking as read:', error);
     throw error;
@@ -128,7 +117,6 @@ export const markAsRead = async (userId: string, notificationId: string): Promis
 export const markAllAsRead = async (userId: string): Promise<void> => {
   if (!requireAuth()) return;
   try {
-    // Query subcollection (new structure) — uses isRead field
     const subcollectionQuery = query(
       collection(db, 'notifications', userId, 'items'),
       where('isRead', '==', false)
@@ -136,24 +124,8 @@ export const markAllAsRead = async (userId: string): Promise<void> => {
     const subcollectionSnap = await getDocs(subcollectionQuery);
 
     const updates: Promise<void>[] = subcollectionSnap.docs.map((docSnap) =>
-      updateDoc(docSnap.ref, { isRead: true })
+      updateDoc(docSnap.ref, { isRead: true, read: true })
     );
-
-    // Also query top-level notifications collection (legacy structure) — uses read field
-    try {
-      const topLevelQuery = query(
-        collection(db, 'notifications'),
-        where('userId', '==', userId),
-        where('read', '==', false)
-      );
-      const topLevelSnap = await getDocs(topLevelQuery);
-      for (const docSnap of topLevelSnap.docs) {
-        updates.push(updateDoc(docSnap.ref, { isRead: true, read: true }));
-      }
-    } catch (topLevelErr) {
-      // Top-level collection may fail due to permissions — don't block subcollection updates
-      console.warn('[notificationFirestoreService] Top-level markAllAsRead skipped:', topLevelErr);
-    }
 
     await Promise.all(updates);
   } catch (error) {
@@ -164,19 +136,8 @@ export const markAllAsRead = async (userId: string): Promise<void> => {
 
 export const deleteNotification = async (userId: string, notificationId: string): Promise<void> => {
   try {
-    // Delete from subcollection (new structure)
     const subRef = doc(db, 'notifications', userId, 'items', notificationId);
-    const subDelete = deleteDoc(subRef).catch((e) =>
-      console.warn('[firestore] deleteNotification subcollection skipped:', e)
-    );
-
-    // Also delete from top-level (legacy structure)
-    const topRef = doc(db, 'notifications', notificationId);
-    const topDelete = deleteDoc(topRef).catch((e) =>
-      console.warn('[firestore] deleteNotification top-level skipped:', e)
-    );
-
-    await Promise.all([subDelete, topDelete]);
+    await deleteDoc(subRef);
   } catch (error) {
     console.error('[notificationFirestoreService] Error deleting notification:', error);
     throw error;
@@ -199,56 +160,16 @@ export const subscribeToNotifications = (
     orderBy('createdAt', 'desc')
   );
 
-  const topLevelQuery = query(
-    collection(db, 'notifications'),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
+  return onSnapshot(
+    subcollectionQuery,
+    (snapshot) => {
+      const items = snapshot.docs.map((docSnap) => mapNotificationDoc(docSnap));
+      callback(items);
+    },
+    (error) => {
+      console.warn('[notificationFirestoreService] subscription error:', error);
+    }
   );
-
-  let subcollectionResults: Notification[] = [];
-  let topLevelResults: Notification[] = [];
-  let subcollectionReady = false;
-  let topLevelReady = false;
-
-  const emit = () => {
-    // Merge and deduplicate by id, prefer subcollection
-    const merged = new Map<string, Notification>();
-    for (const n of topLevelResults) merged.set(n.id, n);
-    for (const n of subcollectionResults) merged.set(n.id, n);
-    const all = Array.from(merged.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    callback(all);
-  };
-
-  const unsub1 = onSnapshot(subcollectionQuery, (snapshot) => {
-    subcollectionResults = snapshot.docs.map((docSnap) => mapNotificationDoc(docSnap));
-    subcollectionReady = true;
-    if (topLevelReady) emit();
-  }, () => { subcollectionReady = true; if (topLevelReady) emit(); });
-
-  const unsub2 = onSnapshot(topLevelQuery, (snapshot) => {
-    topLevelResults = snapshot.docs.map((docSnap) => {
-      const data = docSnap.data();
-      // SAFETY: legacy top-level docs store createdAt as Timestamp or Date; anything else falls back to now.
-      const createdAtRaw = data.createdAt as Timestamp | Date | undefined;
-      const createdAt = createdAtRaw instanceof Timestamp ? createdAtRaw.toDate() : createdAtRaw instanceof Date ? createdAtRaw : new Date();
-      // SAFETY: legacy docs may predate the typed writer; every field is defensively defaulted.
-      return {
-        id: docSnap.id,
-        userId: data.userId as string,
-        type: (data.type || 'message') as Notification['type'],
-        title: data.title as string,
-        message: data.message as string,
-        isRead: Boolean(data.isRead ?? data.read ?? false),
-        createdAt,
-        metadata: data.metadata,
-        actionUrl: (data.actionUrl || data.link) as string | undefined,
-      };
-    });
-    topLevelReady = true;
-    if (subcollectionReady) emit();
-  }, () => { topLevelReady = true; if (subcollectionReady) emit(); });
-
-  return () => { unsub1(); unsub2(); };
 };
 
 export const hasCheckedInToday = async (userId: string): Promise<boolean> => {

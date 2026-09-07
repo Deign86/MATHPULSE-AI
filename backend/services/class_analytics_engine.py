@@ -46,7 +46,7 @@ class StudentAnalyticsSummary(BaseModel):
     avg_score: float = 0.0
     quiz_attempt_count: int = 0
     last_active: Optional[str] = None
-    risk_level: Literal["Low Risk", "Medium Risk", "High Risk", "Critical", "Unassessed"] = "Unassessed"
+    risk_level: Literal["safe", "watch", "intervene", "critical", "at_risk", "pending_assessment"] = "pending_assessment"
     engagement_level: Literal["Low", "Medium", "High"] = "Low"
     weakest_topic: Optional[str] = None
     accuracy_by_topic: Dict[str, float] = Field(default_factory=dict)
@@ -188,6 +188,7 @@ class ClassAnalyticsEngine:
         topic_perf = self._compute_topic_performance(student_summaries)
 
         # Risk distribution
+        from services.wri_service import normalize_risk_band
         risk_dist = {"safe": 0, "watch": 0, "intervene": 0, "critical": 0, "at_risk": 0, "pending_assessment": 0}
         for s in student_summaries:
             # Prefer stored WRI status from managedStudents if available
@@ -198,7 +199,7 @@ class ClassAnalyticsEngine:
                     stored_status = ms_doc.to_dict().get("riskStatus")
             except Exception:
                 pass
-            status = stored_status if stored_status in risk_dist else s.risk_level
+            status = normalize_risk_band(stored_status) if stored_status else s.risk_level
             risk_dist[status] = risk_dist.get(status, 0) + 1
 
         # Generate AI insights
@@ -442,11 +443,12 @@ Completion Rate: {completion_rate:.1f}%
 Participation Rate: {participation_rate:.1f}%
 
 Risk Distribution:
-- Critical: {risk_dist.get('Critical', 0)} students
-- High Risk: {risk_dist.get('High Risk', 0)} students
-- Medium Risk: {risk_dist.get('Medium Risk', 0)} students
-- Low Risk: {risk_dist.get('Low Risk', 0)} students
-- Unassessed: {risk_dist.get('Unassessed', 0)} students
+- Safe: {risk_dist.get('safe', 0)} students
+- Watch: {risk_dist.get('watch', 0)} students
+- Intervene: {risk_dist.get('intervene', 0)} students
+- Critical: {risk_dist.get('critical', 0)} students
+- At Risk: {risk_dist.get('at_risk', 0)} students
+- Pending Assessment: {risk_dist.get('pending_assessment', 0)} students
 
 Topic Performance (class accuracy):
 {topic_lines}
@@ -501,12 +503,12 @@ Be specific to Filipino K-12 DepEd context. If data is limited, acknowledge it a
             return ClassInsights(
                 class_id=class_id,
                 generated_at=_now_iso(),
-                class_summary=f"Class has {student_count} students with an average score of {class_average:.0f}%. {risk_dist.get('Unassessed', 0)} students have not yet taken any quizzes.",
+                class_summary=f"Class has {student_count} students with an average score of {class_average:.0f}%. {risk_dist.get('pending_assessment', 0)} students have not yet taken any quizzes.",
                 top_weak_topics=weak_topics,
                 recommended_actions=[
                     "Encourage unassessed students to complete their first quiz.",
                     "Review struggling topics in the next class session.",
-                    "Schedule one-on-one check-ins with Critical risk students.",
+                    "Schedule one-on-one check-ins with critical / at-risk students.",
                 ],
                 class_strengths="Students are enrolled and the platform is ready for use." if class_average < 50 else f"Class maintains a {class_average:.0f}% average.",
                 risk_distribution=risk_dist,
