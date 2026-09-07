@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Git pre-commit hook: enforces dmmulroy/anti-slop Oxlint rules
+# Git pre-commit hook: enforces anti-slop Oxlint rules and unlazy gates
 echo "?? Running Oxlint anti-slop checks..."
 npx oxlint --quiet
 EXIT_CODE=$?
@@ -8,3 +8,14 @@ if [ $EXIT_CODE -ne 0 ]; then
   exit $EXIT_CODE
 fi
 echo "? Anti-slop checks passed."
+
+if [ -f "GATES.md" ]; then
+  echo "?? Verifying unlazy acceptance gates in GATES.md..."
+  node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md
+  GATE_EXIT=$?
+  if [ $GATE_EXIT -ne 0 ]; then
+    echo "? Unlazy acceptance gates not met! Complete all gates before committing."
+    exit $GATE_EXIT
+  fi
+  echo "? Unlazy acceptance gates verified."
+fi

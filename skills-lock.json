@@ -19,9 +19,19 @@
       "skillPath": "skills/install-anti-slop/SKILL.md",
       "computedHash": "0c15ea86887d9e2da665326ba0e90f915aa7b5b5c8e24c42ba76bdd04761142b"
     },
+    "ponytail": {
+      "source": "local/ponytail",
+      "sourceType": "local",
+      "skillPath": "SKILL.md"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github"
+    },
+    "unlazy": {
+      "source": "Leonxlnx/unlazy",
+      "sourceType": "github",
+      "skillPath": "SKILL.md"
     }
   }
 }
