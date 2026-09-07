@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag.firebase_storage_loader import (
     PDF_METADATA,
     download_pdf_from_storage,
+    infer_storage_metadata,
     list_curriculum_blobs,
 )
 
@@ -149,7 +150,14 @@ def ingest_from_firebase_storage(force_reindex: bool = False):
     skipped_count = 0
     error_count = 0
 
-    for storage_path, metadata in PDF_METADATA.items():
+    target_metadata = dict(PDF_METADATA)
+    live_blobs = list_curriculum_blobs(prefix="curriculum/sshs_learning_resources/")
+    for blob_info in live_blobs:
+        path = blob_info["name"]
+        if path not in target_metadata:
+            target_metadata[path] = infer_storage_metadata(path)
+
+    for storage_path, metadata in target_metadata.items():
         doc_id = storage_path.replace("/", "_").replace(".pdf", "")
 
         if db:
@@ -167,18 +175,8 @@ def ingest_from_firebase_storage(force_reindex: bool = False):
         logger.info("Downloading: %s", storage_path)
         pdf_bytes = download_pdf_from_storage(storage_path)
         if pdf_bytes is None:
-            logger.error("[ERROR] Failed to download: %s", storage_path)
-            if db:
-                try:
-                    doc_ref.set({
-                        "storagePath": storage_path,
-                        "status": "failed",
-                        "error": "download_failed",
-                        **metadata,
-                    }, merge=True)
-                except:
-                    pass
-            error_count += 1
+            logger.warning("[SKIP] %s not found in Firebase Storage", storage_path)
+            skipped_count += 1
             continue
 
         logger.info("Extracting text from: %s (%d bytes)", storage_path, len(pdf_bytes))

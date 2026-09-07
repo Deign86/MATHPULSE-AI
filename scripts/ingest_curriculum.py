@@ -4,13 +4,21 @@ import json
 import os
 import re
 from collections import Counter
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List
 
-from backend.rag.liteparse_utils import extract_text
-
 BASE_DIR = Path(__file__).resolve().parents[1]
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+if str(BASE_DIR / "backend") not in sys.path:
+    sys.path.insert(0, str(BASE_DIR / "backend"))
+
+try:
+    from backend.rag.liteparse_utils import extract_text
+except ImportError:
+    from rag.liteparse_utils import extract_text
 CURRICULUM_DIR = Path(os.getenv("CURRICULUM_DIR", BASE_DIR / "datasets" / "curriculum" / "sshs_learning_resources"))
 VECTORSTORE_DIR = Path(os.getenv("VECTORSTORE_DIR", BASE_DIR / "datasets" / "vectorstore"))
 COLLECTION_NAME = "curriculum_chunks"
@@ -125,29 +133,97 @@ def main(argv: List[str] | None = None) -> None:
     import chromadb
     from sentence_transformers import SentenceTransformer
 
-    embedder = SentenceTransformer(EMBED_MODEL_NAME)
-    embeddings = embedder.encode(
-        documents,
-        normalize_embeddings=True,
-        show_progress_bar=True,
-    ).tolist()
+    cache_file = vectorstore_dir / "embeddings_cache.npy"
+    embeddings: List[List[float]] = []
+    if cache_file.exists():
+        try:
+            import numpy as np
+            cached_data = np.load(cache_file)
+            if len(cached_data) == len(documents) and cached_data.shape[1] == 384:
+                print(f"Loaded {len(cached_data)} cached embeddings from {cache_file}")
+                embeddings = cached_data.tolist()
+        except Exception:
+            embeddings = []
+
+    if not embeddings:
+        embedder = SentenceTransformer(EMBED_MODEL_NAME)
+        encoded = embedder.encode(
+            documents,
+            normalize_embeddings=True,
+            show_progress_bar=True,
+        )
+        try:
+            import numpy as np
+            np.save(cache_file, encoded)
+        except Exception:
+            pass
+        embeddings = encoded.tolist()
+
+    import sqlite3
+
     client = chromadb.PersistentClient(path=str(vectorstore_dir))
-    try:
-        client.delete_collection(COLLECTION_NAME)
-    except Exception:
-        pass
-    collection = client.create_collection(name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"})
+    chunk_count_before = 0
+    sqlite_file = vectorstore_dir / "chroma.sqlite3"
+    needs_recreate = False
+    if sqlite_file.exists():
+        try:
+            with sqlite3.connect(str(sqlite_file)) as conn:
+                row = conn.execute(
+                    "SELECT dimension FROM collections WHERE name = ?", (COLLECTION_NAME,)
+                ).fetchone()
+                if row and row[0] is not None and row[0] != len(embeddings[0]):
+                    print(
+                        f"Dimension mismatch ({row[0]} != {len(embeddings[0])}); "
+                        f"recreating collection {COLLECTION_NAME}..."
+                    )
+                    needs_recreate = True
+        except Exception:
+            pass
+
+    if needs_recreate:
+        try:
+            existing_col = client.get_collection(COLLECTION_NAME)
+            chunk_count_before = existing_col.count()
+            client.delete_collection(COLLECTION_NAME)
+        except Exception:
+            pass
+        collection = client.create_collection(
+            name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+        )
+    else:
+        try:
+            collection = client.get_collection(COLLECTION_NAME)
+            chunk_count_before = collection.count()
+        except Exception:
+            collection = client.create_collection(
+                name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+            )
+
+    print(f"Chunk count before: {chunk_count_before}")
+
+    existing_ids = set(collection.get(include=[])["ids"])
+    new_ids = set(ids)
+    stale_ids = list(existing_ids - new_ids)
+    if stale_ids:
+        print(f"Pruning {len(stale_ids)} stale chunks from collection...")
+        for start in range(0, len(stale_ids), 500):
+            collection.delete(ids=stale_ids[start : start + 500])
+
     for start in range(0, len(ids), 500):
         end = start + 500
-        collection.add(
+        collection.upsert(
             ids=ids[start:end],
             documents=documents[start:end],
             metadatas=metadatas[start:end],
             embeddings=embeddings[start:end],
         )
+    chunk_count_after = collection.count()
+    print(f"Chunk count after: {chunk_count_after}")
     summary = {
         "lastIngested": datetime.now(timezone.utc).isoformat(),
         "totalChunks": len(documents),
+        "chunkCountBefore": chunk_count_before,
+        "chunkCountAfter": chunk_count_after,
         "sourceFiles": [path.as_posix() for path in files],
         "chunksPerSubject": dict(Counter(str(meta["subject"]) for meta in metadatas)),
     }
