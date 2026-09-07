@@ -7,6 +7,19 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 
+def _normalize_subject(subject: Optional[str]) -> Optional[str]:
+    if not subject:
+        return None
+    raw = subject.strip().lower().replace("-", "_").replace(" ", "_")
+    if "gen" in raw or "general" in raw:
+        return "general_mathematics"
+    if "finite" in raw and "1" in raw:
+        return "finite_mathematics_1"
+    if "finite" in raw and "2" in raw:
+        return "finite_mathematics_2"
+    return raw
+
+
 def _to_where(
     subject: Optional[str] = None,
     quarter: Optional[int] = None,
@@ -19,7 +32,11 @@ def _to_where(
 ) -> Optional[Dict[str, object]]:
     clauses = []
     if subject:
-        clauses.append({"subject": {"$eq": subject}})
+        norm = _normalize_subject(subject)
+        if norm and norm != subject:
+            clauses.append({"subject": {"$in": [subject, norm]}})
+        else:
+            clauses.append({"subject": {"$eq": subject}})
     if quarter is not None:
         clauses.append({"quarter": {"$eq": int(quarter)}})
     if content_domain:
