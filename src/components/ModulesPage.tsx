@@ -21,6 +21,7 @@ import {
   MessageCircle,
   RefreshCw,
   Flame,
+  FileText,
 } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -55,6 +56,7 @@ import {
   getCurriculumModulesForLearner,
   resolveLearnerGradeLevel,
 } from '../data/curriculumModules';
+import { getFirebaseStoragePdfUrl, getLessonsByModule } from '../data/curriculum/types';
 import { getRagAnalysisContext } from '../services/apiService';
 import { recordGet } from '../utils/memberOf';
 import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
@@ -1099,6 +1101,107 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                   ))}
                 </div>
               </div>
+
+              {/* DepEd SSHS Primary PDF Sources */}
+              {(() => {
+                const pdfList: Array<{ filename: string; storagePath: string; lessonTitle?: string }> = [];
+                const seenPaths = new Set<string>();
+
+                // 1. Module's own lesson list
+                for (const l of sourcePreviewModule.lessons || []) {
+                  // SAFETY: module lessons may contain dynamic storagePath and sourceFile metadata.
+                  const sp = (l as any).storagePath;
+                  // SAFETY: module lessons may contain dynamic sourceFile metadata.
+                  const sf = (l as any).sourceFile || (sp ? sp.split('/').pop() : '');
+                  if (sp && !seenPaths.has(sp)) {
+                    seenPaths.add(sp);
+                    pdfList.push({ filename: sf || sp.split('/').pop() || 'DepEd Module PDF', storagePath: sp, lessonTitle: l.title });
+                  }
+                }
+
+                // 2. Canonical curriculum lessons mapped by module ID
+                const canonicalLessons = getLessonsByModule(sourcePreviewModule.id);
+                for (const l of canonicalLessons) {
+                  const sp = l.storagePath;
+                  const sf = l.sourceFile || (sp ? sp.split('/').pop() : '');
+                  if (sp && !seenPaths.has(sp)) {
+                    seenPaths.add(sp);
+                    pdfList.push({ filename: sf || sp.split('/').pop() || 'DepEd Module PDF', storagePath: sp, lessonTitle: l.lessonTitle });
+                  }
+                }
+
+                // 3. Fallback primary curriculum PDFs for the subject
+                if (pdfList.length === 0) {
+                  const subjectFallbackMap = {
+                    'gen-math': {
+                      filename: 'General Mathematics_LE.pdf',
+                      storagePath: 'curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf',
+                    },
+                    'business-math': {
+                      filename: 'General Mathematics_LE.pdf',
+                      storagePath: 'curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf',
+                    },
+                    'stats-prob': {
+                      filename: 'Full.pdf',
+                      storagePath: 'curriculum/stat_prob/Full.pdf',
+                    },
+                  } as const;
+                  // SAFETY: subjectId is constrained to known curriculum subject keys.
+                  const fallback = subjectFallbackMap[sourcePreviewModule.subjectId as keyof typeof subjectFallbackMap];
+                  if (fallback) {
+                    pdfList.push(fallback);
+                  }
+                }
+
+                return (
+                  <div className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                        DepEd SSHS Curriculum Sources
+                      </p>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        Primary Source PDFs
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {pdfList.map((item, idx) => {
+                        const fileUrl = getFirebaseStoragePdfUrl(item.storagePath);
+                        return (
+                          <div
+                            key={idx}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border border-slate-200/90 bg-white p-3 hover:border-slate-300 transition-colors shadow-2xs"
+                          >
+                            <div className="min-w-0 flex items-start gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200/70 flex items-center justify-center shrink-0 mt-0.5 text-rose-600">
+                                <FileText size={16} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-800 truncate font-mono" title={item.filename}>
+                                  {item.filename}
+                                </p>
+                                <p className="text-[10px] text-slate-500 truncate font-mono mt-0.5">
+                                  {item.storagePath}
+                                </p>
+                              </div>
+                            </div>
+
+                            <a
+                              href={fileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 transition-colors shrink-0"
+                            >
+                              <span>Open PDF</span>
+                              <ExternalLink size={13} />
+                            </a>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="rounded-2xl border border-slate-200 p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Sources & Attribution</p>

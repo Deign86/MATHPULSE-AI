@@ -8,7 +8,8 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("mathpulse.fb_storage_loader")
 
@@ -159,41 +160,115 @@ def list_curriculum_blobs(prefix: str = "curriculum/") -> List[Dict[str, Any]]:
 
 
 def infer_storage_metadata(storage_path: str) -> Dict[str, Any]:
-    """Infer metadata for a curriculum resource stored in Firebase Storage."""
-    clean_path = storage_path.replace("\\", "/")
+    """Infer metadata for a curriculum resource stored in Firebase Storage or local filesystem."""
+    clean_path = storage_path.replace("\\", "/").strip("/")
+    if clean_path.startswith("gs://"):
+        parts_gs = clean_path.split("/", 2)
+        if len(parts_gs) > 2:
+            clean_path = parts_gs[2]
+
     parts = [p.lower() for p in clean_path.split("/")]
     joined = " ".join(parts)
+    subparts = parts[1:] if len(parts) > 1 and parts[0] == "curriculum" else parts
+    sub_joined = " ".join(subparts)
     filename = parts[-1] if parts else ""
+    filename_lower = filename.lower()
 
-    subject = "Finite Mathematics" if "finite math" in joined else "General Mathematics"
-    subject_id = "finite-math" if "finite math" in joined else "gen-math"
+    # Subject and SubjectId detection
+    if "stat_prob" in joined or "statistics" in joined or "prob" in joined:
+        subject = "Statistics and Probability"
+        subject_id = "stats-prob"
+        content_domain = "statistics"
+    elif "finite math 1" in joined or "finite-math-1" in joined or "finite-mathematics-1" in joined:
+        subject = "Finite Mathematics 1"
+        subject_id = "finite-math-1"
+        content_domain = "general"
+    elif "finite math 2" in joined or "finite-math-2" in joined or "finite-mathematics-2" in joined:
+        subject = "Finite Mathematics 2"
+        subject_id = "finite-math-2"
+        content_domain = "general"
+    elif "finite math" in joined or "finite" in joined:
+        subject = "Finite Mathematics"
+        subject_id = "finite-math"
+        content_domain = "general"
+    elif "bus.math" in joined or "business math" in joined or "bus_math" in joined:
+        subject = "Business Mathematics"
+        subject_id = "business-math"
+        content_domain = "general"
+    elif "org" in joined and ("mngt" in joined or "mgmt" in joined or "management" in joined):
+        subject = "Organization and Management"
+        subject_id = "org-mgmt"
+        content_domain = "general"
+    else:
+        subject = "General Mathematics"
+        subject_id = "gen-math"
+        content_domain = "general"
+
+    # Quarter detection (1, 2, 3, 4)
     quarter = 0
-    for q in [1, 2, 3, 4]:
-        if f"q{q}" in joined or f"quarter {q}" in joined:
-            quarter = q
-            break
+    q_match = re.search(r"(?:quarter[\s_/-]*|[\b_/-]q)([1-4])(?!\d)", clean_path, re.IGNORECASE)
+    if q_match:
+        quarter = int(q_match.group(1))
+    elif "1stsem" in joined or "1st sem" in joined or "firstsem" in joined or "first sem" in joined or "term 1" in joined:
+        quarter = 1
+    elif "2ndsem" in joined or "2nd sem" in joined or "secondsem" in joined or "second sem" in joined or "term 2" in joined:
+        quarter = 2
+    elif "finite math 1" in joined:
+        quarter = 1
+    elif "finite math 2" in joined:
+        quarter = 2
+    elif "stat_prob" in joined:
+        quarter = 1
 
-    resource_type = "sdo_module"
-    if "las" in filename:
+    # Resource type detection: learning_activity_sheet, lesson_exemplar, curriculum_guide, sdo_module
+    is_las = bool(re.search(r"\b(las|learning[\s_-]*activity)\b|[-_]las\d*[-_.]", sub_joined, re.IGNORECASE))
+    is_le = bool(re.search(r"\b(lesson[\s_-]*exemplar)\b|[-_]le\d*[-_.]|\ble\d+\b", sub_joined, re.IGNORECASE))
+    is_guide = bool(
+        re.search(r"\b(curriculum[\s_-]*guide|budget[\s_-]*of[\s_-]*work|budget)\b|curriculum & budget", sub_joined, re.IGNORECASE)
+        or filename_lower.startswith("general-mathematics-")
+        or filename_lower.startswith("finite-mathematics-")
+    )
+
+    if is_las:
         resource_type = "learning_activity_sheet"
-    elif "le" in filename:
+    elif is_le:
         resource_type = "lesson_exemplar"
-    elif "curriculum" in filename:
+    elif is_guide:
         resource_type = "curriculum_guide"
+    else:
+        resource_type = "sdo_module"
+
+    curated = PDF_METADATA.get(storage_path) or PDF_METADATA.get(clean_path)
+    if not curated and clean_path.startswith("curriculum/"):
+        curated = PDF_METADATA.get(clean_path[len("curriculum/"):])
+    if not curated and not clean_path.startswith("curriculum/"):
+        curated = PDF_METADATA.get(f"curriculum/{clean_path}")
+    if not curated and filename:
+        curated = PDF_METADATA.get(filename)
+
+    if curated:
+        subject = curated.get("subject", subject)
+        subject_id = curated.get("subjectId", subject_id)
+        resource_type = curated.get("type") or curated.get("resource_type", resource_type)
+        content_domain = curated.get("content_domain", content_domain)
+        quarter = curated.get("quarter", quarter)
+
+    full_storage_path = clean_path if clean_path.startswith("curriculum/") else f"curriculum/{clean_path}"
 
     return {
         "subject": subject,
         "subjectId": subject_id,
         "type": resource_type,
-        "content_domain": "general",
+        "resource_type": resource_type,
+        "content_domain": content_domain,
         "quarter": quarter,
-        "storage_path": clean_path,
+        "storage_path": full_storage_path,
         "filename": filename,
     }
 
 
 PDF_METADATA: Dict[str, dict] = {
-    # General Mathematics Q1 — SDO Navotas teaching module (100 pages, ~117k chars)
+    # General Mathematics Q1 — SDO Navotas teaching modules
     "curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf": {
         "subject": "General Mathematics",
         "subjectId": "gen-math",
@@ -201,6 +276,30 @@ PDF_METADATA: Dict[str, dict] = {
         "content_domain": "general",
         "quarter": 1,
         "storage_path": "curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf",
+    },
+    "curriculum/gen_math_sdo/SHS_GM_Q1_LAS1_LE1.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/gen_math_sdo/SHS_GM_Q1_LAS1_LE1.pdf",
+    },
+    "curriculum/gen_math_sdo/SHS_GM_Q1_LAS2_LE1.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/gen_math_sdo/SHS_GM_Q1_LAS2_LE1.pdf",
+    },
+    "curriculum/gen_math_sdo/SHS_GM_Q1_LAS3_LE1.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/gen_math_sdo/SHS_GM_Q1_LAS3_LE1.pdf",
     },
     # General Mathematics Q2 — Interest & Annuities modules (~27-35 pages each)
     "curriculum/general_math/genmath_q2_mod1_simpleandcompoundinterests_v2.pdf": {
@@ -243,5 +342,252 @@ PDF_METADATA: Dict[str, dict] = {
         "content_domain": "statistics",
         "quarter": 1,
         "storage_path": "curriculum/stat_prob/Full.pdf",
+    },
+    # SSHS Learning Resources: Finite Mathematics 1 & 2
+    "curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/PDF/Finite Math 1_LAS.pdf": {
+        "subject": "Finite Mathematics 1",
+        "subjectId": "finite-math-1",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/PDF/Finite Math 1_LAS.pdf",
+    },
+    "curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/PDF/Finite Math 1_LE.pdf": {
+        "subject": "Finite Mathematics 1",
+        "subjectId": "finite-math-1",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/PDF/Finite Math 1_LE.pdf",
+    },
+    "curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 2/PDF/Finite Math 2_LAS.pdf": {
+        "subject": "Finite Mathematics 2",
+        "subjectId": "finite-math-2",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 2/PDF/Finite Math 2_LAS.pdf",
+    },
+    "curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 2/PDF/Finite Math 2_LE.pdf": {
+        "subject": "Finite Mathematics 2",
+        "subjectId": "finite-math-2",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 2/PDF/Finite Math 2_LE.pdf",
+    },
+    # SSHS Learning Resources: General Mathematics Complete Course (Term 1)
+    "curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LAS.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LAS.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf",
+    },
+    # SSHS Learning Resources: Curriculum Guide & Budget of Work
+    "curriculum/sshs_learning_resources/General Mathematics/Curriculum & Budget of Work/PDF/GENERAL-MATHEMATICS-1.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "curriculum_guide",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Curriculum & Budget of Work/PDF/GENERAL-MATHEMATICS-1.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Curriculum & Budget of Work/PDF/General-Mathematics-2.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "curriculum_guide",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Curriculum & Budget of Work/PDF/General-Mathematics-2.pdf",
+    },
+    # SSHS Learning Resources: General Mathematics Quarter 1
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/PDF/SHS_GM_Q1_LAS1.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/PDF/SHS_GM_Q1_LAS1.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/PDF/SHS_GM_Q1_LAS2.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/PDF/SHS_GM_Q1_LAS2.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/PDF/SHS_GM_Q1_LAS4.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/PDF/SHS_GM_Q1_LAS4.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE1.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE1.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE2.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE2.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE3.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 1,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE3.pdf",
+    },
+    # SSHS Learning Resources: General Mathematics Quarter 2
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Learning Activity Sheets/PDF/SHS_GM_Q2_LAS2.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Learning Activity Sheets/PDF/SHS_GM_Q2_LAS2.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE4.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE4.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE5.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE5.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE6.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 2,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE6.pdf",
+    },
+    # SSHS Learning Resources: General Mathematics Quarter 3
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE7.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 3,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE7.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE8.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 3,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE8.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE9.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 3,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE9.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE7.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 3,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE7.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE8.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 3,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE8.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE9.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 3,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE9.pdf",
+    },
+    # SSHS Learning Resources: General Mathematics Quarter 4
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE10.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 4,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE10.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE11.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 4,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE11.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE12.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "learning_activity_sheet",
+        "content_domain": "general",
+        "quarter": 4,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE12.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/PDF/SHS_GM_Q4_LE10.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 4,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/PDF/SHS_GM_Q4_LE10.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/PDF/SHS_GM_Q4_LE11.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 4,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/PDF/SHS_GM_Q4_LE11.pdf",
+    },
+    "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/PDF/SHS_GM_Q4_LE12.pdf": {
+        "subject": "General Mathematics",
+        "subjectId": "gen-math",
+        "type": "lesson_exemplar",
+        "content_domain": "general",
+        "quarter": 4,
+        "storage_path": "curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/PDF/SHS_GM_Q4_LE12.pdf",
     },
 }

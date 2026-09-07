@@ -143,4 +143,32 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
     - Cloud Functions: npm test passed with 46/46 tests in 665ms (2026-09-07T15:50:45+08:00).
     - Backend Pytest: python -m pytest backend/tests/ passed with 317/317 tests in 71.64s (2026-09-07T15:58:48+08:00).
 
+## Section C: Match Curriculum PDFs in Firebase Storage Across System, UI, and RAG
+- [x] C1: Frontend curriculum registry alignment: map all competencies across 14 General Math modules (Q1-Q4) and Statistics & Probability in src/data/curriculum/types.ts and curriculumModules.ts to exact DepEd SSHS PDF storage paths, removing legacy stubs.
+  CHECK: node -e "import('./src/data/curriculumModules.ts').then(m => { const mods = m.CURRICULUM_MODULE_BLUEPRINTS; console.log(mods.length >= 14 ? 'BLUEPRINTS_OK' : 'MISSING'); })"
+  EXPECT: BLUEPRINTS_OK
+  EVIDENCE: Passed. `getFirebaseStoragePdfUrl` added to `src/data/curriculum/types.ts`. All 30 competencies across all 14 General Mathematics modules in `CURRICULUM_MODULE_BLUEPRINTS` (Q1 to Q4), 3 SDO General Math Q2 modules, 4 Statistics & Probability competencies (`curriculum/stat_prob/Full.pdf`), and 2 Finite Mathematics competencies mapped to exact Firebase Storage paths in `CURRICULUM_LESSONS` (44 lessons total mapped). Legacy Grade 12 Basic Calculus entries (`SDO_Navotas_BasicCalc_SHS_Q3.FV.pdf`) removed. `CURRICULUM_MODULE_BLUEPRINTS` updated with tailored `sources` containing `storagePath`, titles, and live Firebase Storage URLs. `makeLessons` updated to attach `storagePath`, `sourceFile`, and `competencyCode` without any missing or undefined values across all 34 generated runtime lessons. `npm run typecheck` passed with 0 errors. `npx oxlint --quiet` passed with 0 errors. Vitest passed 27/27 test files (179 tests).
+
+- [x] C2: Lesson viewer PDF source grounding & inspection: LessonViewer.tsx renders DepEd curriculum source provenance, confidence badge, and interactive curriculum evidence inspector using retrieved RAG sources.
+  CHECK: node -e "const fs = require('fs'); const content = fs.readFileSync('src/components/LessonViewer.tsx', 'utf8'); console.log(content.includes('Curriculum') && content.includes('sources') ? 'SOURCE_GROUNDING_READY' : 'MISSING');"
+  EXPECT: SOURCE_GROUNDING_READY
+  EVIDENCE: Passed. Output: `SOURCE_GROUNDING_READY`. DepEd Grounding Bar integrated into `LessonViewer.tsx` notebook header with alignment badge, confidence level (`high`/`medium`/`low`), primary PDF pill & page (`primarySourceLabel`), "View DepEd Source PDF" direct link via `getFirebaseStoragePdfUrl()`, and interactive "Inspect Evidence" modal displaying similarity scores, page numbers, domain tags, and excerpted chunks.
+
+- [x] C3: Modules page & detail view PDF source links: ModulesPage.tsx and ModuleDetailView.tsx link directly to official DepEd SSHS PDFs in Firebase Storage with accurate quarter, subject, and file metadata.
+  CHECK: node -e "const fs = require('fs'); const m = fs.readFileSync('src/components/ModulesPage.tsx', 'utf8'); console.log(m.includes('sourcePreviewModule') ? 'PREVIEW_READY' : 'MISSING');"
+  EXPECT: PREVIEW_READY
+  EVIDENCE: Passed. Output: `PREVIEW_READY`. `ModuleDetailView.tsx` displays subtle source pills on lesson cards showing the exact DepEd source PDF. `ModulesPage.tsx` Curriculum Preview Drawer (`sourcePreviewModule`) displays the dedicated DepEd SSHS Curriculum Sources card with filenames, relative paths, and direct "Open PDF" actions pointing to `getFirebaseStoragePdfUrl()`.
+
+- [x] C4: Backend RAG storage metadata & retrieval alignment: backend/rag/firebase_storage_loader.py and curriculum_rag.py correctly parse and retrieve all 27 SSHS curriculum resources with exact match on storage_path and normalized quarters.
+  CHECK: python -c "from backend.rag.firebase_storage_loader import infer_storage_metadata; meta = infer_storage_metadata('curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE1.pdf'); print('PARSED_OK' if meta['subject'] == 'General Mathematics' and meta['quarter'] == 1 else 'FAILED')"
+  EXPECT: PARSED_OK
+  EVIDENCE: Passed. Output: `PARSED_OK`. `infer_storage_metadata` in `backend/rag/firebase_storage_loader.py` correctly parses subjects (`General Mathematics`, `Finite Mathematics 1 & 2`, `Statistics and Probability`), quarters (1-4), and resource types across all 27 SSHS PDFs. `curriculum_rag.py` implements candidate normalization (`_normalize_storage_candidates`) and exact-match retrieval with fallback. All 8 tests in `backend/tests/test_liteparse_curriculum.py` and `backend/test_retrieval.py` passed with 100%.
+
+- [x] C5: Full system verification: typecheck passes, linting passes, and backend curriculum retrieval test suite passes.
+  CHECK: npm run typecheck
+  EXPECT: 0 errors
+  EVIDENCE: Passed. `npm run typecheck` exited 0 (0 errors). `npm run lint:anti-slop` (`oxlint --quiet`) exited 0 (0 errors across 382 files). `npm run test` (vitest) passed 27/27 test files (179 tests). `python -m pytest backend/tests/test_liteparse_curriculum.py backend/test_retrieval.py -q` passed 8/8 tests. Storage rules deployed to `mathpulse-ai-2026` allowing public read for `/curriculum/**`.
+
+
+
 

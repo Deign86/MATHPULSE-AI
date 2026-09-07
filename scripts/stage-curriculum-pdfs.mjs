@@ -5,8 +5,24 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const STAGING_DIR = path.join(REPO_ROOT, '.local', 'curriculum-pdfs');
-const SOURCE_DIR = 'C:/Users/Deign/Downloads/Documents';
+const SOURCE_DIR = path.join(REPO_ROOT, 'datasets', 'curriculum');
 const MANIFEST_PATH = path.join(STAGING_DIR, 'manifest.json');
+
+function findSourceFile(dir, targetName) {
+  const directPath = path.join(dir, targetName);
+  if (fs.existsSync(directPath)) return directPath;
+  if (!fs.existsSync(dir)) return null;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.isDirectory()) {
+      const found = findSourceFile(path.join(dir, entry.name), targetName);
+      if (found) return found;
+    } else if (entry.isFile() && entry.name.toLowerCase() === targetName.toLowerCase()) {
+      return path.join(dir, entry.name);
+    }
+  }
+  return null;
+}
 
 const PDF_MAP = {
   'SDO_Navotas_Bus.Math_SHS_1stSem.FV.pdf': {
@@ -107,10 +123,10 @@ async function main() {
   };
 
   for (const [filename, metadata] of Object.entries(PDF_MAP)) {
-    const srcPath = path.join(SOURCE_DIR, filename);
+    const srcPath = findSourceFile(SOURCE_DIR, filename);
     const destPath = path.join(STAGING_DIR, filename);
 
-    if (fs.existsSync(srcPath)) {
+    if (srcPath && fs.existsSync(srcPath)) {
       if (!fs.existsSync(destPath)) {
         fs.copyFileSync(srcPath, destPath);
         console.log(`Copied: ${filename}`);
@@ -132,7 +148,7 @@ async function main() {
         ...metadata,
       });
     } else {
-      console.warn(`WARNING: Source PDF not found: ${srcPath}`);
+      console.warn(`WARNING: Source PDF not found: ${srcPath || filename}`);
     }
   }
 

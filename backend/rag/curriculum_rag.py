@@ -20,6 +20,46 @@ def _normalize_subject(subject: Optional[str]) -> Optional[str]:
     return raw
 
 
+def _normalize_storage_candidates(storage_path: Optional[str]) -> Tuple[List[str], List[str]]:
+    """Return candidate (storage_paths, filenames) for exact-match retrieval."""
+    if not storage_path:
+        return [], []
+    clean = storage_path.replace("\\", "/").strip("/")
+    if clean.startswith("gs://"):
+        parts_gs = clean.split("/", 2)
+        if len(parts_gs) > 2:
+            clean = parts_gs[2]
+
+    name = clean.split("/")[-1]
+    stem = name.rsplit(".", 1)[0] if "." in name else name
+
+    candidate_files = [name]
+    if f"{stem}.pdf" not in candidate_files:
+        candidate_files.append(f"{stem}.pdf")
+    if f"{stem}.md" not in candidate_files:
+        candidate_files.append(f"{stem}.md")
+
+    candidate_paths = [clean]
+    if not clean.startswith("curriculum/"):
+        candidate_paths.append(f"curriculum/{clean}")
+    else:
+        candidate_paths.append(clean[len("curriculum/"):])
+
+    extended_paths = []
+    for p in candidate_paths:
+        extended_paths.append(p)
+        if p.endswith(".pdf"):
+            extended_paths.append(p[:-4] + ".md")
+            extended_paths.append(p.replace("/PDF/", "/Parsed Markdown/")[:-4] + ".md")
+        elif p.endswith(".md"):
+            extended_paths.append(p[:-3] + ".pdf")
+            extended_paths.append(p.replace("/Parsed Markdown/", "/PDF/")[:-3] + ".pdf")
+
+    cand_paths_deduped = list(dict.fromkeys(extended_paths))
+    cand_files_deduped = list(dict.fromkeys(candidate_files))
+    return cand_paths_deduped, cand_files_deduped
+
+
 def _to_where(
     subject: Optional[str] = None,
     quarter: Optional[int] = None,
@@ -50,7 +90,13 @@ def _to_where(
     if competency_code:
         clauses.append({"competency_code": {"$eq": competency_code}})
     if storage_path:
-        clauses.append({"storage_path": {"$eq": storage_path}})
+        cand_paths, cand_files = _normalize_storage_candidates(storage_path)
+        clauses.append({
+            "$or": [
+                {"storage_path": {"$in": cand_paths}},
+                {"source_file": {"$in": cand_files}},
+            ]
+        })
     if not clauses:
         return None
     if len(clauses) == 1:
@@ -102,18 +148,50 @@ def retrieve_curriculum_context(
     for idx, content in enumerate(documents):
         md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
         distance = float(distances[idx]) if idx < len(distances) else 1.0
+
+        ret_storage = str(md.get("storage_path") or "").strip()
+        ret_source_file = str(md.get("source_file") or "").strip()
+        ret_source_path = str(md.get("source_path") or "").strip()
+
+        if not ret_storage:
+            if ret_source_path:
+                norm_sp = ret_source_path.replace("\\", "/")
+                if "curriculum/" in norm_sp:
+                    ret_storage = "curriculum/" + norm_sp.split("curriculum/", 1)[1]
+            if not ret_storage and storage_path:
+                norm_sp = storage_path.replace("\\", "/").strip("/")
+                ret_storage = norm_sp if norm_sp.startswith("curriculum/") else f"curriculum/{norm_sp}"
+            if not ret_storage and ret_source_file:
+                ret_storage = f"curriculum/{ret_source_file}"
+
+        if not ret_source_file:
+            if ret_storage:
+                ret_source_file = ret_storage.split("/")[-1]
+            elif ret_source_path:
+                ret_source_file = ret_source_path.replace("\\", "/").split("/")[-1]
+
+        raw_page = md.get("page")
+        if raw_page is not None and str(raw_page).isdigit() and int(raw_page) > 0:
+            page = int(raw_page)
+        else:
+            raw_chunk = md.get("chunk_index")
+            if raw_chunk is not None and str(raw_chunk).isdigit() and int(raw_chunk) > 0:
+                page = int(raw_chunk)
+            else:
+                page = 1
+
         rows.append({
             "content": str(content or ""),
             "subject": str(md.get("subject") or "unknown"),
             "quarter": int(md.get("quarter") or 0),
             "content_domain": str(md.get("content_domain") or "general"),
             "chunk_type": str(md.get("chunk_type") or "concept"),
-            "source_file": str(md.get("source_file") or ""),
-            "storage_path": str(md.get("storage_path") or ""),
+            "source_file": ret_source_file,
+            "storage_path": ret_storage,
             "module_id": str(md.get("module_id") or ""),
             "lesson_id": str(md.get("lesson_id") or ""),
             "competency_code": str(md.get("competency_code") or ""),
-            "page": int(md.get("page") or 0),
+            "page": page,
             "score": _distance_to_score(distance),
         })
     return rows
@@ -168,21 +246,49 @@ def retrieve_lesson_pdf_context(
     top_k: int = 8,
 ) -> Tuple[list[dict], str]:
     """Retrieve chunks by storage_path exact match + semantic ranking; fallback to general query.
-    
-    NOTE: Curriculum PDF chunks are often tagged with quarter=1 even when they cover all quarters.
-    We first try the exact quarter, then fallback to quarter=1, then no quarter filter.
+
+    NOTE: Curriculum PDF chunks are often tagged with quarter=1 or 0 even when covering other topics.
+    When storage_path is specified, exact-match retrieval searches by exact path/filename with
+    hierarchical fallback (exact quarter -> subject only -> file only) before falling back to general queries.
     """
-    # Try 1: Exact match with storage_path + quarter
+    exact_chunks: list[dict] = []
     if storage_path:
-        exact_chunks = retrieve_curriculum_context(
-            query=topic,
-            subject=subject,
-            quarter=quarter,
-            storage_path=storage_path,
-            top_k=top_k,
-        )
-        if exact_chunks and any(c["score"] >= 0.65 for c in exact_chunks):
-            return exact_chunks, "exact"
+        # Try 1: Exact match with storage_path + quarter
+        if quarter and quarter > 0:
+            exact_chunks = retrieve_curriculum_context(
+                query=topic,
+                subject=subject,
+                quarter=quarter,
+                storage_path=storage_path,
+                top_k=top_k,
+            )
+            if exact_chunks and any(c.get("score", 0) >= 0.65 for c in exact_chunks):
+                return exact_chunks, "exact"
+
+        # Try 1b: Exact match with storage_path + subject (without quarter filter)
+        if not exact_chunks or not any(c.get("score", 0) >= 0.65 for c in exact_chunks):
+            fallback_chunks = retrieve_curriculum_context(
+                query=topic,
+                subject=subject,
+                storage_path=storage_path,
+                top_k=top_k,
+            )
+            if fallback_chunks:
+                exact_chunks = fallback_chunks
+                if any(c.get("score", 0) >= 0.65 for c in exact_chunks):
+                    return exact_chunks, "exact"
+
+        # Try 1c: Exact match with storage_path alone (file only)
+        if not exact_chunks or not any(c.get("score", 0) >= 0.65 for c in exact_chunks):
+            fallback_chunks = retrieve_curriculum_context(
+                query=topic,
+                storage_path=storage_path,
+                top_k=top_k,
+            )
+            if fallback_chunks:
+                exact_chunks = fallback_chunks
+                if any(c.get("score", 0) >= 0.65 for c in exact_chunks):
+                    return exact_chunks, "exact"
 
     # Try 2: General query with exact quarter
     general_chunks = retrieve_curriculum_context(
@@ -191,7 +297,7 @@ def retrieve_lesson_pdf_context(
         quarter=quarter,
         top_k=top_k,
     )
-    
+
     # Try 3: Fallback to quarter=1 (most curriculum PDFs are tagged Q1)
     if not general_chunks and quarter != 1:
         general_chunks = retrieve_curriculum_context(
@@ -200,7 +306,7 @@ def retrieve_lesson_pdf_context(
             quarter=1,
             top_k=top_k,
         )
-    
+
     # Try 4: Final fallback - no quarter filter at all
     if not general_chunks:
         general_chunks = retrieve_curriculum_context(
@@ -220,6 +326,9 @@ def retrieve_lesson_pdf_context(
                 deduped.append(c)
         deduped.sort(key=lambda x: x.get("score", 0), reverse=True)
         return deduped[:top_k], "hybrid"
+
+    if exact_chunks and not general_chunks:
+        return exact_chunks, "exact"
 
     return general_chunks, "general"
 

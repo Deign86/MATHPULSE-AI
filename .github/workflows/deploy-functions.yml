@@ -62,6 +62,7 @@ jobs:
           cache-dependency-path: functions/package-lock.json
 
       - run: npm ci --legacy-peer-deps
+      - run: npm run build
 
       - name: Deploy Functions
         env:
