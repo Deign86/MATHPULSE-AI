@@ -225,7 +225,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     claimedDays,
     timeUntilReset,
     claim,
-    lastClaimResult,
   } = useDailyReward(userProfile?.uid ?? null);
 
   // Show modal on mount if user can claim
@@ -262,20 +261,20 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     if (!userProfile?.uid) return;
 
     try {
-      await claim();
+      const result = await claim();
 
       // Fire notification
-      if (lastClaimResult?.success) {
+      if (result?.success) {
         notify({
           userId: userProfile.uid,
           type: 'daily_checkin',
           title: 'Daily Reward Claimed!',
-          message: `You earned ${lastClaimResult.reward.label} and kept your streak alive!`,
-          metadata: { rewardId: lastClaimResult.reward.id, streakDay: lastClaimResult.dayIndex + 1 },
+          message: `You earned ${result.reward.label} and kept your streak alive!`,
+          metadata: { rewardId: result.reward.id, streakDay: result.dayIndex + 1 },
         }).catch(console.error);
 
         // Avatar unlock for epic rewards
-        if (lastClaimResult.reward.rarity === 'epic') {
+        if (result.reward.rarity === 'epic') {
           unlockAvatarItem(userProfile.uid, 'acc_crown')
             .then(() => toast.success("Epic reward unlocked!"))
             .catch(console.error);

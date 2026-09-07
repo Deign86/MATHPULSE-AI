@@ -343,15 +343,15 @@ class TestAdminReingestAuth:
         main_module._init_firebase_admin = lambda: None
         if not main_module.firebase_auth:
             main_module.firebase_auth = MagicMock()
-        main_module.firebase_auth.verify_id_token = MagicMock(return_value={
+        mock_claims = {
             "uid": "student-uid",
             "email": "student@mathpulse.ai",
             "role": "student",
-        })
-
-        student_client = TestClient(app, headers={"Authorization": "Bearer student-token"})
-        response = student_client.post("/api/admin/reingest-pdf", json={})
-        assert response.status_code == 403
+        }
+        with patch.object(main_module.firebase_auth, "verify_id_token", return_value=mock_claims):
+            student_client = TestClient(app, headers={"Authorization": "Bearer student-token"})
+            response = student_client.post("/api/admin/reingest-pdf", json={})
+            assert response.status_code == 403
 
     def test_upload_pdf_unauthorized(self):
         """Upload without token returns 401."""
@@ -365,15 +365,15 @@ class TestAdminReingestAuth:
         main_module._init_firebase_admin = lambda: None
         if not main_module.firebase_auth:
             main_module.firebase_auth = MagicMock()
-        main_module.firebase_auth.verify_id_token = MagicMock(return_value={
+        mock_claims = {
             "uid": "student-uid",
             "email": "student@mathpulse.ai",
             "role": "student",
-        })
-
-        student_client = TestClient(app, headers={"Authorization": "Bearer student-token"})
-        response = student_client.post("/api/admin/upload-pdf")
-        assert response.status_code == 403
+        }
+        with patch.object(main_module.firebase_auth, "verify_id_token", return_value=mock_claims):
+            student_client = TestClient(app, headers={"Authorization": "Bearer student-token"})
+            response = student_client.post("/api/admin/upload-pdf")
+            assert response.status_code == 403
 
     def test_get_reingest_status_forbidden_for_student(self):
         """Status endpoint with student token returns 403."""
@@ -381,12 +381,13 @@ class TestAdminReingestAuth:
         main_module._init_firebase_admin = lambda: None
         if not main_module.firebase_auth:
             main_module.firebase_auth = MagicMock()
-        main_module.firebase_auth.verify_id_token = MagicMock(return_value={
+        mock_claims = {
             "uid": "student-uid",
             "email": "student@mathpulse.ai",
             "role": "student",
-        })
+        }
+        with patch.object(main_module.firebase_auth, "verify_id_token", return_value=mock_claims):
+            student_client = TestClient(app, headers={"Authorization": "Bearer student-token"})
+            response = student_client.get("/api/admin/reingest-status")
+            assert response.status_code == 403
 
-        student_client = TestClient(app, headers={"Authorization": "Bearer student-token"})
-        response = student_client.get("/api/admin/reingest-status")
-        assert response.status_code == 403

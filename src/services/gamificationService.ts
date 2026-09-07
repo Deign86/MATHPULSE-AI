@@ -10,16 +10,14 @@ import {
   limit,
   updateDoc,
   serverTimestamp,
-  increment,
   arrayUnion,
   onSnapshot,
   type UpdateData,
   type DocumentData
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { LeaderboardEntry, XPActivity, Achievement, UserAchievements } from '../types/models';
-import { checkAndAwardAchievements } from './achievementCheckerService';
-import { ACHIEVEMENT_MAP } from '../config/achievements';
+import { LeaderboardEntry, XPActivity, Achievement } from '../types/models';
+import { checkAndAwardAchievements, type UnlockedAchievement } from './achievementCheckerService';
 
 // Award XP and handle level ups
 export const awardXP = async (
@@ -229,7 +227,7 @@ export const getXPActivities = async (
 };
 
 // Check and unlock achievements
-export const checkAchievements = async (userId: string): Promise<Achievement[]> => {
+export const checkAchievements = async (userId: string): Promise<UnlockedAchievement[]> => {
   try {
     const userDoc = await getDoc(doc(db, 'users', userId));
     const progressDoc = await getDoc(doc(db, 'progress', userId));
@@ -239,52 +237,7 @@ export const checkAchievements = async (userId: string): Promise<Achievement[]> 
     const userData = userDoc.data();
     const progressData = progressDoc.data();
 
-    const achievementsDoc = await getDoc(doc(db, 'achievements', userId));
-    const unlockedAchievements = achievementsDoc.exists()
-      ? achievementsDoc.data().achievements || []
-      : [];
-
-    const newAchievements: Achievement[] = [];
-
-    // Call the new service to evaluate and award achievements
-    const newlyUnlocked = await checkAndAwardAchievements(userId, progressData, userData);
-
-    for (const unlocked of newlyUnlocked) {
-      const config = ACHIEVEMENT_MAP.get(unlocked.id);
-      
-      const newAchievement: Achievement = {
-        id: unlocked.id,
-        title: unlocked.title,
-        description: unlocked.description,
-        icon: config?.icon?.name ?? unlocked.id,
-        xpReward: config?.xpReward ?? unlocked.xpReward,
-        condition: unlocked.id,
-        iconColor: unlocked.iconColor,
-        category: unlocked.category,
-        unlockedAt: unlocked.unlockedAt,
-      };
-
-      newAchievements.push(newAchievement);
-
-      // Award XP for achievement
-      await awardXP(userId, newAchievement.xpReward, 'achievement_unlocked', `Unlocked: ${newAchievement.title}`);
-    }
-
-    // Save new achievements
-    if (newAchievements.length > 0) {
-      await setDoc(
-        doc(db, 'achievements', userId),
-        {
-          userId,
-          achievements: [...unlockedAchievements, ...newAchievements],
-          totalAchievements: unlockedAchievements.length + newAchievements.length,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-
-    return newAchievements;
+    return await checkAndAwardAchievements(userId, progressData, userData);
   } catch (error) {
     console.error('Error checking achievements:', error);
     return [];

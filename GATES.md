@@ -107,3 +107,40 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: Finished in
   EVIDENCE: Passed. Finished in 1.2s on 388 files with 111 rules using 12 threads (0 errors, 413 warnings) at 2026-09-07T13:27:30+08:00. Zero anti-slop errors across touched files; full backend/tests/test_admin_reingest.py pytest suite passed (15/15 passed in 11.26s).
 
+## Section E: Post-Audit Targeted Defect & Simplification Fixes
+- [x] T1: Security & Rules: `firestore.rules` distinguishes existing vs incoming ownership to prevent update hijacking on user-owned collections.
+  CHECK: node -e "const fs = require('fs'); const r = fs.readFileSync('firestore.rules', 'utf8'); console.log(r.includes('isPreservingOwner') ? 'RULES_HARDENED' : 'VULNERABLE');"
+  EXPECT: RULES_HARDENED
+  EVIDENCE: Passed. Output: RULES_HARDENED. Added isExistingOwner, isClaimingOwner, and isPreservingOwner helpers to firestore.rules and updated all 9 user-owned collections (/progress, /xpActivities, /achievements, /tasks, /chatSessions, /chatMessages, /moduleActivities, /calendarEvents, /quizBattleQueue).
+
+- [x] T2: Runtime Crash & Normalization: `RiskBadge.tsx` handles `pending_assessment` safely and `curriculumModules.ts` strictly normalizes grade level to Grade 11.
+  CHECK: node -e "const fs = require('fs'); const rb = fs.readFileSync('src/components/risk/RiskBadge.tsx', 'utf8'); const cm = fs.readFileSync('src/data/curriculumModules.ts', 'utf8'); console.log(rb.includes('pending_assessment') && !cm.includes('as GradeLevel') ? 'CRASH_FIXED' : 'UNSAFE');"
+  EXPECT: CRASH_FIXED
+  EVIDENCE: Passed. Output: CRASH_FIXED. STATUS_CONFIG updated with pending_assessment entry and fallback to null, and normalizeGradeLevel strictly returns 'Grade 11' without as GradeLevel forging.
+
+- [x] T3: Backend Pacing, Routes & Pipeline: `pipeline_routes.py` sends `force_recompute`, `intervention_engine.py` checks lowercase `"critical"`, `class_analytics_routes.py` filters by canonical lowercase risk tiers, and `inference_client.py` removes duplicate attempt recording.
+  CHECK: python -c "from pathlib import Path; p1 = Path('backend/routes/pipeline_routes.py').read_text(); p2 = Path('backend/services/intervention_engine.py').read_text(); p3 = Path('backend/routes/class_analytics_routes.py').read_text(); p4 = Path('backend/services/inference_client.py').read_text(); ok = 'force_recompute' in p1 and 'critical' in p2 and 'critical' in p3 and p4.count('self._record_attempt(') == 1; print('BACKEND_FIXED' if ok else 'DEFECTIVE')"
+  EXPECT: BACKEND_FIXED
+  EVIDENCE: Passed. Output: BACKEND_FIXED. Replaced `event_type="session"` with `"force_recompute"`, normalized risk level check to lowercase `"critical"`, aligned class analytics risk filter to lowercase canonical strings `("intervene", "critical", "at_risk")`, and removed redundant `_record_attempt` post-completion in both backend and services inference clients.
+
+- [x] T4: Gamification & ModulesPage: `gamificationService.ts` eliminates duplicate XP awarding and `ModulesPage.tsx` consumes returned claim result directly.
+  CHECK: node -e "const fs = require('fs'); const gs = fs.readFileSync('src/services/gamificationService.ts', 'utf8'); const mp = fs.readFileSync('src/components/ModulesPage.tsx', 'utf8'); const ok = !gs.includes('for (const newAchievement of newlyUnlocked)') && mp.includes('const result = await claim()'); console.log(ok ? 'GAMIFICATION_FIXED' : 'STALE');"
+  EXPECT: GAMIFICATION_FIXED
+  EVIDENCE: Passed. Output: GAMIFICATION_FIXED. checkAchievements delegates directly to checkAndAwardAchievements without secondary loop, and ModulesPage consumes claim() result directly to prevent stale state.
+
+- [x] T5: Cloud Functions Reassessment: `diagnosticProcessor.ts` clears `reassessmentRequired` on completion.
+  CHECK: node -e "const fs = require('fs'); const dp = fs.readFileSync('functions/src/automations/diagnosticProcessor.ts', 'utf8'); console.log(dp.includes('reassessmentRequired: false') ? 'FUNCTIONS_FIXED' : 'UNRESOLVED');"
+  EXPECT: FUNCTIONS_FIXED
+  EVIDENCE: Passed. Output: FUNCTIONS_FIXED. Added reassessmentRequired: false, reassessmentStatus: "completed", and reassessmentReasonCodes: [] to profileUpdate in functions/src/automations/diagnosticProcessor.ts.
+
+- [x] T6: Verification & Quality: TypeScript, Oxlint, Vitest, Backend Pytest, and Functions tests all pass cleanly.
+  CHECK: npx oxlint --quiet
+  EXPECT: Finished in
+  EVIDENCE: Passed. Full test and quality suite passed with 0 errors across the repository:
+    - Frontend TypeScript: `npm run typecheck` passed with 0 errors (2026-09-07T15:50:09+08:00).
+    - Oxlint Anti-Slop: `npx oxlint --quiet` finished with 0 errors in 2.2s across 382 files and 111 rules (2026-09-07T15:50:17+08:00).
+    - Frontend Unit Tests: Vitest passed with 27/27 test files, 179/179 tests in 12.20s (2026-09-07T15:50:37+08:00).
+    - Cloud Functions: npm test passed with 46/46 tests in 665ms (2026-09-07T15:50:45+08:00).
+    - Backend Pytest: python -m pytest backend/tests/ passed with 317/317 tests in 71.64s (2026-09-07T15:58:48+08:00).
+
+

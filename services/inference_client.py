@@ -744,12 +744,6 @@ class InferenceClient:
                     fallback_depth=fallback_depth,
                     route=route,
                 )
-                self._record_attempt(
-                    task_type=task_type,
-                    provider="deepseek",
-                    route=route,
-                    fallback_depth=fallback_depth,
-                )
                 self._record_completion(latency_ms=latency_ms)
                 self._bump_metric("requests_ok", 1)
                 return text

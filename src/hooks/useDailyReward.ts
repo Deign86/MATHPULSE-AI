@@ -35,7 +35,7 @@ export interface UseDailyRewardResult {
   showModal: boolean;
   lastClaimResult: ClaimResult | null;
   error: string | null;
-  claim: () => Promise<void>;
+  claim: () => Promise<ClaimResult | null>;
   dismissModal: () => void;
   refresh: () => Promise<void>;
 }
@@ -107,8 +107,8 @@ export function useDailyReward(userId: string | null): UseDailyRewardResult {
   }, [state?.activeMultiplier]);
 
   // ── Claim action ──────────────────────────────────────────────────────────
-  const claim = useCallback(async () => {
-    if (!userId || !canClaim) return;
+  const claim = useCallback(async (): Promise<ClaimResult | null> => {
+    if (!userId || !canClaim) return null;
 
     setIsClaiming(true);
     setError(null);
@@ -125,10 +125,12 @@ export function useDailyReward(userId: string | null): UseDailyRewardResult {
       } else {
         setError(result.error || 'Claim failed');
       }
+      return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Claim failed';
       setError(msg);
       console.error('[useDailyReward] claim error:', err);
+      return null;
     } finally {
       setIsClaiming(false);
     }

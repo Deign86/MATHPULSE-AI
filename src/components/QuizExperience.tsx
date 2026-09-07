@@ -372,6 +372,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [failedOptions, setFailedOptions] = useState<number[]>([]);
    const [viewIndex, setViewIndex] = useState(0);
    const [achievementPill, setAchievementPill] = useState<'streak' | 'multiplier2' | 'multiplier3' | null>(null);
+   const isSubmittingRef = useRef(false);
 
   // Load AI questions or generate hardcoded fallback
   const [questions] = useState<QuizQuestion[]>(() => {
@@ -552,6 +553,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   };
 
   const handleAnswerSelect = (idx: number) => {
+    if (isSubmittingRef.current) return;
     if (showExplanation) return;
     if (isCurrentlyAnswered) return;
     setSelectedAnswer(idx);
@@ -562,6 +564,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   };
 
   const handleSubmitAnswer = (forcedAnswerIdx?: number) => {
+    if (isSubmittingRef.current) return;
     const isNonMC = currentQuestion.questionType != null && currentQuestion.questionType !== 'multiple_choice';
     const activeAnswerIdx = forcedAnswerIdx !== undefined ? forcedAnswerIdx : selectedAnswer;
 
@@ -570,6 +573,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
     } else {
       if (activeAnswerIdx === null) return;
     }
+
+    isSubmittingRef.current = true;
 
     const isCorrect = isNonMC
       ? validateTextAnswer(textAnswer, currentQuestion.correctAnswerText || '', currentQuestion.questionType || '')
@@ -653,6 +658,7 @@ const newStreak = streak + 1;
   };
 
   const handleNextQuestion = () => {
+    isSubmittingRef.current = false;
     if (currentQuestionIndex < questions.length - 1) {
       const nextIdx = currentQuestionIndex + 1;
       setCurrentQuestionIndex(nextIdx);
@@ -848,7 +854,8 @@ const resultModal = (
             <div className="flex flex-col gap-2">
                <Button
                  size="lg"
-onClick={() => {
+                 onClick={() => {
+                    isSubmittingRef.current = false;
                     setCurrentQuestionIndex(0);
                     setViewIndex(0);
                     setSelectedAnswer(null);

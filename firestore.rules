@@ -45,6 +45,18 @@ service cloud.firestore {
       return isSignedIn() && (ownerInExisting(field) || ownerInIncoming(field));
     }
 
+    function isExistingOwner(field) {
+      return resource != null && resource.data[field] == request.auth.uid;
+    }
+
+    function isClaimingOwner(field) {
+      return request.resource != null && request.resource.data[field] == request.auth.uid;
+    }
+
+    function isPreservingOwner(field) {
+      return isExistingOwner(field) && request.resource.data[field] == resource.data[field];
+    }
+
     function validPushPreferences() {
       let p = request.resource.data.pushPreferences;
       return p is map
@@ -203,22 +215,21 @@ service cloud.firestore {
     }
 
     match /progress/{docId} {
-      // Allow by document ID (docId == userId) or by userId field
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow delete: if isAdmin();
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
     match /xpActivities/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow delete: if isSignedIn() && ownerByField('userId') || isAdmin();
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
     match /achievements/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow delete: if isAdmin();
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
     // ── Notifications subcollection ─────────────────────────────────
@@ -234,21 +245,21 @@ service cloud.firestore {
     }
 
     match /tasks/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
     match /chatSessions/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
     match /chatMessages/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow create, update: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
     match /friendRequests/{docId} {
@@ -471,8 +482,9 @@ service cloud.firestore {
     }
 
     match /quizBattleQueue/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('studentId')) || isTeacherOrAdmin();
-      allow create, update, delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('studentId'));
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
     match /quizBattleHistory/{docId} {
@@ -601,9 +613,9 @@ service cloud.firestore {
 
     // ── Module Activities (student activity tracking — self write, self + teachers/admins read) ──
     match /moduleActivities/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isTeacherOrAdmin();
-      allow create: if isSignedIn() && ownerInIncoming('userId');
-      allow update, delete: if isSignedIn() && (request.auth.uid == docId || ownerByField('userId')) || isAdmin();
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
     // ── Platform Settings (admin-managed, publicly readable) ──
@@ -686,9 +698,9 @@ service cloud.firestore {
 
     // ── Calendar Events (user-owned) ──
     match /calendarEvents/{docId} {
-      allow read: if isSignedIn() && ownerByField('userId') || isTeacherOrAdmin();
-      allow create: if isSignedIn() && ownerInIncoming('userId');
-      allow update, delete: if isSignedIn() && ownerByField('userId') || isAdmin();
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
 

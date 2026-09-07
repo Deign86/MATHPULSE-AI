@@ -456,7 +456,7 @@ Return as JSON:
         topic_avgs = kwargs["topic_avgs"]
 
         style_hint = "shorter steps (5-8 min), gamified" if engagement == "Low" else "standard pacing (10-15 min)"
-        estimated_days = 5 if risk_level == "Critical" else 7
+        estimated_days = 5 if risk_level == "critical" else 7
 
         prompt = f"""Create a personalized intervention learning path for a Filipino K-12 math student.
 

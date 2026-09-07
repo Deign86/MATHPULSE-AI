@@ -65,6 +65,8 @@ const InitialAssessmentModal = lazy(() => import('./components/assessment/Initia
 const AssessmentPage = lazy(() => import('./pages/AssessmentPage.tsx'));
 const DiagnosticBreakdown = lazy(() => import('./components/assessment/DiagnosticBreakdown.tsx'));
 
+type ActiveAppModal = null | 'rewards' | 'profile' | 'settings' | 'calculator' | 'logout_confirm' | 'diagnostic_breakdown';
+
 const App = () => {
   // Get authentication state from context
   const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = useAuth();
@@ -239,12 +241,8 @@ const App = () => {
     setIsMobileSidebarOpen(false);
   };
 
-  const [showRewardsModal, setShowRewardsModal] = useState(false);
+  const [activeModal, setActiveModal] = useState<ActiveAppModal>(null);
   const [xpNotification, setXpNotification] = useState({ show: false, xp: 0, message: '' });
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(false);
   const [profileOverrides, setProfileOverrides] = useState<ProfileSaveData>({});
   const [targetModuleId, setTargetModuleId] = useState<string | null>(null);
   const [isInQuizMode, setIsInQuizMode] = useState(false);
@@ -259,7 +257,6 @@ const App = () => {
   const [initialAssessmentCompleted, setInitialAssessmentCompleted] = useState(false);
   const [diagnosticCheckVersion, setDiagnosticCheckVersion] = useState(0);
   const [showAssessmentPage, setShowAssessmentPage] = useState(false);
-  const [showDiagnosticBreakdown, setShowDiagnosticBreakdown] = useState(false);
   const [assessmentTestId, setAssessmentTestId] = useState<string>('');
   const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([]);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>(studentProfile?.atRiskSubjects || []);
@@ -279,43 +276,8 @@ const App = () => {
         return false;
       },
       () => {
-        if (showCalculator) {
-          setShowCalculator(false);
-          return true;
-        }
-        return false;
-      },
-      () => {
-        if (showRewardsModal) {
-          setShowRewardsModal(false);
-          return true;
-        }
-        return false;
-      },
-      () => {
-        if (showSettingsModal) {
-          setShowSettingsModal(false);
-          return true;
-        }
-        return false;
-      },
-      () => {
-        if (showProfileModal) {
-          setShowProfileModal(false);
-          return true;
-        }
-        return false;
-      },
-      () => {
-        if (showLogoutConfirm) {
-          setShowLogoutConfirm(false);
-          return true;
-        }
-        return false;
-      },
-      () => {
-        if (showDiagnosticBreakdown) {
-          setShowDiagnosticBreakdown(false);
+        if (activeModal !== null) {
+          setActiveModal(null);
           return true;
         }
         return false;
@@ -617,7 +579,7 @@ const App = () => {
   }) => {
     setShowAssessmentPage(false);
     setHasCompletedDiagnostic(true);
-    setShowDiagnosticBreakdown(true);
+    setActiveModal('diagnostic_breakdown');
 
     if (result.xpEarned > 0 && userProfile?.uid) {
       try {
@@ -749,7 +711,7 @@ const App = () => {
       await signOutUser();
       setProfileOverrides({});
       setActiveTab('Dashboard');
-      setShowLogoutConfirm(false);
+      setActiveModal(null);
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -757,13 +719,12 @@ const App = () => {
 
   const handleSaveProfile = async (data: ProfileSaveData) => {
     if (!userProfile) {
-      setShowProfileModal(false);
-      setShowSettingsModal(false);
+      setActiveModal(null);
       return;
     }
 
     const updates: Partial<ProfileSaveData> = {};
-const allowedKeys: Array<keyof ProfileSaveData> = [
+    const allowedKeys: Array<keyof ProfileSaveData> = [
       'name',
       'email',
       'phone',
@@ -793,8 +754,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
     try {
       await updateUserProfile(userProfile.uid, updates);
       setProfileOverrides((prev) => ({ ...prev, ...updates }));
-      setShowProfileModal(false);
-      setShowSettingsModal(false);
+      setActiveModal(null);
       toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -973,15 +933,15 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
             break;
           case 's':
             e.preventDefault();
-            setShowSettingsModal(true);
+            setActiveModal('settings');
             break;
           case 'p':
             e.preventDefault();
-            setShowProfileModal(true);
+            setActiveModal('profile');
             break;
           case 'k':
             e.preventDefault();
-            setShowCalculator(prev => !prev);
+            setActiveModal(prev => prev === 'calculator' ? null : 'calculator');
             break;
         }
       }
@@ -1060,25 +1020,25 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
         <Suspense fallback={<AppLoadingScreen message="Loading teacher dashboard..." />}>
           <TeacherDashboard 
             onLogout={handleLogout}
-            onOpenProfile={() => setShowProfileModal(true)}
-            onOpenSettings={() => setShowSettingsModal(true)}
+            onOpenProfile={() => setActiveModal('profile')}
+            onOpenSettings={() => setActiveModal('settings')}
           />
         </Suspense>
-        {showProfileModal && (
+        {activeModal === 'profile' && (
           <Suspense fallback={null}>
             <ProfileModal
-              isOpen={showProfileModal}
-              onClose={() => setShowProfileModal(false)}
+              isOpen={activeModal === 'profile'}
+              onClose={() => setActiveModal(null)}
               profileData={profileData}
               onSave={handleSaveProfile}
             />
           </Suspense>
         )}
-        {showSettingsModal && (
+        {activeModal === 'settings' && (
           <Suspense fallback={null}>
             <SettingsModal
-              isOpen={showSettingsModal}
-              onClose={() => setShowSettingsModal(false)}
+              isOpen={activeModal === 'settings'}
+              onClose={() => setActiveModal(null)}
               profileData={profileData}
               onSave={handleSaveProfile}
               settingsData={userSettings}
@@ -1101,25 +1061,25 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
         <Suspense fallback={<AppLoadingScreen message="Loading admin dashboard..." />}>
           <AdminDashboard 
             onLogout={handleLogout}
-            onOpenProfile={() => setShowProfileModal(true)}
-            onOpenSettings={() => setShowSettingsModal(true)}
+            onOpenProfile={() => setActiveModal('profile')}
+            onOpenSettings={() => setActiveModal('settings')}
           />
         </Suspense>
-        {showProfileModal && (
+        {activeModal === 'profile' && (
           <Suspense fallback={null}>
             <ProfileModal
-              isOpen={showProfileModal}
-              onClose={() => setShowProfileModal(false)}
+              isOpen={activeModal === 'profile'}
+              onClose={() => setActiveModal(null)}
               profileData={profileData}
               onSave={handleSaveProfile}
             />
           </Suspense>
         )}
-        {showSettingsModal && (
+        {activeModal === 'settings' && (
           <Suspense fallback={null}>
             <SettingsModal
-              isOpen={showSettingsModal}
-              onClose={() => setShowSettingsModal(false)}
+              isOpen={activeModal === 'settings'}
+              onClose={() => setActiveModal(null)}
               profileData={profileData}
               onSave={handleSaveProfile}
               settingsData={userSettings}
@@ -1149,8 +1109,8 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
               activeTab={activeTab} 
               setActiveTab={handleStudentNavigation}
               userRole={userRole}
-              onOpenSettings={() => setShowSettingsModal(true)}
-              onLogout={() => setShowLogoutConfirm(true)}
+              onOpenSettings={() => setActiveModal('settings')}
+              onLogout={() => setActiveModal('logout_confirm')}
               sidebarCollapsed={isSidebarCollapsed}
               setSidebarCollapsed={setIsSidebarCollapsed}
               forceCollapsed={activeTab === 'Quiz Battle'}
@@ -1175,11 +1135,11 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                   setActiveTab={handleStudentNavigation}
                   userRole={userRole}
                   onOpenSettings={() => {
-                    setShowSettingsModal(true);
+                    setActiveModal('settings');
                     setIsMobileSidebarOpen(false);
                   }}
                   onLogout={() => {
-                    setShowLogoutConfirm(true);
+                    setActiveModal('logout_confirm');
                     setIsMobileSidebarOpen(false);
                   }}
                   sidebarCollapsed={false}
@@ -1213,7 +1173,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
               {/* Inline gamification badges — always visible */}
               <div className="hidden md:flex items-center gap-2 ml-2">
                 <button
-                  onClick={() => setShowRewardsModal(true)}
+                  onClick={() => setActiveModal('rewards')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 rounded-lg transition-colors cursor-pointer group"
                   title="View Rewards & Progress"
                 >
@@ -1221,7 +1181,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                   <span className="text-xs font-display font-bold text-rose-700">Lv {userLevel}</span>
                 </button>
                 <button
-                  onClick={() => setShowRewardsModal(true)}
+                  onClick={() => setActiveModal('rewards')}
                   className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer w-[180px] xl:w-[200px] justify-between"
                   title={`${progressXPInLevel}/${xpToNextLevel} XP to next level`}
                 >
@@ -1243,7 +1203,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
 
               {/* Calculator toggle */}
               <button
-                onClick={() => setShowCalculator(prev => !prev)}
+                onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
                 className="p-3 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-all group"
                 title="Scientific Calculator (Alt+K)"
               >
@@ -1254,7 +1214,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
               </Suspense>
               
               <button 
-                onClick={() => setShowProfileModal(true)}
+                onClick={() => setActiveModal('profile')}
                 className="flex items-center gap-2.5 h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group"
                 aria-label={`Profile: ${profileData.name}`}
               >
@@ -1384,7 +1344,7 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
                           <Suspense fallback={dashboardPanelFallback}>
                             <RightSidebar 
                               currentUserId={userProfile?.uid || ''}
-                              onOpenRewards={() => setShowRewardsModal(true)}
+                              onOpenRewards={() => setActiveModal('rewards')}
                               onOpenLeaderboard={() => setActiveTab('Leaderboard')}
                               onNavigateToModules={() => setActiveTab('Modules')}
                               onNavigateToQuizBattle={() => handleStudentNavigation('Quiz Battle')}
@@ -1477,11 +1437,11 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           </Suspense>
 
           {/* Rewards Modal */}
-          {showRewardsModal && (
+          {activeModal === 'rewards' && (
             <Suspense fallback={null}>
-<RewardsModal
-                isOpen={showRewardsModal}
-                onClose={() => setShowRewardsModal(false)}
+              <RewardsModal
+                isOpen={activeModal === 'rewards'}
+                onClose={() => setActiveModal(null)}
                 userLevel={userLevel}
                 currentXP={progressXPInLevel}
                 xpToNextLevel={xpToNextLevel}
@@ -1492,11 +1452,11 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           )}
 
           {/* Profile Modal */}
-          {showProfileModal && (
+          {activeModal === 'profile' && (
             <Suspense fallback={null}>
               <ProfileModal
-                isOpen={showProfileModal}
-                onClose={() => setShowProfileModal(false)}
+                isOpen={activeModal === 'profile'}
+                onClose={() => setActiveModal(null)}
                 profileData={profileData}
                 onSave={handleSaveProfile}
               />
@@ -1504,11 +1464,11 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           )}
 
           {/* Logout Confirmation Modal */}
-          {showLogoutConfirm && (
+          {activeModal === 'logout_confirm' && (
             <Suspense fallback={null}>
               <ConfirmModal
-                isOpen={showLogoutConfirm}
-                onClose={() => setShowLogoutConfirm(false)}
+                isOpen={activeModal === 'logout_confirm'}
+                onClose={() => setActiveModal(null)}
                 onConfirm={handleLogout}
                 title="Confirm Logout"
                 message="Are you sure you want to log out? Your progress is saved automatically."
@@ -1521,11 +1481,11 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           )}
 
           {/* Settings Modal */}
-          {showSettingsModal && (
+          {activeModal === 'settings' && (
             <Suspense fallback={null}>
               <SettingsModal
-                isOpen={showSettingsModal}
-                onClose={() => setShowSettingsModal(false)}
+                isOpen={activeModal === 'settings'}
+                onClose={() => setActiveModal(null)}
                 profileData={profileData}
                 onSave={handleSaveProfile}
                 settingsData={userSettings}
@@ -1539,11 +1499,11 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           )}
 
           {/* Scientific Calculator */}
-          {showCalculator && (
+          {activeModal === 'calculator' && (
             <Suspense fallback={null}>
               <ScientificCalculator
-                isOpen={showCalculator}
-                onClose={() => setShowCalculator(false)}
+                isOpen={activeModal === 'calculator'}
+                onClose={() => setActiveModal(null)}
               />
             </Suspense>
           )}
@@ -1584,13 +1544,13 @@ const allowedKeys: Array<keyof ProfileSaveData> = [
           )}
 
           {/* Diagnostic Breakdown (full-screen after completion) */}
-          {showDiagnosticBreakdown && userProfile?.uid && (
+          {activeModal === 'diagnostic_breakdown' && userProfile?.uid && (
             <Suspense fallback={null}>
               <DiagnosticBreakdown
                 userId={userProfile.uid}
                 mode="fullscreen"
                 onClose={() => {
-                  setShowDiagnosticBreakdown(false);
+                  setActiveModal(null);
                   setActiveTab('Dashboard');
                 }}
               />
