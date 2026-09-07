@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Database, Trash2, RefreshCw, AlertTriangle, FileText, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
@@ -22,28 +22,87 @@ interface SubjectGroup {
   totalChunks: number;
 }
 
+type ReingestStatusValue = 'idle' | 'running' | 'completed' | 'failed';
+
+interface ReingestStatusResponse {
+  status: ReingestStatusValue | string;
+  message?: string;
+  active_run_id?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+}
+
+interface ReingestTriggerResponse {
+  success: boolean;
+  message: string;
+}
+
 const AdminRagManager: React.FC = () => {
   const [documents, setDocuments] = useState<RagDocument[]>([]);
   const [totalChunks, setTotalChunks] = useState(0);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [confirmPurge, setConfirmPurge] = useState(false);
+  const [reingestStatus, setReingestStatus] = useState<ReingestStatusResponse | null>(null);
+  const consecutiveFailuresRef = useRef<number>(0);
+
+  const isReingestRunning = reingestStatus?.status === 'running';
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiFetch<RagHealthResponse>('/api/rag/documents');
-      setDocuments(data.documents);
-      setTotalChunks(data.total_chunks);
-    } catch (err) {
-      console.error('Failed to fetch RAG documents:', err);
+      const healthResponse = await apiFetch<RagHealthResponse>('/api/rag/documents');
+      setDocuments(healthResponse.documents);
+      setTotalChunks(healthResponse.total_chunks);
+    } catch (error) {
+      console.error('Failed to fetch RAG documents:', error);
       toast.error('Failed to load RAG inventory');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchDocuments(); }, [fetchDocuments]);
+  const checkReingestStatus = useCallback(async (): Promise<ReingestStatusResponse | null> => {
+    try {
+      const statusPayload = await apiFetch<ReingestStatusResponse>('/api/admin/reingest-status');
+      consecutiveFailuresRef.current = 0;
+      setReingestStatus(statusPayload);
+      return statusPayload;
+    } catch {
+      consecutiveFailuresRef.current += 1;
+      if (consecutiveFailuresRef.current >= 3) {
+        setReingestStatus({ status: 'idle' });
+      }
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchDocuments();
+    void checkReingestStatus();
+  }, [fetchDocuments, checkReingestStatus]);
+
+  useEffect(() => {
+    if (!isReingestRunning) {
+      return;
+    }
+
+    const pollIntervalId = window.setInterval(async () => {
+      const latestStatus = await checkReingestStatus();
+      if (latestStatus && latestStatus.status !== 'running') {
+        if (latestStatus.status === 'completed') {
+          toast.success(latestStatus.message || 'Remote cloud re-ingestion completed.');
+          await fetchDocuments();
+        } else if (latestStatus.status === 'failed') {
+          toast.error(latestStatus.message || 'Remote cloud re-ingestion failed.');
+        }
+      }
+    }, 8000);
+
+    return () => {
+      window.clearInterval(pollIntervalId);
+    };
+  }, [isReingestRunning, checkReingestStatus, fetchDocuments]);
 
   // Group documents by subject
   const subjectGroups: SubjectGroup[] = React.useMemo(() => {
@@ -63,11 +122,12 @@ const AdminRagManager: React.FC = () => {
   const handleDeleteSubject = async (subject: string) => {
     setActionLoading(`subject:${subject}`);
     try {
-      const result = await apiFetch<{ deleted: number; message: string }>(`/api/rag/documents/by-subject/${encodeURIComponent(subject)}`, { method: 'DELETE' });
-      toast.success(result.message);
+      const deleteResponse = await apiFetch<{ deleted: number; message: string }>(`/api/rag/documents/by-subject/${encodeURIComponent(subject)}`, { method: 'DELETE' });
+      toast.success(deleteResponse.message);
       await fetchDocuments();
-    } catch (err) {
-      toast.error(`Failed to delete subject: ${err}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to delete subject: ${message}`);
     } finally {
       setActionLoading(null);
     }
@@ -76,11 +136,12 @@ const AdminRagManager: React.FC = () => {
   const handleDeleteSource = async (sourceFile: string) => {
     setActionLoading(`source:${sourceFile}`);
     try {
-      const result = await apiFetch<{ deleted: number; message: string }>(`/api/rag/documents/by-source?source_file=${encodeURIComponent(sourceFile)}`, { method: 'DELETE' });
-      toast.success(result.message);
+      const deleteResponse = await apiFetch<{ deleted: number; message: string }>(`/api/rag/documents/by-source?source_file=${encodeURIComponent(sourceFile)}`, { method: 'DELETE' });
+      toast.success(deleteResponse.message);
       await fetchDocuments();
-    } catch (err) {
-      toast.error(`Failed to delete source: ${err}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to delete source: ${message}`);
     } finally {
       setActionLoading(null);
     }
@@ -89,12 +150,13 @@ const AdminRagManager: React.FC = () => {
   const handlePurgeAll = async () => {
     setActionLoading('purge');
     try {
-      const result = await apiFetch<{ message: string }>('/api/rag/documents/all', { method: 'DELETE' });
-      toast.success(result.message);
+      const purgeResponse = await apiFetch<{ message: string }>('/api/rag/documents/all', { method: 'DELETE' });
+      toast.success(purgeResponse.message);
       setConfirmPurge(false);
       await fetchDocuments();
-    } catch (err) {
-      toast.error(`Purge failed: ${err}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Purge failed: ${message}`);
     } finally {
       setActionLoading(null);
     }
@@ -103,11 +165,19 @@ const AdminRagManager: React.FC = () => {
   const handleReingest = async () => {
     setActionLoading('reingest');
     try {
-      await apiFetch('/api/admin/reingest-pdf', { method: 'POST', body: JSON.stringify({}) });
-      toast.success('Re-ingestion triggered. This may take a few minutes.');
-      setTimeout(fetchDocuments, 5000);
-    } catch (err) {
-      toast.error(`Re-ingestion failed: ${err}`);
+      const triggerResponse = await apiFetch<ReingestTriggerResponse>('/api/admin/reingest-pdf', {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      toast.success(triggerResponse.message || 'Remote re-ingestion started in the cloud.');
+      setReingestStatus({
+        status: 'running',
+        message: triggerResponse.message,
+      });
+      await checkReingestStatus();
+    } catch (triggerError) {
+      const errorMessage = triggerError instanceof Error ? triggerError.message : String(triggerError);
+      toast.error(`Re-ingestion failed: ${errorMessage}`);
     } finally {
       setActionLoading(null);
     }
@@ -138,6 +208,30 @@ const AdminRagManager: React.FC = () => {
         </div>
       </div>
 
+      {/* Cloud Re-ingestion Banner */}
+      {isReingestRunning && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between gap-3 p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900"
+        >
+          <div className="flex items-center gap-2.5">
+            <Loader2 size={16} className="animate-spin text-amber-600 flex-shrink-0" />
+            <div>
+              <p className="text-xs sm:text-sm font-semibold">
+                Cloud re-ingestion in progress (FastAPI / GitHub Actions runner)...
+              </p>
+              <p className="text-[11px] text-amber-700">
+                Vectorstore chunks are being re-indexed and synchronized. This page will update automatically.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-200/70 text-amber-900 flex-shrink-0">
+            Running
+          </span>
+        </motion.div>
+      )}
+
       {/* Actions Bar */}
       <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 p-3.5 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 w-full min-w-0">
         <Button
@@ -151,12 +245,16 @@ const AdminRagManager: React.FC = () => {
         </Button>
         <Button
           onClick={handleReingest}
-          disabled={!!actionLoading}
+          disabled={!!actionLoading || isReingestRunning}
           variant="outline"
           className="gap-2 min-h-[40px] flex-1 sm:flex-initial text-xs"
         >
-          {actionLoading === 'reingest' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-          Re-ingest All PDFs
+          {actionLoading === 'reingest' || isReingestRunning ? (
+            <Loader2 size={14} className="animate-spin text-indigo-600" />
+          ) : (
+            <RefreshCw size={14} />
+          )}
+          {isReingestRunning ? 'Re-ingestion Running...' : 'Re-ingest All PDFs'}
         </Button>
         <div className="hidden sm:block sm:flex-1" />
         {!confirmPurge ? (

@@ -1,4 +1,4 @@
-﻿name: Remote RAG Curriculum Ingestion
+name: Remote RAG Curriculum Ingestion
 
 on:
   workflow_dispatch:
@@ -13,6 +13,9 @@ on:
         required: false
         type: boolean
         default: true
+
+permissions:
+  contents: read
 
 concurrency:
   group: rag-curriculum-ingestion

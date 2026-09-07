@@ -49,3 +49,30 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: Finished in
   EVIDENCE: To eliminate this warning, add "type": "module" to C:\Users\Deign\Downloads\MATHPULSE-AI\package.json. | (Use `node --trace-warnings ...` to show where the warning was created)
 
+
+
+## Section D: Remote Async Ingestion (BackgroundTasks & GitHub Workflow Dispatch)
+- [x] R1: Non-blocking re-ingest endpoint (`POST /api/admin/reingest-pdf`) supports dual mode (FastAPI BackgroundTasks & GitHub Workflow Dispatch)
+  CHECK: python -m pytest backend/tests/test_admin_reingest.py -k "test_reingest_pdf" -q
+  EXPECT: passed
+  EVIDENCE: Passed. 7 passed, 8 deselected, 1 warning in 12.06s (2026-09-07T13:26:29+08:00). Validates non-blocking BackgroundTasks execution (returns 200 OK, execution_mode="background_tasks", schedules run_cloud_ingestion_and_upload) and GitHub Actions workflow dispatch with GITHUB_PAT and GITHUB_TOKEN (returns execution_mode="github_actions", dispatches HTTP 204 POST, skips local task, gracefully falls back to BackgroundTasks on dispatch error).
+
+- [x] R2: Admin upload endpoint (`POST /api/admin/upload-pdf`) utilizes non-blocking BackgroundTasks instead of synchronous ingestion
+  CHECK: python -m pytest backend/tests/test_admin_reingest.py -k "test_upload_pdf" -q
+  EXPECT: passed
+  EVIDENCE: Passed. 5 passed, 10 deselected, 1 warning in 11.76s (2026-09-07T13:26:47+08:00). Validates PDF upload writes binary payload to Firebase Storage blob, updates in-memory PDF_METADATA, and non-blockingly schedules run_cloud_ingestion_and_upload via BackgroundTasks. Also verifies rejection of non-PDFs (400) and handling of storage initialization errors (500).
+
+- [x] R3: GitHub Actions curriculum ingestion workflow (`.github/workflows/ingest-curriculum.yml`) is valid and callable via workflow_dispatch
+  CHECK: node -e "const fs = require('fs'); const content = fs.readFileSync('.github/workflows/ingest-curriculum.yml', 'utf8'); const ok = content.includes('workflow_dispatch:') && content.includes('ingest_from_storage') && content.includes('upload_vectorstore'); console.log(ok ? 'WORKFLOW_VALID' : 'INVALID');"
+  EXPECT: WORKFLOW_VALID
+  EVIDENCE: Passed. Workflow contains workflow_dispatch with force_reindex and upload_to_firebase boolean inputs (both default: true), permissions (contents: read), setup-python 3.12 with pip cache, backend requirements install, execution of python -m backend.scripts.ingest_from_storage, and upload steps running scripts/upload_vectorstore.py and backend.scripts.upload_vectorstore_to_firebase.
+
+- [x] R4: Frontend Admin RAG Manager (`AdminRagManager.tsx`) handles async re-ingest response and reflects remote execution status cleanly
+  CHECK: npm run typecheck
+  EXPECT: 0 errors
+  EVIDENCE: Passed. AdminRagManager calls POST /api/admin/reingest-pdf, surfaces returned backend message in toast, polls GET /api/admin/reingest-status every 8 seconds while status is 'running', renders animated inline banner when running, and disables concurrent 'Re-ingest All PDFs' triggers. TypeScript compilation verified with 0 errors via `npm run typecheck` (2026-09-07T13:27:24+08:00).
+
+- [x] R5: Anti-slop and test suites pass cleanly across touched files
+  CHECK: npx oxlint --quiet
+  EXPECT: Finished in
+  EVIDENCE: Passed. Finished in 1.2s on 388 files with 111 rules using 12 threads (0 errors, 413 warnings) at 2026-09-07T13:27:30+08:00. Zero anti-slop errors across touched files; full backend/tests/test_admin_reingest.py pytest suite passed (15/15 passed in 11.26s).
