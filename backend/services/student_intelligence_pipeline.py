@@ -43,7 +43,7 @@ def _get_db():
 
 class StudentActivityEvent(BaseModel):
     student_id: str
-    event_type: Literal["diagnostic", "quiz", "battle", "lesson", "module", "session"]
+    event_type: Literal["diagnostic", "quiz", "battle", "lesson", "module", "session", "force_recompute", "backfill"]
     event_data: Dict[str, Any] = Field(default_factory=dict)
     occurred_at: str  # ISO string
     class_id: str = ""
@@ -314,6 +314,17 @@ class StudentIntelligencePipeline:
             eng["last_active_at"] = event.occurred_at
             eng["days_since_last_active"] = 0
 
+        elif event.event_type in ("force_recompute", "backfill"):
+            if "diagnostic_score" in ed:
+                profile["diagnostic_score"] = ed["diagnostic_score"]
+                profile.setdefault("diagnostic", {})["overall_score"] = ed["diagnostic_score"]
+            if "external_grades_avg" in ed:
+                profile["external_grades_avg"] = ed["external_grades_avg"]
+            if "system_performance_avg" in ed:
+                profile["system_performance_avg"] = ed["system_performance_avg"]
+            if "wri_weights" in ed:
+                profile["wri_weights"] = ed["wri_weights"]
+
     # ─── P computation ─────────────────────────────────────────────────────
 
     def _compute_system_performance_avg(
@@ -438,8 +449,8 @@ class StudentIntelligencePipeline:
     def _should_regenerate_ai(self, event: StudentActivityEvent, profile: Dict, result: ProfileUpdateResult) -> bool:
         if event.event_type == "session":
             return False
-        if event.event_type == "diagnostic":
-            return True
+        if event.event_type in ("diagnostic", "force_recompute", "backfill"):
+            return bool(result.risk_status_changed or not profile.get("ai_context", {}).get("generated_at"))
         if result.risk_status_changed:
             return True
         ai_ctx = profile.get("ai_context", {})

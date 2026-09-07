@@ -29,7 +29,7 @@ import { Button } from './ui/button';
 import ScientificCalculator from './ScientificCalculator';
 import MathText from './MathText';
 import { resolveQuestion, useHint, completeSession, fetchShadowRetries } from '../services/tryItYourselfService';
-import type { Question } from './InteractiveLesson';
+import type { Question } from '@/types/curriculum';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

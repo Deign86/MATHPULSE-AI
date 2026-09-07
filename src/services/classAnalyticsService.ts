@@ -15,7 +15,7 @@ export interface StudentAnalyticsSummary {
   avg_score: number;
   quiz_attempt_count: number;
   last_active: string | null;
-  risk_level: 'Low Risk' | 'Medium Risk' | 'High Risk' | 'Critical' | 'Unassessed';
+  risk_level: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | 'pending_assessment' | 'Low Risk' | 'Medium Risk' | 'High Risk' | 'Critical' | 'Unassessed';
   engagement_level: 'Low' | 'Medium' | 'High';
   weakest_topic: string | null;
   accuracy_by_topic: Record<string, number>;

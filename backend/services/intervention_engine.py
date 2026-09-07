@@ -67,7 +67,7 @@ class InterventionPlan(BaseModel):
     student_name: str = ""
     grade_level: str = ""
     section: str = ""
-    risk_level: Literal["Low Risk", "Medium Risk", "High Risk", "Critical", "Unassessed"] = "Unassessed"
+    risk_level: str = "pending_assessment"
     avg_score: float = 0.0
     engagement_level: Literal["Low", "Medium", "High"] = "Low"
     last_active: Optional[str] = None
@@ -83,17 +83,19 @@ class InterventionPlan(BaseModel):
 
 # ─── Risk & Engagement Classification ─────────────────────────────────────
 
-def _classify_risk(avg_score: float, quiz_count: int, days_since_active: Optional[int]) -> str:
+def _classify_risk(avg_score: float, quiz_count: int, days_since_active: Optional[int] = None) -> str:
+    """Canonical 5-band DepEd classification when WRI is not directly available."""
     if quiz_count == 0:
-        return "Unassessed"
-    engagement_low = (days_since_active is None or days_since_active > 7) or quiz_count < 3
-    if avg_score < 50 and engagement_low:
-        return "Critical"
-    if avg_score < 60 or (avg_score < 75 and engagement_low):
-        return "High Risk"
-    if avg_score < 75:
-        return "Medium Risk"
-    return "Low Risk"
+        return "pending_assessment"
+    if avg_score >= 88:
+        return "safe"
+    if avg_score >= 80:
+        return "watch"
+    if avg_score >= 75:
+        return "intervene"
+    if avg_score >= 68:
+        return "critical"
+    return "at_risk"
 
 
 def _classify_engagement(days_since_active: Optional[int], recent_quiz_count: int, lessons_completed: int = 0) -> str:
@@ -127,9 +129,18 @@ class InterventionEngine:
             logger.error("Firestore client unavailable")
             return InterventionPlan(student_id=student_id, generated_at=_now_iso())
 
-        # Fetch student data from managedStudents
+        # Check student_profiles directly first to minimize collection roundtrips
+        profile_data = None
+        try:
+            pdoc = db.collection("student_profiles").document(student_id).get()
+            if pdoc.exists:
+                profile_data = pdoc.to_dict()
+        except Exception as e:
+            logger.debug(f"Error reading student_profiles/{student_id}: {e}")
+
+        # Fetch student data from managedStudents if needed
         student_data = await self._fetch_student_data(db, student_id)
-        if not student_data:
+        if not student_data and not profile_data:
             return InterventionPlan(
                 student_id=student_id,
                 student_name="Unknown",
@@ -138,66 +149,106 @@ class InterventionEngine:
                 next_steps_summary="Assign a diagnostic quiz to begin intervention planning.",
             )
 
-        # Fetch quiz attempts
-        quiz_attempts = await self._fetch_quiz_attempts(db, student_id, student_data)
+        if not student_data:
+            student_data = {
+                "id": student_id,
+                "name": profile_data.get("display_name") or profile_data.get("name", "Unknown"),
+                "gradeLevel": profile_data.get("grade_level", profile_data.get("grade", "11")),
+                "section": profile_data.get("section", ""),
+                **profile_data,
+            }
 
-        # Compute metrics
         now = datetime.now(timezone.utc)
-        quiz_count = len(quiz_attempts)
-        avg_score = 0.0
-        accuracy_by_topic: Dict[str, List[float]] = {}
+        qp = (profile_data or {}).get("quiz_performance", {})
+        diag = (profile_data or {}).get("diagnostic", {})
+        ce = (profile_data or {}).get("content_engagement", {})
+        eng = (profile_data or {}).get("engagement", {})
 
-        if quiz_count > 0:
-            scores = [float(q.get("score", 0)) for q in quiz_attempts]
-            avg_score = sum(scores) / len(scores)
+        # If profile_data already has quiz performance, use it directly to save roundtrips
+        if qp.get("total_attempts", 0) > 0 or qp.get("accuracy_by_topic"):
+            quiz_count = qp.get("total_attempts", 0)
+            avg_score = float(qp.get("avg_score_all_time") or profile_data.get("system_performance_avg") or 0.0)
+            topic_avgs = {t: float(s) for t, s in qp.get("accuracy_by_topic", {}).items()}
+            weak_topics = [t for t, s in sorted(topic_avgs.items(), key=lambda x: x[1]) if s < 70][:5]
+            if not weak_topics and qp.get("lowest_accuracy_topics"):
+                weak_topics = qp.get("lowest_accuracy_topics")[:5]
+            strong_topics = [t for t, s in topic_avgs.items() if s >= 70]
+            if not strong_topics and qp.get("highest_accuracy_topics"):
+                strong_topics = qp.get("highest_accuracy_topics")[:3]
+            weakest_topic = weak_topics[0] if weak_topics else student_data.get("weakestTopic", "Foundational Skills")
+            lessons_completed = ce.get("lessons_completed", 0)
+            days_since_active = eng.get("days_since_last_active")
+            last_active_str = eng.get("last_active_at")
+            recent_count = len(qp.get("recent_attempts", []))
+        else:
+            # Fallback: fetch quiz attempts and progress doc
+            quiz_attempts = await self._fetch_quiz_attempts(db, student_id, student_data)
+            quiz_count = len(quiz_attempts)
+            avg_score = 0.0
+            accuracy_by_topic: Dict[str, List[float]] = {}
 
-            for attempt in quiz_attempts:
-                topic = self._extract_topic(attempt)
-                if topic:
-                    if topic not in accuracy_by_topic:
-                        accuracy_by_topic[topic] = []
-                    accuracy_by_topic[topic].append(float(attempt.get("score", 0)))
+            if quiz_count > 0:
+                scores = [float(q.get("score", 0)) for q in quiz_attempts]
+                avg_score = sum(scores) / len(scores)
 
-        topic_avgs = {t: round(sum(s) / len(s), 1) for t, s in accuracy_by_topic.items() if s}
-        weak_topics = [t for t, s in sorted(topic_avgs.items(), key=lambda x: x[1]) if s < 70][:5]
-        strong_topics = [t for t, s in topic_avgs.items() if s >= 70]
-        weakest_topic = weak_topics[0] if weak_topics else student_data.get("weakestTopic", "Foundational Skills")
-        if weakest_topic == "N/A":
-            weakest_topic = "Foundational Skills"
+                for attempt in quiz_attempts:
+                    topic = self._extract_topic(attempt)
+                    if topic:
+                        if topic not in accuracy_by_topic:
+                            accuracy_by_topic[topic] = []
+                        accuracy_by_topic[topic].append(float(attempt.get("score", 0)))
 
-        # Last active
-        days_since_active = None
-        last_active_str = None
-        last_active_ts = student_data.get("lastActive")
-        if last_active_ts:
-            try:
-                if hasattr(last_active_ts, "seconds"):
-                    last_dt = datetime.fromtimestamp(last_active_ts.seconds, tz=timezone.utc)
-                else:
-                    last_dt = last_active_ts
-                last_active_str = last_dt.isoformat()
-                days_since_active = (now - last_dt).days
-            except Exception:
-                pass
+            topic_avgs = {t: round(sum(s) / len(s), 1) for t, s in accuracy_by_topic.items() if s}
+            weak_topics = [t for t, s in sorted(topic_avgs.items(), key=lambda x: x[1]) if s < 70][:5]
+            strong_topics = [t for t, s in topic_avgs.items() if s >= 70]
+            weakest_topic = weak_topics[0] if weak_topics else student_data.get("weakestTopic", "Foundational Skills")
+            if weakest_topic == "N/A":
+                weakest_topic = "Foundational Skills"
 
-        # Recent quiz count (last 14 days)
-        recent_count = sum(1 for q in quiz_attempts if self._is_recent(q, now, 14))
+            # Last active
+            days_since_active = None
+            last_active_str = None
+            last_active_ts = student_data.get("lastActive")
+            if last_active_ts:
+                try:
+                    if hasattr(last_active_ts, "seconds"):
+                        last_dt = datetime.fromtimestamp(last_active_ts.seconds, tz=timezone.utc)
+                    else:
+                        last_dt = last_active_ts
+                    last_active_str = last_dt.isoformat()
+                    days_since_active = (now - last_dt).days
+                except Exception:
+                    pass
 
-        # Fetch lessons completed from progress doc
-        lessons_completed = 0
-        for lookup_id in [student_id, student_data.get("accountUid")]:
-            if not lookup_id:
-                continue
-            try:
-                pdoc = db.collection("progress").document(lookup_id).get()
-                if pdoc.exists:
-                    lessons_completed = pdoc.to_dict().get("totalLessonsCompleted", 0)
-                    break
-            except Exception:
-                pass
+            recent_count = sum(1 for q in quiz_attempts if self._is_recent(q, now, 14))
 
-        risk_level = _classify_risk(avg_score, quiz_count, days_since_active)
+            lessons_completed = 0
+            for lookup_id in [student_id, student_data.get("accountUid")]:
+                if not lookup_id:
+                    continue
+                try:
+                    pdoc = db.collection("progress").document(lookup_id).get()
+                    if pdoc.exists:
+                        lessons_completed = pdoc.to_dict().get("totalLessonsCompleted", 0)
+                        break
+                except Exception:
+                    pass
+
+        # Canonical risk classification: read canonical risk_status or wriRiskBand
+        raw_risk = (
+            (profile_data or {}).get("risk_status")
+            or (profile_data or {}).get("wriRiskBand")
+            or student_data.get("riskStatus")
+            or student_data.get("wriRiskBand")
+        )
+        if raw_risk:
+            from services.wri_service import normalize_risk_band
+            risk_level = normalize_risk_band(raw_risk)
+        else:
+            risk_level = _classify_risk(avg_score, quiz_count, days_since_active)
+
         engagement = _classify_engagement(days_since_active, recent_count, lessons_completed)
+
 
         # Generate AI insights
         insights = await self._generate_insights(

@@ -221,14 +221,7 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    match /notifications/{docId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid || isTeacherOrAdmin();
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid || isTeacherOrAdmin();
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid || isTeacherOrAdmin();
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid || isAdmin();
-    }
-
-    // ── Notifications subcollection (new structure) ─────────────────
+    // ── Notifications subcollection ─────────────────────────────────
     match /notifications/{userId}/items/{notificationId} {
       allow read, update, delete: if isSelf(userId);
       allow create: if isSelf(userId);
@@ -308,14 +301,14 @@ service cloud.firestore {
 
     // Subcollection: managedStudents/{studentId}/activityScores
     match /managedStudents/{studentId}/activityScores/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
       allow create, update: if isTeacherOrAdmin();
       allow delete: if isTeacherOrAdmin();
     }
 
     // Subcollection: managedStudents/{studentId}/externalGrades
     match /managedStudents/{studentId}/externalGrades/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
       allow create, update: if isTeacherOrAdmin();
       allow delete: if isTeacherOrAdmin();
     }
@@ -646,6 +639,11 @@ service cloud.firestore {
       match /uploads/{uploadId} {
         allow read: if isAdmin() || (isTeacher() && teacherUid == request.auth.uid);
         allow write: if false;
+
+        match /students/{lrn} {
+          allow read: if isAdmin() || (isTeacher() && teacherUid == request.auth.uid) || (isSignedIn() && resource.data.lrn == lrn);
+          allow write: if false;
+        }
       }
       
       match /sections/{sectionId}/students/{lrn} {
@@ -693,23 +691,7 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && ownerByField('userId') || isAdmin();
     }
 
-    // ── Tutor Memory (student-specific AI tutoring memory) ──
-    // Profile memory: long-term student profile data
-    match /users/{uid}/tutorMemory/profile/{docId} {
-      allow read: if isSignedIn() && request.auth.uid == uid;
-      allow create, update: if isSignedIn() && request.auth.uid == uid;
-      allow delete: if isAdmin();
-    }
-    // Session memory: episodic summaries of tutoring sessions
-    match /users/{uid}/tutorMemory/sessions/{sessionId} {
-      allow read: if isSignedIn() && (request.auth.uid == uid || isTeacherOrAdmin());
-      allow create, update: if isSignedIn() && request.auth.uid == uid;
-      allow delete: if isAdmin();
-    }
-    // Working memory: active session state (current topic, problem, turns)
-    match /users/{uid}/tutorMemory/working/{docId} {
-      allow read, write: if isSignedIn() && request.auth.uid == uid;
-    }
+
 
     // ─── Student Intelligence Pipeline Collections ────────────────────────
 

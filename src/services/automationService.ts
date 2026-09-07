@@ -24,8 +24,8 @@ import {
 } from 'firebase/firestore';
 import type { ApiPayloadObject } from './apiService';
 import { db } from '../lib/firebase';
-import { createNotification } from './notificationService';
 import { initializeUserProgress } from './progressService';
+import { notify } from '@/features/notifications';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -238,20 +238,20 @@ export async function triggerStudentEnrolled(
   // document is created.  This is a fallback for safety.
   await initializeUserProgress(payload.lrn);
 
-  await createNotification(
-    payload.lrn,
-    'reminder',
-    'Welcome to MathPulse AI!',
-    'Complete your diagnostic assessment to get started with personalised learning.',
-  );
+  await notify({
+    userId: payload.lrn,
+    type: 'reminder',
+    title: 'Welcome to MathPulse AI!',
+    message: 'Complete your diagnostic assessment to get started with personalised learning.',
+  });
 
   if (payload.teacherId) {
-    await createNotification(
-      payload.teacherId,
-      'message',
-      'New Student Enrolled',
-      `${payload.name} has joined. Diagnostic assessment is pending.`,
-    );
+    await notify({
+      userId: payload.teacherId,
+      type: 'message',
+      title: 'New Student Enrolled',
+      message: `${payload.name} has joined. Diagnostic assessment is pending.`,
+    });
   }
 
   return {
@@ -282,12 +282,12 @@ export async function triggerDataImported(
     processed: false,
   });
 
-  await createNotification(
-    payload.teacherId,
-    'message',
-    'Data Import Processed',
-    `Data import complete — ${payload.students.length} student records processed.`,
-  );
+  await notify({
+    userId: payload.teacherId,
+    type: 'message',
+    title: 'Data Import Processed',
+    message: `Data import complete — ${payload.students.length} student records processed.`,
+  });
 
   return {
     success: true,

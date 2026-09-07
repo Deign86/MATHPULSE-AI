@@ -415,6 +415,8 @@ const PUSH_RELAYED_INAPP_TYPES = new Set([
   "new_assignment",
   "teacher_announcement",
   "streak_milestone",
+  "risk_alert",
+  "diagnostic_result",
 ]);
 
 interface InAppToFcmMap { [key: string]: "achievement" | "system" | "grade_posted" | "assignment"; }
@@ -426,6 +428,8 @@ const INAPP_TO_FCM: InAppToFcmMap = {
   new_assignment: "assignment",
   teacher_announcement: "system",
   streak_milestone: "system",
+  risk_alert: "system",
+  diagnostic_result: "grade_posted",
 };
 
 export const onInAppNotificationCreated = functions.firestore

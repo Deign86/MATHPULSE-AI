@@ -692,14 +692,23 @@ async def get_upload_students(
     upload_data = upload_snap.to_dict()
     section_id = (upload_data.get("section") or "unknown").replace(" ", "_").lower()
 
-    students_ref = client.collection("classRecords").document(teacher_uid).collection("sections").document(section_id).collection("students")
+    students_ref = upload_ref.collection("students")
     query_ref = students_ref.limit(limit + 1)
     if after:
         after_doc = students_ref.document(after).get()
         if after_doc.exists:
             query_ref = query_ref.start_after(after_doc)
 
-    docs = query_ref.stream()
+    docs = list(query_ref.stream())
+    if not docs:
+        legacy_ref = client.collection("classRecords").document(teacher_uid).collection("sections").document(section_id).collection("students")
+        query_ref = legacy_ref.limit(limit + 1)
+        if after:
+            after_doc = legacy_ref.document(after).get()
+            if after_doc.exists:
+                query_ref = query_ref.start_after(after_doc)
+        docs = list(query_ref.stream())
+
     students: List[Dict[str, Any]] = []
     for d in docs:
         data = d.to_dict()
@@ -739,8 +748,10 @@ async def generate_ai_class_report(request: Request, uploadId: str):
     section_id = (upload_data.get("section") or "unknown").replace(" ", "_").lower()
     metadata = upload_data.get("metadata", {})
 
-    students_ref = client.collection("classRecords").document(teacher_uid).collection("sections").document(section_id).collection("students")
-    docs = students_ref.stream()
+    students_ref = upload_ref.collection("students")
+    docs = list(students_ref.stream())
+    if not docs:
+        docs = list(client.collection("classRecords").document(teacher_uid).collection("sections").document(section_id).collection("students").stream())
     all_students = [d.to_dict() for d in docs if d.to_dict()]
 
     total = len(all_students)
@@ -991,24 +1002,28 @@ def _trigger_wri_recompute(
 
         try:
             student_ref = section_ref.collection("students").document(lrn)
-            student_ref.set({
-                "wriScore": wri_value,
+            student_data: Dict[str, Any] = {
                 "wriRiskBand": risk_status,
                 "wriComputedAt": datetime.utcnow().isoformat(),
-            }, merge=True)
+            }
+            if wri_value is not None:
+                student_data["wriScore"] = wri_value
+            student_ref.set(student_data, merge=True)
         except Exception as e:
             logger.error(f"Failed to write WRI to classRecords for LRN {lrn}: {e}")
 
         try:
             matched = users_ref.where("lrn", "==", lrn).limit(1).stream()
             for user_doc in matched:
-                user_doc.reference.set({
+                user_payload: Dict[str, Any] = {
                     "latestGrade": transmuted,
                     "wriExternalGrade": transmuted,
-                    "wriScore": wri_value,
-                    "wriRiskBand": risk_status,
                     "wriUpdatedAt": datetime.utcnow().isoformat(),
-                }, merge=True)
+                }
+                if wri_value is not None:
+                    user_payload["wriScore"] = wri_value
+                    user_payload["wriRiskBand"] = risk_status
+                user_doc.reference.set(user_payload, merge=True)
                 logger.info(f"LRN {lrn} matched to user {user_doc.id}: grade={transmuted}, WRI={wri_value}")
                 break
         except Exception as e:
@@ -1026,7 +1041,7 @@ def _persist_students(
         return False
 
     batch = client.batch()
-    section_ref = client.collection("classRecords").document(teacher_uid).collection("sections").document(section_id)
+    upload_ref = client.collection("classRecords").document(teacher_uid).collection("uploads").document(upload_id)
     count = 0
 
     try:
@@ -1057,7 +1072,7 @@ def _persist_students(
                 "updatedAt": datetime.utcnow().isoformat(),
             }
 
-            student_ref = section_ref.collection("students").document(lrn)
+            student_ref = upload_ref.collection("students").document(lrn)
             batch.set(student_ref, student_doc, merge=True)
             count += 1
 
@@ -1076,7 +1091,7 @@ def _persist_students(
                 logger.error(f"Final batch commit failed: {e}")
                 return False
 
-        logger.info(f"Persisted {count} students to classRecords/{teacher_uid}/sections/{section_id}")
+        logger.info(f"Persisted {count} students to classRecords/{teacher_uid}/uploads/{upload_id}/students")
         return True
     except Exception as e:
         logger.error(f"Failed to persist students: {e}")

@@ -3,7 +3,8 @@
 // Single source of truth for risk classification.
 
 export type RiskStatus = 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk';
-export type OverallRisk = 'Low' | 'Moderate' | 'High' | 'Critical';
+export type RiskTier = 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | 'pending_assessment';
+export type OverallRisk = 'Low' | 'Moderate' | 'High' | 'Critical' | 'Unassessed';
 
 export interface RiskWeights {
   w1: number; // Diagnostic weight (default 0.30)
@@ -27,6 +28,43 @@ export interface RiskResult {
 }
 
 /**
+ * Maps any risk string, legacy casing, or tier label to canonical 5-band DepEd classification
+ * ('safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | 'pending_assessment').
+ */
+export function toCanonicalRiskTier(status: string | undefined | null): RiskTier {
+  if (!status) return 'pending_assessment';
+  const normalized = status.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  switch (normalized) {
+    case 'safe':
+    case 'low':
+    case 'low_risk':
+    case 'on_track':
+      return 'safe';
+    case 'watch':
+    case 'moderate':
+    case 'medium':
+    case 'medium_risk':
+      return 'watch';
+    case 'intervene':
+    case 'high':
+    case 'high_risk':
+      return 'intervene';
+    case 'critical':
+    case 'urgent':
+      return 'critical';
+    case 'at_risk':
+    case 'failing':
+      return 'at_risk';
+    case 'pending_assessment':
+    case 'unassessed':
+    case 'pending':
+      return 'pending_assessment';
+    default:
+      return 'pending_assessment';
+  }
+}
+
+/**
  * Compute WRI and classify risk. Mirrors backend logic exactly.
  * Returns null WRI if diagnostic score is unavailable.
  */
@@ -35,7 +73,7 @@ export function computeRisk(input: RiskInput): RiskResult {
   const weights = input.weights ?? DEFAULT_WEIGHTS;
 
   if (d === null) {
-    return { wri: null, riskStatus: null, overallRisk: 'Low' };
+    return { wri: null, riskStatus: null, overallRisk: 'Unassessed' };
   }
 
   const gVal = g ?? d;
@@ -58,7 +96,8 @@ export function classifyWRI(wri: number): RiskStatus {
 }
 
 /** Map WRI risk status to the `overallRisk` field used by admin dashboard */
-export function riskStatusToOverallRisk(status: RiskStatus): OverallRisk {
+export function riskStatusToOverallRisk(status: RiskStatus | 'pending_assessment' | null | undefined): OverallRisk {
+  if (!status || status === 'pending_assessment') return 'Unassessed';
   switch (status) {
     case 'safe': return 'Low';
     case 'watch': return 'Moderate';
@@ -67,6 +106,7 @@ export function riskStatusToOverallRisk(status: RiskStatus): OverallRisk {
     case 'at_risk': return 'Critical';
   }
 }
+
 
 /**
  * Simple at-risk check based on average score alone.
