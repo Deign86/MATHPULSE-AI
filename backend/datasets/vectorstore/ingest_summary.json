@@ -1,28 +1,43 @@
 {
-  "lastIngested": "2026-04-24T15:01:13.181024+00:00",
-  "totalChunks": 533,
-  "chunksPerSubject": {
-    "general_math": 124,
-    "business_math": 128,
-    "org_management": 151,
-    "stat_prob": 130
-  },
-  "chunksPerQuarter": {
-    "1": 373,
-    "2": 85,
-    "4": 31,
-    "3": 44
-  },
-  "chunksPerDomain": {
-    "NA": 343,
-    "MG": 82,
-    "DP": 108
-  },
+  "lastIngested": "2026-09-07T04:19:25.501109+00:00",
+  "totalChunks": 3054,
+  "chunkCountBefore": 3054,
+  "chunkCountAfter": 3054,
   "sourceFiles": [
-    "GENERAL-MATHEMATICS-1.pdf",
-    "SDO_Navotas_Bus.Math_SHS_1stSem.FV.pdf",
-    "SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf",
-    "SDO_Navotas_SHS_ABM_OrgAndMngt_FirstSem_FV.pdf",
-    "SDO_Navotas_STAT_PROB_SHS_1stSem.FV.pdf"
-  ]
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/Parsed Markdown/Finite Math 1_LAS.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/Parsed Markdown/Finite Math 1_LE.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 2/Parsed Markdown/Finite Math 2_LAS.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 2/Parsed Markdown/Finite Math 2_LE.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/Parsed Markdown/General Mathematics_LAS.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/Parsed Markdown/General Mathematics_LE.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Curriculum & Budget of Work/Parsed Markdown/GENERAL-MATHEMATICS-1.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Curriculum & Budget of Work/Parsed Markdown/General-Mathematics-2.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q1_LAS1.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q1_LAS2.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q1_LAS4.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/Parsed Markdown/SHS_GM_Q1_LE1.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/Parsed Markdown/SHS_GM_Q1_LE2.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/Parsed Markdown/SHS_GM_Q1_LE3.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q2_LAS2.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/Parsed Markdown/SHS_GM_Q2_LE4.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/Parsed Markdown/SHS_GM_Q2_LE5.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/Parsed Markdown/SHS_GM_Q2_LE6.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q3_LAS_LE7.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q3_LAS_LE8.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q3_LAS_LE9.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/Parsed Markdown/SHS_GM_Q3_LE7.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/Parsed Markdown/SHS_GM_Q3_LE8.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/Parsed Markdown/SHS_GM_Q3_LE9.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q4_LAS_LE10.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q4_LAS_LE11.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q4_LAS_LE12.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/Parsed Markdown/SHS_GM_Q4_LE10.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/Parsed Markdown/SHS_GM_Q4_LE11.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/Parsed Markdown/SHS_GM_Q4_LE12.md"
+  ],
+  "chunksPerSubject": {
+    "finite_mathematics_1": 544,
+    "finite_mathematics_2": 606,
+    "general_mathematics": 1904
+  }
 }

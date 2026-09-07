@@ -18,7 +18,7 @@ The app-shell service worker (`public/sw.js`) follows a conservative policy:
 
 The precache is **versioned** via `self.__MATH_PULSE_PWA__.version`, which is
 injected into `/pwa-config.js` by the `mathpulse-pwa-sw-config` Vite plugin.
-The version is read from `VITE_APP_VERSION` (default `1.0.0`).
+The version is read from `VITE_APP_VERSION` (default `1.1.0-curriculum-sot`).
 
 ### Network-first navigations
 
@@ -91,7 +91,7 @@ The FCM worker remains registered separately by `pushNotificationService.ts`.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VITE_APP_VERSION` | `1.0.0` | App-shell cache version (bump to invalidate the precache) |
+| `VITE_APP_VERSION` | `1.1.0-curriculum-sot` | App-shell cache version (bump to invalidate the precache) |
 | `VITE_ENABLE_SW_IN_DEV` | `false` | Register `/sw.js` in local dev builds |
 | `VITE_API_URL` | `https://deign86-mathpulse-api-v3test.hf.space` in production workflow | Existing FastAPI backend origin. Override only when backend hosting changes. |
 | `CORS_ORIGINS` | `http://localhost:5173,http://localhost:4173` | Backend allow-list; set to deployed frontend origins in production |
