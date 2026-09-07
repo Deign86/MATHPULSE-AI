@@ -102,28 +102,44 @@ async def upload_pdf(
         "storageUrl": storage_url
     }
 
+def _run_reingestion_task():
+    try:
+        logger.info("Starting background curriculum reingestion from Firebase Storage...")
+        ingest_from_firebase_storage(force_reindex=True)
+        from scripts.upload_vectorstore_to_firebase import upload_directory, _init_firebase_storage, VECTORSTORE_SOURCE_DIR, REMOTE_PREFIX
+        _, bucket = _init_firebase_storage()
+        if bucket is not None:
+            upload_directory(VECTORSTORE_SOURCE_DIR, bucket, REMOTE_PREFIX)
+        logger.info("Background curriculum reingestion complete.")
+    except Exception as exc:
+        logger.error(f"Background reingestion failed: {exc}")
+
+
 @router.post("/reingest-pdf")
 async def reingest_pdf(
+    background_tasks: BackgroundTasks,
     req: Optional[ReingestRequest] = None,
     _admin=Depends(require_admin)
 ):
     try:
-        ingest_from_firebase_storage(force_reindex=True)
+        background_tasks.add_task(_run_reingestion_task)
         import asyncio
-        asyncio.create_task(_get_audit_logger()(
-            action="REINGEST_RAG_KNOWLEDGE",
-            actor_uid=_admin.uid,
-            actor_name=_admin.name if hasattr(_admin, "name") else "Unknown",
-            actor_email=_admin.email if hasattr(_admin, "email") else "",
-            actor_role=_admin.role,
-            description="Triggered a full reingestion of the RAG knowledge base",
-            route="/api/admin/reingest-pdf",
-            module="admin"
-        ))
-        return {"success": True, "message": "Reingestion triggered successfully."}
+        audit_fn = _get_audit_logger()
+        if audit_fn:
+            asyncio.create_task(audit_fn(
+                action="REINGEST_RAG_KNOWLEDGE",
+                actor_uid=_admin.uid,
+                actor_name=_admin.name if hasattr(_admin, "name") else "Unknown",
+                actor_email=_admin.email if hasattr(_admin, "email") else "",
+                actor_role=_admin.role,
+                description="Triggered remote cloud reingestion of the RAG knowledge base in background",
+                route="/api/admin/reingest-pdf",
+                module="admin"
+            ))
+        return {"success": True, "message": "Remote re-ingestion started in background. Check RAG Manager in a few minutes."}
     except Exception as e:
-        logger.error(f"Failed to reingest: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to reingest: {e}")
+        logger.error(f"Failed to trigger reingestion: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to trigger reingestion: {e}")
 
 
 class DeleteFileRequest(BaseModel):
