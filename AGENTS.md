@@ -240,11 +240,23 @@ Every coding task and prompt in this repository MUST auto-invoke and use the fol
    mode for tasks under ~30 minutes, orchestrated mode (`PLAN.md` + `gates/` per leaf) for builds.
    Re-measure every number in the final report at report time; paste the ledger, N of N checked.
 
-3. **Anti-Slop** — read and follow `.agents/skills/anti-slop/SKILL.md`.
+3. **Anti-Slop** — read and follow `.agents/skills/anti-slop/SKILL.md` and `.agents/skills/install-anti-slop/SKILL.md`.
    **AUTO-INVOKE ON EVERY PROMPT.**
-   Eliminate generic AI-generated code patterns, text slop, and cookie-cutter design:
-   - **Code quality**: Reject placeholder/generic names (`data`, `result`, `temp`, `item`), delete obvious/parroting comments, eliminate unneeded abstraction wrappers, and avoid loose `any` or unjustified type assertions.
-   - **Linter & Rules**: Enforce and verify repository Oxlint anti-slop rules (`tools/oxlint/anti-slop`).
+   Enforce opinionated Oxlint rules from [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) vendored at `tools/oxlint/anti-slop`:
+   - **Oxlint Anti-Slop Rules**: Run `npm run lint:anti-slop` (`npx oxlint --quiet`). Reject low-evidence TypeScript/JavaScript escape hatches:
+     - `anti-slop/no-chained-type-assertions`: Rejects nested `as unknown as T` laundering.
+     - `anti-slop/no-conditional-empty-object-spread`: Rejects `...(cond ? { a } : {})`.
+     - `anti-slop/no-known-value-widening`: Rejects widening literals to primitive types.
+     - `anti-slop/no-module-mocking`: Rejects module-level mocking in tests; mock at contracts.
+     - `anti-slop/no-object-parameters`: Rejects unconstrained object parameter bags.
+     - `anti-slop/no-reflect-apply` & `anti-slop/no-reflect-get`: Rejects Reflect escape hatches.
+     - `anti-slop/no-runtime-typeof`: Rejects unparsed runtime `typeof` checks; parse at boundary.
+     - `anti-slop/no-shape-in-symbol-names`: Rejects data/object/array Hungarian notation in identifiers.
+     - `anti-slop/no-unknown-parameters`, `no-unknown-returns`, `no-unknown-type-aliases`: Rejects `unknown` laundering without decoding.
+     - `anti-slop/no-unsafe-dictionary-type`: Rejects loose dictionary types without bounded keys.
+     - `anti-slop/no-widen-then-assert`: Rejects widening a typed value and re-asserting it.
+     - `anti-slop/require-safety-comment-for-type-assertion`: Enforces mandatory `// SAFETY: <justification>` comment before any type assertion.
+   - **Code Quality**: Reject placeholder/generic names (`data`, `result`, `temp`, `item`), delete obvious/parroting comments, eliminate unneeded abstraction wrappers, and avoid loose `any` or unjustified type assertions.
    - **Writing**: Strip fluff, corporate buzzwords ("delve into", "navigate complexities", "in today's world"), and self-referential AI commentary.
    - **UI/UX**: Reject generic gradient soup, unnecessary neumorphism/glassmorphism, and template-forced layouts.
 
