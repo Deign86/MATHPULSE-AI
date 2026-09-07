@@ -1,18 +1,18 @@
 ---
 name: anti-slop
 description: >
-  Detect and eliminate "AI slop" — generic, low-quality AI patterns in code, natural language, and UI design. Auto-invokes on every prompt to enforce clean variable names, eliminate useless comments, prevent over-abstractions, and adhere to anti-slop lint rules.
+  Detect and eliminate "AI slop" — low-evidence TypeScript and JavaScript patterns (enforcing dmmulroy/anti-slop Oxlint rules from tools/oxlint/anti-slop) and generic AI text/code/design patterns. Auto-invokes on every prompt to enforce strict typing, clean variable names, eliminate useless comments, and prevent over-abstractions.
 ---
 
 # Anti-Slop Skill
 
-Detect and eliminate generic AI-generated patterns ("slop") across natural language, code, and design.
+Detect and eliminate generic AI-generated patterns ("slop") across TypeScript/JavaScript code, natural language, and UI design.
 
 ## Persistence & Auto-Invocation
 
 **ACTIVE ON EVERY PROMPT.** Auto-invoke this skill during code generation, refactoring, and content writing:
+- **TypeScript / JavaScript Linter**: Enforce repository-wide [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) Oxlint rules (`tools/oxlint/anti-slop`) via `npm run lint:anti-slop`.
 - **Code**: Ban generic names (`data`, `temp`, `result`, `item`), delete obvious/narrating comments, reject unneeded wrapper classes/abstractions, avoid loose `any` / unjustified type assertions.
-- **Linter**: Enforce project-wide Oxlint anti-slop rules (`tools/oxlint/anti-slop`).
 - **Text / Prose**: Strip throat-clearing preambles, buzzwords ("delve into", "navigate complexities", "in today's world"), and AI meta-commentary.
 - **Design / UI**: Reject generic cookie-cutter templates, random purple/cyan gradients, and non-functional visual noise.
 - User explicitly requests slop detection or cleanup

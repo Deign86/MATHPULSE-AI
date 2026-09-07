@@ -13,6 +13,12 @@
       "skillPath": "skills/core/firecrawl-developer-index/SKILL.md",
       "computedHash": "67d1f7452842711ddd0517248cb8d034defd53ae299387530148f04b4a86a3eb"
     },
+    "install-anti-slop": {
+      "source": "dmmulroy/anti-slop",
+      "sourceType": "github",
+      "skillPath": "skills/install-anti-slop/SKILL.md",
+      "computedHash": "0c15ea86887d9e2da665326ba0e90f915aa7b5b5c8e24c42ba76bdd04761142b"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github"

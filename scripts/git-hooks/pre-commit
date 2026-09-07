@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+# Git pre-commit hook: enforces dmmulroy/anti-slop Oxlint rules
+echo "?? Running Oxlint anti-slop checks..."
+npx oxlint --quiet
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "? Anti-slop checks failed! Fix the violations above before committing."
+  exit $EXIT_CODE
+fi
+echo "? Anti-slop checks passed."
