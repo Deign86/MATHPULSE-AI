@@ -2,18 +2,26 @@ import { defineConfig } from "oxlint";
 
 export default defineConfig({
   ignorePatterns: [
+    ".agent/**",
     ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
     ".cursor/**",
     ".firebase/**",
+    ".gemini/**",
     ".github/**",
     ".opencode/**",
     ".pi/**",
     ".pytest_cache/**",
+    ".roo/**",
     ".tmp/**",
     ".vscode/**",
+    ".windsurf/**",
     "tools/oxlint/anti-slop/**",
     "android/**",
     "dist/**",
+    "build/**",
   ],
   jsPlugins: [{ name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" }],
   rules: {

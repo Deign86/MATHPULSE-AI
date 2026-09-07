@@ -1,7 +1,8 @@
-# Gates: PR #139 Post-Merge Rollout
+# Gates: PR #139 Post-Merge Rollout & Anti-Slop Quality Gate
 
-Scope: Full post-merge rollout for PR #139: Firebase Storage replacement, RAG reingestion with LiteParse, QA validation, and PWA cache/deployment verification.
+Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG reingestion with LiteParse, QA validation, PWA cache/deployment verification, remote vectorstore cloud sync) and repo-wide dmmulroy/anti-slop Oxlint skill installation with git integrations.
 
+## Section A: PR #139 Post-Merge Rollout & Cloud Ingestion
 - [x] G1: Firebase Storage replacement: rollback snapshot saved, superseded objects deleted, new SSHS corpus uploaded and integrity verified.
   CHECK: python -c "from pathlib import Path; import json; p = sorted(Path('ops/rollback').glob('pr139-firebase-snapshot-*.json')); print('SNAPSHOT_EXISTS' if p and len(json.loads(p[-1].read_text())) > 0 else 'NO_SNAPSHOT')"
   EXPECT: SNAPSHOT_EXISTS
@@ -25,6 +26,26 @@ Scope: Full post-merge rollout for PR #139: Firebase Storage replacement, RAG re
 - [x] G5: Remote Vectorstore Cloud Synchronization & Ingestion: canonical 3,054-chunk ChromaDB database, HNSW indexes, ingest_summary.json, and curriculum_vectorstore.zip uploaded to gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/, rollback snapshot created at ops/rollback/pr139-remote-vectorstore-snapshot-20260907.json, and download_vectorstore_from_firebase.py verified with runnable evidence.
   CHECK: gcloud storage cat gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/ingest_summary.json
   EXPECT: 3054
-  EVIDENCE: Passed. Remote vectorstore in Firebase Storage snapshotted to ops/rollback/pr139-remote-vectorstore-snapshot-20260907.json (11 objects). Uploaded canonical ChromaDB database (chroma.sqlite3: 54,784,000 bytes, HNSW index files: 5,118,504 bytes, ingest_summary.json: 3,054 chunks, curriculum_vectorstore.zip: 36,397,268 bytes) to gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/ (17 objects, 101,706,153 bytes total). Verified download_vectorstore_from_firebase.py downloads 20 objects matching canonical hashes. Updated backend/scripts/upload_vectorstore_to_firebase.py, backend/scripts/download_vectorstore_from_firebase.py, backend/rag/firebase_storage_loader.py, and backend/scripts/ingest_from_storage.py to support live cloud Markdown and PDF ingestion with automatic fallback. Triggered GitHub Actions Deploy FastAPI backend workflow to restart remote Space container.
+  EVIDENCE: Passed. Remote vectorstore in Firebase Storage snapshotted to ops/rollback/pr139-remote-vectorstore-snapshot-20260907.json (11 objects). Uploaded canonical ChromaDB database (chroma.sqlite3: 54,784,000 bytes, HNSW index files: 5,118,504 bytes, ingest_summary.json: 3,054 chunks, curriculum_vectorstore.zip: 36,397,268 bytes) to gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/ (17 objects, 101,706,153 bytes total). Verified download_vectorstore_from_firebase.py downloads 20 objects matching canonical hashes. Updated backend/scripts/upload_vectorstore_to_firebase.py, backend/scripts/download_vectorstore_from_firebase.py, backend/rag/firebase_storage_loader.py, and backend/scripts/ingest_from_storage.py to support live cloud Markdown and PDF ingestion with automatic fallback. Added .github/workflows/ingest-curriculum.yml and updated backend/routes/admin_routes.py with BackgroundTasks.
 
+## Section B: Anti-Slop Oxlint Skill & Git Integrations
+- [x] S1: dmmulroy/anti-slop skill installed repo-wide and vendored into tools/oxlint/anti-slop with oxlint.config.ts configured
+  CHECK: node -e "const fs = require('fs'); const ok = fs.existsSync('.agents/skills/install-anti-slop/SKILL.md') && fs.existsSync('tools/oxlint/anti-slop/index.ts') && fs.existsSync('oxlint.config.ts'); console.log(ok ? 'SKILL_AND_RULES_VENDORED' : 'MISSING');"
+  EXPECT: SKILL_AND_RULES_VENDORED
+  EVIDENCE: SKILL_AND_RULES_VENDORED
+
+- [x] S2: Auto-invocation onto every prompt configured in AGENTS.md and agent instructions
+  CHECK: grep -E "dmmulroy/anti-slop|tools/oxlint/anti-slop" AGENTS.md
+  EXPECT: tools/oxlint/anti-slop
+  EVIDENCE: Enforce opinionated Oxlint rules from [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) vendored at `tools/oxlint/anti-slop`:
+
+- [x] S3: Git integrations part of repo: pre-commit hook script, package.json scripts, and CI workflow check
+  CHECK: node -e "const fs = require('fs'); const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8')); const ci = fs.readFileSync('.github/workflows/ci.yml', 'utf8'); const ok = pkg.scripts['lint:anti-slop'] && fs.existsSync('scripts/git-hooks/pre-commit') && ci.includes('anti-slop'); console.log(ok ? 'GIT_INTEGRATIONS_PRESENT' : 'MISSING');"
+  EXPECT: GIT_INTEGRATIONS_PRESENT
+  EVIDENCE: GIT_INTEGRATIONS_PRESENT
+
+- [x] S4: Zero anti-slop lint errors across repository and test suites pass
+  CHECK: npx oxlint --quiet
+  EXPECT: Finished in
+  EVIDENCE: To eliminate this warning, add "type": "module" to C:\Users\Deign\Downloads\MATHPULSE-AI\package.json. | (Use `node --trace-warnings ...` to show where the warning was created)
 
