@@ -150,15 +150,21 @@ def ingest_from_firebase_storage(force_reindex: bool = False):
     skipped_count = 0
     error_count = 0
 
-    target_metadata = dict(PDF_METADATA)
+    target_metadata: Dict[str, Any] = {}
     live_blobs = list_curriculum_blobs(prefix="curriculum/sshs_learning_resources/")
+    md_stems = {
+        blob["name"].rsplit("/", 1)[-1].lower().replace(".md", "")
+        for blob in live_blobs if blob["name"].endswith(".md")
+    }
     for blob_info in live_blobs:
         path = blob_info["name"]
-        if path not in target_metadata:
-            target_metadata[path] = infer_storage_metadata(path)
+        stem = path.rsplit("/", 1)[-1].lower().replace(".pdf", "").replace(".md", "")
+        if path.endswith(".pdf") and stem in md_stems:
+            continue
+        target_metadata[path] = infer_storage_metadata(path)
 
     for storage_path, metadata in target_metadata.items():
-        doc_id = storage_path.replace("/", "_").replace(".pdf", "")
+        doc_id = storage_path.replace("/", "_").replace(".pdf", "").replace(".md", "")
 
         if db:
             try:
@@ -180,7 +186,15 @@ def ingest_from_firebase_storage(force_reindex: bool = False):
             continue
 
         logger.info("Extracting text from: %s (%d bytes)", storage_path, len(pdf_bytes))
-        full_text, page_starts = extract_pdf_text_and_pages(pdf_bytes)
+        if storage_path.endswith(".md"):
+            try:
+                full_text = pdf_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                full_text = pdf_bytes.decode("utf-8", errors="ignore")
+            page_starts = [0]
+        else:
+            full_text, page_starts = extract_pdf_text_and_pages(pdf_bytes)
+
         if not full_text.strip():
             logger.warning("[WARN] No text extracted from: %s", storage_path)
             error_count += 1

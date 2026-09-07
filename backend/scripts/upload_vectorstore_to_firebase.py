@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from backend.rag.firebase_storage_loader import _init_firebase_storage
 
-VECTORSTORE_SOURCE_DIR = Path(__file__).resolve().parents[3] / "datasets" / "vectorstore"
+VECTORSTORE_SOURCE_DIR = Path(__file__).resolve().parents[2] / "datasets" / "vectorstore"
 REMOTE_PREFIX = "vectorstore/"
 
 
@@ -27,6 +27,8 @@ def upload_directory(local_dir: Path, bucket, prefix: str):
 
     for root, dirs, files in os.walk(local_dir):
         for filename in files:
+            if filename.endswith(".npy"):
+                continue
             local_path = Path(root) / filename
             relative_path = local_path.relative_to(local_dir)
             remote_path = f"{prefix}{relative_path.as_posix()}"
@@ -41,6 +43,23 @@ def upload_directory(local_dir: Path, bucket, prefix: str):
                 skipped += 1
 
     return uploaded, skipped
+
+
+def upload_via_gcloud(source_dir: Path, bucket_name: str, prefix: str):
+    """Fallback upload using gcloud storage CLI."""
+    import subprocess
+    import shutil
+
+    gcloud_bin = shutil.which("gcloud") or "gcloud"
+    dest_uri = f"gs://{bucket_name}/{prefix}"
+    logger.info("Executing gcloud storage rsync from %s to %s", source_dir, dest_uri)
+    cmd = f'"{gcloud_bin}" storage rsync -r "{source_dir}" "{dest_uri}"'
+    res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if res.returncode == 0:
+        logger.info("gcloud storage upload succeeded:\n%s", res.stdout)
+        return True
+    logger.error("gcloud storage upload failed:\n%s\n%s", res.stdout, res.stderr)
+    return False
 
 
 if __name__ == "__main__":
@@ -60,12 +79,15 @@ if __name__ == "__main__":
         logger.error("Source directory does not exist: %s", source_dir)
         sys.exit(1)
 
+    bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET", "mathpulse-ai-2026.firebasestorage.app")
     _, bucket = _init_firebase_storage()
-    if bucket is None:
-        logger.error("Firebase Storage not available")
-        sys.exit(1)
-
-    logger.info("Uploading vectorstore from %s to gs://%s/%s",
-                source_dir, bucket.name, args.prefix)
-    uploaded, skipped = upload_directory(source_dir, bucket, args.prefix)
-    logger.info("Upload complete: %d uploaded, %d skipped", uploaded, skipped)
+    if bucket is not None:
+        logger.info("Uploading vectorstore from %s to gs://%s/%s via firebase-admin",
+                    source_dir, bucket.name, args.prefix)
+        uploaded, skipped = upload_directory(source_dir, bucket, args.prefix)
+        logger.info("Upload complete: %d uploaded, %d skipped", uploaded, skipped)
+    else:
+        logger.info("firebase_admin bucket not available; attempting gcloud storage fallback...")
+        success = upload_via_gcloud(source_dir, bucket_name, args.prefix)
+        if not success:
+            sys.exit(1)

@@ -71,11 +71,27 @@ def _resolve_dest_dir() -> Path:
     return Path("/app/datasets/vectorstore")
 
 
+def download_via_gcloud(dest_dir: Path, bucket_name: str, prefix: str = REMOTE_PREFIX) -> bool:
+    import shutil
+    import subprocess
+    gcloud_bin = shutil.which("gcloud") or "gcloud"
+    src_uri = f"gs://{bucket_name}/{prefix}"
+    logger.info("Executing gcloud storage rsync from %s to %s", src_uri, dest_dir)
+    cmd = f'"{gcloud_bin}" storage rsync -r "{src_uri}" "{dest_dir}"'
+    res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if res.returncode == 0:
+        logger.info("gcloud storage download succeeded:\n%s", res.stdout)
+        return True
+    logger.error("gcloud storage download failed:\n%s\n%s", res.stdout, res.stderr)
+    return False
+
+
 def download_vectorstore(dest_dir: Path, prefix: str = REMOTE_PREFIX):
     bucket = _init_firebase()
     if bucket is None:
-        logger.warning("Firebase Storage not available, vectorstore download skipped")
-        return False
+        bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET", "mathpulse-ai-2026.firebasestorage.app")
+        logger.info("Firebase admin unavailable; attempting gcloud storage fallback...")
+        return download_via_gcloud(dest_dir, bucket_name, prefix)
 
     dest_dir.mkdir(parents=True, exist_ok=True)
 
