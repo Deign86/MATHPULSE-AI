@@ -345,6 +345,9 @@ export async function processDiagnosticCompletion(
     },
     lastRiskUpdate: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    reassessmentRequired: false,
+    reassessmentStatus: "completed",
+    reassessmentReasonCodes: [],
   };
   if (isInitialAssessment) {
     Object.assign(profileUpdate, {

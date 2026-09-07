@@ -53,7 +53,7 @@ async def get_class_students(
         )[:10]
     elif filter == "needs_attention":
         students = sorted(
-            [s for s in students if s.risk_level in ("High Risk", "Critical", "Unassessed")],
+            [s for s in students if s.risk_level in ("intervene", "critical", "at_risk")],
             key=lambda s: s.avg_score,
         )
 

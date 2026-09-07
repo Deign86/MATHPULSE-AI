@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import type { StudentRiskProfile } from '../../types/models';
 
-type RiskStatus = StudentRiskProfile['riskStatus'];
+type RiskStatus = StudentRiskProfile['riskStatus'] | 'pending_assessment';
 type BadgeSize = 'sm' | 'md' | 'lg';
 
 interface RiskBadgeProps {
@@ -64,6 +64,13 @@ const STATUS_CONFIG = {
     icon: Skull,
     description: 'Near or below DepEd failing mark',
   },
+  pending_assessment: {
+    label: 'Pending Assessment',
+    color: 'bg-slate-50 text-slate-500 border-slate-200',
+    dotColor: 'bg-slate-400',
+    icon: HelpCircle,
+    description: 'Assessment not yet completed',
+  },
   null: {
     label: 'Pending',
     color: 'bg-slate-50 text-slate-500 border-slate-200',
@@ -86,7 +93,7 @@ export const RiskBadge: React.FC<RiskBadgeProps> = ({
   showScore = false,
   className = '',
 }) => {
-  const config = STATUS_CONFIG[status ?? 'null'];
+  const config = STATUS_CONFIG[status ?? 'null'] || STATUS_CONFIG['null'];
   const Icon = config.icon;
 
   const label = showScore && wri !== null && wri !== undefined

@@ -100,7 +100,7 @@ async def recompute_profile(student_id: str, background_tasks: BackgroundTasks, 
         # Trigger a synthetic diagnostic event to force full recompute
         event = StudentActivityEvent(
             student_id=student_id,
-            event_type="session",
+            event_type="force_recompute",
             event_data={"event": "force_recompute"},
             occurred_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
             class_id="",
