@@ -270,7 +270,7 @@ Runtime routing (`backend/services/inference_client.py`) dispatches with fallbac
 
    # Backend API (optional — defaults to same-origin /api)
    VITE_API_URL=/api
-   VITE_APP_VERSION=1.0.0
+   VITE_APP_VERSION=1.1.0-curriculum-sot
 
    # Import-grounded generation flags (frontend)
    VITE_ENABLE_IMPORT_GROUNDED_QUIZ=true

@@ -73,6 +73,7 @@ const ACCOUNT_TYPE_OPTIONS: { role: UserRole; label: string }[] = [
 ];
 
 const extractAuthErrorDetails = (cause: unknown): AuthErrorDetails => {
+  // SAFETY: isObjectVal verifies cause is an object before reading optional error properties.
   const authError = isObjectVal(cause) && cause !== null ? (cause as Partial<AuthServiceError>) : null;
   const message = cause instanceof Error ? cause.message : '';
 
@@ -177,10 +178,17 @@ export const LoginPage: React.FC = () => {
     }
   }, [selectedGrade, selectedSection]);
 
-  const demoAccounts = [
+  const demoAccounts: {
+    label: string;
+    role: UserRole;
+    email: string;
+    password: string;
+    icon: typeof GraduationCap;
+    color: string;
+  }[] = [
     {
       label: 'Student',
-      role: 'student' as UserRole,
+      role: 'student',
       email: 'teststudent@school.edu',
       password: 'TestPass123!',
       icon: GraduationCap,
@@ -188,7 +196,7 @@ export const LoginPage: React.FC = () => {
     },
     {
       label: 'Teacher',
-      role: 'teacher' as UserRole,
+      role: 'teacher',
       email: 'testteacher@school.edu',
       password: 'TestPass123!',
       icon: BookOpen,
@@ -196,7 +204,7 @@ export const LoginPage: React.FC = () => {
     },
     {
       label: 'Admin',
-      role: 'admin' as UserRole,
+      role: 'admin',
       email: 'testadmin@school.edu',
       password: 'TestPass123!',
       icon: ShieldCheck,

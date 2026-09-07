@@ -1,0 +1,965 @@
+{
+  "timestamp": "2026-09-07T04:52:07.222564+00:00",
+  "bucket": "mathpulse-ai-2026.firebasestorage.app",
+  "prefix": "vectorstore/",
+  "objectCount": 11,
+  "objects": [
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin#1777811915209329",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "CPH0u72RnZQDEAE=",
+            "generation": "1777811915209329",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin/1777811915209329/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fdata_level0.bin/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "CPH0u72RnZQDEAE=",
+            "generation": "1777811915209329",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin/1777811915209329/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fdata_level0.bin/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "CPH0u72RnZQDEAE=",
+            "generation": "1777811915209329",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin/1777811915209329/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fdata_level0.bin/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "CPH0u72RnZQDEAE=",
+            "generation": "1777811915209329",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin/1777811915209329/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fdata_level0.bin/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/octet-stream",
+        "crc32c": "9xTHig==",
+        "etag": "CPH0u72RnZQDEAE=",
+        "generation": "1777811915209329",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin/1777811915209329",
+        "kind": "storage#object",
+        "md5Hash": "arIdKiCJnUFMA2NoVm1LyA==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fdata_level0.bin?generation=1777811915209329&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/data_level0.bin",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fdata_level0.bin",
+        "size": "321200",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:35.213000+00:00",
+        "timeFinalized": "2026-05-03T12:38:35.213000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:35.213000+00:00",
+        "updated": "2026-05-03T12:38:35.213000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin#1777811915492097",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "CIGWzb2RnZQDEAE=",
+            "generation": "1777811915492097",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin/1777811915492097/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fheader.bin/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "CIGWzb2RnZQDEAE=",
+            "generation": "1777811915492097",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin/1777811915492097/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fheader.bin/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "CIGWzb2RnZQDEAE=",
+            "generation": "1777811915492097",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin/1777811915492097/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fheader.bin/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "CIGWzb2RnZQDEAE=",
+            "generation": "1777811915492097",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin/1777811915492097/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fheader.bin/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/octet-stream",
+        "crc32c": "2Tpz2Q==",
+        "etag": "CIGWzb2RnZQDEAE=",
+        "generation": "1777811915492097",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin/1777811915492097",
+        "kind": "storage#object",
+        "md5Hash": "d4vGQk5vIRD4sjTmvoKsxw==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fheader.bin?generation=1777811915492097&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/header.bin",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Fheader.bin",
+        "size": "100",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:35.496000+00:00",
+        "timeFinalized": "2026-05-03T12:38:35.496000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:35.496000+00:00",
+        "updated": "2026-05-03T12:38:35.496000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin#1777811916469473",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "COHpiL6RnZQDEAE=",
+            "generation": "1777811916469473",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin/1777811916469473/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flength.bin/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "COHpiL6RnZQDEAE=",
+            "generation": "1777811916469473",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin/1777811916469473/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flength.bin/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "COHpiL6RnZQDEAE=",
+            "generation": "1777811916469473",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin/1777811916469473/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flength.bin/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "COHpiL6RnZQDEAE=",
+            "generation": "1777811916469473",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin/1777811916469473/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flength.bin/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/octet-stream",
+        "crc32c": "309xmg==",
+        "etag": "COHpiL6RnZQDEAE=",
+        "generation": "1777811916469473",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin/1777811916469473",
+        "kind": "storage#object",
+        "md5Hash": "kuJ/mqLz8DZir2fC5GRWyA==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flength.bin?generation=1777811916469473&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/length.bin",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flength.bin",
+        "size": "400",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:36.472000+00:00",
+        "timeFinalized": "2026-05-03T12:38:36.472000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:36.472000+00:00",
+        "updated": "2026-05-03T12:38:36.472000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin#1777811916743158",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "CPbDmb6RnZQDEAE=",
+            "generation": "1777811916743158",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin/1777811916743158/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flink_lists.bin/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "CPbDmb6RnZQDEAE=",
+            "generation": "1777811916743158",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin/1777811916743158/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flink_lists.bin/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "CPbDmb6RnZQDEAE=",
+            "generation": "1777811916743158",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin/1777811916743158/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flink_lists.bin/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "CPbDmb6RnZQDEAE=",
+            "generation": "1777811916743158",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin/1777811916743158/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flink_lists.bin/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/octet-stream",
+        "crc32c": "AAAAAA==",
+        "etag": "CPbDmb6RnZQDEAE=",
+        "generation": "1777811916743158",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin/1777811916743158",
+        "kind": "storage#object",
+        "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flink_lists.bin?generation=1777811916743158&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/6aeb3921-1a5e-4bab-bcfc-af4193ffa420/link_lists.bin",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2F6aeb3921-1a5e-4bab-bcfc-af4193ffa420%2Flink_lists.bin",
+        "size": "0",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:36.748000+00:00",
+        "timeFinalized": "2026-05-03T12:38:36.748000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:36.748000+00:00",
+        "updated": "2026-05-03T12:38:36.748000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin#1777811918507287",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "CJeahb+RnZQDEAE=",
+            "generation": "1777811918507287",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin/1777811918507287/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fdata_level0.bin/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "CJeahb+RnZQDEAE=",
+            "generation": "1777811918507287",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin/1777811918507287/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fdata_level0.bin/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "CJeahb+RnZQDEAE=",
+            "generation": "1777811918507287",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin/1777811918507287/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fdata_level0.bin/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "CJeahb+RnZQDEAE=",
+            "generation": "1777811918507287",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin/1777811918507287/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fdata_level0.bin/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/octet-stream",
+        "crc32c": "o6ky3Q==",
+        "etag": "CJeahb+RnZQDEAE=",
+        "generation": "1777811918507287",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin/1777811918507287",
+        "kind": "storage#object",
+        "md5Hash": "vzW/yhUpNBH4maI7GfLvIg==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fdata_level0.bin?generation=1777811918507287&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/data_level0.bin",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fdata_level0.bin",
+        "size": "167600",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:38.510000+00:00",
+        "timeFinalized": "2026-05-03T12:38:38.510000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:38.510000+00:00",
+        "updated": "2026-05-03T12:38:38.510000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin#1777811918774156",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "CIy/lb+RnZQDEAE=",
+            "generation": "1777811918774156",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin/1777811918774156/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fheader.bin/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "CIy/lb+RnZQDEAE=",
+            "generation": "1777811918774156",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin/1777811918774156/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fheader.bin/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "CIy/lb+RnZQDEAE=",
+            "generation": "1777811918774156",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin/1777811918774156/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fheader.bin/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "CIy/lb+RnZQDEAE=",
+            "generation": "1777811918774156",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin/1777811918774156/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fheader.bin/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/octet-stream",
+        "crc32c": "AtF2lA==",
+        "etag": "CIy/lb+RnZQDEAE=",
+        "generation": "1777811918774156",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin/1777811918774156",
+        "kind": "storage#object",
+        "md5Hash": "2CWHcHZ+NNHHRXaH7UbOTg==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fheader.bin?generation=1777811918774156&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/header.bin",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Fheader.bin",
+        "size": "100",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:38.777000+00:00",
+        "timeFinalized": "2026-05-03T12:38:38.777000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:38.777000+00:00",
+        "updated": "2026-05-03T12:38:38.777000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin#1777811919732762",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "CJqA0L+RnZQDEAE=",
+            "generation": "1777811919732762",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin/1777811919732762/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flength.bin/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "CJqA0L+RnZQDEAE=",
+            "generation": "1777811919732762",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin/1777811919732762/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flength.bin/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "CJqA0L+RnZQDEAE=",
+            "generation": "1777811919732762",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin/1777811919732762/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flength.bin/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "CJqA0L+RnZQDEAE=",
+            "generation": "1777811919732762",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin/1777811919732762/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flength.bin/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/octet-stream",
+        "crc32c": "wwW8QQ==",
+        "etag": "CJqA0L+RnZQDEAE=",
+        "generation": "1777811919732762",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin/1777811919732762",
+        "kind": "storage#object",
+        "md5Hash": "x9r168jA4Z0g0X6vNLVxuw==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flength.bin?generation=1777811919732762&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/length.bin",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flength.bin",
+        "size": "400",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:39.736000+00:00",
+        "timeFinalized": "2026-05-03T12:38:39.736000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:39.736000+00:00",
+        "updated": "2026-05-03T12:38:39.736000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin#1777811919987922",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "CNLJ37+RnZQDEAE=",
+            "generation": "1777811919987922",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin/1777811919987922/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flink_lists.bin/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "CNLJ37+RnZQDEAE=",
+            "generation": "1777811919987922",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin/1777811919987922/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flink_lists.bin/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "CNLJ37+RnZQDEAE=",
+            "generation": "1777811919987922",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin/1777811919987922/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flink_lists.bin/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "CNLJ37+RnZQDEAE=",
+            "generation": "1777811919987922",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin/1777811919987922/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flink_lists.bin/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/octet-stream",
+        "crc32c": "AAAAAA==",
+        "etag": "CNLJ37+RnZQDEAE=",
+        "generation": "1777811919987922",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin/1777811919987922",
+        "kind": "storage#object",
+        "md5Hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flink_lists.bin?generation=1777811919987922&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/c2d0eff1-babc-4d96-b456-352d6177ffb3/link_lists.bin",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fc2d0eff1-babc-4d96-b456-352d6177ffb3%2Flink_lists.bin",
+        "size": "0",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:39.994000+00:00",
+        "timeFinalized": "2026-05-03T12:38:39.994000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:39.994000+00:00",
+        "updated": "2026-05-03T12:38:39.994000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/chroma.sqlite3#1777811912845262",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "CM7Pq7yRnZQDEAE=",
+            "generation": "1777811912845262",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/chroma.sqlite3/1777811912845262/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/chroma.sqlite3",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fchroma.sqlite3/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "CM7Pq7yRnZQDEAE=",
+            "generation": "1777811912845262",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/chroma.sqlite3/1777811912845262/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/chroma.sqlite3",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fchroma.sqlite3/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "CM7Pq7yRnZQDEAE=",
+            "generation": "1777811912845262",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/chroma.sqlite3/1777811912845262/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/chroma.sqlite3",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fchroma.sqlite3/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "CM7Pq7yRnZQDEAE=",
+            "generation": "1777811912845262",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/chroma.sqlite3/1777811912845262/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/chroma.sqlite3",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fchroma.sqlite3/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/octet-stream",
+        "crc32c": "yN3R4Q==",
+        "etag": "CM7Pq7yRnZQDEAE=",
+        "generation": "1777811912845262",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/chroma.sqlite3/1777811912845262",
+        "kind": "storage#object",
+        "md5Hash": "GWWicbJTU4DR7dJ0mLflSg==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fchroma.sqlite3?generation=1777811912845262&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/chroma.sqlite3",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fchroma.sqlite3",
+        "size": "9932800",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:32.853000+00:00",
+        "timeFinalized": "2026-05-03T12:38:32.853000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:32.853000+00:00",
+        "updated": "2026-05-03T12:38:32.853000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/curriculum_vectorstore.zip#1778080026928619",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "COvLjKP4pJQDEAI=",
+            "generation": "1778080026928619",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/curriculum_vectorstore.zip/1778080026928619/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/curriculum_vectorstore.zip",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fcurriculum_vectorstore.zip/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "COvLjKP4pJQDEAI=",
+            "generation": "1778080026928619",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/curriculum_vectorstore.zip/1778080026928619/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/curriculum_vectorstore.zip",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fcurriculum_vectorstore.zip/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "COvLjKP4pJQDEAI=",
+            "generation": "1778080026928619",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/curriculum_vectorstore.zip/1778080026928619/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/curriculum_vectorstore.zip",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fcurriculum_vectorstore.zip/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "COvLjKP4pJQDEAI=",
+            "generation": "1778080026928619",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/curriculum_vectorstore.zip/1778080026928619/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/curriculum_vectorstore.zip",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fcurriculum_vectorstore.zip/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "allUsers",
+            "etag": "COvLjKP4pJQDEAI=",
+            "generation": "1778080026928619",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/curriculum_vectorstore.zip/1778080026928619/allUsers",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/curriculum_vectorstore.zip",
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fcurriculum_vectorstore.zip/acl/allUsers"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/x-zip-compressed",
+        "crc32c": "/eUvqQ==",
+        "etag": "COvLjKP4pJQDEAI=",
+        "generation": "1778080026928619",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/curriculum_vectorstore.zip/1778080026928619",
+        "kind": "storage#object",
+        "md5Hash": "SI3QR2N7SVBf/CE8/Eyi7A==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fcurriculum_vectorstore.zip?generation=1778080026928619&alt=media",
+        "metageneration": "2",
+        "name": "vectorstore/curriculum_vectorstore.zip",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fcurriculum_vectorstore.zip",
+        "size": "13419284",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-06T15:07:06.941000+00:00",
+        "timeFinalized": "2026-05-06T15:07:06.941000+00:00",
+        "timeStorageClassUpdated": "2026-05-06T15:07:06.941000+00:00",
+        "updated": "2026-05-06T15:07:08.249000+00:00"
+      }
+    },
+    {
+      "url": "gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/ingest_summary.json#1777811913185790",
+      "type": "cloud_object",
+      "metadata": {
+        "acl": [
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-owners-441656461",
+            "etag": "CP6zwLyRnZQDEAE=",
+            "generation": "1777811913185790",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/ingest_summary.json/1777811913185790/project-owners-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/ingest_summary.json",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "owners"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fingest_summary.json/acl/project-owners-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-editors-441656461",
+            "etag": "CP6zwLyRnZQDEAE=",
+            "generation": "1777811913185790",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/ingest_summary.json/1777811913185790/project-editors-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/ingest_summary.json",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "editors"
+            },
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fingest_summary.json/acl/project-editors-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "entity": "project-viewers-441656461",
+            "etag": "CP6zwLyRnZQDEAE=",
+            "generation": "1777811913185790",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/ingest_summary.json/1777811913185790/project-viewers-441656461",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/ingest_summary.json",
+            "projectTeam": {
+              "projectNumber": "441656461",
+              "team": "viewers"
+            },
+            "role": "READER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fingest_summary.json/acl/project-viewers-441656461"
+          },
+          {
+            "bucket": "mathpulse-ai-2026.firebasestorage.app",
+            "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "etag": "CP6zwLyRnZQDEAE=",
+            "generation": "1777811913185790",
+            "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/ingest_summary.json/1777811913185790/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+            "kind": "storage#objectAccessControl",
+            "object": "vectorstore/ingest_summary.json",
+            "role": "OWNER",
+            "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fingest_summary.json/acl/user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+          }
+        ],
+        "bucket": "mathpulse-ai-2026.firebasestorage.app",
+        "contentType": "application/json",
+        "crc32c": "XZlesQ==",
+        "etag": "CP6zwLyRnZQDEAE=",
+        "generation": "1777811913185790",
+        "id": "mathpulse-ai-2026.firebasestorage.app/vectorstore/ingest_summary.json/1777811913185790",
+        "kind": "storage#object",
+        "md5Hash": "kb4ljItazcEfHOBJmcdeag==",
+        "mediaLink": "https://storage.googleapis.com/download/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fingest_summary.json?generation=1777811913185790&alt=media",
+        "metageneration": "1",
+        "name": "vectorstore/ingest_summary.json",
+        "owner": {
+          "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com"
+        },
+        "selfLink": "https://www.googleapis.com/storage/v1/b/mathpulse-ai-2026.firebasestorage.app/o/vectorstore%2Fingest_summary.json",
+        "size": "634",
+        "storageClass": "REGIONAL",
+        "timeCreated": "2026-05-03T12:38:33.190000+00:00",
+        "timeFinalized": "2026-05-03T12:38:33.190000+00:00",
+        "timeStorageClassUpdated": "2026-05-03T12:38:33.190000+00:00",
+        "updated": "2026-05-03T12:38:33.190000+00:00"
+      }
+    }
+  ]
+}

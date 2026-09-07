@@ -61,7 +61,7 @@ export const IS_PRODUCTION = import.meta.env.PROD === true;
 
 /** Build identifier used for service-worker cache versioning. */
 export const APP_VERSION =
-  trimToEmpty(import.meta.env.VITE_APP_VERSION) || '1.0.0';
+  trimToEmpty(import.meta.env.VITE_APP_VERSION) || '1.1.0-curriculum-sot';
 
 /**
  * Build a backend URL from a backend path.

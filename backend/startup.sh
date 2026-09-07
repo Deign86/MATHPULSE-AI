@@ -33,15 +33,15 @@ fi
 
 _ingest_script="/app/scripts/ingest_curriculum.py"
 if [ -f "${_ingest_script}" ]; then
-    _has_pdfs=false
-    if [ -d "${CURRICULUM_DIR}" ] && find "${CURRICULUM_DIR}" -type f -name '*.pdf' -print -quit >/dev/null 2>&1; then
-        _has_pdfs=true
+    _has_curriculum_files=false
+    if [ -d "${CURRICULUM_DIR}" ] && (find "${CURRICULUM_DIR}" -type f \( -name '*.pdf' -o -name '*.md' \) ! -name 'README.md' -print -quit >/dev/null 2>&1); then
+        _has_curriculum_files=true
     fi
-    if [ "${_has_pdfs}" = true ] || [ -n "${CURRICULUM_SOURCE_REPO_ID:-}" ]; then
+    if [ "${_has_curriculum_files}" = true ] || [ -n "${CURRICULUM_SOURCE_REPO_ID:-}" ]; then
         echo "INFO: Running curriculum ingestion (optional)..."
         python "${_ingest_script}" && echo "INFO: Curriculum ingestion completed" || echo "WARNING: Curriculum ingestion failed, continuing anyway"
     else
-        echo "INFO: No curriculum PDFs present and CURRICULUM_SOURCE_REPO_ID unset; skipping ingest"
+        echo "INFO: No curriculum files present and CURRICULUM_SOURCE_REPO_ID unset; skipping ingest"
     fi
 else
     echo "INFO: Curriculum ingestion script not found at ${_ingest_script}; skipping (curriculum is optional)"

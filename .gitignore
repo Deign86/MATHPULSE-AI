@@ -48,6 +48,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.npy
 .venv/
 venv/
 ENV/
@@ -74,10 +75,14 @@ ui-debug.log
 **/_kaggle_outputs/
 kaggle_llm_api_job/
 kaggle_merge_job/
-datasets/vectorstore/
+datasets/vectorstore/*
 # EXCEPT the ChromaDB sqlite file (needed for RAG at runtime)
 !datasets/vectorstore/chroma.sqlite3
 !datasets/vectorstore/ingest_summary.json
+backend/datasets/vectorstore/*
+!backend/datasets/vectorstore/chroma.sqlite3
+!backend/datasets/vectorstore/ingest_summary.json
+!backend/datasets/vectorstore/teacher_materials/
 
 # Curriculum binaries are hosted on HF storage, not in git
 datasets/curriculum/*.pdf

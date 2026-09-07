@@ -151,7 +151,7 @@ const fcmConfigPlugin = (): Plugin => {
  */
 const pwaSwConfigPlugin = (): Plugin => {
   const ENDPOINT = '/pwa-config.js';
-  let swVersion = '1.0.0';
+  let swVersion = '1.1.0-curriculum-sot';
   let buildAssets: string[] = [];
 
   const buildScript = () =>
@@ -167,7 +167,7 @@ const pwaSwConfigPlugin = (): Plugin => {
     config(_userConfig, configEnv) {
       const env = loadEnv(configEnv.mode, process.cwd(), 'VITE_');
       const configured = (env.VITE_APP_VERSION || '').trim();
-      swVersion = configured || (configEnv.mode === 'production' ? '1.0.0' : 'dev');
+      swVersion = configured || (configEnv.mode === 'production' ? '1.1.0-curriculum-sot' : 'dev');
     },
     configureServer(server) {
       server.middlewares.use(ENDPOINT, (_req, res) => {

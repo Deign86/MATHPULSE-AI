@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag.firebase_storage_loader import (
     PDF_METADATA,
     download_pdf_from_storage,
+    infer_storage_metadata,
     list_curriculum_blobs,
 )
 
@@ -149,8 +150,21 @@ def ingest_from_firebase_storage(force_reindex: bool = False):
     skipped_count = 0
     error_count = 0
 
-    for storage_path, metadata in PDF_METADATA.items():
-        doc_id = storage_path.replace("/", "_").replace(".pdf", "")
+    target_metadata: Dict[str, Any] = {}
+    live_blobs = list_curriculum_blobs(prefix="curriculum/sshs_learning_resources/")
+    md_stems = {
+        blob["name"].rsplit("/", 1)[-1].lower().replace(".md", "")
+        for blob in live_blobs if blob["name"].endswith(".md")
+    }
+    for blob_info in live_blobs:
+        path = blob_info["name"]
+        stem = path.rsplit("/", 1)[-1].lower().replace(".pdf", "").replace(".md", "")
+        if path.endswith(".pdf") and stem in md_stems:
+            continue
+        target_metadata[path] = infer_storage_metadata(path)
+
+    for storage_path, metadata in target_metadata.items():
+        doc_id = storage_path.replace("/", "_").replace(".pdf", "").replace(".md", "")
 
         if db:
             try:
@@ -167,22 +181,20 @@ def ingest_from_firebase_storage(force_reindex: bool = False):
         logger.info("Downloading: %s", storage_path)
         pdf_bytes = download_pdf_from_storage(storage_path)
         if pdf_bytes is None:
-            logger.error("[ERROR] Failed to download: %s", storage_path)
-            if db:
-                try:
-                    doc_ref.set({
-                        "storagePath": storage_path,
-                        "status": "failed",
-                        "error": "download_failed",
-                        **metadata,
-                    }, merge=True)
-                except:
-                    pass
-            error_count += 1
+            logger.warning("[SKIP] %s not found in Firebase Storage", storage_path)
+            skipped_count += 1
             continue
 
         logger.info("Extracting text from: %s (%d bytes)", storage_path, len(pdf_bytes))
-        full_text, page_starts = extract_pdf_text_and_pages(pdf_bytes)
+        if storage_path.endswith(".md"):
+            try:
+                full_text = pdf_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                full_text = pdf_bytes.decode("utf-8", errors="ignore")
+            page_starts = [0]
+        else:
+            full_text, page_starts = extract_pdf_text_and_pages(pdf_bytes)
+
         if not full_text.strip():
             logger.warning("[WARN] No text extracted from: %s", storage_path)
             error_count += 1

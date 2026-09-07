@@ -67,58 +67,130 @@ def _init_firebase_storage() -> Tuple[any, any]:
 
 
 def download_pdf_from_storage(storage_path: str, dest_path: Optional[str] = None) -> Optional[bytes]:
-    """Download a PDF from Firebase Storage and return its bytes."""
+    """Download a file (PDF or Markdown) from Firebase Storage and return its bytes."""
     _, bucket = _init_firebase_storage()
-    if bucket is None:
-        logger.warning("Firebase Storage not available, skipping download")
-        return None
+    if bucket is not None:
+        try:
+            blob = bucket.blob(storage_path)
+            if not blob.exists():
+                logger.warning("Blob does not exist: %s", storage_path)
+                return None
+            bytes_data = blob.download_as_bytes()
+            logger.info("Downloaded %s (%d bytes)", storage_path, len(bytes_data))
 
-    try:
-        blob = bucket.blob(storage_path)
-        if not blob.exists():
-            logger.warning("Blob does not exist: %s", storage_path)
+            if dest_path:
+                Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
+                with open(dest_path, "wb") as f:
+                    f.write(bytes_data)
+                logger.info("Saved to %s", dest_path)
+
+            return bytes_data
+        except Exception as e:
+            logger.error("Failed to download %s: %s", storage_path, e)
             return None
-        bytes_data = blob.download_as_bytes()
-        logger.info("Downloaded %s (%d bytes)", storage_path, len(bytes_data))
 
+    # Fallback to gcloud storage cat
+    import shutil
+    import subprocess
+
+    gcloud_bin = shutil.which("gcloud") or "gcloud"
+    bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET", "mathpulse-ai-2026.firebasestorage.app")
+    cmd = f'"{gcloud_bin}" storage cat "gs://{bucket_name}/{storage_path}"'
+    res = subprocess.run(cmd, shell=True, capture_output=True)
+    if res.returncode == 0 and res.stdout:
+        logger.info("Downloaded via gcloud %s (%d bytes)", storage_path, len(res.stdout))
         if dest_path:
             Path(dest_path).parent.mkdir(parents=True, exist_ok=True)
             with open(dest_path, "wb") as f:
-                f.write(bytes_data)
-            logger.info("Saved to %s", dest_path)
-
-        return bytes_data
-    except Exception as e:
-        logger.error("Failed to download %s: %s", storage_path, e)
-        return None
+                f.write(res.stdout)
+        return res.stdout
+    logger.warning("Download failed for %s", storage_path)
+    return None
 
 
-def list_curriculum_blobs(prefix: str = "curriculum/") -> List[Dict[str, str]]:
-    """List all blobs under a prefix in Firebase Storage."""
+download_file_from_storage = download_pdf_from_storage
+
+
+def list_curriculum_blobs(prefix: str = "curriculum/") -> List[Dict[str, Any]]:
+    """List all curriculum blobs (PDF and Markdown) under a prefix in Firebase Storage."""
     _, bucket = _init_firebase_storage()
-    if bucket is None:
-        return []
+    if bucket is not None:
+        blobs = bucket.list_blobs(prefix=prefix)
+        result = []
+        for blob in blobs:
+            name = blob.name
+            if (name.endswith(".pdf") or name.endswith(".md")) and not name.lower().endswith("readme.md"):
+                result.append({
+                    "name": name,
+                    "size": blob.size,
+                    "updated": str(blob.updated) if blob.updated else None,
+                    "download_url": f"https://storage.googleapis.com/{bucket.name}/{name}",
+                })
+        return result
 
-    blobs = bucket.list_blobs(prefix=prefix)
-    result = []
-    for blob in blobs:
-        if blob.name.endswith(".pdf"):
-            result.append({
-                "name": blob.name,
-                "size": blob.size,
-                "updated": str(blob.updated) if blob.updated else None,
-                "download_url": f"https://storage.googleapis.com/{bucket.name}/{blob.name}",
-            })
-    return result
+    # Fallback to gcloud storage ls
+    import json
+    import shutil
+    import subprocess
+
+    gcloud_bin = shutil.which("gcloud") or "gcloud"
+    bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET", "mathpulse-ai-2026.firebasestorage.app")
+    cmd = f'"{gcloud_bin}" storage ls --json "gs://{bucket_name}/{prefix}**"'
+    res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    if res.returncode == 0:
+        try:
+            items = json.loads(res.stdout)
+            result = []
+            for item in items:
+                meta = item.get("metadata", {})
+                name = meta.get("name") or item.get("name") or ""
+                if (name.endswith(".pdf") or name.endswith(".md")) and not name.lower().endswith("readme.md"):
+                    result.append({
+                        "name": name,
+                        "size": int(meta.get("size", 0)),
+                        "updated": meta.get("updated"),
+                        "download_url": f"https://storage.googleapis.com/{bucket_name}/{name}",
+                    })
+            return result
+        except Exception as err:
+            logger.warning("Failed to parse gcloud storage ls output: %s", err)
+            return []
+    return []
 
 
-# NOTE: Curriculum guide PDFs (shaping papers) are stored in Firebase Storage
-# for system reference but are NOT included in RAG ingestion because they
-# contain only learning objectives and course descriptions — insufficient
-# content for lesson generation (typically <10 chunks each).
-#
-# Only SDO teaching modules (full lesson content with examples and problems)
-# are included in the RAG pipeline.
+def infer_storage_metadata(storage_path: str) -> Dict[str, Any]:
+    """Infer metadata for a curriculum resource stored in Firebase Storage."""
+    clean_path = storage_path.replace("\\", "/")
+    parts = [p.lower() for p in clean_path.split("/")]
+    joined = " ".join(parts)
+    filename = parts[-1] if parts else ""
+
+    subject = "Finite Mathematics" if "finite math" in joined else "General Mathematics"
+    subject_id = "finite-math" if "finite math" in joined else "gen-math"
+    quarter = 0
+    for q in [1, 2, 3, 4]:
+        if f"q{q}" in joined or f"quarter {q}" in joined:
+            quarter = q
+            break
+
+    resource_type = "sdo_module"
+    if "las" in filename:
+        resource_type = "learning_activity_sheet"
+    elif "le" in filename:
+        resource_type = "lesson_exemplar"
+    elif "curriculum" in filename:
+        resource_type = "curriculum_guide"
+
+    return {
+        "subject": subject,
+        "subjectId": subject_id,
+        "type": resource_type,
+        "content_domain": "general",
+        "quarter": quarter,
+        "storage_path": clean_path,
+        "filename": filename,
+    }
+
 
 PDF_METADATA: Dict[str, dict] = {
     # General Mathematics Q1 — SDO Navotas teaching module (100 pages, ~117k chars)
