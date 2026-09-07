@@ -22,4 +22,9 @@ Scope: Full post-merge rollout for PR #139: Firebase Storage replacement, RAG re
   EXPECT: chore/pr139-post-merge-rollout
   EVIDENCE: verified on branch chore/pr139-post-merge-rollout; PWA cache version bumped to 1.1.0-curriculum-sot across public/sw.js, vite.config.ts, build/pwa-config.js, .env.example, .env.local, and src/config/env.ts; offline navigation & precache validated; node scripts/validate-pwa-build.mjs passed.
 
+- [x] G5: Remote Vectorstore Cloud Synchronization & Ingestion: canonical 3,054-chunk ChromaDB database, HNSW indexes, ingest_summary.json, and curriculum_vectorstore.zip uploaded to gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/, rollback snapshot created at ops/rollback/pr139-remote-vectorstore-snapshot-20260907.json, and download_vectorstore_from_firebase.py verified with runnable evidence.
+  CHECK: gcloud storage cat gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/ingest_summary.json
+  EXPECT: 3054
+  EVIDENCE: Passed. Remote vectorstore in Firebase Storage snapshotted to ops/rollback/pr139-remote-vectorstore-snapshot-20260907.json (11 objects). Uploaded canonical ChromaDB database (chroma.sqlite3: 54,784,000 bytes, HNSW index files: 5,118,504 bytes, ingest_summary.json: 3,054 chunks, curriculum_vectorstore.zip: 36,397,268 bytes) to gs://mathpulse-ai-2026.firebasestorage.app/vectorstore/ (17 objects, 101,706,153 bytes total). Verified download_vectorstore_from_firebase.py downloads 20 objects matching canonical hashes. Updated backend/scripts/upload_vectorstore_to_firebase.py, backend/scripts/download_vectorstore_from_firebase.py, backend/rag/firebase_storage_loader.py, and backend/scripts/ingest_from_storage.py to support live cloud Markdown and PDF ingestion with automatic fallback. Triggered GitHub Actions Deploy FastAPI backend workflow to restart remote Space container.
+
 
