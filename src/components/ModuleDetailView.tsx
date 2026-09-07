@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap, BadgeCheck, RotateCcw, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap, BadgeCheck, RotateCcw, RefreshCw, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
@@ -8,6 +8,7 @@ import type { Question } from '@/types/curriculum';
 import QuizExperience, { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import LessonViewer from './LessonViewer';
 import { subjects, Module, Lesson, Quiz } from '../data/subjects';
+import { getLessonById } from '../data/curriculum/types';
 import { useAuth } from '../contexts/AuthContext';
 import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
 import { db } from '../lib/firebase';
@@ -605,6 +606,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
               const lessonPct = getLessonProgressPercent(lesson.id, isCompleted);
               const lessonAccentHex = MODULE_PALETTE[index % MODULE_PALETTE.length];
+              const curriculumMatch = getLessonById(lesson.id);
+              const rawSourcePath = lesson.storagePath || curriculumMatch?.storagePath || '';
+              const sourcePdfName =
+                lesson.sourceFile ||
+                curriculumMatch?.sourceFile ||
+                (rawSourcePath ? rawSourcePath.split('/').pop() : '') ||
+                '';
 
               return (
                 <React.Fragment key={lesson.id}>
@@ -675,9 +683,20 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                             {lesson.locked ? <Lock size={16} /> : isCompleted ? <CheckCircle2 size={20} /> : <Play size={18} className="ml-0.5" />}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[10px] md:text-[12px] font-black uppercase tracking-wider text-slate-500 mb-0.5">
-                              Lesson {index + 1}
-                            </p>
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                              <p className="text-[10px] md:text-[12px] font-black uppercase tracking-wider text-slate-500">
+                                Lesson {index + 1}
+                              </p>
+                              {sourcePdfName && (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] md:text-[11px] font-medium text-slate-600 bg-slate-100/90 border border-slate-200/80 px-2 py-0.5 rounded-full"
+                                  title={`DepEd Curriculum Source: ${sourcePdfName}`}
+                                >
+                                  <FileText size={10} className="text-slate-400 shrink-0" />
+                                  <span className="truncate max-w-[140px] sm:max-w-[220px] font-mono">{sourcePdfName}</span>
+                                </span>
+                              )}
+                            </div>
                             <h3 className="font-bold text-[14px] md:text-[18px] text-[#0a1628] leading-tight line-clamp-2">{lesson.title}</h3>
                           </div>
                         </div>

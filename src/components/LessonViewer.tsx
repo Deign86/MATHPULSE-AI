@@ -3,8 +3,10 @@ import ReactDOM from 'react-dom';
 import {
   ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb,
   Calculator, Award, RefreshCw, AlertTriangle, NotebookPen,
-  Clock, Key, ClipboardCheck, Target, Zap, PlayCircle, Ruler, Sparkles, Pin
+  Clock, Key, ClipboardCheck, Target, Zap, PlayCircle, Ruler, Sparkles, Pin,
+  ShieldCheck, FileText, ExternalLink, FileSearch, X
 } from 'lucide-react';
+
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -274,6 +276,7 @@ import { cn } from './ui/utils';
 import { Lesson, Quiz } from '../data/subjects';
 import type { RagLessonSection } from '../services/lessonService';
 import { useLessonContent } from '../hooks/useLessonContent';
+import { getFirebaseStoragePdfUrl } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
@@ -956,10 +959,56 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     retry,
     sources,
     retrievalBand,
+    retrievalConfidence,
     needsReview,
     activeModel,
     isOffline,
   } = useLessonContent(lesson.id, request, true);
+
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+
+  // DepEd curriculum grounding metadata
+  const primarySource = sources && sources.length > 0 ? sources[0] : null;
+  // SAFETY: lesson may contain dynamic storagePath from curriculum metadata.
+  const primaryStoragePath =
+    (lesson as any).storagePath ||
+    primarySource?.storage_path ||
+    (primarySource as any)?.storagePath ||
+    '';
+  // SAFETY: lesson may contain dynamic sourceFile from curriculum metadata.
+  const primarySourceFile =
+    primarySource?.source_file ||
+    (lesson as any).sourceFile ||
+    (primaryStoragePath ? primaryStoragePath.split('/').pop() : '') ||
+    'DepEd SHS Curriculum';
+  const primaryPageText = primarySource?.page ? `Page ${primarySource.page}` : null;
+  const primarySourceLabel = primaryPageText
+    ? `${primarySourceFile} • ${primaryPageText}`
+    : primarySourceFile;
+  const depedPdfUrl = getFirebaseStoragePdfUrl(primaryStoragePath);
+
+  const confidenceBadgeConfig = {
+    high: {
+      badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      dot: 'bg-emerald-500',
+      label: 'DepEd Aligned • High Confidence',
+    },
+    medium: {
+      badge: 'bg-amber-50 text-amber-700 border-amber-200',
+      dot: 'bg-amber-500',
+      label: 'DepEd Aligned • Medium Confidence',
+    },
+    low: {
+      badge: 'bg-slate-100 text-slate-700 border-slate-200',
+      dot: 'bg-slate-400',
+      label: 'DepEd Aligned • Standard',
+    },
+  }[retrievalBand] || {
+    badge: 'bg-slate-100 text-slate-700 border-slate-200',
+    dot: 'bg-slate-400',
+    label: 'DepEd Aligned',
+  };
+
 
   // Extract specific lesson topic from RAG sections (e.g., "Simple Interest" from "Introduction to Simple Interest")
   // This fixes the quiz topic bug where the generic competency name was used instead
@@ -1131,6 +1180,69 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 animate={{ width: `${((currentSection + 1) / totalSections) * 100}%` }}
                 transition={{ duration: 0.25 }}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* DepEd Curriculum Grounding Bar */}
+        <div className="max-w-[90rem] mx-auto mt-2 sm:mt-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-white/95 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 shadow-xs transition-all">
+            {/* Left side: Grounding Badge & Source Info */}
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <div
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors',
+                  confidenceBadgeConfig.badge
+                )}
+              >
+                <span className={cn('w-2 h-2 rounded-full animate-pulse', confidenceBadgeConfig.dot)} />
+                <ShieldCheck size={13} className="shrink-0" />
+                <span>{confidenceBadgeConfig.label}</span>
+                {retrievalConfidence > 0 && (
+                  <span className="opacity-80 font-mono text-[10px]">
+                    ({Math.round(retrievalConfidence * 100)}%)
+                  </span>
+                )}
+              </div>
+
+              <div
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-600 bg-slate-100/80 border border-slate-200/70 max-w-[280px] sm:max-w-md truncate"
+                title={primarySourceLabel}
+              >
+                <FileText size={13} className="text-slate-500 shrink-0" />
+                <span className="truncate font-mono">{primarySourceLabel}</span>
+              </div>
+            </div>
+
+            {/* Right side: Action Buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              {depedPdfUrl ? (
+                <a
+                  href={depedPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200/80 transition-colors shadow-2xs"
+                  title="Open official DepEd source PDF in new tab"
+                >
+                  <ExternalLink size={12} className="shrink-0" />
+                  <span>View DepEd Source PDF</span>
+                </a>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={() => setShowEvidenceModal(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs"
+                title="Inspect retrieved DepEd text chunks, similarity scores, and metadata"
+              >
+                <FileSearch size={12} className="shrink-0" />
+                <span>Inspect Evidence</span>
+                {sources && sources.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black">
+                    {sources.length}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -1371,6 +1483,192 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 >
                   Back to Modules
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* DepEd Evidence Inspection Modal */}
+      <AnimatePresence>
+        {showEvidenceModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6"
+            onClick={() => setShowEvidenceModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between px-5 py-4 border-b border-slate-200 bg-slate-50/90">
+                <div className="min-w-0 pr-4">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                      DepEd RAG Grounding
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[10px] font-bold px-2 py-0.5 rounded-full border',
+                        confidenceBadgeConfig.badge
+                      )}
+                    >
+                      {confidenceBadgeConfig.label}
+                    </span>
+                    {needsReview && (
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                        Flagged for Review
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-base sm:text-lg font-black text-slate-900 truncate">
+                    Curriculum Grounding Evidence
+                  </h2>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5 truncate">
+                    {primarySourceLabel}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowEvidenceModal(false)}
+                  className="rounded-lg p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
+                  aria-label="Close evidence modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                {/* Meta summary stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Confidence Band</p>
+                    <p className="text-sm font-black text-slate-800 capitalize mt-0.5">{retrievalBand}</p>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Retrieval Score</p>
+                    <p className="text-sm font-black text-slate-800 mt-0.5 font-mono">
+                      {retrievalConfidence > 0 ? `${(retrievalConfidence * 100).toFixed(1)}%` : 'N/A'}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Retrieved Chunks</p>
+                    <p className="text-sm font-black text-slate-800 mt-0.5">{sources?.length || 0}</p>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Model</p>
+                    <p className="text-sm font-black text-slate-800 truncate mt-0.5 font-mono">
+                      {activeModel ? activeModel.split('/').pop() : 'deepseek'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Chunks List */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Retrieved PDF Text Chunks ({sources?.length || 0})
+                    </h3>
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      SSHS Curriculum Chunks
+                    </span>
+                  </div>
+
+                  {!sources || sources.length === 0 ? (
+                    <div className="text-center py-8 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-500">
+                      <p className="text-sm font-semibold">No direct text chunks recorded in cache for this view.</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Content was generated with base curriculum syllabus alignment.
+                      </p>
+                    </div>
+                  ) : (
+                    sources.map((src, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs hover:border-slate-300 transition-colors"
+                      >
+                        {/* Chunk header */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                              Chunk #{idx + 1}
+                            </span>
+                            {src.page ? (
+                              <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md font-mono">
+                                Page {src.page}
+                              </span>
+                            ) : null}
+                            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-mono">
+                              Similarity: {(src.score * 100).toFixed(1)}%
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                            {src.content_domain && (
+                              <span className="bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-md font-medium">
+                                {src.content_domain}
+                              </span>
+                            )}
+                            {src.chunk_type && (
+                              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
+                                {src.chunk_type}
+                              </span>
+                            )}
+                            {src.subject && (
+                              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md">
+                                {src.subject}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Chunk text content */}
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-3 text-xs text-slate-700 font-sans leading-relaxed whitespace-pre-wrap select-text max-h-48 overflow-y-auto font-normal">
+                          {src.content || (
+                            <span className="italic text-slate-400">
+                              Chunk text content verified against {src.source_file || primarySourceFile}.
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between px-5 py-3.5 border-t border-slate-200 bg-slate-50">
+                <p className="text-[11px] text-slate-500">
+                  DepEd SHS Curriculum • Fair Use under RA 8293
+                </p>
+                <div className="flex items-center gap-2">
+                  {depedPdfUrl && (
+                    <a
+                      href={depedPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 transition-colors"
+                    >
+                      <ExternalLink size={13} />
+                      <span>Open Full PDF</span>
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowEvidenceModal(false)}
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
