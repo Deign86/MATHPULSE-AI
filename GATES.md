@@ -169,21 +169,16 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: 0 errors
   EVIDENCE: Passed. `npm run typecheck` exited 0 (0 errors). `npm run lint:anti-slop` (`oxlint --quiet`) exited 0 (0 errors across 382 files). `npm run test` (vitest) passed 27/27 test files (179 tests). `python -m pytest backend/tests/test_liteparse_curriculum.py backend/test_retrieval.py -q` passed 8/8 tests. Storage rules deployed to `mathpulse-ai-2026` allowing public read for `/curriculum/**`.
 
-## Section G: Option 1 Clean Mobile Header & Filter Tray Redesign
-- [x] O1: Top tabs segmented bar placed cleanly above search, redundant sub-heading removed or consolidated.
-  CHECK: node -e "const fs = require('fs'); const content = fs.readFileSync('src/components/ModulesPage.tsx', 'utf8'); const ok = content.includes('showMobileFilters') || content.includes('isFilterOpen') || content.includes('showFilters'); console.log(ok ? 'FILTER_TOGGLE_EXISTS' : 'NO_TOGGLE');"
-  EXPECT: FILTER_TOGGLE_EXISTS
-  EVIDENCE: Passed. Output: FILTER_TOGGLE_EXISTS. Segmented navigation bar relocated as Row 1 at top; redundant sub-headings removed from the sticky header to eliminate vertical clutter.
+## Section I: Always-Visible Curriculum Message on Desktop View
+- [x] V1: Curriculum message is always rendered in non-mobile view (`hidden sm:block`) and collapsible on mobile (`sm:hidden`).
+  CHECK: node -e "const fs = require('fs'); const content = fs.readFileSync('src/components/ModulesPage.tsx', 'utf8'); const ok = content.includes('hidden sm:block') && content.includes('sm:hidden'); console.log(ok ? 'DESKTOP_ALWAYS_VISIBLE' : 'NOT_CONFIGURED');"
+  EXPECT: DESKTOP_ALWAYS_VISIBLE
+  EVIDENCE: Passed. Output: DESKTOP_ALWAYS_VISIBLE. Full curriculum/RAG description is always visible on tablet and desktop screens (`hidden sm:block`), while mobile screens retain the collapsible and dismissible banner with the [About / Hide] toggle (`sm:hidden`).
 
-- [x] O2: Filter dropdowns collapsed behind a compact toggle button with active filter counter.
-  CHECK: node -e "const fs = require('fs'); const content = fs.readFileSync('src/components/ModulesPage.tsx', 'utf8'); const ok = content.includes('activeFilterCount'); console.log(ok ? 'COUNTER_EXISTS' : 'NO_COUNTER');"
-  EXPECT: COUNTER_EXISTS
-  EVIDENCE: Passed. Output: COUNTER_EXISTS. Added showFilters state, compact 'Filters' toggle with active count badge, and animated collapsible tray for subject/quarter/competency/reset.
-
-- [x] O3: TypeScript typecheck, Oxlint anti-slop, and Vitest test suites pass cleanly.
+- [x] V2: TypeScript typecheck, Oxlint anti-slop, and Vitest test suites pass cleanly.
   CHECK: npx oxlint --quiet
   EXPECT: Finished in
-  EVIDENCE: Passed. `npm run typecheck` passed with 0 errors (`tsc --noEmit`). `npx oxlint --quiet` passed with 0 errors across 382 files (Finished in 4.0s). Vitest unit test `src/components/ModulesPage.test.tsx` passed in 1.18s.
+  EVIDENCE: Passed. `npm run typecheck` passed with 0 errors (`tsc --noEmit`). `npx oxlint --quiet` passed with 0 errors across 382 files (Finished in 4.0s). Vitest unit test `src/components/ModulesPage.test.tsx` passed in 1.64s.
 
 
 

@@ -22,6 +22,7 @@ import {
   RefreshCw,
   Flame,
   FileText,
+  Info,
 } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -122,6 +123,13 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [quarterFilter, setQuarterFilter] = useState<'all' | CurriculumQuarter>('all');
   const [competencyFilter, setCompetencyFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [isHeroInfoDismissed, setIsHeroInfoDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('mathpulse_curriculum_info_dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [isScrolled, setIsScrolled] = useState(false);
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
   const [selectedTeacherModule, setSelectedTeacherModule] = useState<TeacherUploadedModule | null>(null);
@@ -458,6 +466,27 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const activeFilterCount = (subjectFilter !== 'all' ? 1 : 0) + (quarterFilter !== 'all' ? 1 : 0) + (competencyFilter !== 'all' ? 1 : 0);
 
+  const toggleHeroInfo = () => {
+    setIsHeroInfoDismissed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('mathpulse_curriculum_info_dismissed', String(next));
+      } catch {
+        /* non-critical storage */
+      }
+      return next;
+    });
+  };
+
+  const dismissHeroInfo = () => {
+    setIsHeroInfoDismissed(true);
+    try {
+      localStorage.setItem('mathpulse_curriculum_info_dismissed', 'true');
+    } catch {
+      /* non-critical storage */
+    }
+  };
+
   useEffect(() => {
     if (activeTab !== 'recommended' || normalizedRiskTopics.length === 0) return;
     setLearningPathLoading(true);
@@ -670,27 +699,77 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       />
 
       {/* Hero Section */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 md:py-6 gap-4 md:gap-6">
-        <div className="flex-1 max-w-3xl">
-          <h1 className="text-[28px] md:text-[44px] font-display font-black text-[#202124] tracking-tight leading-[1.1] mb-3 md:mb-4">
-            Curriculum Modules
-          </h1>
-          <p className="text-[#3c4043] text-[13px] md:text-[17px] leading-relaxed md:leading-[1.7] md:pr-10">
-            MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Currently available: General Mathematics, Business Mathematics, and Statistics & Probability. Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
-          </p>
-          <div className="mt-4 flex items-center gap-3">
-            <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
-              {curriculumContextLabel}
+      <div className="py-2.5 sm:py-4 md:py-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 md:gap-6">
+          <div className="flex-1 max-w-3xl w-full">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <h1 className="text-[24px] sm:text-[32px] md:text-[42px] font-display font-black text-[#202124] tracking-tight leading-[1.1]">
+                Curriculum Modules
+              </h1>
+              <button
+                type="button"
+                onClick={toggleHeroInfo}
+                className="sm:hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200/70 transition-colors shrink-0"
+                title={isHeroInfoDismissed ? "Show curriculum info" : "Hide curriculum info"}
+                aria-expanded={!isHeroInfoDismissed}
+              >
+                <Info size={13} className="text-sky-600" />
+                <span className="text-[11px] font-bold">{isHeroInfoDismissed ? 'About' : 'Hide'}</span>
+              </button>
+            </div>
+
+            {/* Desktop / tablet view: always visible full description */}
+            <p className="hidden sm:block text-[#3c4043] text-sm md:text-[16px] leading-relaxed md:leading-[1.7] md:pr-10 mb-3">
+              MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Currently available: General Mathematics, Business Mathematics, and Statistics & Probability. Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
+            </p>
+
+            <div className="flex items-center gap-2 mb-2">
+              <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-900 shadow-2xs">
+                {curriculumContextLabel}
+              </div>
+            </div>
+
+            {/* Mobile view: collapsible and dismissible banner */}
+            <div className="sm:hidden">
+              <AnimatePresence>
+                {!isHeroInfoDismissed && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="relative rounded-2xl border border-sky-100 bg-gradient-to-r from-sky-50/70 to-indigo-50/50 p-3 text-[#3c4043] shadow-2xs mt-1 mb-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-xs leading-relaxed pr-2">
+                          MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Currently available: General Mathematics, Business Mathematics, and Statistics & Probability. Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={dismissHeroInfo}
+                          className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-black/5 transition-colors shrink-0"
+                          aria-label="Dismiss curriculum message"
+                          title="Dismiss"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
-        </div>
-        <div className="hidden lg:flex flex-shrink-0 items-center justify-end w-[350px]">
-          <ModulesMascot 
-            // SAFETY: trusted internal value already conforms to the asserted type.
-            assessmentDismissed={(userProfile as StudentProfile)?.assessmentDismissed}
-            // SAFETY: trusted internal value already conforms to the asserted type.
-            initialAssessmentCompleted={(userProfile as StudentProfile)?.initialAssessmentCompleted}
-          />
+
+          <div className="hidden lg:flex flex-shrink-0 items-center justify-end w-[350px]">
+            <ModulesMascot 
+              // SAFETY: trusted internal value already conforms to the asserted type.
+              assessmentDismissed={(userProfile as StudentProfile)?.assessmentDismissed}
+              // SAFETY: trusted internal value already conforms to the asserted type.
+              initialAssessmentCompleted={(userProfile as StudentProfile)?.initialAssessmentCompleted}
+            />
+          </div>
         </div>
       </div>
 
