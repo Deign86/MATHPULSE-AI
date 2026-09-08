@@ -55,6 +55,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     }, 1200);
 
+    const hardSafetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 4000);
+
     let unsubscribe: (() => void) | undefined;
     try {
       unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -65,83 +69,96 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setLoading(true);
         setCurrentUser(user);
 
-        if (user) {
-          const requestedRole = consumePendingAuthRole() || getLastAuthRole() || inferRoleFromKnownDemoEmail(user.email) || 'student';
-          const safeRequestedRole: UserRole = requestedRole === 'admin' ? 'student' : requestedRole;
+        try {
+          if (user) {
+            const requestedRole = consumePendingAuthRole() || getLastAuthRole() || inferRoleFromKnownDemoEmail(user.email) || 'student';
+            const safeRequestedRole: UserRole = requestedRole === 'admin' ? 'student' : requestedRole;
 
-          // Fetch user profile from Firestore
-          let profile = await getUserProfile(user.uid);
-          
-          // If profile doesn't exist, auto-create it
-          if (!profile && user.email) {
-            const role: UserRole = safeRequestedRole;
-            const name = user.displayName || 'User';
-            
+            // Fetch user profile from Firestore with timeout fallback guard
+            let profile: User | null = null;
             try {
-              profile = await createUserProfile(user, role, { name });
-
-              // Fire automation for new student enrollment
-              if (role === 'student') {
-                import('../services/automationService.ts')
-                  .then(({ triggerStudentEnrolled }) =>
-                    triggerStudentEnrolled({
-                      // SAFETY: trusted internal value already conforms to the asserted type.
-                      lrn: (profile as StudentProfile | undefined)?.lrn || user.uid,
-                      name,
-                      email: user.email || '',
-                      gradeLevel: '',
-                    })
-                  )
-                  .catch((err) =>
-                    console.error('[WARN] Automation: enrollment pipeline failed:', err)
-                  );
-              }
+              const fetchPromise = getUserProfile(user.uid);
+              const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+              profile = await Promise.race([fetchPromise, timeoutPromise]);
             } catch (err) {
-              console.error('[ERROR] AuthContext: Failed to auto-create profile:', err);
+              console.error('[ERROR] AuthContext: profile fetch failed:', err);
             }
-          }
+            
+            // If profile doesn't exist, auto-create it
+            if (!profile && user.email) {
+              const role: UserRole = safeRequestedRole;
+              const name = user.displayName || 'User';
+              
+              try {
+                const createPromise = createUserProfile(user, role, { name });
+                const timeoutCreate = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+                profile = await Promise.race([createPromise, timeoutCreate]);
 
-          if (profile) {
-            setResolvedRole(profile.role);
-            setUserProfile(profile);
-            // Update lastActive timestamp on login (fire-and-forget)
-            import('firebase/firestore').then(({ doc, updateDoc, serverTimestamp }) => {
-              import('../lib/firebase').then(({ db }) => {
-                updateDoc(doc(db, 'users', user.uid), { lastActive: serverTimestamp() }).catch(() => {});
-              });
-            });
-            // Wire pipeline context for student event emissions
-            if (profile.role === 'student') {
-              // SAFETY: trusted internal value already conforms to the asserted type.
-              const classId = (profile as any).classSectionId as string || '';
-              // SAFETY: trusted internal value already conforms to the asserted type.
-              const teacherId = (profile as any).adviserTeacherId as string || '';
-              if (classId || teacherId) {
-                import('../services/pipelineService').then(({ setStudentContext }) => {
-                  setStudentContext(classId, teacherId);
-                }).catch(() => {});
+                // Fire automation for new student enrollment
+                if (role === 'student' && profile) {
+                  import('../services/automationService.ts')
+                    .then(({ triggerStudentEnrolled }) =>
+                      triggerStudentEnrolled({
+                        // SAFETY: trusted internal value already conforms to the asserted type.
+                        lrn: (profile as StudentProfile | undefined)?.lrn || user.uid,
+                        name,
+                        email: user.email || '',
+                        gradeLevel: '',
+                      })
+                    )
+                    .catch((err) =>
+                      console.error('[WARN] Automation: enrollment pipeline failed:', err)
+                    );
+                }
+              } catch (err) {
+                console.error('[ERROR] AuthContext: Failed to auto-create profile:', err);
               }
+            }
+
+            if (profile) {
+              setResolvedRole(profile.role);
+              setUserProfile(profile);
+              // Update lastActive timestamp on login (fire-and-forget)
+              import('firebase/firestore').then(({ doc, updateDoc, serverTimestamp }) => {
+                import('../lib/firebase').then(({ db }) => {
+                  updateDoc(doc(db, 'users', user.uid), { lastActive: serverTimestamp() }).catch(() => {});
+                });
+              });
+              // Wire pipeline context for student event emissions
+              if (profile.role === 'student') {
+                // SAFETY: trusted internal value already conforms to the asserted type.
+                const classId = (profile as any).classSectionId as string || '';
+                // SAFETY: trusted internal value already conforms to the asserted type.
+                const teacherId = (profile as any).adviserTeacherId as string || '';
+                if (classId || teacherId) {
+                  import('../services/pipelineService').then(({ setStudentContext }) => {
+                    setStudentContext(classId, teacherId);
+                  }).catch(() => {});
+                }
+              }
+            } else {
+              setResolvedRole(safeRequestedRole);
+              // Keep login functional when profile storage is temporarily unavailable.
+              // SAFETY: trusted internal value already conforms to the asserted type.
+              setUserProfile({
+                uid: user.uid,
+                email: user.email || '',
+                name: user.displayName || 'User',
+                role: safeRequestedRole,
+                photo: user.photoURL || '',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              } as User);
             }
           } else {
-            setResolvedRole(safeRequestedRole);
-            // Keep login functional when profile storage is temporarily unavailable.
-            // SAFETY: trusted internal value already conforms to the asserted type.
-            setUserProfile({
-              uid: user.uid,
-              email: user.email || '',
-              name: user.displayName || 'User',
-              role: safeRequestedRole,
-              photo: user.photoURL || '',
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            } as User);
+            setResolvedRole('student');
+            setUserProfile(null);
           }
-        } else {
-          setResolvedRole('student');
-          setUserProfile(null);
+        } catch (err) {
+          console.error('[ERROR] AuthContext: unhandled error in onAuthStateChanged:', err);
+        } finally {
+          setLoading(false);
         }
-        
-        setLoading(false);
       });
     } catch (err) {
       console.error('[ERROR] AuthContext: Failed to attach auth listener:', err);
@@ -152,6 +169,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (fallbackTimer) {
         clearTimeout(fallbackTimer);
       }
+      clearTimeout(hardSafetyTimer);
       if ((unsubscribe instanceof Function)) {
         unsubscribe();
       }

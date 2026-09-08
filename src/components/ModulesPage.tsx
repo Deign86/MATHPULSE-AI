@@ -121,6 +121,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [quarterFilter, setQuarterFilter] = useState<'all' | CurriculumQuarter>('all');
   const [competencyFilter, setCompetencyFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
   const [selectedTeacherModule, setSelectedTeacherModule] = useState<TeacherUploadedModule | null>(null);
@@ -455,6 +456,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     setSearchQuery('');
   };
 
+  const activeFilterCount = (subjectFilter !== 'all' ? 1 : 0) + (quarterFilter !== 'all' ? 1 : 0) + (competencyFilter !== 'all' ? 1 : 0);
+
   useEffect(() => {
     if (activeTab !== 'recommended' || normalizedRiskTopics.length === 0) return;
     setLearningPathLoading(true);
@@ -692,12 +695,46 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       </div>
 
       {/* ── Sticky filter + tab bar ── */}
-      <div className={`sticky top-0 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
-        {/* Search + filters row */}
-        <div className="flex flex-col lg:flex-row items-center gap-3 w-full">
-          <div className="relative flex-1 w-full">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5f6368]">
-              <Search size={16} strokeWidth={2.5} />
+      <div className={`sticky top-0 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10 pt-3 pb-2.5 space-y-2.5 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff]/95 backdrop-blur-md border-b border-[#dde3eb] shadow-xs' : 'bg-transparent'}`}>
+        {/* Row 1: Primary Segmented Navigation Tabs */}
+        <div className="flex items-center bg-slate-100/90 p-1 rounded-2xl sm:rounded-full border border-slate-200/70 shadow-2xs gap-1 overflow-x-auto no-scrollbar w-full">
+          {[
+            { id: 'modules', label: 'Modules', icon: BookOpen, color: 'text-[#1FA7E1]' },
+            { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
+            { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FFB356]' },
+            { id: 'teacher_uploaded', label: 'Teacher Uploaded', icon: GraduationCap, color: 'text-[#F08386]' },
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                // SAFETY: trusted internal value already conforms to the asserted type.
+                onClick={() => setActiveTab(tab.id as ModulesTab)}
+                className={`relative flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-full text-xs sm:text-[13px] font-bold transition-all duration-200 flex-1 sm:flex-initial whitespace-nowrap shrink-0 ${
+                  isActive ? 'text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/40'
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="modulesTabBackground"
+                    className="absolute inset-0 bg-white rounded-xl sm:rounded-full shadow-sm border border-slate-100"
+                    transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
+                  />
+                )}
+                <span className={`relative z-10 flex items-center gap-1.5 ${isActive ? tab.color : ''}`}>
+                  <tab.icon size={15} strokeWidth={isActive ? 2.5 : 2} />
+                  <span>{tab.label}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Row 2: Search + Filter Toggle */}
+        <div className="flex items-center gap-2 w-full">
+          <div className="relative flex-1">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+              <Search size={15} strokeWidth={2.5} />
             </div>
             <input
               id="modules-search"
@@ -706,166 +743,139 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search modules, lessons, or assessments..."
-              className="w-full pl-10 pr-10 py-2 rounded-xl border border-[#dadce0] bg-white text-[#202124] text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+              placeholder="Search modules, lessons, or topics..."
+              className="w-full pl-9.5 pr-8 py-2 rounded-xl border border-slate-200/90 bg-white text-slate-800 text-xs sm:text-[13px] font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all shadow-2xs"
             />
-            {import.meta.env.DEV && (
+            {searchQuery && (
               <button
-                onClick={async () => {
-                  if (!userProfile?.uid) return;
-                  const { doc, setDoc } = await import('firebase/firestore');
-                  const { db } = await import('../lib/firebase');
-                  try {
-                    const docRef = doc(db, 'users', userProfile.uid, 'dailyRewards', userProfile.uid);
-                    await setDoc(docRef, {
-                      lastClaimedDate: '',
-                      lastClaimedWeekSeed: 0,
-                      claimedDays: [0, 1],
-                      currentStreak: 2,
-                      longestStreak: 2,
-                      totalClaimed: 2,
-                      hintTokens: 0,
-                      streakShields: 0,
-                      activeMultiplier: null,
-                    });
-                    setShowDailyCheckIn(true);
-                    toast.success('Dev: Daily rewards reset (days 1-2 claimed)');
-                  } catch (e) {
-                    console.error(e);
-                    toast.error('Dev reset failed');
-                  }
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-amber-500 transition-colors p-1.5 rounded-lg hover:bg-amber-50"
-                title="Reset Daily Rewards (Dev Only)"
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md"
+                aria-label="Clear search"
               >
-                <RotateCcw size={14} />
+                <X size={13} />
               </button>
             )}
           </div>
 
-          <div className="flex flex-row overflow-x-auto no-scrollbar items-center gap-2 w-full lg:w-auto shrink-0 -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 sm:pb-0">
-            <select
-              value={subjectFilter}
-              onChange={(e) => setSubjectFilter(e.target.value)}
-              className="shrink-0 rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
-              aria-label="Subject"
-            >
-              <option value="all">All Subjects</option>
-              {curriculumSubjects.map((subjectId) => (
-                <option key={subjectId} value={subjectId}>
-                  {CURRICULUM_SUBJECT_META[subjectId].label}
-                </option>
-              ))}
-            </select>
+          {/* Filter Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setShowFilters((prev) => !prev)}
+            className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border shadow-2xs shrink-0 ${
+              showFilters || activeFilterCount > 0
+                ? 'bg-sky-50 text-sky-700 border-sky-300 shadow-sky-500/10'
+                : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-50'
+            }`}
+            aria-label="Toggle filters"
+            aria-expanded={showFilters}
+          >
+            <Filter size={14} className={showFilters || activeFilterCount > 0 ? 'text-sky-600' : 'text-slate-500'} />
+            <span className="hidden xs:inline sm:inline">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-sky-600 text-white text-[10px] font-black flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
 
-            <select
-              value={quarterFilter}
-              // SAFETY: trusted internal value already conforms to the asserted type.
-              onChange={(e) => setQuarterFilter(e.target.value as 'all' | CurriculumQuarter)}
-              className="shrink-0 rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
-              aria-label="Quarter"
-            >
-              {QUARTER_FILTERS.map((quarter) => (
-                <option key={quarter} value={quarter}>{quarter === 'all' ? 'All Quarters' : quarter}</option>
-              ))}
-            </select>
-
-            <select
-              value={competencyFilter}
-              onChange={(e) => setCompetencyFilter(e.target.value)}
-              className="shrink-0 rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
-              aria-label="Competency Group"
-            >
-              <option value="all">All Competencies</option>
-              {availableCompetencyGroups.map((group) => (
-                <option key={group} value={group}>{group}</option>
-              ))}
-            </select>
-
+          {import.meta.env.DEV && (
             <button
-              type="button"
-              onClick={clearFilters}
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 shadow-sm"
+              onClick={async () => {
+                if (!userProfile?.uid) return;
+                const { doc, setDoc } = await import('firebase/firestore');
+                const { db } = await import('../lib/firebase');
+                try {
+                  const docRef = doc(db, 'users', userProfile.uid, 'dailyRewards', userProfile.uid);
+                  await setDoc(docRef, {
+                    lastClaimedDate: '',
+                    lastClaimedWeekSeed: 0,
+                    claimedDays: [0, 1],
+                    currentStreak: 2,
+                    longestStreak: 2,
+                    totalClaimed: 2,
+                    hintTokens: 0,
+                    streakShields: 0,
+                    activeMultiplier: null,
+                  });
+                  setShowDailyCheckIn(true);
+                  toast.success('Dev: Daily rewards reset (days 1-2 claimed)');
+                } catch (e) {
+                  console.error(e);
+                  toast.error('Dev reset failed');
+                }
+              }}
+              className="text-slate-400 hover:text-amber-500 transition-colors p-2 rounded-xl bg-white border border-slate-200/90 hover:bg-amber-50 shrink-0 shadow-2xs"
+              title="Reset Daily Rewards (Dev Only)"
             >
-              <Filter size={14} />
-              Reset
+              <RotateCcw size={13} />
             </button>
-          </div>
+          )}
         </div>
 
-        {/* Tabs + section heading row */}
-        <div className="flex flex-col md:flex-row md:items-center gap-3 mt-2">
-          <div className="flex items-center bg-slate-100/80 p-1 rounded-full border border-slate-200/60 shadow-inner gap-1 overflow-x-auto no-scrollbar w-full md:w-auto">
-            {[
-              { id: 'modules', label: 'Modules', icon: BookOpen, color: 'text-[#1FA7E1]' },
-              { id: 'recommended', label: 'Recommended', icon: TrendingUp, color: 'text-[#75D06A]' },
-              { id: 'practice', label: 'Practice', icon: Target, color: 'text-[#FFB356]' },
-              { id: 'teacher_uploaded', label: 'Teacher Uploaded', icon: GraduationCap, color: 'text-[#F08386]' },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  // SAFETY: trusted internal value already conforms to the asserted type.
-                  onClick={() => setActiveTab(tab.id as ModulesTab)}
-                  className={`relative flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
-                    isActive ? 'shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-                  }`}
+        {/* Row 3: Collapsible Filter Tray */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-1 pb-1 flex flex-wrap sm:flex-nowrap items-center gap-2">
+                <select
+                  value={subjectFilter}
+                  onChange={(e) => setSubjectFilter(e.target.value)}
+                  className="flex-1 min-w-[130px] rounded-xl border border-slate-200 bg-white pl-3 pr-7 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-2xs"
+                  aria-label="Subject"
                 >
-                  {isActive && (
-                    <motion.div
-                      layoutId="modulesTabBackground"
-                      className="absolute inset-0 bg-white rounded-full shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1)] border border-slate-100"
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-      />
+                  <option value="all">All Subjects</option>
+                  {curriculumSubjects.map((subjectId) => (
+                    <option key={subjectId} value={subjectId}>
+                      {CURRICULUM_SUBJECT_META[subjectId].label}
+                    </option>
+                  ))}
+                </select>
 
-                  )}
-                  <span className={`relative z-10 flex items-center gap-1.5 ${isActive ? tab.color : ''}`}>
-                    <tab.icon size={15} strokeWidth={isActive ? 2.5 : 2} />
-                    {tab.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                <select
+                  value={quarterFilter}
+                  // SAFETY: trusted internal value already conforms to the asserted type.
+                  onChange={(e) => setQuarterFilter(e.target.value as 'all' | CurriculumQuarter)}
+                  className="flex-1 min-w-[110px] rounded-xl border border-slate-200 bg-white pl-3 pr-7 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-2xs"
+                  aria-label="Quarter"
+                >
+                  {QUARTER_FILTERS.map((quarter) => (
+                    <option key={quarter} value={quarter}>{quarter === 'all' ? 'All Quarters' : quarter}</option>
+                  ))}
+                </select>
 
-          {/* Section heading — changes with active tab */}
-          <div className="flex items-center gap-2 ml-1">
-            {activeTab === 'modules' && (
-              <>
-                <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500">
-                  <Layers size={15} strokeWidth={2.5} />
-                </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">DepEd Strengthened SHS Modules</span>
-              </>
-            )}
-            {activeTab === 'recommended' && (
-              <>
-                <div className="w-7 h-7 rounded-lg bg-[#75D06A]/10 flex items-center justify-center">
-                  <Sparkles size={15} className="text-[#75D06A]" />
-                </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Suggested Next</span>
-              </>
-            )}
-            {activeTab === 'practice' && (
-              <>
-                <div className="w-7 h-7 rounded-lg bg-[#FFB356]/10 flex items-center justify-center">
-                  <Target size={15} className="text-[#FFB356]" />
-                </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Practice Center</span>
-              </>
-            )}
-            {activeTab === 'teacher_uploaded' && (
-              <>
-                <div className="w-7 h-7 rounded-lg bg-[#F08386]/15 border border-[#F08386]/30 flex items-center justify-center text-[#F08386]">
-                  <BookUser size={15} strokeWidth={2.5} />
-                </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Teacher Uploaded Modules</span>
-              </>
-            )}
+                <select
+                  value={competencyFilter}
+                  onChange={(e) => setCompetencyFilter(e.target.value)}
+                  className="flex-1 min-w-[140px] rounded-xl border border-slate-200 bg-white pl-3 pr-7 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-2xs"
+                  aria-label="Competency Group"
+                >
+                  <option value="all">All Competencies</option>
+                  {availableCompetencyGroups.map((group) => (
+                    <option key={group} value={group}>{group}</option>
+                  ))}
+                </select>
 
-          </div>
-        </div>
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100 shadow-2xs"
+                  >
+                    <RotateCcw size={12} />
+                    Reset
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Mobile Mascot - rendered below the sticky filter bar */}
@@ -1001,7 +1011,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <p className="text-slate-500 text-sm">Your teachers haven't uploaded any custom modules yet.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mt-6">
                 {teacherModules.map((mod) => (
                   <div
                     key={mod.moduleId}
@@ -1259,7 +1269,7 @@ const ModulesLibraryView: React.FC<{
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-6">
             {modules.map((module, index) => {
               const isRecommended = weakTopics.some(wt => 
                 (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
@@ -1328,7 +1338,7 @@ const RecommendedModulesView: React.FC<{
             <div className="w-10 h-10 rounded-[14px] bg-[#FF8B8B]/10 flex items-center justify-center text-[20px] shadow-inner"><Flame size={20} className="text-orange-500" /></div>
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Continue This Module</h2>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-6">
             {inProgress.slice(0, 4).map((module, index) => {
               const isRecommended = weakTopics.some(wt => 
                 (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
@@ -1359,7 +1369,7 @@ const RecommendedModulesView: React.FC<{
             You are all caught up. Practice more quizzes to unlock additional recommendations.
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-6">
             {suggested.map((module, index) => {
               const isRecommended = weakTopics.some(wt => 
                 (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
