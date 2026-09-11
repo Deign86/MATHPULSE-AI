@@ -22,6 +22,8 @@ import {
   RefreshCw,
   Flame,
   FileText,
+  Info,
+  ChevronDown,
 } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -122,6 +124,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [quarterFilter, setQuarterFilter] = useState<'all' | CurriculumQuarter>('all');
   const [competencyFilter, setCompetencyFilter] = useState('all');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [showCurriculumInfo, setShowCurriculumInfo] = useState(false);
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
   const [selectedTeacherModule, setSelectedTeacherModule] = useState<TeacherUploadedModule | null>(null);
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
@@ -448,6 +452,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     return Array.from(unique);
   }, [modulePool]);
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (subjectFilter !== 'all') count += 1;
+    if (quarterFilter !== 'all') count += 1;
+    if (competencyFilter !== 'all') count += 1;
+    return count;
+  }, [subjectFilter, quarterFilter, competencyFilter]);
+
   const clearFilters = () => {
     setSubjectFilter('all');
     setQuarterFilter('all');
@@ -666,17 +678,208 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         timeUntilReset={timeUntilReset}
       />
 
+      {/* DepEd Curriculum Info Modal */}
+      <AnimatePresence>
+        {showCurriculumInfo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100"
+            >
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
+                    <BookOpen size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-lg text-slate-900 leading-tight">
+                      Curriculum Modules
+                    </h3>
+                    <p className="text-xs text-slate-500">DepEd Strengthened SHS</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCurriculumInfo(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                  aria-label="Close curriculum info"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-sm text-slate-600 leading-relaxed">
+                <p>
+                  MathPulse AI loads modules directly from DepEd Strengthened Senior High School curriculum guides with AI-powered RAG lesson generation.
+                </p>
+                <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200/80 space-y-2">
+                  <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">Available Now</div>
+                  <ul className="text-xs space-y-1 text-slate-700 list-disc list-inside">
+                    <li>General Mathematics</li>
+                    <li>Business Mathematics</li>
+                    <li>Statistics & Probability</li>
+                  </ul>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
+                </p>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCurriculumInfo(false)}
+                  className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-colors shadow-sm"
+                >
+                  Got It
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Filter Drawer / Sheet */}
+      <AnimatePresence>
+        {showFilterDrawer && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-lg p-6 shadow-2xl border border-slate-100 max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter size={18} className="text-sky-600" />
+                  <h3 className="font-display font-bold text-lg text-slate-900">
+                    Filter Modules
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFilterDrawer(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                  aria-label="Close filter drawer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+                {/* Subject Selector */}
+                <div>
+                  <label htmlFor="mobile-filter-subject" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Subject
+                  </label>
+                  <select
+                    id="mobile-filter-subject"
+                    value={subjectFilter}
+                    onChange={(e) => setSubjectFilter(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:border-sky-400 focus:outline-none shadow-sm"
+                  >
+                    <option value="all">All Subjects</option>
+                    {curriculumSubjects.map((subjectId) => (
+                      <option key={subjectId} value={subjectId}>
+                        {CURRICULUM_SUBJECT_META[subjectId].label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Quarter Selector */}
+                <div>
+                  <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Quarter
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {QUARTER_FILTERS.map((quarter) => {
+                      const isSelected = quarterFilter === quarter;
+                      return (
+                        <button
+                          key={quarter}
+                          type="button"
+                          onClick={() => setQuarterFilter(quarter)}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
+                            isSelected
+                              ? 'bg-sky-50 border-sky-400 text-sky-700 ring-1 ring-sky-400'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {quarter === 'all' ? 'All Quarters' : quarter}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Competency Group */}
+                <div>
+                  <label htmlFor="mobile-filter-competency" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Competency Group
+                  </label>
+                  <select
+                    id="mobile-filter-competency"
+                    value={competencyFilter}
+                    onChange={(e) => setCompetencyFilter(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:border-sky-400 focus:outline-none shadow-sm"
+                  >
+                    <option value="all">All Competencies</option>
+                    {availableCompetencyGroups.map((group) => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Reset All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFilterDrawer(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-colors shadow-sm"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Hero Section */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 md:py-6 gap-4 md:gap-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-3 md:py-6 gap-2 md:gap-6">
         <div className="flex-1 max-w-3xl">
-          <h1 className="text-[28px] md:text-[44px] font-display font-black text-[#202124] tracking-tight leading-[1.1] mb-3 md:mb-4">
-            Curriculum Modules
-          </h1>
-          <p className="text-[#3c4043] text-[13px] md:text-[17px] leading-relaxed md:leading-[1.7] md:pr-10">
+          <div className="flex items-center justify-between gap-3 mb-1.5 md:mb-3">
+            <h1 className="text-[24px] sm:text-[28px] md:text-[44px] font-display font-black text-[#202124] tracking-tight leading-[1.1]">
+              Curriculum Modules
+            </h1>
+            {/* Mobile About / Info button */}
+            <button
+              type="button"
+              onClick={() => setShowCurriculumInfo(true)}
+              className="inline-flex lg:hidden items-center gap-1.5 px-3 py-1.5 rounded-full border border-sky-200 bg-sky-50 text-xs font-bold text-sky-800 hover:bg-sky-100 transition-colors shadow-sm shrink-0"
+              title="About DepEd Curriculum"
+            >
+              <Info size={14} className="text-sky-600" />
+              <span>About</span>
+            </button>
+          </div>
+          <p className="hidden lg:block text-[#3c4043] text-[13px] md:text-[17px] leading-relaxed md:leading-[1.7] md:pr-10">
             MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Currently available: General Mathematics, Business Mathematics, and Statistics & Probability. Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
           </p>
-          <div className="mt-4 flex items-center gap-3">
-            <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
+          <div className="mt-2 md:mt-4 flex items-center gap-2 md:gap-3">
+            <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-bold text-sky-900">
               {curriculumContextLabel}
             </div>
           </div>
@@ -743,7 +946,66 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             )}
           </div>
 
-          <div className="flex flex-row overflow-x-auto no-scrollbar items-center gap-2 w-full lg:w-auto shrink-0 -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 sm:pb-0">
+          {/* Mobile Filters: Single Quarter Dropdown Pill + Filters Drawer Trigger */}
+          <div className="flex lg:hidden items-center gap-2 w-full pb-1">
+            {/* Single Quarter Pill Dropdown */}
+            <div className="relative inline-block shrink-0">
+              <select
+                id="mobile-quarter-select"
+                value={quarterFilter}
+                // SAFETY: trusted internal value already conforms to the asserted type.
+                onChange={(e) => setQuarterFilter(e.target.value as 'all' | CurriculumQuarter)}
+                className={`appearance-none pl-3.5 pr-8 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-400 ${
+                  quarterFilter !== 'all'
+                    ? 'bg-sky-50 text-sky-800 border-sky-300 ring-1 ring-sky-300'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+                aria-label="Select Quarter"
+              >
+                {QUARTER_FILTERS.map((quarter) => (
+                  <option key={quarter} value={quarter}>
+                    {quarter === 'all' ? 'All Quarters' : quarter}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+
+            {/* Filter Drawer Button */}
+            <button
+              type="button"
+              onClick={() => setShowFilterDrawer(true)}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 border transition-all shadow-sm ${
+                activeFilterCount > 0
+                  ? 'bg-sky-50 text-sky-800 border-sky-300 ring-1 ring-sky-300'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Filter size={13} />
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-sky-600 text-white text-[10px] flex items-center justify-center font-black">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* Reset Filters Button */}
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors shrink-0 ml-auto"
+                title="Reset all filters"
+                aria-label="Reset all filters"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Desktop Filters: Preserved inline dropdowns */}
+          <div className="hidden lg:flex flex-row overflow-x-auto no-scrollbar items-center gap-2 shrink-0">
             <select
               value={subjectFilter}
               onChange={(e) => setSubjectFilter(e.target.value)}
@@ -808,21 +1070,26 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                   key={tab.id}
                   // SAFETY: trusted internal value already conforms to the asserted type.
                   onClick={() => setActiveTab(tab.id as ModulesTab)}
-                  className={`relative flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
-                    isActive ? 'shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                  className={`relative flex items-center justify-center gap-1.5 rounded-full text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
+                    isActive
+                      ? 'px-3.5 sm:px-4 py-1.5 shadow-sm'
+                      : 'px-2.5 sm:px-4 py-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                   }`}
+                  title={tab.label}
+                  aria-label={tab.label}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="modulesTabBackground"
                       className="absolute inset-0 bg-white rounded-full shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1)] border border-slate-100"
                       transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-      />
-
+                    />
                   )}
                   <span className={`relative z-10 flex items-center gap-1.5 ${isActive ? tab.color : ''}`}>
                     <tab.icon size={15} strokeWidth={isActive ? 2.5 : 2} />
-                    {tab.label}
+                    <span className={isActive ? 'inline' : 'hidden sm:inline'}>
+                      {tab.label}
+                    </span>
                   </span>
                 </button>
               );
@@ -868,15 +1135,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         </div>
       </div>
 
-      {/* Mobile Mascot - rendered below the sticky filter bar */}
-      <div className="flex lg:hidden items-center justify-center w-full mt-2 mb-2">
-        <ModulesMascot 
-          // SAFETY: trusted internal value already conforms to the asserted type.
-          assessmentDismissed={(userProfile as StudentProfile)?.assessmentDismissed}
-          // SAFETY: trusted internal value already conforms to the asserted type.
-          initialAssessmentCompleted={(userProfile as StudentProfile)?.initialAssessmentCompleted}
-        />
-      </div>
 
       <div className="pt-4">
         {normalizedRiskTopics.length > 0 && (
@@ -1001,7 +1259,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <p className="text-slate-500 text-sm">Your teachers haven't uploaded any custom modules yet.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mt-6">
                 {teacherModules.map((mod) => (
                   <div
                     key={mod.moduleId}
@@ -1259,7 +1517,7 @@ const ModulesLibraryView: React.FC<{
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {modules.map((module, index) => {
               const isRecommended = weakTopics.some(wt => 
                 (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
@@ -1328,7 +1586,7 @@ const RecommendedModulesView: React.FC<{
             <div className="w-10 h-10 rounded-[14px] bg-[#FF8B8B]/10 flex items-center justify-center text-[20px] shadow-inner"><Flame size={20} className="text-orange-500" /></div>
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Continue This Module</h2>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {inProgress.slice(0, 4).map((module, index) => {
               const isRecommended = weakTopics.some(wt => 
                 (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
@@ -1359,7 +1617,7 @@ const RecommendedModulesView: React.FC<{
             You are all caught up. Practice more quizzes to unlock additional recommendations.
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {suggested.map((module, index) => {
               const isRecommended = weakTopics.some(wt => 
                 (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
