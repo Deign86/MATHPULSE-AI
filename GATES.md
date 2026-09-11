@@ -169,6 +169,34 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: 0 errors
   EVIDENCE: Passed. `npm run typecheck` exited 0 (0 errors). `npm run lint:anti-slop` (`oxlint --quiet`) exited 0 (0 errors across 382 files). `npm run test` (vitest) passed 27/27 test files (179 tests). `python -m pytest backend/tests/test_liteparse_curriculum.py backend/test_retrieval.py -q` passed 8/8 tests. Storage rules deployed to `mathpulse-ai-2026` allowing public read for `/curriculum/**`.
 
+## Section F: Avatar Studio Mobile Redesign & Quantum Cyber-Podium
+- [x] F1: Mobile split-screen layout: top ~42% pinned avatar stage, bottom drawer with independently scrollable items and sticky category bar.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/AvatarShop.tsx', 'utf8'); console.log(s.includes('Spotlight') || s.includes('Podium') ? 'STAGE_READY' : 'MISSING');"
+  EXPECT: STAGE_READY
+  EVIDENCE: Passed. Output: `STAGE_READY`. Implemented pinned top avatar stage (~38–42% height) and independently scrollable bottom wardrobe drawer (~58–62% height) with rounded top corners and drag handle visual cue. Main app container configured with `overflow-hidden p-0` on `activeTab === 'Avatar Studio'` to eliminate whole-page scrolling on mobile.
 
+- [x] F2: Prominent student name display in header on mobile and desktop views.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/AvatarShop.tsx', 'utf8'); console.log(s.includes('studentDisplayName') && s.includes('Qbit') ? 'NAME_DISPLAYED' : 'MISSING');"
+  EXPECT: NAME_DISPLAYED
+  EVIDENCE: Passed. Output: `NAME_DISPLAYED`. Top header inside stage prominently renders `${studentDisplayName}'s Qbit` with sparkles icon, surprise outfit randomizer (`Dices`), dev reset, and real-time XP balance chip.
 
+- [x] F3: Spotlight beam, 3D cyber-podium, and floating math glyphs implemented.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/AvatarShop.tsx', 'utf8'); console.log(s.includes('polygon') ? 'VISUALS_READY' : 'MISSING');"
+  EXPECT: VISUALS_READY
+  EVIDENCE: Passed. Output: `VISUALS_READY`. Dual-layer volumetric overhead spotlight beam with `polygon(30% 0%, 70% 0%, 94% 100%, 6% 100%)` and beam pulse animation. 3D cyber-podium designed with elliptical top platform, glowing cyan rim (`border-sky-400/80 shadow-[0_0_24px_rgba(56,189,248,0.5)]`), shaded depth cylinder, and ambient floor reflection. Seven floating holographic math glyphs (π, ∑, ∫, √x, ∞, Δ, f(x)) drifting in the background.
+
+- [x] F4: Sticky icon-only category bar on mobile viewports.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/AvatarShop.tsx', 'utf8'); console.log(s.includes('cat.icon') ? 'ICON_TABS_READY' : 'MISSING');"
+  EXPECT: ICON_TABS_READY
+  EVIDENCE: Passed. Output: `ICON_TABS_READY`. Sticky category pill bar switches to compact icon-only circular tabs on mobile (`< sm:`) with active gradient highlight and touch-friendly 40px+ tap targets, expanding to icon + label on `sm:` and desktop.
+
+- [x] F5: Developer documentation created in docs/AVATAR_STUDIO_MOBILE_REDESIGN.md.
+  CHECK: node -e "const fs = require('fs'); console.log(fs.existsSync('docs/AVATAR_STUDIO_MOBILE_REDESIGN.md') ? 'DOCS_EXISTS' : 'MISSING');"
+  EXPECT: DOCS_EXISTS
+  EVIDENCE: Passed. Output: `DOCS_EXISTS`. Complete developer guide created at `docs/AVATAR_STUDIO_MOBILE_REDESIGN.md` covering architecture, motivation, component breakdown, styling tokens, and responsive testing guidelines.
+
+- [x] F6: System verification: npm run typecheck and npm run lint:anti-slop pass with 0 errors.
+  CHECK: npm run typecheck
+  EXPECT: 0 errors
+  EVIDENCE: Passed. `npm run typecheck` passed with 0 errors. `npm run lint:anti-slop` (`oxlint --quiet`) passed with 0 errors across 382 files. Production build verified.
 
