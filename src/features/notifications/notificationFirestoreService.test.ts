@@ -50,6 +50,29 @@ vi.spyOn(firestore, 'setDoc').mockImplementation(async () => undefined);
 vi.spyOn(firestore, 'getDocs').mockImplementation(async () => snapshotWith({ docs: [] }));
 vi.spyOn(firestore, 'updateDoc').mockImplementation(async () => undefined);
 vi.spyOn(firestore, 'deleteDoc').mockImplementation(async () => undefined);
+// SAFETY: mock WriteBatch handle; tests only assert update and commit operations.
+const mockWriteBatchWith = (overrides?: {
+  update?: ReturnType<typeof vi.fn>;
+  commit?: ReturnType<typeof vi.fn>;
+}) => {
+  const batch = {
+    set: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    commit: vi.fn(async () => undefined),
+    ...overrides,
+  };
+  // SAFETY: attaches WriteBatch prototype to avoid chained assertion laundering.
+  return Object.assign(
+    Object.create(firestore.WriteBatch.prototype),
+    batch,
+  ) as ReturnType<typeof firestore.writeBatch>;
+};
+
+vi.spyOn(firestore, 'writeBatch').mockImplementation(
+  // SAFETY: batch handle; tests only assert update/commit calls.
+  () => mockWriteBatchWith(),
+);
 
 const {
   createNotification,
@@ -177,15 +200,29 @@ describe('notificationFirestoreService', () => {
 
   describe('markAllAsRead', () => {
     it('marks all unread notifications as read', async () => {
-      const mockSubcollectionDocs = [
-        { ref: 'ref-1', data: () => ({ isRead: false }) },
-        { ref: 'ref-2', data: () => ({ isRead: false }) },
+      const mockIsReadDocs = [
+        { id: 'doc-1', ref: 'ref-1', data: () => ({ isRead: false }) },
+        { id: 'doc-2', ref: 'ref-2', data: () => ({ isRead: false }) },
       ];
-      vi.mocked(getDocs).mockResolvedValueOnce(snapshotWith({ docs: mockSubcollectionDocs }));
+      const mockLegacyDocs = [
+        { id: 'doc-2', ref: 'ref-2', data: () => ({ read: false }) },
+        { id: 'doc-3', ref: 'ref-3', data: () => ({ read: false }) },
+      ];
+      vi.mocked(getDocs)
+        .mockResolvedValueOnce(snapshotWith({ docs: mockIsReadDocs }))
+        .mockResolvedValueOnce(snapshotWith({ docs: mockLegacyDocs }));
+      const batchUpdate = vi.fn();
+      const batchCommit = vi.fn(async () => undefined);
+      vi.mocked(firestore.writeBatch).mockImplementation(
+        // SAFETY: mock WriteBatch handle; tests track batchUpdate and batchCommit calls.
+        () => mockWriteBatchWith({ update: batchUpdate, commit: batchCommit }),
+      );
 
       await markAllAsRead('user-123');
 
-      expect(updateDoc).toHaveBeenCalledTimes(2);
+      // doc-1, doc-2 (deduped), doc-3 → 3 batched updates, one atomic commit
+      expect(batchUpdate).toHaveBeenCalledTimes(3);
+      expect(batchCommit).toHaveBeenCalledTimes(1);
     });
   });
 

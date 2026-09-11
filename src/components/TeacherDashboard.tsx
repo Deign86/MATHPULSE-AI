@@ -1493,7 +1493,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   }
 
   return (
-    <div className="relative flex h-screen w-full bg-background overflow-hidden">
+    <div className="relative flex h-dvh w-full bg-background overflow-hidden">
       {isMobileViewport && mobileNavOpen && (
         <button
           aria-label="Close navigation"
@@ -1662,6 +1662,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-semibold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : ''
               }`}
             onClick={onOpenSettings}
+            aria-label="Settings"
             title={sidebarCollapsed && !sidebarHovered ? 'Settings' : ''}
           >
             <Settings size={18} strokeWidth={2} className="flex-shrink-0" />
@@ -1693,7 +1694,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     </button>
                   )}
                   <div>
-                    <h1 className="text-lg sm:text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight truncate">
+                    <h1 className="text-lg sm:text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight truncate text-balance">
                       {activeView === 'dashboard' && 'Teacher Dashboard'}
                       {activeView === 'analytics' && 'Class Analytics'}
                       {activeView === 'intervention' && 'Intervention Center'}
@@ -1723,15 +1724,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9956DE]/12 border border-[#9956DE]/30 rounded-lg">
                         <Users size={13} className="text-[#9956DE]" />
-                        <span className="text-xs font-display font-semibold text-[#9956DE]">{totalStudents} students</span>
+                        <span className="text-xs font-display font-semibold text-[#9956DE] tabular-nums">{totalStudents} students</span>
                       </div>
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
                         <AlertTriangle size={13} className="text-[#F08386]" />
-                        <span className="text-xs font-display font-semibold text-[#C65E63]">{totalAtRisk} at risk</span>
+                        <span className="text-xs font-display font-semibold text-[#C65E63] tabular-nums">{totalAtRisk} at risk</span>
                       </div>
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
                         <TrendingUp size={13} className="text-[#75D06A]" />
-                        <span className="text-xs font-display font-semibold text-[#4D9F46]">{avgPerformance}% avg</span>
+                        <span className="text-xs font-display font-semibold text-[#4D9F46] tabular-nums">{avgPerformance}% avg</span>
                       </div>
                     </div>
                   )}
@@ -2324,10 +2325,10 @@ const DashboardView: React.FC<{
             <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">Total students</span>
             <div className="flex bg-white/20 p-1.5 rounded-lg"><Users size={15} /></div>
           </div>
-          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight">{totalStudents}</div>
+          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight tabular-nums">{totalStudents}</div>
           <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
             <span>Added this year</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold">{totalStudents > 0 ? '+1' : '0'}</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums">{totalStudents > 0 ? '+1' : '0'}</span>
           </div>
         </div>
 
@@ -2339,10 +2340,10 @@ const DashboardView: React.FC<{
             <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">Class average</span>
             <div className="flex bg-white/20 p-1.5 rounded-lg"><Target size={15} /></div>
           </div>
-          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight">{avgPerformance}%</div>
+          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight tabular-nums">{avgPerformance}%</div>
           <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
             <span>Vs. last month</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold">+2.5%</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums">+2.5%</span>
           </div>
         </div>
 
@@ -2354,10 +2355,10 @@ const DashboardView: React.FC<{
             <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">Engagement</span>
             <div className="flex bg-white/20 p-1.5 rounded-lg"><Activity size={15} /></div>
           </div>
-          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight">{engagementRate}%</div>
+          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight tabular-nums">{engagementRate}%</div>
           <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
             <span>Active participants</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold">{Math.round((engagementRate / 100) * totalStudents)}</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums">{Math.round((engagementRate / 100) * totalStudents)}</span>
           </div>
         </div>
 
@@ -2369,10 +2370,10 @@ const DashboardView: React.FC<{
             <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">At risk</span>
             <div className="flex bg-white/20 p-1.5 rounded-lg"><AlertCircle size={15} /></div>
           </div>
-          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight">{totalAtRisk}</div>
+          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight tabular-nums">{totalAtRisk}</div>
           <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
             <span>Requires attention</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold">{riskPercentage}%</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums">{riskPercentage}%</span>
           </div>
         </div>
       </div>
@@ -2380,7 +2381,7 @@ const DashboardView: React.FC<{
       {/* Classes Container */}
       <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[18px_20px] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <div className="flex justify-between items-center mb-[14px]">
-          <h2 className="text-[15px] font-semibold text-[#1e293b]">My classes</h2>
+          <h2 className="text-[15px] font-semibold text-[#1e293b] text-balance">My classes</h2>
           <span onClick={onViewAllClasses} className="text-[12px] text-[#10b981] font-semibold cursor-pointer hover:underline">View all</span>
         </div>
 
@@ -2420,7 +2421,7 @@ const DashboardView: React.FC<{
                   <div className="text-[11px] text-[#94a3b8] mt-[1px]">{classItem.classification || 'High School'}</div>
                 </div>
                 <div className="hidden sm:block text-[12px] text-[#64748b] min-w-[65px]">{classItem.schedule || 'Mon-Fri'}</div>
-                <div className="hidden sm:block text-[12px] text-[#64748b] min-w-[85px]">{classItem.studentCount} students</div>
+                <div className="hidden sm:block text-[12px] text-[#64748b] min-w-[85px]"><span className="tabular-nums">{classItem.studentCount}</span> students</div>
                 <span className={`text-[10px] font-semibold px-[9px] py-[3px] rounded-[6px] ${classItem.riskLevel === 'high' ? 'bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]' : classItem.riskLevel === 'medium' ? 'bg-[#fffbeb] text-[#b45309] border border-[#fcd34d]' : 'bg-[#ecfdf5] text-[#065f46] border border-[#6ee7b7]'}`}>
                   {classItem.riskLevel === 'high' ? 'High risk' : classItem.riskLevel === 'medium' ? 'Medium risk' : 'On track'}
                 </span>
@@ -2488,7 +2489,7 @@ const StudentCard = React.memo(({
             </p>
           </div>
         </div>
-        <span className={`font-semibold text-[11px] px-[6px] py-[2px] rounded-[14px] shrink-0 ${theme.badge}`}>{student.avgScore}%</span>
+        <span className={`font-semibold text-[11px] px-[6px] py-[2px] rounded-[14px] shrink-0 tabular-nums ${theme.badge}`}>{student.avgScore}%</span>
         {onRemoveStudent && (
           <button
             type="button"
@@ -2589,11 +2590,11 @@ const SectionManagementPanel: React.FC<{
         aria-expanded={expanded}
       >
         <div>
-          <h3 className="text-[15px] font-semibold text-[#1e293b]">Section Management</h3>
+          <h3 className="text-[15px] font-semibold text-[#1e293b] text-balance">Section Management</h3>
           <p className="text-[12px] text-[#64748b] mt-0.5">
-            Move students between sections. Showing {students.length} students across {grouped.assigned.length} section
+            Move students between sections. Showing <span className="tabular-nums">{students.length}</span> students across <span className="tabular-nums">{grouped.assigned.length}</span> section
             {grouped.assigned.length === 1 ? '' : 's'}
-            {grouped.unassigned.length > 0 ? ` · ${grouped.unassigned.length} unassigned` : ''}.
+            {grouped.unassigned.length > 0 ? <> · <span className="tabular-nums">{grouped.unassigned.length}</span> unassigned</> : ''}.
           </p>
         </div>
         <ChevronDown
@@ -2613,7 +2614,7 @@ const SectionManagementPanel: React.FC<{
             <div key={bucket.sectionId} className="px-6 py-4">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b] mb-2">
                 {bucket.label}{' '}
-                <span className="text-[10px] font-normal text-[#94a3b8]">({bucket.students.length})</span>
+                <span className="text-[10px] font-normal text-[#94a3b8] tabular-nums">({bucket.students.length})</span>
               </p>
               <div className="space-y-1.5">
                 {bucket.students.map((student) => (
@@ -2633,7 +2634,7 @@ const SectionManagementPanel: React.FC<{
           {grouped.unassigned.length > 0 && (
             <div className="px-6 py-4 bg-amber-50/40">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 mb-2">
-                Unassigned <span className="text-[10px] font-normal text-amber-600/80">({grouped.unassigned.length})</span>
+                Unassigned <span className="text-[10px] font-normal text-amber-600/80 tabular-nums">({grouped.unassigned.length})</span>
               </p>
               <div className="space-y-1.5">
                 {grouped.unassigned.map((student) => (
@@ -3050,7 +3051,7 @@ const AnalyticsView: React.FC<{
 
           {/* Left Side Info */}
           <div className="shrink-0 relative z-10">
-            <h1 className="text-xl sm:text-[28px] font-bold mb-2 sm:mb-3 tracking-tight">{selectedClass.name}</h1>
+            <h1 className="text-xl sm:text-[28px] font-bold mb-2 sm:mb-3 tracking-tight text-balance">{selectedClass.name}</h1>
             <div className="flex flex-wrap items-center gap-2 mb-3">
               {classBadges.map((badge, idx) => (
                 <span key={badge} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white text-[12px] font-semibold rounded-full shadow-sm border border-white/20">{badge}</span>
@@ -3069,17 +3070,17 @@ const AnalyticsView: React.FC<{
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Class Average</span>
               <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{Math.round(classAverage)}%</div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight tabular-nums">{Math.round(classAverage)}%</div>
           </div>
 
-          <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
+          <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
             <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
             <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
             <div className="relative z-10 flex justify-between items-start">
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Completion</span>
               <div className="bg-white/20 p-1.5 rounded-lg flex"><CheckCircle size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{Math.round(completionRate)}%</div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight tabular-nums">{Math.round(completionRate)}%</div>
           </div>
 
           <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
@@ -3089,7 +3090,7 @@ const AnalyticsView: React.FC<{
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Participation</span>
               <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">{Math.round(participationRate)}%</div>
+            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight tabular-nums">{Math.round(participationRate)}%</div>
           </div>
 
           <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
@@ -3100,7 +3101,7 @@ const AnalyticsView: React.FC<{
               <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertTriangle size={14} /></div>
             </div>
             <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">
-              {attentionStudents.length} <span className="text-[12px] opacity-90 font-medium">students</span>
+              <span className="tabular-nums">{attentionStudents.length}</span> <span className="text-[12px] opacity-90 font-medium">students</span>
             </div>
           </div>
         </div>
@@ -3110,9 +3111,10 @@ const AnalyticsView: React.FC<{
           <div className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[500px] xl:h-full">
             <div className="p-5 border-b border-[#f1f5f9] shrink-0">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[15px] font-semibold text-[#1e293b]">Students <span className="text-[#64748b] text-[13px]">({visibleStudents.length})</span></h2>
+                <h2 className="text-[15px] font-semibold text-[#1e293b] text-balance">Students <span className="text-[#64748b] text-[13px] tabular-nums">({visibleStudents.length})</span></h2>
                 <button
                   onClick={() => onAddStudents?.()}
+                  aria-label="Add students to class"
                   className="text-[11px] font-semibold text-[#9956DE] hover:text-[#7c3aed] bg-[#9956DE]/10 hover:bg-[#9956DE]/20 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   + Add
@@ -3131,14 +3133,17 @@ const AnalyticsView: React.FC<{
               <div className="flex items-center gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
                 <button
                   onClick={() => setFilterType('All')}
+                  aria-label="Filter all students"
                   className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'All' ? 'bg-[#4f46e5] text-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#f1f5f9]'}`}
                 >All Students</button>
                 <button
                   onClick={() => setFilterType('Good')}
+                  aria-label="Filter top performers"
                   className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Good' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-emerald-50/40 text-emerald-600 border border-emerald-50 hover:bg-emerald-50'}`}
                 >Top Performers</button>
                 <button
                   onClick={() => setFilterType('Risk')}
+                  aria-label="Filter students needing attention"
                   className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Risk' ? 'bg-rose-50 text-rose-600 border border-rose-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-rose-50/40 text-rose-600 border border-rose-50 hover:bg-rose-50'}`}
                 >Needs Attention</button>
               </div>
@@ -3169,7 +3174,7 @@ const AnalyticsView: React.FC<{
               {/* Visual Chart 1: Risk Distribution */}
               <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-semibold text-[15px] text-[#1e293b]">Risk Distribution</h3>
+                  <h3 className="font-semibold text-[15px] text-[#1e293b] text-balance">Risk Distribution</h3>
                   <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
                 </div>
                 <div className="relative w-full flex-1 min-h-[180px]">
@@ -3193,7 +3198,7 @@ const AnalyticsView: React.FC<{
               {/* Visual Chart 2: Topic Performance */}
               <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[280px]">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-semibold text-[15px] text-[#1e293b]">Topic Performance</h3>
+                  <h3 className="font-semibold text-[15px] text-[#1e293b] text-balance">Topic Performance</h3>
                   <MoreHorizontal className="w-4 h-4 text-[#64748b] cursor-pointer group-hover:scale-110 transition-transform" />
                 </div>
                 <div className="relative w-full flex-1 min-h-[180px] -ml-8">
@@ -3229,7 +3234,7 @@ const AnalyticsView: React.FC<{
                   {topPerformers.map((student) => (
                     <div key={`top-${student.id}`} onClick={() => onViewStudent(student)} className="flex justify-between items-center p-3 bg-emerald-50/40 rounded-[14px] border border-emerald-50 group hover:scale-[1.02] transition-transform cursor-pointer">
                       <span className="text-[13px] font-semibold text-[#1e293b]">{student.name}</span>
-                      <span className="text-[13px] font-semibold text-emerald-600">{getStudentScore(student.id) ?? student.avgScore}%</span>
+                      <span className="text-[13px] font-semibold text-emerald-600 tabular-nums">{getStudentScore(student.id) ?? student.avgScore}%</span>
                     </div>
                   ))}
                   {topPerformers.length === 0 && <p className="text-xs text-muted-foreground">No students available yet.</p>}
@@ -3842,7 +3847,7 @@ const InterventionView: React.FC<{
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <div className="flex items-center gap-2">
-                <h3 className="text-[15px] font-bold text-[#1e293b]">AI Analysis</h3>
+                <h3 className="text-[15px] font-bold text-[#1e293b] text-balance">AI Analysis</h3>
                 <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full uppercase tracking-wider shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                   Insights Active
@@ -3897,7 +3902,7 @@ const InterventionView: React.FC<{
           {/* Learning Path Timeline */}
           <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
             <div className="flex items-center justify-between mb-6 border-b border-[#f1f5f9] pb-4">
-              <h3 className="text-[15px] font-semibold text-[#1e293b]">Generated Learning Path</h3>
+              <h3 className="text-[15px] font-semibold text-[#1e293b] text-balance">Generated Learning Path</h3>
               <div className="flex items-center gap-2">
                 <button disabled={!interventionPlan?.learning_path} onClick={async () => {
                   if (!interventionPlan) return;
@@ -4028,7 +4033,7 @@ const InterventionView: React.FC<{
               </div>
             </div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[15px] font-semibold text-[#1e293b]">Targeted Lesson Generation</h3>
+              <h3 className="text-[15px] font-semibold text-[#1e293b] text-balance">Targeted Lesson Generation</h3>
               <Button
                 onClick={() => setLessonTrigger(n => n + 1)}
                 disabled={lessonLoading}
@@ -4181,7 +4186,7 @@ const InterventionView: React.FC<{
           <div className="w-full grid grid-cols-2 gap-[12px]">
             <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Avg Score</p>
-              <p className="text-[20px] font-bold text-[#4f46e5]">{interventionPlan?.avg_score || studentProgressScore || student.avgScore}%</p>
+              <p className="text-[20px] font-bold text-[#4f46e5] tabular-nums">{interventionPlan?.avg_score || studentProgressScore || student.avgScore}%</p>
             </div>
             <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Engagement</p>
@@ -4203,7 +4208,7 @@ const InterventionView: React.FC<{
               <BadgeCheck size={18} className={studentModulesCompleted.completed === studentModulesCompleted.total ? 'text-emerald-500' : 'text-slate-400'} />
               <div>
                 <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Modules Completed</p>
-                <p className="text-[16px] font-bold text-[#1e293b]">{studentModulesCompleted.completed}/{studentModulesCompleted.total}</p>
+                <p className="text-[16px] font-bold text-[#1e293b] tabular-nums">{studentModulesCompleted.completed}/{studentModulesCompleted.total}</p>
               </div>
             </div>
           )}
@@ -4215,6 +4220,7 @@ const InterventionView: React.FC<{
                 setExportModalStep('choose');
                 setShowExportModal(true);
               }}
+              aria-label="Export materials for student"
               className="w-full flex items-center justify-center gap-2 bg-white hover:bg-[#f8fafc] text-[#475569] border border-[#cbd5e1] hover:border-[#94a3b8] text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]"
             >
               <Printer className="w-4 h-4" /> Export Materials
@@ -4242,6 +4248,7 @@ const InterventionView: React.FC<{
                       {exportModalStep === 'bank' && (
                         <button
                           onClick={() => setExportModalStep('choose')}
+                          aria-label="Back to material choices"
                           className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors mr-1"
                         >
                           <ChevronLeft className="w-4 h-4" />
@@ -4263,6 +4270,7 @@ const InterventionView: React.FC<{
                     </div>
                     <button
                       onClick={() => setShowExportModal(false)}
+                      aria-label="Close export dialog"
                       className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
                     >
                       <X className="w-4 h-4" />
@@ -4569,7 +4577,7 @@ const InterventionView: React.FC<{
                               <div className="flex-1 min-w-0">
                                 <p className="text-[13px] font-bold text-[#1e293b] truncate">{quiz.title}</p>
                                 <p className="text-[11px] text-[#64748b] font-medium mt-0.5">
-                                  {quiz.questions?.length ?? 0} questions
+                                  <span className="tabular-nums">{quiz.questions?.length ?? 0}</span> questions
                                   {quiz.gradeLevel ? ` · ${quiz.gradeLevel}` : ''}
                                   {quiz.metadata?.topicsCovered?.[0] ? ` · ${quiz.metadata.topicsCovered[0]}` : ''}
                                 </p>
@@ -5049,7 +5057,7 @@ const ImportView: React.FC<{
     >
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">
-          <h2 className="text-xl font-display font-semibold text-foreground">Import Data</h2>
+          <h2 className="text-xl font-display font-semibold text-foreground text-balance">Import Data</h2>
           <p className="text-muted-foreground">Class records drive analytics and at-risk signals. Course materials provide topic grounding for AI lesson plans.</p>
           <div className="mt-2 flex flex-wrap gap-2 items-center text-xs text-muted-foreground">
             <span className="px-2 py-1 rounded-md bg-muted border border-border">Class scope: {className || classSectionId || 'All classes'}</span>
@@ -5397,12 +5405,13 @@ const EditRecordsView: React.FC<{
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
+            aria-label="Back to class records"
             className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground"
           >
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h1 className="text-2xl font-display font-semibold text-foreground">Edit Class Records</h1>
+            <h1 className="text-2xl font-display font-semibold text-foreground text-balance">Edit Class Records</h1>
             <p className="text-muted-foreground">Review and modify student data manually</p>
           </div>
         </div>
@@ -5424,7 +5433,7 @@ const EditRecordsView: React.FC<{
             <span className="text-sm">Click on any field to edit</span>
           </div>
           <div className="text-sm text-muted-foreground">
-            Showing {students.length} records
+            Showing <span className="tabular-nums">{students.length}</span> records
           </div>
         </div>
 
@@ -5454,7 +5463,7 @@ const EditRecordsView: React.FC<{
                         <span className="font-medium text-foreground">{student.name}</span>
                       </div>
                     </td>
-                    <td className="p-4 text-muted-foreground font-mono text-sm">{student.lrn || 'Not set'}</td>
+                    <td className="p-4 text-muted-foreground font-mono text-sm tabular-nums">{student.lrn || 'Not set'}</td>
                     <td className="p-4 min-w-[140px]">
                       <Input
                         id={`edit-record-grade-${rowDraftKey}`}
@@ -5486,7 +5495,7 @@ const EditRecordsView: React.FC<{
                       />
                     </td>
                     <td className="p-4">
-                      <span className={`font-semibold ${student.avgScore < 60 ? 'text-[#FF8B8B]' :
+                      <span className={`font-semibold tabular-nums ${student.avgScore < 60 ? 'text-[#FF8B8B]' :
                         student.avgScore < 80 ? 'text-[#F08386]' : 'text-green-600'
                         }`}>{student.avgScore}%</span>
                     </td>
@@ -5495,7 +5504,10 @@ const EditRecordsView: React.FC<{
                     </td>
                     <td className="p-4 text-muted-foreground">{student.weakestTopic}</td>
                     <td className="p-4">
-                      <button className="p-2 hover:bg-muted rounded-lg text-slate-500 hover:text-[#9956DE] transition-colors">
+                      <button
+                        aria-label={`Edit record for ${student.name}`}
+                        className="p-2 hover:bg-muted rounded-lg text-slate-500 hover:text-[#9956DE] transition-colors"
+                      >
                         <Edit3 size={16} />
                       </button>
                     </td>
@@ -5613,6 +5625,7 @@ const DashboardRightSidebar: React.FC<{
           <div className="flex items-center gap-2">
             <button
               onClick={(e) => { e.stopPropagation(); goToPrevMonth(); }}
+              aria-label="Previous month"
               className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
             >
               <ChevronLeft size={14} />
@@ -5625,6 +5638,7 @@ const DashboardRightSidebar: React.FC<{
             </span>
             <button
               onClick={(e) => { e.stopPropagation(); goToNextMonth(); }}
+              aria-label="Next month"
               className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
             >
               <ChevronRight size={14} />
@@ -5672,7 +5686,7 @@ const DashboardRightSidebar: React.FC<{
                       title={getEventTooltip(day)}
                     >
                       <div
-                        className={`text-[11px] leading-[22px] w-[22px] h-[22px] flex items-center justify-center rounded-full transition-all ${day === null
+                        className={`text-[11px] leading-[22px] w-[22px] h-[22px] flex items-center justify-center rounded-full tabular-nums transition-all ${day === null
                           ? 'text-[#cbd5e1]'
                           : isToday(day)
                             ? 'bg-[#818cf8] text-white font-semibold'

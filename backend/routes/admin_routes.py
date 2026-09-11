@@ -202,7 +202,7 @@ async def upload_pdf(
     background_tasks: BackgroundTasks,
     subjectId: str = Form(...),
     subjectName: str = Form(...),
-    semester: int = Form(...),
+    semester: Optional[int] = Form(None),
     quarter: int = Form(...),
     file: UploadFile = File(...),
     _admin=Depends(require_admin)

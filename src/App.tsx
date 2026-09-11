@@ -85,7 +85,7 @@ const App = () => {
   );
 
   const sidebarShellFallback = (
-    <div className="h-screen w-72 border-r border-[#dde3eb] bg-white/70" aria-hidden="true" />
+    <div className="h-dvh w-72 border-r border-[#dde3eb] bg-white/70" aria-hidden="true" />
   );
   const dashboardPanelFallback = (
     <div className="min-h-[240px] rounded-3xl border border-[#dde3eb] bg-white/70" aria-hidden="true" />
@@ -974,7 +974,7 @@ const App = () => {
   // Maintenance mode: block non-admin users
   if (maintenanceMode && (!isLoggedIn || userRole !== 'admin')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f8fafc] to-[#eef2ff] p-6">
+      <div className="min-h-dvh flex items-center justify-center bg-gradient-to-br from-[#f8fafc] to-[#eef2ff] p-6">
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-5">
             <AlertTriangle className="w-8 h-8 text-amber-600" />
@@ -1101,7 +1101,7 @@ const App = () => {
     <NotificationProvider>
     <>
     <ChatProvider>
-      <div className="flex h-screen w-full bg-[#f8faff] overflow-hidden">
+      <div className="flex h-dvh w-full bg-[#f8faff] overflow-hidden">
         {/* Desktop Sidebar */}
         <div className="hidden lg:block">
           <Suspense fallback={sidebarShellFallback}>
@@ -1158,7 +1158,7 @@ const App = () => {
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <InstallPwaButton />
               <button
-                className="lg:hidden p-2 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-colors"
+                className="lg:hidden p-2 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
                 onClick={() => setIsMobileSidebarOpen(true)}
                 aria-label="Open navigation"
               >
@@ -1174,16 +1174,18 @@ const App = () => {
               <div className="hidden md:flex items-center gap-2 ml-2">
                 <button
                   onClick={() => setActiveModal('rewards')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 rounded-lg transition-colors cursor-pointer group"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 rounded-lg transition-colors cursor-pointer group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
                   title="View Rewards & Progress"
+                  aria-label="View Rewards and Level Progress"
                 >
                   <Crown className="h-3.5 w-3.5 text-rose-500" aria-hidden="true" />
                   <span className="text-xs font-display font-bold text-rose-700">Lv {userLevel}</span>
                 </button>
                 <button
                   onClick={() => setActiveModal('rewards')}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer w-[180px] xl:w-[200px] justify-between"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer w-[180px] xl:w-[200px] justify-between focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
                   title={`${progressXPInLevel}/${xpToNextLevel} XP to next level`}
+                  aria-label={`View XP: ${currentXP} XP earned`}
                 >
                   <div className="flex items-center gap-1.5 shrink-0">
                     <Zap className="h-3.5 w-3.5 text-violet-500" aria-hidden="true" />
@@ -1204,8 +1206,9 @@ const App = () => {
               {/* Calculator toggle */}
               <button
                 onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
-                className="p-3 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-all group"
+                className="p-3 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-all group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
                 title="Scientific Calculator (Alt+K)"
+                aria-label="Scientific Calculator (Alt+K)"
               >
                 <Calculator size={20} className="group-hover:scale-110 transition-transform" />
               </button>
@@ -1215,7 +1218,7 @@ const App = () => {
               
               <button 
                 onClick={() => setActiveModal('profile')}
-                className="flex items-center gap-2.5 h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group"
+                className="flex items-center gap-2.5 h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
                 aria-label={`Profile: ${profileData.name}`}
               >
                 <UserAvatar
@@ -1280,7 +1283,7 @@ const App = () => {
                               <button
                                 type="button"
                                 onClick={() => handleStudentNavigation('Modules')}
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-700"
+                                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-amber-700 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
                               >
                                 Open Modules
                                 <ArrowRight className="h-3.5 w-3.5" />
@@ -1418,7 +1421,7 @@ const App = () => {
           {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page and quiz mode */}
           {(activeTab !== 'AI Chat' && !isInQuizMode) && (
             <Suspense fallback={null}>
-              <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-[100]">
+              <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50">
                 <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
               </div>
             </Suspense>

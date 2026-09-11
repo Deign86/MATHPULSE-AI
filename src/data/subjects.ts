@@ -1,14 +1,22 @@
 import React from 'react';
 import { Calculator, BarChart3, TrendingUp, LayoutGrid } from 'lucide-react';
 
+export type SubjectQuarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+
+export const QUARTERS: SubjectQuarter[] = ['Q1', 'Q2', 'Q3', 'Q4'];
+
 // Grade 11 SHS Math only - served to all users
+// SHS runs on quarters, not semesters. GenMath maps Q1-Q4 from SSHS PDFs;
+// finite-math is year-long (Units 1-4, no quarter split); stats-prob and
+// business-math are shells awaiting PDF ingestion.
 export const SHS_MATH_SUBJECTS = [
   {
     id: 'gen-math',
     code: 'GEN MATH',
     name: 'General Mathematics',
     gradeLevel: 'Grade 11',
-    semester: '1st Semester',
+    quarters: ['Q1', 'Q2', 'Q3', 'Q4'] as const,
+    termStructure: 'quarterly' as const,
     color: 'from-blue-500 to-cyan-500',
     pdfAvailable: true,
     topics: [
@@ -40,9 +48,11 @@ export const SHS_MATH_SUBJECTS = [
     code: 'STAT&PROB',
     name: 'Statistics and Probability',
     gradeLevel: 'Grade 11',
-    semester: '2nd Semester',
+    quarters: ['Q1', 'Q2', 'Q3', 'Q4'] as const,
+    termStructure: 'quarterly' as const,
     color: 'from-sky-500 to-cyan-500',
-    pdfAvailable: true,
+    pdfAvailable: false,
+    shelved: true as const,
     topics: [
       { id: 'stat-001', name: 'Random Variables', unit: 'Random Variables' },
       { id: 'stat-002', name: 'Discrete Probability Distributions', unit: 'Random Variables' },
@@ -65,9 +75,11 @@ export const SHS_MATH_SUBJECTS = [
     code: 'BUS MATH',
     name: 'Business Mathematics',
     gradeLevel: 'Grade 11',
-    semester: '1st Semester',
+    quarters: ['Q1', 'Q2', 'Q3', 'Q4'] as const,
+    termStructure: 'quarterly' as const,
     color: 'from-emerald-500 to-green-500',
-    pdfAvailable: true,
+    pdfAvailable: false,
+    shelved: true as const,
     topics: [
       { id: 'bus-001', name: 'Verbal Phrases to Mathematical Expressions', unit: 'Business Models' },
       { id: 'bus-002', name: 'Linear Equations in Business Scenarios', unit: 'Business Models' },
@@ -79,7 +91,8 @@ export const SHS_MATH_SUBJECTS = [
     code: 'FINITE MATH',
     name: 'Finite Mathematics',
     gradeLevel: 'Grade 11',
-    semester: '2nd Semester',
+    quarters: [] as const,
+    termStructure: 'year-long' as const,
     color: 'from-cyan-500 to-teal-500',
     pdfAvailable: true,
     topics: [
@@ -100,8 +113,11 @@ export const SUBJECTS_BY_GRADE = {
 } satisfies Record<GradeLevel, (typeof SHS_MATH_SUBJECTS)[number][]>;
 
 export const ACTIVE_SUBJECT_IDS_BY_GRADE = {
-  'Grade 11': ['gen-math', 'stats-prob', 'business-math', 'finite-math'],
+  'Grade 11': ['gen-math', 'finite-math'],
 } satisfies Record<GradeLevel, SubjectId[]>;
+
+// Shelved subjects stay in code/types but are hidden until PDFs land.
+export const SHELVED_SUBJECT_IDS: SubjectId[] = ['stats-prob', 'business-math'];
 
 export function normalizeGradeLevel(rawGrade?: string | null): GradeLevel | null {
   if (!rawGrade) return null;
@@ -115,8 +131,8 @@ export function normalizeGradeLevel(rawGrade?: string | null): GradeLevel | null
 export function getActiveSubjectIdsForGrade(rawGrade?: string | null): SubjectId[] {
   const gradeLevel = normalizeGradeLevel(rawGrade);
   if (!gradeLevel) {
-    // SAFETY: every SHS_MATH_SUBJECTS entry id is a member of the SubjectId union.
-    return SHS_MATH_SUBJECTS.map((subject) => subject.id as SubjectId);
+    // SAFETY: default to the active (unshelved) list so shelved subjects stay hidden.
+    return [...ACTIVE_SUBJECT_IDS_BY_GRADE['Grade 11']];
   }
   return ACTIVE_SUBJECT_IDS_BY_GRADE[gradeLevel];
 }

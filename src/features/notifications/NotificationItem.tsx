@@ -115,17 +115,17 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
             )}
           </div>
           <p className="text-xs text-[#5a6578] mb-2 line-clamp-2 font-body">{notification.message}</p>
-          <p className="text-xs text-slate-500">{timeAgo}</p>
+          <p className="text-xs text-slate-500 tabular-nums">{timeAgo}</p>
         </div>
         <button
           onClick={(e) => {
             e.stopPropagation();
             deleteNotification(notification.id);
           }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500"
+          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-slate-400 hover:text-red-500 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none rounded p-1"
           aria-label="Delete notification"
         >
-          <Trash2 size={14} />
+          <Trash2 size={14} aria-hidden="true" />
         </button>
       </div>
     </div>

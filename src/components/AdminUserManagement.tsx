@@ -911,6 +911,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 disabled={!searchQuery && roleFilter === 'All Roles' && statusFilter === 'All Status'}
                 className="h-12 w-12 rounded-xl border-slate-200 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-slate-200/40 shrink-0"
                 title="Reset Filters"
+                aria-label="Reset Filters"
               >
                 <FilterX size={18} />
               </Button>
@@ -922,6 +923,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 onClick={() => loadUsers(currentPage)}
                 disabled={loading || isProcessingBulkAction}
                 title="Refresh Users"
+                aria-label="Refresh Users"
               >
                 <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
               </Button>

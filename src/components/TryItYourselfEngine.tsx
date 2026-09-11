@@ -561,7 +561,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
   // ─── RENDER: Full-Page Phase Complete Screen ──────────────────────────────
   if (quizState === 'phase-complete' && currentRoundResult) {
     return (
-      <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-gradient-to-br from-[#e8e0f7] via-[#f0e8ff] to-[#ddd6f3] p-6">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-[#e8e0f7] via-[#f0e8ff] to-[#ddd6f3] p-6">
         {/* Floating math shapes */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {[Triangle, Circle, Square, Divide, Percent, Sigma].map((Icon, i) => (
@@ -594,7 +594,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
           />
 
-          <h1 className="text-3xl sm:text-4xl font-black text-[#5b3a9e] mb-2 drop-shadow-sm">
+          <h1 className="text-3xl sm:text-4xl font-black text-[#5b3a9e] mb-2 drop-shadow-sm text-balance tabular-nums">
             Phase {currentPhaseIdx + 1} Complete!
           </h1>
           <p className="text-purple-500/70 text-sm mb-6">Great work! Keep going.</p>
@@ -604,21 +604,21 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
               <span className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                 <Check size={14} className="text-emerald-500" /> Correct
               </span>
-              <span className="text-lg font-black text-emerald-600">{currentRoundResult.questionsCorrect}</span>
+              <span className="text-lg font-black text-emerald-600 tabular-nums">{currentRoundResult.questionsCorrect}</span>
             </div>
             {currentRoundResult.questionsRevealed > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                   <HelpCircle size={14} className="text-amber-500" /> Revealed
                 </span>
-                <span className="text-lg font-black text-amber-600">{currentRoundResult.questionsRevealed}</span>
+                <span className="text-lg font-black text-amber-600 tabular-nums">{currentRoundResult.questionsRevealed}</span>
               </div>
             )}
             <div className="flex items-center justify-between pt-2 border-t border-purple-100">
               <span className="text-slate-500 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
                 <Zap size={14} className="text-purple-500" /> XP Earned
               </span>
-              <span className="text-xl font-black text-purple-600">+{currentRoundResult.xpEarned}</span>
+              <span className="text-xl font-black text-purple-600 tabular-nums">+{currentRoundResult.xpEarned}</span>
             </div>
           </div>
 
@@ -630,27 +630,27 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
 
           <button
             onClick={advanceToNextPhase}
-            className="w-full py-4 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-transform mb-3"
+            className="w-full py-4 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-transform motion-reduce:transition-none mb-3"
           >
             Continue to Next Phase <ArrowRight size={20} className="inline ml-2" />
           </button>
 
           <button
             onClick={() => setShowLeaveConfirm(true)}
-            className="text-purple-400 hover:text-purple-600 text-sm font-bold transition-colors"
+            className="text-purple-400 hover:text-purple-600 text-sm font-bold transition-colors motion-reduce:transition-none active:scale-[0.98]"
           >
             Quit Quiz
           </button>
         </motion.div>
 
         {showLeaveConfirm && (
-          <div className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[2rem] p-6 sm:p-8 max-w-xs w-full shadow-2xl flex flex-col gap-4 text-center">
-              <h2 className="text-xl font-black text-slate-800">Are you sure you want to leave?</h2>
+              <h2 className="text-xl font-black text-slate-800 text-balance">Are you sure you want to leave?</h2>
               <p className="text-sm text-slate-500">Your progress won't be saved.</p>
               <div className="flex flex-col gap-2">
-                <Button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold">Stay</Button>
-                <Button onClick={onBack} className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">Leave</Button>
+                <Button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold transition-all motion-reduce:transition-none active:scale-[0.98]">Stay</Button>
+                <Button onClick={onBack} className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-all motion-reduce:transition-none active:scale-[0.98]">Leave</Button>
               </div>
             </motion.div>
           </div>
@@ -662,7 +662,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
   // ─── RENDER: Loading Next Phase ───────────────────────────────────────────
   if (quizState === 'loading-next') {
     return (
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-br from-[#7274ED] via-[#9956DE] to-[#7274ED]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#7274ED] via-[#9956DE] to-[#7274ED]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin" />
           <p className="font-bold text-white text-lg">Preparing next phase...</p>
@@ -678,7 +678,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
     const scorePercent = Math.round((totalCorrect / questions.length) * 100);
 
     return (
-      <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-gradient-to-br from-[#e8e0f7] via-[#f0e8ff] to-[#ddd6f3] p-6">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-[#e8e0f7] via-[#f0e8ff] to-[#ddd6f3] p-6">
         {/* Floating math shapes */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {[Triangle, Circle, Square, Divide, Percent, Sigma, Ruler, Target].map((Icon, i) => (
@@ -698,7 +698,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
 
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative z-10 flex flex-col items-center text-center max-w-sm w-full">
           <motion.img src="/mascot/modules_avatar.png" alt="Mascot" className="w-36 h-36 sm:w-44 sm:h-44 mb-6 drop-shadow-[0_15px_30px_rgba(0,0,0,0.15)]" initial={{ y: -20 }} animate={{ y: [0, -8, 0] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} />
-          <h1 className="text-3xl sm:text-4xl font-black text-[#5b3a9e] mb-2">Quiz Complete!</h1>
+          <h1 className="text-3xl sm:text-4xl font-black text-[#5b3a9e] mb-2 text-balance">Quiz Complete!</h1>
           <p className="text-purple-500/70 text-sm mb-6">{lessonTitle}</p>
 
           <div className="bg-white/80 backdrop-blur-md rounded-2xl p-5 w-full mb-6 border border-purple-200/50 shadow-lg space-y-3">
@@ -711,7 +711,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
             </div>
           </div>
 
-          <button onClick={handleCompleteSession} className="w-full py-4 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-transform">
+          <button onClick={handleCompleteSession} className="w-full py-4 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-transform motion-reduce:transition-none">
             FINISH
           </button>
         </motion.div>
@@ -741,7 +741,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
           <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-[0_10px_40px_rgba(0,0,0,0.2)]">
             <div className="flex items-center justify-between mb-2 px-1">
               <h4 className="text-xs font-bold text-[#0a1628] flex items-center gap-2"><Calculator size={14} className="text-purple-600" /> Calculator</h4>
-              <button onClick={() => setShowCalculator(false)} className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors"><X size={12} /></button>
+              <button onClick={() => setShowCalculator(false)} aria-label="Close calculator" className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors"><X size={12} /></button>
             </div>
             <ScientificCalculator isOpen={true} onClose={() => setShowCalculator(false)} inline />
           </div>
@@ -758,20 +758,20 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] pointer-events-none flex flex-col items-center justify-center"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center justify-center"
           >
             <div className="bg-white/95 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.15)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
               <img src="/mascot/modules_avatar.png" alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.15)]" />
-              <h2 className={`text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest ${isCorrect ? "text-emerald-500" : "text-rose-500"}`}>
+              <h2 className={`text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest text-balance ${isCorrect ? "text-emerald-500" : "text-rose-500"}`}>
                 {isCorrect ? "Correct!" : "Incorrect"}
               </h2>
               {isCorrect ? (
                 <div className="flex flex-col items-center gap-3 w-full justify-center">
-                  <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full font-bold border border-emerald-500/30">
+                  <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full font-bold border border-emerald-500/30 tabular-nums">
                     <span>+ {qs?.xpAwarded ?? 10} XP</span>
                   </div>
                   {streak >= 3 && (
-                    <div className="flex items-center gap-2 bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-full text-sm font-bold border border-orange-500/30">
+                    <div className="flex items-center gap-2 bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-full text-sm font-bold border border-orange-500/30 tabular-nums">
                       <Flame size={14} /> Streak ×{streak}!
                     </div>
                   )}
@@ -789,22 +789,22 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
       {/* Leave Confirmation Modal */}
       <AnimatePresence>
         {showLeaveConfirm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowLeaveConfirm(false)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowLeaveConfirm(false)}>
             <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-[2rem] p-6 sm:p-8 max-w-xs w-full shadow-2xl flex flex-col gap-4 text-center">
-              <h2 className="text-xl font-black text-slate-800">Are you sure you want to leave?</h2>
+              <h2 className="text-xl font-black text-slate-800 text-balance">Are you sure you want to leave?</h2>
               <p className="text-sm text-slate-500">Your progress won't be saved.</p>
               <div className="flex flex-col gap-2">
-                <Button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold">Stay</Button>
-                <Button onClick={() => { setShowLeaveConfirm(false); onBack(); }} className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">Leave</Button>
+                <Button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold transition-all motion-reduce:transition-none active:scale-[0.98]">Stay</Button>
+                <Button onClick={() => { setShowLeaveConfirm(false); onBack(); }} className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-all motion-reduce:transition-none active:scale-[0.98]">Leave</Button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="fixed inset-0 z-50 h-screen w-full flex flex-col bg-slate-50 overflow-hidden">
+      <div className="fixed inset-0 z-40 h-dvh w-full flex flex-col bg-slate-50 overflow-hidden">
         {/* ─── Sticky Header ─────────────────────────────────────────────── */}
-        <header className={`relative shrink-0 flex flex-col items-center justify-start px-4 pt-4 sm:pt-6 pb-6 z-[60] shadow-md overflow-hidden ${theme.gradient} rounded-b-[32px] sm:rounded-b-[40px] min-h-[110px] sm:min-h-[130px]`}>
+        <header className={`relative shrink-0 flex flex-col items-center justify-start px-4 pt-4 sm:pt-6 pb-6 z-40 shadow-md overflow-hidden ${theme.gradient} rounded-b-[32px] sm:rounded-b-[40px] min-h-[110px] sm:min-h-[130px]`}>
           <div className="absolute inset-0 z-0 pointer-events-none">
             <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-2xl" />
             <div className="absolute bottom-0 right-0 w-80 h-80 bg-white opacity-10 rounded-full translate-x-1/3 translate-y-1/3 blur-3xl" />
@@ -825,13 +825,13 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
               </div>
             </div>
             <div className="flex-1 flex justify-end gap-2 sm:gap-3 relative pointer-events-auto">
-              <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+              <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} aria-label={isAudioEnabled ? "Mute sound" : "Unmute sound"} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                 {isAudioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
               </button>
-              <button onClick={toggleFullscreen} className="hidden sm:flex w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+              <button onClick={toggleFullscreen} aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} className="hidden sm:flex w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                 {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
               </button>
-              <button onClick={() => setShowLeaveConfirm(true)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+              <button onClick={() => setShowLeaveConfirm(true)} aria-label="Exit quiz" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                 <Menu size={20} />
               </button>
             </div>
@@ -848,24 +848,24 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
         </header>
 
         {/* ─── Stats Bar ─────────────────────────────────────────────────── */}
-        <div className="w-full max-w-[54rem] mx-auto shrink-0 flex items-center justify-between px-4 sm:px-6 py-2 sm:py-3 z-[50] relative mt-4">
+        <div className="w-full max-w-[54rem] mx-auto shrink-0 flex items-center justify-between px-4 sm:px-6 py-2 sm:py-3 z-40 relative mt-4">
           <div className="flex items-center justify-center gap-3 sm:gap-5 flex-1">
             {/* Hearts */}
-            <div className="flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-rose-500 font-extrabold text-sm sm:text-base">
+            <div className="flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-rose-500 font-extrabold text-sm sm:text-base tabular-nums">
               <img src="/icons/quiz_heart.png" alt="Hearts" className="w-5 h-5 object-contain" />
               {heartsCount}
             </div>
             {/* Keys */}
-            <div className="flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-yellow-500 font-extrabold text-sm sm:text-base">
+            <div className="flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-yellow-500 font-extrabold text-sm sm:text-base tabular-nums">
               <img src="/icons/quiz_key.png" alt="Keys" className="w-5 h-5 object-contain" />
               {keysCount}
             </div>
             {/* Streak/Points */}
             <div className="flex items-center gap-3 sm:gap-4 px-3 py-1.5 pl-5 sm:pl-6 rounded-full bg-white shadow-md border border-slate-200/60">
-              <div className="flex items-center gap-1.5 text-orange-500 font-extrabold text-sm sm:text-base">
+              <div className="flex items-center gap-1.5 text-orange-500 font-extrabold text-sm sm:text-base tabular-nums">
                 <img src="/icons/quiz_streak.png" alt="Streak" className="w-5 h-5 object-contain" /> {streak}
               </div>
-              <div className="bg-emerald-100 text-emerald-800 px-4 py-1.5 rounded-full font-bold text-sm sm:text-base shadow-inner border border-emerald-200/50">
+              <div className="bg-emerald-100 text-emerald-800 px-4 py-1.5 rounded-full font-bold text-sm sm:text-base shadow-inner border border-emerald-200/50 tabular-nums">
                 + {totalXP} XP
               </div>
             </div>
@@ -882,7 +882,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
           >
             {/* Question Card */}
             <div className="bg-white rounded-3xl shadow-lg border-t-[6px] border-purple-500 p-6 sm:p-8 text-center flex flex-col items-center mb-6 w-full relative overflow-hidden">
-              <h2 className="text-xl sm:text-2xl font-extrabold text-[#0a1628] leading-tight w-full">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-[#0a1628] leading-tight w-full text-balance">
                 <MathText>{currentQuestion.question}</MathText>
               </h2>
               {/* Fill-in-blank inline input */}
@@ -935,7 +935,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                           setSelectedOption(opt.id);
                           handleAnswer(optionText);
                         }}
-                        className={`p-4 sm:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-base sm:text-lg text-left transition-all flex items-center justify-between ${bgColor} ${qs?.resolved ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'}`}
+                        className={`p-4 sm:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-base sm:text-lg text-left transition-all motion-reduce:transition-none flex items-center justify-between ${bgColor} ${qs?.resolved ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'}`}
                       >
                         <span className="truncate pr-4"><MathText>{optionText}</MathText></span>
                         {(isRevealed || isAnsweredCorrect) && isCorrectOption && <Check size={24} className="text-emerald-500 shrink-0" />}
@@ -952,12 +952,12 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                   <div className="border-2 rounded-2xl p-5 bg-amber-50 border-amber-200">
                     <div className="flex items-center gap-2 mb-3">
                       <Lightbulb size={18} className="text-amber-500" />
-                      <span className="font-bold text-amber-700 text-sm">Hints ({qs?.hintsUsed}/{hintsAvailable})</span>
+                      <span className="font-bold text-amber-700 text-sm tabular-nums">Hints ({qs?.hintsUsed}/{hintsAvailable})</span>
                     </div>
                     <div className="space-y-2">
                       {currentQuestion.hints.slice(0, qs?.hintsUsed ?? 0).map((hint, i) => (
                         <p key={i} className="text-sm text-amber-800 leading-relaxed">
-                          <span className="font-bold text-amber-600">{i + 1}.</span> {hint}
+                          <span className="font-bold text-amber-600 tabular-nums">{i + 1}.</span> {hint}
                         </p>
                       ))}
                     </div>
@@ -982,7 +982,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
         </main>
 
         {/* ─── Sticky Footer ─────────────────────────────────────────────── */}
-        <footer className={`shrink-0 relative z-[60] flex flex-col items-center justify-center p-4 sm:p-6 ${theme.gradient} rounded-t-[32px] sm:rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.15)]`}>
+        <footer className={`shrink-0 relative z-40 flex flex-col items-center justify-center p-4 sm:p-6 ${theme.gradient} rounded-t-[32px] sm:rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.15)]`}>
           <div className="absolute inset-0 z-0 pointer-events-none opacity-20">
             {TopicIcons.slice(0, 3).map((Icon, i) => (
               <div key={i} className="absolute text-white" style={{ top: `${20 + (i * 20)}%`, left: `${20 + (i * 30)}%`, transform: `rotate(${i * 30}deg) scale(1.5)` }}>
@@ -997,18 +997,18 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
               if (qs?.resolved) {
                 if (showExplainPanel) {
                   return (
-                    <button onClick={advanceQueue} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-lg px-8 py-4 rounded-full flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all w-full">
+                    <button onClick={advanceQueue} aria-label="Next question" className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-lg px-8 py-4 rounded-full flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all motion-reduce:transition-none w-full">
                       Next Question <ArrowRight size={24} />
                     </button>
                   );
                 }
                 return (
                   <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-                    <button onClick={() => { if (!explainLocked) setShowExplainPanel(true); }} disabled={explainLocked} className="bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                    <button onClick={() => { if (!explainLocked) setShowExplainPanel(true); }} disabled={explainLocked} aria-label="Explain question" className="bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200">
                       <img src="/mascot/modules_avatar.png" className="w-5 h-5 drop-shadow-sm" alt="Explain" />
                       Explain
                     </button>
-                    <button onClick={advanceQueue} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-lg px-8 py-3 sm:py-3.5 rounded-full flex items-center justify-center gap-2 shadow-xl hover:scale-105 active:scale-95">
+                    <button onClick={advanceQueue} aria-label="Next question" className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-lg px-8 py-3 sm:py-3.5 rounded-full flex items-center justify-center gap-2 shadow-xl transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98]">
                       Next Question <ArrowRight size={20} />
                     </button>
                   </div>
@@ -1018,12 +1018,12 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
               // Normal state: Hint, Reveal, Explain (locked), Calculator, Submit (for fill-in-blank)
               return (
                 <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-                  <button onClick={handleHint} disabled={keysCount <= 0 || hintsRemaining <= 0} className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                  <button onClick={handleHint} disabled={keysCount <= 0 || hintsRemaining <= 0} aria-label="Use hint" className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200">
                     <img src="/icons/quiz_key.png" alt="Hint" className="w-5 h-5 object-contain" />
                     Hint
                   </button>
                   <div className="relative group">
-                    <button onClick={handleReveal} disabled={revealDisabled} className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                    <button onClick={handleReveal} disabled={revealDisabled} aria-label="Reveal answer" className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200">
                       <HelpCircle size={18} className="text-purple-500" />
                       Reveal
                     </button>
@@ -1034,7 +1034,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                     )}
                   </div>
                   <div className="relative group">
-                    <button disabled className="bg-white disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg border border-slate-200">
+                    <button disabled aria-label="Explain question (locked)" className="bg-white disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg border border-slate-200">
                       <Lock size={16} className="text-slate-400" />
                       Explain
                     </button>
@@ -1042,11 +1042,11 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                       Unlocks after you complete or reveal this question
                     </div>
                   </div>
-                  <button onClick={() => setShowCalculator(prev => !prev)} className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200 ${showCalculator ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-white hover:bg-slate-50 text-slate-700'}`}>
+                  <button onClick={() => setShowCalculator(prev => !prev)} aria-label="Toggle calculator" className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200 ${showCalculator ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-white hover:bg-slate-50 text-slate-700'}`}>
                     <Calculator size={20} />
                   </button>
                   {currentQuestion.type === 'fill-in-blank' && (
-                    <button onClick={() => handleAnswer()} disabled={!textInput.trim() || isSubmitting} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-lg px-8 py-3 sm:py-3.5 rounded-full flex items-center justify-center gap-2 shadow-xl hover:scale-105 active:scale-95">
+                    <button onClick={() => handleAnswer()} disabled={!textInput.trim() || isSubmitting} aria-label="Submit answer" className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-lg px-8 py-3 sm:py-3.5 rounded-full flex items-center justify-center gap-2 shadow-xl transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98]">
                       Submit <ArrowRight size={20} />
                     </button>
                   )}

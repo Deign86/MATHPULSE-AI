@@ -31,7 +31,11 @@ class SubjectResponse(BaseModel):
     code: str
     name: str
     gradeLevel: str
-    semester: str
+    semester: Optional[str] = None
+    quarters: Optional[list[str]] = None
+    termStructure: Optional[str] = None
+    available: Optional[bool] = True
+    shelved: Optional[bool] = False
     color: str
     pdfAvailable: bool
     topics: list

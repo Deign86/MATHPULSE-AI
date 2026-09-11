@@ -380,7 +380,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             );
 
       const subjectMatch = subjectFilter === 'all' || module.subjectId === subjectFilter;
-      const quarterMatch = quarterFilter === 'all' || module.quarter === quarterFilter;
+      const isYearLongFiniteMath = module.subjectId === 'finite-math';
+      const quarterMatch = quarterFilter === 'all' || isYearLongFiniteMath || module.quarter === quarterFilter;
       const competencyGroupMatch = competencyFilter === 'all' || module.competency_group === competencyFilter;
 
       return (titleMatch || descMatch || lessonMatch || quizMatch || competencyMatch) && subjectMatch && quarterMatch && competencyGroupMatch;

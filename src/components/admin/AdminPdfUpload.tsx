@@ -377,14 +377,24 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                         <SelectValue placeholder="Select subject" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-slate-200">
-                        {SHS_MATH_SUBJECTS.map(s => (
-                          <SelectItem key={s.id} value={s.id} className="rounded-lg py-2">
-                            <div className="flex flex-col items-start">
-                              <span className="font-black text-[12px]">{s.name}</span>
-                              <span className="text-[9px] text-slate-400 font-bold uppercase">{s.gradeLevel} • {s.semester}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {SHS_MATH_SUBJECTS.map((s) => {
+                          // SAFETY: s is an SHS_MATH_SUBJECTS item with optional termStructure and quarters metadata.
+                          const subject = s as { termStructure?: string; quarters?: readonly string[] };
+                          const quarterText =
+                            subject.termStructure === 'year-long'
+                              ? 'Year-long'
+                              : `Quarters ${([...(subject.quarters ?? [])].join(', ') || 'Q1–Q4')}`;
+                          return (
+                            <SelectItem key={s.id} value={s.id} className="rounded-lg py-2">
+                              <div className="flex flex-col items-start">
+                                <span className="font-black text-[12px]">{s.name}</span>
+                                <span className="text-[9px] text-slate-400 font-bold uppercase">
+                                  {s.gradeLevel} • {quarterText}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>

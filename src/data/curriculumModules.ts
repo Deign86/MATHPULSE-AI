@@ -154,7 +154,8 @@ const SUBJECT_META = {
 } satisfies Record<CurriculumSubjectId, SubjectMeta>;
 
 const SCHOOL_PROGRAM_DEFAULT_SUBJECTS_BY_GRADE = {
-  'Grade 11': ['gen-math', 'business-math', 'stats-prob', 'finite-math'],
+  // Shelved until PDFs land: business-math, stats-prob (blueprints + meta kept).
+  'Grade 11': ['gen-math', 'finite-math'],
 } satisfies Record<GradeLevel, CurriculumSubjectId[]>;
 
 const COMPETENCY_VERBS_G11 = 'Foundational competency flow with guided examples, step-by-step vocabulary support, and scaffolded checkpoints.';
@@ -409,10 +410,9 @@ function normalizeGradeLevel(_rawGrade?: string | null): GradeLevel {
 
 function normalizeSubjectAssignments(assignedSubjects: string[] | undefined): CurriculumSubjectId[] | null {
   if (!Array.isArray(assignedSubjects) || assignedSubjects.length === 0) return null;
+  // Shelved until PDFs land: business-math, stats-prob (kept in map for return path).
   const allowed = new Set<CurriculumSubjectId>([
     'gen-math',
-    'business-math',
-    'stats-prob',
     'finite-math',
   ]);
   const normalized = assignedSubjects

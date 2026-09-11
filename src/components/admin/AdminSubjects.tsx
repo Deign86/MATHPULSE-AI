@@ -25,16 +25,38 @@ interface SubjectRowData {
   name: string;
   code: string;
   gradeLevel: string;
-  semester: string;
+  quarterLabel: string;
+  shelved: boolean;
   color: string;
 }
+
+interface SubjectMetadataRecord {
+  termStructure?: 'quarterly' | 'year-long' | string;
+  quarters?: readonly string[];
+  shelved?: boolean;
+}
+
+const quarterLabelFor = (s: (typeof SHS_MATH_SUBJECTS)[number]): string => {
+  // SAFETY: s is an entry from SHS_MATH_SUBJECTS conforming to SubjectMetadataRecord.
+  const subject = s as SubjectMetadataRecord;
+  return subject.termStructure === 'year-long'
+    ? 'Year-long • Units 1–4'
+    : `Quarters ${([...(subject.quarters ?? [])].join(' • ') || 'Q1–Q4')}`;
+};
+
+const isShelved = (s: (typeof SHS_MATH_SUBJECTS)[number]): boolean => {
+  // SAFETY: s is an entry from SHS_MATH_SUBJECTS where shelved is an optional boolean flag.
+  const subject = s as SubjectMetadataRecord;
+  return subject.shelved === true;
+};
 
 const SUBJECT_ROWS: SubjectRowData[] = SHS_MATH_SUBJECTS.map((s) => ({
   id: s.id,
   name: s.name,
   code: s.code,
   gradeLevel: s.gradeLevel,
-  semester: s.semester,
+  quarterLabel: quarterLabelFor(s),
+  shelved: isShelved(s),
   color: s.color,
 }));
 
@@ -160,7 +182,7 @@ const AdminSubjects: React.FC = () => {
           <TableHeader>
             <TableRow className="bg-[#9956DE] hover:bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-md">
               <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Subject Identity</TableHead>
-              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Grade / Semester</TableHead>
+              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Grade / Quarters</TableHead>
               <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Access Status</TableHead>
               <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Toggle Access</TableHead>
               <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">RAG Resource Mapping</TableHead>
@@ -169,7 +191,8 @@ const AdminSubjects: React.FC = () => {
           <TableBody className="divide-y divide-slate-50">
             {SUBJECT_ROWS.map((subject) => {
               const entry = availability[subject.id];
-              const isAvailable = entry?.available ?? true;
+              // Shelved subjects (no PDFs) default to locked until PDFs land.
+              const isAvailable = entry?.available ?? !subject.shelved;
               const pdfPath = localPdfPaths[subject.id] ?? entry?.pdfPath ?? '';
               const lastUpdated = entry?.lastUpdated;
               const isSaving = savingId === subject.id;
@@ -191,7 +214,10 @@ const AdminSubjects: React.FC = () => {
                   <TableCell className="px-6 py-5">
                     <div className="space-y-1">
                       <p className="text-xs font-black text-slate-700 uppercase tracking-wide">{subject.gradeLevel}</p>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-tight">{subject.semester}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-tight">{subject.quarterLabel}</p>
+                      {subject.shelved && (
+                        <p className="text-[9px] font-black text-amber-500 uppercase tracking-tight">Shelved — no PDFs yet</p>
+                      )}
                     </div>
                   </TableCell>
 
