@@ -35,10 +35,10 @@ try:
     prompt = build_lesson_prompt(
         lesson_title="Represent real-life relationships as functions and interpret domain/range.",
         competency="Represent real-life relationships as functions and interpret domain/range.",
-        grade_level="Grade 11-12",
+        grade_level="Grade 11",
         subject="General Mathematics",
         quarter=2,
-        learner_level="Grade 11-12",
+        learner_level="Grade 11",
         module_unit="n/a",
         curriculum_chunks=chunks,
         competency_code="GM11-FG-1",
