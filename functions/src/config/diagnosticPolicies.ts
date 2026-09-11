@@ -22,7 +22,7 @@ export interface RuntimeTopicDiagnosticPolicy {
 export interface RuntimeDiagnosticPolicy {
   id: string;
   versionSetId: string;
-  gradeLevel: "Grade 11" | "Grade 12";
+  gradeLevel: "Grade 11";
   confidence?: "high" | "medium" | "low";
   sourceRefs?: string[];
   thresholds: {
@@ -54,7 +54,7 @@ export interface DiagnosticPolicyCheckResult {
 export interface DiagnosticPolicyEvaluation {
   policyId: string;
   versionSetId: string;
-  gradeLevel: "Grade 11" | "Grade 12";
+  gradeLevel: "Grade 11";
   byTopicGroup: Record<string, TopicMasteryScore>;
   summary: {
     mastered: number;
@@ -69,7 +69,6 @@ interface CurriculumVersionSetMap { [key: string]: string; }
 
 export const CURRICULUM_VERSION_SET_BY_GRADE: CurriculumVersionSetMap = {
   "Grade 11": "g11-core-genmath-legacy-detail-strengthened-structure",
-  "Grade 12": "g12-math-electives-strengthened-template",
 };
 
 export function resolveCurriculumVersionSetId(gradeLevel: string): string {
@@ -204,87 +203,6 @@ export const RUNTIME_DIAGNOSTIC_POLICIES: RuntimeDiagnosticPolicy[] = [
         difficultyMix: { basic: 40, proficient: 40, advanced: 20 },
         masteredThreshold: 0.8,
         needsReviewThreshold: 0.6,
-      },
-    ],
-  },
-  {
-    id: "diag-policy-g12-electives-explicit-v1",
-    versionSetId: "g12-math-electives-strengthened-template",
-    gradeLevel: "Grade 12",
-    confidence: "high",
-    sourceRefs: [
-      "g12-finite-mathematics-1-template",
-      "g12-finite-mathematics-2-template",
-    ],
-    thresholds: {
-      mastered: 0.78,
-      needsReview: 0.58,
-      criticalGap: 0,
-    },
-    byTopicGroup: [
-      {
-        topicGroupId: "g12-fm1-q1-counting",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 50, proficient: 35, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm1-q2-probability",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 45, proficient: 40, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm1-q3-decision",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 40, proficient: 45, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm1-q4-project",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 35, proficient: 45, advanced: 20 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm2-q1-matrices",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 45, proficient: 40, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm2-q2-linear-programming",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 40, proficient: 45, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm2-q3-networks",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 40, proficient: 40, advanced: 20 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm2-q4-capstone",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 35, proficient: 45, advanced: 20 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
       },
     ],
   },

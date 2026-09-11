@@ -32,7 +32,7 @@ export interface IARTopicClassification {
   classification: 'Mastered' | 'NeedsReview' | 'HighRisk';
 }
 
-export const IAR_BLUEPRINT_VERSION = 'iar-v2-deped-g11-core-g12-candidate-shortform';
+export const IAR_BLUEPRINT_VERSION = 'iar-v2-deped-g11-core-shortform';
 
 const confidenceOptions = [
   'Very low confidence',

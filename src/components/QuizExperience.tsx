@@ -1311,18 +1311,6 @@ return (
 // Helper functions to generate content per subject
 function getQuestionForSubject(subject: string, index: number): string {
   const questions = {
-    'Pre-Calculus': [
-      'What is the domain of the function f(x) = √(x - 2)?',
-      'Solve for x: 2^x = 16',
-      'What is the period of the function y = sin(2x)?',
-      'Find the inverse of f(x) = 3x + 5',
-      'What is the value of log₂(32)?',
-      'Simplify: (x² - 9) / (x - 3)',
-      'What is the range of f(x) = |x| - 3?',
-      'If f(x) = 2x + 1 and g(x) = x², find f(g(2)).',
-      'What is the amplitude of y = 3cos(x)?',
-      'Solve: log₃(x) = 4',
-    ],
     'General Mathematics': [
       'Simplify: (2x + 3)(x - 4)',
       'What is 15% of 240?',
@@ -1352,18 +1340,6 @@ function getQuestionForSubject(subject: string, index: number): string {
       'What is the median of: 4, 7, 10, 13?',
       'How many ways can you arrange 3 books?',
     ],
-    'Basic Calculus': [
-      'Find the derivative of f(x) = 3x²',
-      'What is the limit of (x² - 4)/(x - 2) as x → 2?',
-      'Integrate: ∫ 2x dx',
-      'Find f\'(x) if f(x) = 5x³ - 2x',
-      'What is the derivative of sin(x)?',
-      'Find the derivative of f(x) = eˣ + 3x',
-      'What is ∫ cos(x) dx?',
-      'Find the derivative of f(x) = ln(x)',
-      'What is the limit of 1/x as x → ∞?',
-      'Find f\'(x) if f(x) = x⁴ - 2x² + 1',
-    ],
   };
 
   // Normalize subject name to match keys
@@ -1374,32 +1350,15 @@ function getQuestionForSubject(subject: string, index: number): string {
 
 function normalizeSubjectName(subject: string): string {
   const lower = subject.toLowerCase();
-  if (lower.includes('pre-calc') || lower.includes('pre calc') || lower.includes('precalc')) return 'Pre-Calculus';
   if (lower.includes('statistic') || lower.includes('probability')) return 'Statistics and Probability';
-  if (lower.includes('calculus') && !lower.includes('pre')) return 'Basic Calculus';
-  if (lower.includes('general') || lower.includes('math')) return 'General Mathematics';
-  // Default fallback based on partial matches
-  if (lower.includes('algebra') || lower.includes('fraction') || lower.includes('percent') || lower.includes('ratio') || lower.includes('geometry')) return 'General Mathematics';
-  if (lower.includes('derivative') || lower.includes('integral') || lower.includes('limit')) return 'Basic Calculus';
-  if (lower.includes('trig') || lower.includes('function') || lower.includes('log')) return 'Pre-Calculus';
-  if (lower.includes('mean') || lower.includes('median') || lower.includes('data')) return 'Statistics and Probability';
+  if (lower.includes('business')) return 'Business Mathematics';
+  if (lower.includes('finite') || lower.includes('matrix') || lower.includes('matrices') || lower.includes('simplex')) return 'Finite Mathematics';
+  // Grade 11 only: legacy pre-calc / calculus inputs resolve to the General Mathematics bank.
   return 'General Mathematics';
 }
 
 function getOptionsForQuestion(subject: string, index: number): string[] {
   const optionSets = {
-    'Pre-Calculus': [
-      ['x ≥ 2', 'x ≤ 2', 'x ≥ 0', 'All real numbers'],
-      ['x = 2', 'x = 4', 'x = 8', 'x = 16'],
-      ['π', '2π', 'π/2', '4π'],
-      ['f⁻¹(x) = (x - 5)/3', 'f⁻¹(x) = 3x - 5', 'f⁻¹(x) = x/3 - 5', 'f⁻¹(x) = (x + 5)/3'],
-      ['4', '5', '6', '7'],
-      ['x + 3', 'x - 3', 'x² + 3', '(x + 3)(x - 3)'],
-      ['y ≥ -3', 'y ≥ 0', 'All real numbers', 'y > -3'],
-      ['9', '5', '7', '3'],
-      ['1', '2', '3', '1/3'],
-      ['12', '27', '64', '81'],
-    ],
     'General Mathematics': [
       ['2x² - 5x - 12', '2x² + 5x - 12', '2x² - 8x + 12', '2x² - 5x + 12'],
       ['36', '32', '28', '24'],
@@ -1429,18 +1388,6 @@ function getOptionsForQuestion(subject: string, index: number): string[] {
       ['8.5', '7', '10', '9'],
       ['6', '3', '9', '12'],
     ],
-    'Basic Calculus': [
-      ['6x', '3x', '9x²', '6x²'],
-      ['4', '2', '0', 'undefined'],
-      ['x² + C', '2x² + C', 'x²/2 + C', '2x + C'],
-      ['15x² - 2', '15x² - 2x', '5x² - 2', '15x - 2'],
-      ['cos(x)', '-cos(x)', 'tan(x)', '-sin(x)'],
-      ['eˣ + 3', 'eˣ + 3x', 'xeˣ + 3', 'eˣ'],
-      ['sin(x) + C', '-sin(x) + C', 'tan(x) + C', '-cos(x) + C'],
-      ['1/x', 'x', 'ln(x)', '-1/x²'],
-      ['0', '1', '∞', 'undefined'],
-      ['4x³ - 4x', '4x³ - 2x', 'x³ - 4x', '4x⁴ - 4x²'],
-    ],
   };
 
   const normalizedSubject = normalizeSubjectName(subject);
@@ -1450,18 +1397,6 @@ function getOptionsForQuestion(subject: string, index: number): string[] {
 
 function getCorrectAnswerForQuestion(subject: string, index: number): number {
   const correctAnswers = {
-    'Pre-Calculus': [
-      0, // x ≥ 2
-      1, // x = 4
-      0, // π
-      0, // f⁻¹(x) = (x - 5)/3
-      1, // 5
-      0, // x + 3
-      0, // y ≥ -3
-      0, // 9 (f(g(2)) = f(4) = 2*4+1 = 9)
-      2, // 3
-      3, // 81 (3⁴ = 81)
-    ],
     'General Mathematics': [
       0, // 2x² - 5x - 12
       0, // 36
@@ -1491,18 +1426,6 @@ function getCorrectAnswerForQuestion(subject: string, index: number): number {
       0, // 8.5
       0, // 6
     ],
-    'Basic Calculus': [
-      0, // 6x
-      0, // 4
-      0, // x² + C
-      0, // 15x² - 2
-      0, // cos(x)
-      0, // eˣ + 3
-      0, // sin(x) + C
-      0, // 1/x
-      0, // 0
-      0, // 4x³ - 4x
-    ],
   };
 
   const normalizedSubject = normalizeSubjectName(subject);
@@ -1512,18 +1435,6 @@ function getCorrectAnswerForQuestion(subject: string, index: number): number {
 
 function getExplanationForQuestion(subject: string, index: number, difficulty: string): string {
   const explanations = {
-    'Pre-Calculus': [
-      'The expression under the square root must be non-negative: x - 2 ≥ 0, so x ≥ 2.',
-      'Since 2⁴ = 16, we get x = 4.',
-      'The period of sin(kx) is 2π/k. Here k = 2, so period = 2π/2 = π.',
-      'To find the inverse: y = 3x + 5 → x = 3y + 5 → y = (x - 5)/3.',
-      'Since 2⁵ = 32, log₂(32) = 5.',
-      '(x² - 9)/(x - 3) = (x+3)(x-3)/(x-3) = x + 3 (for x ≠ 3).',
-      'The absolute value |x| ≥ 0 for all x, so |x| - 3 ≥ -3. The range is y ≥ -3.',
-      'g(2) = 4, then f(4) = 2(4) + 1 = 9.',
-      'The amplitude of y = Acos(x) is |A|. Here A = 3, so amplitude = 3.',
-      'log₃(x) = 4 means 3⁴ = x, so x = 81.',
-    ],
     'General Mathematics': [
       '(2x + 3)(x - 4) = 2x² - 8x + 3x - 12 = 2x² - 5x - 12',
       '15% of 240 = 0.15 × 240 = 36',
@@ -1552,18 +1463,6 @@ function getExplanationForQuestion(subject: string, index: number, difficulty: s
       'For independent events: P(A and B) = P(A) × P(B) = 0.3 × 0.5 = 0.15',
       'For even-count dataset {4,7,10,13}: median = (7+10)/2 = 8.5',
       '3 books can be arranged in 3! = 3 × 2 × 1 = 6 ways.',
-    ],
-    'Basic Calculus': [
-      'Using the power rule: d/dx[3x²] = 3 × 2x = 6x',
-      'Factor: (x²-4)/(x-2) = (x+2)(x-2)/(x-2) = x+2. As x→2: 2+2 = 4',
-      '∫ 2x dx = 2 × x²/2 + C = x² + C',
-      'f\'(x) = 5 × 3x² - 2 = 15x² - 2',
-      'The derivative of sin(x) is cos(x). This is a fundamental trigonometric derivative.',
-      'd/dx[eˣ + 3x] = eˣ + 3. The derivative of eˣ is eˣ and of 3x is 3.',
-      '∫ cos(x) dx = sin(x) + C. Integration is the reverse of differentiation.',
-      'The derivative of ln(x) is 1/x. This is a fundamental logarithmic derivative.',
-      'As x → ∞, 1/x approaches 0. The function gets infinitely close to zero.',
-      'f\'(x) = 4x³ - 4x using the power rule on each term.',
     ],
   };
 

@@ -243,18 +243,18 @@ export const COMPETENCY_REGISTRY: Competency[] = [
   { id: 'counting-combinations', name: 'Combinations', category: 'counting', difficulty: 2, description: 'Calculate selections without order', melcCode: 'M11GM-IVf-2' },
   { id: 'counting-pigeonhole', name: 'Pigeonhole Principle', category: 'counting', difficulty: 3, description: 'Apply pigeonhole principle', melcCode: 'M11GM-IVg-1' },
 
-  // Number Theory (Grade 12 - Finite Math)
+  // Number Theory (Grade 11 - Finite Math)
   { id: 'number-gcd-lcm', name: 'GCD and LCM', category: 'number-theory', difficulty: 1, description: 'Find greatest common divisor and least common multiple', melcCode: 'M12GM-Ia-1' },
   { id: 'number-modular', name: 'Modular Arithmetic', category: 'number-theory', difficulty: 2, description: 'Perform modular arithmetic operations', melcCode: 'M12GM-Ib-1' },
   { id: 'number-diophantine', name: 'Diophantine Equations', category: 'number-theory', difficulty: 3, description: 'Solve linear Diophantine equations', melcCode: 'M12GM-Ic-1' },
 
-  // Business Math (Grade 12)
+  // Business Math (Grade 11)
   { id: 'business-simple-interest', name: 'Simple Interest', category: 'business-math', difficulty: 1, description: 'Calculate simple interest', melcCode: 'M12GM-IIa-1' },
   { id: 'business-compound', name: 'Compound Interest', category: 'business-math', difficulty: 2, description: 'Calculate compound interest and growth', melcCode: 'M12GM-IIb-1' },
   { id: 'business-annuities', name: 'Annuities', category: 'business-math', difficulty: 3, description: 'Calculate present and future value of annuities', melcCode: 'M12GM-IIc-1' },
   { id: 'business-depreciation', name: 'Depreciation', category: 'business-math', difficulty: 2, description: 'Calculate depreciation methods', melcCode: 'M12GM-IId-1' },
 
-  // Finite Math (Grade 12)
+  // Finite Math (Grade 11)
   { id: 'finite-matrices', name: 'Matrix Operations', category: 'finite-math', difficulty: 2, description: 'Perform matrix addition, multiplication', melcCode: 'M12GM-IIIa-1' },
   { id: 'finite-systems', name: 'Systems of Linear Equations', category: 'finite-math', difficulty: 3, description: 'Solve systems using matrices', melcCode: 'M12GM-IIIb-1' },
   { id: 'finite-graphs', name: 'Graph Theory Basics', category: 'finite-math', difficulty: 2, description: 'Analyze basic graph properties', melcCode: 'M12GM-IVa-1' },
@@ -270,12 +270,9 @@ export function getCompetencyById(id: string): Competency | undefined {
   return COMPETENCY_REGISTRY.find(c => c.id === id);
 }
 
-export function getCategoriesForGrade(gradeLevel: string): AssessmentCategory[] {
-  if (gradeLevel === 'Grade 11') {
-    return ['functions', 'sequences', 'logic', 'statistics', 'counting'];
-  }
-  // Grade 12
-  return ['functions', 'sequences', 'number-theory', 'business-math', 'finite-math'];
+export function getCategoriesForGrade(_gradeLevel: string): AssessmentCategory[] {
+  // Grade 11 only: all categories available.
+  return ['functions', 'sequences', 'logic', 'statistics', 'counting', 'number-theory', 'business-math', 'finite-math'];
 }
 
 /** Competency buckets computed from a diagnostic result. */

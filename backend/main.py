@@ -261,7 +261,7 @@ HF_TOKEN = os.environ.get(
     os.environ.get("HUGGING_FACE_API_TOKEN", os.environ.get("HUGGINGFACE_API_TOKEN", "")),
 )  # Kept for HF Space deployment / dataset push only; AI inference uses DEEPSEEK_API_KEY
 
-# Grade 11-12 tutoring default model. Can be overridden via INFERENCE_MODEL_ID or INFERENCE_CHAT_MODEL_ID.
+# Grade 11 tutoring default model. Can be overridden via INFERENCE_MODEL_ID or INFERENCE_CHAT_MODEL_ID.
 HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "deepseek-chat")
 
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
@@ -3605,7 +3605,7 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
                 "role": "system",
                 "content": (
                     "You are a student success specialist. Provide practical, measurable, and age-appropriate "
-                    "interventions for Grade 11-12 students."
+                    "interventions for Grade 11 students."
                 ),
             },
             {"role": "user", "content": prompt},
@@ -9201,13 +9201,6 @@ DEPD_ED_COMPETENCY_DOMAINS: Dict[str, Dict[str, List[str]]] = {
             "Business Mathematics - Loans and Credit",
             "Business Mathematics - Data Presentation",
         ],
-        "Grade 12": [
-            "Business Mathematics - Business Reports",
-            "Business Mathematics - Financial Analysis",
-            "Business Mathematics - Investment Decisions",
-            "Business Mathematics - Taxation",
-            "Business Mathematics - Asset Depreciation",
-        ],
     },
     "STEM": {
         "Grade 11": [
@@ -9227,16 +9220,6 @@ DEPD_ED_COMPETENCY_DOMAINS: Dict[str, Dict[str, List[str]]] = {
             "Statistics - Sampling",
             "Statistics - Hypothesis Testing",
         ],
-        "Grade 12": [
-            "General Mathematics - Financial Math",
-            "General Mathematics - Compound Interest",
-            "General Mathematics - Annuities",
-            "General Mathematics - Amortization",
-            "General Mathematics - Logical Propositions",
-            "Statistics - Confidence Intervals",
-            "Statistics - Correlation",
-            "Statistics - Regression",
-        ],
     },
     "HUMSS": {
         "Grade 11": [
@@ -9246,21 +9229,12 @@ DEPD_ED_COMPETENCY_DOMAINS: Dict[str, Dict[str, List[str]]] = {
             "General Mathematics - Data Analysis",
             "General Mathematics - Probability",
         ],
-        "Grade 12": [
-            "General Mathematics - Financial Math",
-            "General Mathematics - Logical Reasoning",
-            "Statistics - Statistical Inference",
-        ],
     },
     "GAS": {
         "Grade 11": [
             "General Mathematics - Patterns and Sequences",
             "General Mathematics - Functions",
             "General Mathematics - Statistics Basics",
-        ],
-        "Grade 12": [
-            "General Mathematics - Financial Math",
-            "General Mathematics - Logical Reasoning",
         ],
     },
     "TVL": {
@@ -9269,11 +9243,6 @@ DEPD_ED_COMPETENCY_DOMAINS: Dict[str, Dict[str, List[str]]] = {
             "Applied Mathematics - Measurement",
             "Applied Mathematics - Data Interpretation",
             "Applied Mathematics - Problem Solving",
-        ],
-        "Grade 12": [
-            "Applied Mathematics - Business Math",
-            "Applied Mathematics - Consumer Math",
-            "Applied Mathematics - Technical Math",
         ],
     },
 }
@@ -9307,7 +9276,7 @@ def _csv_escape(value: Any) -> str:
     return '"' + text.replace('"', '""') + '"'
 
 
-# ─── Quiz Topics Database (SHS Grade 11-12 Only) ─────────────
+# ─── Quiz Topics Database (SHS Grade 11 Only) ─────────────
 
 MATH_TOPICS_BY_GRADE: Dict[str, Dict[str, List[str]]] = {
     "Grade 11": {
@@ -9344,37 +9313,6 @@ MATH_TOPICS_BY_GRADE: Dict[str, Dict[str, List[str]]] = {
         "Statistics and Probability - Hypothesis Testing": [
             "Hypothesis Testing Concepts", "T-test", "Z-test",
             "Correlation and Regression",
-        ],
-    },
-    "Grade 12": {
-        "Pre-Calculus - Analytic Geometry": [
-            "Conic Sections - Parabola", "Conic Sections - Ellipse",
-            "Conic Sections - Hyperbola", "Conic Sections - Circle",
-            "Systems of Nonlinear Equations",
-        ],
-        "Pre-Calculus - Series and Induction": [
-            "Sequences and Series", "Arithmetic Sequences", "Geometric Sequences",
-            "Mathematical Induction", "Binomial Theorem",
-        ],
-        "Pre-Calculus - Trigonometry": [
-            "Angles and Unit Circle", "Trigonometric Functions",
-            "Trigonometric Identities", "Sum and Difference Formulas",
-            "Inverse Trigonometric Functions", "Polar Coordinates",
-        ],
-        "Basic Calculus - Limits": [
-            "Limits of Functions", "Limit Theorems", "One-Sided Limits",
-            "Infinite Limits and Limits at Infinity", "Continuity of Functions",
-        ],
-        "Basic Calculus - Derivatives": [
-            "Definition of the Derivative", "Differentiation Rules", "Chain Rule",
-            "Implicit Differentiation", "Higher-Order Derivatives", "Related Rates",
-            "Extrema and the First Derivative Test",
-            "Concavity and the Second Derivative Test", "Optimization Problems",
-        ],
-        "Basic Calculus - Integration": [
-            "Antiderivatives and Indefinite Integrals",
-            "Definite Integrals and the FTC",
-            "Integration by Substitution", "Area Under a Curve",
         ],
     },
 }
@@ -9430,7 +9368,7 @@ def _resolve_grade_level_key(grade_level: Optional[str]) -> Optional[str]:
     if normalized in {"11", "grade11", "grade 11", "g11"}:
         return "Grade 11"
     if normalized in {"12", "grade12", "grade 12", "g12"}:
-        return "Grade 12"
+        return "Grade 11"
 
     for key in MATH_TOPICS_BY_GRADE.keys():
         if key.lower() == normalized:
@@ -11742,7 +11680,7 @@ async def get_hf_monitoring(http_request: Request):
 async def get_quiz_topics(response: Response, gradeLevel: Optional[str] = None):
     """
     Return structured list of SHS math topics organised by grade level.
-    Only Grade 11 and Grade 12 are supported.
+    Only Grade 11 is supported.
     If gradeLevel is provided, return topics for that grade only.
     """
     response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=900"
@@ -12820,50 +12758,6 @@ _SHS_TOPICS = {
             ("T-test", "Hypothesis Testing"),
             ("Z-test", "Hypothesis Testing"),
             ("Correlation and Regression", "Correlation and Regression"),
-        ],
-    },
-    "pre-calc": {
-        "name": "Pre-Calculus",
-        "topics": [
-            ("Conic Sections - Parabola", "Analytic Geometry"),
-            ("Conic Sections - Ellipse", "Analytic Geometry"),
-            ("Conic Sections - Hyperbola", "Analytic Geometry"),
-            ("Conic Sections - Circle", "Analytic Geometry"),
-            ("Systems of Nonlinear Equations", "Analytic Geometry"),
-            ("Sequences and Series", "Series and Induction"),
-            ("Arithmetic Sequences", "Series and Induction"),
-            ("Geometric Sequences", "Series and Induction"),
-            ("Mathematical Induction", "Series and Induction"),
-            ("Binomial Theorem", "Series and Induction"),
-            ("Angles and Unit Circle", "Trigonometry"),
-            ("Trigonometric Functions", "Trigonometry"),
-            ("Trigonometric Identities", "Trigonometry"),
-            ("Sum and Difference Formulas", "Trigonometry"),
-            ("Inverse Trigonometric Functions", "Trigonometry"),
-            ("Polar Coordinates", "Trigonometry"),
-        ],
-    },
-    "basic-calc": {
-        "name": "Basic Calculus",
-        "topics": [
-            ("Limits of Functions", "Limits"),
-            ("Limit Theorems", "Limits"),
-            ("One-Sided Limits", "Limits"),
-            ("Infinite Limits and Limits at Infinity", "Limits"),
-            ("Continuity of Functions", "Limits"),
-            ("Definition of the Derivative", "Derivatives"),
-            ("Differentiation Rules", "Derivatives"),
-            ("Chain Rule", "Derivatives"),
-            ("Implicit Differentiation", "Derivatives"),
-            ("Higher-Order Derivatives", "Derivatives"),
-            ("Related Rates", "Derivatives"),
-            ("Extrema and the First Derivative Test", "Derivatives"),
-            ("Concavity and the Second Derivative Test", "Derivatives"),
-            ("Optimization Problems", "Derivatives"),
-            ("Antiderivatives and Indefinite Integrals", "Integration"),
-            ("Definite Integrals and the FTC", "Integration"),
-            ("Integration by Substitution", "Integration"),
-            ("Area Under a Curve", "Integration"),
         ],
     },
 }
