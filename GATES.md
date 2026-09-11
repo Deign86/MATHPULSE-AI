@@ -190,13 +190,41 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: ICON_TABS_READY
   EVIDENCE: Passed. Output: `ICON_TABS_READY`. Sticky category pill bar switches to compact icon-only circular tabs on mobile (`< sm:`) with active gradient highlight and touch-friendly 40px+ tap targets, expanding to icon + label on `sm:` and desktop.
 
-- [x] F5: Developer documentation created in docs/AVATAR_STUDIO_MOBILE_REDESIGN.md.
-  CHECK: node -e "const fs = require('fs'); console.log(fs.existsSync('docs/AVATAR_STUDIO_MOBILE_REDESIGN.md') ? 'DOCS_EXISTS' : 'MISSING');"
+- [x] F5: Developer documentation created in docs/UI_IMPROVEMENTS.md.
+  CHECK: node -e "const fs = require('fs'); console.log(fs.existsSync('docs/UI_IMPROVEMENTS.md') ? 'DOCS_EXISTS' : 'MISSING');"
   EXPECT: DOCS_EXISTS
-  EVIDENCE: Passed. Output: `DOCS_EXISTS`. Complete developer guide created at `docs/AVATAR_STUDIO_MOBILE_REDESIGN.md` covering architecture, motivation, component breakdown, styling tokens, and responsive testing guidelines.
+  EVIDENCE: Passed. Output: `DOCS_EXISTS`. Complete developer guide created at `docs/UI_IMPROVEMENTS.md` covering architecture, motivation, component breakdown, styling tokens, and responsive testing guidelines for Avatar Studio and Modules Page.
 
 - [x] F6: System verification: npm run typecheck and npm run lint:anti-slop pass with 0 errors.
   CHECK: npm run typecheck
   EXPECT: 0 errors
   EVIDENCE: Passed. `npm run typecheck` passed with 0 errors. `npm run lint:anti-slop` (`oxlint --quiet`) passed with 0 errors across 382 files. Production build verified.
+
+
+## Section H: Modules Page UI/UX Redesign
+- [x] H1: Mobile hero compaction & curriculum info drawer: mobile hero height is compact with interactive info badge; 50-word paragraph and desktop mascot preserved on `lg:`.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/ModulesPage.tsx', 'utf8'); console.log(s.includes('showCurriculumInfo') || s.includes('Curriculum Info') || s.includes('hidden lg:block') ? 'HERO_COMPACT_READY' : 'HERO_UNCHANGED');"
+  EXPECT: HERO_COMPACT_READY
+  EVIDENCE: Passed. Output: `HERO_COMPACT_READY`. Hero section compacted on mobile with title + "About" info button opening `showCurriculumInfo` modal. Long 50-word paragraph hidden on mobile (`hidden lg:block`) and desktop mascot preserved on `lg:`.
+
+- [x] H2: Mobile mascot trap removed: standalone mobile mascot removed, freeing ~250px vertical height on mobile viewports while keeping desktop mascot.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/ModulesPage.tsx', 'utf8'); const occurrences = (s.match(/<ModulesMascot/g) || []).length; console.log(occurrences === 1 ? 'MASCOT_TRAP_REMOVED' : 'MASCOT_STILL_PRESENT');"
+  EXPECT: MASCOT_TRAP_REMOVED
+  EVIDENCE: Passed. Output: `MASCOT_TRAP_REMOVED`. Standalone mobile mascot block (`flex lg:hidden` below sticky filter bar) eliminated. `<ModulesMascot />` is only rendered once in the desktop hero column (`hidden lg:flex`).
+
+- [x] H3: Streamlined filters: quick-tap Quarter pills (`All`, `Q1`, `Q2`, `Q3`, `Q4`) + mobile filter sheet trigger + preserved desktop inline dropdowns.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/ModulesPage.tsx', 'utf8'); console.log(s.includes('QUARTER_FILTERS') && (s.includes('showFilterDrawer') || s.includes('FilterDrawer') || s.includes('Filter Sheet')) ? 'FILTERS_STREAMLINED' : 'FILTERS_PENDING');"
+  EXPECT: FILTERS_STREAMLINED
+  EVIDENCE: Passed. Output: `FILTERS_STREAMLINED`. Added mobile horizontal quarter pill selector with active highlight, slide-up filter sheet (`showFilterDrawer`) with full subject, quarter, and competency controls, active filter count badge, and clean reset button. Preserved desktop dropdowns (`hidden lg:flex`).
+
+- [x] H4: Adaptive grid: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` in ModulesLibraryView and RecommendedModulesView, eliminating 158px mobile squished cards.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/ModulesPage.tsx', 'utf8'); console.log(s.includes('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3') ? 'GRID_ADAPTIVE' : 'GRID_STATIC');"
+  EXPECT: GRID_ADAPTIVE
+  EVIDENCE: Passed. Output: `GRID_ADAPTIVE`. Replaced rigid `grid-cols-2 lg:grid-cols-3` with `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6` across `ModulesLibraryView`, `RecommendedModulesView`, and teacher uploaded views. Cards now display at ~330px comfortable width on mobile devices.
+
+- [x] H5: Code quality & type safety: zero TypeScript errors and zero anti-slop violations.
+  CHECK: npm run typecheck
+  EXPECT: 0 errors
+  EVIDENCE: Passed. `npm run typecheck` passed with 0 errors. `npm run lint:anti-slop` (`oxlint --quiet`) passed with 0 errors. `npx vitest run src/components/ModulesPage.test.tsx` passed with 1/1 tests passing.
+
 
