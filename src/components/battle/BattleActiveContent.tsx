@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Bot, Users, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '../ui/utils';
 
