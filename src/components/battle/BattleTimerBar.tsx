@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'motion/react';
 import { cn } from '../ui/utils';
 
 interface BattleTimerBarProps {
@@ -15,25 +14,32 @@ export const BattleTimerBar: React.FC<BattleTimerBarProps> = React.memo(({
   currentRound,
   totalRounds,
 }) => {
+  const urgent = roundSecondsLeft <= 3;
+  const barColor = roundSecondsLeft > Math.floor(timePerQuestionSec / 2)
+    ? '#10b981'
+    : roundSecondsLeft > 3
+      ? '#f59e0b'
+      : '#ef4444';
   return (
     <div className="shrink-0 w-full max-w-4xl mx-auto mt-6 mb-4 space-y-2">
-      <div className={cn('h-2 bg-white/10 rounded-full overflow-hidden', roundSecondsLeft <= 3 && 'animate-pulse')}>
-        <motion.div
+      <div
+        role="timer"
+        aria-label={`Round ${currentRound} of ${totalRounds}: ${roundSecondsLeft} seconds left`}
+        className="h-2 bg-white/10 rounded-full overflow-hidden"
+      >
+        <div
           className="h-full"
-          animate={{
+          style={{
             width: `${Math.max(0, (roundSecondsLeft / timePerQuestionSec) * 100)}%`,
-            backgroundColor: roundSecondsLeft > Math.floor(timePerQuestionSec / 2)
-              ? '#10b981'
-              : roundSecondsLeft > 3
-                ? '#f59e0b'
-                : '#ef4444'
+            backgroundColor: barColor,
+            transition: 'width 1s linear, background-color 0.3s ease-out',
           }}
-          transition={{ duration: 1, ease: 'linear' }}
         />
       </div>
       <div className="flex items-center justify-between px-0.5 text-[11px] uppercase tracking-[0.18em] text-white/65 font-bold">
         <span>Round {currentRound} / {totalRounds}</span>
-        <span className={cn('tabular-nums', roundSecondsLeft <= 3 && 'text-rose-300')}>{roundSecondsLeft}s</span>
+        <span className={cn('tabular-nums', urgent && 'text-rose-300')} aria-hidden="true">{roundSecondsLeft}s</span>
+        <span className="sr-only" aria-live="polite">{urgent ? `${roundSecondsLeft} seconds left` : ''}</span>
       </div>
     </div>
   );

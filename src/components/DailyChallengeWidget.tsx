@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { CheckCircle, Zap, Swords } from 'lucide-react';
 import quizBattleBg from '../assets/quiz_battle_avatar.png';
 
@@ -46,14 +46,16 @@ interface DailyChallengeWidgetProps {
 
 const DailyChallengeWidget: React.FC<DailyChallengeWidgetProps> = ({ onNavigateToQuizBattle, userPhoto }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const reduceMotion = useReducedMotion();
 
-  // Auto-swipe effect
+  // Auto-swipe effect — disabled when reduced motion is requested
   useEffect(() => {
+    if (reduceMotion) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % challenges.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [reduceMotion]);
 
   const currentChallenge = challenges[currentIndex];
 
@@ -64,17 +66,27 @@ const DailyChallengeWidget: React.FC<DailyChallengeWidgetProps> = ({ onNavigateT
         <AnimatePresence mode="wait">
           <motion.div
             key={currentChallenge.id}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.3 }}
             className={`absolute inset-0 ${currentChallenge.bgColor} p-4 sm:p-5 flex flex-col justify-between overflow-hidden`}
           >
-            {/* Top Right menu dots */}
+            {/* Slide indicators */}
             <div className="absolute top-4 right-4 flex gap-1 items-center z-20">
-              <div className="w-3 h-1.5 rounded-full bg-white/60"></div>
-              <div className="w-1.5 h-1.5 rounded-full bg-white/40"></div>
-              <div className="w-1.5 h-1.5 rounded-full bg-white/40"></div>
+              {challenges.map((challenge, index) => (
+                <button
+                  key={challenge.id}
+                  type="button"
+                  aria-label={`Go to challenge ${index + 1}: ${challenge.title}`}
+                  aria-current={index === currentIndex}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentIndex(index);
+                  }}
+                  className={`${index === currentIndex ? 'w-3 h-1.5 bg-white/60' : 'w-1.5 h-1.5 bg-white/40'} rounded-full transition-colors`}
+                />
+              ))}
             </div>
 
             {/* Background Graphic for Quiz Battle */}
