@@ -20,3 +20,6 @@ verify, review, PR. Base: origin/main @45da2f3 (includes PR #146).
 
 EVIDENCE:
 - build-clean: `npx tsc --noEmit` exit 0, 0 errors; `npm run build` exit 0 in 16.62s (chunk-size warning pre-existing). Both parent-run in sweep worktree across all 3 lanes.
+- impl-auth/motion/dash: 19 files +330/-202 reviewed lane-by-lane by parent; zero framer-motion imports (`grep` empty); anti-slop hook clean after satisfies fix.
+- review-pass: parent review (correctness + scope/slop) in place of pending workflow reviewers; tsc/build/anti-slop green.
+- pr-open: PR #147 (chore/ui-skills-sweep -> main), commit fc36505.
