@@ -31,13 +31,13 @@ const SUPPLEMENTAL_RESOURCES = {
     { label: 'Distribution Visualizer', description: 'Explore normal distribution curves', icon: <TrendingUp size={14} /> },
     { label: 'Hypothesis Practice', description: 'Step-by-step hypothesis testing', icon: <Brain size={14} /> },
   ],
-  'Pre-Calculus': [
-    { label: 'Conic Sections Explorer', description: 'Visual parabola, ellipse, hyperbola tool', icon: <TrendingUp size={14} /> },
-    { label: 'Trig Identity Practice', description: 'Identity verification drill set', icon: <Brain size={14} /> },
+  'Business Mathematics': [
+    { label: 'Interest & Annuities Drill', description: 'Simple, compound interest and annuity practice', icon: <BookOpen size={14} /> },
+    { label: 'Pricing Models Review', description: 'Linear models for business decisions', icon: <TrendingUp size={14} /> },
   ],
-  'Basic Calculus': [
-    { label: 'Limits Visualizer', description: 'Graphical approach to limits', icon: <TrendingUp size={14} /> },
-    { label: 'Derivative Rules Drill', description: 'Practice chain rule & implicit diff', icon: <Brain size={14} /> },
+  'Finite Mathematics': [
+    { label: 'Matrices Practice', description: 'Systems and matrix operations drill', icon: <Brain size={14} /> },
+    { label: 'Optimization Walkthrough', description: 'Geometric and simplex method steps', icon: <TrendingUp size={14} /> },
   ],
 };
 
@@ -48,8 +48,10 @@ function getSubjectKey(subject: string): string | null {
   if (lower === 'logic' || lower.includes('reason')) return 'General Mathematics';
   if (lower.includes('general') || lower.includes('gen-math') || lower.includes('gen math')) return 'General Mathematics';
   if (lower.includes('stat') || lower.includes('prob')) return 'Statistics and Probability';
-  if (lower.includes('pre-calc') || lower.includes('pre calc') || lower.includes('precalc')) return 'Pre-Calculus';
-  if (lower.includes('basic') || lower.includes('calc')) return 'Basic Calculus';
+  if (lower.includes('business')) return 'Business Mathematics';
+  if (lower.includes('finite') || lower.includes('matrix') || lower.includes('matrices') || lower.includes('simplex')) return 'Finite Mathematics';
+  // Grade 11 only: legacy pre-calc / calculus inputs fall back to General Mathematics.
+  if (lower.includes('pre-calc') || lower.includes('pre calc') || lower.includes('precalc') || lower.includes('calc') || lower.includes('limit') || lower.includes('deriv') || lower.includes('integral') || lower.includes('trig')) return 'General Mathematics';
   return null;
 }
 

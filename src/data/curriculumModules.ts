@@ -8,7 +8,8 @@ export type CurriculumQuarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 export type CurriculumSubjectId =
   | 'gen-math'
   | 'business-math'
-  | 'stats-prob';
+  | 'stats-prob'
+  | 'finite-math';
 
 const COMPETENCY_TO_LESSON: Record<string, { lessonId: string; storagePath: string; sourceFile: string }> =
   Object.fromEntries(
@@ -144,10 +145,16 @@ const SUBJECT_META = {
     color: '#6b21a8',
     accent: '#a855f7',
   },
+  'finite-math': {
+    id: 'finite-math',
+    label: 'Finite Mathematics',
+    color: '#0e7490',
+    accent: '#22d3ee',
+  },
 } satisfies Record<CurriculumSubjectId, SubjectMeta>;
 
 const SCHOOL_PROGRAM_DEFAULT_SUBJECTS_BY_GRADE = {
-  'Grade 11': ['gen-math'],
+  'Grade 11': ['gen-math', 'business-math', 'stats-prob', 'finite-math'],
 } satisfies Record<GradeLevel, CurriculumSubjectId[]>;
 
 const COMPETENCY_VERBS_G11 = 'Foundational competency flow with guided examples, step-by-step vocabulary support, and scaffolded checkpoints.';
@@ -293,15 +300,50 @@ export const CURRICULUM_MODULE_BLUEPRINTS: CurriculumModuleBlueprint[] = [
     source('shs-gm-q4-las-le12', 'DepEd SSHS General Mathematics Q4 Learning Activity Sheet (Logic and Syllogisms)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE12.pdf'),
   ]),
 
-  // NOTE: Grade 12 Basic Calculus removed - serving Grade 11 only
+  b('gm-q2-compound-interest', 'gen-math', 'Q2', 'Compound Interest and Present Values', 'Compute simple and compound interest, maturity values, and present values for real-life decisions.', 'Financial Mathematics', 'GM-Q2-CI', [
+    { code: 'GM11-Q2-CI-1', outcome: 'Compute and compare simple and compound interest, maturity, and present values.' },
+    { code: 'GM11-Q2-CI-2', outcome: 'Solve real-life problems involving maturity value and present value of simple and compound interests.' },
+  ], 'Solves interest and present-value problems with complete accurate solutions.', 'Savings accounts and loan planning', ['Grade 11'], 'Grade 11', [
+    source('genmath-q2-mod1', 'DepEd General Mathematics Q2 Module 1: Simple and Compound Interests', 'curriculum/general_math/genmath_q2_mod1_simpleandcompoundinterests_v2.pdf'),
+    source('genmath-q2-mod2', 'DepEd General Mathematics Q2 Module 2: Interest, Maturity, and Present Values', 'curriculum/general_math/genmath_q2_mod2_interestmaturityfutureandpresentvaluesinsimpleandcompoundinterests_v2.pdf'),
+  ]),
+  b('gm-q2-annuities', 'gen-math', 'Q2', 'Annuities', 'Illustrate simple and general annuities and compute their future and present values.', 'Financial Mathematics', 'GM-Q2-ANN', [
+    { code: 'GM11-Q2-ANN-1', outcome: 'Illustrate and calculate future and present values of simple and general annuities.' },
+  ], 'Computes annuity values accurately for saving and payment plans.', 'Installment saving and pension planning', ['Grade 11'], 'Grade 11', [
+    source('genmath-q2-mod4', 'DepEd General Mathematics Q2 Module 4: Simple and General Annuities', 'curriculum/general_math/genmath_q2_mod4_simpleandgeneralannuities_v2.pdf'),
+  ]),
+  b('bm-q1-business-math', 'business-math', 'Q1', 'Business Mathematics Foundations', 'Model business scenarios with linear equations and inequalities for pricing and planning.', 'Business Mathematics', 'BM-Q1-FOUND', [
+    { code: 'ABM_BM11BS-Ia-b-1', outcome: 'Translate verbal phrases to mathematical expressions; model business scenarios using linear equations and inequalities.' },
+  ], 'Builds a business pricing model with equations and justified recommendations.', 'MSME pricing and budgeting', ['Grade 11'], 'Grade 11', [
+    source('shs-bm-complete-le', 'DepEd SSHS Business Mathematics Lesson Exemplar', 'curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf'),
+  ]),
+  b('stat-q1-probability', 'stats-prob', 'Q1', 'Random Variables and Sampling Distributions', 'Describe random variables, compute distribution statistics, and apply normal and sampling theory.', 'Probability and Statistics', 'SP-Q1-RV', [
+    { code: 'SP_SHS11-Ia-1', outcome: 'Define and describe random variables and their types.' },
+    { code: 'SP_SHS11-Ia-2', outcome: 'Calculate mean, variance, and standard deviation of discrete random variables.' },
+    { code: 'SP_SHS11-Ia-3', outcome: 'Illustrate normal distributions and compute standard probabilities using z-scores.' },
+    { code: 'SP_SHS11-Ia-4', outcome: 'Illustrate the Central Limit Theorem and apply sampling distribution theory.' },
+  ], 'Produces a statistics brief with computed probabilities and interpreted results.', 'School surveys and quality checks', ['Grade 11'], 'Grade 11', [
+    source('statprob-full', 'DepEd Statistics and Probability Full Module', 'curriculum/stat_prob/Full.pdf'),
+  ]),
+  b('fm-q1-finite-math', 'finite-math', 'Q1', 'Systems and Matrices', 'Model and solve systems of linear equations using matrix representations and operations.', 'Matrices and Systems', 'FM-Q1-MS', [
+    { code: 'FM11-MS-1', outcome: 'Model and solve systems of linear equations using matrix representations and operations.' },
+  ], 'Solves a real allocation problem with a documented matrix solution.', 'Resource allocation and scheduling', ['Grade 11'], 'Grade 11', [
+    source('fm-1-le', 'DepEd SSHS Finite Mathematics 1 Lesson Exemplar', 'curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/PDF/Finite Math 1_LE.pdf'),
+  ]),
+  b('fm-q2-finite-math', 'finite-math', 'Q2', 'Linear Optimization', 'Solve real-world optimization problems using geometric methods and the simplex algorithm.', 'Optimization', 'FM-Q2-LP', [
+    { code: 'FM11-LP-1', outcome: 'Solve real-world optimization problems using geometric methods and the simplex algorithm.' },
+  ], 'Delivers an optimization report with the best feasible solution justified.', 'Production planning and logistics', ['Grade 11'], 'Grade 11', [
+    source('fm-2-le', 'DepEd SSHS Finite Mathematics 2 Lesson Exemplar', 'curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 2/PDF/Finite Math 2_LE.pdf'),
+  ]),
+  // Serving Grade 11 only.
 ];
 
 function adaptDescriptionForGrade(module: CurriculumModuleBlueprint, _activeGradeLevel: GradeLevel): string {
   return `${module.moduleDescription} ${COMPETENCY_VERBS_G11}`;
 }
 
-function makeLessons(module: CurriculumModuleBlueprint, activeGradeLevel: GradeLevel) {
-  const duration = activeGradeLevel === 'Grade 11' ? '22 min' : '18 min';
+function makeLessons(module: CurriculumModuleBlueprint, _activeGradeLevel: GradeLevel) {
+  const duration = '22 min';
   return module.competencies.map((competency, index) => {
     const curriculumMatch = COMPETENCY_TO_LESSON[competency.code];
     const fallbackStoragePath = module.sources[0]?.storagePath ?? '';
@@ -348,13 +390,14 @@ function makeAssessments(module: CurriculumModuleBlueprint): CurriculumAssessmen
 }
 
 function makeQuizzes(module: CurriculumModuleBlueprint, assessments: CurriculumAssessmentMeta[]) {
+  // All Grade 11 subjects are finalized DepEd-sourced modules: fully unlocked, no sequential gating.
   return assessments.map((assessment, index) => ({
     id: `${module.id}-q${index + 1}`,
     title: assessment.title,
     questions: Math.max(8, assessment.competencyCodes.length * 5),
     duration: assessment.type === 'module' ? '22 min' : '15 min',
     completed: false,
-    locked: index > 0,
+    locked: false,
     type: assessment.type,
   }));
 }
@@ -370,6 +413,7 @@ function normalizeSubjectAssignments(assignedSubjects: string[] | undefined): Cu
     'gen-math',
     'business-math',
     'stats-prob',
+    'finite-math',
   ]);
   const normalized = assignedSubjects
     .map((entry) => entry.trim().toLowerCase())
@@ -377,6 +421,7 @@ function normalizeSubjectAssignments(assignedSubjects: string[] | undefined): Cu
       if (entry === 'gen-math' || entry === 'general-mathematics' || entry === 'general mathematics') return 'gen-math';
       if (entry === 'business-math' || entry === 'business mathematics' || entry === 'bm') return 'business-math';
       if (entry === 'stats-prob' || entry === 'statistics and probability' || entry === 'statistics') return 'stats-prob';
+      if (entry === 'finite-math' || entry === 'finite mathematics' || entry === 'fm') return 'finite-math';
       return null;
     })
     .filter((entry): entry is CurriculumSubjectId => entry !== null && allowed.has(entry));
@@ -417,10 +462,9 @@ export function getCurriculumModulesForLearner(
       const quizzes = makeQuizzes(module, assessments);
       const subjectMeta = SUBJECT_META[module.subjectId];
 
-      // Check if module has PDF-backed lessons for RAG availability
-      const hasPdfBackedLessons = lessons.some((lesson) => lesson.storagePath && lesson.storagePath.length > 0);
-      const isAvailable = module.isAvailable ?? hasPdfBackedLessons ?? true;
-      const moduleStatus: ModuleStatus = isAvailable ? 'available' : 'coming_soon';
+      // All Grade 11 modules are finalized published content: always available.
+      const isAvailable = true;
+      const moduleStatus: ModuleStatus = 'available';
 
       return {
         id: module.id,

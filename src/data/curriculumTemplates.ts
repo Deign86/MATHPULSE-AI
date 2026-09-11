@@ -71,14 +71,6 @@ export const CURRICULUM_SOURCE_REGISTRY: CurriculumSourceReference[] = [
     confidence: 'medium',
     notes: 'Used to recover competency line items when primary PDF extraction is unavailable.',
   },
-  {
-    id: 'g12-elective-inferred-template',
-    title: 'Grade 12 elective competency template (inferred track)',
-    url: 'https://www.deped.gov.ph/',
-    tier: 'inferred',
-    confidence: 'medium',
-    notes: 'Inferred elective competency scaffolding while waiting for additional explicit competency-level issuances.',
-  },
 ];
 
 export const CURRICULUM_VERSION_SETS: CurriculumVersionSet[] = [

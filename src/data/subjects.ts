@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calculator, BarChart3 } from 'lucide-react';
+import { Calculator, BarChart3, TrendingUp, LayoutGrid } from 'lucide-react';
 
 // Grade 11 SHS Math only - served to all users
 export const SHS_MATH_SUBJECTS = [
@@ -60,9 +60,37 @@ export const SHS_MATH_SUBJECTS = [
       { id: 'stat-014', name: 'Correlation and Regression', unit: 'Correlation and Regression' },
     ]
   },
+  {
+    id: 'business-math',
+    code: 'BUS MATH',
+    name: 'Business Mathematics',
+    gradeLevel: 'Grade 11',
+    semester: '1st Semester',
+    color: 'from-emerald-500 to-green-500',
+    pdfAvailable: true,
+    topics: [
+      { id: 'bus-001', name: 'Verbal Phrases to Mathematical Expressions', unit: 'Business Models' },
+      { id: 'bus-002', name: 'Linear Equations in Business Scenarios', unit: 'Business Models' },
+      { id: 'bus-003', name: 'Business Pricing and Planning Models', unit: 'Business Models' },
+    ]
+  },
+  {
+    id: 'finite-math',
+    code: 'FINITE MATH',
+    name: 'Finite Mathematics',
+    gradeLevel: 'Grade 11',
+    semester: '2nd Semester',
+    color: 'from-cyan-500 to-teal-500',
+    pdfAvailable: true,
+    topics: [
+      { id: 'fm-001', name: 'Systems of Linear Equations and Matrices', unit: 'Matrices and Systems' },
+      { id: 'fm-002', name: 'Matrix Operations', unit: 'Matrices and Systems' },
+      { id: 'fm-003', name: 'Linear Optimization and Simplex Method', unit: 'Optimization' },
+    ]
+  },
 ] as const;
 
-export type SubjectId = 'gen-math' | 'stats-prob';
+export type SubjectId = 'gen-math' | 'stats-prob' | 'business-math' | 'finite-math';
 export type GradeLevel = 'Grade 11';
 
 export const GRADE_LEVELS: GradeLevel[] = ['Grade 11'];
@@ -72,7 +100,7 @@ export const SUBJECTS_BY_GRADE = {
 } satisfies Record<GradeLevel, (typeof SHS_MATH_SUBJECTS)[number][]>;
 
 export const ACTIVE_SUBJECT_IDS_BY_GRADE = {
-  'Grade 11': ['gen-math', 'stats-prob'],
+  'Grade 11': ['gen-math', 'stats-prob', 'business-math', 'finite-math'],
 } satisfies Record<GradeLevel, SubjectId[]>;
 
 export function normalizeGradeLevel(rawGrade?: string | null): GradeLevel | null {
@@ -255,7 +283,7 @@ export const subjects: Subject[] = [
         ],
         quizzes: [
           { id: 'gm-3-q1', title: 'Practice Quiz: Logic', questions: 10, duration: '15 min', completed: false, locked: false, type: 'practice' },
-          { id: 'gm-3-q2', title: 'Module Quiz: Logic', questions: 12, duration: '18 min', completed: false, locked: true, type: 'module' },
+          { id: 'gm-3-q2', title: 'Module Quiz: Logic', questions: 12, duration: '18 min', completed: false, locked: false, type: 'module' },
         ]
       },
     ]
@@ -346,7 +374,7 @@ export const subjects: Subject[] = [
         ],
         quizzes: [
           { id: 'sp-4-q1', title: 'Practice Quiz: Hypothesis Testing', questions: 14, duration: '22 min', completed: false, locked: false, type: 'practice' },
-          { id: 'sp-4-q2', title: 'Module Quiz: Hypothesis Testing', questions: 18, duration: '28 min', completed: false, locked: true, type: 'module' },
+          { id: 'sp-4-q2', title: 'Module Quiz: Hypothesis Testing', questions: 18, duration: '28 min', completed: false, locked: false, type: 'module' },
         ]
       },
     ]

@@ -316,7 +316,7 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
         prompt = build_lesson_prompt(
             lesson_title=payload.lessonTitle or payload.topic,
             competency=payload.learningCompetency or payload.topic,
-            grade_level="Grade 11-12",
+            grade_level="Grade 11",
             subject=payload.subject,
             quarter=payload.quarter,
             learner_level=payload.learnerLevel,

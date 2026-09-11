@@ -1,4 +1,4 @@
-export type GradeLevel = 'Grade 11' | 'Grade 12'; // Grade 12 for legacy template stubs only
+export type GradeLevel = 'Grade 11';
 export type CurriculumQuarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
 export interface CurriculumSourceMeta {
@@ -614,4 +614,4 @@ export function getLessonsByModule(moduleId: string): CurriculumLesson[] {
 
 export function getLessonsBySubject(subjectId: string): CurriculumLesson[] {
   return CURRICULUM_LESSONS.filter((l) => l.subjectId === subjectId);
-}
+}

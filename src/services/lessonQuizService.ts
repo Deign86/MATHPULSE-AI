@@ -155,8 +155,9 @@ function _deriveSubjectName(subjectId?: string): string | null {
   const sid = subjectId.toLowerCase();
   if (sid.includes('gen-math') || sid.includes('gen_math')) return 'General Mathematics';
   if (sid.includes('stats') || sid.includes('prob')) return 'Statistics and Probability';
-  if (sid.includes('pre-calc') || sid.includes('pre_calc')) return 'Pre-Calculus';
-  if (sid.includes('basic-calc') || sid.includes('basic_calc') || sid.includes('calculus')) return 'Basic Calculus';
+  if (sid.includes('business')) return 'Business Mathematics';
+  if (sid.includes('finite')) return 'Finite Mathematics';
+  // Grade 11 only: legacy pre-calc / calculus ids fall back to General Mathematics.
   return null;
 }
 

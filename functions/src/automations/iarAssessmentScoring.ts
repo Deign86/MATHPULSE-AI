@@ -66,9 +66,9 @@ function classificationRank(value: TopicClassification): number {
 
 function inferScoreFromResults(topic: IARTopicArea, results: SubjectScore[]): number {
   const fallbackAliases = {
-    Functions: ["Functions", "gen-math", "pre-calc"],
-    BusinessMath: ["BusinessMath", "stats-prob"],
-    Logic: ["Logic", "basic-calc"],
+    Functions: ["Functions", "gen-math"],
+    BusinessMath: ["BusinessMath", "stats-prob", "business-math"],
+    Logic: ["Logic", "gen-math"],
   } satisfies Record<IARTopicArea, string[]>;
 
   const aliasSet = new Set(fallbackAliases[topic]);

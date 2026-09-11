@@ -447,7 +447,7 @@ def _generate_search_queries_with_ai(
             f"Topic: {topic}\n"
             f"Subject: {subject}\n"
             f"Context: {lesson_context or 'General mathematics lesson'}\n"
-            f"Grade: {grade_level or 'Grade 11-12'}\n\n"
+            f"Grade: {grade_level or 'Grade 11'}\n\n"
             f"Generate exactly 4 YouTube search queries that would find the most relevant educational videos.\n"
             f"Rules:\n"
             f"1. Query 1: Most specific - exact topic with 'tutorial' or 'lesson'\n"
