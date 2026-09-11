@@ -278,7 +278,7 @@ export async function processDiagnosticCompletion(
   );
 
   const refreshedRemediationStatus = await getRemediationStatusSummary(db, lrn);
-  const transitionGate = await evaluateTransitionGate(db, lrn, gradeLevel);
+  const transitionGate = await evaluateTransitionGate();
   const shouldRemainLocked =
     workflowMode === "iar_plus_diagnostic" &&
     ((refreshedRemediationStatus.total > 0 && !refreshedRemediationStatus.unlockEligible) ||
@@ -755,11 +755,7 @@ async function applyDeepDiagnosticLifecycleTransitions(
   });
 }
 
-async function evaluateTransitionGate(
-  _db: admin.firestore.Firestore,
-  _lrn: string,
-  _gradeLevel: string,
-): Promise<TransitionGate> {
+async function evaluateTransitionGate(): Promise<TransitionGate> {
   // Grade 11 only: no grade transition exists, the gate never blocks.
   return {
     isBlocked: false,
