@@ -1237,7 +1237,7 @@ const App = () => {
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' ? 'overflow-hidden p-0' : 'p-3 lg:p-4 overflow-y-auto pb-24 sm:pb-28'}`}
+            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : 'p-3 lg:p-4 overflow-y-auto pb-24 sm:pb-28'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -1246,7 +1246,7 @@ const App = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className={activeTab === 'AI Chat' || activeTab === 'Modules' ? 'h-full min-h-0' : ''}
+                className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'h-full min-h-0' : ''}
               >
                 {activeTab === 'Dashboard' ? (
                   <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
