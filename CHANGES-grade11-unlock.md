@@ -1,6 +1,6 @@
 # Grade-11 All-Subjects Unlock — Changes & Findings
 
-Branch: `grade11-all-subjects-unlock` | Date: 2026-09-11 | Status: implemented, verified e2e, unmerged
+Branch: `grade11-all-subjects-unlock` | Date: 2026-09-11 | Status: MERGED to `main` as `397c249` (zero diff to branch); total Grade-12 purge COMPLETE incl. follow-up `f909b86`
 
 ## Goal
 New Grade 11 modules render 1:1 with existing UI/UX, all locks removed, all subjects included, Grade-11-only, lesson content derivable from PDFs.
@@ -35,6 +35,6 @@ New Grade 11 modules render 1:1 with existing UI/UX, all locks removed, all subj
 ## Findings (for next session)
 1. **RAG lesson 422 (pre-existing, remote backend)**: POST `/api/rag/lesson` via HF Space `deign86-mathpulse-api-v3test` returns 422 for gen-math too — unchanged request shape, so not caused by this work. PDF fallback covers UX. Fix = update/redeploy backend or run local backend.
 2. **`toMillis` console noise (pre-existing)**: `platformConfigService` chokes on stored Firestore `updatedAt` shape, falls back to unlocked defaults. Zero user impact; fix = harden `firestoreToDate`.
-3. **Total Grade-12 purge PENDING (user-approved)**: reviewer-blocked leftovers were swept except deep `g12*` data keys (`g12Readiness`, `G12Candidate`, `grade12TransitionGate`, `g12-*` topic aliases, `migrate_grade12_to_grade11.py`, `main.py` intent keywords). A purge worker failed without edits (`ea3c2181` — returned plan, no changes). Next: re-run total purge with legacy-read normalization so stored Firestore records still match.
+3. **Total Grade-12 purge COMPLETE (2026-09-11, follow-up session)**: canonical keys are `g11-*` Grade-11-only; remaining `g12*`/`G12Candidate`/`grade12TransitionGate`/`pre-calc`/`basic-calc` strings are legacy-read aliases/normalizers with explicit comments (subjects.ts, SupplementalBanner, lessonQuizService, QuizExperience, diagnosticPolicies alias arrays, diagnosticProcessor/iarAssessmentScoring legacy casts, models.ts/assessment.ts alias types, testResetService deleteField cleanup, quizBattleApi 12→11 normalizer, youtube keywords, migrate script kept as DEPRECATED one-shot history, upload script Basic-Calculus job removed). Residual `Grade 11-12` RAG prompt/test strings purged in `f909b86` (`pdf_ingestion.py`, `test_full_rag.py`, `curriculum_rag.py`, `test_rag_pipeline.py`). Verification: `tsc` 0, `oxlint` 0, `vitest` 179/179, `pytest test_rag_pipeline` 13/13, gates 37/37, reviewer verdict OK with notes (notes fixed). Firebase CLI 15.27.0 verified, site `mathpulse-ai-2026` reachable; production deploy NOT run — awaiting owner confirm.
 4. **`types.ts` full-file diff is CRLF noise** — only real change is line 1 (`GradeLevel`). Commit normalizes it.
 5. Quiz Battle still lists pre-calc/basic-calc IDs in static bank — covered by purge item 3.
