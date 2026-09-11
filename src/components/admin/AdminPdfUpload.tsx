@@ -6,7 +6,7 @@ import {
   ChevronDown, ArrowUpRight, CheckCircle2,
   Cpu, FileSpreadsheet, Layers, Activity, Clock
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,

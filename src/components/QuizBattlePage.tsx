@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, useReducedMotion } from 'motion/react';
 import quizBattleAvatar from '../assets/quiz_battle_avatar.png';
 import { motion } from 'motion/react';
 import {
@@ -183,6 +183,12 @@ const battleAnimations = `
   .animate-reward-pop { animation: reward-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
   .animate-score-pop { animation: score-pop 0.5s ease-out forwards; }
   .animate-overlay-slide-up { animation: overlay-slide-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-mascot-float, .animate-vs-pulse, .animate-avatar-left, .animate-avatar-right,
+    .animate-ghost-left, .animate-ghost-right, .animate-main-avatar, .animate-star-float,
+    .animate-marquee, .animate-orb-pulse, .animate-orb-pulse-delayed,
+    .animate-icon-bob, .animate-icon-rotate { animation: none !important; }
+  }
 `;
 const PUBLIC_MATCHMAKING_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -439,6 +445,7 @@ const QuizBattlePage: React.FC = () => {
   const autoSubmitRoundRef = useRef<number | null>(null);
   const autoSubmitRetryAtMsRef = useRef(0);
   const celebratedMatchIdRef = useRef<string>('');
+  const reduceMotion = useReducedMotion();
   const botReadyStartFailuresRef = useRef(0);
   const previousStreakRef = useRef(0);
   const previousScoreRef = useRef<{ matchId: string; scoreFor: number; scoreAgainst: number } | null>(null);
@@ -1257,7 +1264,7 @@ const QuizBattlePage: React.FC = () => {
 
     playBattleTone(activeMatch.outcome === 'loss' ? 'loss' : 'win');
 
-    if (activeMatch.outcome === 'win') {
+    if (activeMatch.outcome === 'win' && !reduceMotion) {
       void import('canvas-confetti')
         .then((module) => {
           module.default({
@@ -1271,7 +1278,7 @@ const QuizBattlePage: React.FC = () => {
           // Non-blocking celebratory effect.
         });
     }
-  }, [activeMatch?.matchId, activeMatch?.status, activeMatch?.outcome, playBattleTone]);
+  }, [activeMatch?.matchId, activeMatch?.status, activeMatch?.outcome, playBattleTone, reduceMotion]);
 
   useEffect(() => {
     if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || answerSubmitting || designPauseActive) {

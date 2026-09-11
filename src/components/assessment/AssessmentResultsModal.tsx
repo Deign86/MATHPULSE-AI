@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, TrendingUp, Award, Target, Brain, Sparkles, AlertCircle, ShieldAlert, CheckCircle2 } from 'lucide-react';
-import { Dialog, DialogContent } from '../ui/dialog';
+import { TrendingUp, Award, Target, Brain, Sparkles, AlertCircle, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import AssessmentHistoryChart from './AssessmentHistoryChart';
 import { getAssessmentHistory, getLatestAssessmentResult } from '../../services/assessmentResultsService';
 import { getHeroBannerModalSummary, subscribeToHeroBannerModalSummary } from '../../services/heroBannerSummaryService';
@@ -421,13 +421,13 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0 bg-white rounded-2xl shadow-2xl border-0">
-        {/* Header */}
+        {/* Header (DialogContent owns the single X close button) */}
         <div className="sticky top-0 z-10 bg-white border-b border-slate-200 rounded-t-2xl px-6 py-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-bold text-slate-800">Assessment Results</h2>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-              <X className="w-5 h-5 text-slate-400" />
-            </button>
+          <div className="mb-3 pr-8">
+            <DialogTitle className="text-xl font-bold text-slate-800">Assessment Results</DialogTitle>
+            <DialogDescription className="sr-only">
+              Your latest diagnostic score, proficiency profile, and attempt history.
+            </DialogDescription>
           </div>
 
           {/* Tabs */}

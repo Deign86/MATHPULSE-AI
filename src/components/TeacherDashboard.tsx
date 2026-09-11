@@ -1809,6 +1809,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           {/* View Content */}
           <main className={`flex-1 flex flex-col ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             <AnimatePresence mode="wait">
+              <motion.div
+                key={activeView}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex-1 flex flex-col min-h-0"
+              >
               {activeView === 'dashboard' && (
                 <DashboardView
                   classes={managedClasses}
@@ -2054,6 +2062,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   teacherName={teacherName}
                 />
               )}
+              </motion.div>
             </AnimatePresence>
           </main>
         </div>
