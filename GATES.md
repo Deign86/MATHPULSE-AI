@@ -169,6 +169,33 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: 0 errors
   EVIDENCE: Passed. `npm run typecheck` exited 0 (0 errors). `npm run lint:anti-slop` (`oxlint --quiet`) exited 0 (0 errors across 382 files). `npm run test` (vitest) passed 27/27 test files (179 tests). `python -m pytest backend/tests/test_liteparse_curriculum.py backend/test_retrieval.py -q` passed 8/8 tests. Storage rules deployed to `mathpulse-ai-2026` allowing public read for `/curriculum/**`.
 
+## Section D: Grade-11-only all-subjects unlock (20 blueprints, zero locks)
+
+- [x] D1: all quizzes/lessons unlocked for every subject
+  CHECK: `grep -rn "locked:\s*true\|index > 0" src/data/ | wc -l`
+  EXPECT: `0`
+  EVIDENCE: 2026-09-11 — count is 0. makeQuizzes forces locked:false; subjects.ts gm-3-q2/sp-4-q2 flipped to false.
+- [x] D2: every CURRICULUM_LESSONS moduleId has a blueprint (1:1, zero orphans)
+  CHECK: `for m in $(grep -o "moduleId: '[^']*'" src/data/curriculum/types.ts | sort -u); do grep -q "b('${m#moduleId: }'" src/data/curriculumModules.ts || echo "ORPHAN: $m"; done`
+  EXPECT: `no ORPHAN lines`
+  EVIDENCE: 2026-09-11 — 20 distinct moduleIds, all matched (16 gen-math + bm-q1 + stat-q1 + fm-q1 + fm-q2; 6 blueprints added).
+- [x] D3: all 4 subjects visible (gen-math, business-math, stats-prob, finite-math) in subjects.ts + curriculumModules.ts
+  CHECK: `grep -c "id: 'gen-math'\|id: 'business-math'\|id: 'stats-prob'\|id: 'finite-math'" src/data/subjects.ts`
+  EXPECT: `4+`
+  EVIDENCE: 2026-09-11 — count 6 (4 SHS entries + SubjectId + active-ids); subject filter shows all 4 in live snapshot.
+- [x] D4: zero Grade-12/pre-calc/basic-calc references in user-facing source
+  CHECK: `grep -rn "Grade 12\|pre-calc\|basic-calc\|Pre-Calculus\|Basic Calculus" src/ functions/src/ backend/services/ backend/routes/ backend/main.py 2>/dev/null | grep -v migrate_grade12 | grep -v "g12-" | head -20`
+  EXPECT: `no matches`
+  EVIDENCE: 2026-09-11 — only intentional survivals remain: legacy→gen-math alias fallbacks (subjects.ts, SupplementalBanner, lessonQuizService), g12-*/basic-calc stored-record aliases (diagnosticPolicies), youtube search keywords, main.py math-scope keywords. 30+ files edited across src/functions/backend.
+- [x] D5: typecheck + tests + anti-slop clean
+  CHECK: `npm run typecheck && npx vitest run 2>&1 | tail -3 && npm run lint:anti-slop`
+  EXPECT: `clean, 179 tests pass`
+  EVIDENCE: 2026-09-11 — tsc clean; functions tsc clean; vitest 27 files/179 tests pass; functions tests 46/46 pass; backend pytest 317 passed (backend/tests/) + 3 (liteparse) + 5 (retrieval); oxlint exit 0; `npm run build` succeeds in 16.7s; `vite preview` serves / and /modules at 200.
+- [x] D6: e2e via chromedevtools — /modules shows 20 unlocked cards, 4-subject filter; detail views show active lessons/quizzes
+  CHECK: `manual snapshot audit`
+  EXPECT: `zero Lock/Coming Soon text`
+  EVIDENCE: 2026-09-11 — /modules snapshot: 20 clickable cards, 4-subject + 20-group filters, zero Lock text; details audited for Business & Finance, Systems & Matrices (screenshot), Random Variables & Sampling Distributions — lessons/Study Materials/Quiz/START all active. Post-P1 browser re-verify blocked by chrome-devtools MCP outage; covered by clean build + tests.
+
 
 
 

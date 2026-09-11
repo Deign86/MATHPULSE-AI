@@ -22,7 +22,7 @@ export interface RuntimeTopicDiagnosticPolicy {
 export interface RuntimeDiagnosticPolicy {
   id: string;
   versionSetId: string;
-  gradeLevel: "Grade 11" | "Grade 12";
+  gradeLevel: "Grade 11";
   confidence?: "high" | "medium" | "low";
   sourceRefs?: string[];
   thresholds: {
@@ -54,7 +54,7 @@ export interface DiagnosticPolicyCheckResult {
 export interface DiagnosticPolicyEvaluation {
   policyId: string;
   versionSetId: string;
-  gradeLevel: "Grade 11" | "Grade 12";
+  gradeLevel: "Grade 11";
   byTopicGroup: Record<string, TopicMasteryScore>;
   summary: {
     mastered: number;
@@ -69,7 +69,6 @@ interface CurriculumVersionSetMap { [key: string]: string; }
 
 export const CURRICULUM_VERSION_SET_BY_GRADE: CurriculumVersionSetMap = {
   "Grade 11": "g11-core-genmath-legacy-detail-strengthened-structure",
-  "Grade 12": "g12-math-electives-strengthened-template",
 };
 
 export function resolveCurriculumVersionSetId(gradeLevel: string): string {
@@ -98,23 +97,25 @@ export const TOPIC_GROUP_ALIASES: TopicGroupAliasMap = {
     "g11-q4-syllogisms-proof-disproof",
     "logic_syllogisms_proof",
   ],
-  "g12-fm1-q1-counting": ["g12-fm1-q1-counting", "g12_fm1_q1_counting", "finite-math-1"],
-  "g12-fm1-q2-probability": ["g12-fm1-q2-probability", "g12_fm1_q2_probability"],
-  "g12-fm1-q3-decision": ["g12-fm1-q3-decision", "g12_fm1_q3_decision"],
-  "g12-fm1-q4-project": ["g12-fm1-q4-project", "g12_fm1_q4_project"],
-  "g12-fm2-q1-matrices": ["g12-fm2-q1-matrices", "g12_fm2_q1_matrices", "finite-math-2"],
-  "g12-fm2-q2-linear-programming": ["g12-fm2-q2-linear-programming", "g12_fm2_q2_linear_programming"],
-  "g12-fm2-q3-networks": ["g12-fm2-q3-networks", "g12_fm2_q3_networks"],
-  "g12-fm2-q4-capstone": ["g12-fm2-q4-capstone", "g12_fm2_q4_capstone"],
-  "g12-advstat-q1-probability-review": [
+  "g11-fm1-q1-counting": ["g11-fm1-q1-counting", "g12-fm1-q1-counting", "g12_fm1_q1_counting", "finite-math-1"],
+  "g11-fm1-q2-probability": ["g11-fm1-q2-probability", "g12-fm1-q2-probability", "g12_fm1_q2_probability"],
+  "g11-fm1-q3-decision": ["g11-fm1-q3-decision", "g12-fm1-q3-decision", "g12_fm1_q3_decision"],
+  "g11-fm1-q4-project": ["g11-fm1-q4-project", "g12-fm1-q4-project", "g12_fm1_q4_project"],
+  "g11-fm2-q1-matrices": ["g11-fm2-q1-matrices", "g12-fm2-q1-matrices", "g12_fm2_q1_matrices", "finite-math-2"],
+  "g11-fm2-q2-linear-programming": ["g11-fm2-q2-linear-programming", "g12-fm2-q2-linear-programming", "g12_fm2_q2_linear_programming"],
+  "g11-fm2-q3-networks": ["g11-fm2-q3-networks", "g12-fm2-q3-networks", "g12_fm2_q3_networks"],
+  "g11-fm2-q4-capstone": ["g11-fm2-q4-capstone", "g12-fm2-q4-capstone", "g12_fm2_q4_capstone"],
+  "g11-advstat-q1-probability-review": [
+    "g11-advstat-q1-probability-review",
     "g12-advstat-q1-probability-review",
     "g12_advstat_q1_probability_review",
     "advanced-statistics",
     "stats-prob",
   ],
-  "g12-advstat-q2-inference": ["g12-advstat-q2-inference", "g12_advstat_q2_inference"],
-  "g12-advstat-q3-regression": ["g12-advstat-q3-regression", "g12_advstat_q3_regression"],
-  "g12-advstat-q4-data-storytelling": [
+  "g11-advstat-q2-inference": ["g11-advstat-q2-inference", "g12-advstat-q2-inference", "g12_advstat_q2_inference"],
+  "g11-advstat-q3-regression": ["g11-advstat-q3-regression", "g12-advstat-q3-regression", "g12_advstat_q3_regression"],
+  "g11-advstat-q4-data-storytelling": [
+    "g11-advstat-q4-data-storytelling",
     "g12-advstat-q4-data-storytelling",
     "g12_advstat_q4_data_storytelling",
   ],
@@ -204,87 +205,6 @@ export const RUNTIME_DIAGNOSTIC_POLICIES: RuntimeDiagnosticPolicy[] = [
         difficultyMix: { basic: 40, proficient: 40, advanced: 20 },
         masteredThreshold: 0.8,
         needsReviewThreshold: 0.6,
-      },
-    ],
-  },
-  {
-    id: "diag-policy-g12-electives-explicit-v1",
-    versionSetId: "g12-math-electives-strengthened-template",
-    gradeLevel: "Grade 12",
-    confidence: "high",
-    sourceRefs: [
-      "g12-finite-mathematics-1-template",
-      "g12-finite-mathematics-2-template",
-    ],
-    thresholds: {
-      mastered: 0.78,
-      needsReview: 0.58,
-      criticalGap: 0,
-    },
-    byTopicGroup: [
-      {
-        topicGroupId: "g12-fm1-q1-counting",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 50, proficient: 35, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm1-q2-probability",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 45, proficient: 40, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm1-q3-decision",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 40, proficient: 45, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm1-q4-project",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 35, proficient: 45, advanced: 20 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm2-q1-matrices",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 45, proficient: 40, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm2-q2-linear-programming",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 40, proficient: 45, advanced: 15 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm2-q3-networks",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 40, proficient: 40, advanced: 20 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
-      },
-      {
-        topicGroupId: "g12-fm2-q4-capstone",
-        minItemCount: 8,
-        confidence: "high",
-        difficultyMix: { basic: 35, proficient: 45, advanced: 20 },
-        masteredThreshold: 0.78,
-        needsReviewThreshold: 0.58,
       },
     ],
   },

@@ -31,7 +31,7 @@ export interface UseSubjectAvailabilityResult {
  *
  * Usage:
  *   const { availability, isSubjectAvailable, loading } = useSubjectAvailability();
- *   const canAccess = isSubjectAvailable('pre-calc');
+ *   const canAccess = isSubjectAvailable('gen-math');
  */
 // Singleton store to share subscription across all hook instances (prevents N listeners)
 let _sharedConfig: PlatformSubjectsConfig | null = null;

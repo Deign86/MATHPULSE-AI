@@ -89,11 +89,10 @@ function checkVersionPropagationContract(): VersionPropagationCheckResult {
 
   const defaultVersionsByGrade = {
     "Grade 11": resolveCurriculumVersionSetId("Grade 11"),
-    "Grade 12": resolveCurriculumVersionSetId("Grade 12"),
   };
 
-  if (!defaultVersionsByGrade["Grade 11"] || !defaultVersionsByGrade["Grade 12"]) {
-    errors.push("Default curriculum version map is missing Grade 11 or Grade 12 values");
+  if (!defaultVersionsByGrade["Grade 11"]) {
+    errors.push("Default curriculum version map is missing the Grade 11 value");
   }
 
   return {

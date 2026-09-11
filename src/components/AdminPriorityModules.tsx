@@ -3,9 +3,9 @@ import { BookOpen, AlertTriangle } from 'lucide-react';
 
 const mockModules = [
   { id: 'gen-math', title: 'General Mathematics', icon: BookOpen, bg: 'bg-[#9956DE]', tags: ['Algebra', 'Fractions', 'Integers'], level: 1, progress: 25, isAtRisk: true },
-  { id: 'pre-calc', title: 'Pre-Calculus', icon: BookOpen, bg: 'bg-[#1FA7E1]', tags: ['Functions', 'Limits', 'Graphs'], level: 2, progress: 15, isAtRisk: true },
+  { id: 'business-math', title: 'Business Mathematics', icon: BookOpen, bg: 'bg-[#16A34A]', tags: ['Interest', 'Annuities', 'Pricing'], level: 2, progress: 15, isAtRisk: true },
   { id: 'stats-prob', title: 'Statistics & Probability', icon: BookOpen, bg: 'bg-[#FFB356]', tags: ['Probability', 'Mean/Median'], level: 2, progress: 40, isAtRisk: false },
-  { id: 'basic-calc', title: 'Basic Calculus', icon: BookOpen, bg: 'bg-[#FB96BB]', tags: ['Derivatives', 'Integrals'], level: 3, progress: 50, isAtRisk: false },
+  { id: 'finite-math', title: 'Finite Mathematics', icon: BookOpen, bg: 'bg-[#0E7490]', tags: ['Matrices', 'Optimization'], level: 3, progress: 50, isAtRisk: false },
   { id: 'adv-math', title: 'Advanced Algebra', icon: BookOpen, bg: 'bg-[#7274ED]', tags: ['Math', 'Logic'], level: 4, progress: 10, isAtRisk: true },
 ].slice(0, 5); // 5 items
 

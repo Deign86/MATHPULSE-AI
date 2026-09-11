@@ -61,7 +61,7 @@ class TestBuildLessonPrompt:
         prompt = build_lesson_prompt(
             lesson_title="Compound Interest",
             competency="M11GM-IIc-1",
-            grade_level="Grade 11-12",
+            grade_level="Grade 11",
             subject="General Mathematics",
             quarter=3,
             learner_level="mixed",
@@ -87,7 +87,7 @@ class TestBuildLessonPrompt:
         prompt = build_lesson_prompt(
             lesson_title="Functions",
             competency="M11GM-Ia-1",
-            grade_level="Grade 11-12",
+            grade_level="Grade 11",
             subject="General Mathematics",
             quarter=1,
             learner_level=None,

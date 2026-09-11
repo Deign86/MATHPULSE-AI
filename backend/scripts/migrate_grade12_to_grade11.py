@@ -1,5 +1,9 @@
 """
-Migrate Grade 12 users to Grade 11.
+DEPRECATED / LEGACY one-shot migration: Grade 12 users -> Grade 11.
+
+The system is now Grade-11-only. This script is kept for history and for
+any lingering stored Firestore records; do not treat Grade 12 as a
+supported grade.
 
 Run this to convert all existing Grade 12 users to Grade 11:
     python backend/scripts/migrate_grade12_to_grade11.py

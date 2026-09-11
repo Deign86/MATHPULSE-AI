@@ -219,7 +219,7 @@ curriculumContent/
 
 ### 3.8. Validation and coverage checks
 
-- [ ] Use existing `src/data/curriculumTemplates.ts` as the competency coverage checklist — every competency code in `G11_GENERAL_MATH_DESCRIPTOR` and `G12_MATH_ELECTIVE_TEMPLATES` must be covered by at least one lesson.
+- [ ] Use existing `src/data/curriculumTemplates.ts` as the competency coverage checklist — every competency code in `G11_GENERAL_MATH_DESCRIPTOR` and the Grade-11 elective templates must be covered by at least one lesson.
 - [ ] Reject ingestion if coverage < 100%. (Make the threshold configurable via env var `CURRICULUM_MIN_COVERAGE` defaulting to `1.0`.)
 - [ ]Validate quarter-hour allocations against template values.
 

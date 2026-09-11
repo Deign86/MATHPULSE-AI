@@ -17,11 +17,11 @@ export const SUBJECT_DISPLAY: SubjectDisplayMap = {
   'gen-math':    { id: 'gen-math',    name: 'General Mathematics',       shortLabel: 'Gen Math',     color: '#3B82F6' },
   'stats-prob':  { id: 'stats-prob',  name: 'Statistics and Probability', shortLabel: 'Stats & Prob', color: '#0ea5e9' },
   'business-math': { id: 'business-math', name: 'Business Mathematics', shortLabel: 'Business Math', color: '#166534' },
-  'pre-calc':    { id: 'pre-calc',    name: 'Pre-Calculus',              shortLabel: 'Pre-Calculus', color: '#F97316' },
-  'basic-calc':  { id: 'basic-calc',  name: 'Basic Calculus',            shortLabel: 'Basic Calculus', color: '#EF4444' },
+  'finite-math': { id: 'finite-math', name: 'Finite Mathematics', shortLabel: 'Finite Math', color: '#0e7490' },
 };
 
-// Common aliases that appear in AI-generated text or legacy data
+// Common aliases that appear in AI-generated text or legacy stored records.
+// Grade-11-only: pre-calc / basic-calc keys below are legacy-read aliases resolving to gen-math, never selectable subjects.
 /** Alias text to canonical subject id. */
 interface SubjectAliasMap { [alias: string]: string }
 const ALIASES: SubjectAliasMap = {
@@ -38,14 +38,17 @@ const ALIASES: SubjectAliasMap = {
   'bm': 'business-math',
   'business math': 'business-math',
   'business mathematics': 'business-math',
-  'pc': 'pre-calc',
-  'pre-calculus': 'pre-calc',
-  'pre_calc': 'pre-calc',
-  'precalc': 'pre-calc',
-  'bc': 'basic-calc',
-  'basic_calc': 'basic-calc',
-  'basic calculus': 'basic-calc',
-  'basiccalc': 'basic-calc',
+  'pc': 'gen-math',
+  'pre-calculus': 'gen-math',
+  'pre_calc': 'gen-math',
+  'precalc': 'gen-math',
+  'bc': 'gen-math',
+  'basic_calc': 'gen-math',
+  'basic calculus': 'gen-math',
+  'basiccalc': 'gen-math',
+  'fm': 'finite-math',
+  'finite math': 'finite-math',
+  'finite mathematics': 'finite-math',
 };
 
 /** Resolve an alias or ID to the canonical subject ID */

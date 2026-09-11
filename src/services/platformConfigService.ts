@@ -36,8 +36,8 @@ function getDefaultSubjectAvailability() {
   return {
     'gen-math': { available: true, pdfPath: null, lastUpdated: new Date() },
     'stats-prob': { available: true, pdfPath: null, lastUpdated: new Date() },
-    'pre-calc': { available: false, pdfPath: null, lastUpdated: new Date() },
-    'basic-calc': { available: false, pdfPath: null, lastUpdated: new Date() },
+    'business-math': { available: true, pdfPath: null, lastUpdated: new Date() },
+    'finite-math': { available: true, pdfPath: null, lastUpdated: new Date() },
   };
 }
 

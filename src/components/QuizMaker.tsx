@@ -83,13 +83,10 @@ const BLOOM_LABELS = {
   analyze: { label: 'Analyze', color: 'bg-rose-100 text-rose-700 border-rose-300', description: 'Examine & compare' },
 };
 
-const GRADE_LEVELS = ['Grade 11', 'Grade 12'];
+const GRADE_LEVELS = ['Grade 11'];
 
-const normalizeGradeLevel = (value?: string): 'Grade 11' | 'Grade 12' => {
-  const normalized = (value || '').trim().toLowerCase();
-  if (normalized === 'grade 12' || normalized === '12' || normalized.includes('12')) {
-    return 'Grade 12';
-  }
+const normalizeGradeLevel = (value?: string): 'Grade 11' => {
+  void value;
   return 'Grade 11';
 };
 
@@ -99,24 +96,15 @@ const FALLBACK_TOPICS_BY_GRADE = {
     'General Mathematics - Financial Mathematics': ['Simple and Compound Interest', 'Simple and General Annuities', 'Present and Future Value', 'Loans, Amortization, and Sinking Funds', 'Stocks, Bonds, and Market Indices', 'Business Decision-Making with Mathematical Models'],
     'General Mathematics - Logic and Mathematical Reasoning': ['Propositions and Logical Connectives', 'Truth Values and Truth Tables', 'Logical Equivalence and Implication', 'Quantifiers and Negation', 'Validity of Arguments'],
   },
-  'Grade 12': {
-    'Pre-Calculus - Analytic Geometry': ['Conic Sections - Parabola', 'Conic Sections - Ellipse', 'Conic Sections - Hyperbola', 'Conic Sections - Circle', 'Systems of Nonlinear Equations'],
-    'Pre-Calculus - Series and Induction': ['Sequences and Series', 'Arithmetic Sequences', 'Geometric Sequences', 'Mathematical Induction', 'Binomial Theorem'],
-    'Pre-Calculus - Trigonometry': ['Angles and Unit Circle', 'Trigonometric Functions', 'Trigonometric Identities', 'Sum and Difference Formulas', 'Inverse Trigonometric Functions', 'Polar Coordinates'],
-    'Basic Calculus - Limits': ['Limits of Functions', 'Limit Theorems', 'One-Sided Limits', 'Infinite Limits and Limits at Infinity', 'Continuity of Functions'],
-    'Basic Calculus - Derivatives': ['Definition of the Derivative', 'Differentiation Rules', 'Chain Rule', 'Implicit Differentiation', 'Higher-Order Derivatives', 'Related Rates', 'Extrema and the First Derivative Test', 'Concavity and the Second Derivative Test', 'Optimization Problems'],
-    'Basic Calculus - Integration': ['Antiderivatives and Indefinite Integrals', 'Definite Integrals and the FTC', 'Integration by Substitution', 'Area Under a Curve'],
-  },
 };
 
 const CATEGORY_PREFIXES_BY_GRADE = {
   'Grade 11': ['General Mathematics - '],
-  'Grade 12': ['Pre-Calculus - ', 'Basic Calculus - '],
 };
 
 const filterTopicsByGrade = (
   topics: Record<string, string[]>,
-  grade: 'Grade 11' | 'Grade 12',
+  grade: 'Grade 11',
 ): Record<string, string[]> => {
   const allowedPrefixes = CATEGORY_PREFIXES_BY_GRADE[grade];
   return Object.fromEntries(

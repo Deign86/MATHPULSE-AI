@@ -673,7 +673,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             Curriculum Modules
           </h1>
           <p className="text-[#3c4043] text-[13px] md:text-[17px] leading-relaxed md:leading-[1.7] md:pr-10">
-            MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Currently available: General Mathematics, Business Mathematics, and Statistics & Probability. Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
+            MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Available now for Grade 11: General Mathematics, Business Mathematics, Statistics & Probability, and Finite Mathematics — every module fully unlocked.
           </p>
           <div className="mt-4 flex items-center gap-3">
             <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">

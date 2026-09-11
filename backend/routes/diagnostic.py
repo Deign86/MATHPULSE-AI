@@ -37,7 +37,7 @@ _in_memory_sessions: Dict[str, Dict[str, Any]] = defaultdict(dict)
 
 class DiagnosticGenerateRequest(BaseModel):
     strand: str = Field(..., description="Student strand: ABM, STEM, HUMSS, GAS, TVL")
-    grade_level: str = Field(..., description="Grade level: Grade 11 or Grade 12")
+    grade_level: str = Field(..., description="Grade level: Grade 11")
 
 
 class DiagnosticOption(BaseModel):

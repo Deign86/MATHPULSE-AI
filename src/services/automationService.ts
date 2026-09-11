@@ -38,7 +38,7 @@ export interface DiagnosticQuestionResult {
   correct: boolean;
   questionId?: string;
   difficulty?: 'basic' | 'standard' | 'challenge';
-  gradeLevelTag?: 'G11' | 'G12Candidate';
+  gradeLevelTag?: 'G11';
   quarter?: 1 | 2 | 3 | 4;
   answerType?: 'MCQ' | 'shortAnswerNumeric' | 'shortAnswerText' | 'confidenceLikert';
 }
