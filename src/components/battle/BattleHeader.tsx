@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Flame, Target, Volume2, VolumeX, Maximize, Minimize, Menu } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../ui/utils';
