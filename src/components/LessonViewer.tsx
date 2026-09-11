@@ -15,14 +15,15 @@ export function isNum<T>(value: T): value is T & number {
 /** Quarter as carried by lessons: numeric 1-4 or CurriculumQuarter string. */
 type LessonQuarterInput = number | CurriculumQuarter | string;
 
-const QUARTER_TO_INT = {
-  Q1: 1, Q2: 2, Q3: 3, Q4: 4, '1': 1, '2': 2, '3': 3, '4': 4,
-} satisfies Record<string, number>;
+const QUARTER_TO_INT = new Map([
+  ['Q1', 1], ['Q2', 2], ['Q3', 3], ['Q4', 4],
+  ['1', 1], ['2', 2], ['3', 3], ['4', 4],
+]);
 
 /** Coerce lesson quarter to RAG API int 1-4; defaults 1. */
 function parseQuarterToInt(value: LessonQuarterInput): number {
   const key = String(value ?? '').trim().toUpperCase();
-  return QUARTER_TO_INT[key] ?? 1;
+  return QUARTER_TO_INT.get(key) ?? 1;
 }
 
 // ---------------------------------------------------------------------------
