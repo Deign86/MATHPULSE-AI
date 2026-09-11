@@ -682,7 +682,7 @@ const asTimestampMillis = <T>(value: T, fallback = 0): number => {
 
 const parseGradeLevel = <T>(raw: T): BattleGradeLevel | null => {
   if (isFiniteNumber(raw)) {
-    // Grade 11 only: legacy Grade 12 records normalize into the Grade 11 pool.
+    // Grade 11 only: legacy Grade 12 records (numeric 12 / "grade 12" strings) normalize into the Grade 11 pool.
     if (Math.floor(raw) === 11 || Math.floor(raw) === 12) return 11;
   }
 

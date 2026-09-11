@@ -20,7 +20,8 @@ export const SUBJECT_DISPLAY: SubjectDisplayMap = {
   'finite-math': { id: 'finite-math', name: 'Finite Mathematics', shortLabel: 'Finite Math', color: '#0e7490' },
 };
 
-// Common aliases that appear in AI-generated text or legacy data
+// Common aliases that appear in AI-generated text or legacy stored records.
+// Grade-11-only: pre-calc / basic-calc keys below are legacy-read aliases resolving to gen-math, never selectable subjects.
 /** Alias text to canonical subject id. */
 interface SubjectAliasMap { [alias: string]: string }
 const ALIASES: SubjectAliasMap = {

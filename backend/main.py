@@ -1589,7 +1589,6 @@ _MATH_SCOPE_KEYWORDS: Set[str] = {
     "calculus",
     "statistics", "statistic",
     "probability",
-    "precalculus", "pre-calculus",
     "discrete math", "discrete mathematics",
     "linear algebra",
     "number theory",
@@ -1778,8 +1777,6 @@ _MATH_SCOPE_KEYWORDS: Set[str] = {
     "stem", "stem math",
     "business math",
     "general math",
-    "basic calculus",
-    "pre-calculus",
     "probability and statistics",
 }
 
@@ -2119,9 +2116,9 @@ def build_math_tutor_prompt(question: str) -> str:
     return f"""SYSTEM:
 You are MathPulse Tutor, a precise and patient math tutor for Filipino senior high school STEM students.
 Your job is to:
-1) Understand the student's math question (algebra, functions, graphs, trigonometry, analytic geometry, basic calculus, statistics, or word problems).
+1) Understand the student's math question (algebra, functions, graphs, business mathematics, statistics and probability, or word problems).
 2) Solve the problem step by step, explaining each transformation in simple language.
-3) Show all important equations clearly and avoid skipping algebra steps unless obvious to a Grade 11–12 STEM student.
+3) show all important equations clearly and avoid skipping algebra steps unless obvious to a Grade 11 STEM student.
 4) At the end, restate the final answer explicitly (e.g., "Final answer: x = 3").
 5) If the question is ambiguous or missing information, ask a short clarifying question first instead of guessing.
 6) If the student makes a mistake, point it out gently, explain why it is wrong, and show the correct method.
@@ -9368,6 +9365,7 @@ def _resolve_grade_level_key(grade_level: Optional[str]) -> Optional[str]:
     if normalized in {"11", "grade11", "grade 11", "g11"}:
         return "Grade 11"
     if normalized in {"12", "grade12", "grade 12", "g12"}:
+        # LEGACY-READ: stored Grade 12 records normalize into the Grade 11 pool (Grade-11-only system).
         return "Grade 11"
 
     for key in MATH_TOPICS_BY_GRADE.keys():

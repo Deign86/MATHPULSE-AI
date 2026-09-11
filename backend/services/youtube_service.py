@@ -35,9 +35,9 @@ _EDUCATIONAL_CHANNEL_KEYWORDS = [
     "mathbff", "krista king", "mathMeeting", "mathbyfives", "yourteacher",
     "virtual nerd", "study.com", "coursera", "edx", "brilliant",
     "filipino math", "tagalog math", "pinoy teacher", "math philippines",
-    "shs math", "senior high school math", "grade 11 math", "grade 12 math",
+    "shs math", "senior high school math", "grade 11 math",
     "general mathematics", "business math", "statistics", "probability",
-    "finite math", "precalculus", "calculus", "algebra", "geometry",
+    "finite math", "algebra", "geometry",
     "trigonometry", "functions", "equations", "problem solving",
 ]
 
