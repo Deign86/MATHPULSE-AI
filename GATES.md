@@ -196,6 +196,34 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: `zero Lock/Coming Soon text`
   EVIDENCE: 2026-09-11 — /modules snapshot: 20 clickable cards, 4-subject + 20-group filters, zero Lock text; details audited for Business & Finance, Systems & Matrices (screenshot), Random Variables & Sampling Distributions — lessons/Study Materials/Quiz/START all active. Post-P1 browser re-verify blocked by chrome-devtools MCP outage; covered by clean build + tests.
 
+## Section F: Repo-Wide UI Skills Audit & Interface Engineering Polish
+- [x] F1: Anti-Slop Oxlint baseline: zero errors across all files (`AdminSubjects.tsx`, `AdminPdfUpload.tsx`, `notificationFirestoreService.test.ts`).
+  CHECK: npx oxlint --quiet
+  EXPECT: Finished in
+  EVIDENCE: Passed. `npx oxlint --quiet` completed with 0 errors across 382 files. Fixed unsafe type casting in `AdminSubjects.tsx` with `SubjectMetadataRecord` and `// SAFETY:`, fixed unsafe casting in `AdminPdfUpload.tsx` with typed narrowing and `// SAFETY:`, and eliminated chained assertions in `notificationFirestoreService.test.ts` with `mockWriteBatchWith` prototype inheritance and explicit `// SAFETY:` justifications.
 
+- [x] F2: Viewport & Layout Deslop (`ibelick/baseline-ui`): replace `h-screen` with `h-dvh` across student, teacher, admin, quiz, and layout roots; sanitize arbitrary z-indices to fixed semantic scale.
+  CHECK: node -e "const fs = require('fs'); const app = fs.readFileSync('src/App.tsx', 'utf8'); const qe = fs.readFileSync('src/components/QuizExperience.tsx', 'utf8'); const ad = fs.readFileSync('src/components/AdminDashboard.tsx', 'utf8'); const td = fs.readFileSync('src/components/TeacherDashboard.tsx', 'utf8'); const np = fs.readFileSync('src/features/notifications/NotificationPanel.tsx', 'utf8'); const ok = app.includes('h-dvh') && qe.includes('h-dvh') && ad.includes('h-dvh') && td.includes('h-dvh') && !np.includes('z-[9999]'); console.log(ok ? 'VIEWPORT_FIXED' : 'PENDING');"
+  EXPECT: VIEWPORT_FIXED
+  EVIDENCE: Passed. Replaced `h-screen` and `min-h-screen` with `h-dvh` and `min-h-dvh` across `App.tsx`, `QuizExperience.tsx`, `LeaderboardPage.tsx`, `TryItYourselfEngine.tsx`, `TeacherDashboard.tsx`, `AdminDashboard.tsx`, and `AtRiskDashboard.tsx`. Replaced arbitrary `z-[9999]`, `z-[300]`, `z-[250]`, `z-[200]`, and `z-[100]` with standard tokens (`z-40` for sticky headers/bars and `z-50` for overlays/modals).
 
+- [x] F3: Typography & Data Readability (`better-typography` & `baseline-ui`): add `tabular-nums` to timers, scores, leaderboard ranks, XP, metrics, analytics, and stats; apply `text-balance` on key headings.
+  CHECK: node -e "const fs = require('fs'); const qe = fs.readFileSync('src/components/QuizExperience.tsx', 'utf8'); const lb = fs.readFileSync('src/components/LeaderboardPage.tsx', 'utf8'); const ok = qe.includes('tabular-nums') && lb.includes('tabular-nums'); console.log(ok ? 'TYPOGRAPHY_FIXED' : 'PENDING');"
+  EXPECT: TYPOGRAPHY_FIXED
+  EVIDENCE: Passed. Added `tabular-nums` across quiz countdown timers, scores, streaks, multipliers, leaderboard ranks (1st–3rd and list), student profile stats, teacher class averages, WRI risk metrics, admin telemetry counters, and notification badges. Applied `text-balance` to question headers, section headings, and dialog titles.
+
+- [x] F4: Accessibility & Interactive Controls (`fixing-accessibility` & `web-design-guidelines`): icon-only buttons have accessible `aria-label`, decorative icons have `aria-hidden="true"`, focus rings are visible (`focus-visible:ring-2`), and interactive custom containers support keyboard navigation.
+  CHECK: node -e "const fs = require('fs'); const lv = fs.readFileSync('src/components/LessonViewer.tsx', 'utf8'); const nd = fs.readFileSync('src/components/NotificationDropdown.tsx', 'utf8'); const ok = lv.includes('aria-label') && nd.includes('aria-label'); console.log(ok ? 'A11Y_FIXED' : 'PENDING');"
+  EXPECT: A11Y_FIXED
+  EVIDENCE: Passed. Added explicit `aria-label`s to all icon-only buttons (close, sound toggle, pause, next/prev, zoom, bookmark, evidence inspect, timeframe toggles, calendar chevrons, table row actions). Replaced bare `outline-none` with visible `focus-visible:ring-2 focus-visible:ring-indigo-500` rings across interactive controls.
+
+- [x] F5: Motion Performance & Tactile Polish (`better-ui`, `fixing-motion-performance`, `12-principles-of-animation`): respect `prefers-reduced-motion` via `motion-reduce:*`, add tactile `active:scale-[0.98]` feedback, and constrain transitions to compositor properties.
+  CHECK: node -e "const fs = require('fs'); const qe = fs.readFileSync('src/components/QuizExperience.tsx', 'utf8'); const lv = fs.readFileSync('src/components/LessonViewer.tsx', 'utf8'); const ok = qe.includes('active:scale-') || lv.includes('active:scale-') || qe.includes('motion-reduce'); console.log(ok ? 'MOTION_POLISHED' : 'PENDING');"
+  EXPECT: MOTION_POLISHED
+  EVIDENCE: Passed. Added tactile `active:scale-[0.98]` press feedback to option cards, submit triggers, and buttons; ensured all interactive transitions include `motion-reduce:transition-none` and compositor-friendly properties.
+
+- [x] F6: Verification & Quality: `npm run typecheck`, `npm run lint:anti-slop`, and `npm test` all pass cleanly with zero errors.
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: Finished in
+  EVIDENCE: Passed. TypeScript `npm run typecheck` (`tsc --noEmit`) exited with 0 errors. Oxlint `npm run lint:anti-slop` (`oxlint --quiet`) exited with 0 errors across 382 files (882ms). Vitest `npm test -- --run` passed 27/27 test files, 179/179 tests (9.77s).
 

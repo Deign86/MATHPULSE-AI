@@ -80,7 +80,7 @@ const AIMonitoringPage: React.FC = () => {
         <div className="flex items-center gap-2">
           <PricingInfoTooltip pricingMeta={data.pricingMeta} />
           <span className="text-xs text-slate-400">
-            Last updated: {new Date(data.lastUpdated).toLocaleTimeString()}
+            Last updated: <span className="tabular-nums">{new Date(data.lastUpdated).toLocaleTimeString()}</span>
           </span>
         </div>
         <div className="flex gap-2">
@@ -93,6 +93,7 @@ const AIMonitoringPage: React.FC = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
+            aria-label="Refresh AI monitoring metrics"
             className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
@@ -142,15 +143,15 @@ const AIMonitoringPage: React.FC = () => {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-slate-600">Cache Hit</span>
-              <span className="font-medium">${data.costBreakdown.cacheHitCost.toFixed(6)}</span>
+              <span className="font-medium tabular-nums">${data.costBreakdown.cacheHitCost.toFixed(6)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-600">Cache Miss</span>
-              <span className="font-medium">${data.costBreakdown.cacheMissCost.toFixed(6)}</span>
+              <span className="font-medium tabular-nums">${data.costBreakdown.cacheMissCost.toFixed(6)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-600">Output</span>
-              <span className="font-medium">${data.costBreakdown.outputCost.toFixed(6)}</span>
+              <span className="font-medium tabular-nums">${data.costBreakdown.outputCost.toFixed(6)}</span>
             </div>
           </div>
         </div>

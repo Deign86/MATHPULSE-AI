@@ -19,6 +19,10 @@ _STATIC_SUBJECTS = [
         "name": "General Mathematics",
         "gradeLevel": "Grade 11",
         "semester": "1st Semester",
+        "quarters": ["Q1", "Q2", "Q3", "Q4"],
+        "termStructure": "quarterly",
+        "available": True,
+        "shelved": False,
         "color": "from-blue-500 to-cyan-500",
         "pdfAvailable": True,
         "topics": [
@@ -46,13 +50,36 @@ _STATIC_SUBJECTS = [
         ]
     },
     {
+        "id": "finite-math",
+        "code": "FINITE MATH",
+        "name": "Finite Mathematics",
+        "gradeLevel": "Grade 11",
+        "semester": None,
+        "quarters": [],
+        "termStructure": "year-long",
+        "available": True,
+        "shelved": False,
+        "color": "from-violet-500 to-purple-500",
+        "pdfAvailable": True,
+        "topics": [
+            {"id": "finite-001", "name": "Geometry of Design", "unit": "Unit 1"},
+            {"id": "finite-002", "name": "Patterns in Nature and Art", "unit": "Unit 2"},
+            {"id": "finite-003", "name": "Introduction to Matrices", "unit": "Unit 3"},
+            {"id": "finite-004", "name": "Introduction to Linear Programming", "unit": "Unit 4"},
+        ]
+    },
+    {
         "id": "stats-prob",
         "code": "STAT&PROB",
         "name": "Statistics and Probability",
         "gradeLevel": "Grade 11",
         "semester": "2nd Semester",
+        "quarters": [],
+        "termStructure": "shelved",
+        "available": False,
+        "shelved": True,
         "color": "from-sky-500 to-cyan-500",
-        "pdfAvailable": True,
+        "pdfAvailable": False,
         "topics": [
             {"id": "stat-001", "name": "Random Variables", "unit": "Random Variables"},
             {"id": "stat-002", "name": "Discrete Probability Distributions", "unit": "Random Variables"},
@@ -69,6 +96,20 @@ _STATIC_SUBJECTS = [
             {"id": "stat-013", "name": "Z-test", "unit": "Hypothesis Testing"},
             {"id": "stat-014", "name": "Correlation and Regression", "unit": "Correlation and Regression"},
         ]
+    },
+    {
+        "id": "business-math",
+        "code": "BUS MATH",
+        "name": "Business Mathematics",
+        "gradeLevel": "Grade 11",
+        "semester": "1st Semester",
+        "quarters": [],
+        "termStructure": "shelved",
+        "available": False,
+        "shelved": True,
+        "color": "from-amber-500 to-orange-500",
+        "pdfAvailable": False,
+        "topics": []
     },
 ]
 

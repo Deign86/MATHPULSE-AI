@@ -31,14 +31,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
   const panel = (
     <div
       ref={panelRef}
-      className="fixed right-4 top-20 w-80 bg-[#f7f9fc] rounded-xl shadow-2xl border border-[#dde3eb] max-h-96 overflow-y-auto z-[9999] overflow-hidden"
+      className="fixed right-4 top-20 w-80 bg-[#f7f9fc] rounded-xl shadow-2xl border border-[#dde3eb] max-h-96 overflow-y-auto z-50 overflow-hidden"
       style={{ right: '1rem', top: '5rem' }}
     >
       {/* Header */}
       <div className="p-4 border-b border-[#dde3eb] flex items-center justify-between bg-gradient-to-r from-sky-600 to-sky-500">
         <div>
           <h3 className="font-display font-bold text-white text-sm">Notifications</h3>
-          <p className="text-xs text-sky-100 mt-0.5">
+          <p className="text-xs text-sky-100 mt-0.5 tabular-nums">
             {unreadCount > 0 ? `${unreadCount} unread` : 'No new alerts'}
           </p>
         </div>
@@ -46,18 +46,20 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
           {unreadCount > 0 && (
             <button
               onClick={markAllAsRead}
-              className="text-xs text-sky-200 hover:text-white font-bold transition-colors flex items-center gap-1"
+              className="text-xs text-sky-200 hover:text-white font-bold transition-colors flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none rounded px-1"
+              aria-label="Mark all notifications as read"
             >
-              <CheckCheck size={14} />
+              <CheckCheck size={14} aria-hidden="true" />
               Mark all read
             </button>
           )}
           <button
             onClick={onClose}
-            className="text-sky-200 hover:text-white transition-colors"
+            className="text-sky-200 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none rounded p-0.5"
             title="Close"
+            aria-label="Close notifications panel"
           >
-            <X size={16} />
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
       </div>

@@ -47,7 +47,7 @@ const LivePopup: React.FC<LivePopupProps> = ({ show, type, multiplierValue, onCl
           initial={{ opacity: 0, x: 60 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 60 }}
-          className="fixed top-4 right-4 z-[300] max-w-[320px]"
+          className="fixed top-4 right-4 z-50 max-w-[320px]"
         >
           <div className={`bg-white border-l-4 ${content.accent} rounded-xl shadow-lg border border-slate-200 px-4 py-3 flex items-center gap-3`}>
             <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">

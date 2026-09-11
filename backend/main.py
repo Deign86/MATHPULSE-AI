@@ -437,7 +437,6 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/analytics/class-insights": TEACHER_OR_ADMIN,
     "/api/analytics/refresh-cache": ADMIN_ONLY,
     "/api/testing/reset-data": ALL_APP_ROLES,
-    "/api/ops/inference-metrics": ADMIN_ONLY,
     "/api/hf/monitoring": ADMIN_ONLY,
     "/api/dev/generate-mock-data": ADMIN_ONLY,
     "/api/analytics/config": TEACHER_OR_ADMIN,
@@ -9061,11 +9060,6 @@ class AsyncTaskCancelResponse(BaseModel):
     message: str
 
 
-class InferenceMetricsResponse(BaseModel):
-    success: bool
-    metrics: Dict[str, Any]
-
-
 class HFMonitoringDataResponse(BaseModel):
     success: bool
     data: Dict[str, Any]
@@ -11583,18 +11577,6 @@ async def cancel_async_task(http_request: Request, task_id: str):
         status=updated_status,
         message="Cancellation request accepted.",
     )
-
-
-@app.get("/api/ops/inference-metrics", response_model=InferenceMetricsResponse)
-async def get_inference_metrics(http_request: Request):
-    user = get_current_user(http_request)
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden for this role")
-
-    client = get_inference_client()
-    metrics_snapshot = client.snapshot_metrics()
-    metrics_snapshot["pro_enabled"] = bool(getattr(client, "pro_enabled", False))
-    return InferenceMetricsResponse(success=True, metrics=metrics_snapshot)
 
 
 @app.get("/api/hf/monitoring", response_model=HFMonitoringDataResponse)

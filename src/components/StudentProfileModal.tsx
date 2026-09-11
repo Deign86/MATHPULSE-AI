@@ -49,7 +49,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -71,6 +71,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
             <div className="accent-line absolute top-0 left-0 right-0"></div>
             <button
               onClick={onClose}
+              aria-label="Close profile modal"
               className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-xl transition-colors z-10"
             >
               <X size={20} />
@@ -88,17 +89,17 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
                 </div>
 
                 <div className="flex-1">
-                  <h2 className="text-3xl font-display font-bold mb-2">{student.name}</h2>
+                  <h2 className="text-3xl font-display font-bold mb-2 text-balance">{student.name}</h2>
                   <p className="text-slate-500 mb-4">{student.section}</p>
 
                   <div className="flex items-center gap-4">
                     <div className="bg-slate-100 backdrop-blur-sm rounded-xl px-4 py-2 border border-slate-200">
                       <p className="text-xs text-slate-500">Level</p>
-                      <p className="text-xl font-bold">{student.level}</p>
+                      <p className="text-xl font-bold tabular-nums">{student.level}</p>
                     </div>
                     <div className="bg-slate-100 backdrop-blur-sm rounded-xl px-4 py-2 border border-slate-200">
                       <p className="text-xs text-slate-500">Total XP</p>
-                      <p className="text-xl font-bold">{student.totalXP}</p>
+                      <p className="text-xl font-bold tabular-nums">{student.totalXP}</p>
                     </div>
                   </div>
                 </div>
@@ -114,26 +115,26 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-320px)]">
             {/* Stats Grid */}
             <div className="mb-6">
-              <h3 className="font-display font-bold text-lg text-[#0a1628] mb-4">Performance Stats</h3>
+              <h3 className="font-display font-bold text-lg text-[#0a1628] mb-4 text-balance">Performance Stats</h3>
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-white rounded-xl border border-[#dde3eb] p-4 text-center">
                   <BookOpen size={24} className="text-sky-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-[#0a1628]">{student.stats.quizzesCompleted}</p>
+                  <p className="text-2xl font-bold text-[#0a1628] tabular-nums">{student.stats.quizzesCompleted}</p>
                   <p className="text-xs text-slate-500 mt-1 font-body">Quizzes</p>
                 </div>
                 <div className="bg-white rounded-xl border border-[#dde3eb] p-4 text-center">
                   <Target size={24} className="text-emerald-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-[#0a1628]">{student.stats.averageScore}%</p>
+                  <p className="text-2xl font-bold text-[#0a1628] tabular-nums">{student.stats.averageScore}%</p>
                   <p className="text-xs text-slate-500 mt-1 font-body">Avg Score</p>
                 </div>
                 <div className="bg-white rounded-xl border border-[#dde3eb] p-4 text-center">
                   <Award size={24} className="text-rose-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-[#0a1628]">{student.stats.modulesCompleted}</p>
+                  <p className="text-2xl font-bold text-[#0a1628] tabular-nums">{student.stats.modulesCompleted}</p>
                   <p className="text-xs text-slate-500 mt-1 font-body">Modules</p>
                 </div>
                 <div className="bg-white rounded-xl border border-[#dde3eb] p-4 text-center">
                   <Clock size={24} className="text-rose-600 mx-auto mb-2" />
-                  <p className="text-2xl font-bold text-[#0a1628]">{student.stats.studyHours}</p>
+                  <p className="text-2xl font-bold text-[#0a1628] tabular-nums">{student.stats.studyHours}</p>
                   <p className="text-xs text-slate-500 mt-1 font-body">Hours</p>
                 </div>
               </div>
@@ -141,28 +142,28 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
 
             {/* Rankings */}
             <div className="mb-6">
-              <h3 className="font-display font-bold text-lg text-[#0a1628] mb-4">Rankings</h3>
+              <h3 className="font-display font-bold text-lg text-[#0a1628] mb-4 text-balance">Rankings</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
                   <Trophy size={20} className="text-rose-600 mb-2" />
-                  <p className="text-2xl font-bold text-rose-900">#{student.rank.global}</p>
+                  <p className="text-2xl font-bold text-rose-900 tabular-nums">#{student.rank.global}</p>
                   <p className="text-xs text-rose-700 mt-1 font-body">School</p>
                 </div>
                 <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
                   <Trophy size={20} className="text-sky-600 mb-2" />
-                  <p className="text-2xl font-bold text-sky-900">#{student.rank.section}</p>
+                  <p className="text-2xl font-bold text-sky-900 tabular-nums">#{student.rank.section}</p>
                   <p className="text-xs text-sky-700 mt-1 font-body">Section</p>
                 </div>
                 <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
                   <Trophy size={20} className="text-rose-600 mb-2" />
-                  <p className="text-2xl font-bold text-rose-900">
+                  <p className="text-2xl font-bold text-rose-900 tabular-nums">
                     {student.rank.change > 0 ? (
-                      <span className="flex items-center gap-1 text-emerald-600">
+                      <span className="flex items-center gap-1 text-emerald-600 tabular-nums">
                         <TrendingUp size={20} />
                         +{student.rank.change}
                       </span>
                     ) : student.rank.change < 0 ? (
-                      <span className="flex items-center gap-1 text-red-600">
+                      <span className="flex items-center gap-1 text-red-600 tabular-nums">
                         <TrendingUp size={20} className="rotate-180" />
                         {student.rank.change}
                       </span>
