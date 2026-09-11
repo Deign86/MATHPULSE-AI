@@ -6,7 +6,7 @@
 
 ## How it works
 
-Internal IDs (`gen-math`, `stats-prob`, `pre-calc`, `basic-calc`) are used everywhere in Firestore, service logic, and AI prompts. The `subjects.ts` module provides:
+Internal IDs (`gen-math`, `stats-prob`, `business-math`, `finite-math`) are used everywhere in Firestore, service logic, and AI prompts. The `subjects.ts` module provides:
 
 - **`SUBJECT_DISPLAY`** — Record mapping IDs to full names, short labels, and colors
 - **`getSubjectDisplayName(code)`** — Resolves any ID or alias to a full name (e.g., `"General Mathematics"`)

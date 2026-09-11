@@ -12,6 +12,20 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
 }
 
+/** Quarter as carried by lessons: numeric 1-4 or CurriculumQuarter string. */
+type LessonQuarterInput = number | CurriculumQuarter | string;
+
+const QUARTER_TO_INT = new Map([
+  ['Q1', 1], ['Q2', 2], ['Q3', 3], ['Q4', 4],
+  ['1', 1], ['2', 2], ['3', 3], ['4', 4],
+]);
+
+/** Coerce lesson quarter to RAG API int 1-4; defaults 1. */
+function parseQuarterToInt(value: LessonQuarterInput): number {
+  const key = String(value ?? '').trim().toUpperCase();
+  return QUARTER_TO_INT.get(key) ?? 1;
+}
+
 // ---------------------------------------------------------------------------
 // Rich text formatter — breaks plain paragraphs into formatted JSX.
 //
@@ -277,6 +291,7 @@ import { Lesson, Quiz } from '../data/subjects';
 import type { RagLessonSection } from '../services/lessonService';
 import { useLessonContent } from '../hooks/useLessonContent';
 import { getFirebaseStoragePdfUrl } from '../data/curriculum/types';
+import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
@@ -416,6 +431,61 @@ function ErrorPanel({
           Retry
         </button>
       </motion.div>
+    </div>
+  );
+}
+
+function PdfFallbackPanel({
+  lessonTitle,
+  competencyCode,
+  subject,
+  sourceLabel,
+  pdfUrl,
+  onRetry,
+}: {
+  lessonTitle: string;
+  competencyCode?: string;
+  subject?: string;
+  sourceLabel: string;
+  pdfUrl: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-50">
+      <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
+        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+          <FileText className="text-blue-600" size={20} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-slate-800 text-sm truncate">{lessonTitle}</p>
+          <p className="text-slate-500 text-xs truncate">
+            {[competencyCode, subject, sourceLabel].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <span className="text-[0.65rem] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-2 py-1 rounded-lg shrink-0">
+          DepEd PDF
+        </span>
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 shrink-0"
+          aria-label="Open PDF in new tab"
+        >
+          <ExternalLink size={16} />
+        </a>
+        <button
+          onClick={onRetry}
+          className="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 shrink-0"
+          aria-label="Retry AI lesson"
+        >
+          <RefreshCw size={16} />
+        </button>
+      </div>
+      <p className="px-4 py-2 text-xs text-slate-500 bg-amber-50 border-b border-amber-100">
+        AI lesson unavailable — showing the DepEd source PDF this lesson derives from.
+      </p>
+      <iframe src={pdfUrl} title={lessonTitle} className="flex-1 w-full border-0" />
     </div>
   );
 }
@@ -939,15 +1009,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     topic: lesson.title,
     // SAFETY: trusted internal value already conforms to the asserted type.
     subject: (lesson as any).subject || 'General Mathematics',
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    quarter: (lesson as any).quarter || 1,
+    // SAFETY: lessons may carry quarter as "Q1" string or number; RAG API requires int 1-4.
+    quarter: parseQuarterToInt((lesson as any).quarter),
     lessonTitle: lesson.title,
     // SAFETY: trusted internal value already conforms to the asserted type.
     moduleId: (lesson as any).subjectId,
     lessonId: lesson.id,
     // SAFETY: trusted internal value already conforms to the asserted type.
     competencyCode: (lesson as any).competencyCode,
-    learnerLevel: 'Grade 11-12',
+    learnerLevel: 'Grade 11',
     // SAFETY: trusted internal value already conforms to the asserted type.
     storagePath: (lesson as any).storagePath,
   };
@@ -1064,6 +1134,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }
 
   if (error && sections.length === 0) {
+    if (depedPdfUrl) {
+      return (
+        <PdfFallbackPanel
+          lessonTitle={lesson.title}
+          // SAFETY: lesson payloads from the curriculum pipeline always carry these optional metadata fields.
+          competencyCode={(lesson as any).competencyCode}
+          // SAFETY: lesson payloads from the curriculum pipeline always carry these optional metadata fields.
+          subject={(lesson as any).subject}
+          sourceLabel={primarySourceLabel}
+          pdfUrl={depedPdfUrl}
+          onRetry={retry}
+        />
+      );
+    }
     return <ErrorPanel message={error} onRetry={retry} isOffline={isOffline} />;
   }
 

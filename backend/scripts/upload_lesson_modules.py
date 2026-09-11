@@ -16,19 +16,8 @@ from pypdf import PdfWriter, PdfReader
 LOCAL_MODULES_DIR = Path(__file__).resolve().parents[1].parent / "datasets" / "lesson_modules"
 FIREBASE_STORAGE_BUCKET = "mathpulse-ai-2026.firebasestorage.app"
 
-# Upload plan
+# Grade-11-only upload plan (legacy Basic Calculus job removed).
 UPLOAD_JOBS = [
-    {
-        "id": "basic-calc-q3",
-        "display_name": "Basic Calculus Q3",
-        "subject": "Basic Calculus",
-        "subjectId": "basic-calc",
-        "quarter": 3,
-        "storage_path": "curriculum/basic_calc/SDO_Navotas_BasicCalc_SHS_Q3.FV.pdf",
-        "local_dir": LOCAL_MODULES_DIR / "basic_calculus_q3",
-        "filename": "Basic Calculus-Q3-Module-{n}.pdf",
-        "modules": list(range(1, 9)),  # Modules 1-8
-    },
     {
         "id": "gen-math-q2",
         "display_name": "General Mathematics Q2",
@@ -52,18 +41,15 @@ def merge_pdfs(job: dict) -> Path | None:
     writer = PdfWriter()
 
     for mod_num in job["modules"]:
-        if job["id"] == "basic-calc-q3":
-            fname = job["filename"].format(n=mod_num)
-        else:
-            # GenMath modules have specific naming
-            fname = None
-            pattern = job["filename"].format(n=mod_num)
-            for f in job["local_dir"].glob(pattern):
-                fname = f.name
-                break
-            if fname is None:
-                print(f"  [WARN] Could not find file for module {mod_num}")
-                continue
+        # GenMath modules have specific naming
+        fname = None
+        pattern = job["filename"].format(n=mod_num)
+        for f in job["local_dir"].glob(pattern):
+            fname = f.name
+            break
+        if fname is None:
+            print(f"  [WARN] Could not find file for module {mod_num}")
+            continue
 
         src_path = job["local_dir"] / fname
         if not src_path.exists():

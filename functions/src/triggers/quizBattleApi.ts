@@ -37,7 +37,7 @@ const jsonTypeName = <T>(value: T): string => {
   return "unknown";
 };
 
-const ALLOWED_SUBJECT_IDS = new Set(["gen-math", "stats-prob", "pre-calc", "basic-calc"]);
+const ALLOWED_SUBJECT_IDS = new Set(["gen-math", "stats-prob", "business-math", "finite-math"]);
 const ALLOWED_DIFFICULTIES = new Set(["easy", "medium", "hard", "adaptive"]);
 const ALLOWED_QUEUE_TYPES = new Set(["public_matchmaking", "private_room"]);
 const ALLOWED_MODES = new Set(["online", "bot"]);
@@ -382,8 +382,8 @@ interface NormalizedBattleSetup {
   sharedPoolMode: "grade_strict" | "admin_shared";
 }
 
-type BattleGradeLevel = 11 | 12;
-type BattleGradeLabel = "Grade 11" | "Grade 12";
+type BattleGradeLevel = 11;
+type BattleGradeLabel = "Grade 11";
 type BattleCurriculumVersion = "strengthened" | "legacy" | "transition";
 type BattleQuestionSourceType = "premade" | "teacher-authored" | "reviewed-ai" | "imported";
 
@@ -569,78 +569,6 @@ const QUESTION_BANK: BattleQuestionTemplate[] = [
     difficulty: "medium",
   },
   {
-    questionId: "qb-pc-01",
-    subjectId: "pre-calc",
-    topicId: "sequences",
-    prompt: "What is the next term in 2, 6, 18, 54, ...?",
-    choices: ["72", "108", "126", "162"],
-    correctOptionIndex: 3,
-    difficulty: "easy",
-  },
-  {
-    questionId: "qb-pc-02",
-    subjectId: "pre-calc",
-    topicId: "trigonometry",
-    prompt: "sin(30°) equals:",
-    choices: ["0", "1/2", "sqrt(2)/2", "1"],
-    correctOptionIndex: 1,
-    difficulty: "easy",
-  },
-  {
-    questionId: "qb-pc-03",
-    subjectId: "pre-calc",
-    topicId: "conics",
-    prompt: "The graph of x^2 + y^2 = 25 is a:",
-    choices: ["Parabola", "Circle", "Ellipse", "Hyperbola"],
-    correctOptionIndex: 1,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-pc-04",
-    subjectId: "pre-calc",
-    topicId: "functions",
-    prompt: "If g(x)=2x+1, what is g^{-1}(9)?",
-    choices: ["3", "4", "5", "6"],
-    correctOptionIndex: 1,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-bc-01",
-    subjectId: "basic-calc",
-    topicId: "limits",
-    prompt: "lim (x->2) (x^2 - 4)/(x - 2) is:",
-    choices: ["0", "2", "4", "Undefined"],
-    correctOptionIndex: 2,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-bc-02",
-    subjectId: "basic-calc",
-    topicId: "derivatives",
-    prompt: "The derivative of x^3 is:",
-    choices: ["x^2", "2x", "3x^2", "3x"],
-    correctOptionIndex: 2,
-    difficulty: "easy",
-  },
-  {
-    questionId: "qb-bc-03",
-    subjectId: "basic-calc",
-    topicId: "integration",
-    prompt: "Integral of 2x dx is:",
-    choices: ["x^2 + C", "2x + C", "x + C", "x^2/2 + C"],
-    correctOptionIndex: 0,
-    difficulty: "easy",
-  },
-  {
-    questionId: "qb-bc-04",
-    subjectId: "basic-calc",
-    topicId: "applications",
-    prompt: "Velocity is the derivative of:",
-    choices: ["Acceleration", "Position", "Jerk", "Time"],
-    correctOptionIndex: 1,
-    difficulty: "medium",
-  },
-  {
     questionId: "qb-gm-05",
     subjectId: "gen-math",
     topicId: "functions",
@@ -712,78 +640,6 @@ const QUESTION_BANK: BattleQuestionTemplate[] = [
     correctOptionIndex: 2,
     difficulty: "medium",
   },
-  {
-    questionId: "qb-pc-05",
-    subjectId: "pre-calc",
-    topicId: "sequences",
-    prompt: "In an arithmetic sequence with a1=5 and d=3, what is a10?",
-    choices: ["30", "32", "35", "38"],
-    correctOptionIndex: 1,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-pc-06",
-    subjectId: "pre-calc",
-    topicId: "trigonometry",
-    prompt: "cos(60 degrees) is equal to:",
-    choices: ["sqrt(3)/2", "1/2", "0", "1"],
-    correctOptionIndex: 1,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-pc-07",
-    subjectId: "pre-calc",
-    topicId: "conics",
-    prompt: "Which equation represents a circle with center at the origin and radius 4?",
-    choices: ["x^2+y^2=8", "x^2+y^2=16", "x^2-y^2=16", "(x-4)^2+y^2=16"],
-    correctOptionIndex: 1,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-pc-08",
-    subjectId: "pre-calc",
-    topicId: "functions",
-    prompt: "If h(x)=3x-2, what is h^(-1)(13)?",
-    choices: ["3", "4", "5", "6"],
-    correctOptionIndex: 2,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-bc-05",
-    subjectId: "basic-calc",
-    topicId: "derivatives",
-    prompt: "What is the derivative of sin(x)?",
-    choices: ["sin(x)", "-sin(x)", "cos(x)", "-cos(x)"],
-    correctOptionIndex: 2,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-bc-06",
-    subjectId: "basic-calc",
-    topicId: "integration",
-    prompt: "The integral of 1/x with respect to x is:",
-    choices: ["x^-1 + C", "ln|x| + C", "e^x + C", "x ln(x) + C"],
-    correctOptionIndex: 1,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-bc-07",
-    subjectId: "basic-calc",
-    topicId: "applications",
-    prompt: "If s(t)=t^2+2t, what is the velocity at t=3?",
-    choices: ["6", "7", "8", "9"],
-    correctOptionIndex: 2,
-    difficulty: "medium",
-  },
-  {
-    questionId: "qb-bc-08",
-    subjectId: "basic-calc",
-    topicId: "limits",
-    prompt: "Evaluate lim x->0 of sin(x)/x.",
-    choices: ["0", "1", "Undefined", "Infinity"],
-    correctOptionIndex: 1,
-    difficulty: "medium",
-  },
 ];
 
 import { clamp } from "../utils/math";
@@ -826,8 +682,8 @@ const asTimestampMillis = <T>(value: T, fallback = 0): number => {
 
 const parseGradeLevel = <T>(raw: T): BattleGradeLevel | null => {
   if (isFiniteNumber(raw)) {
-    if (Math.floor(raw) === 11) return 11;
-    if (Math.floor(raw) === 12) return 12;
+    // Grade 11 only: legacy Grade 12 records (numeric 12 / "grade 12" strings) normalize into the Grade 11 pool.
+    if (Math.floor(raw) === 11 || Math.floor(raw) === 12) return 11;
   }
 
   if (!isString(raw)) {
@@ -837,12 +693,12 @@ const parseGradeLevel = <T>(raw: T): BattleGradeLevel | null => {
   const normalized = raw.trim().toLowerCase();
   if (!normalized) return null;
   if (normalized === "11" || normalized === "grade 11" || normalized.includes("11")) return 11;
-  if (normalized === "12" || normalized === "grade 12" || normalized.includes("12")) return 12;
+  if (normalized === "12" || normalized === "grade 12" || normalized.includes("12")) return 11;
   return null;
 };
 
-const toGradeLabel = (gradeLevel: BattleGradeLevel): BattleGradeLabel => {
-  return gradeLevel === 11 ? "Grade 11" : "Grade 12";
+const toGradeLabel = (): BattleGradeLabel => {
+  return "Grade 11";
 };
 
 const normalizeCurriculumVersion = (
@@ -885,8 +741,8 @@ const createDeterministicRandomIntFactory = (seedText: string): ((min: number, m
 const STATIC_BANK_GRADE_BY_SUBJECT = {
   "gen-math": 11,
   "stats-prob": 11,
-  "pre-calc": 12,
-  "basic-calc": 12,
+  "business-math": 11,
+  "finite-math": 11,
 } as const;
 
 type StaticBankSubjectKey = keyof typeof STATIC_BANK_GRADE_BY_SUBJECT;
@@ -911,11 +767,11 @@ const mapUserDataToEligibility = (
   if (!gradeLevel) {
     throw buildProfileError(
       "profile_missing_grade_level",
-      "Quiz Battle requires a valid learner grade level (Grade 11 or Grade 12).",
+      "Quiz Battle requires a valid learner grade level (Grade 11).",
     );
   }
 
-  const gradeLabel = toGradeLabel(gradeLevel);
+  const gradeLabel = toGradeLabel();
   const curriculumVersionSetId =
     asString(userData.currentCurriculumVersionSetId, "") ||
     resolveCurriculumVersionSetId(gradeLabel);
@@ -965,8 +821,8 @@ const shouldBlockStartDueToNonAiSource = (params: {
 const SUBJECT_LABELS = {
   "gen-math": "General Mathematics",
   "stats-prob": "Statistics and Probability",
-  "pre-calc": "Pre-Calculus",
-  "basic-calc": "Basic Calculus",
+  "business-math": "Business Mathematics",
+  "finite-math": "Finite Mathematics",
 } as const;
 
 type SubjectLabelKey = keyof typeof SUBJECT_LABELS;
@@ -1563,7 +1419,7 @@ const buildAiQuestionPrompt = (setup: NormalizedBattleSetup, requestedQuestionCo
   const topicLabel = normalizeTopicLabel(setup.topicId);
 
   return [
-    `Generate ${requestedQuestionCount} Grade 11-12 multiple-choice battle quiz questions.`,
+    `Generate ${requestedQuestionCount} Grade 11 multiple-choice battle quiz questions.`,
     `Subject: ${subjectLabel}`,
     `Topic: ${topicLabel}`,
     `Difficulty: ${requestedDifficulty === "adaptive" ? "mixed medium and hard" : requestedDifficulty}`,
@@ -1604,7 +1460,7 @@ const generateAiQuestionSet = async (
   const messages = [
     {
       role: "system",
-      content: "You generate strict JSON for Grade 11-12 multiple-choice math battle questions.",
+      content: "You generate strict JSON for Grade 11 multiple-choice math battle questions.",
     },
     {
       role: "user",

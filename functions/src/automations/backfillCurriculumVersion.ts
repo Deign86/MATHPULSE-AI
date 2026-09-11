@@ -349,8 +349,8 @@ export function runBackfillPatchSanityChecks(): PatchCheckResult {
       label: "learningPaths already complete",
       collectionName: "learningPaths",
       data: {
-        gradeLevel: "Grade 12",
-        curriculumVersionSetId: "g12-math-electives-strengthened-template",
+        gradeLevel: "Grade 11",
+        curriculumVersionSetId: "g11-core-genmath-legacy-detail-strengthened-structure",
       },
       expectedKeys: [],
     },
