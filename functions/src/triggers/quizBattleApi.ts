@@ -697,7 +697,7 @@ const parseGradeLevel = <T>(raw: T): BattleGradeLevel | null => {
   return null;
 };
 
-const toGradeLabel = (_gradeLevel: BattleGradeLevel): BattleGradeLabel => {
+const toGradeLabel = (): BattleGradeLabel => {
   return "Grade 11";
 };
 
@@ -771,7 +771,7 @@ const mapUserDataToEligibility = (
     );
   }
 
-  const gradeLabel = toGradeLabel(gradeLevel);
+  const gradeLabel = toGradeLabel();
   const curriculumVersionSetId =
     asString(userData.currentCurriculumVersionSetId, "") ||
     resolveCurriculumVersionSetId(gradeLabel);
