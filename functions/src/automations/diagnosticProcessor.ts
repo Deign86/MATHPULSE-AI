@@ -64,7 +64,7 @@ export interface DiagnosticPayload {
     correct: boolean;
     questionId?: string;
     difficulty?: "basic" | "standard" | "challenge";
-    gradeLevelTag?: "G11" | "G12Candidate";
+    gradeLevelTag?: "G11" | "G11Advanced"; // legacy "G12Candidate" normalizes to G11Advanced/G11
     quarter?: 1 | 2 | 3 | 4;
     answerType?: "MCQ" | "shortAnswerNumeric" | "shortAnswerText" | "confidenceLikert";
   }>>;
@@ -298,7 +298,7 @@ export async function processDiagnosticCompletion(
     ? {
       nextTopicGroupId: transitionGate.recommendedRemediationTopicGroupId,
       rationale: transitionGate.reason,
-      reasonCode: transitionGate.reasonCode || "grade12_transition_blocked",
+      reasonCode: transitionGate.reasonCode || "grade11_next_step_blocked",
     }
     : isInitialAssessment
       ? {
@@ -332,7 +332,7 @@ export async function processDiagnosticCompletion(
     recommendedNextTopicGroupId: recommendationToPersist.nextTopicGroupId,
     recommendationRationale: recommendationToPersist.rationale,
     recommendationReasonCode: recommendationToPersist.reasonCode,
-    grade12TransitionGate: {
+    grade11NextStepGate: {
       isBlocked: transitionGate.isBlocked,
       reason: transitionGate.reason,
       reasonCode: transitionGate.reasonCode || null,
@@ -358,7 +358,7 @@ export async function processDiagnosticCompletion(
       riskFlags: iarInsights.riskFlags,
       startingQuarterG11: iarInsights.startingQuarterG11,
       priorityTopics: iarInsights.priorityTopics,
-      g12ReadinessIndicators: iarInsights.g12ReadinessIndicators,
+      g11ReadinessIndicators: iarInsights.g11ReadinessIndicators,
     });
   }
   await db.collection("users").doc(lrn).update(profileUpdate);
@@ -379,7 +379,7 @@ export async function processDiagnosticCompletion(
       startingQuarterG11: iarInsights.startingQuarterG11,
       priorityTopics: iarInsights.priorityTopics,
       riskFlags: iarInsights.riskFlags,
-      g12ReadinessIndicators: iarInsights.g12ReadinessIndicators,
+      g11ReadinessIndicators: iarInsights.g11ReadinessIndicators,
       reasonCode: recommendationToPersist.reasonCode,
     },
     transitionGate,
@@ -406,7 +406,7 @@ export async function processDiagnosticCompletion(
         startingQuarterG11: iarInsights.startingQuarterG11,
         priorityTopics: iarInsights.priorityTopics,
         riskFlags: iarInsights.riskFlags,
-        g12ReadinessIndicators: iarInsights.g12ReadinessIndicators,
+        g11ReadinessIndicators: iarInsights.g11ReadinessIndicators,
       },
       transitionGate,
       remediationStatus: refreshedRemediationStatus,

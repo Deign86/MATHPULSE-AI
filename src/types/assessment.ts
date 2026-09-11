@@ -67,17 +67,23 @@ export interface ProficiencyProfile {
   borderline: string[]; // competency ids where score 50-80%
   suggestedStartingModule: string; // e.g., "gen-math-q1", "business-math-q1"
   recommendedPace: 'support_intensive' | 'normal' | 'accelerated';
-  g12Readiness?: G12ReadinessIndicators;
+  g11Readiness?: G11ReadinessIndicators;
+  /** @deprecated legacy stored-record alias; read-only, normalize to g11Readiness */
+  g12Readiness?: G11ReadinessIndicators;
 }
 
-export interface G12ReadinessIndicators {
+export interface G11ReadinessIndicators {
   readyForFiniteMath: boolean;
   readyForAdvancedStats: boolean;
-  readyForCalcIntro: boolean;
+  readyForLogicMastery: boolean;
+  /** @deprecated legacy field; normalize to readyForLogicMastery */
+  readyForCalcIntro?: boolean;
   needsStrongerFunctions: boolean;
   needsStrongerBusinessMath: boolean;
   needsStrongerLogic: boolean;
 }
+// SAFETY: legacy stored-record / import alias; new code uses G11ReadinessIndicators.
+export type G12ReadinessIndicators = G11ReadinessIndicators;
 
 // ─── Question Types ───────────────────────────────────────────────────────
 
@@ -143,7 +149,9 @@ export interface AssessmentDoc {
     borderline: string[];
     suggestedStartingModule: string;
     recommendedPace: 'support_intensive' | 'normal' | 'accelerated';
-    g12Readiness?: G12ReadinessIndicators;
+    g11Readiness?: G11ReadinessIndicators;
+    /** @deprecated legacy stored-record alias */
+    g12Readiness?: G11ReadinessIndicators;
   };
 }
 
