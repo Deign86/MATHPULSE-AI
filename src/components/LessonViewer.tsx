@@ -12,6 +12,19 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
 }
 
+/** Quarter as carried by lessons: numeric 1-4 or CurriculumQuarter string. */
+type LessonQuarterInput = number | CurriculumQuarter | string;
+
+const QUARTER_TO_INT = {
+  Q1: 1, Q2: 2, Q3: 3, Q4: 4, '1': 1, '2': 2, '3': 3, '4': 4,
+} satisfies Record<string, number>;
+
+/** Coerce lesson quarter to RAG API int 1-4; defaults 1. */
+function parseQuarterToInt(value: LessonQuarterInput): number {
+  const key = String(value ?? '').trim().toUpperCase();
+  return QUARTER_TO_INT[key] ?? 1;
+}
+
 // ---------------------------------------------------------------------------
 // Rich text formatter — breaks plain paragraphs into formatted JSX.
 //
@@ -277,6 +290,7 @@ import { Lesson, Quiz } from '../data/subjects';
 import type { RagLessonSection } from '../services/lessonService';
 import { useLessonContent } from '../hooks/useLessonContent';
 import { getFirebaseStoragePdfUrl } from '../data/curriculum/types';
+import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
@@ -994,8 +1008,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     topic: lesson.title,
     // SAFETY: trusted internal value already conforms to the asserted type.
     subject: (lesson as any).subject || 'General Mathematics',
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    quarter: (lesson as any).quarter || 1,
+    // SAFETY: lessons may carry quarter as "Q1" string or number; RAG API requires int 1-4.
+    quarter: parseQuarterToInt((lesson as any).quarter),
     lessonTitle: lesson.title,
     // SAFETY: trusted internal value already conforms to the asserted type.
     moduleId: (lesson as any).subjectId,
