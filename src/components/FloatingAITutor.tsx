@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useState, useRef, useEffect } from 'react';
 import { Bot, X, Send, Maximize2, Minus } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useChatContext, Message } from '../contexts/ChatContext';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToTutorNudges, consumeNudge, requestNudgeCheck, type TutorNudge } from '../services/tutorNudgeService';
@@ -29,7 +29,7 @@ function safeTimestamp(ts: string | number | Date | { toDate(): Date } | null | 
   return String(ts);
 }
 
-const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _constraintsRef, onFullScreen }) => {
+const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFullScreen }) => {
   const { activeSessionId, setActiveSessionId, createNewSession, getActiveSession, sendMessage, isLoading } = useChatContext();
   const { currentUser, userRole } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -41,6 +41,8 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
   const [pendingNudge, setPendingNudge] = useState<TutorNudge | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const nudgeConsumedRef = useRef<string | null>(null);
+  const fabRef = useRef<HTMLButtonElement>(null);
+  const reduceMotion = useReducedMotion();
 
   // Subscribe to tutor nudges for students
   useEffect(() => {
@@ -64,6 +66,19 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
     if (!hasWindow) return;
     window.localStorage.setItem('floating_ai_tutor_minimized', isMinimized ? '1' : '0');
   }, [isMinimized]);
+
+  // Escape closes the panel and returns focus to the launcher
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        fabRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen]);
 
   // Warm up the backend when chat is opened
   useEffect(() => {
@@ -138,13 +153,17 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
 
   return (
     <div className="pointer-events-none flex flex-col items-end">
-      {/* Chat Window (Popup) - Optimized with WAAPI-backed animations */}
-      <div 
-        className={`pointer-events-auto mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-80 bg-[#f7f9fc] rounded-3xl shadow-2xl border border-[#dde3eb] flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right select-none ${
-          isOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-10 pointer-events-none h-0'
-        }`}
-           // SAFETY: trusted internal value already conforms to the asserted type.
-           style={{ ['--max-h' as any]: isOpen ? '32rem' : '0', willChange: 'transform, opacity' } }  
+      {/* Chat Window (Popup) - unmounted when closed so it leaves tab order */}
+      <AnimatePresence>
+      {isOpen && (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 40 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 40 }}
+        transition={{ duration: reduceMotion ? 0 : 0.25, ease: 'easeOut' }}
+        className="pointer-events-auto mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-80 bg-[#f7f9fc] rounded-3xl shadow-2xl border border-[#dde3eb] flex flex-col overflow-hidden origin-bottom-right select-none"
+        role="dialog"
+        aria-label="AI tutor chat"
       >
         {/* Chat Header - Fixed */}
         <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-4 flex items-center justify-between flex-shrink-0">
@@ -220,10 +239,10 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
           {isLoading && (
             <div className="flex justify-start">
               <div className="bg-white text-[#0a1628] shadow-sm border border-[#dde3eb] rounded-2xl px-4 py-2.5 max-w-[75%]">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce [animation-delay:150ms]"></div>
-                  <div className="w-2 h-2 bg-sky-400 rounded-full animate-bounce [animation-delay:300ms]"></div>
+                <div className="flex gap-1" aria-hidden="true">
+                  <div className={`w-2 h-2 bg-sky-400 rounded-full ${reduceMotion ? '' : 'animate-bounce'}`}></div>
+                  <div className={`w-2 h-2 bg-sky-400 rounded-full ${reduceMotion ? '' : 'animate-bounce [animation-delay:150ms]'}`}></div>
+                  <div className={`w-2 h-2 bg-sky-400 rounded-full ${reduceMotion ? '' : 'animate-bounce [animation-delay:300ms]'}`}></div>
                 </div>
               </div>
             </div>
@@ -241,7 +260,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
               type="text"
               value={currentMessage}
               onChange={(e) => setCurrentMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
               placeholder="Ask me anything..."
               className="flex-1 px-4 py-2.5 rounded-xl border border-[#dde3eb] focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm bg-[#f7f9fc] min-h-[44px]"
             />
@@ -256,7 +275,9 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
+      )}
+      </AnimatePresence>
 
       {/* Floating Button - Optimized with WAAPI-backed animations */}
       <div className="pointer-events-auto relative self-end">
@@ -297,8 +318,13 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef: _cons
             )}
 
             <motion.button
+              ref={fabRef}
               type="button"
               onClick={() => setIsOpen(!isOpen)}
+              drag
+              dragConstraints={constraintsRef}
+              dragElastic={0.2}
+              dragMomentum={false}
               whileHover={{ scale: 1.06 }}
               whileTap={{ scale: 0.94 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}

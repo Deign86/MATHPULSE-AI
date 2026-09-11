@@ -13,7 +13,7 @@ import {
 } from './ui/dropdown-menu';
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import ConfirmModal from './ConfirmModal';
 
 interface UploadRecord {
