@@ -45,7 +45,7 @@ This update delivers a unified, cross-device experience for the student Avatar S
 ```
 ┌────────────────────────────────────────┐
 │ Top Pinned Stage (~36% viewport)       │
-│ • [✨ Juan's Qbit]    [🎲] [⚡ 7350 XP] │
+│ • [✨ Juan's Avatar]  [🎲] [⚡ 7350 XP] │
 │ • Volumetric Overhead Spotlight Beam   │
 │ • Floating Math Glyphs (π, ∑, ∫, √x)   │
 │ • 3D Cyber-Podium with Neon Cyan Rim   │
@@ -58,7 +58,7 @@ This update delivers a unified, cross-device experience for the student Avatar S
 │  [Card 1]  [Card 2]  [Card 3]          │
 │  [Card 4]  [Card 5]  [Card 6]          │
 │  [Card 7]  [Card 8]  [Card 9]          │
-│ Sticky Bottom: [Save Changes to Qbit]  │
+│ Sticky Bottom: [Save Changes to Avatar]│
 └────────────────────────────────────────┘
 ```
 
