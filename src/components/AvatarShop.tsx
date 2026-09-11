@@ -683,7 +683,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
             </div>
             <div className="min-w-0">
               <h2 className="text-xs sm:text-sm font-bold text-white tracking-tight truncate drop-shadow-sm">
-                {studentDisplayName}'s Qbit
+                {studentDisplayName}'s Avatar
               </h2>
               <p className="text-[10px] text-sky-300/70 font-medium leading-none">Avatar Studio</p>
             </div>
@@ -995,17 +995,17 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                   <div className="animate-spin-slow">
                     <Save size={15} />
                   </div>
-                  <span>Saving Qbit...</span>
+                  <span>Saving Avatar...</span>
                 </>
               ) : hasUnsavedChanges ? (
                 <>
                   <Sparkles size={15} className="fill-white" />
-                  <span>Save Changes to Qbit</span>
+                  <span>Save Changes to Avatar</span>
                 </>
               ) : (
                 <>
                   <Save size={15} />
-                  <span>Qbit Saved</span>
+                  <span>Avatar Saved</span>
                 </>
               )}
             </button>
