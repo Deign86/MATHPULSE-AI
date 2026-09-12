@@ -19,6 +19,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from services.ai_client import CHAT_MODEL, get_deepseek_client
+from services.llm_json import LLMJsonError, extract_dict_list, extract_json_value
 import firebase_admin
 from firebase_admin import firestore as fs
 
@@ -160,34 +161,25 @@ async def _call_deepseek(system_prompt: str, user_message: str, temperature: flo
 
 
 def _parse_questions_response(raw: str, count: int) -> List[Dict[str, Any]]:
-    """Extract question list from AI JSON response."""
-    cleaned = raw.strip()
-    cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+    """Extract the question list from an AI JSON response."""
     try:
-        data = json.loads(cleaned)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to parse AI response. Please try again.")
+        payload = extract_json_value(raw, preferred=(dict, list))
+    except LLMJsonError as exc:
+        raise HTTPException(
+            status_code=500, detail="Failed to parse AI response. Please try again."
+        ) from exc
 
-    questions = None
-    if isinstance(data, dict):
-        for key in ("questions", "items", "data", "results", "practice_questions"):
-            if key in data and isinstance(data[key], list):
-                questions = data[key]
+    questions = extract_dict_list(payload)
+    if not questions and isinstance(payload, dict):
+        for value in payload.values():
+            if isinstance(value, list) and value and isinstance(value[0], dict):
+                questions = value
                 break
-        if questions is None and len(data) > 0:
-            for v in data.values():
-                if isinstance(v, list) and len(v) > 0 and isinstance(v[0], dict):
-                    questions = v
-                    break
-    elif isinstance(data, list):
-        questions = data
 
     if not questions:
         raise HTTPException(status_code=500, detail="AI response missing questions. Please try again.")
 
-    # Ensure we have exactly `count` questions
-    questions = questions[:count]
-    return questions
+    return questions[:count]
 
 
 def _build_question_prompt(subject: str, competency: str, difficulty: str, count: int) -> tuple[str, str]:

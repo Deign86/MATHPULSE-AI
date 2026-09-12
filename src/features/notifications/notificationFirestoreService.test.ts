@@ -188,7 +188,7 @@ describe('notificationFirestoreService', () => {
       await markAsRead('user-123', 'notif-123');
 
       expect(updateDoc).toHaveBeenCalledTimes(1);
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { isRead: true, read: true });
+      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { isRead: true });
     });
 
     it('handles errors by throwing', async () => {

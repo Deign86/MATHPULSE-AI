@@ -3,13 +3,14 @@ import { motion } from 'motion/react';
 import { Flame, Target, Volume2, VolumeX, Maximize, Minimize, Menu } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../ui/utils';
+import type { BattleHeaderMatchView, BattleSubjectView } from './types';
 
 interface BattleHeaderProps {
   playerRoundStreak: number;
   playerVisualMultiplier: number;
   liveXpEarned: number;
-  activeMatch: any;
-  subjects: any[];
+  activeMatch: BattleHeaderMatchView;
+  subjects: BattleSubjectView[];
   battleSoundEnabled: boolean;
   onToggleSound: () => void;
   isFullscreen: boolean;
@@ -63,7 +64,7 @@ export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
           {(() => {
             if (!activeMatch?.topicId) return <span className="font-bold text-white/90 tracking-wide text-sm leading-none truncate">Practice Match</span>;
             for (const s of subjects) {
-              const m = s.modules?.find((mod: any) => mod.id === activeMatch.topicId);
+              const m = s.modules?.find((mod) => mod.id === activeMatch.topicId);
               if (m) {
                 return (
                   <>
@@ -73,7 +74,7 @@ export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
                 );
               }
             }
-            return <span className="font-bold text-white/90 tracking-wide text-sm leading-none truncate">{activeMatch.topicId.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>;
+            return <span className="font-bold text-white/90 tracking-wide text-sm leading-none truncate">{activeMatch.topicId.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</span>;
           })()}
         </div>
       </div>

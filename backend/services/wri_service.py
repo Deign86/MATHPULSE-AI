@@ -18,16 +18,50 @@ Final academic decisions must still be made by the teacher in accordance
 with official DepEd grading policies.
 """
 
-from typing import Optional
+from typing import Dict, Literal, Optional, get_args
 
 DEFAULT_WEIGHTS = {"w1": 0.30, "w2": 0.40, "w3": 0.30}
 WEIGHT_TOLERANCE = 0.001
 
-CANONICAL_RISK_BANDS = ("safe", "watch", "intervene", "critical", "at_risk")
-CANONICAL_RISK_STATUSES = ("safe", "watch", "intervene", "critical", "at_risk", "pending_assessment")
+# ─── Canonical risk vocabulary ────────────────────────────────────────────
+# Single owner. Every module that needs the bands, one of the subsets below,
+# or a zeroed distribution imports from here instead of re-transcribing the
+# closed set. Drift here previously left stale counters compiling silently.
+RiskLevel = Literal["safe", "watch", "intervene", "critical", "at_risk", "pending_assessment"]
+CANONICAL_RISK_STATUSES: tuple = get_args(RiskLevel)
+CANONICAL_RISK_BANDS: tuple = tuple(
+    status for status in CANONICAL_RISK_STATUSES if status != "pending_assessment"
+)
+# Above the DepEd floor — the system adjusts difficulty or nudges the student.
+FLAGGED_RISK_STATUSES: tuple = ("watch", "intervene", "critical", "at_risk")
+# Approaching or below the DepEd passing mark — the teacher is notified.
+ATTENTION_RISK_STATUSES: tuple = ("intervene", "critical", "at_risk")
+# Escalation-worthy — structured intervention or teacher review required.
+ESCALATION_RISK_STATUSES: tuple = ("critical", "at_risk")
+
+# DepEd DO No. 8, s. 2015 — prevention-first bands. See the module docstring.
+_BAND_THRESHOLDS: tuple = (
+    (88.0, "safe"),
+    (80.0, "watch"),
+    (75.0, "intervene"),
+    (68.0, "critical"),
+)
 
 
-def normalize_risk_band(band: Optional[str]) -> str:
+def band_for_score(score: float) -> RiskLevel:
+    """Classify a 0-100 WRI score into the canonical 5-band DepEd scale."""
+    for threshold, band in _BAND_THRESHOLDS:
+        if score >= threshold:
+            return band
+    return "at_risk"
+
+
+def empty_risk_distribution() -> Dict[str, int]:
+    """Zeroed counter keyed by every canonical risk status."""
+    return dict.fromkeys(CANONICAL_RISK_STATUSES, 0)
+
+
+def normalize_risk_band(band: Optional[str]) -> RiskLevel:
     """Normalize legacy or mixed-case risk status strings to canonical 5-band WRI format."""
     if not band:
         return "pending_assessment"
@@ -105,17 +139,8 @@ def compute_wri(
     # Compute WRI
     wri = round((w1 * d) + (w2 * g_val) + (w3 * p_val), 2)
     
-    # 5-band prevention-first classification
-    if wri >= 88:
-        status = "safe"
-    elif wri >= 80:
-        status = "watch"
-    elif wri >= 75:
-        status = "intervene"
-    elif wri >= 68:
-        status = "critical"
-    else:
-        status = "at_risk"
+    # 5-band prevention-first classification (thresholds owned by band_for_score)
+    status = band_for_score(wri)
     
     return {
         "wri": wri,
