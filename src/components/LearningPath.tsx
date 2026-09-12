@@ -78,24 +78,24 @@ const LearningPath: React.FC<LearningPathProps> = ({
   const learningPathHeading = hasStartedLearning ? 'Continue Learning' : 'Start Learning';
 
   return (
-    <div className="pt-2 sm:pt-3 md:pt-4">
-      <div className="flex justify-between items-center mb-4 md:mb-6 px-1">
-        <div className="flex items-center gap-2 md:gap-3">
-          <div className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-xl md:rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
-            <BookOpen className="w-4 h-4 md:w-5 md:h-5" strokeWidth={2.5} />
+    <div className="pt-1 sm:pt-2 md:pt-3">
+      <div className="flex justify-between items-center mb-3.5 sm:mb-4.5 md:mb-6 px-0">
+        <div className="flex items-center gap-2.5 md:gap-3">
+          <div className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-xl md:rounded-[14px] bg-gradient-to-b from-violet-500 to-indigo-600 border-t border-white/40 flex items-center justify-center text-white shadow-[0_2.5px_0_#4338ca,0_5px_12px_rgba(99,102,241,0.25)]">
+            <BookOpen className="w-4 h-4 md:w-5 md:h-5 stroke-[2.3] drop-shadow-sm" />
           </div>
-          <h2 className="font-display font-black text-lg md:text-[24px] text-slate-800 tracking-tight whitespace-nowrap">{learningPathHeading}</h2>
+          <h2 className="font-display font-black text-lg md:text-[24px] text-slate-800 dark:text-white tracking-tight whitespace-nowrap">{learningPathHeading}</h2>
         </div>
         <button
           onClick={() => onNavigateToModules?.()}
-          className="text-primary font-bold text-xs md:text-sm flex shrink-0 items-center gap-1 hover:gap-2 transition-all bg-primary/10 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl hover:bg-primary/20 whitespace-nowrap"
+          className="text-primary font-bold text-xs md:text-sm flex shrink-0 items-center gap-1 hover:gap-2 transition-all backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border border-purple-200/70 hover:border-purple-300 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl hover:bg-white shadow-sm whitespace-nowrap cursor-pointer active:scale-95"
         >
           View All <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
       </div>
 
-      {/* Single-row horizontal side scroll on mobile and tablet, grid on desktop */}
-      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 pb-2.5 pt-1 px-1 -mx-1 scrollbar-none lg:grid lg:grid-cols-3 lg:overflow-visible lg:gap-6 lg:pb-0 lg:mx-0 lg:px-0">
+      {/* Single-row horizontal side scroll on mobile and tablet, grid on desktop with generous headroom to prevent hover cropping */}
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 sm:gap-4.5 pt-3.5 sm:pt-4 pb-4 px-0 scrollbar-none lg:grid lg:grid-cols-3 lg:overflow-visible lg:gap-6 lg:pt-2 lg:pb-0">
         {modulesWithProgress.map((module, idx) => (
           <div key={module.id} className="w-[235px] sm:w-[265px] shrink-0 snap-start lg:w-full lg:shrink">
             <ModuleFolderCard

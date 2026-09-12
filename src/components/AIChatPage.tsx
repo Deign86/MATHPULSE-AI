@@ -150,7 +150,7 @@ const AIChatPage = () => {
   );
 
   return (
-    <div className="h-full min-h-0 overflow-hidden flex md:gap-4 px-0 md:px-4 sm:px-6 xl:px-10 py-0 md:py-6">
+    <div className="h-full min-h-0 overflow-hidden flex md:gap-4 px-2.5 pt-3 pb-2 sm:px-3 sm:pt-3.5 sm:pb-2.5 md:px-5 md:pt-2.5 md:pb-3 lg:px-6 lg:py-6 xl:px-10">
       {/* Left Sidebar - Chat History (Fixed, Scrollable) */}
       <div className={`${activeSessionId ? 'hidden md:flex' : 'flex'} w-full md:w-80 min-h-0 flex-col bg-[#f7f9fc] rounded-none md:rounded-3xl border-0 md:border border-[#dde3eb] overflow-hidden`}>
         {/* Header - Fixed */}
