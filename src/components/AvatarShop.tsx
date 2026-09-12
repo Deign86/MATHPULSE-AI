@@ -278,7 +278,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({ onSaveProfile, onNavigateToModu
     <>
       <style>{shopAnimations}</style>
       <div className="h-full w-full flex items-start xl:items-center justify-center p-4 sm:p-5 lg:p-6 overflow-y-auto xl:overflow-hidden">
-        <div className="relative w-full max-w-6xl min-h-[480px] xl:h-[78vh] xl:max-h-[720px] rounded-[2rem] p-5 lg:p-6 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-5 xl:gap-8 overflow-visible">
+        <div className="relative w-full max-w-6xl min-h-[480px] xl:h-[78dvh] xl:max-h-[720px] rounded-[2rem] p-5 lg:p-6 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-5 xl:gap-8 overflow-visible">
 
           <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/30 to-transparent" />

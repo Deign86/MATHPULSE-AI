@@ -168,7 +168,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
       ></div>
 
       {/* Modal */}
-      <div className="relative bg-[#f7f9fc] rounded-2xl shadow-2xl border border-[#dde3eb] w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden">
+      <div className="relative bg-[#f7f9fc] rounded-2xl shadow-2xl border border-[#dde3eb] w-full max-w-2xl max-h-[90dvh] sm:max-h-[85dvh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] p-4 md:p-6 text-white relative flex-shrink-0">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_12%,rgba(251,150,187,0.35),transparent_42%),radial-gradient(circle_at_80%_80%,rgba(117,208,106,0.25),transparent_38%)]" />

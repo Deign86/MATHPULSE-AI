@@ -340,7 +340,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2 }}
-          className="relative bg-[#f7f9fc] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-[#dde3eb] w-full sm:max-w-4xl h-[92vh] sm:max-h-[85vh] overflow-hidden flex flex-col sm:flex-row"
+          className="relative bg-[#f7f9fc] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-[#dde3eb] w-full sm:max-w-4xl h-[92dvh] sm:max-h-[85dvh] overflow-hidden flex flex-col sm:flex-row"
         >
           {/* Desktop Sidebar — hidden on mobile */}
           <div className="hidden sm:flex w-64 flex-shrink-0 bg-slate-50 border-r border-slate-200 flex-col p-6 overflow-y-auto">

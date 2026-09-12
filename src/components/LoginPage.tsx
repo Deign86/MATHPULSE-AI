@@ -309,7 +309,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden bg-[#3a236a] text-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-12 selection:bg-purple-500 selection:text-white">
+    <div className="relative min-h-dvh w-full overflow-x-hidden bg-[#3a236a] text-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-12 selection:bg-purple-500 selection:text-white">
       {/* ─── Full-Bleed Mascot Video Background with 3D Cursor Tracking ─── */}
       <InteractiveRobotBackground />
 
@@ -319,7 +319,7 @@ export const LoginPage: React.FC = () => {
           initial={reduceMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="bg-white/90 backdrop-blur-2xl border border-white/80 rounded-3xl p-6 sm:p-8 w-full max-w-md relative overflow-hidden shadow-[0_25px_70px_-15px_rgba(58,35,106,0.35)] max-h-[90vh] overflow-y-auto"
+          className="bg-white/90 backdrop-blur-2xl border border-white/80 rounded-3xl p-6 sm:p-8 w-full max-w-md relative overflow-hidden shadow-[0_25px_70px_-15px_rgba(58,35,106,0.35)] max-h-[90dvh] overflow-y-auto"
         >
           {/* Top accent glow line */}
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 via-pink-500 to-sky-500" />
