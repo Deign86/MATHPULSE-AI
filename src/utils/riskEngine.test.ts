@@ -211,7 +211,7 @@ describe('riskEngine <-> wri_service.py contract', () => {
   });
 
   it('mirrors the legacy alias map', () => {
-    const block = /tier_map = \{([\s\S]*?)\n    \}/.exec(wriSource);
+    const block = /tier_map = \{([\s\S]*?)\n {4}\}/.exec(wriSource);
     expect(block, 'tier_map not found in wri_service.py').not.toBeNull();
 
     const aliases = [...block![1].matchAll(/"([a-z_]+)":\s*"([a-z_]+)"/g)].map(
