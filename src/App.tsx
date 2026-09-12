@@ -1268,82 +1268,59 @@ const App = () => {
                           />
                         </Suspense>
 
-                        {/* Mobile Gamified Bento Ribbon (Level, XP, Streak, Battle trigger) */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 lg:hidden">
-                          {/* Level Card */}
+                        {/* Mobile Gamified Status Ribbon (Compact, Unified Glassmorphism Ribbon) */}
+                        <div className="lg:hidden flex items-center justify-between gap-2 p-2 px-3 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+                          {/* Level / Rank */}
                           <button
                             type="button"
                             onClick={() => setActiveModal('rewards')}
-                            className="flex flex-col justify-between p-3.5 rounded-2xl bg-white border border-rose-100 shadow-sm hover:border-rose-200 transition-all text-left group active:scale-[0.98]"
+                            className="flex items-center gap-2 py-1 px-2 rounded-xl hover:bg-slate-50 transition-colors min-h-[36px]"
+                            title="View Level & Rewards"
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-200/60 flex items-center justify-center">
-                                <Crown className="h-4 w-4 text-rose-500" />
-                              </div>
-                              <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider bg-rose-50 px-2 py-0.5 rounded-full">Rank</span>
+                            <div className="w-7 h-7 rounded-lg bg-rose-50 border border-rose-200/80 flex items-center justify-center shrink-0">
+                              <Crown className="h-3.5 w-3.5 text-rose-500" />
                             </div>
-                            <div className="mt-2.5">
-                              <p className="text-base font-display font-black text-slate-800 leading-none">Level {userLevel}</p>
-                              <p className="text-[11px] text-slate-400 mt-1 font-medium truncate">Mastery Rank</p>
+                            <div className="text-left">
+                              <span className="text-xs font-display font-bold text-slate-800 leading-none">Lv {userLevel}</span>
                             </div>
                           </button>
 
-                          {/* XP Card */}
+                          <div className="h-5 w-px bg-slate-200/80 shrink-0" />
+
+                          {/* XP Bar */}
                           <button
                             type="button"
                             onClick={() => setActiveModal('rewards')}
-                            className="flex flex-col justify-between p-3.5 rounded-2xl bg-white border border-violet-100 shadow-sm hover:border-violet-200 transition-all text-left group active:scale-[0.98]"
+                            className="flex-1 flex items-center gap-2 py-1 px-2 rounded-xl hover:bg-slate-50 transition-colors min-h-[36px] min-w-0"
+                            title="XP Progress"
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="w-8 h-8 rounded-xl bg-violet-50 border border-violet-200/60 flex items-center justify-center">
-                                <Zap className="h-4 w-4 text-violet-500" />
-                              </div>
-                              <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wider bg-violet-50 px-2 py-0.5 rounded-full tabular-nums">
-                                {progressXPInLevel}/{xpToNextLevel}
-                              </span>
+                            <div className="w-7 h-7 rounded-lg bg-violet-50 border border-violet-200/80 flex items-center justify-center shrink-0">
+                              <Zap className="h-3.5 w-3.5 text-violet-500" />
                             </div>
-                            <div className="mt-2.5">
-                              <p className="text-base font-display font-black text-violet-700 leading-none tabular-nums">{currentXP} XP</p>
-                              <div className="mt-1.5 h-1.5 w-full bg-violet-100 rounded-full overflow-hidden">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-1 leading-none">
+                                <span className="text-violet-700 font-extrabold tabular-nums">{currentXP} XP</span>
+                                <span className="text-[9px] text-slate-400 tabular-nums">{progressXPInLevel}/{xpToNextLevel}</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-violet-100 rounded-full overflow-hidden">
                                 <div className="h-full bg-violet-500 rounded-full transition-all" style={xpFillStyle} />
                               </div>
                             </div>
                           </button>
 
-                          {/* Streak / Daily Reward Card */}
+                          <div className="h-5 w-px bg-slate-200/80 shrink-0" />
+
+                          {/* Daily Reward / Streak */}
                           <button
                             type="button"
                             onClick={() => setActiveModal('rewards')}
-                            className="flex flex-col justify-between p-3.5 rounded-2xl bg-white border border-orange-100 shadow-sm hover:border-orange-200 transition-all text-left group active:scale-[0.98]"
+                            className="flex items-center gap-1.5 py-1 px-2 rounded-xl hover:bg-slate-50 transition-colors min-h-[36px] shrink-0"
+                            title="Daily Streak"
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200/60 flex items-center justify-center">
-                                <Flame className="h-4 w-4 text-orange-500" />
-                              </div>
-                              <span className="text-[10px] font-bold text-orange-600 uppercase tracking-wider bg-orange-50 px-2 py-0.5 rounded-full">Streak</span>
+                            <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200/80 flex items-center justify-center shrink-0">
+                              <Flame className="h-3.5 w-3.5 text-orange-500" />
                             </div>
-                            <div className="mt-2.5">
-                              <p className="text-base font-display font-black text-slate-800 leading-none">Daily Reward</p>
-                              <p className="text-[11px] text-orange-600 mt-1 font-medium">Claim Rewards →</p>
-                            </div>
-                          </button>
-
-                          {/* Quick Quiz Battle Card */}
-                          <button
-                            type="button"
-                            onClick={() => handleStudentNavigation('Quiz Battle')}
-                            className="flex flex-col justify-between p-3.5 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-sm hover:shadow-md transition-all text-left group active:scale-[0.98]"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
-                                <Swords className="h-4 w-4 text-white" />
-                              </div>
-                              <span className="text-[10px] font-bold text-white/90 uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">PvP</span>
-                            </div>
-                            <div className="mt-2.5">
-                              <p className="text-base font-display font-black text-white leading-none">Quiz Battle</p>
-                              <p className="text-[11px] text-white/85 mt-1 font-medium">Play Match →</p>
-                            </div>
+                            <span className="text-xs font-display font-bold text-orange-600">Streak</span>
                           </button>
                         </div>
 

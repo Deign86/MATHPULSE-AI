@@ -77,56 +77,106 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         <div className="absolute inset-0 bg-dot-pattern opacity-40" />
       </div>
 
-      <div className="relative z-10 flex flex-col md:flex-row min-h-[140px] lg:min-h-[160px] items-start md:items-center justify-between gap-4 md:gap-6 pb-0">
-        <div className="flex-1 w-full md:w-auto min-w-0 pr-0 md:pr-40 lg:pr-[280px] pb-2 md:pb-0 py-1">
-          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 mb-3 md:mb-2">
-            <div className="px-3 md:px-4 py-1.5 rounded-full bg-sky-100 border border-sky-200">
-              <span className="text-xs md:text-sm font-body font-bold text-sky-700">Level {userLevel}</span>
+      {/* Mobile Layout (< md): Dedicated Top Row for Greeting + Avatar Pod, followed by Full-Width Action Zone */}
+      <div className="md:hidden relative z-10 flex flex-col gap-4">
+        {/* Top Row: Greeting + Dedicated Avatar Spotlight */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-1 rounded-full bg-sky-100 border border-sky-200 text-xs font-bold text-sky-700">
+                Level {userLevel}
+              </span>
+              <span className="px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 inline-flex items-center gap-1">
+                <Zap size={12} className="text-rose-500" />
+                Active
+              </span>
             </div>
-            <div className="px-3 md:px-4 py-1.5 rounded-full bg-rose-50 border border-rose-200">
+
+            <h1 className="text-2xl font-display font-black text-[#0a1628] leading-[1.15] tracking-tight">
+              {getGreeting()},<br />{userName}!
+            </h1>
+            <p className="text-xs text-slate-500 font-medium mt-1 leading-snug">
+              Today is a great day to move one step forward in math mastery.
+            </p>
+          </div>
+
+          {/* Dedicated Avatar Spotlight Pod (Clean, non-colliding, framed) */}
+          <div className="shrink-0 w-24 h-28 rounded-2xl bg-gradient-to-b from-sky-100/80 via-white to-sky-50/60 border-2 border-sky-200/90 shadow-sm relative overflow-hidden flex items-end justify-center p-1">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(56,189,248,0.25),transparent_70%)] pointer-events-none" />
+            <div className="relative w-full aspect-[4/5] translate-y-1 drop-shadow-md">
+              <Suspense fallback={<Skeleton className="w-full h-full rounded-xl" aria-label="Loading avatar" />}>
+                <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.25] origin-bottom" />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Action Area: Full-width, completely unobstructed */}
+        <div className="flex flex-col gap-2.5 pt-1">
+          {showAssessmentTooltip && (
+            <button
+              type="button"
+              onClick={onOpenAssessment}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border-2 border-amber-300 bg-amber-50/95 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors shadow-sm text-left"
+            >
+              <div className="flex items-center gap-2">
+                <Brain size={16} className="text-amber-600 shrink-0" />
+                <span>Initial Assessment is Ready!</span>
+              </div>
+              <ArrowRight size={14} className="text-amber-700 shrink-0" />
+            </button>
+          )}
+
+          {assessmentCompleted && !showAssessmentTooltip && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }))}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-teal-300 bg-teal-50/95 text-teal-900 text-xs font-bold hover:bg-teal-100 transition-colors shadow-sm text-left"
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle size={16} className="text-teal-600 shrink-0" />
+                <span>Assessment Complete · View History</span>
+              </div>
+              <ArrowRight size={14} className="text-teal-700 shrink-0" />
+            </button>
+          )}
+
+          <motion.button
+            onClick={onContinueLearning}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-3 rounded-xl font-display font-bold text-sm shadow-md shadow-purple-500/25 hover:shadow-purple-500/35 transition-all flex items-center justify-center gap-2 min-h-[46px]"
+          >
+            <span>Continue Learning</span>
+            <ArrowRight size={16} />
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Desktop Layout (md: and above): Spacious horizontal banner with desktop avatar */}
+      <div className="hidden md:flex relative z-10 min-h-[140px] lg:min-h-[160px] items-center justify-between gap-6 pb-0">
+        <div className="flex-1 max-w-xl pr-4 lg:pr-8 py-1">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="px-4 py-1.5 rounded-full bg-sky-100 border border-sky-200">
+              <span className="text-sm font-body font-bold text-sky-700">Level {userLevel}</span>
+            </div>
+            <div className="px-4 py-1.5 rounded-full bg-rose-50 border border-rose-200">
               <Zap size={14} className="inline -mt-0.5 text-rose-500 mr-1" />
-              <span className="text-xs md:text-sm font-body font-bold text-rose-700">Active</span>
+              <span className="text-sm font-body font-bold text-rose-700">Active</span>
             </div>
           </div>
 
-          <h1 className="text-2xl md:text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1.5 tracking-tight leading-[1.1]">
+          <h1 className="text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1.5 tracking-tight leading-[1.1]">
             {getGreeting()}, {userName}!
           </h1>
-          <p className="text-slate-500 mb-2 md:mb-1 text-sm md:text-sm font-body font-bold pr-20 sm:pr-24 md:pr-0">Today is a great day to move one step forward in math mastery.</p>
-          <p className="text-xs md:text-xs text-slate-400 font-body mb-4 pr-20 sm:pr-24 md:pr-0">Focus on your next recommended lesson and keep your momentum.</p>
-
-          {/* Mobile Assessment Status Pill */}
-          {showAssessmentTooltip && (
-            <div className="md:hidden mb-4">
-              <button
-                type="button"
-                onClick={onOpenAssessment}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-amber-300 bg-amber-50/95 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors shadow-sm"
-              >
-                <Brain size={14} className="text-amber-600 shrink-0" />
-                <span>Take Initial Assessment</span>
-                <ArrowRight size={12} className="text-amber-700 shrink-0" />
-              </button>
-            </div>
-          )}
-          {assessmentCompleted && !showAssessmentTooltip && (
-            <div className="md:hidden mb-4">
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }))}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-teal-300 bg-teal-50/95 text-teal-900 text-xs font-bold hover:bg-teal-100 transition-colors shadow-sm"
-              >
-                <CheckCircle size={14} className="text-teal-600 shrink-0" />
-                <span>Assessment Complete · View History</span>
-              </button>
-            </div>
-          )}
+          <p className="text-slate-500 mb-1 text-sm font-body font-bold">Today is a great day to move one step forward in math mastery.</p>
+          <p className="text-xs text-slate-400 font-body mb-4">Focus on your next recommended lesson and keep your momentum.</p>
 
           <motion.button
             onClick={onContinueLearning}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="mt-1 md:mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-3 md:py-2 rounded-xl font-body font-bold text-base md:text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex justify-center md:justify-start items-center gap-2 group w-auto md:w-auto min-h-[44px]"
+            className="mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-2.5 rounded-xl font-body font-bold text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex items-center gap-2 group w-fit min-h-[44px]"
           >
             Continue Learning
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -134,7 +184,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         </div>
       </div>
 
-      {/* Avatar Container: Anchored to the exact bottom of the banner, clipped directly at the banner's baseline */}
+      {/* Desktop Speech Bubble Tooltips */}
       {showAssessmentTooltip && (
         <motion.button
           type="button"
@@ -154,13 +204,11 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
                 Don't forget to take the<br />Initial Assessment!
               </p>
             </div>
-            {/* Speech bubble tail pointing right-down towards avatar */}
             <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-amber-300 border-b-amber-300 rotate-45 group-hover:bg-amber-50 group-hover:border-r-amber-400 group-hover:border-b-amber-400 transition-colors" />
           </div>
         </motion.button>
       )}
 
-      {/* Success Tooltip showing Assessment is Completed — click to open results */}
       {assessmentCompleted && !showAssessmentTooltip && (
         <motion.button
           type="button"
@@ -181,7 +229,6 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
                 <span className="text-[10px] lg:text-[11px] font-normal text-teal-700">View results &amp; history</span>
               </p>
             </div>
-            {/* Speech bubble tail pointing right-down towards avatar */}
             <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 group-hover:bg-teal-50 group-hover:border-r-teal-400 group-hover:border-b-teal-400 transition-colors" />
           </div>
         </motion.button>
@@ -196,13 +243,14 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         />
       )}
 
+      {/* Desktop Avatar Container: Anchored to the exact bottom of the banner on md: and above */}
       <div
-        className="absolute right-0 bottom-0 lg:right-10 w-[110px] sm:w-[140px] md:w-[150px] lg:w-[270px] pointer-events-none z-20"
+        className="hidden md:block absolute right-0 bottom-0 lg:right-10 w-[150px] lg:w-[270px] pointer-events-none z-20"
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
       >
-        <div className="relative w-full aspect-[4/5] translate-y-[10%] md:translate-y-[21%] lg:translate-y-[19%] drop-shadow-2xl">
-          <Suspense fallback={<Skeleton className="w-full aspect-[4/5] scale-[1.15] md:scale-[1.25] lg:scale-[1.3] origin-bottom" aria-label="Loading avatar" />}>
-            <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.35] md:scale-[1.25] lg:scale-[1.3] origin-bottom" />
+        <div className="relative w-full aspect-[4/5] md:translate-y-[21%] lg:translate-y-[19%] drop-shadow-2xl">
+          <Suspense fallback={<Skeleton className="w-full aspect-[4/5] md:scale-[1.25] lg:scale-[1.3] origin-bottom" aria-label="Loading avatar" />}>
+            <DashboardAvatar layers={avatarLayers} className="w-full h-full md:scale-[1.25] lg:scale-[1.3] origin-bottom" />
           </Suspense>
         </div>
       </div>
