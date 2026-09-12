@@ -137,7 +137,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
   if (!isOpen) return null;
 
   const content = (
-    <div className={`${mode === 'fullscreen' ? 'min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30' : ''} flex flex-col`}>
+    <div className={`${mode === 'fullscreen' ? 'min-h-dvh bg-gradient-to-br from-slate-50 via-white to-indigo-50/30' : ''} flex flex-col`}>
       {/* Header */}
       <div className="top-0 z-10 bg-white border-b border-slate-200/60 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -434,7 +434,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto will-change-transform"
+              className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90dvh] overflow-y-auto"
               onClick={e => e.stopPropagation()}
             >
               {content}
