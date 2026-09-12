@@ -367,10 +367,10 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: TWIN_SLABS_READY
   EVIDENCE: Passed. Output: `TWIN_SLABS_READY`. Implemented symmetric 2-column twin slabs for XP Coins and Streak Days with rounded tactile borders, circular emblem badges, tabular-nums metrics, and interactive triggers to rewards modal.
 
-- [x] K5: Secondary Action Card: "Chat with AI Tutor" card with mascot emblem and direct chat trigger.
-  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/App.tsx', 'utf8'); console.log(s.includes('Chat with AI Tutor') || s.includes('Ask AI Tutor') ? 'CHAT_CARD_READY' : 'CHAT_CARD_PENDING');"
-  EXPECT: CHAT_CARD_READY
-  EVIDENCE: Passed. Output: `CHAT_CARD_READY`. Added secondary action card in `App.tsx` matching reference "Chat with Fibo" layout, featuring rich gradient styling, conversational invitation, direct "Ask AI Tutor" pill button, and robot mascot emblem.
+- [x] K5: Mobile/Tablet Compact Top Bar: Level & XP counters on the left, compact Calculator, Notification Bell, and Profile button on the right, with removal of redundant secondary chat widget.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/App.tsx', 'utf8'); console.log(s.includes('Mobile/Tablet Compact Top Bar') && s.includes('Scientific Calculator') ? 'TOP_STATUS_READY' : 'TOP_STATUS_PENDING');"
+  EXPECT: TOP_STATUS_READY
+  EVIDENCE: Passed. Output: `TOP_STATUS_READY`. Replaced bulky desktop header with compact mobile/tablet top status row containing Level badge and XP progress pill on upper left, and compact Calculator, Notification Bell, and Profile Avatar buttons on upper right. Removed redundant secondary chat card.
 
 - [x] K6: System verification: npm run typecheck and npm run lint:anti-slop pass with 0 errors.
   CHECK: npm run typecheck && npm run lint:anti-slop

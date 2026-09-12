@@ -1151,28 +1151,24 @@ const App = () => {
         )}
 
         {/* Main Content */}
-        <div className="flex-1 min-h-0 flex flex-col min-w-0 bg-[#f7f9fc] relative z-10 shadow-[rgba(124,58,237,0.05)_0px_0px_30px_inset]">
-          <div className="absolute inset-0 bg-math-pattern opacity-30 pointer-events-none mix-blend-multiply z-0" />
+        <div className="flex-1 min-h-0 flex flex-col min-w-0 bg-gradient-to-br from-[#f8faff] via-[#f1f5fd] to-[#f5f0fc] dark:from-[#050d18] dark:via-[#0c1527] dark:to-[#120e24] relative z-10 overflow-hidden shadow-[rgba(124,58,237,0.04)_0px_0px_30px_inset]">
+          {/* Ambient glowing gradient orbs */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-purple-200/30 via-indigo-100/20 to-transparent rounded-full blur-3xl pointer-events-none -translate-y-1/3 translate-x-1/4" />
+          <div className="absolute bottom-0 left-0 w-[450px] h-[450px] bg-gradient-to-tr from-sky-200/25 via-purple-100/15 to-transparent rounded-full blur-3xl pointer-events-none translate-y-1/3 -translate-x-1/4" />
+          <div className="absolute inset-0 bg-math-pattern opacity-10 mix-blend-overlay pointer-events-none z-0" />
           
-          {/* Header — compact with inline gamification stats */}
-          <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-3 sm:px-6 py-2 sm:py-3 flex flex-row items-center justify-between gap-2 sm:gap-3 sticky top-0 z-30 shadow-sm">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {/* Desktop Header — compact with inline gamification stats (hidden on mobile/tablet where bottom nav and top status row are active) */}
+          <header className="hidden lg:flex bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex-row items-center justify-between gap-3 sticky top-0 z-30 shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
               <InstallPwaButton />
-              <button
-                className="lg:hidden p-2 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-                onClick={() => setIsMobileSidebarOpen(true)}
-                aria-label="Open navigation"
-              >
-                <Menu size={20} />
-              </button>
               <div className="min-w-0">
-                <h1 className="text-base sm:text-xl font-display font-bold text-[#0a1628] leading-tight truncate">
+                <h1 className="text-xl font-display font-bold text-[#0a1628] leading-tight truncate">
                   {activeTab === 'Grades' ? 'Assessment' : activeTab === 'Leaderboard' ? 'Leadership Board' : activeTab}
                 </h1>
-                <p className="hidden sm:block text-xs text-[#5a6578] font-body truncate">Welcome back, {profileData.name.split(' ')[0]}!</p>
+                <p className="text-xs text-[#5a6578] font-body truncate">Welcome back, {profileData.name.split(' ')[0]}!</p>
               </div>
               {/* Inline gamification badges — always visible */}
-              <div className="hidden md:flex items-center gap-2 ml-2">
+              <div className="flex items-center gap-2 ml-2">
                 <button
                   onClick={() => setActiveModal('rewards')}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 rounded-lg transition-colors cursor-pointer group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
@@ -1253,22 +1249,75 @@ const App = () => {
                 className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'h-full min-h-0' : ''}
               >
                 {activeTab === 'Dashboard' ? (
-                  <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
-                    <div className="grid grid-cols-12 gap-6 sm:gap-8 lg:gap-10">
-                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-5 sm:gap-6 lg:gap-10 pt-0">
-                        {/* Mobile Top Greeting (Clean typography matching reference) */}
-                        <div className="lg:hidden flex flex-col mb-1">
-                          <h1 className="text-2xl sm:text-3xl font-display font-black text-[#0a1628] leading-tight tracking-tight">
-                            Hello, {firstName} 👋
-                          </h1>
-                          <p className="text-xs sm:text-sm text-slate-500 font-semibold mt-0.5">
-                            {(() => {
-                              const hour = new Date().getHours();
-                              if (hour < 12) return 'Good Morning!';
-                              if (hour < 18) return 'Good Afternoon!';
-                              return 'Good Evening!';
-                            })()}
-                          </p>
+                  <div className="px-3.5 sm:px-6 xl:px-10 py-2 sm:py-3.5 lg:py-6">
+                    <div className="grid grid-cols-12 gap-3 sm:gap-6 lg:gap-10">
+                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-2.5 sm:gap-4 lg:gap-8 pt-0">
+                        {/* Mobile/Tablet Compact Top Bar: Level & XP on Left, Utility Controls on Right */}
+                        <div className="lg:hidden flex items-center justify-between gap-2 mb-0.5">
+                          {/* Upper Left: Level Badge & XP Counter (XP hidden on narrow mobile <= 350px, shown on 360px+ and tablet) */}
+                          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => setActiveModal('rewards')}
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/95 dark:bg-slate-800/95 border border-rose-200/80 shadow-sm hover:bg-rose-50 transition-colors shrink-0"
+                              title="Level Progress"
+                              aria-label={`Level ${userLevel}`}
+                            >
+                              <Crown className="w-3.5 h-3.5 text-rose-500" />
+                              <span className="text-xs font-display font-black text-rose-700 dark:text-rose-400">Lv {userLevel}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setActiveModal('rewards')}
+                              className="hidden min-[360px]:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/95 dark:bg-slate-800/95 border border-violet-200/80 shadow-sm hover:bg-violet-50 transition-colors min-w-[105px] sm:min-w-[130px]"
+                              title={`${progressXPInLevel}/${xpToNextLevel} XP`}
+                              aria-label={`XP: ${currentXP}`}
+                            >
+                              <Zap className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-center text-[10px] font-bold text-violet-700 dark:text-violet-300 leading-none mb-0.5">
+                                  <span className="tabular-nums">{currentXP} XP</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-violet-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-violet-500 rounded-full transition-all" style={xpFillStyle} />
+                                </div>
+                              </div>
+                            </button>
+                          </div>
+
+                          {/* Upper Right: Calculator, Notification Bell (Mobile & Tablet), Profile Avatar (Tablet only - on mobile it is in bottom nav) */}
+                          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
+                              className="w-8 h-8 rounded-xl bg-white/95 dark:bg-slate-800/95 border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-600 hover:text-purple-600 transition-colors active:scale-95"
+                              title="Scientific Calculator"
+                              aria-label="Scientific Calculator"
+                            >
+                              <Calculator size={15} />
+                            </button>
+
+                            <Suspense fallback={compactControlFallback}>
+                              <div className="scale-90 origin-center">
+                                <NotificationBell />
+                              </div>
+                            </Suspense>
+
+                            {/* Profile button on top right: hidden on mobile (< md) because it's on bottom right of the navbar; shown on tablet (md: to lg:) */}
+                            <button
+                              type="button"
+                              onClick={() => setActiveModal('profile')}
+                              className="hidden md:flex w-8 h-8 rounded-xl overflow-hidden border border-slate-200/80 shadow-sm items-center justify-center hover:ring-2 hover:ring-purple-400 transition-all active:scale-95"
+                              aria-label={`Profile: ${profileData.name}`}
+                            >
+                              <UserAvatar
+                                src={profileData.photo}
+                                name={profileData.name}
+                                className="w-full h-full rounded-none"
+                              />
+                            </button>
+                          </div>
                         </div>
 
                         <Suspense fallback={dashboardPanelFallback}>
@@ -1301,7 +1350,7 @@ const App = () => {
                                 2 / 5 Lessons
                               </span>
                             </div>
-                            <p className="text-[10px] sm:text-xs text-slate-500 mt-1 font-medium truncate">
+                            <p className="text-[10px] sm:text-xs text-slate-500 mt-1 font-medium leading-snug">
                               {hasCompletedDiagnostic ? 'Maintain your daily practice pace' : 'Complete Initial Diagnostic Assessment'}
                             </p>
                             <div className="h-1.5 sm:h-2 w-full bg-orange-100/70 rounded-full overflow-hidden mt-1.5">
@@ -1367,34 +1416,6 @@ const App = () => {
                           </button>
                         </div>
 
-                        {/* Mobile Secondary Action Card: Chat with AI Tutor */}
-                        <div
-                          onClick={() => handleStudentNavigation('AI Chat')}
-                          className="lg:hidden relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-purple-700 via-indigo-600 to-indigo-700 text-white p-4 sm:p-5 shadow-md shadow-purple-500/15 border border-purple-400/30 cursor-pointer hover:shadow-lg transition-all active:scale-[0.98]"
-                        >
-                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_50%,rgba(255,255,255,0.15),transparent_70%)] pointer-events-none" />
-
-                          <div className="relative z-10 flex items-center justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-sm sm:text-base font-display font-black text-white leading-tight">
-                                Chat with AI Tutor
-                              </h3>
-                              <p className="text-[11px] sm:text-xs text-purple-100/90 font-medium mt-1 leading-snug">
-                                Ask anything, Juan is here to help you solve math!
-                              </p>
-                              <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full mt-2.5 backdrop-blur-sm transition-colors">
-                                <span>Ask AI Tutor</span>
-                                <ArrowRight className="w-3 h-3" />
-                              </span>
-                            </div>
-
-                            {/* Mascot Emblem on Right */}
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center shrink-0 shadow-inner">
-                              <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
-                            </div>
-                          </div>
-                        </div>
-
                         {dashboardShellDeferredReady && hasCompletedDiagnostic && normalizedAtRiskTopics.length > 0 && (
                           <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm dark:border-amber-400/40 dark:bg-amber-400/10">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1449,7 +1470,7 @@ const App = () => {
 
                         {profileReady && dashboardShellDeferredReady && (
                           <Suspense fallback={dashboardWidgetFallback}>
-                            <div className="pb-4">
+                            <div className="mt-2 sm:mt-3.5 md:mt-5 pb-4">
                               <LearningPath
                                 modules={curriculumRuntimeModules}
                                 onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)}
@@ -1548,7 +1569,7 @@ const App = () => {
           {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page and quiz mode */}
           {(activeTab !== 'AI Chat' && !isInQuizMode) && (
             <Suspense fallback={null}>
-              <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)', marginRight: 'env(safe-area-inset-right, 0px)' }}>
+              <div className="hidden lg:block fixed bottom-8 right-8 z-30">
                 <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
               </div>
             </Suspense>
@@ -1692,6 +1713,9 @@ const App = () => {
             <MobileBottomNav
               activeTab={activeTab}
               onSelectTab={handleStudentNavigation}
+              onOpenProfile={() => setActiveModal('profile')}
+              profilePhoto={profileData.photo}
+              profileName={profileData.name}
             />
           )}
         </div>
