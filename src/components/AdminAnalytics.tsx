@@ -96,6 +96,7 @@ const AdminAnalytics: React.FC = () => {
             onClick={loadData}
             disabled={loadingKPIs}
             title="Refresh data"
+            aria-label="Refresh data"
             className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-[#9956DE] shadow-sm transition-all active:scale-95"
           >
             <RefreshCw size={14} className={loadingKPIs ? 'animate-spin' : ''} />

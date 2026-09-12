@@ -24,6 +24,7 @@ import {
 } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import BloomsTaxonomyModal from './BloomsTaxonomyModal';
+import ConfirmModal from './ConfirmModal';
 import {
   saveGeneratedQuiz,
   publishQuiz,
@@ -83,13 +84,10 @@ const BLOOM_LABELS = {
   analyze: { label: 'Analyze', color: 'bg-rose-100 text-rose-700 border-rose-300', description: 'Examine & compare' },
 };
 
-const GRADE_LEVELS = ['Grade 11', 'Grade 12'];
+const GRADE_LEVELS = ['Grade 11'];
 
-const normalizeGradeLevel = (value?: string): 'Grade 11' | 'Grade 12' => {
-  const normalized = (value || '').trim().toLowerCase();
-  if (normalized === 'grade 12' || normalized === '12' || normalized.includes('12')) {
-    return 'Grade 12';
-  }
+const normalizeGradeLevel = (value?: string): 'Grade 11' => {
+  void value;
   return 'Grade 11';
 };
 
@@ -99,24 +97,15 @@ const FALLBACK_TOPICS_BY_GRADE = {
     'General Mathematics - Financial Mathematics': ['Simple and Compound Interest', 'Simple and General Annuities', 'Present and Future Value', 'Loans, Amortization, and Sinking Funds', 'Stocks, Bonds, and Market Indices', 'Business Decision-Making with Mathematical Models'],
     'General Mathematics - Logic and Mathematical Reasoning': ['Propositions and Logical Connectives', 'Truth Values and Truth Tables', 'Logical Equivalence and Implication', 'Quantifiers and Negation', 'Validity of Arguments'],
   },
-  'Grade 12': {
-    'Pre-Calculus - Analytic Geometry': ['Conic Sections - Parabola', 'Conic Sections - Ellipse', 'Conic Sections - Hyperbola', 'Conic Sections - Circle', 'Systems of Nonlinear Equations'],
-    'Pre-Calculus - Series and Induction': ['Sequences and Series', 'Arithmetic Sequences', 'Geometric Sequences', 'Mathematical Induction', 'Binomial Theorem'],
-    'Pre-Calculus - Trigonometry': ['Angles and Unit Circle', 'Trigonometric Functions', 'Trigonometric Identities', 'Sum and Difference Formulas', 'Inverse Trigonometric Functions', 'Polar Coordinates'],
-    'Basic Calculus - Limits': ['Limits of Functions', 'Limit Theorems', 'One-Sided Limits', 'Infinite Limits and Limits at Infinity', 'Continuity of Functions'],
-    'Basic Calculus - Derivatives': ['Definition of the Derivative', 'Differentiation Rules', 'Chain Rule', 'Implicit Differentiation', 'Higher-Order Derivatives', 'Related Rates', 'Extrema and the First Derivative Test', 'Concavity and the Second Derivative Test', 'Optimization Problems'],
-    'Basic Calculus - Integration': ['Antiderivatives and Indefinite Integrals', 'Definite Integrals and the FTC', 'Integration by Substitution', 'Area Under a Curve'],
-  },
 };
 
 const CATEGORY_PREFIXES_BY_GRADE = {
   'Grade 11': ['General Mathematics - '],
-  'Grade 12': ['Pre-Calculus - ', 'Basic Calculus - '],
 };
 
 const filterTopicsByGrade = (
   topics: Record<string, string[]>,
-  grade: 'Grade 11' | 'Grade 12',
+  grade: 'Grade 11',
 ): Record<string, string[]> => {
   const allowedPrefixes = CATEGORY_PREFIXES_BY_GRADE[grade];
   return Object.fromEntries(
@@ -218,6 +207,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const [expandedSection, setExpandedSection] = useState<string | null>('topics');
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const [showBloomsModal, setShowBloomsModal] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [provenanceSourceFilter, setProvenanceSourceFilter] = useState<string>('all');
   const [provenanceMaterialFilter, setProvenanceMaterialFilter] = useState<string>('all');
 
@@ -610,14 +600,17 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
   const handleBack = () => {
     if (generating) {
-      if (window.confirm('Quiz generation is in progress. Are you sure you want to leave?')) {
-        setStep('setup');
-        setQuizResult(null);
-        setError('');
-        onBack();
-      }
+      setShowLeaveConfirm(true);
       return;
     }
+    setStep('setup');
+    setQuizResult(null);
+    setError('');
+    onBack();
+  };
+
+  const confirmLeave = () => {
+    setShowLeaveConfirm(false);
     setStep('setup');
     setQuizResult(null);
     setError('');
@@ -1355,7 +1348,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <p className="text-sm text-red-800 font-medium">Error</p>
                   <p className="text-sm text-red-600">{error}</p>
                 </div>
-                <button onClick={() => setError('')} className="ml-auto">
+                <button onClick={() => setError('')} aria-label="Dismiss error" className="ml-auto p-1 rounded-lg">
                   <X size={14} className="text-red-400" />
                 </button>
               </motion.div>
@@ -2013,6 +2006,18 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       
       <BloomsTaxonomyModal isOpen={showBloomsModal} onClose={() => setShowBloomsModal(false)} />
 
+      <ConfirmModal
+        isOpen={showLeaveConfirm}
+        onClose={() => setShowLeaveConfirm(false)}
+        onConfirm={confirmLeave}
+        title="Leave quiz generation?"
+        message="Quiz generation is in progress. Leaving now will discard progress."
+        confirmText="Leave"
+        cancelText="Stay"
+        type="warning"
+        icon="warning"
+      />
+
       {/* ═══ ASSIGN STUDENT MODAL ═══ */}
       <AnimatePresence>
         {showAssignModal && (
@@ -2027,7 +2032,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col overflow-hidden border border-[#dde3eb]"
+              className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-md max-h-[70dvh] flex flex-col overflow-hidden border border-[#dde3eb]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-5 py-4 border-b border-[#dde3eb] flex items-center justify-between">
@@ -2035,7 +2040,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <Users size={18} className="text-sky-600" />
                   Assign to Student
                 </h3>
-                <button onClick={() => setShowAssignModal(false)} className="p-1 hover:bg-[#edf1f7] rounded-lg transition-colors">
+                <button onClick={() => setShowAssignModal(false)} aria-label="Close assign dialog" className="p-1 hover:bg-[#edf1f7] rounded-lg transition-colors">
                   <X size={16} className="text-slate-500" />
                 </button>
               </div>
@@ -2046,6 +2051,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <input
                     type="text"
                     placeholder="Search students…"
+                    aria-label="Search students"
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
                     className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-500"
@@ -2059,7 +2065,17 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                     <Loader2 size={20} className="animate-spin text-sky-500" />
                   </div>
                 ) : filteredStudents.length === 0 ? (
-                  <p className="text-center text-sm text-slate-500 py-10">No students found</p>
+                  <div className="text-center py-10">
+                    <p className="text-sm text-slate-500">No students found</p>
+                    {studentSearch && (
+                      <button
+                        onClick={() => setStudentSearch('')}
+                        className="mt-3 px-4 py-2 text-sm font-bold text-sky-600 hover:bg-sky-50 rounded-xl transition-colors"
+                      >
+                        Clear search
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   filteredStudents.map((s) => (
                     <button

@@ -203,6 +203,15 @@
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
+
+  /* baseline-ui: balanced headings, pretty body copy */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
 }
 
 /**
@@ -659,7 +668,7 @@ html.smart-dark [data-preserve-color='true'] {
 /* Login page backgrounds and orbs */
 .login-bg { background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 30%, #fff1f2 60%, #f0f9ff 100%); }
 .login-frost-overlay { background: radial-gradient(ellipse at 30% 50%, rgba(240,249,255,0.2) 0%, rgba(248,250,252,0.5) 50%, rgba(255,241,242,0.4) 80%, rgba(248,250,252,0.85) 100%); pointer-events: none; }
-.login-orb-purple { background: radial-gradient(circle, rgba(168,85,247,0.3) 0%, transparent 70%); }
+.login-orb-purple { background: radial-gradient(circle, rgba(99,102,241,0.22) 0%, transparent 70%); }
 .login-orb-pink { background: radial-gradient(circle, rgba(236,72,153,0.25) 0%, transparent 70%); }
 .login-orb-blue { background: radial-gradient(circle, rgba(56,189,248,0.2) 0%, transparent 70%); }
 

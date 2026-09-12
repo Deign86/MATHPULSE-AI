@@ -786,6 +786,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
     <>
       <style>{shopAnimations}</style>
 
+
       {/* ══════════════════════════════════════════════════════════════
           DESKTOP & LAPTOP VIEW (xl screens and wider)
           Faithful to original desktop structure, with the new Cyber-Podium & Spotlight

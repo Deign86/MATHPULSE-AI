@@ -88,7 +88,7 @@ const AtRiskStudyBrief: React.FC<AtRiskStudyBriefProps> = ({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
+      <DrawerContent className="max-h-[85dvh]">
         <DrawerHeader>
           <DrawerTitle className="text-lg">{topicName}</DrawerTitle>
           <DrawerDescription>At-Risk Study Brief</DrawerDescription>

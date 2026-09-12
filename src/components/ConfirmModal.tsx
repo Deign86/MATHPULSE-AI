@@ -102,6 +102,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               {/* Close Button */}
               <button
                 onClick={onClose}
+                aria-label="Close dialog"
                 className="absolute top-4 right-4 p-2 text-slate-500 hover:text-[#0a1628] hover:bg-[#dde3eb] rounded-xl transition-colors z-10"
               >
                 <X size={20} />

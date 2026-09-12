@@ -296,3 +296,10 @@ You MUST:
 - Implementing unfamiliar npm/pip packages
 - Any question about external library behavior
 - Investigating any error message, exception, or bug fix
+
+## UI Skills MCP — Mandatory UI Routing
+
+Repo config: `.vscode/mcp.json` + `.cursor/mcp.json` → server `ui-skills` at `https://www.ui-skills.com/mcp`.
+Tools: `list_skills` (route by topic/stack), `get_skill` (load 1 skill, max 3).
+CLI: `npx ui-skills categories`, `npx ui-skills list --category <c>`, `npx ui-skills get <slug>`.
+Before UI work: fetch `ibelick/ui-skills-root`, pick the smallest skill set, reuse `src/components/ui/*` + `motion/react`.

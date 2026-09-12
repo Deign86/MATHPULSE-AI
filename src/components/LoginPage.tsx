@@ -11,7 +11,7 @@ import {
   ShieldCheck,
   AlertCircle,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   signInWithEmail,
   signInWithGoogle,
@@ -145,6 +145,7 @@ export const LoginPage: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState(SECTION_OPTIONS['Grade 11'][0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
 
   const passwordRuleStates = useMemo(
     () =>
@@ -308,17 +309,17 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden bg-[#3a236a] text-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-12 selection:bg-purple-500 selection:text-white">
+    <div className="relative min-h-dvh w-full overflow-x-hidden bg-[#3a236a] text-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-12 selection:bg-purple-500 selection:text-white">
       {/* ─── Full-Bleed Mascot Video Background with 3D Cursor Tracking ─── */}
       <InteractiveRobotBackground />
 
       {/* ─── Main Content Layout ─── */}
       <div className="relative z-10 w-full max-w-7xl mx-auto flex items-center justify-end pointer-events-auto">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="bg-white/90 backdrop-blur-2xl border border-white/80 rounded-3xl p-6 sm:p-8 w-full max-w-md relative overflow-hidden shadow-[0_25px_70px_-15px_rgba(58,35,106,0.35)] max-h-[90vh] overflow-y-auto"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="bg-white/90 backdrop-blur-2xl border border-white/80 rounded-3xl p-6 sm:p-8 w-full max-w-md relative overflow-hidden shadow-[0_25px_70px_-15px_rgba(58,35,106,0.35)] max-h-[90dvh] overflow-y-auto"
         >
           {/* Top accent glow line */}
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 via-pink-500 to-sky-500" />
@@ -359,8 +360,10 @@ export const LoginPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-3.5 mb-4 relative">
             {error && !isPasswordRequirementError && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
+                role="alert"
+                aria-live="assertive"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-xs font-body flex items-start gap-2"
               >
                 <AlertCircle size={15} className="text-rose-500 shrink-0 mt-0.5" />
@@ -371,17 +374,17 @@ export const LoginPage: React.FC = () => {
             {/* Name Field (Sign Up Only) */}
             {isSignUp && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className="space-y-1.5 text-left"
               >
-                <label className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
+                <label htmlFor="login-name" className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
                   Full Name
                 </label>
                 <div className="relative">
                   <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
+                    id="login-name"
                     type="text"
                     placeholder="Your Name"
                     value={name}
@@ -400,16 +403,18 @@ export const LoginPage: React.FC = () => {
                 animate={{ opacity: 1 }}
                 className="space-y-1.5 text-left"
               >
-                <label className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
+                <label id="login-role-label" className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
                   Account Type
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="login-role-label">
                   {ACCOUNT_TYPE_OPTIONS.map((roleOption) => {
                     const isActive = selectedRole === roleOption.role;
                     return (
                       <button
                         key={roleOption.role}
                         type="button"
+                        role="radio"
+                        aria-checked={isActive}
                         onClick={() => setSelectedRole(roleOption.role)}
                         className={`rounded-xl border px-3 py-2 text-xs font-body font-semibold transition-all ${
                           isActive
@@ -428,15 +433,16 @@ export const LoginPage: React.FC = () => {
             {/* Section dropdown for student */}
             {isSignUp && selectedRole === 'student' && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className="grid grid-cols-2 gap-2 text-left"
               >
                 <div>
-                  <label className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                  <label htmlFor="login-grade" className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                     Grade Level
                   </label>
                   <select
+                    id="login-grade"
                     value={selectedGrade}
                     onChange={(e) => setSelectedGrade(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 text-xs font-body focus:border-sky-400"
@@ -450,10 +456,11 @@ export const LoginPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                  <label htmlFor="login-section" className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
                     Section
                   </label>
                   <select
+                    id="login-section"
                     value={selectedSection}
                     onChange={(e) => setSelectedSection(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 text-xs font-body focus:border-sky-400"
@@ -470,12 +477,13 @@ export const LoginPage: React.FC = () => {
 
             {/* Email Field */}
             <div className="space-y-1.5 text-left">
-              <label className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
+              <label htmlFor="login-email" className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
                 Email Address
               </label>
               <div className="relative">
                 <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
+                  id="login-email"
                   type="email"
                   placeholder="your.email@school.edu"
                   value={email}
@@ -488,12 +496,13 @@ export const LoginPage: React.FC = () => {
 
             {/* Password Field */}
             <div className="space-y-1.5 text-left">
-              <label className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
+              <label htmlFor="login-password" className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
                 Password
               </label>
               <div className="relative">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}

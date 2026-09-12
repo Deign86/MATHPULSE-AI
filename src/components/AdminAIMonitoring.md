@@ -1,6 +1,6 @@
 # AdminAIMonitoring — Hugging Face Billing API Revision
 
-> **Scope:** Replace the component's internal backend (`apiService.getInferenceMetrics()`) data source with live data pulled directly from the **Hugging Face Account Billing & Usage API**. Distill the raw HF data into clear, admin-friendly stats that non-technical co-admins can read at a glance. Include a full Playwright E2E testing workflow that iterates until the implementation is bug-free.
+> **Scope (update 2026-09-11):** The old `apiService.getInferenceMetrics()` backend this plan was written against has been **removed** (purged with the AI Model Status Overview card — providers/models change too fast to justify it). The plan below now starts from live data pulled directly from the **Hugging Face Account Billing & Usage API**. Distill the raw HF data into clear, admin-friendly stats that non-technical co-admins can read at a glance. Include a full Playwright E2E testing workflow that iterates until the implementation is bug-free.
 
 ---
 
@@ -220,7 +220,7 @@ export async function fetchHFBillingData(): Promise<HFBillingData> {
 
 ### Key Changes from Current Version
 
-1. **Remove** `apiService.getInferenceMetrics()` dependency
+1. **Remove** `apiService.getInferenceMetrics()` dependency — DONE (purged 2026-09-11 with the AI Model Status card)
 2. **Import** `fetchHFBillingData` from the new service
 3. **Replace** `AIMonitoringStats` type with `HFBillingData`
 4. **Add** Provider Breakdown table (replacing mock activity log)

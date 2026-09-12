@@ -80,6 +80,16 @@ export interface StudentProfile extends User {
   startingQuarterG11?: 'Q1' | 'Q2' | 'Q3' | 'Q4';
   priorityTopics?: Array<'Functions' | 'BusinessMath' | 'Logic'>;
   recommendedPace?: 'support_intensive' | 'normal' | 'accelerated';
+  g11ReadinessIndicators?: {
+    readyForFiniteMath: boolean;
+    readyForAdvancedStats: boolean;
+    readyForLogicMastery: boolean;
+    /** @deprecated legacy field */
+    readyForCalcIntro?: boolean;
+    needsStrongerFunctions: boolean;
+    needsStrongerBusinessMath: boolean;
+  };
+  /** @deprecated legacy stored-record alias; normalize to g11ReadinessIndicators on read */
   g12ReadinessIndicators?: {
     readyForFiniteMath: boolean;
     readyForAdvancedStats: boolean;
@@ -110,6 +120,24 @@ export interface StudentProfile extends User {
     outstanding: number;
   };
   currentCurriculumVersionSetId?: string;
+  grade11NextStepGate?: {
+    isBlocked: boolean;
+    reason: string;
+    masteredRatio: number;
+    criticalGapCount: number;
+    evaluatedTopicCount: number;
+    sourceSnapshotId?: string | null;
+  };
+  /** @deprecated legacy alias; normalize to grade11NextStepGate on read */
+  g11TransitionGate?: {
+    isBlocked: boolean;
+    reason: string;
+    masteredRatio: number;
+    criticalGapCount: number;
+    evaluatedTopicCount: number;
+    sourceSnapshotId?: string | null;
+  };
+  /** @deprecated legacy stored-record alias; normalize to g11TransitionGate on read */
   grade12TransitionGate?: {
     isBlocked: boolean;
     reason: string;

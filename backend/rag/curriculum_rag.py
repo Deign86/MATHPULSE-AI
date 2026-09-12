@@ -396,7 +396,7 @@ def build_lesson_prompt(
     organized = organize_chunks_by_section(curriculum_chunks)
 
     return (
-        "You are a DepEd-aligned Grade 11-12 mathematics instructional designer.\n"
+        "You are a DepEd-aligned Grade 11 mathematics instructional designer.\n"
         "Generate a lesson in JSON format. Use ONLY the retrieved curriculum evidence below.\n"
         "Do NOT invent content. Do NOT add generic motivational text. All content must be grounded in the retrieved excerpts.\n\n"
         f"Lesson title: {lesson_title}\n"
@@ -405,7 +405,7 @@ def build_lesson_prompt(
         f"Grade level: {grade_level}\n"
         f"Subject: {subject}\n"
         f"Quarter: Q{quarter}\n"
-        f"Learner level: {learner_level or 'Grade 11-12'}\n"
+        f"Learner level: {learner_level or 'Grade 11'}\n"
         f"Module/unit: {module_unit or 'n/a'}\n\n"
         "[CURRICULUM CONTEXT]\n"
         f"{refs_text}\n\n"

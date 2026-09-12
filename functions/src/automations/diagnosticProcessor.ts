@@ -45,8 +45,6 @@ import {
   DEEP_DIAGNOSTIC_DUE_DAYS,
   IARWorkflowMode,
   LEARNING_PATH_UNLOCK_CRITERIA_VERSION,
-  G12_TRANSITION_MIN_MASTERED_RATIO,
-  G12_TRANSITION_MAX_CRITICAL_GAPS,
   WEAK_TOPIC_THRESHOLD,
 } from "../config/constants";
 import { recommendNextTopicGroup } from "./learningPathEngine";
@@ -66,7 +64,7 @@ export interface DiagnosticPayload {
     correct: boolean;
     questionId?: string;
     difficulty?: "basic" | "standard" | "challenge";
-    gradeLevelTag?: "G11" | "G12Candidate";
+    gradeLevelTag?: "G11" | "G11Advanced"; // legacy "G12Candidate" normalizes to G11Advanced/G11
     quarter?: 1 | 2 | 3 | 4;
     answerType?: "MCQ" | "shortAnswerNumeric" | "shortAnswerText" | "confidenceLikert";
   }>>;
@@ -94,7 +92,7 @@ interface RemediationStatusSummary {
   unlockEligible: boolean;
 }
 
-interface Grade12TransitionGate {
+interface TransitionGate {
   isBlocked: boolean;
   reason: string;
   reasonCode?: string;
@@ -280,7 +278,7 @@ export async function processDiagnosticCompletion(
   );
 
   const refreshedRemediationStatus = await getRemediationStatusSummary(db, lrn);
-  const transitionGate = await evaluateGrade12TransitionGate(db, lrn, gradeLevel);
+  const transitionGate = await evaluateTransitionGate();
   const shouldRemainLocked =
     workflowMode === "iar_plus_diagnostic" &&
     ((refreshedRemediationStatus.total > 0 && !refreshedRemediationStatus.unlockEligible) ||
@@ -300,7 +298,7 @@ export async function processDiagnosticCompletion(
     ? {
       nextTopicGroupId: transitionGate.recommendedRemediationTopicGroupId,
       rationale: transitionGate.reason,
-      reasonCode: transitionGate.reasonCode || "grade12_transition_blocked",
+      reasonCode: transitionGate.reasonCode || "grade11_next_step_blocked",
     }
     : isInitialAssessment
       ? {
@@ -334,7 +332,7 @@ export async function processDiagnosticCompletion(
     recommendedNextTopicGroupId: recommendationToPersist.nextTopicGroupId,
     recommendationRationale: recommendationToPersist.rationale,
     recommendationReasonCode: recommendationToPersist.reasonCode,
-    grade12TransitionGate: {
+    grade11NextStepGate: {
       isBlocked: transitionGate.isBlocked,
       reason: transitionGate.reason,
       reasonCode: transitionGate.reasonCode || null,
@@ -360,7 +358,7 @@ export async function processDiagnosticCompletion(
       riskFlags: iarInsights.riskFlags,
       startingQuarterG11: iarInsights.startingQuarterG11,
       priorityTopics: iarInsights.priorityTopics,
-      g12ReadinessIndicators: iarInsights.g12ReadinessIndicators,
+      g11ReadinessIndicators: iarInsights.g11ReadinessIndicators,
     });
   }
   await db.collection("users").doc(lrn).update(profileUpdate);
@@ -381,7 +379,7 @@ export async function processDiagnosticCompletion(
       startingQuarterG11: iarInsights.startingQuarterG11,
       priorityTopics: iarInsights.priorityTopics,
       riskFlags: iarInsights.riskFlags,
-      g12ReadinessIndicators: iarInsights.g12ReadinessIndicators,
+      g11ReadinessIndicators: iarInsights.g11ReadinessIndicators,
       reasonCode: recommendationToPersist.reasonCode,
     },
     transitionGate,
@@ -408,7 +406,7 @@ export async function processDiagnosticCompletion(
         startingQuarterG11: iarInsights.startingQuarterG11,
         priorityTopics: iarInsights.priorityTopics,
         riskFlags: iarInsights.riskFlags,
-        g12ReadinessIndicators: iarInsights.g12ReadinessIndicators,
+        g11ReadinessIndicators: iarInsights.g11ReadinessIndicators,
       },
       transitionGate,
       remediationStatus: refreshedRemediationStatus,
@@ -757,84 +755,15 @@ async function applyDeepDiagnosticLifecycleTransitions(
   });
 }
 
-async function evaluateGrade12TransitionGate(
-  db: admin.firestore.Firestore,
-  lrn: string,
-  gradeLevel: string,
-): Promise<Grade12TransitionGate> {
-  if (gradeLevel !== "Grade 12") {
-    return {
-      isBlocked: false,
-      reason: "Grade 12 transition gate not applicable.",
-      reasonCode: "g12_transition_not_applicable",
-      masteredRatio: 1,
-      criticalGapCount: 0,
-      evaluatedTopicCount: 0,
-    };
-  }
-
-  const snapshot = await db
-    .collection("learnerMasterySnapshots")
-    .where("lrn", "==", lrn)
-    .where("gradeLevel", "==", "Grade 11")
-    .orderBy("generatedAt", "desc")
-    .limit(1)
-    .get();
-
-  if (snapshot.empty) {
-    return {
-      isBlocked: true,
-      reason: "Grade 12 transition is blocked: no Grade 11 mastery snapshot is available.",
-      reasonCode: "g12_transition_blocked_no_snapshot",
-      masteredRatio: 0,
-      criticalGapCount: 0,
-      evaluatedTopicCount: 0,
-    };
-  }
-
-  const latest = snapshot.docs[0];
-  // SAFETY: byTopicGroup documents are written by this module's scoring pipeline with per-topic score/status records.
-  const byTopicGroup = latest.data().byTopicGroup as Record<
-    string,
-    { score?: number; status?: string }
-  >;
-  const topicEntries = Object.entries(byTopicGroup || {});
-  const evaluated = topicEntries.filter(([, value]) => value?.status !== "insufficient_evidence");
-  const mastered = evaluated.filter(([, value]) => value?.status === "mastered").length;
-  const criticalGapEntries = evaluated.filter(([, value]) => value?.status === "critical_gap");
-  const evaluatedCount = evaluated.length;
-  const masteredRatio = evaluatedCount > 0 ? mastered / evaluatedCount : 0;
-  const criticalGapCount = criticalGapEntries.length;
-
-  const isBlocked =
-    masteredRatio < G12_TRANSITION_MIN_MASTERED_RATIO ||
-    criticalGapCount > G12_TRANSITION_MAX_CRITICAL_GAPS;
-
-  const remediationTopic = criticalGapEntries
-    .sort((a, b) => (a[1].score || 0) - (b[1].score || 0))[0]?.[0];
-
-  if (!isBlocked) {
-    return {
-      isBlocked: false,
-      reason: "Grade 12 transition gate passed.",
-      reasonCode: "g12_transition_passed",
-      masteredRatio: Math.round(masteredRatio * 10000) / 10000,
-      criticalGapCount,
-      evaluatedTopicCount: evaluatedCount,
-      sourceSnapshotId: latest.id,
-    };
-  }
-
+async function evaluateTransitionGate(): Promise<TransitionGate> {
+  // Grade 11 only: no grade transition exists, the gate never blocks.
   return {
-    isBlocked: true,
-    reason:
-      "Grade 12 transition is blocked: mastery criteria from Grade 11 snapshot were not met.",
-    reasonCode: "g12_transition_blocked_mastery_threshold",
-    masteredRatio: Math.round(masteredRatio * 10000) / 10000,
-    criticalGapCount,
-    evaluatedTopicCount: evaluatedCount,
-    recommendedRemediationTopicGroupId: remediationTopic,
-    sourceSnapshotId: latest.id,
+    isBlocked: false,
+    reason: "Grade 11 only: no transition gate applies.",
+    reasonCode: "g11_only_no_transition_gate",
+    masteredRatio: 1,
+    criticalGapCount: 0,
+    evaluatedTopicCount: 0,
   };
 }
 

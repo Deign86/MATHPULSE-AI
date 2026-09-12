@@ -14,6 +14,7 @@ import {
   limit,
   updateDoc,
   deleteDoc,
+  writeBatch,
   serverTimestamp,
   onSnapshot,
   Timestamp,
@@ -115,19 +116,23 @@ export const markAsRead = async (userId: string, notificationId: string): Promis
 };
 
 export const markAllAsRead = async (userId: string): Promise<void> => {
-  if (!requireAuth()) return;
+  if (!requireAuth()) throw new Error('Cannot mark all as read — not authenticated');
   try {
-    const subcollectionQuery = query(
-      collection(db, 'notifications', userId, 'items'),
-      where('isRead', '==', false)
-    );
-    const subcollectionSnap = await getDocs(subcollectionQuery);
-
-    const updates: Promise<void>[] = subcollectionSnap.docs.map((docSnap) =>
-      updateDoc(docSnap.ref, { isRead: true, read: true })
-    );
-
-    await Promise.all(updates);
+    const itemsRef = collection(db, 'notifications', userId, 'items');
+    const [isReadSnap, legacySnap] = await Promise.all([
+      getDocs(query(itemsRef, where('isRead', '==', false))),
+      getDocs(query(itemsRef, where('read', '==', false))),
+    ]);
+    const seen = new Set<string>();
+    const batch = writeBatch(db);
+    let count = 0;
+    for (const docSnap of [...isReadSnap.docs, ...legacySnap.docs]) {
+      if (seen.has(docSnap.id)) continue;
+      seen.add(docSnap.id);
+      batch.update(docSnap.ref, { isRead: true, read: true });
+      count += 1;
+    }
+    if (count > 0) await batch.commit();
   } catch (error) {
     console.error('[notificationFirestoreService] Error marking all as read:', error);
     throw error;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, Shield, AlertTriangle, AlertCircle, Info,
   Calendar, Eye, Loader2, RefreshCw, Lock,
@@ -69,7 +69,7 @@ const StatCard: React.FC<{
         <Icon size={14} className="sm:w-4 sm:h-4" />
       </div>
       <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-[0.2em] opacity-80 truncate">{title}</p>
-      <h3 className="text-xl sm:text-2xl font-black mt-1.5 sm:mt-2 leading-none truncate">{value}</h3>
+      <h3 className="text-xl sm:text-2xl font-black mt-1.5 sm:mt-2 leading-none truncate tabular-nums">{value}</h3>
       <p className="text-[9px] sm:text-[10px] font-bold mt-3 sm:mt-4 opacity-70 uppercase tracking-widest truncate">{subtitle}</p>
       
       {/* Subject Card Styling Circle */}
@@ -228,6 +228,7 @@ const AdminAuditLog: React.FC = () => {
                disabled={loading}
                className="p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-purple-600 shadow-sm transition-all active:scale-95 group"
                title="Synchronize logs"
+               aria-label="Synchronize logs"
              >
                <RefreshCw size={14} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
              </button>
@@ -340,6 +341,7 @@ const AdminAuditLog: React.FC = () => {
                   disabled={!searchTerm && selectedCategory === 'All Categories' && selectedSeverity === 'All Severities' && selectedRole === 'All Roles'}
                   className="h-12 w-12 rounded-2xl border-slate-200/60 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
                   title="Reset Filters"
+                  aria-label="Reset Filters"
                 >
                   <FilterX size={18} />
                 </Button>
@@ -481,6 +483,7 @@ const AdminAuditLog: React.FC = () => {
               className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-lg shadow-purple-200/60"
               disabled={currentPage <= 1 || loading}
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              aria-label="Previous page"
             >
               <ChevronLeft size={18} strokeWidth={3} />
             </Button>
@@ -499,6 +502,7 @@ const AdminAuditLog: React.FC = () => {
               className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-lg shadow-purple-200/60"
               disabled={currentPage >= totalPages || loading}
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
+              aria-label="Next page"
             >
               <ChevronRight size={18} strokeWidth={3} />
             </Button>

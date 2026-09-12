@@ -5,9 +5,9 @@ import {
   setDoc,
   onSnapshot,
   serverTimestamp,
+  Timestamp,
   type DocumentData,
 } from 'firebase/firestore';
-import { z } from 'zod';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Platform Config Service — Dynamic subject availability (Firestore-backed)
@@ -36,17 +36,21 @@ function getDefaultSubjectAvailability() {
   return {
     'gen-math': { available: true, pdfPath: null, lastUpdated: new Date() },
     'stats-prob': { available: true, pdfPath: null, lastUpdated: new Date() },
-    'pre-calc': { available: false, pdfPath: null, lastUpdated: new Date() },
-    'basic-calc': { available: false, pdfPath: null, lastUpdated: new Date() },
+    'business-math': { available: true, pdfPath: null, lastUpdated: new Date() },
+    'finite-math': { available: true, pdfPath: null, lastUpdated: new Date() },
   };
 }
 
-/** Firestore timestamp-like values; parsing never throws. */
-const timestampLikeValue = z.looseObject({ toDate: z.instanceof(Function).optional() }).catch({});
+/** Values Firestore may store for timestamp fields. */
+type FirestoreDateValue = Timestamp | Date | null | undefined;
 
-const firestoreToDate = <V>(value: V): Date => {
-  const parsed = timestampLikeValue.safeParse(value);
-  return parsed.success && parsed.data.toDate instanceof Function ? parsed.data.toDate() : new Date();
+/** Firestore timestamp-like values; parsing never throws. */
+const firestoreToDate = (value: FirestoreDateValue): Date => {
+  // NOTE: call toDate() on the original Timestamp instance — detaching the
+  // method (e.g. via a generic object parser) breaks its internal this.toMillis().
+  if (value instanceof Timestamp) return value.toDate();
+  if (value instanceof Date) return value;
+  return new Date();
 };
 
 function convertTimestamps(data: DocumentData): PlatformSubjectsConfig {

@@ -15,7 +15,7 @@ export type IARAssessmentState =
 interface IARQuestionResult {
   correct: boolean;
   difficulty?: "basic" | "standard" | "challenge";
-  gradeLevelTag?: "G11" | "G12Candidate";
+  gradeLevelTag?: "G11" | "G11Advanced";
 }
 
 interface DeriveIARInsightsInput {
@@ -38,10 +38,10 @@ export interface IARAssessmentInsights {
   atRiskSubjectIds: IARTopicArea[];
   startingQuarterG11: "Q1" | "Q2" | "Q3" | "Q4";
   riskFlags: string[];
-  g12ReadinessIndicators: {
+  g11ReadinessIndicators: {
     readyForFiniteMath: boolean;
     readyForAdvancedStats: boolean;
-    readyForCalcIntro: boolean;
+    readyForLogicMastery: boolean;
     needsStrongerFunctions: boolean;
     needsStrongerBusinessMath: boolean;
   };
@@ -66,9 +66,9 @@ function classificationRank(value: TopicClassification): number {
 
 function inferScoreFromResults(topic: IARTopicArea, results: SubjectScore[]): number {
   const fallbackAliases = {
-    Functions: ["Functions", "gen-math", "pre-calc"],
-    BusinessMath: ["BusinessMath", "stats-prob"],
-    Logic: ["Logic", "basic-calc"],
+    Functions: ["Functions", "gen-math"],
+    BusinessMath: ["BusinessMath", "stats-prob", "business-math"],
+    Logic: ["Logic", "gen-math"],
   } satisfies Record<IARTopicArea, string[]>;
 
   const aliasSet = new Set(fallbackAliases[topic]);
@@ -135,9 +135,10 @@ export function deriveIARAssessmentInsights(
     if (classification === "NeedsReview") riskFlags.push(`needs_review:${topic}`);
   }
 
+  // SAFETY: gradeLevelTag union is G11/G11Advanced; cast widens only to compare legacy stored 'G12Candidate' strings.
   const challengeItems = Object.values(questionBreakdown || {})
     .flat()
-    .filter((entry) => entry.difficulty === "challenge" || entry.gradeLevelTag === "G12Candidate");
+    .filter((entry) => entry.difficulty === "challenge" || entry.gradeLevelTag === "G11Advanced" || (entry.gradeLevelTag as string) === "G12Candidate");
   const challengeCorrect = challengeItems.filter((entry) => entry.correct).length;
   const challengeRatio = challengeItems.length > 0 ? challengeCorrect / challengeItems.length : 1;
 
@@ -146,7 +147,7 @@ export function deriveIARAssessmentInsights(
   ).length;
   const overallG11MasteryRatio = masteredCount / TOPIC_ORDER.length;
 
-  const g12ReadinessIndicators = {
+  const g11ReadinessIndicators = {
     readyForFiniteMath:
       overallG11MasteryRatio >= 0.67 &&
       topicClassifications.Functions !== "HighRisk" &&
@@ -155,7 +156,7 @@ export function deriveIARAssessmentInsights(
     readyForAdvancedStats:
       topicClassifications.Logic === "Mastered" &&
       challengeRatio >= 0.67,
-    readyForCalcIntro:
+    readyForLogicMastery:
       topicClassifications.Functions === "Mastered" &&
       challengeRatio >= 0.67,
     needsStrongerFunctions: topicClassifications.Functions !== "Mastered",
@@ -187,7 +188,7 @@ export function deriveIARAssessmentInsights(
     atRiskSubjectIds: deepDiagnosticTopics,
     startingQuarterG11: startingQuarterByTopic[firstPriority] || "Q1",
     riskFlags,
-    g12ReadinessIndicators,
+    g11ReadinessIndicators,
     recommendedNextTopicGroupId: getCanonicalRecommendationTopic(firstPriority),
     recommendationRationale,
     recommendationReasonCode,

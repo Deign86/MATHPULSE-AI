@@ -24,9 +24,9 @@
 │  │ Nav │  │                                                          │  │ Avatar   │ │
 │  │    │  │   ┌──────────────────────────────────────────────┐      │  └──────────┘ │
 │  │    │  │   │  Learning Path                            │      │               │
-│  │    │  │   │  - General Mathematics (4 modules)           │      │  ┌──────────┐ │
-│  └────┘  │   │  - Pre-Calculus (3 modules)                  │      │  │ Level &  │ │
-│          │   │  - Statistics (5 modules)                    │      │  │ XP Info  │ │
+│  │    │  │   │  - General Mathematics (16)                  │      │  ┌──────────┐ │
+│  └────┘  │   │  - Business Math (1) + Stats (1)             │      │  │ Level &  │ │
+│          │   │  - Finite Mathematics (2)                    │      │  │ XP Info  │ │
 │  [Toggle]│   └──────────────────────────────────────────────┘      │  └──────────┘ │
 │    ◀     │                                                          │               │
 │          │   ┌──────────────────────────────────────────────┐      │  ┌──────────┐ │

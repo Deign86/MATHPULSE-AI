@@ -196,9 +196,9 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
   }
 
   return (
-    <div className="w-full min-h-screen relative flex flex-col items-center font-body text-white">
+    <div className="w-full min-h-dvh relative flex flex-col items-center font-body text-white">
       {/* Background that fades dynamically without harsh container edges */}
-      <div className="absolute inset-x-[-20px] top-0 h-[100vh] min-h-[800px] z-[-1] pointer-events-none overflow-hidden">
+      <div className="absolute inset-x-[-20px] top-0 h-[100dvh] min-h-[800px] z-[-1] pointer-events-none overflow-hidden">
         {/* Radial base fading from purple at bottom center to transparent at edges */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,#9333ea_0%,#c084fc_40%,transparent_80%)]"></div>
 
@@ -234,7 +234,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
 
         {/* Top App Bar Area */}
         <div className="w-full flex justify-center items-center mb-4 mt-2">
-          <h1 className="text-3xl md:text-4xl font-display font-bold tracking-wide text-slate-800 drop-shadow-sm">Leaderboard</h1>
+          <h1 className="text-3xl md:text-4xl font-display font-bold tracking-wide text-slate-800 drop-shadow-sm text-balance">Leaderboard</h1>
         </div>
 
         {/* Time Filters - Segmented Pill based on Reference Image 1 */}
@@ -243,6 +243,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
             <button
               key={mode}
               onClick={() => setTimeFilter(mode)}
+              aria-label={`Show ${mode === 'all' ? 'All Time' : mode} leaderboard`}
               className={`flex-1 py-2 min-h-[40px] rounded-full text-[13px] md:text-sm font-semibold transition-all capitalize inline-flex justify-center items-center ${timeFilter === mode
                 ? 'bg-white text-purple-700 shadow-md border border-white/50 backdrop-blur-lg'
                 : 'text-slate-600 hover:text-purple-700 hover:bg-white/50'
@@ -263,11 +264,11 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
           <div className="absolute inset-0 bg-noise opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
 
           <div className="bg-white/25 backdrop-blur-md px-4 py-2 min-w-[60px] rounded-full flex flex-col items-center justify-center shadow-sm z-10 border border-white/20">
-            <span className="text-xl md:text-2xl font-display font-bold text-white leading-none">#{yourRank}</span>
+            <span className="text-xl md:text-2xl font-display font-bold text-white leading-none tabular-nums">#{yourRank}</span>
           </div>
           <div className="z-10 flex-1 pr-2 md:pr-4">
             <p className="font-medium text-white/90 text-sm md:text-[15px] leading-snug text-center">
-              You are doing better than <span className="font-black text-white drop-shadow-sm">{Math.round(percentile)}%</span> of other players!
+              You are doing better than <span className="font-black text-white drop-shadow-sm tabular-nums">{Math.round(percentile)}%</span> of other players!
             </p>
           </div>
         </motion.div>
@@ -299,13 +300,13 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
 
               {/* Main Body */}
               <div className="w-full h-[100px] md:h-[130px] bg-[#D96C6A] relative z-10 flex flex-col items-center justify-start overflow-hidden">
-                <span className="absolute inset-x-0 top-3 flex items-center justify-center text-[60px] md:text-[80px] font-black text-white/10 drop-shadow">2</span>
+                <span className="absolute inset-x-0 top-3 flex items-center justify-center text-[60px] md:text-[80px] font-black text-white/10 drop-shadow tabular-nums">2</span>
               </div>
 
               {/* Top Platform */}
               <div className="w-full h-10 md:h-14 absolute -top-5 md:-top-7 bg-[#FF8B8B] rounded-[50%] z-20 shadow-[0_4px_8px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
                 {/* Shadow Text laying flat */}
-                <div className="text-black/25 font-black text-[18px] md:text-[26px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
+                <div className="text-black/25 font-black text-[18px] md:text-[26px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30 tabular-nums">
                   {topThree[1]?.totalXP || 0} XP
                 </div>
               </div>
@@ -338,13 +339,13 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
 
               {/* Main Body */}
               <div className="w-full h-[140px] md:h-[180px] bg-[#6F2BAF] relative z-10 flex flex-col items-center justify-start overflow-hidden">
-                <span className="absolute inset-x-0 top-4 flex items-center justify-center text-[80px] md:text-[110px] font-black text-white/10 drop-shadow">1</span>
+                <span className="absolute inset-x-0 top-4 flex items-center justify-center text-[80px] md:text-[110px] font-black text-white/10 drop-shadow tabular-nums">1</span>
               </div>
 
               {/* Top Platform */}
               <div className="w-full h-12 md:h-16 absolute -top-6 md:-top-8 bg-[#9956DE] rounded-[50%] z-20 shadow-[0_5px_12px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center">
                 {/* Shadow Text laying flat */}
-                <div className="text-black/25 font-black text-[22px] md:text-[32px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
+                <div className="text-black/25 font-black text-[22px] md:text-[32px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30 tabular-nums">
                   {topThree[0]?.totalXP || 0} XP
                 </div>
               </div>
@@ -374,13 +375,13 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
 
               {/* Main Body */}
               <div className="w-full h-[75px] md:h-[100px] bg-[#DE7949] relative z-10 flex flex-col items-center justify-start overflow-hidden">
-                <span className="absolute inset-x-0 top-1 flex items-center justify-center text-[50px] md:text-[70px] font-black text-white/10 drop-shadow">3</span>
+                <span className="absolute inset-x-0 top-1 flex items-center justify-center text-[50px] md:text-[70px] font-black text-white/10 drop-shadow tabular-nums">3</span>
               </div>
 
               {/* Top Platform */}
               <div className="w-full h-10 md:h-14 absolute -top-5 md:-top-7 bg-[#FFB356] rounded-[50%] z-20 shadow-[0_4px_8px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
                 {/* Shadow Text laying flat */}
-                <div className="text-black/25 font-black text-[16px] md:text-[22px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30">
+                <div className="text-black/25 font-black text-[16px] md:text-[22px] transform scale-y-75 uppercase tracking-widest pointer-events-none z-30 tabular-nums">
                   {topThree[2]?.totalXP || 0} XP
                 </div>
               </div>
@@ -423,7 +424,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
                   }`}
               >
                 {/* Rank Bubble */}
-                <div className="w-9 h-9 md:w-11 md:h-11 rounded-full border-2 border-slate-100 bg-white flex items-center justify-center font-display font-bold text-slate-500 shadow-sm text-sm">
+                <div className="w-9 h-9 md:w-11 md:h-11 rounded-full border-2 border-slate-100 bg-white flex items-center justify-center font-display font-bold text-slate-500 shadow-sm text-sm tabular-nums">
                   {actualRank}
                 </div>
 
@@ -441,7 +442,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ currentUserPhoto, onB
                     </h4>
                   </div>
                   <div>
-                    <p className="text-[13px] md:text-[15px] font-bold text-slate-500 text-right">{student.totalXP} <span className="text-[10px] text-slate-400 font-normal uppercase">XP</span></p>
+                    <p className="text-[13px] md:text-[15px] font-bold text-slate-500 text-right tabular-nums">{student.totalXP} <span className="text-[10px] text-slate-400 font-normal uppercase">XP</span></p>
                   </div>
                 </div>
               </motion.div>

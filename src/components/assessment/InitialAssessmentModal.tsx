@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { Button } from '../ui/button';
-import { Brain, CheckCircle, AlertTriangle, Loader2, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
+import { Brain, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { generateDiagnostic, type DiagnosticQuestion } from '../../services/diagnosticService';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -89,21 +90,21 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
     onDismiss();
   };
 
-  if (!isOpen) return null;
-
+  // Radix Dialog owns focus trap, Escape, backdrop dismiss (all route to the
+  // session-only close), and aria-modal semantics. X/Escape/backdrop must stay
+  // session-only (handleXClose), never the persisted dismiss (handlePersistDismiss).
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleXClose(); }}>
+      <DialogContent
+        aria-labelledby="iar-title"
+        aria-describedby="iar-description"
+        className="bg-white rounded-2xl shadow-2xl max-w-[44rem] w-full flex flex-col overflow-hidden p-0 gap-0"
+      >
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-[44rem] w-full flex flex-col overflow-hidden pointer-events-auto"
-        onClick={(e) => e.stopPropagation()}
-        style={{ willChange: 'transform, opacity' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="flex flex-col overflow-hidden"
       >
         <div className="px-5 py-3 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7] flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -111,19 +112,14 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               <Brain size={18} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#0a1628] leading-tight">
+              <DialogTitle id="iar-title" className="text-base font-bold text-[#0a1628] leading-tight">
                 Initial Assessment
-              </h2>
-              <p className="text-[11px] text-[#5a6578]">Analyze your strengths & weaknesses</p>
+              </DialogTitle>
+              <DialogDescription id="iar-description" className="text-[11px] text-[#5a6578]">
+                Analyze your strengths & weaknesses
+              </DialogDescription>
             </div>
           </div>
-          <button
-            onClick={handleXClose}
-            aria-label="Close assessment modal"
-            className="ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-[#5a6578] hover:bg-[#dde3eb] hover:text-[#0a1628] transition-colors"
-          >
-            <X size={18} />
-          </button>
         </div>
 
         <div className="p-5 text-center space-y-3">
@@ -178,7 +174,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
             </div>
 
             {error && (
-              <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg">
+              <div role="alert" className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-xs text-red-700">{error}</p>
               </div>
             )}
@@ -203,20 +199,18 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
                   This may take up to 90 seconds while AI generates your personalized test.
                 </p>
               )}
-              {!loading && (
-                <button
-                  onClick={handlePersistDismiss}
-                  disabled={loading}
-                  className="block mx-auto text-xs text-slate-500 hover:text-[#5a6578] transition-colors font-medium disabled:opacity-40"
-                >
-                  Skip for now
-                </button>
-              )}
+              <button
+                onClick={handlePersistDismiss}
+                className="block mx-auto text-xs text-slate-500 hover:text-[#5a6578] transition-colors font-medium"
+              >
+                {loading ? 'Cancel generation' : 'Skip for now'}
+              </button>
             </div>
           </motion.div>
         </div>
       </motion.div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
