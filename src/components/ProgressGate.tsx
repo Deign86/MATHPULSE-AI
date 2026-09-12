@@ -65,7 +65,7 @@ export const ProgressGate: React.FC<{ children: React.ReactNode }> = ({ children
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-dvh bg-slate-50">
         <Loader2 className="animate-spin text-slate-400" size={32} />
       </div>
     );
@@ -79,7 +79,7 @@ export const ProgressGate: React.FC<{ children: React.ReactNode }> = ({ children
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="flex items-center justify-center min-h-screen bg-slate-50 p-6"
+          className="flex items-center justify-center min-h-dvh bg-slate-50 p-6"
         >
           <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 shadow-sm text-center space-y-6">
             <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto">

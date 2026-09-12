@@ -59,6 +59,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - run: npm ci --legacy-peer-deps
+      - run: npm run check:models
       - run: npm run typecheck
       - run: npm run lint -- --max-warnings=0
       - name: Run Oxlint Anti-Slop checks

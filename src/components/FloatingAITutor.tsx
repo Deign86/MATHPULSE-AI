@@ -166,7 +166,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         aria-label="AI tutor chat"
       >
         {/* Chat Header - Fixed */}
-        <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-4 flex items-center justify-between flex-shrink-0">
+        <div className="bg-sky-600 p-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
               <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-9 h-9 object-contain drop-shadow-md" />
@@ -328,7 +328,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               whileHover={{ scale: 1.06 }}
               whileTap={{ scale: 0.94 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="w-13 h-13 sm:w-16 sm:h-16 bg-gradient-to-br from-sky-600 to-sky-500 rounded-2xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all p-2"
+              className="w-13 h-13 sm:w-16 sm:h-16 bg-sky-600 rounded-2xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all p-2"
               aria-label={isOpen ? 'Close AI tutor chat' : 'Open AI tutor chat'}
               style={{ willChange: 'transform' }}
             >

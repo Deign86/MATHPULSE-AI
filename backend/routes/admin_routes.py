@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from rag.firebase_storage_loader import _init_firebase_storage, PDF_METADATA
 from scripts.ingest_from_storage import ingest_from_firebase_storage
+from services.wri_service import ESCALATION_RISK_STATUSES, empty_risk_distribution
 # Lazy import for audit_logger to prevent ModuleNotFoundError during test collection
 _audit_logger = None
 def _get_audit_logger():
@@ -442,7 +443,7 @@ def get_school_analytics(request: Request):
         profiles = list(db.collection("managedStudents").stream())
         total = len(profiles)
 
-    wri_dist = {"safe": 0, "watch": 0, "intervene": 0, "critical": 0, "at_risk": 0, "pending_assessment": 0}
+    wri_dist = empty_risk_distribution()
     wri_values = []
     grade_wri: dict = defaultdict(list)
     class_wri: dict = defaultdict(list)
@@ -483,7 +484,7 @@ def get_school_analytics(request: Request):
 
         # Recent escalations (last 24h)
         updated = data.get("wri_updated_at") or data.get("riskUpdatedAt")
-        if updated and status in ("critical", "at_risk"):
+        if updated and status in ESCALATION_RISK_STATUSES:
             try:
                 if hasattr(updated, "seconds"):
                     dt = datetime.fromtimestamp(updated.seconds, tz=timezone.utc)

@@ -29,7 +29,7 @@ Keep native write/edit/delete tools for file mutations when no lean-ctx replacem
 
 - Path alias: `@` → `./src`
 - Component file naming: PascalCase `.tsx`, hook files: `use*.ts`, service files: `*Service.ts`
-- State management: Zustand (stores), TanStack Query (server state), React Context (auth, notifications, chat)
+- State management: TanStack Query for server state, React Context for auth/notifications/chat, local `useState` for view state. There is no store layer.
 - All API calls go through the typed `src/config/env.ts` and `src/services/apiService.ts` abstraction. Production frontend defaults to same-origin `/api` when proxied; separately deployed FastAPI origin is configured with `VITE_API_URL`.
 - Firebase Functions use Node.js 22 runtime, deployed to `mathpulse-ai-2026` project
 - Quiz Battle uses Firebase Realtime Database for matchmaking queue
@@ -71,8 +71,7 @@ MATHPULSE-AI/
 ├── src/                  # React frontend
 │   ├── components/       # UI components (PascalCase.tsx)
 │   ├── contexts/         # React Context providers
-│   ├── services/         # API service wrappers
-│   ├── stores/           # Zustand stores
+│   ├── services/         # API service wrappers & domain services
 │   ├── data/             # Curriculum data & types
 │   ├── features/         # Feature modules (notifications, etc.)
 │   ├── utils/            # Utility functions

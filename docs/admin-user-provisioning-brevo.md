@@ -95,7 +95,6 @@ python main.py
 Reference samples:
 
 - backend/config/env.sample
-- config/env.sample
 
 ## Frontend Integration
 

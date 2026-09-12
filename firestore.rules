@@ -29,20 +29,11 @@ service cloud.firestore {
       return isSignedIn() && (role() == 'teacher' || role() == 'admin');
     }
 
+    // Single owner-predicate family. `isSelf` covers "this document is mine",
+    // the field variants cover "this document is mine by a stored field", and
+    // `ownerByField` composes them so no rule hand-rolls raw uid comparisons.
     function isSelf(userId) {
       return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function ownerInExisting(field) {
-      return resource != null && resource.data[field] == request.auth.uid;
-    }
-
-    function ownerInIncoming(field) {
-      return request.resource != null && request.resource.data[field] == request.auth.uid;
-    }
-
-    function ownerByField(field) {
-      return isSignedIn() && (ownerInExisting(field) || ownerInIncoming(field));
     }
 
     function isExistingOwner(field) {
@@ -55,6 +46,10 @@ service cloud.firestore {
 
     function isPreservingOwner(field) {
       return isExistingOwner(field) && request.resource.data[field] == resource.data[field];
+    }
+
+    function ownerByField(field) {
+      return isSignedIn() && (isExistingOwner(field) || isClaimingOwner(field));
     }
 
     function validPushPreferences() {
@@ -240,7 +235,7 @@ service cloud.firestore {
 
     // ── Tutor Nudges (proactive AI nudges per student) ───────────────
     match /tutorNudges/{studentId}/nudges/{nudgeId} {
-      allow read, update: if request.auth != null && request.auth.uid == studentId;
+      allow read, update: if isSelf(studentId);
       allow create, delete: if false; // Only backend writes nudges
     }
 
@@ -327,16 +322,16 @@ service cloud.firestore {
     match /classrooms/{classroomId} {
       allow read: if isTeacherOrAdmin();
       allow create, update: if isAdmin() || (isTeacher() && (
-        ownerInIncoming('teacherId') ||
-        ownerInExisting('teacherId') ||
-        ownerInIncoming('ownerTeacherId') ||
-        ownerInExisting('ownerTeacherId') ||
-        ownerInIncoming('managerId') ||
-        ownerInExisting('managerId')
+        isClaimingOwner('teacherId') ||
+        isExistingOwner('teacherId') ||
+        isClaimingOwner('ownerTeacherId') ||
+        isExistingOwner('ownerTeacherId') ||
+        isClaimingOwner('managerId') ||
+        isExistingOwner('managerId')
       ));
       allow delete: if isAdmin() || (isTeacher() && (
-        ownerInExisting('teacherId') ||
-        ownerInExisting('ownerTeacherId')
+        isExistingOwner('teacherId') ||
+        isExistingOwner('ownerTeacherId')
       ));
     }
 
@@ -384,9 +379,9 @@ service cloud.firestore {
 
     match /diagnosticResults/{docId} {
       // Temporarily permissive for debugging - allow students to read their own
-      allow read: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
-      allow create, update: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
-      allow delete: if isSignedIn() && request.auth.uid == docId || isAdmin();
+      allow read: if isSelf(docId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(docId) || isTeacherOrAdmin();
+      allow delete: if isSelf(docId) || isAdmin();
     }
 
     // ── Diagnostic Results Cache (AI analysis cached per student) ──
@@ -398,14 +393,14 @@ service cloud.firestore {
 
     // ── Diagnostic Sessions (backend writes, students read their own) ──
     match /diagnosticSessions/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == resource.data.userId || isTeacherOrAdmin());
+      allow read: if ownerByField('userId') || isTeacherOrAdmin();
       allow create: if isSignedIn();  // Backend creates via firebase-admin, also allow student-initiated
       allow update, delete: if false;  // Backend only
     }
     // Assessment Results — students can read their own, backend writes
     match /assessmentResults/{studentId}/attempts/{attemptId} {
-      allow read: if request.auth != null && request.auth.uid == studentId;
-      allow create, update: if request.auth != null && request.auth.uid == studentId;
+      allow read: if isSelf(studentId);
+      allow create, update: if isSelf(studentId);
       allow delete: if false;
     }
 
@@ -426,9 +421,9 @@ service cloud.firestore {
     }
 
     match /quizResults/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
+      allow read: if isSelf(docId) || isTeacherOrAdmin();
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (request.auth.uid == docId || isTeacherOrAdmin());
+      allow update: if isSelf(docId) || isTeacherOrAdmin();
       allow delete: if isAdmin();
     }
 
@@ -440,14 +435,14 @@ service cloud.firestore {
 
     match /generatedQuizzes/{docId} {
       allow read: if isTeacherOrAdmin() || ownerByField('teacherId');
-      allow create: if isTeacherOrAdmin() || ownerInIncoming('teacherId');
-      allow update, delete: if isAdmin() || ownerInExisting('teacherId');
+      allow create: if isTeacherOrAdmin() || isClaimingOwner('teacherId');
+      allow update, delete: if isAdmin() || isExistingOwner('teacherId');
     }
 
     match /quizAssignments/{docId} {
       allow read: if isTeacherOrAdmin() || ownerByField('teacherId') || ownerByField('lrn');
-      allow create: if isTeacherOrAdmin() || ownerInIncoming('teacherId');
-      allow update, delete: if isAdmin() || ownerInExisting('teacherId');
+      allow create: if isTeacherOrAdmin() || isClaimingOwner('teacherId');
+      allow update, delete: if isAdmin() || isExistingOwner('teacherId');
     }
 
     match /attendance/{docId} {
@@ -488,7 +483,7 @@ service cloud.firestore {
     }
 
     match /quizBattleHistory/{docId} {
-      allow read: if isSignedIn() && (request.auth.uid == docId || ownerByField('studentId')) || isTeacherOrAdmin();
+      allow read: if isSelf(docId) || ownerByField('studentId') || isTeacherOrAdmin();
       allow create, update: if false;
       allow delete: if isSignedIn() && ownerByField('studentId');
     }
@@ -520,7 +515,7 @@ service cloud.firestore {
     match /studentBattleLeaderboard/{docId} {
       allow read: if isSignedIn();
       allow create, update: if false;
-      allow delete: if isSignedIn() && request.auth.uid == docId;
+      allow delete: if isSelf(docId);
     }
 
     match /progressionAuditLog/{docId} {
@@ -560,11 +555,11 @@ service cloud.firestore {
 
     // ── Rate limit tracking (Cloud Functions write only) ──
     match /_ratelimits/{uid} {
-      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isSelf(uid);
       allow write: if false;  // Cloud Functions only via service account
     }
     match /_ratelimits/{uid}/{functionName} {
-      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isSelf(uid);
       allow write: if false;  // Cloud Functions only
     }
 
@@ -578,20 +573,20 @@ service cloud.firestore {
     match /assessments/{uid} {
       allow read: if isSelf(uid) || isTeacherOrAdmin();
       allow create, update: if isSelf(uid) || isAdmin();
-      allow delete: if isSignedIn() && request.auth.uid == uid || isAdmin();
+      allow delete: if isSelf(uid) || isAdmin();
     }
 
     match /assessments/{uid}/attempts/{attemptId} {
       allow read: if isSelf(uid) || isTeacherOrAdmin();
       allow create, update: if isSelf(uid) || isAdmin();
-      allow delete: if isSignedIn() && request.auth.uid == uid || isAdmin();
+      allow delete: if isSelf(uid) || isAdmin();
     }
 
     // ── Competency Profiles (student's competency tracking) ──
     match /competencyProfiles/{uid} {
       allow read: if isSelf(uid) || isTeacherOrAdmin();
       allow create, update: if isSelf(uid) || isTeacherOrAdmin() || isAdmin();
-      allow delete: if isSignedIn() && request.auth.uid == uid || isAdmin();
+      allow delete: if isSelf(uid) || isAdmin();
     }
 
     // ── Class Assessments (teacher view of class assessment summaries) ──
@@ -639,13 +634,13 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isTeacherOrAdmin();
       allow update, delete: if isAdmin() || (isTeacherOrAdmin() && (
-        ownerInExisting('uploadedBy') || ownerInExisting('teacherId')
+        isExistingOwner('uploadedBy') || isExistingOwner('teacherId')
       ));
     }
 
 // ── Class Records (teacher-uploaded student grade data) ──
     match /classRecords/{teacherUid} {
-      allow read: if isAdmin() || (isTeacher() && request.auth.uid == teacherUid);
+      allow read: if isAdmin() || (isTeacher() && isSelf(teacherUid));
       allow write: if false;
       
       match /uploads/{uploadId} {
@@ -675,7 +670,7 @@ service cloud.firestore {
     match /quizzes/{quizId} {
       allow read: if isSignedIn();
       allow create: if isTeacherOrAdmin();
-      allow update, delete: if isTeacherOrAdmin() && ownerInExisting('teacherId');
+      allow update, delete: if isTeacherOrAdmin() && isExistingOwner('teacherId');
     }
 
     // Personalized student recommendations (backend writes, student reads own)
@@ -709,7 +704,7 @@ service cloud.firestore {
 
     // student_profiles/{student_id} — backend-only writes, students read own, teachers read their class
     match /student_profiles/{studentId} {
-      allow read: if isSignedIn() && (request.auth.uid == studentId || isTeacherOrAdmin());
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
       allow write: if false; // Backend service account only
     }
 
@@ -727,7 +722,7 @@ service cloud.firestore {
 
     // intervention_plans/{student_id} — backend writes, teachers read, students read own
     match /intervention_plans/{studentId} {
-      allow read: if isSignedIn() && (request.auth.uid == studentId || isTeacherOrAdmin());
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
       allow write: if false; // Backend service account only
     }
 

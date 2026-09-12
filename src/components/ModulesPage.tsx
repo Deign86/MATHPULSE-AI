@@ -66,7 +66,7 @@ import { useCurriculum } from '../hooks/useCurriculum';
 import { submitPracticeSession } from '../services/practiceService';
 import { subscribeToUserProgress } from '../services/progressService';
 import { watchModule } from '../services/moduleWatchService';
-import type { UserProgress } from '../types/models';
+import type { ModuleProgress, UserProgress } from '../types/models';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -89,6 +89,18 @@ type ModulesPageView =
   | { kind: 'teacher_module'; module: TeacherUploadedModule };
 
 const QUARTER_FILTERS: Array<'all' | CurriculumQuarter> = ['all', 'Q1', 'Q2', 'Q3', 'Q4'];
+
+/**
+ * RAG learning-path context for the recommended view. Modelled as one union so
+ * "loading" and "has context" cannot both be true, which the previous
+ * `context: string | null` + `loading: boolean` pair allowed.
+ */
+type LearningPathState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'ready'; context: string };
+
+const IDLE_LEARNING_PATH: LearningPathState = { status: 'idle' };
 
 const ModulesPage: React.FC<ModulesPageProps> = ({
   onEarnXP,
@@ -166,8 +178,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [selectedModule, setSelectedModule] = useState<CurriculumModuleRuntime | null>(initialModule);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
   const practiceQuizEndRef = React.useRef<((quiz: QuizExperienceQuiz, answers: QuizAnswerRecord[]) => void) | null>(null);
-  const [learningPathContext, setLearningPathContext] = useState<string | null>(null);
-  const [learningPathLoading, setLearningPathLoading] = useState(false);
+  const [learningPath, setLearningPath] = useState<LearningPathState>(IDLE_LEARNING_PATH);
 
   const currentView: ModulesPageView = selectedQuiz
     ? { kind: 'quiz', quiz: selectedQuiz }
@@ -179,7 +190,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   // Competency profile state for personalized module filtering
   const [competencyProfile, setCompetencyProfile] = useState<CompetencyProfileDoc | null>(null);
-  const [competencyProfileLoading, setCompetencyProfileLoading] = useState(false);
 
   // Teacher uploaded modules state
   const [teacherModules, setTeacherModules] = useState<TeacherUploadedModule[]>([]);
@@ -307,16 +317,12 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   // Load competency profile for personalized module filtering
   useEffect(() => {
     if (!userProfile?.uid) return;
-    setCompetencyProfileLoading(true);
     getStudentCompetencyProfile(userProfile.uid)
       .then((profile) => {
         setCompetencyProfile(profile);
       })
       .catch((err) => {
         console.error('Failed to load competency profile:', err);
-      })
-      .finally(() => {
-        setCompetencyProfileLoading(false);
       });
   }, [userProfile?.uid]);
 
@@ -420,19 +426,36 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     return filtered;
   }, [modulePool, searchQuery, subjectFilter, quarterFilter, competencyFilter, competencyProfile]);
 
+  /**
+   * Progress is stored at subjects.{subjectId}.modulesProgress.{moduleId}, so
+   * index it by that pair. The previous per-module scan over every subject was
+   * O(modules x subjects) and silently matched the first subject holding the
+   * same module id, which is wrong when an id appears in two subjects.
+   */
+  const progressBySubjectModule = useMemo(() => {
+    const index = new Map<string, ModuleProgress>();
+    if (!userProgress) return index;
+    for (const [subjectId, subjectProgress] of Object.entries(userProgress.subjects || {})) {
+      if (!subjectProgress?.modulesProgress) continue;
+      for (const [moduleId, moduleProgress] of Object.entries(subjectProgress.modulesProgress)) {
+        index.set(`${subjectId}::${moduleId}`, moduleProgress);
+      }
+    }
+    return index;
+  }, [userProgress]);
+
   // Enrich modules with real progress from Firestore
   const modulesWithProgress = useMemo(() => {
     if (!userProgress) return filteredModules;
     return filteredModules.map(module => {
-      const subjectProgress = Object.values(userProgress.subjects || {}).find(sp => sp.modulesProgress?.[module.id]);
-      const mp = subjectProgress?.modulesProgress?.[module.id];
+      const mp = progressBySubjectModule.get(`${module.subjectId}::${module.id}`);
       if (!mp) return module;
       const totalItems = module.lessons.length + module.quizzes.length;
       const completedItems = (mp.lessonsCompleted?.length || 0) + (mp.quizzesCompleted?.length || 0);
       const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
       return { ...module, progress };
     });
-  }, [filteredModules, userProgress]);
+  }, [filteredModules, userProgress, progressBySubjectModule]);
 
   const curriculumContextLabel = useMemo(() => {
     const visibleQuarter = quarterFilter === 'all' ? 'All Quarters' : quarterFilter;
@@ -458,7 +481,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   useEffect(() => {
     if (activeTab !== 'recommended' || normalizedRiskTopics.length === 0) return;
-    setLearningPathLoading(true);
+    setLearningPath({ status: 'loading' });
 
     getRagAnalysisContext({
       weakTopics: normalizedRiskTopics.map(t => DIAGNOSTIC_TOPIC_LABELS[t]),
@@ -466,10 +489,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       userId: userProfile?.uid,
     })
       .then((res) => {
-        setLearningPathContext(res.curriculumContext);
-        setLearningPathLoading(false);
+        setLearningPath({ status: 'ready', context: res.curriculumContext });
       })
-      .catch(() => setLearningPathLoading(false));
+      .catch(() => setLearningPath(IDLE_LEARNING_PATH));
   }, [activeTab, normalizedRiskTopics]);
 
   const handleQuizComplete = (score: number, xpEarned: number) => {
@@ -1044,8 +1066,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}
               isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
-              learningPathContext={learningPathContext}
-              learningPathLoading={learningPathLoading}
+              learningPath={learningPath}
               weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
               onNotifyMe={handleNotifyMe}
             />
@@ -1293,17 +1314,16 @@ const RecommendedModulesView: React.FC<{
   onSelectModule: (module: CurriculumModuleRuntime) => void;
   onPreviewSources: (module: CurriculumModuleRuntime) => void;
   isAtRisk?: boolean;
-  learningPathContext?: string | null;
-  learningPathLoading?: boolean;
+  learningPath?: LearningPathState;
   weakTopics?: string[];
   onNotifyMe?: (moduleId: string) => void;
-}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPathContext = null, learningPathLoading = false, weakTopics = [], onNotifyMe }) => {
+}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPath = IDLE_LEARNING_PATH, weakTopics = [], onNotifyMe }) => {
   const inProgress = modules.filter((module) => module.progress > 0 && module.progress < 100);
   const suggested = (modules.length > 0 ? modules : fullPool).filter((module) => module.progress === 0).slice(0, 6);
 
   return (
     <div className="pr-2 space-y-10">
-      {learningPathLoading && (
+      {learningPath.status === 'loading' && (
         <div className="mb-6 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 flex items-center gap-3">
           <div className="w-5 h-5 rounded-full border-2 border-sky-400 border-t-transparent animate-spin flex-shrink-0" />
           <p className="text-sm font-semibold text-sky-800">
@@ -1312,13 +1332,13 @@ const RecommendedModulesView: React.FC<{
         </div>
       )}
 
-      {learningPathContext && !learningPathLoading && (
+      {learningPath.status === 'ready' && (
         <div className="mb-6 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 px-5 py-4 shadow-sm">
           <p className="text-xs font-black uppercase tracking-wide text-indigo-700 mb-2">
             Your Personalized Learning Path
           </p>
           <pre className="whitespace-pre-wrap text-sm text-indigo-900 font-medium leading-relaxed font-sans">
-            {learningPathContext}
+            {learningPath.status === 'ready' ? learningPath.context : null}
           </pre>
         </div>
       )}

@@ -4,19 +4,66 @@
  */
 
 export type RewardRarity = 'common' | 'uncommon' | 'rare' | 'epic';
-export type RewardType = 'xp' | 'streak_shield' | 'hint_token' | 'xp_multiplier' | 'badge_unlock';
 
-export interface RewardDefinition {
+export interface RewardBase {
   id: string;
-  day: number; // 0–6 assigned after shuffle
   label: string;
   description: string;
   icon: string; // stable lucide icon key
-  type: RewardType;
-  value: number | string; // XP amount, multiplier %, or badge ID
   rarity: RewardRarity;
   color: string; // Tailwind or hex color for card
 }
+
+/** Bonus XP granted directly. */
+export interface XpReward extends RewardBase {
+  type: 'xp';
+  /** XP amount. */
+  value: number;
+}
+
+/** Hint tokens added to the student's balance. */
+export interface HintTokenReward extends RewardBase {
+  type: 'hint_token';
+  /** Number of tokens granted. */
+  value: number;
+}
+
+/** Streak shields added to the student's balance. */
+export interface StreakShieldReward extends RewardBase {
+  type: 'streak_shield';
+  /** Number of shields granted. */
+  value: number;
+}
+
+/**
+ * Temporary XP multiplier. Duration and multiplier are separate fields because
+ * the two are independent: deriving the multiplier from a substring of `id`
+ * silently applied the wrong multiplier whenever the naming convention changed.
+ */
+export interface XpMultiplierReward extends RewardBase {
+  type: 'xp_multiplier';
+  durationMinutes: number;
+  multiplier: number;
+}
+
+/** Badge grant; the payload is the badge identifier rather than a quantity. */
+export interface BadgeUnlockReward extends RewardBase {
+  type: 'badge_unlock';
+  badgeId: string;
+}
+
+/** Reward payload as stored in the catalog, without its weekly day index. */
+export type RewardPayload =
+  | XpReward
+  | HintTokenReward
+  | StreakShieldReward
+  | XpMultiplierReward
+  | BadgeUnlockReward;
+
+export type RewardType = RewardPayload['type'];
+
+/** A reward payload assigned to a day of the week (0-6). */
+export type RewardDefinition = RewardPayload & { day: number };
 
 export interface ActiveMultiplier {
   multiplier: number;
