@@ -1158,7 +1158,7 @@ const App = () => {
           <div className="absolute inset-0 bg-math-pattern opacity-10 mix-blend-overlay pointer-events-none z-0" />
           
           {/* Desktop Header — compact with inline gamification stats (hidden on mobile/tablet where bottom nav and top status row are active) */}
-          <header className="hidden lg:flex bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-6 py-3 flex-row items-center justify-between gap-3 sticky top-0 z-30 shadow-sm">
+          <header className="hidden lg:flex bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-white/60 dark:border-white/10 px-6 py-3 flex-row items-center justify-between gap-3 sticky top-0 z-30 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
             <div className="flex items-center gap-3 min-w-0">
               <InstallPwaButton />
               <div className="min-w-0">
@@ -1171,30 +1171,30 @@ const App = () => {
               <div className="flex items-center gap-2 ml-2">
                 <button
                   onClick={() => setActiveModal('rewards')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 rounded-lg transition-colors cursor-pointer group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-b from-rose-50 to-rose-100/90 hover:from-rose-100 hover:to-rose-150 border border-rose-200/80 rounded-xl shadow-[0_2px_0_#fecdd3,0_4px_10px_rgba(244,63,94,0.08)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer group focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
                   title="View Rewards & Progress"
                   aria-label="View Rewards and Level Progress"
                 >
-                  <Crown className="h-3.5 w-3.5 text-rose-500" aria-hidden="true" />
-                  <span className="text-xs font-display font-bold text-rose-700">Lv {userLevel}</span>
+                  <Crown className="h-3.5 w-3.5 text-rose-500 drop-shadow-sm" aria-hidden="true" />
+                  <span className="text-xs font-display font-black text-rose-700">Lv {userLevel}</span>
                 </button>
                 <button
                   onClick={() => setActiveModal('rewards')}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer w-[180px] xl:w-[200px] justify-between focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+                  className="flex items-center gap-2.5 px-3 py-1.5 bg-gradient-to-b from-violet-50 to-violet-100/80 hover:from-violet-100 hover:to-violet-150 border border-violet-200/80 rounded-xl shadow-[0_2px_0_#ddd6fe,0_4px_10px_rgba(139,92,246,0.1)] active:translate-y-[1px] active:shadow-none transition-all cursor-pointer w-[190px] xl:w-[220px] focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:outline-none"
                   title={`${progressXPInLevel}/${xpToNextLevel} XP to next level`}
                   aria-label={`View XP: ${currentXP} XP earned`}
                 >
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <Zap className="h-3.5 w-3.5 text-violet-500" aria-hidden="true" />
-                    <span className="text-xs font-display font-bold text-violet-700 whitespace-nowrap">{currentXP} XP</span>
+                    <Zap className="h-3.5 w-3.5 text-violet-500 drop-shadow-sm" aria-hidden="true" />
+                    <span className="text-xs font-display font-black text-violet-700 whitespace-nowrap">{currentXP} XP</span>
                   </div>
-                  <div className="h-1.5 flex-1 min-w-0 bg-violet-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-violet-500 rounded-full transition-all e-w" style={xpFillStyle} />
+                  <div className="h-2 flex-1 min-w-0 bg-violet-200/60 dark:bg-violet-950/60 rounded-full overflow-hidden shadow-inner">
+                    <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all" style={xpFillStyle} />
                   </div>
                 </button>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
-                  <Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden="true" />
-                  <span className="text-xs font-display font-bold text-orange-700">Daily Rewards</span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-b from-amber-50 to-amber-100/80 border border-amber-200/80 rounded-xl shadow-[0_2px_0_#fde68a,0_4px_10px_rgba(245,158,11,0.08)]">
+                  <Flame className="h-3.5 w-3.5 text-amber-600 drop-shadow-sm" aria-hidden="true" />
+                  <span className="text-xs font-display font-black text-amber-800">Daily Rewards</span>
                 </div>
               </div>
             </div>
@@ -1203,11 +1203,11 @@ const App = () => {
               {/* Calculator toggle */}
               <button
                 onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
-                className="p-3 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-all group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:shadow-[0_6px_20px_rgba(14,165,233,0.18)] hover:border-sky-200/80 text-slate-700 hover:text-sky-500 transition-all flex items-center justify-center group focus-visible:ring-2 focus-visible:ring-sky-400 focus-visible:outline-none cursor-pointer active:scale-95"
                 title="Scientific Calculator (Alt+K)"
                 aria-label="Scientific Calculator (Alt+K)"
               >
-                <Calculator size={20} className="group-hover:scale-110 transition-transform" />
+                <Calculator size={19} className="stroke-[2.2] group-hover:scale-110 transition-transform" />
               </button>
               <Suspense fallback={compactControlFallback}>
                 <NotificationBell />
@@ -1215,13 +1215,13 @@ const App = () => {
               
               <button 
                 onClick={() => setActiveModal('profile')}
-                className="flex items-center gap-2.5 h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
+                className="flex items-center gap-2.5 h-10 sm:h-11 shrink-0 backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 hover:bg-white/90 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] p-1.5 pr-3 rounded-2xl cursor-pointer transition-all group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none active:scale-95"
                 aria-label={`Profile: ${profileData.name}`}
               >
                 <UserAvatar
                   src={profileData.photo}
                   name={profileData.name}
-                  className="w-8 h-8 rounded-lg"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl"
                 />
                 <div className="hidden sm:block text-left min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-primary transition-colors font-body truncate">
@@ -1237,7 +1237,7 @@ const App = () => {
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : 'p-3 lg:p-4 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
+            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : 'pt-3.5 sm:pt-4 md:pt-2.5 lg:pt-0 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -1249,39 +1249,35 @@ const App = () => {
                 className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'h-full min-h-0' : ''}
               >
                 {activeTab === 'Dashboard' ? (
-                  <div className="px-3.5 sm:px-6 xl:px-10 py-2 sm:py-3.5 lg:py-6">
-                    <div className="grid grid-cols-12 gap-3 sm:gap-6 lg:gap-10">
-                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-2.5 sm:gap-4 lg:gap-8 pt-0">
+                  <div className="px-5 sm:px-8 xl:px-12 py-3 sm:py-5 lg:py-7">
+                    <div className="grid grid-cols-12 gap-4 sm:gap-6 lg:gap-10">
+                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-4 sm:gap-5 md:gap-6 lg:gap-8 pt-0">
                         {/* Mobile/Tablet Compact Top Bar: Level & XP on Left, Utility Controls on Right */}
-                        <div className="lg:hidden flex items-center justify-between gap-2 mb-0.5">
+                        <div className="lg:hidden flex items-center justify-between gap-2 mb-1 sm:mb-2">
                           {/* Upper Left: Level Badge & XP Counter (XP hidden on narrow mobile <= 350px, shown on 360px+ and tablet) */}
                           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                             <button
                               type="button"
                               onClick={() => setActiveModal('rewards')}
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/95 dark:bg-slate-800/95 border border-rose-200/80 shadow-sm hover:bg-rose-50 transition-colors shrink-0"
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-b from-rose-50 to-rose-100/90 border border-rose-200/80 shadow-[0_2px_0_#fecdd3,0_3px_8px_rgba(244,63,94,0.08)] active:translate-y-[1px] active:shadow-none hover:bg-rose-50 transition-all shrink-0 cursor-pointer"
                               title="Level Progress"
                               aria-label={`Level ${userLevel}`}
                             >
-                              <Crown className="w-3.5 h-3.5 text-rose-500" />
+                              <Crown className="w-3.5 h-3.5 text-rose-500 drop-shadow-sm" />
                               <span className="text-xs font-display font-black text-rose-700 dark:text-rose-400">Lv {userLevel}</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={() => setActiveModal('rewards')}
-                              className="hidden min-[360px]:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white/95 dark:bg-slate-800/95 border border-violet-200/80 shadow-sm hover:bg-violet-50 transition-colors min-w-[105px] sm:min-w-[130px]"
+                              className="hidden min-[360px]:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gradient-to-b from-violet-50 to-violet-100/90 border border-violet-200/80 shadow-[0_2px_0_#ddd6fe,0_3px_8px_rgba(139,92,246,0.1)] active:translate-y-[1px] active:shadow-none hover:bg-violet-50 transition-all shrink-0 cursor-pointer"
                               title={`${progressXPInLevel}/${xpToNextLevel} XP`}
                               aria-label={`XP: ${currentXP}`}
                             >
-                              <Zap className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-center text-[10px] font-bold text-violet-700 dark:text-violet-300 leading-none mb-0.5">
-                                  <span className="tabular-nums">{currentXP} XP</span>
-                                </div>
-                                <div className="h-1.5 w-full bg-violet-100 rounded-full overflow-hidden">
-                                  <div className="h-full bg-violet-500 rounded-full transition-all" style={xpFillStyle} />
-                                </div>
+                              <Zap className="w-3.5 h-3.5 text-violet-500 shrink-0 drop-shadow-sm" />
+                              <span className="text-xs font-display font-black text-violet-700 dark:text-violet-300 tabular-nums shrink-0">{currentXP} XP</span>
+                              <div className="w-14 sm:w-20 h-2 bg-violet-200/60 dark:bg-violet-950/60 rounded-full overflow-hidden shadow-inner shrink-0">
+                                <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all" style={xpFillStyle} />
                               </div>
                             </button>
                           </div>
@@ -1291,11 +1287,11 @@ const App = () => {
                             <button
                               type="button"
                               onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
-                              className="w-8 h-8 rounded-xl bg-white/95 dark:bg-slate-800/95 border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-600 hover:text-purple-600 transition-colors active:scale-95"
+                              className="w-9 h-9 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:shadow-[0_6px_20px_rgba(14,165,233,0.18)] hover:border-sky-200/80 text-slate-700 hover:text-sky-500 transition-all flex items-center justify-center cursor-pointer active:scale-95"
                               title="Scientific Calculator"
                               aria-label="Scientific Calculator"
                             >
-                              <Calculator size={15} />
+                              <Calculator size={16} className="stroke-[2.2]" />
                             </button>
 
                             <Suspense fallback={compactControlFallback}>
@@ -1308,7 +1304,7 @@ const App = () => {
                             <button
                               type="button"
                               onClick={() => setActiveModal('profile')}
-                              className="hidden md:flex w-8 h-8 rounded-xl overflow-hidden border border-slate-200/80 shadow-sm items-center justify-center hover:ring-2 hover:ring-purple-400 transition-all active:scale-95"
+                              className="hidden md:flex w-9 h-9 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] items-center justify-center hover:ring-2 hover:ring-purple-400 transition-all active:scale-95 cursor-pointer"
                               aria-label={`Profile: ${profileData.name}`}
                             >
                               <UserAvatar
@@ -1333,28 +1329,28 @@ const App = () => {
                           />
                         </Suspense>
 
-                        {/* Mobile Daily Goals / Assessment Slab (Tactile slab matching reference) */}
-                        <div className="lg:hidden flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-white border border-slate-200/90 shadow-sm">
+                        {/* Mobile Daily Goals / Assessment Slab (Complete Emerald Green System Card) */}
+                        <div className="lg:hidden flex items-center justify-between gap-3.5 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white shadow-[0_8px_20px_-4px_rgba(16,185,129,0.3)] border border-emerald-400/40 relative overflow-hidden">
                           {/* Target Emblem */}
-                          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-orange-200/80 flex items-center justify-center shrink-0 shadow-inner">
-                            <Target className="w-5 h-5 text-orange-500" />
+                          <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 shadow-inner flex items-center justify-center shrink-0">
+                            <Target className="w-5 h-5 text-white stroke-[2.4] drop-shadow-sm" />
                           </div>
 
                           {/* Center Progress Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <h3 className="text-xs sm:text-sm font-display font-extrabold text-slate-900 leading-none">
+                              <h3 className="text-xs sm:text-sm font-display font-black text-white leading-none drop-shadow-sm">
                                 Daily Goals
                               </h3>
-                              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 tabular-nums">
+                              <span className="text-[10px] sm:text-[11px] font-bold text-white bg-black/20 backdrop-blur-md px-2.5 py-0.5 rounded-full tabular-nums border border-white/20">
                                 2 / 5 Lessons
                               </span>
                             </div>
-                            <p className="text-[10px] sm:text-xs text-slate-500 mt-1 font-medium leading-snug">
+                            <p className="text-[10px] sm:text-xs text-white/90 mt-1.5 font-medium leading-snug">
                               {hasCompletedDiagnostic ? 'Maintain your daily practice pace' : 'Complete Initial Diagnostic Assessment'}
                             </p>
-                            <div className="h-1.5 sm:h-2 w-full bg-orange-100/70 rounded-full overflow-hidden mt-1.5">
-                              <div className="h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full w-[40%]" />
+                            <div className="h-1.5 sm:h-2 w-full bg-black/20 rounded-full overflow-hidden mt-2 sm:mt-2.5 shadow-inner">
+                              <div className="h-full bg-white rounded-full w-[40%] shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
                             </div>
                           </div>
 
@@ -1368,48 +1364,48 @@ const App = () => {
                                 handleStudentNavigation('Modules');
                               }
                             }}
-                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 flex items-center justify-center text-orange-600 transition-all shrink-0 active:scale-95"
+                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 font-bold border border-white shadow-md flex items-center justify-center transition-all shrink-0 active:translate-y-[1px] cursor-pointer"
                             aria-label="View Daily Goals"
                           >
-                            <ArrowRight className="w-4 h-4" />
+                            <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                           </button>
                         </div>
 
-                        {/* Mobile Balanced 2-Column Twin Slabs (Reference: Coins + Streak) */}
-                        <div className="lg:hidden grid grid-cols-2 gap-3">
-                          {/* Coins / XP Slab */}
+                        {/* Mobile Balanced 2-Column Twin Slabs (Cohesive System-Tinted Slabs) */}
+                        <div className="lg:hidden grid grid-cols-2 gap-3.5 sm:gap-4">
+                          {/* Coins / XP Slab — Amethyst Tinted Card with 3D royal keycap */}
                           <button
                             type="button"
                             onClick={() => setActiveModal('rewards')}
-                            className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm text-left hover:border-purple-300 transition-all active:scale-[0.98]"
+                            className="flex items-center gap-3 p-4 sm:p-4.5 rounded-2xl backdrop-blur-xl bg-gradient-to-br from-purple-50/85 via-indigo-50/45 to-white dark:from-purple-950/30 dark:via-slate-900/70 dark:to-slate-900/70 border border-purple-200/80 dark:border-purple-800/50 shadow-[0_4px_16px_rgba(124,58,237,0.05),inset_0_1px_1px_rgba(255,255,255,0.9)] text-left hover:border-purple-300 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group"
                           >
-                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-purple-50 border border-purple-200/80 flex items-center justify-center shrink-0 shadow-inner">
-                              <Crown className="w-5 h-5 text-purple-600" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-violet-500 via-purple-600 to-indigo-700 border-t border-white/50 shadow-[0_2.5px_0_#5b21b6,0_5px_12px_rgba(139,92,246,0.25)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              <Crown className="w-5 h-5 text-amber-300 fill-amber-300 stroke-amber-400 stroke-[1.8] drop-shadow-sm" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <span className="block text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                              <span className="block text-[10px] sm:text-[11px] font-bold text-purple-600/80 dark:text-purple-400 uppercase tracking-wider leading-none">
                                 XP Coins
                               </span>
-                              <span className="block text-lg sm:text-xl font-display font-black text-slate-900 tabular-nums leading-tight mt-1">
+                              <span className="block text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1.5">
                                 {currentXP}
                               </span>
                             </div>
                           </button>
 
-                          {/* Streak Slab */}
+                          {/* Streak Slab — Warm Apricot-Orange Tinted Card with pure white flame icon (no black outline) */}
                           <button
                             type="button"
                             onClick={() => setActiveModal('rewards')}
-                            className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm text-left hover:border-orange-300 transition-all active:scale-[0.98]"
+                            className="flex items-center gap-3 p-4 sm:p-4.5 rounded-2xl backdrop-blur-xl bg-gradient-to-br from-amber-50/80 via-orange-50/35 to-white dark:from-amber-950/25 dark:via-slate-900/70 dark:to-slate-900/70 border border-orange-200/70 dark:border-orange-800/40 shadow-sm hover:border-orange-300 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group"
                           >
-                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-center shrink-0 shadow-inner">
-                              <Flame className="w-5 h-5 text-orange-500" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-amber-400 to-orange-400 border-t border-white/50 shadow-[0_2.5px_0_rgba(234,88,12,0.4),0_4px_10px_rgba(251,146,60,0.22)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              <Flame className="w-5 h-5 text-white fill-white drop-shadow-sm" strokeWidth={1.8} />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <span className="block text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                              <span className="block text-[10px] sm:text-[11px] font-bold text-orange-600/80 dark:text-orange-400 uppercase tracking-wider leading-none">
                                 Streak
                               </span>
-                              <span className="block text-lg sm:text-xl font-display font-black text-slate-900 tabular-nums leading-tight mt-1">
+                              <span className="block text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1.5">
                                 7 Days
                               </span>
                             </div>

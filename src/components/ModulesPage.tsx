@@ -530,7 +530,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   if (selectedTeacherModule) {
     return (
-      <div className="h-full overflow-y-auto px-4 sm:px-6 xl:px-10 pb-8 scrollbar-hide scroll-smooth relative">
+      <div className="h-full overflow-y-auto px-5 sm:px-8 xl:px-12 pb-8 scrollbar-hide scroll-smooth relative">
         <button
           onClick={() => setSelectedTeacherModule(null)}
           className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
@@ -663,7 +663,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   return (
     <div 
-      className="h-full overflow-y-auto px-4 sm:px-6 xl:px-10 pb-8 scrollbar-hide scroll-smooth relative"
+      className="h-full overflow-y-auto pt-3.5 px-5 sm:pt-4 sm:px-8 md:pt-2.5 md:px-8 lg:pt-0 lg:px-8 xl:px-12 pb-8 scrollbar-hide scroll-smooth relative"
       onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 100)}
     >
       <DailyCheckInModal
@@ -896,7 +896,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       </div>
 
       {/* ── Sticky filter + tab bar ── */}
-      <div className={`sticky top-0 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
+      <div className={`sticky top-0 z-30 -mx-5 px-5 sm:-mx-8 sm:px-8 xl:-mx-12 xl:px-12 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
         {/* Search + filters row */}
         <div className="flex flex-col lg:flex-row items-center gap-3 w-full">
           <div className="relative flex-1 w-full">

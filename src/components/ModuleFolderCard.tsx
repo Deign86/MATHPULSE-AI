@@ -51,19 +51,19 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
     <motion.div
       role={isAvailable ? 'button' : 'img'}
       tabIndex={isAvailable ? 0 : -1}
-      whileHover={isAvailable ? { y: -8 } : undefined}
+      whileHover={isAvailable ? { y: compact ? -4 : -6 } : undefined}
       onClick={isAvailable ? onClick : undefined}
       onKeyDown={isAvailable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       className={`relative text-left rounded-2xl md:rounded-[1.4rem] overflow-visible h-full ${compact ? 'min-h-[165px] md:min-h-[220px]' : 'min-h-[185px] md:min-h-[290px]'} bg-transparent group w-full flex flex-col ${!isAvailable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {/* FOLDER TAB */}
       <div 
-        className={`absolute top-0 left-3 md:left-4 ${compact ? 'h-4 md:h-5 w-16 md:w-24' : 'h-5 md:h-7 w-20 md:w-32'} rounded-t-lg md:rounded-t-xl shadow-sm transition-colors duration-300 ${theme.tab}`}
+        className={`absolute top-0 left-3 md:left-4 ${compact ? 'h-4 md:h-5 w-16 md:w-24' : 'h-5 md:h-7 w-20 md:w-32'} rounded-t-lg md:rounded-t-xl shadow-sm transition-all duration-300 ${theme.tab}`}
       />
 
       {/* FOLDER BODY */}
       <div 
-        className={`relative ${compact ? 'mt-3 md:mt-4 p-3 md:p-4' : 'mt-4 md:mt-6 p-3.5 md:p-6'} rounded-2xl md:rounded-[1.4rem] transition-all duration-300 overflow-hidden flex flex-col h-[calc(100%-16px)] md:h-[calc(100%-24px)] flex-1 ${theme.bg} shadow-[0_18px_30px_-20px_rgba(0,0,0,0.45)] group-hover:shadow-[0_24px_40px_-15px_rgba(0,0,0,0.5)]`}
+        className={`relative ${compact ? 'mt-3 md:mt-4 p-3 md:p-4' : 'mt-4 md:mt-6 p-3.5 md:p-6'} rounded-2xl md:rounded-[1.4rem] transition-all duration-300 overflow-hidden flex flex-col h-[calc(100%-16px)] md:h-[calc(100%-24px)] flex-1 ${theme.bg} shadow-[0_12px_28px_-8px_rgba(0,0,0,0.35),0_4px_10px_rgba(0,0,0,0.1)] hover:shadow-[0_18px_36px_-6px_rgba(0,0,0,0.45),0_6px_14px_rgba(0,0,0,0.15)]`}
       >
         {/* SPINE / TOP HIGHLIGHT */}
         <div className="absolute top-0 left-0 right-0 h-1.5 mix-blend-overlay bg-white/40" />
@@ -76,7 +76,7 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
         <div className="relative z-10 flex-1 flex flex-col h-full">
           <div className="flex items-start justify-end">
             {(badgeLabel || module.status === 'Locked') && (
-              <span className="px-2.5 py-1 rounded-full bg-black/30 text-white/90 text-[10px] font-black uppercase tracking-wider backdrop-blur-sm">
+              <span className="px-2.5 py-1 rounded-full bg-black/30 text-white/90 text-[10px] font-black uppercase tracking-wider backdrop-blur-sm border border-white/15 shadow-sm">
                 {badgeLabel || 'Locked'}
               </span>
             )}
@@ -87,11 +87,11 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
           </h3>
 
           <div className={`${compact ? 'mb-1.5 md:mb-2' : 'mb-2 md:mb-3'} flex flex-wrap gap-1 md:gap-1.5`}>
-            <span className="rounded-full border border-white/20 bg-black/15 px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-white/95 leading-none">
+            <span className="rounded-full border border-white/30 bg-black/20 backdrop-blur-md px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] leading-none">
               {curriculumBadge}
             </span>
             {module.content_domain && (
-              <span className="rounded-full border border-white/20 bg-black/15 px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-white/95 leading-none">
+              <span className="rounded-full border border-white/30 bg-black/20 backdrop-blur-md px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] leading-none">
                 {module.content_domain}
               </span>
             )}
@@ -102,7 +102,7 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
             )}
           </div>
 
-          <p className={`text-white/85 ${compact ? 'text-[9px] md:text-xs line-clamp-1 mb-1.5' : 'text-[10px] md:text-[13px] line-clamp-1 md:line-clamp-2 mb-2 md:mb-4'} font-medium leading-snug md:leading-relaxed pr-2`}>
+          <p className={`text-white/85 ${compact ? 'text-[9px] md:text-xs line-clamp-1 mb-1.5' : 'text-[10px] md:text-[13px] line-clamp-1 md:line-clamp-2 mb-2 md:mb-4'} font-medium leading-snug md:leading-relaxed pr-2 drop-shadow-sm`}>
             {module.subtitle || module.description || 'Master this module to unlock the next level of your mathematical journey.'}
           </p>
           
@@ -113,9 +113,9 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
                  <span className="opacity-90 uppercase tracking-wider">Progress</span>
                  <span>{module.progress > 0 ? module.progress : 0}%</span>
               </div>
-              <div className="w-full h-1.5 md:h-2 rounded-full bg-black/20 overflow-hidden shadow-inner">
+              <div className="w-full h-1.5 md:h-2 rounded-full bg-black/30 shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.4)] border border-black/10 overflow-hidden">
                  <div
-                   className="h-full bg-white rounded-full transition-all duration-1000 ease-out e-w"
+                   className="h-full bg-gradient-to-r from-white/90 to-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.6)] transition-all duration-1000 ease-out e-w"
                    // SAFETY: trusted internal value already conforms to the asserted type.
                    style={{ ['--w' as any]: `${module.progress > 0 ? module.progress : 0}%` }}
                  />
@@ -125,10 +125,10 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
             <div className="flex items-center justify-between gap-1.5 md:gap-2">
               {/* Lessons & Quizzes Pills - Bottom Left */}
               <div className="flex flex-wrap md:flex-nowrap items-center gap-1 md:gap-1.5">
-                <div className="flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 bg-white/20 rounded-md md:rounded-lg text-white font-bold text-[9px] md:text-[11px] backdrop-blur-sm shadow-sm border border-white/10">
+                <div className="flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 bg-white/25 rounded-md md:rounded-lg text-white font-bold text-[9px] md:text-[11px] backdrop-blur-md shadow-[0_2px_4px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.4)] border border-white/30">
                   <BookOpen size={10} className="md:w-3 md:h-3 opacity-90" /> {module.totalLessons || module.lessons?.length || 0} lessons
                 </div>
-                <div className="flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 bg-white/20 rounded-md md:rounded-lg text-white font-bold text-[9px] md:text-[11px] backdrop-blur-sm shadow-sm border border-white/10">
+                <div className="flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 bg-white/25 rounded-md md:rounded-lg text-white font-bold text-[9px] md:text-[11px] backdrop-blur-md shadow-[0_2px_4px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.4)] border border-white/30">
                   <Clock size={10} className="md:w-3 md:h-3 opacity-90" /> {module.totalQuizzes || module.quizzes?.length || 0} quizzes
                 </div>
               </div>

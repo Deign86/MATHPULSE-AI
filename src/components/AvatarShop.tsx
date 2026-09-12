@@ -425,6 +425,11 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
     if (onConfirmLeave) onConfirmLeave();
   };
 
+  const handleReset = () => {
+    setEquipped(savedEquipped);
+    toast.info('Reverted to saved avatar.');
+  };
+
   const handleDiscardAndLeave = () => {
     setShowLeaveModal(false);
     setEquipped(savedEquipped);
@@ -483,15 +488,15 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
     if (items.length === 0) {
       const label = tabId === 'exclusive' ? 'Exclusive items' : categories.find(c => c.id === tabId)?.label || 'Items';
       return (
-        <div className="w-full min-h-[180px] flex flex-col items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 p-5 text-center">
-          <Crown size={32} className="text-slate-300 dark:text-slate-700 mb-2 opacity-60" />
-          <h3 className="font-bold text-xs sm:text-sm text-slate-600 dark:text-slate-300 mb-0.5">{label} coming soon</h3>
-          <p className="text-slate-400 text-[11px] max-w-xs">We're crafting awesome gear for your avatar!</p>
+        <div className="w-full min-h-[180px] flex flex-col items-center justify-center border-2 border-dashed border-[#d9cab4] rounded-2xl bg-[#faf6f0]/80 p-5 text-center shadow-sm">
+          <Crown size={32} className="text-amber-500/70 mb-2 opacity-80" />
+          <h3 className="font-bold text-xs sm:text-sm text-amber-950 mb-0.5">{label} coming soon</h3>
+          <p className="text-amber-800/60 text-[11px] max-w-xs">We&apos;re crafting awesome gear for your wooden wardrobe!</p>
         </div>
       );
     }
     return (
-      <div className="grid grid-cols-3 xl:grid-cols-3 gap-1.5 sm:gap-2.5 xl:gap-3.5 pb-2">
+      <div className="grid grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2 lg:gap-3 pb-2">
         {items.map(item => {
           const cat = item.category;
           // SAFETY: Object.entries on setLayers yields string keys corresponding to AvatarLayers layer names.
@@ -504,16 +509,21 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
           const canPreview = isExclusive && !isOwned;
           const isPreviewing = isEquipped && canPreview;
 
+          const hasActionButton = Boolean((isLocked && !isExclusive && !item.isReward) || canPreview);
+
           return (
             <div
               key={item.id}
-              className={`flex flex-col justify-between p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border transition-all ${
+              className={`flex flex-col h-full p-2 sm:p-2.5 rounded-2xl border transition-all relative overflow-hidden group shadow-sm ${
                 isEquipped && !isLocked
-                  ? 'bg-blue-50/70 dark:bg-blue-950/20 border-blue-400 dark:border-blue-600 shadow-sm ring-1 ring-blue-400/30'
-                  : 'bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/60 hover:border-sky-300 dark:hover:border-sky-600'
+                  ? 'bg-gradient-to-b from-[#fbf4ea] via-white to-[#f5ebd9] border-2 border-amber-500 shadow-[0_4px_16px_rgba(245,158,11,0.22)] ring-2 ring-amber-400/40'
+                  : 'bg-gradient-to-b from-white via-[#fcfaf7] to-[#f4ece0] border-2 border-[#e3d5c1] hover:border-amber-400/80 hover:shadow-md shadow-[0_2px_8px_rgba(180,150,110,0.08)]'
               }`}
             >
-              {/* Item Thumbnail Frame */}
+              {/* Shelf Top Warm Downlight Glow */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-amber-300/30 to-transparent pointer-events-none" />
+
+              {/* Item Thumbnail Frame / Wooden Cubby Pedestal */}
               <button
                 type="button"
                 onClick={() => {
@@ -521,16 +531,16 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                   handleEquip(cat, item.id);
                 }}
                 disabled={isLocked}
-                className={`relative w-full aspect-square rounded-lg sm:rounded-xl transition-all flex items-center justify-center group overflow-hidden ${
+                className={`relative w-full aspect-square rounded-xl transition-all flex items-center justify-center group overflow-hidden ${
                   isPreviewing
-                    ? 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30'
+                    ? 'bg-gradient-to-b from-amber-200/40 to-orange-200/20 border border-amber-400/60 shadow-inner'
                     : isEquipped && !isLocked
-                      ? 'bg-white dark:bg-slate-800'
+                      ? 'bg-gradient-to-b from-amber-100/50 to-orange-100/30 border border-amber-400/50 shadow-inner'
                       : isLocked && !isExclusive
-                        ? 'bg-slate-100 dark:bg-slate-900/60 opacity-60 cursor-not-allowed'
+                        ? 'bg-amber-900/5 opacity-60 cursor-not-allowed border border-amber-900/10'
                         : canPreview
-                          ? 'bg-slate-50 dark:bg-slate-800/40 opacity-75 cursor-default'
-                          : 'bg-slate-50/80 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          ? 'bg-white/70 opacity-90 cursor-default border border-[#e3d5c1]'
+                          : 'bg-[#f5eee3] hover:bg-[#ece2d3] border border-[#ded0bc]'
                 }`}
               >
                 {/* Status Badges */}
@@ -540,13 +550,13 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                   </div>
                 )}
                 {isEquipped && !isLocked && !isPreviewing && (
-                  <div className="absolute top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.2 bg-gradient-to-r from-blue-600 to-sky-500 text-white text-[8px] font-black rounded-full flex items-center gap-0.5 z-10 whitespace-nowrap shadow-sm">
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.2 bg-gradient-to-r from-amber-600 to-orange-500 text-white text-[8px] font-black rounded-full flex items-center gap-0.5 z-10 whitespace-nowrap shadow-sm">
                     Equipped <Sparkles size={7} className="fill-white" />
                   </div>
                 )}
                 {isLocked && !isExclusive && (
-                  <div className="absolute inset-0 bg-black/25 dark:bg-black/40 z-20 flex items-center justify-center rounded-lg sm:rounded-xl backdrop-blur-[0.5px]">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-black/50 flex items-center justify-center text-white shadow-md">
+                  <div className="absolute inset-0 bg-amber-950/20 z-20 flex items-center justify-center rounded-lg sm:rounded-xl backdrop-blur-[0.5px]">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-amber-950/60 flex items-center justify-center text-amber-200 shadow-md">
                       <Lock size={13} />
                     </div>
                   </div>
@@ -561,61 +571,67 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                 />
               </button>
 
-              {/* Title & Action */}
-              <div className="mt-1 flex flex-col gap-0.5 sm:gap-1">
-                <p className="text-[10px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 text-center truncate px-0.5">
-                  {item.name}
-                </p>
+              {/* Title — Crisp high-contrast espresso text directly under thumbnail */}
+              <p className="mt-1.5 text-[10px] sm:text-xs font-bold text-amber-950 tracking-wide text-center truncate px-0.5">
+                {item.name}
+              </p>
 
-                {isLocked && !isExclusive && !item.isReward && (
-                  <button
-                    type="button"
-                    onClick={e => handlePurchaseItem(e, item.id, item.price || 0)}
-                    disabled={purchasingItemId === item.id}
-                    className="w-full py-1 sm:py-1.5 px-1 min-h-[28px] sm:min-h-[34px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-[10px] sm:text-[11px] font-black flex items-center justify-center gap-0.5 sm:gap-1 rounded-md sm:rounded-lg shadow-sm shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-70 cursor-pointer"
-                  >
-                    {purchasingItemId === item.id ? (
-                      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
-                        <ShoppingBag size={11} />
-                      </motion.div>
-                    ) : (
-                      <>
-                        <Zap size={10} className="fill-white" /> {item.price} XP
-                      </>
-                    )}
-                  </button>
-                )}
+              {/* Action Area — Pushed to bottom cleanly when an action button exists */}
+              {hasActionButton && (
+                <div className="mt-auto pt-1 flex flex-col gap-0.5 sm:gap-1">
+                  {isLocked && !isExclusive && !item.isReward && (
+                    <button
+                      type="button"
+                      onClick={e => handlePurchaseItem(e, item.id, item.price || 0)}
+                      disabled={purchasingItemId === item.id}
+                      className="w-full py-1 sm:py-1.5 px-1 min-h-[28px] sm:min-h-[34px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-[10px] sm:text-[11px] font-black flex items-center justify-center gap-0.5 sm:gap-1 rounded-md sm:rounded-lg shadow-sm shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-70 cursor-pointer"
+                    >
+                      {purchasingItemId === item.id ? (
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+                          <ShoppingBag size={11} />
+                        </motion.div>
+                      ) : (
+                        <>
+                          <Zap size={10} className="fill-white" /> {item.price} XP
+                        </>
+                      )}
+                    </button>
+                  )}
 
-                {canPreview && !item.setLayers && (
-                  <button
-                    type="button"
-                    onClick={() => handlePreview(cat, item.id)}
-                    disabled={isPreviewActive}
-                    className={`w-full py-1 sm:py-1.5 px-1 min-h-[28px] sm:min-h-[34px] text-[10px] sm:text-[11px] font-bold flex items-center justify-center gap-0.5 sm:gap-1 rounded-md sm:rounded-lg border transition-all active:scale-95 ${
-                      isPreviewActive
-                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                        : 'bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-300 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 cursor-pointer'
-                    }`}
-                  >
-                    <Star size={10} /> Preview
-                  </button>
-                )}
+                  {canPreview && !item.setLayers && (
+                    <button
+                      type="button"
+                      onClick={() => handlePreview(cat, item.id)}
+                      disabled={isPreviewActive}
+                      className={`w-full py-1 sm:py-1.5 px-1 min-h-[28px] sm:min-h-[34px] text-[10px] sm:text-[11px] font-bold flex items-center justify-center gap-0.5 sm:gap-1 rounded-md sm:rounded-lg border transition-all active:scale-95 ${
+                        isPreviewActive
+                          ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed'
+                          : 'bg-amber-100/80 hover:bg-amber-200/80 text-amber-900 border-amber-300 cursor-pointer shadow-sm'
+                      }`}
+                    >
+                      <Star size={10} /> Preview
+                    </button>
+                  )}
 
-                {canPreview && item.setLayers && (
-                  <button
-                    type="button"
-                    onClick={() => handlePreview(cat, item.id)}
-                    disabled={isPreviewActive}
-                    className={`w-full py-1 sm:py-1.5 px-1 min-h-[28px] sm:min-h-[34px] text-[10px] sm:text-[11px] font-bold flex items-center justify-center gap-0.5 sm:gap-1 rounded-md sm:rounded-lg border transition-all active:scale-95 ${
-                      isPreviewActive
-                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
-                        : 'bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-300 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 cursor-pointer'
-                    }`}
-                  >
-                    <Star size={10} /> Preview Set
-                  </button>
-                )}
-              </div>
+                  {canPreview && item.setLayers && (
+                    <button
+                      type="button"
+                      onClick={() => handlePreview(cat, item.id)}
+                      disabled={isPreviewActive}
+                      className={`w-full py-1 sm:py-1.5 px-1 min-h-[28px] sm:min-h-[34px] text-[10px] sm:text-[11px] font-bold flex items-center justify-center gap-0.5 sm:gap-1 rounded-md sm:rounded-lg border transition-all active:scale-95 ${
+                        isPreviewActive
+                          ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed'
+                          : 'bg-amber-100/80 hover:bg-amber-200/80 text-amber-900 border-amber-300 cursor-pointer shadow-sm'
+                      }`}
+                    >
+                      <Star size={10} /> Preview Set
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Shelf Base Trim / Wooden Oak Ledge */}
+              <div className="w-full h-1.5 mt-1.5 rounded-full bg-gradient-to-r from-[#d9cbb6] via-[#eee3d1] to-[#d9cbb6] shadow-sm shrink-0" />
             </div>
           );
         })}
@@ -628,10 +644,10 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
   // Shared 3D Quantum Cyber Podium & Spotlight Box
   const renderAvatarShowcase = (isDesktop: boolean) => (
     <div
-      className={`relative w-full bg-[#0a0f1d] overflow-hidden flex flex-col justify-between border-4 border-slate-800 shadow-[0_20px_50px_rgba(15,20,34,0.3)] ${
+      className={`relative w-full bg-[#0a0f1d] overflow-hidden flex flex-col justify-between ${
         isDesktop
-          ? 'h-[380px] xl:h-[430px] rounded-[2rem]'
-          : 'h-[36vh] min-h-[240px] max-h-[300px] border-b border-t-0 border-x-0'
+          ? 'h-full flex-1'
+          : 'h-[36vh] min-h-[240px] max-h-[300px] border-b border-sky-950/40'
       }`}
     >
       {/* Background Math Grid Texture */}
@@ -788,30 +804,64 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
 
 
       {/* ══════════════════════════════════════════════════════════════
-          DESKTOP & LAPTOP VIEW (xl screens and wider)
-          Faithful to original desktop structure, with the new Cyber-Podium & Spotlight
+          TABLET, LAPTOP & DESKTOP VIEW (md screens and wider, >= 768px)
+          Seamless full-screen dark studio with side-by-side layout:
+          Left Smart Wardrobe Closet + Right Live Cyber-Podium Showcase
          ══════════════════════════════════════════════════════════════ */}
-      <div className="hidden xl:flex h-full w-full items-center justify-center p-4 lg:p-6 overflow-hidden">
-        <div className="relative w-full max-w-6xl h-[80vh] max-h-[740px] rounded-[2rem] p-6 lg:p-7 bg-gradient-to-br from-white via-sky-50/30 to-white border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.05)] flex flex-row gap-8 overflow-hidden">
-          {/* Subtle ambient blur accents */}
-          <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/40 to-transparent" />
-            <div className="absolute -top-36 -right-36 w-88 h-88 bg-blue-100/40 rounded-full blur-3xl" />
-            <div className="absolute -bottom-36 -left-36 w-88 h-88 bg-purple-100/30 rounded-full blur-3xl" />
-          </div>
+      <div className="hidden md:flex h-full w-full bg-[#0a0f1d] overflow-hidden relative select-none">
+        {/* Ambient Background Math Grid Texture */}
+        <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none z-0" />
 
-          {/* Left Column: Item Grid & Controls */}
-          <div className="flex flex-col h-full min-h-0 relative z-10 flex-1 max-w-[620px]">
-            {/* Header: Name left, XP & Reset right */}
-            <div className="mb-4 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-2xl font-display font-bold text-[#0a1628] tracking-tight truncate">
-                  {studentDisplayName}
-                </h2>
-                <p className="text-sm text-slate-400 font-medium">Customize your avatar's look here!</p>
+        {/* Floating Math Glyphs */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+          {FLOATING_GLYPHS.map((glyph, i) => (
+            <span
+              key={i}
+              className={`absolute text-sky-400/20 ${glyph.size} ${glyph.animClass}`}
+              style={{
+                top: glyph.top,
+                left: glyph.left,
+                right: glyph.right,
+                animationDelay: glyph.delay,
+              }}
+            >
+              {glyph.symbol}
+            </span>
+          ))}
+        </div>
+
+        {/* Outer Flex Container: Left panel (wardrobe) + Right panel (avatar stage) */}
+        <div className="relative z-10 w-full h-full flex items-center justify-between p-3 sm:p-4 md:p-4 lg:p-6 xl:p-8 pb-24 md:pb-24 lg:pb-6 xl:pb-8 gap-3 sm:gap-4 md:gap-4 lg:gap-6 xl:gap-8 overflow-hidden">
+          {/* Left Column: Warm Scandinavian Light Oak Wooden Closet & Bookshelf Container */}
+          <div className="w-[360px] md:w-[380px] lg:w-[460px] xl:w-[520px] 2xl:w-[580px] h-full max-h-[840px] rounded-[2.25rem] bg-gradient-to-b from-[#fcf9f4] via-[#f7f2ea] to-[#eee4d6] border-2 border-[#d9cab4] shadow-[0_25px_60px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(180,155,130,0.25)] flex flex-col overflow-hidden shrink-0 relative">
+            {/* Closet Interior Ceiling Canopy & Ambient Warm LED Strip Light */}
+            <div className="w-full relative shrink-0">
+              <div className="h-1.5 w-full bg-gradient-to-r from-amber-400/20 via-amber-300/85 to-amber-400/20 shadow-[0_0_14px_rgba(245,158,11,0.45)]" />
+              <div className="absolute top-1.5 inset-x-0 h-4 bg-gradient-to-b from-amber-300/10 to-transparent pointer-events-none" />
+            </div>
+
+            {/* Closet Crown Header: Polished Wooden Nameplate & Status */}
+            <div className="px-3.5 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between border-b border-[#dfd2be] bg-[#fbf7f0]/90 backdrop-blur-md shrink-0">
+              <div className="min-w-0 pr-1.5 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-amber-400/25 to-orange-400/15 border border-amber-500/40 flex items-center justify-center text-amber-800 shadow-sm shrink-0">
+                    <Shirt size={15} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h2 className="text-sm sm:text-base font-display font-black text-amber-950 tracking-tight truncate">
+                        {studentDisplayName}&apos;s Closet
+                      </h2>
+                      <span className="hidden xl:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider uppercase bg-amber-100 border border-amber-300 text-amber-800 shrink-0">
+                        Wardrobe
+                      </span>
+                    </div>
+                    <p className="text-[10px] sm:text-[11px] text-amber-800/70 font-semibold truncate">Handcrafted Wooden Shelves</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 {isDevMode && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -819,59 +869,101 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                         type="button"
                         onClick={handleResetForTesting}
                         disabled={purchasingItemId === 'resetting'}
-                        className="flex items-center justify-center bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 p-2 rounded-lg transition-colors border border-slate-200 cursor-pointer"
+                        className="flex items-center justify-center bg-[#f2e9dc] hover:bg-red-50 text-amber-800 hover:text-red-600 p-2 rounded-xl transition-colors border border-[#d9cab4] cursor-pointer"
+                        title="Reset (Dev)"
                       >
                         <RotateCcw size={14} />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="bg-slate-900 text-white border border-slate-700">
+                    <TooltipContent side="bottom" className="bg-amber-950 text-white border border-amber-800 text-xs">
                       Reset (Test)
                     </TooltipContent>
                   </Tooltip>
                 )}
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={handleRandomize}
+                      className="p-2 rounded-xl bg-[#f2e9dc] hover:bg-[#ebe0cf] text-amber-900 border border-[#d9cab4] transition-all active:scale-95 cursor-pointer shadow-sm"
+                      aria-label="Surprise Outfit"
+                    >
+                      <Dices size={16} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="bg-amber-950 text-white border border-amber-800 text-xs">
+                    Surprise Outfit
+                  </TooltipContent>
+                </Tooltip>
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
                       onClick={onNavigateToModules}
-                      className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg px-2.5 py-1 shadow-sm flex items-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+                      className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md shadow-orange-500/25 active:scale-95 transition-all cursor-pointer"
                     >
-                      <ShoppingBag className="text-white shrink-0" size={13} />
-                      <span className="text-white text-sm font-black">{currentXP} XP</span>
+                      <Zap className="fill-white" size={13} />
+                      <span>{currentXP} XP</span>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-slate-900 text-white border border-slate-700">
+                  <TooltipContent side="bottom" className="bg-amber-950 text-white border border-amber-800 text-xs">
                     Earn more XP from lessons!
                   </TooltipContent>
                 </Tooltip>
               </div>
             </div>
 
+            {/* Closet Hanging Rod & Category Hangers */}
             <Tabs.Root
               value={activeCategory}
               onValueChange={v => setActiveCategory(memberOf(TAB_CATEGORIES, v, 'top'))}
               className="flex flex-col flex-1 min-h-0"
             >
-              {/* Category Pill Bar */}
-              <Tabs.List className="flex flex-nowrap shrink-0 justify-start space-x-1.5 mb-3.5 bg-white shadow-sm p-1 rounded-full border border-slate-100 w-fit overflow-x-auto max-w-full scrollbar-hide">
-                {categories.map(cat => (
-                  <Tabs.Trigger
-                    key={cat.id}
-                    value={cat.id}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-[13px] transition-all outline-none whitespace-nowrap cursor-pointer ${
-                      cat.id === 'exclusive'
-                        ? 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-500 data-[state=active]:text-white [&_svg]:data-[state=active]:text-white text-amber-600'
-                        : 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-sky-500 data-[state=active]:text-white text-slate-500'
-                    }`}
-                  >
-                    {cat.icon}
-                    {cat.label}
-                  </Tabs.Trigger>
-                ))}
-              </Tabs.List>
+              {/* Closet Hanging Rail & Hanger Tabs */}
+              <div className="px-4 pt-2.5 pb-2 border-b border-[#dfd2be] bg-[#f8f3eb]/95 shrink-0 relative">
+                {/* Polished Brass Hanging Rail with brackets */}
+                <div className="relative mb-2 flex items-center">
+                  {/* Left Wall Bracket */}
+                  <div className="w-2.5 h-3.5 rounded-l bg-gradient-to-r from-amber-500 to-amber-700 border border-amber-600/50 shadow-sm shrink-0" />
+                  {/* Brass Hanging Rail */}
+                  <div className="flex-1 h-2 bg-gradient-to-b from-[#f2ddb3] via-[#fff7e8] to-[#dfba78] shadow-[0_2px_4px_rgba(160,120,70,0.25)] relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent opacity-90" />
+                  </div>
+                  {/* Right Wall Bracket */}
+                  <div className="w-2.5 h-3.5 rounded-r bg-gradient-to-l from-amber-500 to-amber-700 border border-amber-600/50 shadow-sm shrink-0" />
+                </div>
 
-              {/* Scrollable Item Grid */}
-              <div className="flex-1 overflow-y-auto min-h-0 pb-4 scrollbar-hide px-2 -mx-2">
+                {/* Hanger-style Tabs */}
+                <Tabs.List className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-0.5">
+                  {categories.map(cat => {
+                    const isActive = activeCategory === cat.id;
+                    return (
+                      <Tabs.Trigger
+                        key={cat.id}
+                        value={cat.id}
+                        className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all outline-none whitespace-nowrap min-h-[34px] cursor-pointer ${
+                          isActive
+                            ? cat.id === 'exclusive'
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30 scale-[1.02] border border-amber-400 ring-1 ring-amber-400/40'
+                              : 'bg-gradient-to-r from-amber-600 via-amber-700 to-orange-600 text-white shadow-md shadow-amber-600/30 scale-[1.02] border border-amber-500 ring-1 ring-amber-500/40'
+                            : 'text-amber-900/80 hover:text-amber-950 hover:bg-[#ede3d4] border border-transparent'
+                        }`}
+                      >
+                        {cat.icon}
+                        <span>{cat.label}</span>
+                      </Tabs.Trigger>
+                    );
+                  })}
+                </Tabs.List>
+              </div>
+
+              {/* Scrollable Wooden Closet Shelves with textured oak backing */}
+              <div className="flex-1 overflow-y-auto min-h-0 p-4 scrollbar-hide bg-[#f6efe5] bg-[radial-gradient(#dfceb7_1.5px,transparent_1.5px)] [background-size:18px_18px] relative shadow-inner">
+                {/* Subtle interior vertical divider/shadow */}
+                <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-amber-950/5 to-transparent pointer-events-none" />
+                <div className="absolute inset-y-0 right-0 w-3 bg-gradient-to-l from-amber-950/5 to-transparent pointer-events-none" />
                 {categories.map(cat => (
                   <Tabs.Content key={cat.id} value={cat.id} className="outline-none h-full">
                     {renderItemGrid(cat.id)}
@@ -879,83 +971,177 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                 ))}
               </div>
             </Tabs.Root>
+
+            {/* Wooden Closet Bottom Drawer / Action Bar */}
+            <div className="p-4 bg-gradient-to-b from-[#f4ece0] to-[#e8decb] border-t-2 border-[#d9cab4] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] shrink-0 relative">
+              {/* Polished Brass Drawer Pull Bar Trim */}
+              <div className="w-full flex justify-center mb-2.5">
+                <div className="w-16 h-1.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-200 to-amber-400 shadow-[0_1px_3px_rgba(180,120,50,0.35)]" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={!hasUnsavedChanges || isSaving}
+                  className="h-11 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-[#d9cab4] bg-[#faf6f0] text-amber-950 hover:bg-[#f0e6d6] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shadow-sm"
+                  title="Revert all unsaved changes"
+                >
+                  <RotateCcw size={15} />
+                  <span>RESET AVATAR</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving || !hasUnsavedChanges || isPreviewActive}
+                  className={`h-11 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] ${
+                    hasUnsavedChanges && !isPreviewActive
+                      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white shadow-lg shadow-blue-500/30 hover:brightness-105 border border-blue-400/30'
+                      : 'bg-[#e2d6c3] text-amber-950/40 border border-[#d4c5af]'
+                  }`}
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="animate-spin-slow">
+                        <Save size={15} />
+                      </div>
+                      <span>SAVING...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={15} />
+                      <span>SAVE CHANGES</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Right Column: Avatar Preview with Cyber-Podium & Save Button */}
-          <div className="flex flex-col gap-3 relative z-10 w-[350px] shrink-0 self-center">
-            {renderAvatarShowcase(true)}
+          {/* Right Column: Full-Stage Cyber-Podium Live Avatar Showcase */}
+          <div className="flex-1 h-full max-h-[820px] relative flex flex-col justify-between rounded-3xl overflow-hidden border border-sky-500/20 bg-[#0a0f1d]/60 backdrop-blur-sm shadow-2xl">
+            {/* Top Right Live Preview Indicator */}
+            <div className="p-5 flex items-center justify-between z-30 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+                <span className="text-xs font-bold text-sky-300/90 uppercase tracking-wider">Live Hologram Stage</span>
+              </div>
+            </div>
 
-            {/* Desktop Save Button */}
-            <div className="h-[48px]">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving || !hasUnsavedChanges || isPreviewActive}
-                className={`w-full h-full rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  hasUnsavedChanges
-                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white shadow-lg shadow-blue-500/30 hover:brightness-105 active:scale-[0.98]'
-                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
-                }`}
-              >
-                {isSaving ? (
-                  <>
-                    <div className="animate-spin-slow">
-                      <Save size={16} />
-                    </div>
-                    <span>Saving...</span>
-                  </>
-                ) : hasUnsavedChanges ? (
-                  <>
-                    <Save size={16} />
-                    <span>Save Profile Avatar</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    <span>Save Profile Avatar</span>
-                  </>
+            {/* Volumetric Spotlight Beams */}
+            <div
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] max-w-[460px] h-full pointer-events-none z-0 animate-beam-pulse"
+              style={{
+                clipPath: 'polygon(30% 0%, 70% 0%, 94% 100%, 6% 100%)',
+                background:
+                  'linear-gradient(to bottom, rgba(56, 189, 248, 0.32) 0%, rgba(59, 130, 246, 0.14) 48%, rgba(10, 15, 29, 0) 100%)',
+              }}
+            />
+            <div
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-[50%] max-w-[240px] h-[85%] pointer-events-none z-0 blur-[2px]"
+              style={{
+                clipPath: 'polygon(38% 0%, 62% 0%, 82% 100%, 18% 100%)',
+                background:
+                  'linear-gradient(to bottom, rgba(255, 255, 255, 0.36) 0%, rgba(186, 230, 253, 0.12) 45%, transparent 100%)',
+              }}
+            />
+
+            {/* Avatar Center Stage */}
+            <div className="flex-1 relative flex items-center justify-center z-20 min-h-0">
+              {/* 3D Cyber Podium Platform */}
+              <div className="absolute bottom-4 md:bottom-6 left-1/2 -translate-x-1/2 w-[220px] md:w-[250px] lg:w-[280px] 2xl:w-[320px] flex flex-col items-center pointer-events-none z-10">
+                {/* Ambient Floor Glow */}
+                <div className="absolute -bottom-3 w-[240px] md:w-[270px] lg:w-[300px] h-[40px] bg-sky-400/30 blur-2xl rounded-full" />
+
+                {/* Platform Disc Top */}
+                <div className="w-full h-[32px] md:h-[36px] lg:h-[40px] rounded-[100%] bg-gradient-to-b from-[#2a3859] via-[#1e2942] to-[#121a2d] border-2 border-sky-400/80 shadow-[0_0_30px_rgba(56,189,248,0.5)] flex items-center justify-center relative z-20">
+                  <div className="w-[84%] h-[20px] md:h-[22px] lg:h-[24px] rounded-[100%] border border-sky-300/40 bg-sky-500/20" />
+                </div>
+
+                {/* Platform Cylinder Base Depth */}
+                <div className="w-[98%] h-[16px] md:h-[18px] lg:h-[20px] -mt-[14px] md:-mt-[16px] lg:-mt-[18px] bg-gradient-to-b from-[#1b253b] via-[#111827] to-[#0a0f1d] rounded-b-[100%] border-x-2 border-b-2 border-sky-500/30 shadow-lg relative z-10" />
+              </div>
+
+              {/* Floating Avatar */}
+              <div className="relative w-full h-[85%] max-h-[500px] flex justify-center items-center animate-avatar-float z-20 mb-6 md:mb-10">
+                <CompositeAvatar layers={equipped} className="w-full h-full absolute inset-0 z-20 scale-[1.05] md:scale-[1.14] lg:scale-[1.2] 2xl:scale-[1.3] origin-center" />
+
+                <AnimatePresence>
+                  {avatarSpeech && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.85 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.85 }}
+                      transition={{ duration: 0.25 }}
+                      className="absolute -top-10 left-1/2 -translate-x-1/2 z-30 bg-white text-slate-800 px-4 py-1.5 rounded-full shadow-xl border-2 border-sky-300 whitespace-nowrap font-black text-xs max-w-[240px] text-center"
+                    >
+                      {avatarSpeech}
+                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {isPreviewActive && previewCountdown > 0 && (
+                  <motion.div
+                    key={previewCountdown}
+                    initial={{ scale: 1.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-amber-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-lg shadow-lg border-2 border-amber-300"
+                  >
+                    {previewCountdown}
+                  </motion.div>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          MOBILE & TABLET VIEW (< xl screens)
-          Split-screen layout with compact items and active-tab-label-expand
+          MOBILE VIEW (< md screens, < 768px)
+          Compact top dark stage with bottom slide-out wardrobe chest drawer
          ══════════════════════════════════════════════════════════════ */}
-      <div className="xl:hidden h-full w-full flex flex-col overflow-hidden bg-slate-950">
+      <div className="md:hidden h-full w-full flex flex-col overflow-hidden bg-[#0a0f1d] p-0">
         {/* Top Pinned Avatar Stage */}
         {renderAvatarShowcase(false)}
 
-        {/* Bottom Wardrobe Drawer */}
-        <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-t-[1.75rem] border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-8px_30px_rgba(0,0,0,0.15)] flex flex-col relative z-20 overflow-hidden">
-          {/* Tactile Drag Handle */}
-          <div className="w-full pt-2 pb-1 flex justify-center shrink-0">
-            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full" />
+        {/* Bottom Wardrobe Closet Chest Drawer */}
+        <div className="flex-1 min-h-0 bg-gradient-to-b from-[#fcf9f4] via-[#f7f2ea] to-[#eee4d6] rounded-t-[2rem] border-t-2 border-[#d9cab4] shadow-[0_-12px_40px_rgba(0,0,0,0.3)] flex flex-col relative z-20 overflow-hidden">
+          {/* Polished Brass Closet Drawer Pull Bar */}
+          <div className="w-full pt-2.5 pb-1 flex justify-center shrink-0">
+            <div className="w-14 h-1.5 bg-gradient-to-r from-amber-400 via-amber-200 to-amber-400 rounded-full shadow-[0_1px_3px_rgba(180,120,50,0.35)]" />
           </div>
+
+          {/* Ambient warm light strip beneath handle */}
+          <div className="h-0.5 w-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent mb-1" />
 
           <Tabs.Root
             value={activeCategory}
             onValueChange={v => setActiveCategory(memberOf(TAB_CATEGORIES, v, 'top'))}
             className="flex-1 min-h-0 flex flex-col"
           >
-            {/* Sticky Category Bar: Active tab expands its label dynamically! */}
-            <div className="px-2.5 sm:px-4 py-1.5 shrink-0 border-b border-slate-100 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-10">
-              <Tabs.List className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-hide py-1">
+            {/* Sticky Category Bar: Brass hanging rail and hanger tabs */}
+            <div className="px-2.5 sm:px-4 pt-1 pb-1.5 shrink-0 border-b border-[#dfd2be] bg-[#f8f3eb]/95 backdrop-blur-md z-10">
+              {/* Mini brass hanging rail */}
+              <div className="flex items-center mb-1.5">
+                <div className="w-2 h-2.5 rounded-l bg-amber-600 shrink-0" />
+                <div className="flex-1 h-1.5 bg-gradient-to-b from-[#f2ddb3] via-[#fff7e8] to-[#dfba78] shadow-sm" />
+                <div className="w-2 h-2.5 rounded-r bg-amber-600 shrink-0" />
+              </div>
+
+              <Tabs.List className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-hide py-0.5">
                 {categories.map(cat => {
                   const isActive = activeCategory === cat.id;
                   return (
                     <Tabs.Trigger
                       key={cat.id}
                       value={cat.id}
-                      className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all outline-none whitespace-nowrap min-h-[36px] cursor-pointer ${
+                      className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all outline-none whitespace-nowrap min-h-[34px] cursor-pointer ${
                         isActive
                           ? cat.id === 'exclusive'
-                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/30 scale-[1.02]'
-                            : 'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-sm shadow-blue-500/30 scale-[1.02]'
-                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/30 scale-[1.02] border border-amber-400'
+                            : 'bg-gradient-to-r from-amber-600 via-amber-700 to-orange-600 text-white shadow-sm shadow-amber-600/30 scale-[1.02] border border-amber-500'
+                          : 'text-amber-900/80 hover:text-amber-950 hover:bg-[#ede3d4]'
                       }`}
                     >
                       {cat.icon}
@@ -969,8 +1155,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
               </Tabs.List>
             </div>
 
-            {/* Scrollable Compact Items Grid */}
-            <div className="flex-1 overflow-y-auto min-h-0 px-2.5 sm:px-4 py-2 scrollbar-hide">
+            {/* Scrollable Wooden Closet Shelves with textured oak backing */}
+            <div className="flex-1 overflow-y-auto min-h-0 px-2.5 sm:px-4 py-2 scrollbar-hide bg-[#f6efe5] bg-[radial-gradient(#dfceb7_1.5px,transparent_1.5px)] [background-size:18px_18px]">
               {categories.map(cat => (
                 <Tabs.Content key={cat.id} value={cat.id} className="outline-none h-full">
                   {renderItemGrid(cat.id)}
@@ -979,37 +1165,44 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
             </div>
           </Tabs.Root>
 
-          {/* Sticky Bottom Save Action Bar */}
-          <div className="p-2.5 sm:p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 shrink-0">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving || !hasUnsavedChanges || isPreviewActive}
-              className={`w-full h-11 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                hasUnsavedChanges
-                  ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white shadow-md shadow-blue-500/30 hover:brightness-105 active:scale-[0.99]'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
-              }`}
-            >
-              {isSaving ? (
-                <>
-                  <div className="animate-spin-slow">
+          {/* Sticky Bottom Wooden Action Bar — Elevated above mobile bottom navigation bar */}
+          <div className="pt-2.5 px-3 pb-20 sm:pb-24 lg:pb-3.5 bg-gradient-to-b from-[#f4ece0] to-[#e8decb] border-t-2 border-[#d9cab4] shrink-0">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={!hasUnsavedChanges || isSaving}
+                className="h-11 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 border border-[#d9cab4] bg-[#faf6f0] text-amber-950 hover:bg-[#f0e6d6] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shadow-sm"
+                title="Revert all unsaved changes"
+              >
+                <RotateCcw size={14} />
+                <span>RESET AVATAR</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving || !hasUnsavedChanges || isPreviewActive}
+                className={`h-11 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] ${
+                  hasUnsavedChanges && !isPreviewActive
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500 text-white shadow-md shadow-blue-500/25 hover:brightness-105 border border-blue-400/30'
+                    : 'bg-[#e2d6c3] text-amber-950/40 border border-[#d4c5af]'
+                }`}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="animate-spin-slow">
+                      <Save size={15} />
+                    </div>
+                    <span>SAVING...</span>
+                  </>
+                ) : (
+                  <>
                     <Save size={15} />
-                  </div>
-                  <span>Saving Avatar...</span>
-                </>
-              ) : hasUnsavedChanges ? (
-                <>
-                  <Sparkles size={15} className="fill-white" />
-                  <span>Save Changes to Avatar</span>
-                </>
-              ) : (
-                <>
-                  <Save size={15} />
-                  <span>Avatar Saved</span>
-                </>
-              )}
-            </button>
+                    <span>SAVE CHANGES</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

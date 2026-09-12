@@ -97,7 +97,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0.15 : 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="relative w-full mt-0 rounded-3xl md:rounded-[2rem] p-4 sm:p-5 md:p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg shadow-sm overflow-visible"
+      className="relative w-full mt-0 rounded-3xl md:rounded-[2rem] p-5 sm:p-6 md:p-7 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg shadow-sm overflow-visible"
     >
       {/* Background elements wrapped in overflow-hidden */}
       <div className="absolute inset-0 overflow-hidden rounded-3xl md:rounded-[2rem] pointer-events-none">
@@ -125,24 +125,24 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           </div>
 
           {/* Heading */}
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1 tracking-tight leading-[1.15]">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1.5 tracking-tight leading-[1.15]">
             {getGreeting()}, {userName}!
           </h1>
 
           {/* Subtitle */}
-          <p className="text-slate-500 mb-1 text-xs sm:text-sm font-body font-bold leading-snug">
+          <p className="text-slate-500 mb-2 sm:mb-2.5 text-xs sm:text-sm font-body font-bold leading-snug">
             Today is a great day to move one step forward in math mastery.
           </p>
           <p className="hidden sm:block text-xs text-slate-400 font-body mb-3">
             Focus on your next recommended lesson and keep your momentum.
           </p>
 
-          {/* Continue Learning Action Button */}
+          {/* Continue Learning Action Button — Toned Down Sophisticated Indigo */}
           <motion.button
             onClick={onContinueLearning}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="mt-1 sm:mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-body font-bold text-xs sm:text-sm shadow-md shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex items-center gap-1.5 sm:gap-2 group w-fit min-h-[38px] sm:min-h-[44px] active:scale-95"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="mt-2.5 sm:mt-3 bg-gradient-to-r from-indigo-700 to-[#5d5195] hover:from-indigo-600 hover:to-[#524687] text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-full font-body font-bold text-xs sm:text-sm shadow-md shadow-indigo-950/20 border border-white/20 transition-all flex items-center gap-2 group w-fit min-h-[38px] sm:min-h-[44px] cursor-pointer active:scale-95"
           >
             <span>Continue Learning</span>
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform stroke-[2.5]" />
@@ -232,12 +232,12 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
 
       {/* Uncropped Headroom Avatar Container across Mobile, Tablet, and Desktop (Legs cropped at bottom border only) */}
       <div
-        className="absolute right-0 sm:right-2 md:right-4 lg:right-8 bottom-0 w-[120px] sm:w-[150px] md:w-[175px] lg:w-[230px] xl:w-[250px] pointer-events-none z-20"
+        className="absolute right-0 sm:right-2 md:right-4 lg:right-8 bottom-0 w-[130px] sm:w-[160px] md:w-[188px] lg:w-[245px] xl:w-[265px] pointer-events-none z-20"
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
       >
         <div className="relative w-full aspect-[4/5] translate-y-[17%] sm:translate-y-[18%] md:translate-y-[16%] lg:translate-y-[15%] drop-shadow-2xl">
-          <Suspense fallback={<Skeleton className="w-full aspect-[4/5] scale-[1.15] lg:scale-[1.18] origin-bottom" aria-label="Loading avatar" />}>
-            <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.15] lg:scale-[1.18] origin-bottom" />
+          <Suspense fallback={<Skeleton className="w-full aspect-[4/5] scale-[1.18] lg:scale-[1.22] origin-bottom" aria-label="Loading avatar" />}>
+            <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.18] lg:scale-[1.22] origin-bottom" />
           </Suspense>
         </div>
       </div>
