@@ -78,7 +78,7 @@ const LearningPath: React.FC<LearningPathProps> = ({
   const learningPathHeading = hasStartedLearning ? 'Continue Learning' : 'Start Learning';
 
   return (
-    <div>
+    <div className="pt-2 sm:pt-3 md:pt-4">
       <div className="flex justify-between items-center mb-4 md:mb-6 px-1">
         <div className="flex items-center gap-2 md:gap-3">
           <div className="w-8 h-8 md:w-10 md:h-10 shrink-0 rounded-xl md:rounded-[14px] bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-inner">
@@ -94,12 +94,14 @@ const LearningPath: React.FC<LearningPathProps> = ({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      {/* Single-row horizontal side scroll on mobile and tablet, grid on desktop */}
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 pb-2.5 pt-1 px-1 -mx-1 scrollbar-none lg:grid lg:grid-cols-3 lg:overflow-visible lg:gap-6 lg:pb-0 lg:mx-0 lg:px-0">
         {modulesWithProgress.map((module, idx) => (
-          <div key={module.id} className="w-full">
+          <div key={module.id} className="w-[235px] sm:w-[265px] shrink-0 snap-start lg:w-full lg:shrink">
             <ModuleFolderCard
               module={module}
               index={idx}
+              compact
               onClick={() => onNavigateToModules?.(module.id)}
               isAtRisk={normalizedRiskTopics.length > 0}
               badgeLabel={module.status !== 'Not Started' ? module.status : undefined}

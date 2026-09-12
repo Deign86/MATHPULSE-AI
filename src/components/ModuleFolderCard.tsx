@@ -26,9 +26,11 @@ interface ModuleFolderCardProps {
   isRecommended?: boolean;
   /** Callback for "Notify Me" on coming_soon modules */
   onNotifyMe?: (moduleId: string) => void;
+  /** Render in compact format (ideal for side-scrolling carousels) */
+  compact?: boolean;
 }
 
-const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable, isRecommended, onNotifyMe }) => {
+const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable, isRecommended, onNotifyMe, compact = false }) => {
   const theme = THEMES[index % THEMES.length];
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
   
@@ -52,16 +54,16 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
       whileHover={isAvailable ? { y: -8 } : undefined}
       onClick={isAvailable ? onClick : undefined}
       onKeyDown={isAvailable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-      className={`relative text-left rounded-2xl md:rounded-[1.4rem] overflow-visible h-full min-h-[185px] md:min-h-[290px] bg-transparent group w-full flex flex-col ${!isAvailable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      className={`relative text-left rounded-2xl md:rounded-[1.4rem] overflow-visible h-full ${compact ? 'min-h-[165px] md:min-h-[220px]' : 'min-h-[185px] md:min-h-[290px]'} bg-transparent group w-full flex flex-col ${!isAvailable ? 'cursor-not-allowed' : 'cursor-pointer'}`}
     >
       {/* FOLDER TAB */}
       <div 
-        className={`absolute top-0 left-3 md:left-4 h-5 md:h-7 w-20 md:w-32 rounded-t-lg md:rounded-t-xl shadow-sm transition-colors duration-300 ${theme.tab}`}
+        className={`absolute top-0 left-3 md:left-4 ${compact ? 'h-4 md:h-5 w-16 md:w-24' : 'h-5 md:h-7 w-20 md:w-32'} rounded-t-lg md:rounded-t-xl shadow-sm transition-colors duration-300 ${theme.tab}`}
       />
 
       {/* FOLDER BODY */}
       <div 
-        className={`relative mt-4 md:mt-6 rounded-2xl md:rounded-[1.4rem] p-3.5 md:p-6 transition-all duration-300 overflow-hidden flex flex-col h-[calc(100%-16px)] md:h-[calc(100%-24px)] flex-1 ${theme.bg} shadow-[0_18px_30px_-20px_rgba(0,0,0,0.45)] group-hover:shadow-[0_24px_40px_-15px_rgba(0,0,0,0.5)]`}
+        className={`relative ${compact ? 'mt-3 md:mt-4 p-3 md:p-4' : 'mt-4 md:mt-6 p-3.5 md:p-6'} rounded-2xl md:rounded-[1.4rem] transition-all duration-300 overflow-hidden flex flex-col h-[calc(100%-16px)] md:h-[calc(100%-24px)] flex-1 ${theme.bg} shadow-[0_18px_30px_-20px_rgba(0,0,0,0.45)] group-hover:shadow-[0_24px_40px_-15px_rgba(0,0,0,0.5)]`}
       >
         {/* SPINE / TOP HIGHLIGHT */}
         <div className="absolute top-0 left-0 right-0 h-1.5 mix-blend-overlay bg-white/40" />
@@ -80,11 +82,11 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
             )}
           </div>
 
-          <h3 className="text-base md:text-[22px] font-display font-black text-white leading-[1.15] md:leading-[1.1] mb-1.5 md:mb-2 drop-shadow-sm pr-4 line-clamp-2">
+          <h3 className={`${compact ? 'text-sm md:text-lg font-display font-black leading-snug mb-1' : 'text-base md:text-[22px] font-display font-black leading-[1.15] md:leading-[1.1] mb-1.5 md:mb-2'} text-white drop-shadow-sm pr-4 line-clamp-2`}>
             {module.title}
           </h3>
 
-          <div className="mb-2 md:mb-3 flex flex-wrap gap-1 md:gap-1.5">
+          <div className={`${compact ? 'mb-1.5 md:mb-2' : 'mb-2 md:mb-3'} flex flex-wrap gap-1 md:gap-1.5`}>
             <span className="rounded-full border border-white/20 bg-black/15 px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-white/95 leading-none">
               {curriculumBadge}
             </span>
@@ -100,11 +102,11 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
             )}
           </div>
 
-          <p className="text-white/85 text-[10px] md:text-[13px] line-clamp-1 md:line-clamp-2 mb-2 md:mb-4 font-medium leading-snug md:leading-relaxed pr-2">
+          <p className={`text-white/85 ${compact ? 'text-[9px] md:text-xs line-clamp-1 mb-1.5' : 'text-[10px] md:text-[13px] line-clamp-1 md:line-clamp-2 mb-2 md:mb-4'} font-medium leading-snug md:leading-relaxed pr-2`}>
             {module.subtitle || module.description || 'Master this module to unlock the next level of your mathematical journey.'}
           </p>
           
-          <div className="mt-auto space-y-2 md:space-y-4">
+          <div className={`mt-auto ${compact ? 'space-y-1.5 md:space-y-2.5' : 'space-y-2 md:space-y-4'}`}>
             {/* Progress Bar */}
             <div>
               <div className="flex justify-between text-white font-bold text-[10px] md:text-[12px] mb-1 md:mb-1.5 drop-shadow-sm">

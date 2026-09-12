@@ -134,22 +134,33 @@
 ## 5. Reference Mobile Dashboard & Bottom Navigation (`MobileBottomNav.tsx`, `HeroBanner.tsx`, `App.tsx`)
 
 ### Layout Architecture Inspired by Tactile Reference UI
-* **Clean Greeting Header**: Positioned at the top of the mobile screen with human typography (`Hello, [Name] 👋` + `Good Morning!/Afternoon!`) without heavy chrome cluttering vertical space.
-* **Asymmetric 2-Column Hero Card (`HeroBanner.tsx`)**:
-  * Left Column: "Continue Learning" pill, active module title (`General Mathematics`), lesson counter (`Lesson 4 of 20`), horizontal progress bar + percentage (`40%`), and a prominent tactile pill button (`Continue ▶`).
-  * Right Column: Dedicated avatar stage where Juan's Qbit stands comfortably with zero collision with text or interactive buttons.
-* **Daily Goals & Assessment Slab (`App.tsx`)**:
-  * Clean white tactile card with orange target emblem, lesson progress indicator (`2 / 5 Lessons`), sleek progress bar, and a quick-action trigger.
-* **Symmetric 2-Column Twin Slabs (`App.tsx`)**:
-  * **XP Coins Card**: Crown icon emblem + "XP Coins" label + large bold tabular-nums score.
-  * **Streak Card**: Flame icon emblem + "Streak" label + large bold tabular-nums "7 Days".
-  * Both slabs trigger the interactive rewards modal on tap.
-* **Secondary "Chat with AI Tutor" Action Card (`App.tsx`)**:
-  * Conversational action card featuring MathPulse indigo gradient, conversational subtitle, "Ask AI Tutor" pill button, and robot mascot emblem on the right.
-* **Mobile Bottom Navigation Bar (`MobileBottomNav.tsx`)**:
-  * 5 primary thumb-accessible destinations: `Home` (Dashboard), `Modules` (Curriculum), `AI Tutor` (elevated gradient center button), `Progress` (Grades), and `Qbit` (Avatar Studio).
-  * Styled with `bg-white/95 dark:bg-slate-900/95 backdrop-blur-md`, `border-t border-slate-200/90`, tactile `active:scale-[0.95]`, and iOS safe area padding (`env(safe-area-inset-bottom)`).
-  * Rendered conditionally on mobile viewports (`lg:hidden`) while preserving the full collapsible desktop sidebar on wide screens (`lg:`).
+* **Restored Soft Semi-Gradient Ambient Theme (`App.tsx`)**:
+  * Replaced flat neutral `#f7f9fc` with a rich ambient gradient (`from-[#f8faff] via-[#f1f5fd] to-[#f5f0fc]`).
+  * Layered soft ambient purple and sky blur orbs with subtle overlay math pattern (`opacity-10 mix-blend-overlay`), eliminating the flat "dirty white" appearance.
+* **Proportional Spacing & Tight Mobile Flow**:
+  * Reduced oversized mobile container padding from `py-6` to `py-2 sm:py-3.5 lg:py-6` and internal vertical gaps from `gap-5` to `gap-2.5 sm:gap-4 lg:gap-8`.
+  * Reduced top spacing on tablet to eliminate the excess forehead padding while maintaining balanced visual hierarchy.
+* **Hero Banner Layout & Avatar Display (`HeroBanner.tsx`)**:
+  * **Desktop / Laptop View (`md:` and above)**: Fully restored to the original desktop layout — spacious horizontal banner with Level/Active pills, full encouragement message, and the original anchored desktop avatar (`w-[150px] lg:w-[270px]`, `clipPath: inset(-100% -50% 0 -50%)`).
+  * **Mobile View (`< md`)**: Kept the approved reference purple card with "Hello, {userName}!", General Mathematics topic, progress bar, white "Continue ▶" pill, and unboxed cropped avatar on the right.
+  * **Closeable & Non-Persistent Assessment Notification**: Added an immediate `(X)` close button to the "Assessment Complete!" speech bubble on desktop and mobile alert, and persisted the dismissal to `localStorage` so it never persistently blocks or covers the hero banner content.
+* **Streamlined Mobile & Tablet Top Bar (`App.tsx`)**:
+  * **Top Left**: Level pill always visible (`Lv {userLevel}`). The XP progress bar is hidden on narrow mobile screens (≤ 350px) to prevent crowded headers and visible on standard screens (≥ 360px) and tablet.
+  * **Top Right**: On mobile (< md), the Profile avatar is removed from the top right because it now resides on the bottom right of the navbar. Calculator and Notification Bell remain. On tablet, Calculator, Notification Bell, and Profile are all present.
+* **Refined Bottom Navigation Bar (`MobileBottomNav.tsx`)**:
+  * **Mobile View (`< md`)**: 5 primary thumb-accessible buttons:
+    1. **Dashboard** (`Home` icon)
+    2. **Modules** (`BookOpen` icon, expandable): Tapping opens a tactile popup with **Modules** and **Assessment** options.
+    3. **AI** (Elevated center purple button): Labeled "AI", highlighted in rich purple gradient, featuring the official avatar AI head (`/avatar/avatar_icon.png`). Tapping expands a popup with **AI Chat** and **Avatar Studio**.
+    4. **Quiz Battle** (`Swords` icon, expandable): Tapping expands a popup with **Quiz Battle** and **Leaderboard**.
+    5. **Profile** (Bottom right): Replaces the assessment button, displaying the student's avatar/photo and opening the profile modal.
+  * **Tablet View (`md:` to `lg:`)**: 7 balanced destinations with the elevated purple **AI** button placed in the exact center:
+    `Dashboard` | `Modules` | `Assessment` | **AI (Center Purple Avatar Head)** | `Quiz Battle` | `Leaderboard` | `Avatar Studio`.
+  * **Desktop View (`lg:`)**: Bottom navigation is completely hidden (`lg:hidden`), preserving the collapsible desktop sidebar.
+* **Start Learning Side-Scroll (`LearningPath.tsx` & `ModuleFolderCard.tsx`)**:
+  * **Compact Cards**: Added `compact` mode to `ModuleFolderCard` with reduced min-heights, compact folder tabs, and tighter typography.
+  * **Single-Row Side Scroll**: On mobile and tablet, module cards are rendered in a single row with smooth horizontal snap-scrolling (`overflow-x-auto snap-x snap-mandatory flex gap-3 sm:gap-4 ... lg:grid lg:grid-cols-3`), avoiding excessive vertical scrolling.
+
 
 ---
 
