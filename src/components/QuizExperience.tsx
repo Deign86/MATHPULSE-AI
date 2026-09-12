@@ -40,7 +40,7 @@ const quizAnimations = `
 `;
 
 const RainStorm: React.FC<{ viewportHeight: number }> = ({ viewportHeight }) => (
-  <div className="absolute inset-0 pointer-events-none z-[250] overflow-hidden flex justify-between bg-slate-900/5">
+  <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden flex justify-between bg-slate-900/5">
     {React.useMemo(() => [...Array(40)].map((_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
@@ -74,7 +74,7 @@ const CSSConfetti: React.FC = () => {
   })), []);
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-[250] overflow-hidden">
+    <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden">
       {confettiPieces.map((piece) => (
         <div
           key={piece.id}
@@ -108,7 +108,7 @@ const DrawSparks: React.FC<{ viewportHeight: number; viewportWidth: number }> = 
   })), [viewportHeight, viewportWidth]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-[250] overflow-hidden flex items-center justify-center">
+    <div className="absolute inset-0 pointer-events-none z-50 overflow-hidden flex items-center justify-center">
       {sparks.map((spark) => (
         <motion.div
           key={spark.id}
@@ -792,7 +792,7 @@ playSound('complete');
      const modalRoot = document.getElementById('modal-root');
 
 const resultModal = (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <style>{quizAnimations}</style>
           {isExcellent && <CSSConfetti />}
           {isGood && <DrawSparks viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />}
@@ -817,12 +817,12 @@ const resultModal = (
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className={`text-xl sm:text-2xl font-black uppercase tracking-tight mb-1 drop-shadow-sm ${
+              className={`text-xl sm:text-2xl font-black uppercase tracking-tight mb-1 drop-shadow-sm text-balance ${
                 isExcellent ? "text-emerald-500" : isGood ? "text-amber-500" : "text-rose-500"
               }`}>
               {isExcellent ? 'EXCELLENT!' : isGood ? 'GOOD JOB!' : 'KEEP TRYING!'}
             </motion.h2>
-            <p className="text-slate-400 font-bold text-[10px] mb-3 uppercase tracking-widest">
+            <p className="text-slate-400 font-bold text-[10px] mb-3 uppercase tracking-widest tabular-nums">
                Quiz Complete • Score: {score}/{questions.length}
             </p>
             
@@ -876,14 +876,14 @@ const resultModal = (
                     setKeysCount(5);
                     setConfettiFired(false);
                   }}
-                 className="w-full h-10 sm:h-11 rounded-2xl text-xs font-black bg-white hover:bg-slate-50 text-purple-600 border-2 border-purple-100"
+                 className="w-full h-10 sm:h-11 rounded-2xl text-xs font-black bg-white hover:bg-slate-50 text-purple-600 border-2 border-purple-100 transition-all motion-reduce:transition-none active:scale-[0.98]"
                >
                  RETAKE QUIZ
                </Button>
                <Button
                  size="lg"
                  onClick={handleFinish}
-                 className="w-full h-10 sm:h-11 rounded-2xl text-xs font-black bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200"
+                 className="w-full h-10 sm:h-11 rounded-2xl text-xs font-black bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-200 transition-all motion-reduce:transition-none active:scale-[0.98]"
                >
                  FINISH
                </Button>
@@ -901,14 +901,14 @@ return (
 
 {/* Calculator via portal to escape z-index context */}
         {showCalculator && createPortal(
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="fixed right-6 top-1/2 -translate-y-1/2 z-[9999] w-64">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="fixed right-6 top-1/2 -translate-y-1/2 z-50 w-64">
             <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
               <div className="flex items-center justify-between mb-2 px-1">
                 <h4 className="text-xs font-bold text-[#0a1628] flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /></svg>
                   Calculator
                 </h4>
-                <button onClick={() => setShowCalculator(false)} className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors"><X size={12} /></button>
+                <button onClick={() => setShowCalculator(false)} aria-label="Close calculator" className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-colors motion-reduce:transition-none active:scale-[0.98]"><X size={12} /></button>
               </div>
               <ScientificCalculator isOpen={true} onClose={() => setShowCalculator(false)} inline />
             </div>
@@ -918,7 +918,7 @@ return (
 
         {/* No Lives Modal */}
         {showNoLivesModal && createPortal(
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -931,16 +931,16 @@ return (
               >
                 <HeartCrack className="w-10 h-10 text-rose-500" />
               </motion.div>
-              <h2 className="text-2xl font-black text-slate-800 mb-3">Out of Lives!</h2>
+              <h2 className="text-2xl font-black text-slate-800 mb-3 text-balance">Out of Lives!</h2>
               <p className="text-slate-500 text-sm mb-4">
                 Your hearts have run out. You can wait for them to refill or head back and review your lessons in the meantime.
               </p>
-              <div className="flex items-center justify-center gap-2 mb-2 text-rose-500 font-bold">
+              <div className="flex items-center justify-center gap-2 mb-2 text-rose-500 font-bold tabular-nums">
                 <img src="/icons/quiz_heart.png" alt="Hearts" className="w-5 h-5" />
                 <span>0 / 15 hearts</span>
               </div>
               <p className="text-slate-400 text-xs mb-4">
-                Next heart in: <span className="font-bold text-slate-600">
+                Next heart in: <span className="font-bold text-slate-600 tabular-nums">
                   {Math.floor(nextHeartCountdown / 60000)}:{(Math.floor((nextHeartCountdown % 60000) / 1000)).toString().padStart(2, '0')}
                 </span> (15 minutes per heart)
               </p>
@@ -951,10 +951,10 @@ return (
                   - Recovery rate: 1 heart per 15 minutes, up to max (15 hearts).
                   - Until backend is ready, the countdown is UI-only and hearts don't actually recover. */}
               <div className="flex flex-col gap-2">
-                <Button onClick={handleFinish} className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-full">
+                <Button onClick={handleFinish} className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-full transition-all motion-reduce:transition-none active:scale-[0.98]">
                   Exit Quiz
                 </Button>
-                <Button onClick={() => { setShowNoLivesModal(false); }} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full">
+                <Button onClick={() => { setShowNoLivesModal(false); }} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-all motion-reduce:transition-none active:scale-[0.98]">
                   Review Lessons
                 </Button>
               </div>
@@ -973,27 +973,27 @@ return (
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[200] pointer-events-none flex flex-col items-center justify-center"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center justify-center"
           >
             <div className="bg-white/95 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.15)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
               <img src="/mascot/modules_avatar.png" alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.15)]" />
-              <h2 className="text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest text-emerald-500">Correct!</h2>
+              <h2 className="text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest text-emerald-500 text-balance">Correct!</h2>
               <div className="flex flex-col items-center gap-3 w-full justify-center">
-                <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full font-bold border border-emerald-500/30">
+                <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full font-bold border border-emerald-500/30 tabular-nums">
                    <span>+ {(eliminatedByHint[currentQuestionIndex] || []).length > 0 ? 5 : 10} XP</span>
                 </div>
                 {achievementPill === 'streak' && (
-                  <div className="flex items-center gap-2 bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-full text-sm font-bold border border-orange-500/30">
+                  <div className="flex items-center gap-2 bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-full text-sm font-bold border border-orange-500/30 tabular-nums">
                     <Flame size={14} /> Streak Started!
                   </div>
                 )}
                 {achievementPill === 'multiplier2' && (
-                  <div className="flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-bold border border-amber-500/30">
+                  <div className="flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-bold border border-amber-500/30 tabular-nums">
                     <Zap size={14} /> Multiplier ×2!
                   </div>
                 )}
                 {achievementPill === 'multiplier3' && (
-                  <div className="flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-bold border border-amber-500/30">
+                  <div className="flex items-center gap-2 bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-bold border border-amber-500/30 tabular-nums">
                     <Zap size={14} /> Multiplier ×3!
                   </div>
                 )}
@@ -1003,9 +1003,9 @@ return (
         )}
       </AnimatePresence>
 
-      <div className="fixed inset-0 z-[100] h-screen w-full flex flex-col bg-slate-50 overflow-hidden">
+      <div className="fixed inset-0 z-40 h-dvh w-full flex flex-col bg-slate-50 overflow-hidden">
         {/* Sticky Header */}
-        <header className="relative shrink-0 flex flex-col items-center justify-start px-4 pt-4 sm:pt-6 pb-6 z-[60] shadow-md overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-400 rounded-b-[32px] sm:rounded-b-[40px] min-h-[110px] sm:min-h-[130px]">
+        <header className="relative shrink-0 flex flex-col items-center justify-start px-4 pt-4 sm:pt-6 pb-6 z-40 shadow-md overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-400 rounded-b-[32px] sm:rounded-b-[40px] min-h-[110px] sm:min-h-[130px]">
           <div className="absolute inset-0 z-0 pointer-events-none">
              <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-2xl"></div>
              <div className="absolute bottom-0 right-0 w-80 h-80 bg-white opacity-10 rounded-full translate-x-1/3 translate-y-1/3 blur-3xl"></div>
@@ -1013,7 +1013,7 @@ return (
 
           <div className="w-full max-w-7xl flex items-center justify-between relative z-10 mb-3 sm:mb-4 md:mb-6">
             <div className="flex-1 flex items-center gap-1 sm:gap-2">
-               <div className="flex items-center gap-1 bg-white/20 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-white text-xs sm:text-sm font-bold">
+               <div className="flex items-center gap-1 bg-white/20 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-white text-xs sm:text-sm font-bold tabular-nums">
                  <Clock size={14} className="shrink-0" /> {formatTime(timeRemaining)}
                </div>
             </div>
@@ -1027,14 +1027,14 @@ return (
             </div>
 
             <div className="flex-1 flex justify-end gap-1 sm:gap-2 md:gap-3 relative pointer-events-auto">
-               <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+               <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} aria-label={isAudioEnabled ? "Mute sound" : "Unmute sound"} className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-all motion-reduce:transition-none active:scale-[0.98] shadow-sm border border-white/10">
                  {isAudioEnabled ? <Volume2 size={16} className="sm:hidden" /> : <VolumeX size={16} className="sm:hidden" />}
                  {isAudioEnabled ? <Volume2 size={20} className="hidden sm:block" /> : <VolumeX size={20} className="hidden sm:block" />}
                </button>
-                <button onClick={toggleFullscreen} className="hidden sm:flex w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+                <button onClick={toggleFullscreen} aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} className="hidden sm:flex w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-all motion-reduce:transition-none active:scale-[0.98] shadow-sm border border-white/10">
                   {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
                 </button>
-               <button onClick={() => setShowLeaveConfirm(true)} className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+               <button onClick={() => setShowLeaveConfirm(true)} aria-label="Exit quiz" className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-all motion-reduce:transition-none active:scale-[0.98] shadow-sm border border-white/10">
                  <X size={18} className="sm:hidden" />
                  <X size={20} className="hidden sm:block" />
                </button>
@@ -1052,28 +1052,29 @@ return (
         </header>
 
         {/* Sticky Stats Bar with Nav Arrows */}
-        <div className="w-full max-w-[54rem] mx-auto shrink-0 flex items-center justify-between px-2 sm:px-4 md:px-6 py-2 sm:py-3 z-[50] relative mt-4 sm:mt-6 md:mt-8">
+        <div className="w-full max-w-[54rem] mx-auto shrink-0 flex items-center justify-between px-2 sm:px-4 md:px-6 py-2 sm:py-3 z-40 relative mt-4 sm:mt-6 md:mt-8">
            <button
              onClick={() => setViewIndex(prev => Math.max(0, prev - 1))}
              disabled={viewIndex === 0}
-             className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 shrink-0 rounded-full flex items-center justify-center shadow-md border-2 transition-all ${viewIndex === 0 ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-purple-600 border-purple-100 hover:bg-purple-50 hover:border-purple-200 hover:scale-105 active:scale-95'}`}
+             aria-label="Previous question"
+             className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 shrink-0 rounded-full flex items-center justify-center shadow-md border-2 transition-all motion-reduce:transition-none ${viewIndex === 0 ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-purple-600 border-purple-100 hover:bg-purple-50 hover:border-purple-200 hover:scale-105 active:scale-[0.98]'}`}
            >
              <ChevronLeft size={18} className="sm:hidden" />
              <ChevronLeft size={24} className="hidden sm:block" />
            </button>
 
            <div className="flex items-center justify-center gap-1.5 sm:gap-3 md:gap-5 flex-1 mx-1 sm:mx-2">
-              <div className="flex items-center gap-1 sm:gap-2 md:gap-3 px-2.5 sm:px-5 md:px-10 py-1.5 sm:py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-rose-500 font-extrabold text-xs sm:text-sm md:text-base">
+              <div className="flex items-center gap-1 sm:gap-2 md:gap-3 px-2.5 sm:px-5 md:px-10 py-1.5 sm:py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-rose-500 font-extrabold text-xs sm:text-sm md:text-base tabular-nums">
                  <img src="/icons/quiz_heart.png" alt="Hearts" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" /> {heartsCount}
               </div>
-              <div className="flex items-center gap-1 sm:gap-2 md:gap-3 px-2.5 sm:px-5 md:px-10 py-1.5 sm:py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-yellow-500 font-extrabold text-xs sm:text-sm md:text-base">
+              <div className="flex items-center gap-1 sm:gap-2 md:gap-3 px-2.5 sm:px-5 md:px-10 py-1.5 sm:py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-yellow-500 font-extrabold text-xs sm:text-sm md:text-base tabular-nums">
                  <img src="/icons/quiz_key.png" alt="Keys" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" /> {keysCount}
               </div>
               <div className="flex items-center gap-1.5 sm:gap-3 md:gap-4 px-2 sm:px-3 py-1 sm:py-1.5 pl-2.5 sm:pl-4 md:pl-6 rounded-full bg-white shadow-md border border-slate-200/60">
-                 <div className="flex items-center gap-1 sm:gap-1.5 text-orange-500 font-extrabold text-xs sm:text-sm md:text-base">
+                 <div className="flex items-center gap-1 sm:gap-1.5 text-orange-500 font-extrabold text-xs sm:text-sm md:text-base tabular-nums">
                     <img src="/icons/quiz_streak.png" alt="Streak" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" /> {streak}
                  </div>
-                 <div className="bg-emerald-100 text-emerald-800 px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 rounded-full font-bold text-xs sm:text-sm md:text-base shadow-inner border border-emerald-200/50 whitespace-nowrap">
+                 <div className="bg-emerald-100 text-emerald-800 px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 rounded-full font-bold text-xs sm:text-sm md:text-base shadow-inner border border-emerald-200/50 whitespace-nowrap tabular-nums">
                     + {currentPoints} pts
                  </div>
               </div>
@@ -1082,7 +1083,8 @@ return (
            <button
              onClick={() => setViewIndex(prev => Math.min(currentQuestionIndex, prev + 1))}
              disabled={viewIndex >= currentQuestionIndex}
-             className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 shrink-0 rounded-full flex items-center justify-center shadow-md border-2 transition-all ${viewIndex >= currentQuestionIndex ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-purple-600 border-purple-100 hover:bg-purple-50 hover:border-purple-200 hover:scale-105 active:scale-95'}`}
+             aria-label="Next question"
+             className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 shrink-0 rounded-full flex items-center justify-center shadow-md border-2 transition-all motion-reduce:transition-none ${viewIndex >= currentQuestionIndex ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-white text-purple-600 border-purple-100 hover:bg-purple-50 hover:border-purple-200 hover:scale-105 active:scale-[0.98]'}`}
            >
              <ChevronRight size={18} className="sm:hidden" />
              <ChevronRight size={24} className="hidden sm:block" />
@@ -1098,10 +1100,10 @@ return (
              className="w-full max-w-3xl flex flex-col mt-2"
            >
              <div className="bg-white rounded-3xl shadow-lg border-t-[6px] border-purple-500 p-4 sm:p-6 md:p-8 text-center flex flex-col items-center mb-4 sm:mb-6 w-full relative overflow-hidden">
-                <div className="bg-slate-100 text-slate-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] md:text-xs font-black uppercase tracking-widest mb-3 sm:mb-4 flex items-center shadow-sm">
+                <div className="bg-slate-100 text-slate-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] md:text-xs font-black uppercase tracking-widest mb-3 sm:mb-4 flex items-center shadow-sm tabular-nums">
                    Q{viewIndex + 1} of {questions.length}
                 </div>
-                <h2 className="text-base sm:text-xl md:text-2xl font-extrabold text-[#0a1628] leading-tight w-full">
+                <h2 className="text-base sm:text-xl md:text-2xl font-extrabold text-[#0a1628] leading-tight w-full text-balance">
                   {viewedQuestion.question.includes('___') ? (
                     <span>
                        {viewedQuestion.question.split('___').map((part, i, arr) => (
@@ -1153,7 +1155,7 @@ return (
                            }
                         } else if (isEliminated) {
                            bgColor = 'bg-slate-100 border-slate-200 text-slate-400 opacity-40 line-through cursor-not-allowed';
-} else if (isCurrentlyAnswered) {
+                        } else if (isCurrentlyAnswered) {
                             const wasCorrect = idx === viewedQuestion.correctAnswer;
                             const wasSelected = (viewIndex === currentQuestionIndex && (selectedAnswer === idx || selectedAnswerForHighlight === idx)) ||
                                                 (viewIndex < currentQuestionIndex && answerRecords[viewIndex]?.answer === String(idx));
@@ -1173,7 +1175,7 @@ return (
                              key={idx}
                              disabled={isAllDisabled || isCurrentlyAnswered || isEliminated}
                              onClick={() => { if (isAllDisabled || isCurrentlyAnswered || isEliminated) return; handleAnswerSelect(idx); }}
-                             className={`p-3 sm:p-4 md:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-sm sm:text-base md:text-lg text-left transition-all flex items-center justify-between ${bgColor} ${isAllDisabled || isCurrentlyAnswered || isEliminated ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'}`}
+                             className={`p-3 sm:p-4 md:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-sm sm:text-base md:text-lg text-left transition-all motion-reduce:transition-none flex items-center justify-between ${bgColor} ${isAllDisabled || isCurrentlyAnswered || isEliminated ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]'}`}
                            >
                               <span className="truncate pr-4"><MathText>{opt}</MathText></span>
                               {isEliminated && <XCircle size={20} className="text-slate-400 shrink-0" />}
@@ -1207,7 +1209,7 @@ return (
                     <div className="w-full max-w-3xl mt-6 flex items-center justify-between gap-4">
                       <div>
                         <h3 className="text-lg font-bold text-[#0a1628]">{viewedQuestion.topic || quiz?.subject || 'General Math'}</h3>
-                        <p className="text-sm text-slate-500">Question {viewIndex + 1} Explanation</p>
+                        <p className="text-sm text-slate-500 tabular-nums">Question {viewIndex + 1} Explanation</p>
                       </div>
                       <img 
                         src={'/icons/default-module-avatar.png'} 
@@ -1250,7 +1252,7 @@ return (
          </main>
 
         {/* Sticky Footer */}
-        <footer className="shrink-0 relative z-[60] flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-r from-purple-600 to-indigo-400 rounded-t-[32px] sm:rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.15)]">
+        <footer className="shrink-0 relative z-40 flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-r from-purple-600 to-indigo-400 rounded-t-[32px] sm:rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.15)]">
 {(() => {
                       const eliminatedCount = (eliminatedByHint[currentQuestionIndex] || []).length;
                       const wrongChoicesCount = (currentQuestion.options || []).length - 1;
@@ -1258,7 +1260,7 @@ return (
                       const showNextButton = allWrongEliminated || (isCurrentlyAnswered && !lastAnswerCorrect);
                       
                       return showNextButton ? (
-                        <button onClick={handleNextQuestion} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-sm sm:text-base md:text-lg px-5 sm:px-8 py-3 sm:py-4 rounded-full flex items-center justify-center gap-2 sm:gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all w-full max-w-md mx-auto">
+                        <button onClick={handleNextQuestion} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-sm sm:text-base md:text-lg px-5 sm:px-8 py-3 sm:py-4 rounded-full flex items-center justify-center gap-2 sm:gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all motion-reduce:transition-none w-full max-w-md mx-auto">
                           {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'View Results'} <ChevronRight size={20} className="sm:hidden" /><ChevronRight size={24} className="hidden sm:block" />
                         </button>
                       ) : viewIndex === currentQuestionIndex && !showExplanation ? (
@@ -1266,22 +1268,22 @@ return (
                           {(() => {
                                 const canUseHint = effectiveKeysCount > 0 && !showExplanation && !allWrongEliminated;
                                return (
-                                 <button onClick={handleHintUse} disabled={!canUseHint} className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-full flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                                 <button onClick={handleHintUse} disabled={!canUseHint} className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-full flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200">
                                    <img src="/icons/quiz_key.png" alt="Key" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" /> Hint
                                  </button>
                                );
                             })()}
                           {isCurrentlyAnswered && (
-                            <button onClick={() => setUserRequestedExplanation(true)} className="bg-white hover:bg-slate-50 text-slate-700 font-bold px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-full flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                            <button onClick={() => setUserRequestedExplanation(true)} className="bg-white hover:bg-slate-50 text-slate-700 font-bold px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-3.5 rounded-full flex items-center gap-1.5 sm:gap-2 text-sm sm:text-base shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200">
                                <BookOpen size={16} className="sm:hidden" /><BookOpen size={20} className="hidden sm:block" /> Explain
                             </button>
                           )}
-                          <button onClick={() => setShowCalculator(prev => !prev)} className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 border border-slate-200 ${showCalculator ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-white hover:bg-slate-50 text-slate-700'}`}>
+                          <button onClick={() => setShowCalculator(prev => !prev)} aria-label="Toggle calculator" className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200 ${showCalculator ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-white hover:bg-slate-50 text-slate-700'}`}>
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /><line x1="16" x2="16" y1="14" y2="18" /></svg>
                          </button>
                         </div>
                       ) : viewIndex < currentQuestionIndex ? (
-                        <button onClick={() => setViewIndex(currentQuestionIndex)} className="bg-white text-slate-700 font-extrabold text-sm sm:text-base md:text-lg px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 rounded-full inline-flex items-center gap-1.5 sm:gap-2 md:gap-3 shadow-lg hover:bg-slate-50 transition-transform hover:scale-105 active:scale-95 border border-slate-200">
+                        <button onClick={() => setViewIndex(currentQuestionIndex)} className="bg-white text-slate-700 font-extrabold text-sm sm:text-base md:text-lg px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 rounded-full inline-flex items-center gap-1.5 sm:gap-2 md:gap-3 shadow-lg hover:bg-slate-50 transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200">
                            <ChevronRight size={16} className="sm:hidden" /><ChevronRight size={20} className="hidden sm:block" />
                            Back to Current Question
                         </button>
@@ -1292,14 +1294,14 @@ return (
 
       {/* Leave Quiz Confirmation */}
       {showLeaveConfirm && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl p-6 w-full max-w-[320px] shadow-2xl border border-slate-200 flex flex-col items-center gap-4">
             
-            <h3 className="text-lg font-bold text-slate-900 text-center">Leave this quiz?</h3>
+            <h3 className="text-lg font-bold text-slate-900 text-center text-balance">Leave this quiz?</h3>
             <p className="text-sm text-slate-500 text-center">Your progress will be reset and you'll need to start over.</p>
             <div className="w-full flex flex-col gap-2">
-              <button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold rounded-full transition-colors">Stay</button>
-              <button onClick={() => { setShowLeaveConfirm(false); onClose(); }} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-colors">Leave Quiz</button>
+              <button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold rounded-full transition-all motion-reduce:transition-none active:scale-[0.98]">Stay</button>
+              <button onClick={() => { setShowLeaveConfirm(false); onClose(); }} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-all motion-reduce:transition-none active:scale-[0.98]">Leave Quiz</button>
             </div>
           </motion.div>
         </div>
@@ -1311,18 +1313,6 @@ return (
 // Helper functions to generate content per subject
 function getQuestionForSubject(subject: string, index: number): string {
   const questions = {
-    'Pre-Calculus': [
-      'What is the domain of the function f(x) = √(x - 2)?',
-      'Solve for x: 2^x = 16',
-      'What is the period of the function y = sin(2x)?',
-      'Find the inverse of f(x) = 3x + 5',
-      'What is the value of log₂(32)?',
-      'Simplify: (x² - 9) / (x - 3)',
-      'What is the range of f(x) = |x| - 3?',
-      'If f(x) = 2x + 1 and g(x) = x², find f(g(2)).',
-      'What is the amplitude of y = 3cos(x)?',
-      'Solve: log₃(x) = 4',
-    ],
     'General Mathematics': [
       'Simplify: (2x + 3)(x - 4)',
       'What is 15% of 240?',
@@ -1352,18 +1342,6 @@ function getQuestionForSubject(subject: string, index: number): string {
       'What is the median of: 4, 7, 10, 13?',
       'How many ways can you arrange 3 books?',
     ],
-    'Basic Calculus': [
-      'Find the derivative of f(x) = 3x²',
-      'What is the limit of (x² - 4)/(x - 2) as x → 2?',
-      'Integrate: ∫ 2x dx',
-      'Find f\'(x) if f(x) = 5x³ - 2x',
-      'What is the derivative of sin(x)?',
-      'Find the derivative of f(x) = eˣ + 3x',
-      'What is ∫ cos(x) dx?',
-      'Find the derivative of f(x) = ln(x)',
-      'What is the limit of 1/x as x → ∞?',
-      'Find f\'(x) if f(x) = x⁴ - 2x² + 1',
-    ],
   };
 
   // Normalize subject name to match keys
@@ -1374,32 +1352,15 @@ function getQuestionForSubject(subject: string, index: number): string {
 
 function normalizeSubjectName(subject: string): string {
   const lower = subject.toLowerCase();
-  if (lower.includes('pre-calc') || lower.includes('pre calc') || lower.includes('precalc')) return 'Pre-Calculus';
   if (lower.includes('statistic') || lower.includes('probability')) return 'Statistics and Probability';
-  if (lower.includes('calculus') && !lower.includes('pre')) return 'Basic Calculus';
-  if (lower.includes('general') || lower.includes('math')) return 'General Mathematics';
-  // Default fallback based on partial matches
-  if (lower.includes('algebra') || lower.includes('fraction') || lower.includes('percent') || lower.includes('ratio') || lower.includes('geometry')) return 'General Mathematics';
-  if (lower.includes('derivative') || lower.includes('integral') || lower.includes('limit')) return 'Basic Calculus';
-  if (lower.includes('trig') || lower.includes('function') || lower.includes('log')) return 'Pre-Calculus';
-  if (lower.includes('mean') || lower.includes('median') || lower.includes('data')) return 'Statistics and Probability';
+  if (lower.includes('business')) return 'Business Mathematics';
+  if (lower.includes('finite') || lower.includes('matrix') || lower.includes('matrices') || lower.includes('simplex')) return 'Finite Mathematics';
+  // Grade 11 only: legacy pre-calc / calculus inputs resolve to the General Mathematics bank.
   return 'General Mathematics';
 }
 
 function getOptionsForQuestion(subject: string, index: number): string[] {
   const optionSets = {
-    'Pre-Calculus': [
-      ['x ≥ 2', 'x ≤ 2', 'x ≥ 0', 'All real numbers'],
-      ['x = 2', 'x = 4', 'x = 8', 'x = 16'],
-      ['π', '2π', 'π/2', '4π'],
-      ['f⁻¹(x) = (x - 5)/3', 'f⁻¹(x) = 3x - 5', 'f⁻¹(x) = x/3 - 5', 'f⁻¹(x) = (x + 5)/3'],
-      ['4', '5', '6', '7'],
-      ['x + 3', 'x - 3', 'x² + 3', '(x + 3)(x - 3)'],
-      ['y ≥ -3', 'y ≥ 0', 'All real numbers', 'y > -3'],
-      ['9', '5', '7', '3'],
-      ['1', '2', '3', '1/3'],
-      ['12', '27', '64', '81'],
-    ],
     'General Mathematics': [
       ['2x² - 5x - 12', '2x² + 5x - 12', '2x² - 8x + 12', '2x² - 5x + 12'],
       ['36', '32', '28', '24'],
@@ -1429,18 +1390,6 @@ function getOptionsForQuestion(subject: string, index: number): string[] {
       ['8.5', '7', '10', '9'],
       ['6', '3', '9', '12'],
     ],
-    'Basic Calculus': [
-      ['6x', '3x', '9x²', '6x²'],
-      ['4', '2', '0', 'undefined'],
-      ['x² + C', '2x² + C', 'x²/2 + C', '2x + C'],
-      ['15x² - 2', '15x² - 2x', '5x² - 2', '15x - 2'],
-      ['cos(x)', '-cos(x)', 'tan(x)', '-sin(x)'],
-      ['eˣ + 3', 'eˣ + 3x', 'xeˣ + 3', 'eˣ'],
-      ['sin(x) + C', '-sin(x) + C', 'tan(x) + C', '-cos(x) + C'],
-      ['1/x', 'x', 'ln(x)', '-1/x²'],
-      ['0', '1', '∞', 'undefined'],
-      ['4x³ - 4x', '4x³ - 2x', 'x³ - 4x', '4x⁴ - 4x²'],
-    ],
   };
 
   const normalizedSubject = normalizeSubjectName(subject);
@@ -1450,18 +1399,6 @@ function getOptionsForQuestion(subject: string, index: number): string[] {
 
 function getCorrectAnswerForQuestion(subject: string, index: number): number {
   const correctAnswers = {
-    'Pre-Calculus': [
-      0, // x ≥ 2
-      1, // x = 4
-      0, // π
-      0, // f⁻¹(x) = (x - 5)/3
-      1, // 5
-      0, // x + 3
-      0, // y ≥ -3
-      0, // 9 (f(g(2)) = f(4) = 2*4+1 = 9)
-      2, // 3
-      3, // 81 (3⁴ = 81)
-    ],
     'General Mathematics': [
       0, // 2x² - 5x - 12
       0, // 36
@@ -1491,18 +1428,6 @@ function getCorrectAnswerForQuestion(subject: string, index: number): number {
       0, // 8.5
       0, // 6
     ],
-    'Basic Calculus': [
-      0, // 6x
-      0, // 4
-      0, // x² + C
-      0, // 15x² - 2
-      0, // cos(x)
-      0, // eˣ + 3
-      0, // sin(x) + C
-      0, // 1/x
-      0, // 0
-      0, // 4x³ - 4x
-    ],
   };
 
   const normalizedSubject = normalizeSubjectName(subject);
@@ -1512,18 +1437,6 @@ function getCorrectAnswerForQuestion(subject: string, index: number): number {
 
 function getExplanationForQuestion(subject: string, index: number, difficulty: string): string {
   const explanations = {
-    'Pre-Calculus': [
-      'The expression under the square root must be non-negative: x - 2 ≥ 0, so x ≥ 2.',
-      'Since 2⁴ = 16, we get x = 4.',
-      'The period of sin(kx) is 2π/k. Here k = 2, so period = 2π/2 = π.',
-      'To find the inverse: y = 3x + 5 → x = 3y + 5 → y = (x - 5)/3.',
-      'Since 2⁵ = 32, log₂(32) = 5.',
-      '(x² - 9)/(x - 3) = (x+3)(x-3)/(x-3) = x + 3 (for x ≠ 3).',
-      'The absolute value |x| ≥ 0 for all x, so |x| - 3 ≥ -3. The range is y ≥ -3.',
-      'g(2) = 4, then f(4) = 2(4) + 1 = 9.',
-      'The amplitude of y = Acos(x) is |A|. Here A = 3, so amplitude = 3.',
-      'log₃(x) = 4 means 3⁴ = x, so x = 81.',
-    ],
     'General Mathematics': [
       '(2x + 3)(x - 4) = 2x² - 8x + 3x - 12 = 2x² - 5x - 12',
       '15% of 240 = 0.15 × 240 = 36',
@@ -1552,18 +1465,6 @@ function getExplanationForQuestion(subject: string, index: number, difficulty: s
       'For independent events: P(A and B) = P(A) × P(B) = 0.3 × 0.5 = 0.15',
       'For even-count dataset {4,7,10,13}: median = (7+10)/2 = 8.5',
       '3 books can be arranged in 3! = 3 × 2 × 1 = 6 ways.',
-    ],
-    'Basic Calculus': [
-      'Using the power rule: d/dx[3x²] = 3 × 2x = 6x',
-      'Factor: (x²-4)/(x-2) = (x+2)(x-2)/(x-2) = x+2. As x→2: 2+2 = 4',
-      '∫ 2x dx = 2 × x²/2 + C = x² + C',
-      'f\'(x) = 5 × 3x² - 2 = 15x² - 2',
-      'The derivative of sin(x) is cos(x). This is a fundamental trigonometric derivative.',
-      'd/dx[eˣ + 3x] = eˣ + 3. The derivative of eˣ is eˣ and of 3x is 3.',
-      '∫ cos(x) dx = sin(x) + C. Integration is the reverse of differentiation.',
-      'The derivative of ln(x) is 1/x. This is a fundamental logarithmic derivative.',
-      'As x → ∞, 1/x approaches 0. The function gets infinitely close to zero.',
-      'f\'(x) = 4x³ - 4x using the power rule on each term.',
     ],
   };
 

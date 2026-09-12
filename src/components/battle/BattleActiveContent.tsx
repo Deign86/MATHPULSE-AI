@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Bot, Users, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '../ui/utils';
 
@@ -47,7 +47,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
         </div>
 
         <AnimatePresence>
-          {floatingMomentum && floatingMomentum.tone === 'positive' && (
+          {floatingMomentum && (
             <motion.div
               key={floatingMomentum.id}
               initial={{ opacity: 0, y: 14, scale: 0.92 }}
@@ -67,9 +67,18 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
           )}
         </AnimatePresence>
 
-        <p className="text-base sm:text-lg md:text-xl text-white font-extrabold leading-tight tracking-tight mt-1 min-h-[40px] flex items-center justify-center">
-          {activeMatch.currentQuestion?.prompt}
-        </p>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={activeMatch.currentRound}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="text-base sm:text-lg md:text-xl text-white font-extrabold leading-tight tracking-tight mt-1 min-h-[40px] flex items-center justify-center"
+          >
+            {activeMatch.currentQuestion?.prompt}
+          </motion.p>
+        </AnimatePresence>
 
         {/* Debug variance badges */}
         {hasWindow && window.location.search.includes('debug=true') && activeMatch.currentQuestion?.varianceApplied && (
@@ -189,15 +198,15 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
 
       {/* Result Pop-up Overlay */}
       <AnimatePresence>
-        {lastRoundResult?.studentCorrect && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] pointer-events-none flex flex-col items-center justify-center"
-          >
-            <div className="bg-[#1e2433]/95 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.6)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
+        {lastRoundResult && lastRoundResult.roundNumber === activeMatch.currentRound && (
+          <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center">
+            <motion.div
+              initial={lastRoundResult.studentCorrect ? { opacity: 0, scale: 0.8, y: 20 } : { opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+              transition={lastRoundResult.studentCorrect ? { type: 'spring', damping: 20, stiffness: 300 } : { duration: 0.18, ease: 'easeOut' }}
+              className="bg-[#1e2433]/95 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.6)] flex flex-col items-center min-w-[280px] md:min-w-[320px]"
+            >
               <img src={quizBattleAvatar} alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-xl" />
               <h2 className={cn(
                 "text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest",
@@ -222,8 +231,8 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
                     Correct: {String.fromCharCode(65 + lastRoundResult.correctOptionIndex)}
                  </div>
               )}
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -31,7 +31,11 @@ class SubjectResponse(BaseModel):
     code: str
     name: str
     gradeLevel: str
-    semester: str
+    semester: Optional[str] = None
+    quarters: Optional[list[str]] = None
+    termStructure: Optional[str] = None
+    available: Optional[bool] = True
+    shelved: Optional[bool] = False
     color: str
     pdfAvailable: bool
     topics: list
@@ -44,14 +48,14 @@ class TopicResponse(BaseModel):
 
 
 @router.get("/subjects", response_model=list[SubjectResponse])
-async def list_subjects(grade_level: Optional[str] = Query(None, description="Filter by grade level (e.g., 'Grade 11', 'Grade 12')")):
+async def list_subjects(grade_level: Optional[str] = Query(None, description="Filter by grade level (only 'Grade 11' is supported)")):
     """List all curriculum subjects, optionally filtered by grade level."""
     svc = _get_curriculum_service()
     if svc is None:
         raise HTTPException(status_code=503, detail="Curriculum service unavailable")
     _, get_subjects_fn, _, _ = svc
     # Guard against malformed grade levels (e.g., "Grade 2011" from bad state)
-    valid_grades = {"Grade 11", "Grade 12", "Grade 11/12"}
+    valid_grades = {"Grade 11"}
     if grade_level and grade_level not in valid_grades:
         logger.warning(f"[curriculum] Invalid grade_level received: {grade_level!r}, defaulting to Grade 11")
         grade_level = "Grade 11"

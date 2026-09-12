@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Flame, Target, Volume2, VolumeX, Maximize, Minimize, Menu } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../ui/utils';
@@ -44,15 +44,15 @@ export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
             <Target className="w-3 h-3 sm:w-4 sm:h-4" /> {playerVisualMultiplier.toFixed(2)}x
           </div>
           <div className="w-px h-3 sm:h-4 bg-white/10 shrink-0" />
-          <motion.div
-            key={liveXpEarned}
-            animate={liveXpEarned > 0 ? { scale: [1, 1.25, 1] } : {}}
-            transition={{ duration: 0.35 }}
-            className="flex flex-col items-center text-emerald-400 bg-emerald-500/10 px-2 sm:px-3 py-0.5 rounded-full border border-emerald-500/20 font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)] shrink-0"
-          >
-            <span className="text-xs sm:text-sm leading-none tabular-nums">{liveXpEarned} pts</span>
+          <div className="flex flex-col items-center text-emerald-400 bg-emerald-500/10 px-2 sm:px-3 py-0.5 rounded-full border border-emerald-500/20 font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)] shrink-0">
+            <motion.span
+              key={liveXpEarned}
+              animate={liveXpEarned > 0 ? { scale: [1, 1.25, 1] } : {}}
+              transition={{ duration: 0.35 }}
+              className="text-xs sm:text-sm leading-none tabular-nums"
+            >{liveXpEarned} pts</motion.span>
             <span className="hidden sm:block text-[8px] leading-none text-emerald-500/70 uppercase tracking-widest font-black whitespace-nowrap">Battle Score</span>
-          </motion.div>
+          </div>
         </div>
       </div>
 

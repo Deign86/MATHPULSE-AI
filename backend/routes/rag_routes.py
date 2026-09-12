@@ -9,7 +9,7 @@ from threading import Lock
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from services.inference_client import (
     InferenceRequest,
@@ -131,6 +131,17 @@ class RagLessonRequest(BaseModel):
     lessonId: Optional[str] = None
     competencyCode: Optional[str] = None
     storagePath: Optional[str] = None
+
+    @field_validator("quarter", mode="before")
+    @classmethod
+    def _coerce_quarter(cls, value: Any) -> Any:
+        # Grade-11-only: lessons may carry quarter as "Q1" string; RAG needs int 1-4.
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+        match = re.search(r"[1-4]", str(value or ""))
+        if match:
+            return int(match.group(0))
+        raise ValueError("quarter must be 1-4 (accepts 'Q1'-style strings)")
 
 
 class RagProblemRequest(BaseModel):
@@ -316,7 +327,7 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
         prompt = build_lesson_prompt(
             lesson_title=payload.lessonTitle or payload.topic,
             competency=payload.learningCompetency or payload.topic,
-            grade_level="Grade 11-12",
+            grade_level="Grade 11",
             subject=payload.subject,
             quarter=payload.quarter,
             learner_level=payload.learnerLevel,

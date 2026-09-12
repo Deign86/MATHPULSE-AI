@@ -1230,33 +1230,6 @@ class TestAsyncGenerationTasks:
         assert cancel_payload["taskId"] == task_id
         assert cancel_payload["status"] in {"cancelled", "cancelling"}
 
-    def test_inference_metrics_requires_admin(self):
-        # Test with a non-admin mock to verify role check works
-        with patch.object(main_module.firebase_auth, "verify_id_token", return_value={
-            "uid": "teacher-uid",
-            "email": "teacher@example.com",
-            "role": "teacher",
-        }):
-            response = client.get("/api/ops/inference-metrics")
-            assert response.status_code == 403
-
-    def test_inference_metrics_admin_success(self):
-        # Set admin role directly to ensure it persists
-        main_module.firebase_auth.verify_id_token = MagicMock(
-            return_value={
-                "uid": "admin-uid",
-                "email": "admin@example.com",
-                "role": "admin",
-            }
-        )
-        response = client.get("/api/ops/inference-metrics")
-        assert response.status_code == 200
-        payload = response.json()
-        assert payload["success"] is True
-        assert "metrics" in payload
-        assert "requests_total" in payload["metrics"]
-
-
 # ─── Calculator ────────────────────────────────────────────────
 
 

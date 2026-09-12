@@ -26,8 +26,8 @@ interface MasteryHeatmapProps {
 const SUBJECTS = [
   { id: 'gen-math', name: 'General Mathematics', shortName: 'GM', color: '#3B82F6' },
   { id: 'stats-prob', name: 'Statistics & Probability', shortName: 'SP', color: '#0ea5e9' },
-  { id: 'pre-calc', name: 'Pre-Calculus', shortName: 'PC', color: '#F97316' },
-  { id: 'basic-calc', name: 'Basic Calculus', shortName: 'BC', color: '#EF4444' },
+  { id: 'business-math', name: 'Business Mathematics', shortName: 'BM', color: '#166534' },
+  { id: 'finite-math', name: 'Finite Mathematics', shortName: 'FM', color: '#0e7490' },
 ];
 
 const TOPICS_BY_SUBJECT = {
@@ -53,27 +53,15 @@ const TOPICS_BY_SUBJECT = {
     { name: 'Hypothesis Testing', unit: 'Testing' },
     { name: 'Correlation', unit: 'Regression' },
   ],
-  'pre-calc': [
-    { name: 'Parabola', unit: 'Conics' },
-    { name: 'Ellipse', unit: 'Conics' },
-    { name: 'Hyperbola', unit: 'Conics' },
-    { name: 'Arithmetic Seq', unit: 'Series' },
-    { name: 'Geometric Seq', unit: 'Series' },
-    { name: 'Math Induction', unit: 'Series' },
-    { name: 'Trig Functions', unit: 'Trigonometry' },
-    { name: 'Trig Identities', unit: 'Trigonometry' },
-    { name: 'Polar Coords', unit: 'Trigonometry' },
+  'business-math': [
+    { name: 'Interest Models', unit: 'Business Math' },
+    { name: 'Annuities', unit: 'Business Math' },
+    { name: 'Pricing Models', unit: 'Business Math' },
   ],
-  'basic-calc': [
-    { name: 'Limits', unit: 'Limits' },
-    { name: 'Continuity', unit: 'Limits' },
-    { name: 'Definition of Deriv.', unit: 'Derivatives' },
-    { name: 'Diff. Rules', unit: 'Derivatives' },
-    { name: 'Chain Rule', unit: 'Derivatives' },
-    { name: 'Related Rates', unit: 'Derivatives' },
-    { name: 'Optimization', unit: 'Derivatives' },
-    { name: 'Antiderivatives', unit: 'Integration' },
-    { name: 'Definite Integrals', unit: 'Integration' },
+  'finite-math': [
+    { name: 'Matrices', unit: 'Systems' },
+    { name: 'Linear Systems', unit: 'Systems' },
+    { name: 'Optimization', unit: 'Simplex' },
   ],
 };
 

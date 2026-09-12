@@ -177,7 +177,7 @@ async def generate_module_preview(req: ModulePreviewRequest):
     band = confidence_info.get("band", "low")
 
     system_prompt = (
-        "You are a DepEd K-12 SHS math educator writing for Grade 11-12 Filipino students. "
+        "You are a DepEd K-12 SHS math educator writing for Grade 11 Filipino students. "
         "Generate content ONLY from the retrieved DepEd curriculum excerpts provided. "
         "Do NOT add generic filler. Do NOT invent examples or definitions not present "
         "in the retrieved context."

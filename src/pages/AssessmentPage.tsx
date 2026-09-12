@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Button } from '../components/ui/button';
 import { 
   X, 
@@ -81,6 +81,8 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
     delay: Math.random() * -20,
     color: ['bg-purple-500/10', 'bg-blue-500/10', 'bg-cyan-500/10', 'bg-emerald-500/10'][Math.floor(Math.random() * 4)]
   })));
+
+  const reduceMotion = useReducedMotion();
 
   // Countdown timer with auto-skip
   useEffect(() => {
@@ -255,7 +257,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-hidden">
       <div
         id="assessment-container"
-        className="bg-white/95 backdrop-blur-xl border border-white/20 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.3)] w-full max-w-4xl h-[95vh] sm:h-[90vh] md:h-[85vh] flex flex-col relative z-10 overflow-hidden transition-all duration-300"
+        className="bg-white/95 backdrop-blur-xl border border-white/20 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.3)] w-full max-w-4xl h-[95dvh] sm:h-[90dvh] md:h-[85dvh] flex flex-col relative z-10 overflow-hidden transition-all duration-300"
       >
         {/* Animated Orbs Background */}
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
@@ -269,12 +271,12 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
                 left: `${orb.x}%`,
                 top: `${orb.y}%`,
               }}
-              animate={{
+              animate={reduceMotion ? undefined : {
                 x: [0, Math.random() * 100 - 50, 0],
                 y: [0, Math.random() * 100 - 50, 0],
                 scale: [1, 1.3, 1],
               }}
-              transition={{
+              transition={reduceMotion ? undefined : {
                 duration: orb.duration,
                 repeat: Infinity,
                 ease: "linear",

@@ -91,7 +91,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
         onClick={onClose}
       >
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -99,7 +99,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="relative bg-white rounded-[24px] shadow-[0_24px_64px_rgba(0,0,0,0.18)] w-full max-w-[800px] max-h-[85vh] flex flex-col overflow-hidden z-10"
+          className="relative bg-white rounded-[24px] shadow-[0_24px_64px_rgba(0,0,0,0.18)] w-full max-w-[800px] max-h-[85dvh] flex flex-col overflow-hidden z-10"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

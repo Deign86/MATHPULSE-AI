@@ -12,6 +12,20 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
 }
 
+/** Quarter as carried by lessons: numeric 1-4 or CurriculumQuarter string. */
+type LessonQuarterInput = number | CurriculumQuarter | string;
+
+const QUARTER_TO_INT = new Map([
+  ['Q1', 1], ['Q2', 2], ['Q3', 3], ['Q4', 4],
+  ['1', 1], ['2', 2], ['3', 3], ['4', 4],
+]);
+
+/** Coerce lesson quarter to RAG API int 1-4; defaults 1. */
+function parseQuarterToInt(value: LessonQuarterInput): number {
+  const key = String(value ?? '').trim().toUpperCase();
+  return QUARTER_TO_INT.get(key) ?? 1;
+}
+
 // ---------------------------------------------------------------------------
 // Rich text formatter — breaks plain paragraphs into formatted JSX.
 //
@@ -277,6 +291,7 @@ import { Lesson, Quiz } from '../data/subjects';
 import type { RagLessonSection } from '../services/lessonService';
 import { useLessonContent } from '../hooks/useLessonContent';
 import { getFirebaseStoragePdfUrl } from '../data/curriculum/types';
+import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
@@ -420,6 +435,61 @@ function ErrorPanel({
   );
 }
 
+function PdfFallbackPanel({
+  lessonTitle,
+  competencyCode,
+  subject,
+  sourceLabel,
+  pdfUrl,
+  onRetry,
+}: {
+  lessonTitle: string;
+  competencyCode?: string;
+  subject?: string;
+  sourceLabel: string;
+  pdfUrl: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-50">
+      <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
+        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+          <FileText className="text-blue-600" size={20} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-slate-800 text-sm truncate">{lessonTitle}</p>
+          <p className="text-slate-500 text-xs truncate">
+            {[competencyCode, subject, sourceLabel].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <span className="text-[0.65rem] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-2 py-1 rounded-lg shrink-0">
+          DepEd PDF
+        </span>
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 shrink-0"
+          aria-label="Open PDF in new tab"
+        >
+          <ExternalLink size={16} />
+        </a>
+        <button
+          onClick={onRetry}
+          className="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 shrink-0"
+          aria-label="Retry AI lesson"
+        >
+          <RefreshCw size={16} />
+        </button>
+      </div>
+      <p className="px-4 py-2 text-xs text-slate-500 bg-amber-50 border-b border-amber-100">
+        AI lesson unavailable — showing the DepEd source PDF this lesson derives from.
+      </p>
+      <iframe src={pdfUrl} title={lessonTitle} className="flex-1 w-full border-0" />
+    </div>
+  );
+}
+
 function SectionRenderer({
   section,
   sectionIndex,
@@ -521,7 +591,7 @@ function SectionRenderer({
             <div className="space-y-3">
               <div className="flex items-center gap-2.5">
                 <CheckCircle size={20} className="text-violet-500" />
-                <h3 className="lesson-section-heading text-[1.05rem]" style={{ color: '#7c3aed' }}>What you'll learn</h3>
+                <h3 className="lesson-section-heading text-[1.05rem] text-balance" style={{ color: '#7c3aed' }}>What you'll learn</h3>
               </div>
               <div className="space-y-2.5">
                 {objectives.map((obj, i) => {
@@ -531,7 +601,7 @@ function SectionRenderer({
                       key={i}
                       className={`rounded-xl border-2 px-4 py-3.5 flex items-start gap-3.5 ${color.bg} ${color.border} shadow-sm`}
                     >
-                      <span className={`mt-0.5 min-w-[1.75rem] h-7 rounded-full ${color.num} text-white text-[0.7rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                      <span className={`mt-0.5 min-w-[1.75rem] h-7 rounded-full ${color.num} text-white text-[0.7rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm tabular-nums`}>
                         {i + 1}
                       </span>
                       <div>
@@ -578,15 +648,15 @@ function SectionRenderer({
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${
                     callout.type === 'important' ? 'bg-rose-500' : callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
                   }`}>
-                    <Lightbulb size={16} className="text-white" />
+                    {callout.type === 'important' ? <AlertTriangle size={16} className="text-white" /> : callout.type === 'tip' ? <Sparkles size={16} className="text-white" /> : <Pin size={16} className="text-white" />}
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
-                      callout.type === 'important' ? 'text-rose-500' : callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
+                      callout.type === 'important' ? 'text-rose-600' : callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
                     }`}>
-                      {callout.type === 'important' ? <><Key aria-hidden="true" size={12} /> Important</> : callout.type === 'tip' ? <><Sparkles aria-hidden="true" size={12} /> Tip</> : <><Pin aria-hidden="true" size={12} /> Note</>}
+                      {callout.type === 'important' ? 'Important Rule' : callout.type === 'tip' ? 'Pro Tip' : 'Key Note'}
                     </p>
-                    <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{inlineFormat(callout.text)}</p>
+                    <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{callout.text}</p>
                   </div>
                 </div>
               ))}
@@ -625,7 +695,7 @@ function SectionRenderer({
                     <Calculator size={18} className="text-white" />
                   </div>
                   <div>
-                    <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] text-rose-400 mb-1">
+                    <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] text-rose-400 mb-1 tabular-nums">
                       Example {i + 1}
                     </p>
                     <p className="font-body font-bold text-slate-800 text-[1rem] leading-snug">{example.problem}</p>
@@ -644,7 +714,7 @@ function SectionRenderer({
                         </div>
                       ) : (
                         <div key={si} className="flex items-start gap-3">
-                          <span className="mt-0.5 min-w-[1.5rem] h-[1.5rem] rounded-full bg-white border-2 border-rose-300 text-rose-500 text-[0.65rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <span className="mt-0.5 min-w-[1.5rem] h-[1.5rem] rounded-full bg-white border-2 border-rose-300 text-rose-500 text-[0.65rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm tabular-nums">
                             {si + 1}
                           </span>
                           <p className="font-body text-slate-700 text-[0.95rem] leading-[1.75]">{inlineFormat(step)}</p>
@@ -939,15 +1009,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     topic: lesson.title,
     // SAFETY: trusted internal value already conforms to the asserted type.
     subject: (lesson as any).subject || 'General Mathematics',
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    quarter: (lesson as any).quarter || 1,
+    // SAFETY: lessons may carry quarter as "Q1" string or number; RAG API requires int 1-4.
+    quarter: parseQuarterToInt((lesson as any).quarter),
     lessonTitle: lesson.title,
     // SAFETY: trusted internal value already conforms to the asserted type.
     moduleId: (lesson as any).subjectId,
     lessonId: lesson.id,
     // SAFETY: trusted internal value already conforms to the asserted type.
     competencyCode: (lesson as any).competencyCode,
-    learnerLevel: 'Grade 11-12',
+    learnerLevel: 'Grade 11',
     // SAFETY: trusted internal value already conforms to the asserted type.
     storagePath: (lesson as any).storagePath,
   };
@@ -1064,6 +1134,20 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }
 
   if (error && sections.length === 0) {
+    if (depedPdfUrl) {
+      return (
+        <PdfFallbackPanel
+          lessonTitle={lesson.title}
+          // SAFETY: lesson payloads from the curriculum pipeline always carry these optional metadata fields.
+          competencyCode={(lesson as any).competencyCode}
+          // SAFETY: lesson payloads from the curriculum pipeline always carry these optional metadata fields.
+          subject={(lesson as any).subject}
+          sourceLabel={primarySourceLabel}
+          pdfUrl={depedPdfUrl}
+          onRetry={retry}
+        />
+      );
+    }
     return <ErrorPanel message={error} onRetry={retry} isOffline={isOffline} />;
   }
 
@@ -1163,14 +1247,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   </span>
                 )}
               </div>
-              <h1 className="font-bold text-slate-800 text-xs sm:text-sm truncate">{lesson.title}</h1>
+              <h1 className="font-bold text-slate-800 text-xs sm:text-sm truncate text-balance">{lesson.title}</h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
             <div className="text-right hidden sm:block">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progress</p>
-              <p className="text-sm font-bold text-slate-800">
+              <p className="text-sm font-bold text-slate-800 tabular-nums">
                 {Math.round(((currentSection + 1) / totalSections) * 100)}%
               </p>
             </div>
@@ -1199,7 +1283,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 <ShieldCheck size={13} className="shrink-0" />
                 <span>{confidenceBadgeConfig.label}</span>
                 {retrievalConfidence > 0 && (
-                  <span className="opacity-80 font-mono text-[10px]">
+                  <span className="opacity-80 font-mono text-[10px] tabular-nums">
                     ({Math.round(retrievalConfidence * 100)}%)
                   </span>
                 )}
@@ -1232,13 +1316,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               <button
                 type="button"
                 onClick={() => setShowEvidenceModal(true)}
+                aria-label="Inspect evidence"
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs"
                 title="Inspect retrieved DepEd text chunks, similarity scores, and metadata"
               >
                 <FileSearch size={12} className="shrink-0" />
                 <span>Inspect Evidence</span>
                 {sources && sources.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black">
+                  <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black tabular-nums">
                     {sources.length}
                   </span>
                 )}
@@ -1278,7 +1363,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   </div>
 
                   {/* Tooltip */}
-                  <div className="absolute right-full mr-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[100] shadow-xl border border-slate-700/50">
+                  <div className="absolute right-full mr-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-slate-700/50">
                     <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 border-r border-t border-slate-700/50"></div>
                     {tab.label}
                   </div>
@@ -1300,6 +1385,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                       setDirection(idx > currentSection ? 1 : -1);
                       setCurrentSection(idx);
                     }}
+                    aria-label={`Go to ${tab.label} section`}
                     className={cn(
                       'flex items-center gap-1.5 px-3 py-2 rounded-t-lg transition-all duration-200 shrink-0 text-[11px] font-bold touch-manipulation min-h-[2.5rem]',
                       active
@@ -1323,7 +1409,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 <CurrentTabIcon size={16} className="text-white" />
               </div>
               <div className="flex flex-col min-w-0">
-                <h2 className="lesson-section-heading text-sm sm:text-xl md:text-2xl truncate" title={currentSectionData.title}>
+                <h2 className="lesson-section-heading text-sm sm:text-xl md:text-2xl truncate text-balance" title={currentSectionData.title}>
                   {currentSectionData.title}
                 </h2>
                 <p className="text-white/90 text-[10px] sm:text-xs font-medium truncate mt-0.5 font-body" title={lesson.title}>
@@ -1404,6 +1490,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               onClick={handlePrevious}
               disabled={currentSection === 0}
               variant="outline"
+              aria-label="Previous section"
               className="px-4 sm:px-5 py-2 sm:py-2 rounded-full font-bold text-xs sm:text-sm bg-white border-slate-200 text-slate-600 shadow-sm disabled:opacity-40 hover:bg-slate-50 transition-colors flex items-center gap-1 sm:gap-2 min-w-[2.5rem] min-h-[2.5rem] touch-manipulation"
             >
               <ArrowLeft size={14} />
@@ -1417,6 +1504,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             <Button
               onClick={handleNext}
               disabled={currentSection === totalSections - 1 && isPracticeRequired}
+              aria-label={currentSection === totalSections - 1 ? "Complete lesson" : "Next section"}
               className="px-5 sm:px-7 py-2 sm:py-2 rounded-full font-bold text-xs sm:text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center gap-1 sm:gap-2 min-w-[2.5rem] min-h-[2.5rem] touch-manipulation"
             >
               {currentSection === totalSections - 1 ? (
@@ -1448,7 +1536,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
+            className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -1458,7 +1546,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               <div className="w-20 h-20 bg-[#7ec16d] rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg">
                 <CheckCircle size={40} className="text-white" />
               </div>
-              <h2 className="text-2xl font-black text-slate-800 mb-2">Lesson Complete!</h2>
+              <h2 className="text-2xl font-black text-slate-800 mb-2 text-balance">Lesson Complete!</h2>
               <p className="text-slate-500 text-sm mb-6 leading-relaxed">
                 Great job finishing <strong className="text-slate-700">{lesson.title}</strong>.
               </p>
@@ -1467,7 +1555,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   <Award className="text-[#7ec16d]" size={22} />
                 </div>
                 <p className="text-xs text-[#7ec16d] font-bold uppercase tracking-wider mb-0.5">XP Earned</p>
-                <p className="text-3xl font-black text-[#7ec16d]">+{lessonCompletionXP}</p>
+                <p className="text-3xl font-black text-[#7ec16d] tabular-nums">+{lessonCompletionXP}</p>
               </div>
               <div className="space-y-2.5">
                 <button
@@ -1496,7 +1584,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6"
             onClick={() => setShowEvidenceModal(false)}
           >
             <motion.div
@@ -1504,7 +1592,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 12 }}
               transition={{ duration: 0.2 }}
-              className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden"
+              className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[88dvh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
@@ -1528,7 +1616,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                       </span>
                     )}
                   </div>
-                  <h2 className="text-base sm:text-lg font-black text-slate-900 truncate">
+                  <h2 className="text-base sm:text-lg font-black text-slate-900 truncate text-balance">
                     Curriculum Grounding Evidence
                   </h2>
                   <p className="text-xs text-slate-500 font-mono mt-0.5 truncate">
@@ -1555,13 +1643,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   </div>
                   <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Retrieval Score</p>
-                    <p className="text-sm font-black text-slate-800 mt-0.5 font-mono">
+                    <p className="text-sm font-black text-slate-800 mt-0.5 font-mono tabular-nums">
                       {retrievalConfidence > 0 ? `${(retrievalConfidence * 100).toFixed(1)}%` : 'N/A'}
                     </p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Retrieved Chunks</p>
-                    <p className="text-sm font-black text-slate-800 mt-0.5">{sources?.length || 0}</p>
+                    <p className="text-sm font-black text-slate-800 mt-0.5 tabular-nums">{sources?.length || 0}</p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Model</p>
@@ -1574,7 +1662,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 {/* Chunks List */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 text-balance">
                       Retrieved PDF Text Chunks ({sources?.length || 0})
                     </h3>
                     <span className="text-[11px] text-slate-400 font-mono">
@@ -1598,15 +1686,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                         {/* Chunk header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-100">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                            <span className="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md tabular-nums">
                               Chunk #{idx + 1}
                             </span>
                             {src.page ? (
-                              <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md font-mono">
+                              <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md font-mono tabular-nums">
                                 Page {src.page}
                               </span>
                             ) : null}
-                            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-mono">
+                            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-mono tabular-nums">
                               Similarity: {(src.score * 100).toFixed(1)}%
                             </span>
                           </div>

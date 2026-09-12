@@ -67,7 +67,7 @@ function toAssessmentDoc(result: AssessmentResult): AssessmentDoc {
       borderline: result.proficiencyProfile.borderline,
       suggestedStartingModule: result.proficiencyProfile.suggestedStartingModule,
       recommendedPace: result.proficiencyProfile.recommendedPace,
-      g12Readiness: result.proficiencyProfile.g12Readiness,
+      g11Readiness: result.proficiencyProfile.g11Readiness ?? result.proficiencyProfile.g12Readiness,
     },
   };
 }

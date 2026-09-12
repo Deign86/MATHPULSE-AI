@@ -169,33 +169,92 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: 0 errors
   EVIDENCE: Passed. `npm run typecheck` exited 0 (0 errors). `npm run lint:anti-slop` (`oxlint --quiet`) exited 0 (0 errors across 382 files). `npm run test` (vitest) passed 27/27 test files (179 tests). `python -m pytest backend/tests/test_liteparse_curriculum.py backend/test_retrieval.py -q` passed 8/8 tests. Storage rules deployed to `mathpulse-ai-2026` allowing public read for `/curriculum/**`.
 
-## Section F: Avatar Studio Mobile Redesign & Quantum Cyber-Podium
-- [x] F1: Mobile split-screen layout: top ~42% pinned avatar stage, bottom drawer with independently scrollable items and sticky category bar.
+## Section D: Grade-11-only all-subjects unlock (20 blueprints, zero locks)
+
+- [x] D1: all quizzes/lessons unlocked for every subject
+  CHECK: `grep -rn "locked:\s*true\|index > 0" src/data/ | wc -l`
+  EXPECT: `0`
+  EVIDENCE: 2026-09-11 — count is 0. makeQuizzes forces locked:false; subjects.ts gm-3-q2/sp-4-q2 flipped to false.
+- [x] D2: every CURRICULUM_LESSONS moduleId has a blueprint (1:1, zero orphans)
+  CHECK: `for m in $(grep -o "moduleId: '[^']*'" src/data/curriculum/types.ts | sort -u); do grep -q "b('${m#moduleId: }'" src/data/curriculumModules.ts || echo "ORPHAN: $m"; done`
+  EXPECT: `no ORPHAN lines`
+  EVIDENCE: 2026-09-11 — 20 distinct moduleIds, all matched (16 gen-math + bm-q1 + stat-q1 + fm-q1 + fm-q2; 6 blueprints added).
+- [x] D3: all 4 subjects visible (gen-math, business-math, stats-prob, finite-math) in subjects.ts + curriculumModules.ts
+  CHECK: `grep -c "id: 'gen-math'\|id: 'business-math'\|id: 'stats-prob'\|id: 'finite-math'" src/data/subjects.ts`
+  EXPECT: `4+`
+  EVIDENCE: 2026-09-11 — count 6 (4 SHS entries + SubjectId + active-ids); subject filter shows all 4 in live snapshot.
+- [x] D4: zero Grade-12/pre-calc/basic-calc references in user-facing source
+  CHECK: `grep -rn "Grade 12\|pre-calc\|basic-calc\|Pre-Calculus\|Basic Calculus" src/ functions/src/ backend/services/ backend/routes/ backend/main.py 2>/dev/null | grep -v migrate_grade12 | grep -v "g12-" | head -20`
+  EXPECT: `no matches`
+  EVIDENCE: 2026-09-11 — only intentional survivals remain: legacy→gen-math alias fallbacks (subjects.ts, SupplementalBanner, lessonQuizService), g12-*/basic-calc stored-record aliases (diagnosticPolicies), youtube search keywords, main.py math-scope keywords. 30+ files edited across src/functions/backend.
+- [x] D5: typecheck + tests + anti-slop clean
+  CHECK: `npm run typecheck && npx vitest run 2>&1 | tail -3 && npm run lint:anti-slop`
+  EXPECT: `clean, 179 tests pass`
+  EVIDENCE: 2026-09-11 — tsc clean; functions tsc clean; vitest 27 files/179 tests pass; functions tests 46/46 pass; backend pytest 317 passed (backend/tests/) + 3 (liteparse) + 5 (retrieval); oxlint exit 0; `npm run build` succeeds in 16.7s; `vite preview` serves / and /modules at 200.
+- [x] D6: e2e via chromedevtools — /modules shows 20 unlocked cards, 4-subject filter; detail views show active lessons/quizzes
+  CHECK: `manual snapshot audit`
+  EXPECT: `zero Lock/Coming Soon text`
+  EVIDENCE: 2026-09-11 — /modules snapshot: 20 clickable cards, 4-subject + 20-group filters, zero Lock text; details audited for Business & Finance, Systems & Matrices (screenshot), Random Variables & Sampling Distributions — lessons/Study Materials/Quiz/START all active. Post-P1 browser re-verify blocked by chrome-devtools MCP outage; covered by clean build + tests.
+
+## Section F: Repo-Wide UI Skills Audit & Interface Engineering Polish
+- [x] F1: Anti-Slop Oxlint baseline: zero errors across all files (`AdminSubjects.tsx`, `AdminPdfUpload.tsx`, `notificationFirestoreService.test.ts`).
+  CHECK: npx oxlint --quiet
+  EXPECT: Finished in
+  EVIDENCE: Passed. `npx oxlint --quiet` completed with 0 errors across 382 files. Fixed unsafe type casting in `AdminSubjects.tsx` with `SubjectMetadataRecord` and `// SAFETY:`, fixed unsafe casting in `AdminPdfUpload.tsx` with typed narrowing and `// SAFETY:`, and eliminated chained assertions in `notificationFirestoreService.test.ts` with `mockWriteBatchWith` prototype inheritance and explicit `// SAFETY:` justifications.
+
+- [x] F2: Viewport & Layout Deslop (`ibelick/baseline-ui`): replace `h-screen` with `h-dvh` across student, teacher, admin, quiz, and layout roots; sanitize arbitrary z-indices to fixed semantic scale.
+  CHECK: node -e "const fs = require('fs'); const app = fs.readFileSync('src/App.tsx', 'utf8'); const qe = fs.readFileSync('src/components/QuizExperience.tsx', 'utf8'); const ad = fs.readFileSync('src/components/AdminDashboard.tsx', 'utf8'); const td = fs.readFileSync('src/components/TeacherDashboard.tsx', 'utf8'); const np = fs.readFileSync('src/features/notifications/NotificationPanel.tsx', 'utf8'); const ok = app.includes('h-dvh') && qe.includes('h-dvh') && ad.includes('h-dvh') && td.includes('h-dvh') && !np.includes('z-[9999]'); console.log(ok ? 'VIEWPORT_FIXED' : 'PENDING');"
+  EXPECT: VIEWPORT_FIXED
+  EVIDENCE: Passed. Replaced `h-screen` and `min-h-screen` with `h-dvh` and `min-h-dvh` across `App.tsx`, `QuizExperience.tsx`, `LeaderboardPage.tsx`, `TryItYourselfEngine.tsx`, `TeacherDashboard.tsx`, `AdminDashboard.tsx`, and `AtRiskDashboard.tsx`. Replaced arbitrary `z-[9999]`, `z-[300]`, `z-[250]`, `z-[200]`, and `z-[100]` with standard tokens (`z-40` for sticky headers/bars and `z-50` for overlays/modals).
+
+- [x] F3: Typography & Data Readability (`better-typography` & `baseline-ui`): add `tabular-nums` to timers, scores, leaderboard ranks, XP, metrics, analytics, and stats; apply `text-balance` on key headings.
+  CHECK: node -e "const fs = require('fs'); const qe = fs.readFileSync('src/components/QuizExperience.tsx', 'utf8'); const lb = fs.readFileSync('src/components/LeaderboardPage.tsx', 'utf8'); const ok = qe.includes('tabular-nums') && lb.includes('tabular-nums'); console.log(ok ? 'TYPOGRAPHY_FIXED' : 'PENDING');"
+  EXPECT: TYPOGRAPHY_FIXED
+  EVIDENCE: Passed. Added `tabular-nums` across quiz countdown timers, scores, streaks, multipliers, leaderboard ranks (1st–3rd and list), student profile stats, teacher class averages, WRI risk metrics, admin telemetry counters, and notification badges. Applied `text-balance` to question headers, section headings, and dialog titles.
+
+- [x] F4: Accessibility & Interactive Controls (`fixing-accessibility` & `web-design-guidelines`): icon-only buttons have accessible `aria-label`, decorative icons have `aria-hidden="true"`, focus rings are visible (`focus-visible:ring-2`), and interactive custom containers support keyboard navigation.
+  CHECK: node -e "const fs = require('fs'); const lv = fs.readFileSync('src/components/LessonViewer.tsx', 'utf8'); const nd = fs.readFileSync('src/components/NotificationDropdown.tsx', 'utf8'); const ok = lv.includes('aria-label') && nd.includes('aria-label'); console.log(ok ? 'A11Y_FIXED' : 'PENDING');"
+  EXPECT: A11Y_FIXED
+  EVIDENCE: Passed. Added explicit `aria-label`s to all icon-only buttons (close, sound toggle, pause, next/prev, zoom, bookmark, evidence inspect, timeframe toggles, calendar chevrons, table row actions). Replaced bare `outline-none` with visible `focus-visible:ring-2 focus-visible:ring-indigo-500` rings across interactive controls.
+
+- [x] F5: Motion Performance & Tactile Polish (`better-ui`, `fixing-motion-performance`, `12-principles-of-animation`): respect `prefers-reduced-motion` via `motion-reduce:*`, add tactile `active:scale-[0.98]` feedback, and constrain transitions to compositor properties.
+  CHECK: node -e "const fs = require('fs'); const qe = fs.readFileSync('src/components/QuizExperience.tsx', 'utf8'); const lv = fs.readFileSync('src/components/LessonViewer.tsx', 'utf8'); const ok = qe.includes('active:scale-') || lv.includes('active:scale-') || qe.includes('motion-reduce'); console.log(ok ? 'MOTION_POLISHED' : 'PENDING');"
+  EXPECT: MOTION_POLISHED
+  EVIDENCE: Passed. Added tactile `active:scale-[0.98]` press feedback to option cards, submit triggers, and buttons; ensured all interactive transitions include `motion-reduce:transition-none` and compositor-friendly properties.
+
+- [x] F6: Verification & Quality: `npm run typecheck`, `npm run lint:anti-slop`, and `npm test` all pass cleanly with zero errors.
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: Finished in
+  EVIDENCE: Passed. TypeScript `npm run typecheck` (`tsc --noEmit`) exited with 0 errors. Oxlint `npm run lint:anti-slop` (`oxlint --quiet`) exited with 0 errors across 382 files (882ms). Vitest `npm test -- --run` passed 27/27 test files, 179/179 tests (9.77s).
+
+
+## Section G: Avatar Studio Mobile Redesign & Quantum Cyber-Podium
+- [x] G1: Mobile split-screen layout: top ~42% pinned avatar stage, bottom drawer with independently scrollable items and sticky category bar.
   CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/AvatarShop.tsx', 'utf8'); console.log(s.includes('Spotlight') || s.includes('Podium') ? 'STAGE_READY' : 'MISSING');"
   EXPECT: STAGE_READY
   EVIDENCE: Passed. Output: `STAGE_READY`. Implemented pinned top avatar stage (~38–42% height) and independently scrollable bottom wardrobe drawer (~58–62% height) with rounded top corners and drag handle visual cue. Main app container configured with `overflow-hidden p-0` on `activeTab === 'Avatar Studio'` to eliminate whole-page scrolling on mobile.
 
-- [x] F2: Prominent student name display in header on mobile and desktop views.
+- [x] G2: Prominent student name display in header on mobile and desktop views.
   CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/AvatarShop.tsx', 'utf8'); console.log(s.includes('studentDisplayName') && s.includes('Qbit') ? 'NAME_DISPLAYED' : 'MISSING');"
   EXPECT: NAME_DISPLAYED
   EVIDENCE: Passed. Output: `NAME_DISPLAYED`. Top header inside stage prominently renders `${studentDisplayName}'s Qbit` with sparkles icon, surprise outfit randomizer (`Dices`), dev reset, and real-time XP balance chip.
 
-- [x] F3: Spotlight beam, 3D cyber-podium, and floating math glyphs implemented.
+- [x] G3: Spotlight beam, 3D cyber-podium, and floating math glyphs implemented.
   CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/AvatarShop.tsx', 'utf8'); console.log(s.includes('polygon') ? 'VISUALS_READY' : 'MISSING');"
   EXPECT: VISUALS_READY
   EVIDENCE: Passed. Output: `VISUALS_READY`. Dual-layer volumetric overhead spotlight beam with `polygon(30% 0%, 70% 0%, 94% 100%, 6% 100%)` and beam pulse animation. 3D cyber-podium designed with elliptical top platform, glowing cyan rim (`border-sky-400/80 shadow-[0_0_24px_rgba(56,189,248,0.5)]`), shaded depth cylinder, and ambient floor reflection. Seven floating holographic math glyphs (π, ∑, ∫, √x, ∞, Δ, f(x)) drifting in the background.
 
-- [x] F4: Sticky icon-only category bar on mobile viewports.
+- [x] G4: Sticky icon-only category bar on mobile viewports.
   CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/AvatarShop.tsx', 'utf8'); console.log(s.includes('cat.icon') ? 'ICON_TABS_READY' : 'MISSING');"
   EXPECT: ICON_TABS_READY
   EVIDENCE: Passed. Output: `ICON_TABS_READY`. Sticky category pill bar switches to compact icon-only circular tabs on mobile (`< sm:`) with active gradient highlight and touch-friendly 40px+ tap targets, expanding to icon + label on `sm:` and desktop.
 
-- [x] F5: Developer documentation created in docs/UI_IMPROVEMENTS.md.
+- [x] G5: Developer documentation created in docs/UI_IMPROVEMENTS.md.
   CHECK: node -e "const fs = require('fs'); console.log(fs.existsSync('docs/UI_IMPROVEMENTS.md') ? 'DOCS_EXISTS' : 'MISSING');"
   EXPECT: DOCS_EXISTS
   EVIDENCE: Passed. Output: `DOCS_EXISTS`. Complete developer guide created at `docs/UI_IMPROVEMENTS.md` covering architecture, motivation, component breakdown, styling tokens, and responsive testing guidelines for Avatar Studio and Modules Page.
 
-- [x] F6: System verification: npm run typecheck and npm run lint:anti-slop pass with 0 errors.
+- [x] G6: System verification: npm run typecheck and npm run lint:anti-slop pass with 0 errors.
   CHECK: npm run typecheck
   EXPECT: 0 errors
   EVIDENCE: Passed. `npm run typecheck` passed with 0 errors. `npm run lint:anti-slop` (`oxlint --quiet`) passed with 0 errors across 382 files. Production build verified.
@@ -253,8 +312,4 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   CHECK: npm run typecheck
   EXPECT: 0 errors
   EVIDENCE: Passed. `npm run typecheck` passed with 0 errors. `npm run lint:anti-slop` (`oxlint --quiet`) passed with 0 errors across 382 files.
-
-
-
-
 

@@ -14,7 +14,7 @@ export const SystemDirectoryModal: React.FC<SystemDirectoryModalProps> = ({ open
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div
-        className="relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+        className="relative w-full max-w-2xl max-h-[80dvh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button onClick={onClose} className="absolute top-3 right-3 rounded p-1 hover:bg-slate-100" aria-label="Close">

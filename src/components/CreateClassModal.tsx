@@ -151,7 +151,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col"
+          className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[80dvh] flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-[#f1f5f9]">

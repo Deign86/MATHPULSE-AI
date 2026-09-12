@@ -68,9 +68,11 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
     }
   }, [step]);
 
+  const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   // Pointer move handler across the entire window viewport
   useEffect(() => {
-    if (isTouchDevice) return;
+    if (isTouchDevice || reduceMotion) return;
 
     const handlePointerMove = (e: MouseEvent | PointerEvent) => {
       const normalizedX = e.clientX / window.innerWidth;
@@ -83,16 +85,15 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
       startLoop();
     };
 
+    // Single pointer listener: pointermove already covers mouse input.
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
-    window.addEventListener('mousemove', handlePointerMove, { passive: true });
 
     startLoop();
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('mousemove', handlePointerMove);
     };
-  }, [isTouchDevice, startLoop]);
+  }, [isTouchDevice, reduceMotion, startLoop]);
 
   const handleLoadedMetadata = () => {
     const video = videoRef.current;
@@ -109,6 +110,22 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
       onLoaded?.();
     }
   };
+
+  // Reduced motion: static poster only, no video decode or scrub loop.
+  if (reduceMotion) {
+    return (
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0 bg-[#3a236a]"
+      >
+        <img
+          src={mascotPoster}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover object-[24%_center] sm:object-[28%_center] lg:object-[25%_center] xl:object-[28%_center]"
+        />
+      </div>
+    );
+  }
 
   return (
     <div

@@ -72,12 +72,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
     <AnimatePresence>
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-[90]" onClick={onClose} />
+          <div className="fixed inset-0 z-40" onClick={onClose} />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -10, x: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10, x: 10 }}
-            className="fixed top-[80px] right-[24px] xl:right-[32px] w-[380px] bg-white/95 backdrop-blur-xl rounded-[20px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white z-[100] flex flex-col overflow-hidden origin-top-right"
+            className="fixed top-[80px] right-[24px] xl:right-[32px] w-[380px] bg-white/95 backdrop-blur-xl rounded-[20px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white z-50 flex flex-col overflow-hidden origin-top-right"
           >
             {/* Header */}
             <div className="p-4 border-b border-[#f1f5f9] flex justify-between items-center bg-white/50">
@@ -85,9 +85,10 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
               <button 
                 onClick={() => markAllAsRead()} 
                 disabled={unreadCount === 0}
-                className="text-[12px] font-bold text-[#a855f7] hover:text-[#9333ea] transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-[#a855f7]"
+                aria-label="Mark all notifications as read"
+                className="text-[12px] font-bold text-[#a855f7] hover:text-[#9333ea] transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-[#a855f7] focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none rounded px-1"
               >
-                <CheckCheck className="w-3.5 h-3.5" /> Mark all as read
+                <CheckCheck className="w-3.5 h-3.5" aria-hidden="true" /> Mark all as read
               </button>
             </div>
 
@@ -114,7 +115,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                         )}
                       </div>
                       <p className="text-[12px] text-[#475569] line-clamp-2 leading-relaxed">{notif.message}</p>
-                      <span className={`text-[10px] font-bold mt-1 block ${!notif.isRead ? 'text-[#a855f7]' : 'text-[#94a3b8]'}`}>
+                      <span className={`text-[10px] font-bold mt-1 block tabular-nums ${!notif.isRead ? 'text-[#a855f7]' : 'text-[#94a3b8]'}`}>
                         {formatDistanceToNow(notif.createdAt)} ago
                       </span>
                     </div>
@@ -135,9 +136,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                   onViewAll();
                   onClose();
                 }} 
-                className="w-full py-2 bg-purple-50 text-[#9333ea] hover:bg-purple-100 transition-colors rounded-xl text-[13px] font-bold flex items-center justify-center gap-2"
+                className="w-full py-2 bg-purple-50 text-[#9333ea] hover:bg-purple-100 transition-colors rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none"
               >
-                View All Notifications <ArrowRight className="w-4 h-4" />
+                View All Notifications <ArrowRight className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           </motion.div>

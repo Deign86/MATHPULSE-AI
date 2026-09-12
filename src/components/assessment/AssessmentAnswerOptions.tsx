@@ -21,7 +21,7 @@ const AssessmentAnswerOptions: React.FC<AssessmentAnswerOptionsProps> = ({
   showResult,
 }) => {
   return (
-    <div className="grid grid-cols-1 gap-3 w-full">
+    <div className="grid grid-cols-1 gap-3 w-full" role="radiogroup" aria-label="Answer options">
       <AnimatePresence mode="sync">
         {options.map((option, index) => {
           const label = optionLabels[index] || String(index);
@@ -33,9 +33,11 @@ const AssessmentAnswerOptions: React.FC<AssessmentAnswerOptionsProps> = ({
           return (
             <motion.button
               key={`${label}-${index}`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.08, duration: 0.3 }}
+              role="radio"
+              aria-checked={isSelected}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: index * 0.03, duration: 0.2 }}
               onClick={() => !disabled && onSelect(option)}
               disabled={disabled}
               className={cn(

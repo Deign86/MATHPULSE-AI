@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { ArrowRight, Zap, Brain } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
+import { Skeleton } from './ui/skeleton';
 import type { AvatarLayers } from './CompositeAvatar';
 import AssessmentResultsModal from './assessment/AssessmentResultsModal';
 import { subscribeToHeroBannerModalSummary } from '../services/heroBannerSummaryService';
@@ -42,6 +43,8 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
     return () => unsubscribe();
   }, [showResultsModal, studentId]);
 
+  const reduceMotion = useReducedMotion();
+
   // Clear summary when modal closes
   useEffect(() => {
     if (!showResultsModal) {
@@ -58,9 +61,9 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: reduceMotion ? 0.15 : 0.6, ease: [0.22, 1, 0.36, 1] }}
       className="relative w-full mt-0 rounded-2xl md:rounded-[2rem] p-5 md:p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg"
     >
       {/* Background elements wrapped in overflow-hidden */}
@@ -106,12 +109,14 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
 
       {/* Avatar Container: Anchored to the exact bottom of the banner, clipped directly at the banner's baseline */}
       {showAssessmentTooltip && (
-        <motion.div
+        <motion.button
+          type="button"
+          aria-label="Open initial assessment"
           initial={{ opacity: 0, scale: 0.9, x: 10 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
-          transition={{ delay: 0.5, type: 'spring' }}
+          transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
           onClick={onOpenAssessment}
-          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group"
+          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-amber-500"
         >
           <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-amber-300 relative transition-all group-hover:bg-amber-50 group-hover:border-amber-400 group-hover:-translate-y-1">
             <div className="flex items-center gap-2">
@@ -125,17 +130,19 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
             {/* Speech bubble tail pointing right-down towards avatar */}
             <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-amber-300 border-b-amber-300 rotate-45 group-hover:bg-amber-50 group-hover:border-r-amber-400 group-hover:border-b-amber-400 transition-colors" />
           </div>
-        </motion.div>
+        </motion.button>
       )}
 
       {/* Success Tooltip showing Assessment is Completed — click to open results */}
       {assessmentCompleted && !showAssessmentTooltip && (
-        <motion.div
+        <motion.button
+          type="button"
+          aria-label="View assessment results and history"
           initial={{ opacity: 0, scale: 0.9, x: 10 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
-          transition={{ delay: 0.5, type: 'spring' }}
+          transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
           onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }))}
-          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group"
+          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-teal-500"
         >
           <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all group-hover:bg-teal-50 group-hover:border-teal-400 group-hover:-translate-y-1">
             <div className="flex items-center gap-2">
@@ -152,7 +159,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
             {/* Speech bubble tail pointing right-down towards avatar */}
             <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 group-hover:bg-teal-50 group-hover:border-r-teal-400 group-hover:border-b-teal-400 transition-colors" />
           </div>
-        </motion.div>
+        </motion.button>
       )}
 
       {showResultsModal && studentId && (
@@ -169,7 +176,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
       >
         <div className="relative w-full aspect-[4/5] translate-y-[10%] md:translate-y-[21%] lg:translate-y-[19%] drop-shadow-2xl">
-          <Suspense fallback={<div className="w-full h-full scale-[1.15] md:scale-[1.25] lg:scale-[1.3] origin-bottom" />}>
+          <Suspense fallback={<Skeleton className="w-full aspect-[4/5] scale-[1.15] md:scale-[1.25] lg:scale-[1.3] origin-bottom" aria-label="Loading avatar" />}>
             <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.35] md:scale-[1.25] lg:scale-[1.3] origin-bottom" />
           </Suspense>
         </div>

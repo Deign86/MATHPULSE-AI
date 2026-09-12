@@ -112,8 +112,8 @@ interface MinItemsMap { [key: string]: number; }
 export const DEEP_DIAGNOSTIC_MIN_ITEMS_BY_SUBJECT: MinItemsMap = {
   "gen-math": 12,
   "stats-prob": 10,
-  "pre-calc": 10,
-  "basic-calc": 10,
+  "business-math": 10,
+  "finite-math": 10,
   Functions: 12,
   BusinessMath: 10,
   Logic: 10,
@@ -150,13 +150,6 @@ export const REASSESSMENT_INACTIVITY_DAYS = Number(
 export const REASSESSMENT_SCAN_BATCH_LIMIT = Number(
   process.env.REASSESSMENT_SCAN_BATCH_LIMIT || "300",
 );
-
-/**
- * Grade 12 transition gating thresholds evaluated from the latest
- * Grade 11 mastery snapshot.
- */
-export const G12_TRANSITION_MIN_MASTERED_RATIO = 0.7;
-export const G12_TRANSITION_MAX_CRITICAL_GAPS = 1;
 
 /**
  * Grade 11 prerequisite-first topic ordering for recommendation fallback.

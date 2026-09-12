@@ -1,5 +1,10 @@
 export type IARTopicArea = 'Functions' | 'BusinessMath' | 'Logic';
-export type IARGradeLevelTag = 'G11' | 'G12Candidate';
+export type IARGradeLevelTag = 'G11';
+// SAFETY: stored Firestore records may still carry the legacy 'G12Candidate' tag; normalize to G11 on read.
+export type LegacyIARGradeLevelTag = 'G11' | 'G12Candidate';
+export function normalizeIARGradeLevelTag(tag: string): IARGradeLevelTag {
+  return 'G11';
+}
 export type IARDifficulty = 'basic' | 'standard' | 'challenge';
 export type IARAnswerType = 'MCQ' | 'shortAnswerNumeric' | 'shortAnswerText' | 'confidenceLikert';
 export type DepEdBasis = 'depedPattern' | 'extension';
@@ -32,7 +37,7 @@ export interface IARTopicClassification {
   classification: 'Mastered' | 'NeedsReview' | 'HighRisk';
 }
 
-export const IAR_BLUEPRINT_VERSION = 'iar-v2-deped-g11-core-g12-candidate-shortform';
+export const IAR_BLUEPRINT_VERSION = 'iar-v2-deped-g11-core-shortform';
 
 const confidenceOptions = [
   'Very low confidence',

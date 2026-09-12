@@ -246,7 +246,7 @@ async def ingest_pdf(
 
     Args:
         storage_path: Path to PDF in Firebase Storage (e.g., "rag-pdfs/filename.pdf")
-        grade_level: Grade level (11 or 12)
+        grade_level: Grade level (Grade 11 only; legacy 12 normalizes to 11)
         topic: Topic identifier for the questions
         force_reingest: If True, reprocess even if already processed
 

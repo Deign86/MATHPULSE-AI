@@ -20,7 +20,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, 
   ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie 
 } from 'recharts';
-import { Zap, Activity, TrendingUp, ArrowUpRight, CheckCircle2, Sparkles, Bell, HelpCircle, Medal } from 'lucide-react';
+import { Zap, Activity, TrendingUp, CheckCircle2, Sparkles, Bell, HelpCircle, Medal } from 'lucide-react';
 import {
   getDashboardStats,
   getAuditLogs,
@@ -39,7 +39,6 @@ import {
   type GlobalMasteryData,
   type DifficultyDistribution,
 } from '../services/adminService';
-import { apiService, type InferenceMetricsResponse } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface AdminDashboardProps {
@@ -60,7 +59,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const [topPerformers, setTopPerformers] = useState<TopPerformer[]>([]);
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [weeklyActivity, setWeeklyActivity] = useState<WeeklyActivityData[]>([]);
-  const [inferenceMetrics, setInferenceMetrics] = useState<InferenceMetricsResponse['metrics'] | null>(null);
   const [subjectBreakdown, setSubjectBreakdown] = useState<SubjectBreakdownItem[]>([]);
   const [priorityAttention, setPriorityAttention] = useState<PriorityAttentionData | null>(null);
   const [globalMastery, setGlobalMastery] = useState<GlobalMasteryData | null>(null);
@@ -117,8 +115,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       getPriorityAttention(),
       getGlobalMastery(),
       getDifficultyDistribution(),
-      apiService.getInferenceMetrics().catch(() => null),
-    ]).then(([stats, logs, performers, weekly, subjects, priority, mastery, difficulty, inference]) => {
+    ]).then(([stats, logs, performers, weekly, subjects, priority, mastery, difficulty]) => {
       if (cancelled) return;
       setDashStats(stats);
       setRecentActivity(logs.slice(0, 4));
@@ -128,7 +125,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       setPriorityAttention(priority);
       setGlobalMastery(mastery);
       setDifficultyDist(difficulty);
-      if (inference) setInferenceMetrics(inference.metrics);
     }).catch(console.error).finally(() => {
       if (!cancelled) setLoadingOverview(false);
     });
@@ -174,7 +170,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   };
 
   return (
-    <div className="flex h-screen w-full bg-[#f8fafc] overflow-hidden font-body">
+    <div className="flex h-dvh w-full bg-[#f8fafc] overflow-hidden font-body">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
         <Sidebar
@@ -196,7 +192,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
             onClick={() => setIsMobileSidebarOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-50 p-3 lg:hidden">
+          <div className="fixed inset-y-0 left-0 z-50 p-3 lg:hidden" style={{ paddingLeft: 'calc(0.75rem + env(safe-area-inset-left, 0px))' }}>
             <Sidebar
               mode="mobile"
               onRequestClose={() => setIsMobileSidebarOpen(false)}
@@ -256,15 +252,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 <div className="hidden xl:flex items-center gap-2 ml-4 mt-1 shrink-0">
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4f46e5]/10 border border-[#4f46e5]/20 rounded-lg">
                     <Users size={13} className="text-[#4f46e5]" />
-                    <span className="text-xs font-display font-semibold text-[#4f46e5]">{(dashStats?.totalStudents ?? 0).toLocaleString()} students</span>
+                    <span className="text-xs font-display font-semibold text-[#4f46e5] tabular-nums">{(dashStats?.totalStudents ?? 0).toLocaleString()} students</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0ea5e9]/10 border border-[#0ea5e9]/20 rounded-lg">
                     <GraduationCap size={13} className="text-[#0ea5e9]" />
-                    <span className="text-xs font-display font-semibold text-[#0ea5e9]">{dashStats?.activeTeachers ?? 0} teachers</span>
+                    <span className="text-xs font-display font-semibold text-[#0ea5e9] tabular-nums">{dashStats?.activeTeachers ?? 0} teachers</span>
                   </div>
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                     <Zap size={13} className="text-amber-600" />
-                    <span className="text-xs font-display font-semibold text-amber-600">{(dashStats?.aiPredictions ?? 0).toLocaleString()} XP events</span>
+                    <span className="text-xs font-display font-semibold text-amber-600 tabular-nums">{(dashStats?.aiPredictions ?? 0).toLocaleString()} XP events</span>
                   </div>
                 </div>
               )}
@@ -340,14 +336,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   <div className="relative z-10 flex flex-col justify-between h-full">
                     <div>
                       <h2 className="text-white/70 text-[10px] font-black uppercase tracking-[0.2em] mb-1.5">Platform Overview</h2>
-                      <p className="text-white text-3xl sm:text-4xl font-display font-black tracking-tighter leading-none">
+                      <p className="text-white text-3xl sm:text-4xl font-display font-black tracking-tighter leading-none tabular-nums">
                         {loadingOverview ? '...' : (dashStats?.totalStudents ?? 0).toLocaleString()}
                       </p>
                       <p className="text-white/80 text-xs font-medium mt-1">Total Active Students</p>
                     </div>
                     <div className="flex items-center gap-2 py-1 px-3 bg-white/10 backdrop-blur-md rounded-full w-fit border border-white/10 mt-3 sm:mt-0">
                       <TrendingUp size={12} className="text-emerald-400" />
-                      <span className="text-white text-[10px] font-bold tracking-wide">{dashStats?.activeTeachers ?? 0} teachers · {dashStats?.totalClasses ?? 0} classes</span>
+                      <span className="text-white text-[10px] font-bold tracking-wide tabular-nums">{dashStats?.activeTeachers ?? 0} teachers · {dashStats?.totalClasses ?? 0} classes</span>
                     </div>
                   </div>
                   <div className="absolute -bottom-6 -right-6 opacity-10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 pointer-events-none">
@@ -363,7 +359,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                         <div className={`w-9 h-9 sm:w-10 sm:h-10 ${stat.color} rounded-xl flex items-center justify-center mb-2 shadow-sm shrink-0`}>
                           <stat.icon size={18} className={stat.iconColor} />
                         </div>
-                        <p className="text-lg sm:text-[24px] font-display font-black text-[#1e293b] leading-tight tracking-tight truncate">
+                        <p className="text-lg sm:text-[24px] font-display font-black text-[#1e293b] leading-tight tracking-tight truncate tabular-nums">
                           {loadingOverview ? '...' : stat.value}
                         </p>
                         <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-tight sm:tracking-[0.15em] mt-0.5 truncate">{stat.label}</p>
@@ -373,7 +369,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 </div>
               </div>
 
-              {/* Row 2: Ratio 5:4:3 */}
+              {/* Row 2: Ratio 5:7 */}
               <div className="grid grid-cols-12 gap-4 sm:gap-6 min-h-[330px] min-w-0">
                 {/* System Performance (col-span-5) */}
                 <div className="col-span-12 xl:col-span-5 bg-white rounded-[28px] border border-slate-200/60 p-4 sm:p-6 flex flex-col shadow-sm shadow-slate-200/50 min-w-0">
@@ -410,55 +406,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                   </div>
                 </div>
 
-                {/* AI Model Status (col-span-4) */}
-                <div className="col-span-12 xl:col-span-4 bg-white rounded-[28px] border border-slate-200/60 p-4 sm:p-6 flex flex-col shadow-sm shadow-slate-200/50 group min-w-0">
-                  <div className="flex items-start justify-between mb-1">
-                    <div>
-                      <h3 className="text-[15px] sm:text-[16px] font-bold text-[#1e293b]">AI Model Status</h3>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">Success Rate</p>
-                    </div>
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
-                      <Activity size={16} className="text-indigo-600" />
-                    </div>
-                  </div>
-                  <div className="flex items-baseline gap-2 mb-3 sm:mb-4">
-                    {inferenceMetrics ? (() => {
-                      const completed = inferenceMetrics.requests_ok + inferenceMetrics.requests_error;
-                      const rate = completed > 0
-                        ? Math.round((inferenceMetrics.requests_ok / completed) * 100)
-                        : 100;
-                      const healthy = rate >= 90;
-                      return (<>
-                        <span className="text-3xl sm:text-[38px] font-display font-black text-indigo-600 tracking-tighter leading-none">{rate}%</span>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${healthy ? 'text-emerald-500 bg-emerald-50' : 'text-amber-500 bg-amber-50'}`}>
-                          {healthy ? 'Optimal' : `${inferenceMetrics.requests_error} errors`}
-                        </span>
-                      </>);
-                    })() : <span className="text-3xl sm:text-[38px] font-display font-black text-indigo-600 tracking-tighter leading-none">...</span>}
-                  </div>
-                  <div className="flex-1 flex flex-col justify-center gap-2.5 sm:gap-3">
-                    {inferenceMetrics && (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.round((inferenceMetrics.requests_ok / (inferenceMetrics.requests_ok + inferenceMetrics.requests_error || 1)) * 100)}%` }}></div>
-                          </div>
-                        </div>
-                        <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                          <span>{inferenceMetrics.requests_ok.toLocaleString()} OK</span>
-                          <span>{inferenceMetrics.requests_error.toLocaleString()} failed</span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 truncate">{inferenceMetrics.requests_total.toLocaleString()} total attempts · {inferenceMetrics.retries_total.toLocaleString()} retries</p>
-                      </>
-                    )}
-                  </div>
-                  <button onClick={() => setActiveTab('AI Monitoring')} className="w-full mt-4 py-2.5 sm:py-3 bg-slate-50 text-[#1e293b] text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 group/btn min-h-[40px]">
-                    Health Check <ArrowUpRight size={14} className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
-                  </button>
-                </div>
-
-                {/* Top Performers (col-span-3) */}
-                <div className="col-span-12 xl:col-span-3 flex flex-col gap-3 sm:gap-4 min-w-0">
+                {/* Top Performers (col-span-7) */}
+                <div className="col-span-12 xl:col-span-7 flex flex-col gap-3 sm:gap-4 min-w-0">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-2">Top Performers</h3>
                   <div className="flex flex-col gap-3 flex-1">
                     {loadingOverview ? (
@@ -507,7 +456,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                           </div>
                           
                           <div className="text-right">
-                            <p className={`text-xl font-display font-black leading-none ${
+                            <p className={`text-xl font-display font-black leading-none tabular-nums ${
                               idx === 0 ? 'text-emerald-600' : 'text-indigo-600'
                             }`}>{student.performance}%</p>
                             <p className="text-[7px] font-black text-slate-400 uppercase tracking-tighter mt-1">Mastery</p>
@@ -551,7 +500,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                     <div className="relative z-10 pt-2 flex items-center justify-between">
                       <span className="text-xs font-medium text-slate-400">
                         {(priorityAttention?.atRiskCount ?? 0) > 0
-                          ? `${priorityAttention!.atRiskCount} At-Risk Student${priorityAttention!.atRiskCount !== 1 ? 's' : ''}`
+                          ? <><span className="tabular-nums">{priorityAttention!.atRiskCount}</span> At-Risk Student{priorityAttention!.atRiskCount !== 1 ? 's' : ''}</>
                           : 'All students on track'}
                       </span>
                       {(priorityAttention?.atRiskCount ?? 0) > 0 && (
@@ -590,17 +539,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-[36px] font-display font-black text-[#1e293b] leading-none">{globalMastery?.avgMastery ?? 0}%</span>
+                        <span className="text-[36px] font-display font-black text-[#1e293b] leading-none tabular-nums">{globalMastery?.avgMastery ?? 0}%</span>
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] mt-1">Overall</span>
                       </div>
                     </div>
                     <div className="mt-8 flex items-center gap-12">
                       <div className="text-center">
-                        <p className="text-xl font-display font-black text-indigo-600 leading-none">{(globalMastery?.passed ?? 0).toLocaleString()}</p>
+                        <p className="text-xl font-display font-black text-indigo-600 leading-none tabular-nums">{(globalMastery?.passed ?? 0).toLocaleString()}</p>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Passed</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xl font-display font-black text-slate-300 leading-none">{(globalMastery?.pending ?? 0).toLocaleString()}</p>
+                        <p className="text-xl font-display font-black text-slate-300 leading-none tabular-nums">{(globalMastery?.pending ?? 0).toLocaleString()}</p>
                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Pending</p>
                       </div>
                     </div>
@@ -624,7 +573,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                         a.href = URL.createObjectURL(blob);
                         a.download = 'subject-breakdown.csv';
                         a.click();
-                      }} className="px-3 py-1.5 bg-white border border-slate-200 text-[10px] font-black text-[#1e293b] uppercase tracking-widest rounded-lg hover:bg-slate-50 transition-all">Export</button>
+                      }} aria-label="Export subject breakdown as CSV" className="px-3 py-1.5 bg-white border border-slate-200 text-[10px] font-black text-[#1e293b] uppercase tracking-widest rounded-lg hover:bg-slate-50 transition-all">Export</button>
                     </div>
                     <div className="flex-1 overflow-x-auto">
                       <table className="w-full text-left">
@@ -642,21 +591,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                               <td className="px-6 py-4">
                                 <div className="flex flex-col">
                                   <span className="text-[13px] font-bold text-[#1e293b] group-hover:text-indigo-600 transition-colors">{sub.name}</span>
-                                  <span className="text-[9px] font-medium text-slate-400">Semester 1</span>
+                                  <span className="text-[9px] font-medium text-slate-400">Quarters Q1–Q4</span>
                                 </div>
                               </td>
                               <td className="px-6 py-4">
                                 <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${sub.type === 'STEM' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{sub.type}</span>
                               </td>
                               <td className="px-6 py-4 text-center">
-                                <span className="text-[12px] font-bold text-slate-600">{sub.count}</span>
+                                <span className="text-[12px] font-bold text-slate-600 tabular-nums">{sub.count}</span>
                               </td>
                               <td className="px-6 py-4 min-w-[180px]">
                                 <div className="flex items-center gap-3">
                                   <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden p-[1px]">
                                     <div className={`h-full rounded-full ${sub.progress > 80 ? 'bg-indigo-500' : sub.progress > 60 ? 'bg-indigo-400' : 'bg-rose-400'} transition-all duration-1000`} style={{ width: `${sub.progress}%` }}></div>
                                   </div>
-                                  <span className="text-[11px] font-black text-[#1e293b] w-8">{sub.progress}%</span>
+                                  <span className="text-[11px] font-black text-[#1e293b] w-8 tabular-nums">{sub.progress}%</span>
                                 </div>
                               </td>
                             </tr>
@@ -683,8 +632,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                               <CheckCircle2 size={14} className="text-indigo-600" />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-[12px] font-bold text-[#1e293b] truncate leading-tight group-hover:text-indigo-600 transition-colors">{log.action}</p>
-                              <p className="text-[10px] font-medium text-slate-400 truncate mt-0.5">{log.details}</p>
+                              <p className="text-[12px] font-bold text-[#1e293b] truncate leading-tight group-hover:text-indigo-600 transition-colors tabular-nums">{log.action}</p>
+                              <p className="text-[10px] font-medium text-slate-400 truncate mt-0.5 tabular-nums">{log.details}</p>
                             </div>
                           </div>
                         ))}
@@ -708,7 +657,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                           <div key={idx}>
                             <div className="flex justify-between items-center mb-1.5">
                               <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">{item.label}</span>
-                              <span className="text-[11px] font-black text-[#1e293b]">{item.val}%</span>
+                              <span className="text-[11px] font-black text-[#1e293b] tabular-nums">{item.val}%</span>
                             </div>
                             <div className="h-1.5 bg-slate-50 rounded-full overflow-hidden p-[1px]">
                               <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.val}%` }}></div>

@@ -81,10 +81,10 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[80dvh] flex flex-col">
           <div className="flex items-center justify-between p-5 border-b border-[#f1f5f9]">
             <h2 className="text-base font-semibold text-[#1e293b]">Add Students to {grade} - {section}</h2>
-            <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#f1f5f9]"><X size={18} className="text-[#64748b]" /></button>
+            <button onClick={onClose} aria-label="Close dialog" className="p-1 rounded-lg hover:bg-[#f1f5f9]"><X size={18} className="text-[#64748b]" /></button>
           </div>
           <div className="p-4 space-y-3 flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center gap-3">

@@ -13,7 +13,8 @@ const adaptStaticSubject = (staticSubject: {
   code: string;
   name: string;
   gradeLevel: string;
-  semester: string;
+  quarters: readonly string[];
+  termStructure: string;
   color: string;
   pdfAvailable: boolean;
   topics: ReadonlyArray<{ id: string; name: string; unit: string }>;
@@ -22,7 +23,8 @@ const adaptStaticSubject = (staticSubject: {
   code: staticSubject.code,
   name: staticSubject.name,
   gradeLevel: staticSubject.gradeLevel,
-  semester: staticSubject.semester,
+  quarters: [...staticSubject.quarters],
+  termStructure: staticSubject.termStructure,
   color: staticSubject.color,
   pdfAvailable: staticSubject.pdfAvailable,
   topics: staticSubject.topics.map((t: { id: string; name: string; unit: string }) => ({

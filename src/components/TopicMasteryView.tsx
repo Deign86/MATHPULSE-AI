@@ -47,8 +47,8 @@ type SortDir = 'asc' | 'desc';
 const SUBJECT_BADGES = {
   'gen-math': { label: 'General Mathematics', color: 'bg-sky-100 text-sky-700' },
   'stats-prob': { label: 'Statistics & Probability', color: 'bg-sky-100 text-sky-700' },
-  'pre-calc': { label: 'Pre-Calculus', color: 'bg-orange-100 text-orange-700' },
-  'basic-calc': { label: 'Basic Calculus', color: 'bg-red-100 text-red-700' },
+  'business-math': { label: 'Business Mathematics', color: 'bg-emerald-100 text-emerald-700' },
+  'finite-math': { label: 'Finite Mathematics', color: 'bg-cyan-100 text-cyan-700' },
 };
 
 const STATUS_BADGES = {

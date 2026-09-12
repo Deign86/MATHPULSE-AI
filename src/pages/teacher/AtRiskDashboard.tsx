@@ -55,7 +55,7 @@ const StatCard: React.FC<StatCardProps> = ({ label, value, icon, gradient, shado
         {icon}
       </div>
     </div>
-    <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{value}</div>
+    <div className="text-[28px] font-bold relative z-10 leading-none mb-4 tabular-nums">{value}</div>
     <div className="flex items-center relative z-10 border-t border-white/20 pt-3 mt-auto">
       <span className="text-[12px] font-medium text-white/90">{subtitle}</span>
     </div>
@@ -164,7 +164,7 @@ export const AtRiskDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]">
+    <div className="min-h-dvh bg-[#f8fafc]">
       {/* Page Header */}
       <div className="bg-white/80 backdrop-blur-[16px] border-b border-slate-200/50 px-6 py-5">
         <h1 className="text-xl font-bold text-slate-900">At-Risk Student Monitoring</h1>
@@ -256,7 +256,7 @@ export const AtRiskDashboard: React.FC = () => {
                   >
                     {status === 'all' ? 'All' : status === 'at_risk' ? 'At Risk' : status.charAt(0).toUpperCase() + status.slice(1)}
                     {status !== 'all' && (
-                      <span className="ml-1 text-[11px] opacity-70">
+                      <span className="ml-1 text-[11px] opacity-70 tabular-nums">
                         ({stats[status]})
                       </span>
                     )}
@@ -266,7 +266,7 @@ export const AtRiskDashboard: React.FC = () => {
             </div>
 
             <span className="text-[13px] text-slate-500 font-medium shrink-0">
-              {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
+              <span className="tabular-nums">{filteredStudents.length}</span> student{filteredStudents.length !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
@@ -339,6 +339,7 @@ export const AtRiskDashboard: React.FC = () => {
                           <button
                             onClick={() => setExpandedStudentId((prev) => prev === student.id ? null : student.id)}
                             className="text-slate-400 hover:text-[#9956DE] transition-colors"
+                            aria-label={expandedStudentId === student.id ? `Collapse details for ${student.name || 'student'}` : `Expand details for ${student.name || 'student'}`}
                           >
                             <ChevronDown
                               size={14}

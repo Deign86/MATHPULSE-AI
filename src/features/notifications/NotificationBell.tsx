@@ -35,14 +35,14 @@ export const NotificationBell: React.FC = () => {
     <div ref={containerRef} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 bg-[#edf1f7] rounded-xl text-[#5a6578] hover:bg-[#dde3eb] transition-colors"
+        className="relative p-3 bg-[#edf1f7] rounded-xl text-[#5a6578] hover:bg-[#dde3eb] transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
         aria-label="Notifications"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        <Bell size={20} />
+        <Bell size={20} aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 tabular-nums">
             {displayCount}
           </span>
         )}

@@ -647,26 +647,6 @@ export interface AsyncTaskCancelResponse {
   message: string;
 }
 
-export interface InferenceMetricsResponse {
-  success: boolean;
-  metrics: {
-    uptime_sec: number;
-    requests_total: number;
-    requests_ok: number;
-    requests_error: number;
-    retries_total: number;
-    fallback_attempts: number;
-    route_counts: Record<string, number>;
-    task_counts: Record<string, number>;
-    provider_counts: Record<string, number>;
-    status_code_counts: Record<string, number>;
-    avg_latency_ms: number;
-    active_model: string;
-    primary_provider: string;
-    pro_enabled: boolean;
-  };
-}
-
 export interface ModelConfigResponse {
   profile: string;
   overrides: Record<string, string>;
@@ -2684,13 +2664,6 @@ export const apiService = {
     });
   },
 
-  // Ops endpoints
-  getInferenceMetrics: async (): Promise<InferenceMetricsResponse> => {
-    return apiFetch<InferenceMetricsResponse>('/api/ops/inference-metrics', {
-      method: 'GET',
-    });
-  },
-
   // Model config endpoints
   getModelConfig: async (): Promise<ModelConfigResponse> => {
     return apiFetch<ModelConfigResponse>('/api/admin/model-config', {
@@ -2961,7 +2934,9 @@ export interface CurriculumSubject {
   code: string;
   name: string;
   gradeLevel: string;
-  semester: string;
+  quarters: string[];
+  termStructure: string;
+  semester?: string;
   color: string;
   pdfAvailable: boolean;
   topics: Array<{ id: string; name: string; unit: string }>;
