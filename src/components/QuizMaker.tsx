@@ -24,6 +24,7 @@ import {
 } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import BloomsTaxonomyModal from './BloomsTaxonomyModal';
+import ConfirmModal from './ConfirmModal';
 import {
   saveGeneratedQuiz,
   publishQuiz,
@@ -206,6 +207,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const [expandedSection, setExpandedSection] = useState<string | null>('topics');
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const [showBloomsModal, setShowBloomsModal] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [provenanceSourceFilter, setProvenanceSourceFilter] = useState<string>('all');
   const [provenanceMaterialFilter, setProvenanceMaterialFilter] = useState<string>('all');
 
@@ -598,14 +600,17 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
   const handleBack = () => {
     if (generating) {
-      if (window.confirm('Quiz generation is in progress. Are you sure you want to leave?')) {
-        setStep('setup');
-        setQuizResult(null);
-        setError('');
-        onBack();
-      }
+      setShowLeaveConfirm(true);
       return;
     }
+    setStep('setup');
+    setQuizResult(null);
+    setError('');
+    onBack();
+  };
+
+  const confirmLeave = () => {
+    setShowLeaveConfirm(false);
     setStep('setup');
     setQuizResult(null);
     setError('');
@@ -1343,7 +1348,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <p className="text-sm text-red-800 font-medium">Error</p>
                   <p className="text-sm text-red-600">{error}</p>
                 </div>
-                <button onClick={() => setError('')} className="ml-auto">
+                <button onClick={() => setError('')} aria-label="Dismiss error" className="ml-auto p-1 rounded-lg">
                   <X size={14} className="text-red-400" />
                 </button>
               </motion.div>
@@ -2001,6 +2006,18 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       
       <BloomsTaxonomyModal isOpen={showBloomsModal} onClose={() => setShowBloomsModal(false)} />
 
+      <ConfirmModal
+        isOpen={showLeaveConfirm}
+        onClose={() => setShowLeaveConfirm(false)}
+        onConfirm={confirmLeave}
+        title="Leave quiz generation?"
+        message="Quiz generation is in progress. Leaving now will discard progress."
+        confirmText="Leave"
+        cancelText="Stay"
+        type="warning"
+        icon="warning"
+      />
+
       {/* ═══ ASSIGN STUDENT MODAL ═══ */}
       <AnimatePresence>
         {showAssignModal && (
@@ -2015,7 +2032,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-md max-h-[70vh] flex flex-col overflow-hidden border border-[#dde3eb]"
+              className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-md max-h-[70dvh] flex flex-col overflow-hidden border border-[#dde3eb]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-5 py-4 border-b border-[#dde3eb] flex items-center justify-between">
@@ -2023,7 +2040,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <Users size={18} className="text-sky-600" />
                   Assign to Student
                 </h3>
-                <button onClick={() => setShowAssignModal(false)} className="p-1 hover:bg-[#edf1f7] rounded-lg transition-colors">
+                <button onClick={() => setShowAssignModal(false)} aria-label="Close assign dialog" className="p-1 hover:bg-[#edf1f7] rounded-lg transition-colors">
                   <X size={16} className="text-slate-500" />
                 </button>
               </div>
@@ -2034,6 +2051,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <input
                     type="text"
                     placeholder="Search students…"
+                    aria-label="Search students"
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
                     className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-500"
@@ -2047,7 +2065,17 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                     <Loader2 size={20} className="animate-spin text-sky-500" />
                   </div>
                 ) : filteredStudents.length === 0 ? (
-                  <p className="text-center text-sm text-slate-500 py-10">No students found</p>
+                  <div className="text-center py-10">
+                    <p className="text-sm text-slate-500">No students found</p>
+                    {studentSearch && (
+                      <button
+                        onClick={() => setStudentSearch('')}
+                        className="mt-3 px-4 py-2 text-sm font-bold text-sky-600 hover:bg-sky-50 rounded-xl transition-colors"
+                      >
+                        Clear search
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   filteredStudents.map((s) => (
                     <button

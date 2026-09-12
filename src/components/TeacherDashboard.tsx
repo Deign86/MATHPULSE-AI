@@ -634,6 +634,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [pendingRemoveStudent, setPendingRemoveStudent] = useState<StudentView | null>(null);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [showAddStudentsModal, setShowAddStudentsModal] = useState(false);
 
@@ -1404,7 +1405,15 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const handleRemoveStudent = useCallback(
     async (student: StudentView) => {
       if (!currentUser) return;
-      if (!window.confirm(`Remove ${student.name} from this class? This cannot be undone.`)) return;
+      setPendingRemoveStudent(student);
+    },
+    [currentUser],
+  );
+
+  const confirmRemoveStudent = useCallback(async () => {
+    if (!currentUser || !pendingRemoveStudent) return;
+    const student = pendingRemoveStudent;
+    setPendingRemoveStudent(null);
       const classSectionId = student.classSectionId || student.classroomId || '';
       if (!classSectionId) {
         toast.error('Cannot determine class section for this student.');
@@ -1419,7 +1428,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         toast.error('Failed to remove student.');
       }
     },
-    [currentUser],
+    [currentUser, pendingRemoveStudent],
   );
 
   useEffect(() => {
@@ -2135,6 +2144,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </div>
                 <button
                   onClick={() => { setInsightModalOpen(false); }}
+                  aria-label="Close insight dialog"
                   className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
                 >
                   <X size={18} />
@@ -2169,6 +2179,19 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         message="Are you sure you want to logout?"
         confirmText="Logout"
         cancelText="Cancel"
+      />
+
+      {/* Remove Student Confirmation */}
+      <ConfirmModal
+        isOpen={pendingRemoveStudent !== null}
+        onClose={() => setPendingRemoveStudent(null)}
+        onConfirm={confirmRemoveStudent}
+        title="Remove student"
+        message={pendingRemoveStudent ? `Remove ${pendingRemoveStudent.name} from this class? This cannot be undone.` : 'Remove this student from this class? This cannot be undone.'}
+        confirmText="Remove"
+        cancelText="Cancel"
+        type="danger"
+        icon="delete"
       />
 
       <CreateClassModal

@@ -420,7 +420,7 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0 bg-white rounded-2xl shadow-2xl border-0">
+      <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto p-0 bg-white rounded-2xl shadow-2xl border-0">
         {/* Header (DialogContent owns the single X close button) */}
         <div className="sticky top-0 z-10 bg-white border-b border-slate-200 rounded-t-2xl px-6 py-4">
           <div className="mb-3 pr-8">

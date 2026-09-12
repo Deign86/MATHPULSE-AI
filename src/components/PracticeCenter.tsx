@@ -436,7 +436,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[80vh] overflow-y-auto"
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[80dvh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-black text-slate-800">Quiz History</h3>

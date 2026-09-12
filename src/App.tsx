@@ -974,7 +974,7 @@ const App = () => {
   // Maintenance mode: block non-admin users
   if (maintenanceMode && (!isLoggedIn || userRole !== 'admin')) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-gradient-to-br from-[#f8fafc] to-[#eef2ff] p-6">
+      <div className="min-h-dvh flex items-center justify-center bg-[#f8fafc] p-6">
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-5">
             <AlertTriangle className="w-8 h-8 text-amber-600" />
@@ -1150,7 +1150,7 @@ const App = () => {
         )}
 
         {/* Main Content */}
-        <div className="flex-1 min-h-0 flex flex-col min-w-0 bg-gradient-to-br from-indigo-200 via-fuchsia-50 to-orange-100 relative z-10 shadow-[rgba(124,58,237,0.05)_0px_0px_30px_inset]">
+        <div className="flex-1 min-h-0 flex flex-col min-w-0 bg-[#f7f9fc] relative z-10 shadow-[rgba(124,58,237,0.05)_0px_0px_30px_inset]">
           <div className="absolute inset-0 bg-math-pattern opacity-30 pointer-events-none mix-blend-multiply z-0" />
           
           {/* Header — compact with inline gamification stats */}
@@ -1421,7 +1421,7 @@ const App = () => {
           {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page and quiz mode */}
           {(activeTab !== 'AI Chat' && !isInQuizMode) && (
             <Suspense fallback={null}>
-              <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50">
+              <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)', marginRight: 'env(safe-area-inset-right, 0px)' }}>
                 <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
               </div>
             </Suspense>

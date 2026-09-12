@@ -71,11 +71,11 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+            className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85dvh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-sky-600 to-sky-500 px-6 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="bg-sky-600 px-6 py-4 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                   <GraduationCap size={22} className="text-white" />

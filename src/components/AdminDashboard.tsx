@@ -192,7 +192,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
             className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
             onClick={() => setIsMobileSidebarOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-50 p-3 lg:hidden">
+          <div className="fixed inset-y-0 left-0 z-50 p-3 lg:hidden" style={{ paddingLeft: 'calc(0.75rem + env(safe-area-inset-left, 0px))' }}>
             <Sidebar
               mode="mobile"
               onRequestClose={() => setIsMobileSidebarOpen(false)}
