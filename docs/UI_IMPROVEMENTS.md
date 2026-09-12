@@ -104,14 +104,42 @@
 
 ---
 
-## 4. Quality & Verification Evidence
+## 4. Student Dashboard & UI/UX Craft Overhaul (`src/App.tsx`, `HeroBanner.tsx`, `LearningPath.tsx`, `RightSidebar.tsx`, `CompetencyRadarChart.tsx`)
+
+### Mobile Gamified Bento Ribbon
+* **Instant Visibility of Player Progression**:
+  * On mobile/tablet screens (`lg:hidden`), the top app header hides gamification stats (`hidden md:flex`) and `RightSidebar` is positioned below all dashboard content.
+  * Added a dedicated 4-card / 2x2 Bento Ribbon directly below the Hero Banner:
+    1. **Mastery Rank Card**: Level badge + Crown icon + rank standing tag.
+    2. **XP Progression Card**: Real-time XP balance, animated level progress bar, and `{progressXPInLevel}/{xpToNextLevel}` XP milestone.
+    3. **Streak / Daily Rewards Card**: Flame icon + active streak + direct trigger opening the Daily Rewards modal.
+    4. **PvP Quiz Battle Card**: Quick-action card to jump directly into the live Quiz Battle matchmaking queue.
+
+### Hero Banner Polish & Mobile-Accessible Alerts
+* Standardized outer container to `rounded-3xl md:rounded-[2rem]` with unified subtle border and glow.
+* Surfaced the Initial Assessment prompt (`Take Initial Assessment` / `Assessment Complete`) as an inline interactive pill on mobile devices (previously hidden behind `hidden md:block`).
+* Fixed awkward mobile text squeezes and tuned avatar anchor points for small screens.
+
+### Learning Path Adaptive Card Grid
+* Replaced the cramped `w-[72vw] max-w-[260px] h-[220px]` horizontal snap scroller with a clean adaptive grid (`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6`).
+* Modules display full-width readable folder cards with active progress bars and curriculum tags matching the `ModulesPage` card architecture.
+
+### Craft & Symmetry Fixes
+* **Syntax Fix**: Eliminated the invalid `rounded-[-20px]` CSS bug in `DailyChallengeWidget.tsx`.
+* **Tablet 2-Column Bento**: Enabled `grid-cols-1 sm:grid-cols-2 xl:grid-cols-1` in `RightSidebar.tsx`, preventing widgets from stretching into an endlessly long single column on tablets.
+* **Token Standardization**: Unified container radii across `CompetencyRadarChart`, `RightSidebar`, and `DailyChallengeWidget` to `rounded-2xl md:rounded-3xl`.
+
+---
+
+## 5. Quality & Verification Evidence
 
 | Area | Check / Command | Result |
 | :--- | :--- | :--- |
 | **Type Safety** | `npm run typecheck` (`tsc --noEmit`) | ✅ **0 errors** |
 | **Linting & Anti-Slop** | `npm run lint:anti-slop` (`oxlint --quiet`) | ✅ **0 errors** across 382 files |
 | **Component Unit Tests** | `npx vitest run src/components/ModulesPage.test.tsx` | ✅ **1/1 passed** |
-| **Acceptance Gates** | `GATES.md` Section I (`I1`–`I5`) | ✅ **All 5 gates passed with recorded evidence** |
+| **Acceptance Gates** | `GATES.md` Sections G, H, I, J (`65/65`) | ✅ **All 65 gates passed with recorded evidence** |
+
 
 
 

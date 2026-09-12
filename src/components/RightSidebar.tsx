@@ -200,17 +200,17 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   );
 
   return (
-    <div className="space-y-2.5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 sm:gap-4">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         onClick={onOpenRewards}
-        className="rounded-2xl border border-[#9956DE]/25 cursor-pointer transition-all group relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] hover:shadow-[0_16px_40px_rgba(114,116,237,0.28)] hover:-translate-y-0.5"
+        className="rounded-2xl md:rounded-3xl border border-[#9956DE]/25 cursor-pointer transition-all group relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] hover:shadow-[0_16px_40px_rgba(114,116,237,0.28)] hover:-translate-y-0.5 flex flex-col justify-between"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(251,150,187,0.32),transparent_42%),radial-gradient(circle_at_85%_84%,rgba(117,208,106,0.24),transparent_40%)]" />
 
-        <div className="relative z-10 p-3">
+        <div className="relative z-10 p-3.5 sm:p-4 flex flex-col justify-between h-full">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="shrink-0 w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center border border-white/35 backdrop-blur-sm">
@@ -276,7 +276,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         onClick={onOpenLeaderboard}
-        className="bg-white rounded-xl border border-slate-200/80 hover:shadow-md hover:border-amber-200/60 transition-all group overflow-hidden cursor-pointer"
+        className="sm:col-span-2 xl:col-span-1 bg-white rounded-2xl md:rounded-3xl border border-slate-200/80 hover:shadow-md hover:border-amber-200/60 transition-all group overflow-hidden cursor-pointer"
       >
         <div className="p-3 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">

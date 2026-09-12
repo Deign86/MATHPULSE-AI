@@ -60,9 +60,9 @@ const DailyChallengeWidget: React.FC<DailyChallengeWidgetProps> = ({ onNavigateT
   const currentChallenge = challenges[currentIndex];
 
   return (
-    <div className="bg-white rounded-[24px] p-4 shadow-sm border border-slate-100 flex flex-col gap-6 mt-4 relative overflow-hidden">
+    <div className="bg-white rounded-2xl md:rounded-3xl p-4 shadow-sm border border-slate-100 flex flex-col gap-6 relative overflow-hidden">
       {/* Swipeable Banner Section */}
-      <div className="relative h-[185px] rounded-[-20px] rounded-2xl overflow-hidden cursor-pointer group">
+      <div className="relative h-[185px] rounded-2xl overflow-hidden cursor-pointer group">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentChallenge.id}

@@ -16,7 +16,7 @@ export const CompetencyRadarChart: React.FC = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative overflow-hidden bg-white rounded-[16px] border border-slate-200 shadow-sm p-6 lg:p-8 group"
+      className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-6 lg:p-8 group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -26,7 +26,7 @@ export const CompetencyRadarChart: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 relative z-10 gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-[#a855f7] to-[#9333ea] flex items-center justify-center shadow-[0_4px_12px_rgba(168,85,247,0.2)]">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#9333ea] flex items-center justify-center shadow-[0_4px_12px_rgba(168,85,247,0.2)]">
             <Brain size={20} className="text-white" />
           </div>
           <div>
@@ -68,7 +68,7 @@ export const CompetencyRadarChart: React.FC = () => {
           </div>
         ) : isEmpty || error ? (
           <div className="w-full h-full flex flex-col items-center justify-center gap-4">
-            <div className="w-14 h-14 rounded-[16px] bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center border border-slate-200">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center border border-slate-200">
               <BookOpen size={24} className="text-slate-400" />
             </div>
             <div className="text-center">

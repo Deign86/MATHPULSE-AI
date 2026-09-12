@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
-import { ArrowRight, Zap, Brain } from 'lucide-react';
+import { ArrowRight, Zap, Brain, CheckCircle } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Skeleton } from './ui/skeleton';
 import type { AvatarLayers } from './CompositeAvatar';
@@ -64,10 +64,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0.15 : 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="relative w-full mt-0 rounded-2xl md:rounded-[2rem] p-5 md:p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg"
+      className="relative w-full mt-0 rounded-3xl md:rounded-[2rem] p-5 md:p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg shadow-sm"
     >
       {/* Background elements wrapped in overflow-hidden */}
-      <div className="absolute inset-0 overflow-hidden rounded-2xl md:rounded-[2rem] pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden rounded-3xl md:rounded-[2rem] pointer-events-none">
         {/* Gradient accent glow */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/50 to-transparent" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
@@ -93,13 +93,40 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
             {getGreeting()}, {userName}!
           </h1>
           <p className="text-slate-500 mb-2 md:mb-1 text-sm md:text-sm font-body font-bold pr-20 sm:pr-24 md:pr-0">Today is a great day to move one step forward in math mastery.</p>
-          <p className="text-xs md:text-xs text-slate-400 font-body mb-5 md:mb-4 pr-20 sm:pr-24 md:pr-0">Focus on your next recommended lesson and keep your momentum.</p>
+          <p className="text-xs md:text-xs text-slate-400 font-body mb-4 pr-20 sm:pr-24 md:pr-0">Focus on your next recommended lesson and keep your momentum.</p>
+
+          {/* Mobile Assessment Status Pill */}
+          {showAssessmentTooltip && (
+            <div className="md:hidden mb-4">
+              <button
+                type="button"
+                onClick={onOpenAssessment}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-amber-300 bg-amber-50/95 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors shadow-sm"
+              >
+                <Brain size={14} className="text-amber-600 shrink-0" />
+                <span>Take Initial Assessment</span>
+                <ArrowRight size={12} className="text-amber-700 shrink-0" />
+              </button>
+            </div>
+          )}
+          {assessmentCompleted && !showAssessmentTooltip && (
+            <div className="md:hidden mb-4">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }))}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-teal-300 bg-teal-50/95 text-teal-900 text-xs font-bold hover:bg-teal-100 transition-colors shadow-sm"
+              >
+                <CheckCircle size={14} className="text-teal-600 shrink-0" />
+                <span>Assessment Complete · View History</span>
+              </button>
+            </div>
+          )}
 
           <motion.button
             onClick={onContinueLearning}
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="mt-2 md:mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-3 md:py-2 rounded-xl font-body font-bold text-base md:text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex justify-center md:justify-start items-center gap-2 group w-auto md:w-auto min-h-[44px]"
+            className="mt-1 md:mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-3 md:py-2 rounded-xl font-body font-bold text-base md:text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex justify-center md:justify-start items-center gap-2 group w-auto md:w-auto min-h-[44px]"
           >
             Continue Learning
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -116,7 +143,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           animate={{ opacity: 1, scale: 1, x: 0 }}
           transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
           onClick={onOpenAssessment}
-          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-amber-500"
+          className="absolute hidden md:block right-[120px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-amber-500"
         >
           <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-amber-300 relative transition-all group-hover:bg-amber-50 group-hover:border-amber-400 group-hover:-translate-y-1">
             <div className="flex items-center gap-2">
@@ -142,14 +169,12 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           animate={{ opacity: 1, scale: 1, x: 0 }}
           transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
           onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }))}
-          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-teal-500"
+          className="absolute hidden md:block right-[120px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-teal-500"
         >
           <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all group-hover:bg-teal-50 group-hover:border-teal-400 group-hover:-translate-y-1">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center shrink-0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-teal-600">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+                <CheckCircle size={14} className="text-teal-600" />
               </div>
               <p className="text-xs lg:text-sm font-bold text-teal-900 leading-tight">
                 Assessment Complete!<br />
