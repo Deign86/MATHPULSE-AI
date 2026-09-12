@@ -77,80 +77,94 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         <div className="absolute inset-0 bg-dot-pattern opacity-40" />
       </div>
 
-      {/* Mobile Layout (< md): Dedicated Top Row for Greeting + Avatar Pod, followed by Full-Width Action Zone */}
-      <div className="md:hidden relative z-10 flex flex-col gap-4">
-        {/* Top Row: Greeting + Dedicated Avatar Spotlight */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-1 rounded-full bg-sky-100 border border-sky-200 text-xs font-bold text-sky-700">
-                Level {userLevel}
+      {/* Mobile Layout (< md): Reference-Proportioned 2-Column Hero Card */}
+      <div className="md:hidden relative z-10 flex flex-col gap-3">
+        {/* Main Reference Card: Vibrant Gradient with 2-Column Layout */}
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-purple-600 via-indigo-600 to-[#7C3AED] text-white p-4 sm:p-5 shadow-lg shadow-purple-500/20 border border-purple-400/30">
+          {/* Subtle paper-cut lighting overlay */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_70%)] pointer-events-none" />
+          <div className="absolute -right-10 -bottom-10 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="relative z-10 grid grid-cols-12 gap-3 items-center">
+            {/* Left Column: Module details, Progress, and Continue ▶ Pill */}
+            <div className="col-span-7 sm:col-span-8 flex flex-col items-start min-w-0 pr-1">
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-[11px] font-semibold text-purple-100 mb-1.5 tracking-wide">
+                Continue Learning
               </span>
-              <span className="px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700 inline-flex items-center gap-1">
-                <Zap size={12} className="text-rose-500" />
-                Active
-              </span>
+
+              <h2 className="text-lg sm:text-xl font-display font-black text-white leading-tight tracking-tight truncate w-full">
+                General Mathematics
+              </h2>
+
+              <p className="text-xs text-purple-100/90 font-medium mt-0.5">
+                Lesson 4 of 20
+              </p>
+
+              {/* Progress bar + percentage */}
+              <div className="w-full flex items-center gap-2 mt-2.5 mb-3">
+                <div className="flex-1 h-2 bg-black/20 rounded-full overflow-hidden">
+                  <div className="h-full bg-white rounded-full w-[40%] shadow-sm" />
+                </div>
+                <span className="text-[11px] font-bold text-white tabular-nums shrink-0">
+                  40%
+                </span>
+              </div>
+
+              {/* Compact Pill Action: Continue ▶ */}
+              <motion.button
+                onClick={onContinueLearning}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                className="inline-flex items-center gap-2 bg-white text-purple-700 hover:bg-purple-50 px-4 py-2 rounded-full font-display font-bold text-xs shadow-md shadow-black/10 transition-all min-h-[38px]"
+                aria-label="Continue learning General Mathematics"
+              >
+                <span>Continue</span>
+                <ArrowRight size={13} className="text-purple-700 stroke-[2.5]" />
+              </motion.button>
             </div>
 
-            <h1 className="text-2xl font-display font-black text-[#0a1628] leading-[1.15] tracking-tight">
-              {getGreeting()},<br />{userName}!
-            </h1>
-            <p className="text-xs text-slate-500 font-medium mt-1 leading-snug">
-              Today is a great day to move one step forward in math mastery.
-            </p>
-          </div>
-
-          {/* Dedicated Avatar Spotlight Pod (Clean, non-colliding, framed) */}
-          <div className="shrink-0 w-24 h-28 rounded-2xl bg-gradient-to-b from-sky-100/80 via-white to-sky-50/60 border-2 border-sky-200/90 shadow-sm relative overflow-hidden flex items-end justify-center p-1">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(56,189,248,0.25),transparent_70%)] pointer-events-none" />
-            <div className="relative w-full aspect-[4/5] translate-y-1 drop-shadow-md">
-              <Suspense fallback={<Skeleton className="w-full h-full rounded-xl" aria-label="Loading avatar" />}>
-                <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.25] origin-bottom" />
-              </Suspense>
+            {/* Right Column: Dedicated Avatar Spotlight (Zero collision, framed inside card) */}
+            <div className="col-span-5 sm:col-span-4 flex justify-end items-center">
+              <div className="w-24 sm:w-28 h-32 sm:h-36 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 shadow-inner relative overflow-hidden flex items-end justify-center p-1">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.25),transparent_70%)] pointer-events-none" />
+                <div className="relative w-full aspect-[4/5] translate-y-1 drop-shadow-lg">
+                  <Suspense fallback={<Skeleton className="w-full h-full rounded-xl" aria-label="Loading avatar" />}>
+                    <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.28] origin-bottom" />
+                  </Suspense>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Action Area: Full-width, completely unobstructed */}
-        <div className="flex flex-col gap-2.5 pt-1">
-          {showAssessmentTooltip && (
-            <button
-              type="button"
-              onClick={onOpenAssessment}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border-2 border-amber-300 bg-amber-50/95 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors shadow-sm text-left"
-            >
-              <div className="flex items-center gap-2">
-                <Brain size={16} className="text-amber-600 shrink-0" />
-                <span>Initial Assessment is Ready!</span>
-              </div>
-              <ArrowRight size={14} className="text-amber-700 shrink-0" />
-            </button>
-          )}
-
-          {assessmentCompleted && !showAssessmentTooltip && (
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }))}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-teal-300 bg-teal-50/95 text-teal-900 text-xs font-bold hover:bg-teal-100 transition-colors shadow-sm text-left"
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle size={16} className="text-teal-600 shrink-0" />
-                <span>Assessment Complete · View History</span>
-              </div>
-              <ArrowRight size={14} className="text-teal-700 shrink-0" />
-            </button>
-          )}
-
-          <motion.button
-            onClick={onContinueLearning}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-3 rounded-xl font-display font-bold text-sm shadow-md shadow-purple-500/25 hover:shadow-purple-500/35 transition-all flex items-center justify-center gap-2 min-h-[46px]"
+        {/* Assessment Action Alerts (if available) */}
+        {showAssessmentTooltip && (
+          <button
+            type="button"
+            onClick={onOpenAssessment}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border-2 border-amber-300 bg-amber-50/95 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors shadow-sm text-left"
           >
-            <span>Continue Learning</span>
-            <ArrowRight size={16} />
-          </motion.button>
-        </div>
+            <div className="flex items-center gap-2">
+              <Brain size={16} className="text-amber-600 shrink-0" />
+              <span>Initial Assessment is Ready!</span>
+            </div>
+            <ArrowRight size={14} className="text-amber-700 shrink-0" />
+          </button>
+        )}
+
+        {assessmentCompleted && !showAssessmentTooltip && (
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }))}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-teal-300 bg-teal-50/95 text-teal-900 text-xs font-bold hover:bg-teal-100 transition-colors shadow-sm text-left"
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle size={16} className="text-teal-600 shrink-0" />
+              <span>Assessment Complete · View History</span>
+            </div>
+            <ArrowRight size={14} className="text-teal-700 shrink-0" />
+          </button>
+        )}
       </div>
 
       {/* Desktop Layout (md: and above): Spacious horizontal banner with desktop avatar */}

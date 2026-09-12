@@ -17,7 +17,7 @@ import { deactivateCurrentSessionToken } from './services/pushNotificationServic
 import PushNotificationsManager from './components/PushNotificationsManager';
 import InstallPwaButton from './components/InstallPwaButton.tsx';
 import OnlineOfflineBanner from './components/OnlineOfflineBanner.tsx';
-import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Swords, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, Calculator, Crown, Flame, Menu, Swords, Target, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
@@ -26,6 +26,7 @@ import { db } from './lib/firebase';
 import { saveAssessmentResult } from './services/gradesService';
 import { buildHeroBannerModalSummary, saveHeroBannerModalSummary } from './services/heroBannerSummaryService';
 import { useCapacitorBackButton } from './hooks/useCapacitorBackButton';
+import MobileBottomNav from './components/MobileBottomNav';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -1240,7 +1241,7 @@ const App = () => {
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : 'p-3 lg:p-4 overflow-y-auto pb-24 sm:pb-28'}`}
+            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : 'p-3 lg:p-4 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -1254,7 +1255,22 @@ const App = () => {
                 {activeTab === 'Dashboard' ? (
                   <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
                     <div className="grid grid-cols-12 gap-6 sm:gap-8 lg:gap-10">
-                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-6 sm:gap-8 lg:gap-12 pt-0">
+                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-5 sm:gap-6 lg:gap-10 pt-0">
+                        {/* Mobile Top Greeting (Clean typography matching reference) */}
+                        <div className="lg:hidden flex flex-col mb-1">
+                          <h1 className="text-2xl sm:text-3xl font-display font-black text-[#0a1628] leading-tight tracking-tight">
+                            Hello, {firstName} 👋
+                          </h1>
+                          <p className="text-xs sm:text-sm text-slate-500 font-semibold mt-0.5">
+                            {(() => {
+                              const hour = new Date().getHours();
+                              if (hour < 12) return 'Good Morning!';
+                              if (hour < 18) return 'Good Afternoon!';
+                              return 'Good Evening!';
+                            })()}
+                          </p>
+                        </div>
+
                         <Suspense fallback={dashboardPanelFallback}>
                           <HeroBanner
                             userName={firstName}
@@ -1268,60 +1284,115 @@ const App = () => {
                           />
                         </Suspense>
 
-                        {/* Mobile Gamified Status Ribbon (Compact, Unified Glassmorphism Ribbon) */}
-                        <div className="lg:hidden flex items-center justify-between gap-2 p-2 px-3 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
-                          {/* Level / Rank */}
+                        {/* Mobile Daily Goals / Assessment Slab (Tactile slab matching reference) */}
+                        <div className="lg:hidden flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-white border border-slate-200/90 shadow-sm">
+                          {/* Target Emblem */}
+                          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-orange-200/80 flex items-center justify-center shrink-0 shadow-inner">
+                            <Target className="w-5 h-5 text-orange-500" />
+                          </div>
+
+                          {/* Center Progress Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="text-xs sm:text-sm font-display font-extrabold text-slate-900 leading-none">
+                                Daily Goals
+                              </h3>
+                              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 tabular-nums">
+                                2 / 5 Lessons
+                              </span>
+                            </div>
+                            <p className="text-[10px] sm:text-xs text-slate-500 mt-1 font-medium truncate">
+                              {hasCompletedDiagnostic ? 'Maintain your daily practice pace' : 'Complete Initial Diagnostic Assessment'}
+                            </p>
+                            <div className="h-1.5 sm:h-2 w-full bg-orange-100/70 rounded-full overflow-hidden mt-1.5">
+                              <div className="h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full w-[40%]" />
+                            </div>
+                          </div>
+
+                          {/* Action button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!hasCompletedDiagnostic && hasCompletedDiagnostic !== null) {
+                                handleOpenInitialAssessment();
+                              } else {
+                                handleStudentNavigation('Modules');
+                              }
+                            }}
+                            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 flex items-center justify-center text-orange-600 transition-all shrink-0 active:scale-95"
+                            aria-label="View Daily Goals"
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* Mobile Balanced 2-Column Twin Slabs (Reference: Coins + Streak) */}
+                        <div className="lg:hidden grid grid-cols-2 gap-3">
+                          {/* Coins / XP Slab */}
                           <button
                             type="button"
                             onClick={() => setActiveModal('rewards')}
-                            className="flex items-center gap-2 py-1 px-2 rounded-xl hover:bg-slate-50 transition-colors min-h-[36px]"
-                            title="View Level & Rewards"
+                            className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm text-left hover:border-purple-300 transition-all active:scale-[0.98]"
                           >
-                            <div className="w-7 h-7 rounded-lg bg-rose-50 border border-rose-200/80 flex items-center justify-center shrink-0">
-                              <Crown className="h-3.5 w-3.5 text-rose-500" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-purple-50 border border-purple-200/80 flex items-center justify-center shrink-0 shadow-inner">
+                              <Crown className="w-5 h-5 text-purple-600" />
                             </div>
-                            <div className="text-left">
-                              <span className="text-xs font-display font-bold text-slate-800 leading-none">Lv {userLevel}</span>
+                            <div className="min-w-0 flex-1">
+                              <span className="block text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                                XP Coins
+                              </span>
+                              <span className="block text-lg sm:text-xl font-display font-black text-slate-900 tabular-nums leading-tight mt-1">
+                                {currentXP}
+                              </span>
                             </div>
                           </button>
 
-                          <div className="h-5 w-px bg-slate-200/80 shrink-0" />
-
-                          {/* XP Bar */}
+                          {/* Streak Slab */}
                           <button
                             type="button"
                             onClick={() => setActiveModal('rewards')}
-                            className="flex-1 flex items-center gap-2 py-1 px-2 rounded-xl hover:bg-slate-50 transition-colors min-h-[36px] min-w-0"
-                            title="XP Progress"
+                            className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm text-left hover:border-orange-300 transition-all active:scale-[0.98]"
                           >
-                            <div className="w-7 h-7 rounded-lg bg-violet-50 border border-violet-200/80 flex items-center justify-center shrink-0">
-                              <Zap className="h-3.5 w-3.5 text-violet-500" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-orange-50 border border-orange-200/80 flex items-center justify-center shrink-0 shadow-inner">
+                              <Flame className="w-5 h-5 text-orange-500" />
                             </div>
+                            <div className="min-w-0 flex-1">
+                              <span className="block text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-none">
+                                Streak
+                              </span>
+                              <span className="block text-lg sm:text-xl font-display font-black text-slate-900 tabular-nums leading-tight mt-1">
+                                7 Days
+                              </span>
+                            </div>
+                          </button>
+                        </div>
+
+                        {/* Mobile Secondary Action Card: Chat with AI Tutor */}
+                        <div
+                          onClick={() => handleStudentNavigation('AI Chat')}
+                          className="lg:hidden relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-purple-700 via-indigo-600 to-indigo-700 text-white p-4 sm:p-5 shadow-md shadow-purple-500/15 border border-purple-400/30 cursor-pointer hover:shadow-lg transition-all active:scale-[0.98]"
+                        >
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_50%,rgba(255,255,255,0.15),transparent_70%)] pointer-events-none" />
+
+                          <div className="relative z-10 flex items-center justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-1 leading-none">
-                                <span className="text-violet-700 font-extrabold tabular-nums">{currentXP} XP</span>
-                                <span className="text-[9px] text-slate-400 tabular-nums">{progressXPInLevel}/{xpToNextLevel}</span>
-                              </div>
-                              <div className="h-1.5 w-full bg-violet-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-violet-500 rounded-full transition-all" style={xpFillStyle} />
-                              </div>
+                              <h3 className="text-sm sm:text-base font-display font-black text-white leading-tight">
+                                Chat with AI Tutor
+                              </h3>
+                              <p className="text-[11px] sm:text-xs text-purple-100/90 font-medium mt-1 leading-snug">
+                                Ask anything, Juan is here to help you solve math!
+                              </p>
+                              <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full mt-2.5 backdrop-blur-sm transition-colors">
+                                <span>Ask AI Tutor</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </span>
                             </div>
-                          </button>
 
-                          <div className="h-5 w-px bg-slate-200/80 shrink-0" />
-
-                          {/* Daily Reward / Streak */}
-                          <button
-                            type="button"
-                            onClick={() => setActiveModal('rewards')}
-                            className="flex items-center gap-1.5 py-1 px-2 rounded-xl hover:bg-slate-50 transition-colors min-h-[36px] shrink-0"
-                            title="Daily Streak"
-                          >
-                            <div className="w-7 h-7 rounded-lg bg-orange-50 border border-orange-200/80 flex items-center justify-center shrink-0">
-                              <Flame className="h-3.5 w-3.5 text-orange-500" />
+                            {/* Mascot Emblem on Right */}
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center shrink-0 shadow-inner">
+                              <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                             </div>
-                            <span className="text-xs font-display font-bold text-orange-600">Streak</span>
-                          </button>
+                          </div>
                         </div>
 
                         {dashboardShellDeferredReady && hasCompletedDiagnostic && normalizedAtRiskTopics.length > 0 && (
@@ -1614,6 +1685,14 @@ const App = () => {
                 }}
               />
             </Suspense>
+          )}
+
+          {/* Mobile Bottom Navigation Bar (Hidden during full-screen assessment) */}
+          {!showAssessmentPage && (
+            <MobileBottomNav
+              activeTab={activeTab}
+              onSelectTab={handleStudentNavigation}
+            />
           )}
         </div>
       </div>

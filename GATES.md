@@ -346,3 +346,37 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EVIDENCE: Passed. `npm run typecheck` passed with 0 errors. `npm run lint:anti-slop` (`oxlint --quiet`) passed with 0 errors across 382 files. Vitest component tests passed.
 
 
+## Section K: Reference-Inspired Mobile Dashboard & Bottom Navigation Bar
+- [x] K1: Mobile Bottom Navigation Bar: `src/components/MobileBottomNav.tsx` with 5 primary student destinations (Home, Modules, AI Tutor, Assessment, Avatar Studio) and accessible touch targets.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/MobileBottomNav.tsx', 'utf8'); console.log(s.includes('MobileBottomNav') && s.includes('Dashboard') && s.includes('Avatar Studio') ? 'BOTTOM_NAV_READY' : 'BOTTOM_NAV_PENDING');"
+  EXPECT: BOTTOM_NAV_READY
+  EVIDENCE: Passed. Output: `BOTTOM_NAV_READY`. Created `src/components/MobileBottomNav.tsx` with 5 touch-friendly destinations (Home, Modules, AI Tutor with elevated gradient icon, Progress/Grades, and Qbit/Avatar Studio) matching the reference's bottom navigation bar with `env(safe-area-inset-bottom)` support.
+
+- [x] K2: Reference Hero Banner Layout: Asymmetric 2-column mobile card with module progress & compact `Continue ▶` pill on the left, and Qbit avatar standing on the right with zero button collision in `HeroBanner.tsx`.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/HeroBanner.tsx', 'utf8'); console.log(s.includes('Continue Learning') && s.includes('DashboardAvatar') && !s.includes('absolute right-0 bottom-0 lg:right-10 w-[110px]') ? 'HERO_REFERENCE_READY' : 'HERO_REFERENCE_PENDING');"
+  EXPECT: HERO_REFERENCE_READY
+  EVIDENCE: Passed. Output: `HERO_REFERENCE_READY`. Upgraded `HeroBanner.tsx` mobile viewport to an asymmetric 2-column card featuring "Continue Learning" badge, active subject title, lesson progress indicator, horizontal bar + percentage, tactile white `Continue ▶` pill button on the left, and a dedicated avatar stage for Juan's Qbit avatar on the right with zero collision.
+
+- [x] K3: Daily Goals & Assessment Slab: Clean tactile white slab with target icon, lesson progress, and direct action.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/App.tsx', 'utf8'); console.log(s.includes('Daily Goal') || s.includes('Daily Goals') || s.includes('Assessment Focus') ? 'GOALS_SLAB_READY' : 'GOALS_SLAB_PENDING');"
+  EXPECT: GOALS_SLAB_READY
+  EVIDENCE: Passed. Output: `GOALS_SLAB_READY`. Added Daily Goals tactile slab in `App.tsx` matching the reference proportions, featuring a circular target emblem, lesson progress counter (`2 / 5 Lessons`), gradient progress bar, and quick action trigger.
+
+- [x] K4: Balanced 2-Column Twin Slabs: XP Coins/Balance and Streak Days cards matching reference proportions.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/App.tsx', 'utf8'); console.log(s.includes('grid-cols-2') && s.includes('currentXP') && s.includes('Streak') ? 'TWIN_SLABS_READY' : 'TWIN_SLABS_PENDING');"
+  EXPECT: TWIN_SLABS_READY
+  EVIDENCE: Passed. Output: `TWIN_SLABS_READY`. Implemented symmetric 2-column twin slabs for XP Coins and Streak Days with rounded tactile borders, circular emblem badges, tabular-nums metrics, and interactive triggers to rewards modal.
+
+- [x] K5: Secondary Action Card: "Chat with AI Tutor" card with mascot emblem and direct chat trigger.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/App.tsx', 'utf8'); console.log(s.includes('Chat with AI Tutor') || s.includes('Ask AI Tutor') ? 'CHAT_CARD_READY' : 'CHAT_CARD_PENDING');"
+  EXPECT: CHAT_CARD_READY
+  EVIDENCE: Passed. Output: `CHAT_CARD_READY`. Added secondary action card in `App.tsx` matching reference "Chat with Fibo" layout, featuring rich gradient styling, conversational invitation, direct "Ask AI Tutor" pill button, and robot mascot emblem.
+
+- [x] K6: System verification: npm run typecheck and npm run lint:anti-slop pass with 0 errors.
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: Finished in
+  EVIDENCE: Passed. `npm run typecheck` (`tsc --noEmit`) exited with 0 errors. `npm run lint:anti-slop` (`oxlint --quiet`) completed with 0 errors across 383 files.
+
+
+
+

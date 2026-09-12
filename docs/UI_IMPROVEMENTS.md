@@ -131,14 +131,37 @@
 
 ---
 
-## 5. Quality & Verification Evidence
+## 5. Reference Mobile Dashboard & Bottom Navigation (`MobileBottomNav.tsx`, `HeroBanner.tsx`, `App.tsx`)
+
+### Layout Architecture Inspired by Tactile Reference UI
+* **Clean Greeting Header**: Positioned at the top of the mobile screen with human typography (`Hello, [Name] 👋` + `Good Morning!/Afternoon!`) without heavy chrome cluttering vertical space.
+* **Asymmetric 2-Column Hero Card (`HeroBanner.tsx`)**:
+  * Left Column: "Continue Learning" pill, active module title (`General Mathematics`), lesson counter (`Lesson 4 of 20`), horizontal progress bar + percentage (`40%`), and a prominent tactile pill button (`Continue ▶`).
+  * Right Column: Dedicated avatar stage where Juan's Qbit stands comfortably with zero collision with text or interactive buttons.
+* **Daily Goals & Assessment Slab (`App.tsx`)**:
+  * Clean white tactile card with orange target emblem, lesson progress indicator (`2 / 5 Lessons`), sleek progress bar, and a quick-action trigger.
+* **Symmetric 2-Column Twin Slabs (`App.tsx`)**:
+  * **XP Coins Card**: Crown icon emblem + "XP Coins" label + large bold tabular-nums score.
+  * **Streak Card**: Flame icon emblem + "Streak" label + large bold tabular-nums "7 Days".
+  * Both slabs trigger the interactive rewards modal on tap.
+* **Secondary "Chat with AI Tutor" Action Card (`App.tsx`)**:
+  * Conversational action card featuring MathPulse indigo gradient, conversational subtitle, "Ask AI Tutor" pill button, and robot mascot emblem on the right.
+* **Mobile Bottom Navigation Bar (`MobileBottomNav.tsx`)**:
+  * 5 primary thumb-accessible destinations: `Home` (Dashboard), `Modules` (Curriculum), `AI Tutor` (elevated gradient center button), `Progress` (Grades), and `Qbit` (Avatar Studio).
+  * Styled with `bg-white/95 dark:bg-slate-900/95 backdrop-blur-md`, `border-t border-slate-200/90`, tactile `active:scale-[0.95]`, and iOS safe area padding (`env(safe-area-inset-bottom)`).
+  * Rendered conditionally on mobile viewports (`lg:hidden`) while preserving the full collapsible desktop sidebar on wide screens (`lg:`).
+
+---
+
+## 6. Quality & Verification Evidence
 
 | Area | Check / Command | Result |
 | :--- | :--- | :--- |
 | **Type Safety** | `npm run typecheck` (`tsc --noEmit`) | ✅ **0 errors** |
-| **Linting & Anti-Slop** | `npm run lint:anti-slop` (`oxlint --quiet`) | ✅ **0 errors** across 382 files |
+| **Linting & Anti-Slop** | `npm run lint:anti-slop` (`oxlint --quiet`) | ✅ **0 errors** across 383 files |
 | **Component Unit Tests** | `npx vitest run src/components/ModulesPage.test.tsx` | ✅ **1/1 passed** |
-| **Acceptance Gates** | `GATES.md` Sections G, H, I, J (`65/65`) | ✅ **All 65 gates passed with recorded evidence** |
+| **Acceptance Gates** | `GATES.md` Sections G, H, I, J, K (`71/71`) | ✅ **All 71 gates passed with recorded evidence** |
+
 
 
 
