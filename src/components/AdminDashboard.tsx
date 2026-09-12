@@ -69,6 +69,55 @@ type AdminOverviewState =
   | { status: 'ready'; data: AdminOverviewSnapshot }
   | { status: 'error'; message: string; lastData: AdminOverviewSnapshot | null };
 
+/**
+ * Closed set of admin tabs. These literals are also the sidebar labels, which
+ * arrive as plain strings, so they are decoded at the boundary in
+ * `handleTabChange` instead of being trusted.
+ */
+const ADMIN_TABS = [
+  'Overview',
+  'User Management',
+  'Class Management',
+  'Subjects',
+  'Content',
+  'RAG Manager',
+  'Analytics',
+  'AI Monitoring',
+  'Audit Log',
+] as const;
+
+export type AdminTab = (typeof ADMIN_TABS)[number];
+
+function isAdminTab(value: string): value is AdminTab {
+  // SAFETY: ADMIN_TABS is a readonly tuple of literal strings; widening to readonly string[] permits includes check.
+  return (ADMIN_TABS as readonly string[]).includes(value);
+}
+
+/**
+ * Page heading per tab. A `Record` over the union rather than a comparison
+ * chain, so a tab without copy is a compile error instead of a blank header.
+ */
+const ADMIN_TAB_META: Record<AdminTab, { title: string; subtitle: string }> = {
+  Overview: { title: 'Admin Dashboard', subtitle: 'System Overview & Management' },
+  'User Management': { title: 'User Management', subtitle: 'Manage all user accounts and roles.' },
+  'Class Management': {
+    title: 'Class Management',
+    subtitle: 'Assign section managers and manage class rosters.',
+  },
+  Subjects: {
+    title: 'Curriculum Control',
+    subtitle: 'Manage academic subjects, availability, and RAG knowledge sources.',
+  },
+  Content: { title: 'Content', subtitle: 'Upload PDFs for AI-powered content.' },
+  'RAG Manager': {
+    title: 'RAG Manager',
+    subtitle: 'Inspect, re-ingest, and verify curriculum knowledge sources.',
+  },
+  Analytics: { title: 'Analytics', subtitle: 'Detailed system performance metrics.' },
+  'AI Monitoring': { title: 'AI Monitoring', subtitle: 'Platform AI usage and system health.' },
+  'Audit Log': { title: 'Audit Log', subtitle: 'Monitor system activity and security.' },
+};
+
 // Stable identities so derived empty collections do not re-create props each render.
 const EMPTY_ACTIVITY: AuditLogEntry[] = [];
 const EMPTY_PERFORMERS: TopPerformer[] = [];
@@ -77,7 +126,7 @@ const EMPTY_SUBJECT_BREAKDOWN: SubjectBreakdownItem[] = [];
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
   const { userProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState<AdminTab>('Overview');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -89,13 +138,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const [showHelpTooltip, setShowHelpTooltip] = useState(false);
 
   const handleTabChange = (nextTab: string): boolean => {
+    if (!isAdminTab(nextTab)) {
+      // The generic sidebar hands back a bare label; an unknown one means the
+      // two lists drifted, which previously rendered an empty page body.
+      console.warn(`[AdminDashboard] Ignoring unknown admin tab: ${nextTab}`);
+      return true;
+    }
     if (activeTab === nextTab) {
       return true;
     }
 
-
     setActiveTab(nextTab);
-    
+
     if (nextTab === 'Subjects') {
       setShowHelpTooltip(true);
       setTimeout(() => setShowHelpTooltip(false), 2000);
@@ -276,24 +330,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
               </button>
               <div className="min-w-0 flex-1">
                 <h1 className="text-xl sm:text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight truncate">
-                  {activeTab === 'Overview' && 'Admin Dashboard'}
-                  {activeTab === 'Content' && 'Content'}
-                  {activeTab === 'Audit Log' && 'Audit Log'}
-                  {activeTab === 'User Management' && 'User Management'}
-                  {activeTab === 'Analytics' && 'Analytics'}
-                  {activeTab === 'AI Monitoring' && 'AI Monitoring'}
-                  {activeTab === 'Subjects' && 'Curriculum Control'}
-                  {activeTab === 'Class Management' && 'Class Management'}
+                  {ADMIN_TAB_META[activeTab].title}
                 </h1>
                 <p className="text-xs sm:text-[13px] text-[#64748b] mt-0.5 sm:mt-1 truncate">
-                  {activeTab === 'Overview' && `System Overview & Management`}
-                  {activeTab === 'Content' && 'Upload PDFs for AI-powered content.'}
-                  {activeTab === 'Audit Log' && 'Monitor system activity and security.'}
-                  {activeTab === 'User Management' && 'Manage all user accounts and roles.'}
-                  {activeTab === 'Analytics' && 'Detailed system performance metrics.'}
-                  {activeTab === 'AI Monitoring' && 'Platform AI usage and system health.'}
-                  {activeTab === 'Subjects' && 'Manage academic subjects, availability, and RAG knowledge sources.'}
-                  {activeTab === 'Class Management' && 'Assign section managers and manage class rosters.'}
+                  {ADMIN_TAB_META[activeTab].subtitle}
                 </p>
               </div>
               

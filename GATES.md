@@ -143,7 +143,7 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
     - Cloud Functions: npm test passed with 46/46 tests in 665ms (2026-09-07T15:50:45+08:00).
     - Backend Pytest: python -m pytest backend/tests/ passed with 317/317 tests in 71.64s (2026-09-07T15:58:48+08:00).
 
-## Section C: Match Curriculum PDFs in Firebase Storage Across System, UI, and RAG
+## Section I: Match Curriculum PDFs in Firebase Storage Across System, UI, and RAG
 - [x] C1: Frontend curriculum registry alignment: map all competencies across 14 General Math modules (Q1-Q4) and Statistics & Probability in src/data/curriculum/types.ts and curriculumModules.ts to exact DepEd SSHS PDF storage paths, removing legacy stubs.
   CHECK: node -e "import('./src/data/curriculumModules.ts').then(m => { const mods = m.CURRICULUM_MODULE_BLUEPRINTS; console.log(mods.length >= 14 ? 'BLUEPRINTS_OK' : 'MISSING'); })"
   EXPECT: BLUEPRINTS_OK
@@ -169,7 +169,7 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: 0 errors
   EVIDENCE: Passed. `npm run typecheck` exited 0 (0 errors). `npm run lint:anti-slop` (`oxlint --quiet`) exited 0 (0 errors across 382 files). `npm run test` (vitest) passed 27/27 test files (179 tests). `python -m pytest backend/tests/test_liteparse_curriculum.py backend/test_retrieval.py -q` passed 8/8 tests. Storage rules deployed to `mathpulse-ai-2026` allowing public read for `/curriculum/**`.
 
-## Section D: Grade-11-only all-subjects unlock (20 blueprints, zero locks)
+## Section J: Grade-11-only all-subjects unlock (20 blueprints, zero locks)
 
 - [x] D1: all quizzes/lessons unlocked for every subject
   CHECK: `grep -rn "locked:\s*true\|index > 0" src/data/ | wc -l`
@@ -254,3 +254,70 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   CHECK: npm run typecheck && npx vitest run && npm run lint:anti-slop && python -m pytest backend/tests/ -q && npm run build
   EXPECT: 0 type errors, 198 vitest tests, 0 lint errors, 347 backend tests, build succeeds
   EVIDENCE: 2026-09-12 — `tsc --noEmit` exit 0. Vitest 29/29 files, 198/198 tests. `oxlint --quiet` exit 0. Backend pytest 347 passed. `npm run build` succeeded in 16.66s. NOT verified: `scripts/backfill-notification-read-flag.ts` runtime execution (needs `firebase-admin`, installed only under `functions/`, matching the 8 pre-existing `scripts/*.ts` migrations); browser re-verification of the admin subject toggles (chrome-devtools MCP unavailable this session).
+
+## Section H: Audit finding remediation (single-owner vocabularies, typed tabs, transport, curriculum join)
+
+Source: coordinator-only repo audit, 2026-09-12. Findings A-J. Scope: remove duplicated
+vocabularies, one duplicated threshold ladder, duplicated transport control flow, and
+untyped cross-component identity; repair ledger accuracy.
+
+- [x] H1: Canonical risk vocabulary has exactly one owner.
+  CHECK: python -c "import subprocess,re,pathlib; files=[p for p in pathlib.Path('backend').rglob('*.py') if 'test' not in p.name]; hits=[str(p) for p in files if re.search(r'\"safe\"\s*,\s*\"watch\"|d\.fromkeys|wri_dist = \{', p.read_text(encoding='utf8',errors='ignore')) and 'wri_service.py' not in str(p)]; print('SINGLE_OWNER' if not hits else 'DUP: '+str(hits))"
+  EXPECT: SINGLE_OWNER
+  EVIDENCE: 2026-09-12 — output: SINGLE_OWNER. `RiskLevel`, `CANONICAL_RISK_STATUSES`, `ATTENTION_RISK_STATUSES`, `ESCALATION_RISK_STATUSES`, and `empty_risk_distribution()` are exported from `backend/services/wri_service.py` and imported by all consumers (`admin_routes.py`, `class_analytics_routes.py`, `class_analytics_engine.py`, `intervention_engine.py`, `student_intelligence_pipeline.py`, `tutor_nudge_service.py`, `tutor_checkin.py`). Zero inline transcriptions remain. Cross-language drift contract asserted in `src/utils/riskEngine.test.ts`.
+
+- [x] H2: DepEd band threshold ladder exists once.
+  CHECK: python -c "import pathlib,re; p=pathlib.Path('backend'); hits=[]; [hits.append(str(f)) for f in p.rglob('*.py') if 'wri_service.py' not in str(f) and ('test' not in f.name) and re.search(r'\b(avg_score|wri)\s*>=\s*88\b', f.read_text(encoding='utf8',errors='ignore'))]; print('LADDER_ONCE' if not hits else 'LADDER_DUPS: '+str(hits))"
+  EXPECT: LADDER_ONCE
+  EVIDENCE: 2026-09-12 — output: LADDER_ONCE. `band_for_score(score)` in `wri_service.py` is the single source for the 88/80/75/68 DepEd DO No. 8, s. 2015 threshold ladder. Duplicate implementations in `intervention_engine.py::_classify_risk` and `class_analytics_engine.py::classify_risk` delegate to it.
+
+- [x] H3: Admin tab identity is a closed union, not a bare string.
+  CHECK: node -e "const fs=require('fs'); const d=fs.readFileSync('src/components/AdminDashboard.tsx','utf8'); const s=fs.readFileSync('src/components/Sidebar.tsx','utf8'); console.log(d.includes('AdminTab')&&s.includes('AdminTab')&&!d.includes(\"useState('Overview')\")?'TABS_TYPED':'PENDING');"
+  EXPECT: TABS_TYPED
+  EVIDENCE: 2026-09-12 — output: TABS_TYPED. `export type AdminTab` defined as `(typeof ADMIN_TABS)[number]` over the 9 canonical tabs. `AdminDashboard.tsx` tracks `useState<AdminTab>('Overview')` with `ADMIN_TAB_META: Record<AdminTab, {title, subtitle}>` replacing the multi-branch string comparison chain. Defect fixed: 'RAG Manager' tab now renders complete title and subtitle copy.
+
+- [x] H4: Functions notification relay derives its gate from the single type map.
+  CHECK: node -e "const fs=require('fs'); const c=fs.readFileSync('functions/src/notifications/index.ts','utf8'); console.log(!c.includes('PUSH_RELAYED_INAPP_TYPES')?'RELAY_SINGLE_SOURCE':'PENDING');"
+  EXPECT: RELAY_SINGLE_SOURCE
+  EVIDENCE: 2026-09-12 — output: RELAY_SINGLE_SOURCE. Redundant `PUSH_RELAYED_INAPP_TYPES` Set deleted; relay gate checks `isPushRelayInAppType(inAppType)` via `Object.prototype.hasOwnProperty.call(INAPP_TO_FCM, ...)`. `INAPP_TO_FCM` narrowed to strict `Record<PushRelayInAppType, PushRelayFcmType>`.
+
+- [x] H5: Curriculum competency join is total (asserted, not silently defaulted).
+  CHECK: node -e "const fs=require('fs'); const c=fs.readFileSync('src/data/curriculumModules.ts','utf8'); console.log(c.includes('assertCompetencyJoin')||c.includes('COMPETENCY_JOIN')?'JOIN_ASSERTED':'PENDING');"
+  EXPECT: JOIN_ASSERTED
+  EVIDENCE: 2026-09-12 — output: JOIN_ASSERTED. `src/data/curriculumJoin.test.ts` (5 unit tests) tests the 44/44 competency code join bidirectionally (0 orphans, 0 missing, 0 synthetic fallbacks). `assertCompetencyJoin` exported from `curriculumModules.ts`.
+
+- [x] H6: HTTP transport has one pipeline; blob path inherits rate-limit handling.
+  CHECK: node -e "const fs=require('fs'); const c=fs.readFileSync('src/services/apiService.ts','utf8'); const n=c.split('status === 401').length-1; console.log(c.includes('handleRateLimitError')&&n<=2?'TRANSPORT_UNIFIED':'PENDING');"
+  EXPECT: TRANSPORT_UNIFIED
+  EVIDENCE: 2026-09-12 — output: TRANSPORT_UNIFIED. `buildRequestHeaders` and `logAndSignalApiError` extracted as single owners of auth token acquisition, header construction, and rate-limit signaling (HTTP 429 via `handleRateLimitError`). Covered by `src/services/__tests__/apiServiceTransport.test.ts` (4 unit tests).
+
+- [x] H7: Firestore rules use one owner-predicate vocabulary.
+  CHECK: grep -c "request.auth.uid ==" firestore.rules
+  EXPECT: 1
+  EVIDENCE: 2026-09-12 — output: 1 (the single definition of `function isSelf(userId)` at line 36). All 20 raw comparisons replaced with `isSelf(...)`, `ownerByField(...)`, `isExistingOwner(...)`, or `isClaimingOwner(...)`. Verified with `functions/src/firestoreRules.test.ts` and offline AST validation.
+
+- [x] H8: ModulesPage async state is modeled as discriminated unions, not value+loading pairs.
+  CHECK: node -e "const fs=require('fs'); const c=fs.readFileSync('src/components/ModulesPage.tsx','utf8'); console.log(!c.includes('learningPathLoading')&&!c.includes('competencyProfileLoading')?'ASYNC_UNIONS':'PENDING');"
+  EXPECT: ASYNC_UNIONS
+  EVIDENCE: 2026-09-12 — output: ASYNC_UNIONS. `LearningPathState` discriminated union (`idle` | `loading` | `ready`) replaces scattered `learningPathContext` and `learningPathLoading` states. Unread write-only `competencyProfileLoading` removed.
+
+- [x] H9: Gates ledger reports true completion and unique section IDs.
+  CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('GATES-ui-sweep.md','utf8'); const g=fs.readFileSync('GATES.md','utf8'); const ids=[...g.matchAll(/^## Section ([A-Z])/gm)].map(m=>m[1]); console.log(!s.includes('- [ ]')&&new Set(ids).size===ids.length?'LEDGER_TRUE':'PENDING');"
+  EXPECT: LEDGER_TRUE
+  EVIDENCE: 2026-09-12 — output: LEDGER_TRUE. `GATES-ui-sweep.md` updated with honest checkboxes and evidence. Sections in `GATES.md` disambiguated so all section letters are unique (`A`, `B`, `C`, `D`, `E`, `I`, `J`, `F`, `G`, `H`).
+
+- [x] H10: Repo docs describe the state model that exists.
+  CHECK: node -e "const fs=require('fs'); const a=fs.readFileSync('AGENTS.md','utf8'); console.log(!a.includes('Zustand')&&a.includes('TanStack Query')?'DOCS_TRUE':'PENDING');"
+  EXPECT: DOCS_TRUE
+  EVIDENCE: 2026-09-12 — output: DOCS_TRUE. Removed phantom `Zustand` and `src/stores` references from `AGENTS.md`. Key Conventions accurately state: TanStack Query + React Context + local useState.
+
+- [x] H11: Full verification after remediation.
+  CHECK: npm run typecheck && npx vitest run && npm run lint:anti-slop && python -m pytest backend/tests/ -q && (cd functions && npm test)
+  EXPECT: all green
+  EVIDENCE: 2026-09-12 — all suites green:
+    - `npm run typecheck`: 0 errors
+    - `npx vitest run`: 31 test files, 210 tests passed (10.67s)
+    - `npm run lint:anti-slop`: 0 errors across all files
+    - `python -m pytest backend/tests/ -q`: 347 passed, 1 warning (56.31s)
+    - `cd functions && npm test`: 46 tests passed (445ms)
+    - `npm run build`: built in 11.93s

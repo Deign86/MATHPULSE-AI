@@ -7,10 +7,12 @@ based on their recent activity, weak topics, and current risk status.
 
 import logging
 import os
-from typing import Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+from services.wri_service import ESCALATION_RISK_STATUSES, RiskLevel, normalize_risk_band
 
 logger = logging.getLogger("mathpulse.tutor_checkin")
 
@@ -35,14 +37,14 @@ class TutorCheckinResponse(BaseModel):
 def _build_checkin_prompt(req: TutorCheckinRequest) -> str:
     """Build a contextual prompt for DeepSeek to generate a tutor check-in."""
     name = req.student_name or "Student"
-    status = req.risk_status or "unknown"
+    status: RiskLevel = normalize_risk_band(req.risk_status)
     wri = req.wri
     weak = req.weak_topics or []
     activity = req.recent_activity or "No recent activity recorded."
 
     weak_topics_str = ", ".join(weak) if weak else "none identified"
 
-    tone_map = {
+    tone_map: Dict[RiskLevel, str] = {
         "safe": "encouraging and celebratory",
         "watch": "gentle and supportive",
         "intervene": "caring but firm",
@@ -93,7 +95,7 @@ def generate_tutor_checkin(req: TutorCheckinRequest):
 
         message = response.strip() if response else _fallback_message(req.risk_status)
 
-        tone_map = {
+        tone_map: Dict[RiskLevel, str] = {
             "safe": "encouraging",
             "watch": "supportive",
             "intervene": "caring-but-firm",
@@ -103,7 +105,7 @@ def generate_tutor_checkin(req: TutorCheckinRequest):
 
         return TutorCheckinResponse(
             message=message,
-            tone=tone_map.get(req.risk_status or "", "supportive"),
+            tone=tone_map.get(normalize_risk_band(req.risk_status), "supportive"),
             suggested_action=_suggest_action(req.risk_status, req.weak_topics),
         )
 
@@ -119,25 +121,26 @@ def generate_tutor_checkin(req: TutorCheckinRequest):
 
 def _fallback_message(risk_status: Optional[str]) -> str:
     """Template-based fallback when DeepSeek is unavailable."""
-    fallbacks = {
+    fallbacks: Dict[RiskLevel, str] = {
         "safe": "Great work! You're on track. Keep up the momentum with today's practice.",
         "watch": "I noticed you've been working hard. Let's take a moment to review any tricky concepts together.",
         "intervene": "Your teacher and I are here to help. Let's focus on one topic at a time — you've got this.",
         "critical": "I'm worried about your progress. Please reach out to your teacher or start a remedial module today.",
         "at_risk": "Your learning path is paused until your teacher reviews your progress. In the meantime, review your completed lessons.",
     }
-    return fallbacks.get(risk_status or "", "Keep going! Every problem you solve makes you stronger.")
+    return fallbacks.get(normalize_risk_band(risk_status), "Keep going! Every problem you solve makes you stronger.")
 
 
 def _suggest_action(risk_status: Optional[str], weak_topics: Optional[list]) -> Optional[str]:
     """Suggest a concrete next action based on status."""
-    if risk_status == "safe":
+    band = normalize_risk_band(risk_status)
+    if band == "safe":
         return "Try a bonus challenge to stretch your skills."
-    if risk_status == "watch":
+    if band == "watch":
         return "Review the hint for your last incorrect answer."
-    if risk_status == "intervene":
+    if band == "intervene":
         topic = weak_topics[0] if weak_topics else "your weakest topic"
         return f"Start the remedial module on {topic}."
-    if risk_status in ("critical", "at_risk"):
+    if band in ESCALATION_RISK_STATUSES:
         return "Contact your teacher or start a 1-on-1 review session."
     return None

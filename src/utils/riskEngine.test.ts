@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {
+  RISK_TIERS,
   computeRisk,
   classifyWRI,
   toCanonicalRiskTier,
@@ -164,5 +167,60 @@ describe('riskEngine', () => {
       expect(computeSystemPerformance([80, 90, 85])).toBe(85);
       expect(computeSystemPerformance([70, 75])).toBe(73);
     });
+  });
+});
+
+/**
+ * Cross-language drift guards.
+ *
+ * The canonical risk vocabulary and the DepEd band ladder are owned by
+ * `backend/services/wri_service.py`. TypeScript cannot import Python, so these
+ * two mirrors are asserted against the owner instead of being trusted:
+ *   - `RISK_TIERS`            <-> `RiskLevel = Literal[...]`
+ *   - `classifyWRI`           <-> `_BAND_THRESHOLDS`
+ *   - `toCanonicalRiskTier`   <-> `normalize_risk_band` tier_map
+ * If any mirror drifts, this file fails instead of the classification quietly diverging.
+ */
+describe('riskEngine <-> wri_service.py contract', () => {
+  const wriSource = readFileSync(
+    path.resolve(process.cwd(), 'backend/services/wri_service.py'),
+    'utf8',
+  );
+
+  it('mirrors the canonical risk vocabulary', () => {
+    const literal = /RiskLevel = Literal\[([^\]]+)\]/.exec(wriSource);
+    expect(literal, 'RiskLevel Literal not found in wri_service.py').not.toBeNull();
+
+    const pythonTiers = [...literal![1].matchAll(/"([a-z_]+)"/g)].map((m) => m[1]).sort();
+    expect([...RISK_TIERS].sort()).toEqual(pythonTiers);
+  });
+
+  it('mirrors the DepEd band thresholds', () => {
+    const block = /_BAND_THRESHOLDS: tuple = \(([\s\S]*?)\n\)/.exec(wriSource);
+    expect(block, '_BAND_THRESHOLDS not found in wri_service.py').not.toBeNull();
+
+    const pythonLadder = [...block![1].matchAll(/\(([\d.]+),\s*"([a-z_]+)"\)/g)].map(
+      (m) => [Number(m[1]), m[2]] as const,
+    );
+    expect(pythonLadder.length).toBeGreaterThan(0);
+
+    for (const [threshold, band] of pythonLadder) {
+      expect(classifyWRI(threshold), `boundary ${threshold} must be ${band}`).toBe(band);
+      expect(classifyWRI(threshold - 0.01), `just below ${threshold} must drop a band`).not.toBe(band);
+    }
+  });
+
+  it('mirrors the legacy alias map', () => {
+    const block = /tier_map = \{([\s\S]*?)\n    \}/.exec(wriSource);
+    expect(block, 'tier_map not found in wri_service.py').not.toBeNull();
+
+    const aliases = [...block![1].matchAll(/"([a-z_]+)":\s*"([a-z_]+)"/g)].map(
+      (m) => [m[1], m[2]] as const,
+    );
+    expect(aliases.length).toBeGreaterThan(0);
+
+    for (const [alias, canonical] of aliases) {
+      expect(toCanonicalRiskTier(alias), `alias ${alias} must map to ${canonical}`).toBe(canonical);
+    }
   });
 });
