@@ -313,3 +313,36 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: 0 errors
   EVIDENCE: Passed. `npm run typecheck` passed with 0 errors. `npm run lint:anti-slop` (`oxlint --quiet`) passed with 0 errors across 382 files.
 
+
+## Section J: Student Dashboard & UI/UX Craft Overhaul
+- [x] J1: Mobile Gamified Bento Ribbon: responsive Level, XP, Streak, and Assessment status cards on mobile/tablet viewports in `App.tsx`.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/App.tsx', 'utf8'); console.log(s.includes('studentMobileBento') || s.includes('MobileGamificationBento') || (s.includes('userLevel') && s.includes('lg:hidden') && s.includes('progressXPInLevel')) ? 'BENTO_READY' : 'BENTO_MISSING');"
+  EXPECT: BENTO_READY
+  EVIDENCE: Passed. Output: `BENTO_READY`. Added responsive 2x2/4-card gamification ribbon (`grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 lg:hidden`) beneath HeroBanner featuring Level rank, active XP progress bar, Streak flame with direct rewards modal trigger, and Quick Quiz Battle matchmaker trigger.
+
+- [x] J2: HeroBanner polish: mobile-accessible assessment alert pill, standardized `rounded-3xl`, and responsive typography.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/HeroBanner.tsx', 'utf8'); console.log(s.includes('rounded-3xl') && !s.includes('hidden md:block right-[150px]') ? 'HERO_POLISHED' : 'HERO_PENDING');"
+  EXPECT: HERO_POLISHED
+  EVIDENCE: Passed. Output: `HERO_POLISHED`. Standardized container and inner elements to `rounded-3xl md:rounded-[2rem]`, surfaced mobile assessment alert and completion pills directly in mobile layout flow, and eliminated hardcoded text padding squeezes.
+
+- [x] J3: LearningPath adaptive grid: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` replacing cramped 72vw snap-scroller.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/LearningPath.tsx', 'utf8'); console.log(s.includes('grid-cols-1') && s.includes('sm:grid-cols-2') ? 'GRID_ADAPTIVE' : 'GRID_STATIC');"
+  EXPECT: GRID_ADAPTIVE
+  EVIDENCE: Passed. Output: `GRID_ADAPTIVE`. Replaced cut-off horizontal snap-scroller with responsive `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6`, rendering full-width readable folder cards on mobile matching `ModulesPage`.
+
+- [x] J4: Widget craft & syntax fixes: remove `rounded-[-20px]` in `DailyChallengeWidget.tsx`, tablet 2-column bento in `RightSidebar.tsx`.
+  CHECK: node -e "const fs = require('fs'); const dc = fs.readFileSync('src/components/DailyChallengeWidget.tsx', 'utf8'); const rs = fs.readFileSync('src/components/RightSidebar.tsx', 'utf8'); console.log(!dc.includes('rounded-[-20px]') && rs.includes('sm:grid-cols-2') ? 'CRAFT_POLISHED' : 'CRAFT_PENDING');"
+  EXPECT: CRAFT_POLISHED
+  EVIDENCE: Passed. Output: `CRAFT_POLISHED`. Fixed `rounded-[-20px]` CSS bug in `DailyChallengeWidget.tsx`, standardized card containers to `rounded-2xl md:rounded-3xl`, and enabled responsive 2-column grid (`grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 sm:gap-4`) in `RightSidebar.tsx`.
+
+- [x] J5: Radar chart & corner radius consistency: `rounded-3xl` outer container with symmetric padding in `CompetencyRadarChart.tsx`.
+  CHECK: node -e "const fs = require('fs'); const s = fs.readFileSync('src/components/CompetencyRadarChart.tsx', 'utf8'); console.log(s.includes('rounded-3xl') ? 'RADAR_STANDARDIZED' : 'RADAR_PENDING');"
+  EXPECT: RADAR_STANDARDIZED
+  EVIDENCE: Passed. Output: `RADAR_STANDARDIZED`. Standardized matrix card to `rounded-2xl md:rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-6 lg:p-8` with unified inner element corner radii.
+
+- [x] J6: System verification: npm run typecheck and npm run lint:anti-slop pass cleanly with 0 errors.
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: Finished in
+  EVIDENCE: Passed. `npm run typecheck` passed with 0 errors. `npm run lint:anti-slop` (`oxlint --quiet`) passed with 0 errors across 382 files. Vitest component tests passed.
+
+

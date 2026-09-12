@@ -94,9 +94,9 @@ const LearningPath: React.FC<LearningPathProps> = ({
         </button>
       </div>
 
-      <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-4 gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 md:gap-6 md:pb-0 md:mx-0 md:px-0 md:overflow-visible">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {modulesWithProgress.map((module, idx) => (
-          <div key={module.id} className="w-[72vw] max-w-[260px] h-[220px] shrink-0 snap-center md:min-w-0 md:max-w-none md:w-auto md:shrink md:h-auto">
+          <div key={module.id} className="w-full">
             <ModuleFolderCard
               module={module}
               index={idx}
