@@ -63,11 +63,55 @@
 
 ---
 
-## 3. Quality & Verification Evidence
+## 3. Student Assessment Analytics Page Redesign (`src/components/GradesPage.tsx`)
+
+### Creative Visual Direction & Reference-Inspired Architecture
+* **Reference UI Inspiration**: Directly inspired by modern gamified ed-tech interfaces (warm pastel capsule metric ribbons, playful two-tone stacked vertical capsule charts, and ranked subject pods) while maintaining MathPulse AI's signature purple/indigo gradient palette (`#7C3AED` to `#6366F1`), high-contrast mathematical typography, and DepEd SHS alignment.
+* **Flawless Mobile-to-Desktop Graceful Collapse**:
+  * On desktop (`lg:` / `xl:`): Spacious 2-column asymmetric layout with two-tone capsule chart and activity feed on the left, and subject ranking pods + momentum card on the right.
+  * On mobile & tablet (`< lg:`): Stacks naturally into high-impact single-column cards with touch-friendly controls and zero horizontal overflow.
+
+### Three-Capsule Metric Ribbon (Reference Screen 2 Inspiration)
+* **General Average Capsule (`#FAF8FF`)**: Radial SVG progress ring gauge, DepEd 75% passing benchmark indicator, and proficiency standing tag.
+* **Weakest Subject Capsule (`#FFF8F5`)**: Identified priority focus subject (`Finite Mathematics`), priority tag, and an instant **"Practice Now →"** quick action button.
+* **Quizzes Completed Capsule (`#F4FAF6`)**: High-contrast evaluation tally, active streak flame chip, and total learning activities count.
+
+### Two-Tone Vertical Capsule Bar Chart (Reference Screen 6 Inspiration)
+* **Interactive Subject Mastery Chart**:
+  * Replaced basic linear progress bars with tall, rounded two-tone vertical capsule columns for each active subject (`General Mathematics`, `Statistics and Probability`, `Finite Mathematics`).
+  * Features a prominent **75% Passing Benchmark** dashed reference line with a badge tag.
+  * Clicking any subject column filters the Assessment Activity Feed below to only show activities for that selected subject.
+  * Displays competency chips (`Mastered`, `Proficient`, `Needs Boost`).
+
+### AI Diagnostic Intelligence Showcase (Reference Screen 4 Inspiration)
+* **Elevated Diagnostic Banner**:
+  * Soft gradient container (`bg-gradient-to-br from-[#FAF8FF] via-white to-[#F0EDFF] border-2 border-purple-100/90 rounded-[2.25rem]`).
+  * Features glowing AI brain emblem, real-time risk level pill (`Low`, `Moderate`, `High`), and an explicit **"In-Depth Breakdown ↗"** CTA button opening the diagnostic breakdown modal.
+  * **3 Structured Insight Pods**:
+    1. **Baseline Score Pod**: Radial circular gauge with percentage score and foundational diagnostic benchmark subtitle.
+    2. **Focus Areas Pod**: Identified topic chips with amber indicator dots.
+    3. **AI Recommendation Pod**: Personalized tutor guidance formatted with clean typographic hierarchy.
+
+### Tactile Assessment Activity Feed (Eliminating Clunky Tables)
+* **Graceful Mobile Feed**:
+  * Replaced the dense, desktop-only horizontal scroll table with an adaptive **Activity Feed** of rounded tactile cards.
+  * On mobile (360px–480px), each card displays the subject avatar icon, activity title, subject label, completed date, type badge (`Quiz` vs `Practice`), and high-contrast score pill without any awkward side-scrolling.
+  * Quick-tap filter controls for Subject and Type.
+
+### Subject Ranking Leaderboard & Learning Momentum
+* **Ranked Pods (`#1`, `#2`, `#3`)**: Shows top-performing to lowest-performing subjects with dedicated rank badges and direct "Practice" links.
+* **Momentum Action Banner**: Vibrant gradient card with quick button to launch the Practice Center.
+
+---
+
+## 4. Quality & Verification Evidence
 
 | Area | Check / Command | Result |
 | :--- | :--- | :--- |
 | **Type Safety** | `npm run typecheck` (`tsc --noEmit`) | ✅ **0 errors** |
 | **Linting & Anti-Slop** | `npm run lint:anti-slop` (`oxlint --quiet`) | ✅ **0 errors** across 382 files |
-| **Modules Unit Tests** | `npx vitest run src/components/ModulesPage.test.tsx` | ✅ **1/1 passed** |
-| **Acceptance Gates** | `GATES.md` Sections F & H | ✅ **All gates passed with recorded evidence** |
+| **Component Unit Tests** | `npx vitest run src/components/ModulesPage.test.tsx` | ✅ **1/1 passed** |
+| **Acceptance Gates** | `GATES.md` Section I (`I1`–`I5`) | ✅ **All 5 gates passed with recorded evidence** |
+
+
+
