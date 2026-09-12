@@ -20,6 +20,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from services.ai_client import CHAT_MODEL, get_deepseek_client
+from services.llm_json import LLMJsonError, extract_json_value, extract_dict_list
 from rag.curriculum_rag import retrieve_curriculum_context
 import firebase_admin
 from firebase_admin import firestore as fs
@@ -372,27 +373,23 @@ async def _call_deepseek(system_prompt: str, user_message: str, temperature: flo
 
 def _parse_questions_response(raw_response: str) -> List[Dict[str, Any]]:
     try:
-        data = json.loads(raw_response)
-        if isinstance(data, dict):
-            for key in ("questions", "items", "data", "results"):
-                if key in data and isinstance(data[key], list):
-                    return data[key]
-            for key, value in data.items():
-                if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict):
-                    if "question_text" in value[0]:
-                        return value
-        if isinstance(data, list):
-            return data
-    except json.JSONDecodeError:
-        pass
+        payload = extract_json_value(raw_response, preferred=(dict, list))
+    except LLMJsonError as exc:
+        raise ValueError("Could not parse questions from AI response") from exc
 
-    import re
-    match = re.search(r'\[.*\]', raw_response, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group())
-        except json.JSONDecodeError:
-            pass
+    questions = extract_dict_list(payload)
+    if questions:
+        return questions
+
+    # Envelope object whose list lives under a non-standard key.
+    if isinstance(payload, dict):
+        for value in payload.values():
+            if isinstance(value, list) and value and isinstance(value[0], dict):
+                if "question_text" in value[0]:
+                    return value
+
+    if isinstance(payload, list):
+        return payload
 
     raise ValueError("Could not parse questions from AI response")
 

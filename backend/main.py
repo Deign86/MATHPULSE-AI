@@ -84,6 +84,13 @@ from services.inference_client import (
 )
 from services.deterministic_cache import DeterministicResponseCache
 from services.logging_utils import log_model_call
+from services.llm_json import (
+    collect_dict_objects,
+    extract_dict_list,
+    extract_json_blocks,
+    loads_jsonish,
+    strip_reasoning,
+)
 from services.email_service import create_email_service_from_env, EmailMessagePayload
 from services.user_provisioning_service import (
     AdminCreateUserInput,
@@ -10779,102 +10786,15 @@ def _distribute_questions(
 
 
 def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
-    """Robustly extract a JSON array of quiz questions from LLM output."""
-    cleaned = raw.strip()
-    # Remove markdown fences
-    cleaned = re.sub(r"^```(?:json)?\s*\n?", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\n?```\s*$", "", cleaned)
-    cleaned = cleaned.strip()
+    """Extract a JSON array of quiz questions from LLM output.
 
-    # Remove known reasoning wrappers and preambles that can precede JSON.
-    cleaned = re.sub(r"<think>[\s\S]*?</think>", "", cleaned, flags=re.IGNORECASE)
-    # Remove common reasoning preambles before JSON output.
-    cleaned = re.sub(r"^\s*thinking\s*process\s*:\s*", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"^\s*json\s*[:\-]?\s*", "", cleaned, flags=re.IGNORECASE)
+    Extraction and recovery live in services.llm_json so every route accepts
+    the same model-produced envelope shapes.
+    """
+    cleaned = strip_reasoning(raw)
 
-    def _extract_json_blocks(text: str) -> List[str]:
-        blocks: List[str] = []
-        starts = [i for i, ch in enumerate(text) if ch in "[{"]
-        for start in starts:
-            opener = text[start]
-            closer = "]" if opener == "[" else "}"
-            depth = 0
-            in_string = False
-            escaped = False
-            for idx in range(start, len(text)):
-                ch = text[idx]
-                if in_string:
-                    if escaped:
-                        escaped = False
-                    elif ch == "\\":
-                        escaped = True
-                    elif ch == '"':
-                        in_string = False
-                    continue
-
-                if ch == '"':
-                    in_string = True
-                    continue
-
-                if ch == opener:
-                    depth += 1
-                elif ch == closer:
-                    depth -= 1
-                    if depth == 0:
-                        blocks.append(text[start : idx + 1])
-                        break
-        return blocks
-
-    def _normalize_candidate(candidate: str) -> str:
-        normalized = candidate.strip().lstrip("\ufeff")
-        normalized = (
-            normalized
-            .replace("\u201c", '"')
-            .replace("\u201d", '"')
-            .replace("\u2018", "'")
-            .replace("\u2019", "'")
-        )
-        # Remove trailing commas before object/array closers.
-        normalized = re.sub(r",(\s*[}\]])", r"\1", normalized)
-        return normalized
-
-    def _jsonish_loads(candidate: str) -> Any:
-        normalized = _normalize_candidate(candidate)
-        try:
-            return json.loads(normalized)
-        except json.JSONDecodeError:
-            pass
-
-        # Fallback for Python-literal style payloads using single quotes / True / None.
-        python_like = re.sub(r"\btrue\b", "True", normalized, flags=re.IGNORECASE)
-        python_like = re.sub(r"\bfalse\b", "False", python_like, flags=re.IGNORECASE)
-        python_like = re.sub(r"\bnull\b", "None", python_like, flags=re.IGNORECASE)
-        try:
-            return ast.literal_eval(python_like)
-        except (ValueError, SyntaxError):
-            return None
-
-    def _coerce_question_list(value: Any) -> List[Dict[str, Any]]:
-        if not isinstance(value, list):
-            return []
-        return [item for item in value if isinstance(item, dict)]
-
-    def _extract_question_list(payload: Any) -> List[Dict[str, Any]]:
-        if isinstance(payload, list):
-            return _coerce_question_list(payload)
-
-        if isinstance(payload, dict):
-            for key in ("questions", "quiz", "items", "data"):
-                nested = payload.get(key)
-                if isinstance(nested, list):
-                    return _coerce_question_list(nested)
-
-        return []
-
-    # Try every balanced JSON-ish block and accept known payload wrappers.
-    for candidate in _extract_json_blocks(cleaned):
-        parsed = _jsonish_loads(candidate)
-        extracted = _extract_question_list(parsed)
+    for candidate in extract_json_blocks(cleaned):
+        extracted = extract_dict_list(loads_jsonish(candidate))
         if extracted:
             return extracted
 
@@ -10882,21 +10802,16 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
     arr_start = cleaned.find("[")
     arr_end = cleaned.rfind("]") + 1
     if arr_start >= 0 and arr_end > arr_start:
-        parsed = _jsonish_loads(cleaned[arr_start:arr_end])
-        extracted = _extract_question_list(parsed)
+        extracted = extract_dict_list(loads_jsonish(cleaned[arr_start:arr_end]))
         if extracted:
             return extracted
 
     # Fallback: salvage individually parseable question-like objects.
-    objects: List[Dict[str, Any]] = []
-    for candidate in _extract_json_blocks(cleaned):
-        if not candidate.lstrip().startswith("{"):
-            continue
-        parsed = _jsonish_loads(candidate)
-        if isinstance(parsed, dict) and str(parsed.get("question") or "").strip():
-            objects.append(parsed)
-
-    return objects
+    return [
+        parsed
+        for parsed in collect_dict_objects(cleaned)
+        if str(parsed.get("question") or "").strip()
+    ]
 
 
 async def _repair_quiz_json_with_llm(

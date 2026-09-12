@@ -272,6 +272,22 @@ export const getTeacherClassAssessments = async (
   return snapshot.docs.map((doc) => doc.data() as ClassAssessmentSummary);
 };
 
+/** Firestore reads per batch when aggregating a class. */
+const ASSESSMENT_FETCH_CONCURRENCY = 10;
+
+/**
+ * Fetch each student's latest assessment, bounded so a very large class does
+ * not issue hundreds of simultaneous Firestore reads.
+ */
+async function fetchClassAssessments(studentIds: string[]): Promise<Array<AssessmentResult | null>> {
+  const results: Array<AssessmentResult | null> = [];
+  for (let start = 0; start < studentIds.length; start += ASSESSMENT_FETCH_CONCURRENCY) {
+    const chunk = studentIds.slice(start, start + ASSESSMENT_FETCH_CONCURRENCY);
+    results.push(...(await Promise.all(chunk.map((studentId) => getInitialAssessment(studentId)))));
+  }
+  return results;
+}
+
 /**
  * Aggregate class assessment data (called from Cloud Function)
  */
@@ -279,30 +295,33 @@ export const aggregateClassAssessments = async (
   classId: string,
   studentIds: string[]
 ): Promise<ClassAssessmentSummary> => {
+  // Aggregation is independent per student, so fetch concurrently and reduce in
+  // one synchronous pass instead of paying the sum of every read latency.
+  const assessments = await fetchClassAssessments(studentIds);
+
   let totalScore = 0;
   let completedCount = 0;
   const competencyTotals: Record<string, { total: number; count: number }> = {};
   const studentsNeedingIntervention: string[] = [];
 
-  for (const studentId of studentIds) {
-    const assessment = await getInitialAssessment(studentId);
-    if (assessment) {
-      completedCount++;
-      totalScore += assessment.rawScore;
+  for (const [index, assessment] of assessments.entries()) {
+    if (!assessment) continue;
+    const studentId = studentIds[index];
+    completedCount++;
+    totalScore += assessment.rawScore;
 
-      // Aggregate competency scores
-      for (const [compId, compScore] of Object.entries(assessment.competencyScores)) {
-        if (!competencyTotals[compId]) {
-          competencyTotals[compId] = { total: 0, count: 0 };
-        }
-        competencyTotals[compId].total += compScore.score;
-        competencyTotals[compId].count++;
+    // Aggregate competency scores
+    for (const [compId, compScore] of Object.entries(assessment.competencyScores)) {
+      if (!competencyTotals[compId]) {
+        competencyTotals[compId] = { total: 0, count: 0 };
+      }
+      competencyTotals[compId].total += compScore.score;
+      competencyTotals[compId].count++;
 
-        // Check for intervention needed
-        if (compScore.score < 40) {
-          studentsNeedingIntervention.push(studentId);
-          break;
-        }
+      // Check for intervention needed
+      if (compScore.score < 40) {
+        studentsNeedingIntervention.push(studentId);
+        break;
       }
     }
   }

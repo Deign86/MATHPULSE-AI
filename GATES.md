@@ -227,3 +227,30 @@ Scope: Full post-merge rollout for PR #139 (Firebase Storage replacement, RAG re
   EXPECT: Finished in
   EVIDENCE: Passed. TypeScript `npm run typecheck` (`tsc --noEmit`) exited with 0 errors. Oxlint `npm run lint:anti-slop` (`oxlint --quiet`) exited with 0 errors across 382 files (882ms). Vitest `npm test -- --run` passed 27/27 test files, 179/179 tests (9.77s).
 
+
+## Section G: Backend JSON recovery dedupe + frontend regression fixes (anti-slop clean)
+
+- [x] G1: Zero anti-slop Oxlint errors across the repository.
+  CHECK: npm run lint:anti-slop
+  EXPECT: exit 0, no `error anti-slop(...)` lines
+  EVIDENCE: 2026-09-12 — `oxlint --quiet` exited 0. Cleared 20 errors across 6 files: replaced runtime `typeof` narrowing with boundary type predicates (`isBooleanField`, `isStringField`) in `src/services/platformConfigService.ts`, `src/features/notifications/notificationFirestoreService.ts`, and `scripts/backfill-notification-read-flag.ts`; replaced the `Record<string, unknown>` backfill patch with the named `ReadFlagPatch` type; removed the redundant `typeof` assertion in `src/data/rewardCatalog.test.ts`; renamed the `unknown` catch parameter in `src/components/AdminDashboard.tsx` to `cause` (the rule's error-cause exemption).
+
+- [x] G2: `platformConfigService` subject tests exercise the merge without module mocking.
+  CHECK: npx vitest run src/services/__tests__/platformConfigService.test.ts --reporter=verbose
+  EXPECT: 9 passed
+  EVIDENCE: 2026-09-12 — 9/9 passed. `vi.mock('@/lib/firebase')` removed; the suite now reconfigures the `firebase/firestore` spies already installed by `src/test-setup.ts` (`vi.spyOn(firestore, 'doc')` plus `vi.mocked(getDoc)`/`vi.mocked(setDoc)`), so the real `platformConfigService` module is under test. Chained `as unknown as` handles replaced with single `// SAFETY:`-documented assertions.
+
+- [x] G3: Backend route JSON extraction is owned by one module.
+  CHECK: python -m pytest backend/tests/test_llm_json.py -q
+  EXPECT: 32 passed
+  EVIDENCE: 2026-09-12 — 32/32 passed. `backend/services/llm_json.py` holds the single recovery ladder (fence/smart-quote/trailing-comma repair, Python-literal fallback, balanced-block scan, envelope unwrap); `backend/main.py` (-105 lines), `backend/routes/diagnostic.py`, `practice.py`, `quiz_generation_routes.py`, and `rag_routes.py` import it instead of carrying local copies. Root `services/` package deleted — `backend/services/` is now the only Python service package.
+
+- [x] G4: `config/models.yaml` drift is caught in CI instead of being silently repaired.
+  CHECK: npm run check:models
+  EXPECT: `[sync:models] In sync:`
+  EVIDENCE: 2026-09-12 — `scripts/sync-models.mjs --check` reports `In sync` for `backend/config/models.yaml`; `.github/workflows/ci.yml` runs `npm run check:models` after `npm ci`.
+
+- [x] G5: Full repository verification.
+  CHECK: npm run typecheck && npx vitest run && npm run lint:anti-slop && python -m pytest backend/tests/ -q && npm run build
+  EXPECT: 0 type errors, 198 vitest tests, 0 lint errors, 347 backend tests, build succeeds
+  EVIDENCE: 2026-09-12 — `tsc --noEmit` exit 0. Vitest 29/29 files, 198/198 tests. `oxlint --quiet` exit 0. Backend pytest 347 passed. `npm run build` succeeded in 16.66s. NOT verified: `scripts/backfill-notification-read-flag.ts` runtime execution (needs `firebase-admin`, installed only under `functions/`, matching the 8 pre-existing `scripts/*.ts` migrations); browser re-verification of the admin subject toggles (chrome-devtools MCP unavailable this session).

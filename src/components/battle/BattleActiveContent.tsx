@@ -2,6 +2,12 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bot, Users, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '../ui/utils';
+import type { QuizBattleRoundResult } from '../../services/quizBattleService';
+import type {
+  BattleActiveMatchView,
+  BattleFloatingMomentum,
+  BattlePlayerView,
+} from './types';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -10,17 +16,17 @@ export function isNum<T>(value: T): value is T & number {
 const hasWindow = 'window' in globalThis;
 
 interface BattleActiveContentProps {
-  activeMatch: any;
+  activeMatch: BattleActiveMatchView;
   roundSecondsLeft: number;
-  lastRoundResult: any;
+  lastRoundResult: QuizBattleRoundResult | null;
   selectedOptionIndex: number | null;
   roundLocked: boolean;
   answerSubmitting: boolean;
   designPauseActive: boolean;
   onOptionSelect: (idx: number) => void;
-  floatingMomentum: any;
+  floatingMomentum: BattleFloatingMomentum | null;
   lastRoundMomentumDelta: number | null;
-  studentProfile: any;
+  studentProfile: BattlePlayerView | null;
   quizBattleAvatar: string;
 }
 
@@ -80,19 +86,6 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
           </motion.p>
         </AnimatePresence>
 
-        {/* Debug variance badges */}
-        {hasWindow && window.location.search.includes('debug=true') && activeMatch.currentQuestion?.varianceApplied && (
-          <div className="flex flex-wrap gap-1 mt-2 justify-center">
-            {activeMatch.currentQuestion.varianceApplied.map((v: string) => (
-              <span
-                key={v}
-                className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/20 text-blue-200 border border-blue-400/30"
-              >
-                {v.replace(/_/g, ' ')}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Choices Grid */}

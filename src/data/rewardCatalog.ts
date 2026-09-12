@@ -4,7 +4,7 @@
  * Uses PHT (Asia/Manila, UTC+8) for all date calculations.
  */
 
-import { RewardDefinition } from '../types/rewards';
+import { RewardDefinition, RewardPayload } from '../types/rewards';
 
 // ── Deterministic PRNG (Mulberry32) ──────────────────────────────────────────
 export function mulberry32(seed: number): () => number {
@@ -111,15 +111,15 @@ export function getNextResetTime(date?: Date): Date {
 
 // ── Master Reward Catalog (19 items) ────────────────────────────────────────
 
-export const REWARD_CATALOG: Omit<RewardDefinition, 'day'>[] = [
+export const REWARD_CATALOG: RewardPayload[] = [
   { id: 'xp_50',         label: '+50 XP Boost',        description: 'Bonus XP on your next quiz',         icon: 'zap', type: 'xp',           value: 50,    rarity: 'common', color: '#4ade80' },
   { id: 'xp_100',        label: '+100 XP Boost',        description: 'Double bonus XP reward',             icon: 'star', type: 'xp',           value: 100,   rarity: 'rare',   color: '#facc15' },
   { id: 'xp_200',        label: '+200 XP Epic Boost',   description: 'Massive XP surge',                   icon: 'sparkles', type: 'xp',           value: 200,   rarity: 'epic',   color: '#f97316' },
   { id: 'streak_shield', label: 'Streak Shield',        description: 'Protects streak if you miss a day', icon: 'shield', type: 'streak_shield',  value: 1,     rarity: 'rare',   color: '#60a5fa' },
   { id: 'hint_x3',       label: '3 Hint Tokens',        description: 'Use in-quiz hints',                  icon: 'lightbulb', type: 'hint_token',   value: 3,     rarity: 'common', color: '#a78bfa' },
   { id: 'hint_x5',       label: '5 Hint Tokens',        description: 'More hints to use',                  icon: 'flashlight', type: 'hint_token',   value: 5,     rarity: 'rare',   color: '#8b5cf6' },
-  { id: 'xp_mult_1h',   label: '1-Hour XP ×1.5',       description: '1.5× XP for all quizzes for 1 hour',icon: 'timer', type: 'xp_multiplier', value: 60,    rarity: 'epic',   color: '#ec4899' },
-  { id: 'xp_mult_30m',  label: '30-Min XP ×2',         description: '2× XP for 30 minutes',              icon: 'rocket', type: 'xp_multiplier', value: 30,    rarity: 'epic',   color: '#e11d48' },
+  { id: 'xp_mult_1h',   label: '1-Hour XP ×1.5',       description: '1.5× XP for all quizzes for 1 hour',icon: 'timer', type: 'xp_multiplier', durationMinutes: 60, multiplier: 1.5, rarity: 'epic',   color: '#ec4899' },
+  { id: 'xp_mult_30m',  label: '30-Min XP ×2',         description: '2× XP for 30 minutes',              icon: 'rocket', type: 'xp_multiplier', durationMinutes: 30, multiplier: 2, rarity: 'epic',   color: '#e11d48' },
   { id: 'xp_75',        label: '+75 XP Boost',          description: 'Solid XP reward',                   icon: 'sparkles', type: 'xp',           value: 75,    rarity: 'common', color: '#34d399' },
   { id: 'hint_x2',      label: '2 Hint Tokens',         description: 'Quick hint pack',                   icon: 'lightbulb', type: 'hint_token',   value: 2,     rarity: 'common', color: '#7c3aed' },
   { id: 'xp_streak_150',label: '+150 XP + Streak Save', description: 'XP boost + streak protection combo',icon: 'flame', type: 'xp',           value: 150,   rarity: 'epic',   color: '#dc2626' },

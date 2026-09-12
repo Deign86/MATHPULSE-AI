@@ -47,6 +47,34 @@ interface AdminDashboardProps {
   onOpenSettings?: () => void;
 }
 
+/** Everything the Overview tab renders, captured in one request. */
+interface AdminOverviewSnapshot {
+  dashStats: DashboardStats | null;
+  recentActivity: AuditLogEntry[];
+  topPerformers: TopPerformer[];
+  weeklyActivity: WeeklyActivityData[];
+  subjectBreakdown: SubjectBreakdownItem[];
+  priorityAttention: PriorityAttentionData | null;
+  globalMastery: GlobalMasteryData | null;
+  difficultyDist: DifficultyDistribution | null;
+}
+
+/**
+ * Atomic Overview request lifecycle. The `error` variant carries the last good
+ * snapshot so a failed refresh keeps the previous cards instead of blanking
+ * them, while still exposing a typed error.
+ */
+type AdminOverviewState =
+  | { status: 'loading' }
+  | { status: 'ready'; data: AdminOverviewSnapshot }
+  | { status: 'error'; message: string; lastData: AdminOverviewSnapshot | null };
+
+// Stable identities so derived empty collections do not re-create props each render.
+const EMPTY_ACTIVITY: AuditLogEntry[] = [];
+const EMPTY_PERFORMERS: TopPerformer[] = [];
+const EMPTY_WEEKLY_ACTIVITY: WeeklyActivityData[] = [];
+const EMPTY_SUBJECT_BREAKDOWN: SubjectBreakdownItem[] = [];
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('Overview');
@@ -54,15 +82,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [createIntentRole, setCreateIntentRole] = useState<'Teacher' | 'Student' | null>(null);
-  const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
-  const [recentActivity, setRecentActivity] = useState<AuditLogEntry[]>([]);
-  const [topPerformers, setTopPerformers] = useState<TopPerformer[]>([]);
-  const [loadingOverview, setLoadingOverview] = useState(true);
-  const [weeklyActivity, setWeeklyActivity] = useState<WeeklyActivityData[]>([]);
-  const [subjectBreakdown, setSubjectBreakdown] = useState<SubjectBreakdownItem[]>([]);
-  const [priorityAttention, setPriorityAttention] = useState<PriorityAttentionData | null>(null);
-  const [globalMastery, setGlobalMastery] = useState<GlobalMasteryData | null>(null);
-  const [difficultyDist, setDifficultyDist] = useState<DifficultyDistribution | null>(null);
+  const [overviewState, setOverviewState] = useState<AdminOverviewState>({ status: 'loading' });
   const [showNotifications, setShowNotifications] = useState(false);
   const { unreadCount } = useNotifications();
   const [isSubjectsHelpModalOpen, setIsSubjectsHelpModalOpen] = useState(false);
@@ -105,7 +125,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
     const canReadAuditLogs = normalizedRole === 'admin' || normalizedRole === 'teacher';
 
     let cancelled = false;
-    setLoadingOverview(true);
+    setOverviewState({ status: 'loading' });
     Promise.all([
       getDashboardStats(),
       canReadAuditLogs ? getAuditLogs() : Promise.resolve([]),
@@ -117,19 +137,49 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       getDifficultyDistribution(),
     ]).then(([stats, logs, performers, weekly, subjects, priority, mastery, difficulty]) => {
       if (cancelled) return;
-      setDashStats(stats);
-      setRecentActivity(logs.slice(0, 4));
-      setTopPerformers(performers);
-      setWeeklyActivity(weekly);
-      setSubjectBreakdown(subjects);
-      setPriorityAttention(priority);
-      setGlobalMastery(mastery);
-      setDifficultyDist(difficulty);
-    }).catch(console.error).finally(() => {
-      if (!cancelled) setLoadingOverview(false);
+      setOverviewState({
+        status: 'ready',
+        data: {
+          dashStats: stats,
+          recentActivity: logs.slice(0, 4),
+          topPerformers: performers,
+          weeklyActivity: weekly,
+          subjectBreakdown: subjects,
+          priorityAttention: priority,
+          globalMastery: mastery,
+          difficultyDist: difficulty,
+        },
+      });
+    }).catch((cause: unknown) => {
+      if (cancelled) return;
+      console.error('[AdminDashboard] Failed to load overview:', cause);
+      // Keep the last good snapshot so a failed refresh does not blank the cards.
+      setOverviewState((current) => ({
+        status: 'error',
+        message: cause instanceof Error ? cause.message : 'Failed to load dashboard overview',
+        lastData: current.status === 'ready' ? current.data : current.status === 'error' ? current.lastData : null,
+      }));
     });
     return () => { cancelled = true; };
   }, [activeTab, userProfile]);
+
+  // One atomic snapshot of the Overview tab. Previously eight independently
+  // nullable cells plus a separate loading flag allowed the cards to show a
+  // mixture of old and new values during a refresh or tab switch.
+  const overview = overviewState.status === 'ready'
+    ? overviewState.data
+    : overviewState.status === 'error'
+      ? overviewState.lastData
+      : null;
+  const loadingOverview = overviewState.status === 'loading';
+  const dashStats = overview?.dashStats ?? null;
+  const recentActivity = overview?.recentActivity ?? EMPTY_ACTIVITY;
+  const topPerformers = overview?.topPerformers ?? EMPTY_PERFORMERS;
+  const weeklyActivity = overview?.weeklyActivity ?? EMPTY_WEEKLY_ACTIVITY;
+  const subjectBreakdown = overview?.subjectBreakdown ?? EMPTY_SUBJECT_BREAKDOWN;
+  const priorityAttention = overview?.priorityAttention ?? null;
+  const globalMastery = overview?.globalMastery ?? null;
+  const difficultyDist = overview?.difficultyDist ?? null;
 
   const systemStats = [
     {
