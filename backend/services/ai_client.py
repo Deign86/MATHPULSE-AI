@@ -1,6 +1,20 @@
 import os
+from pathlib import Path
 from openai import OpenAI, APIError, RateLimitError, APITimeoutError
 from functools import lru_cache
+
+try:
+    from dotenv import load_dotenv
+    for _env_path in [
+        Path(__file__).resolve().parents[1] / ".env.local",
+        Path(__file__).resolve().parents[1] / ".env",
+        Path(__file__).resolve().parents[2] / ".env.local",
+        Path(__file__).resolve().parents[2] / ".env",
+    ]:
+        if _env_path.exists():
+            load_dotenv(dotenv_path=_env_path, override=False)
+except Exception:
+    pass
 
 __all__ = [
     "get_deepseek_client",

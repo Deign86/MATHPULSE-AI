@@ -13,6 +13,19 @@ import sys
 import logging
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+    for _env_path in [
+        Path(__file__).resolve().parent / ".env.local",
+        Path(__file__).resolve().parent / ".env",
+        Path(__file__).resolve().parents[1] / ".env.local",
+        Path(__file__).resolve().parents[1] / ".env",
+    ]:
+        if _env_path.exists():
+            load_dotenv(dotenv_path=_env_path, override=False)
+except Exception:
+    pass
+
 logger = logging.getLogger("mathpulse.startup")
 
 

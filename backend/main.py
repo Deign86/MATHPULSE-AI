@@ -43,7 +43,20 @@ def _get_audit_logger():
             _audit_logger = _fn
         except ImportError:
             _audit_logger = False  # sentinel: don't retry
-    return _audit_logger if _audit_logger is not False else None
+# Load local environment variables from .env.local / .env before startup validation
+from pathlib import Path
+try:
+    from dotenv import load_dotenv
+    for _env_path in [
+        Path(__file__).resolve().parent / ".env.local",
+        Path(__file__).resolve().parent / ".env",
+        Path(__file__).resolve().parents[1] / ".env.local",
+        Path(__file__).resolve().parents[1] / ".env",
+    ]:
+        if _env_path.exists():
+            load_dotenv(dotenv_path=_env_path, override=False)
+except Exception:
+    pass
 
 # STARTUP VALIDATION - Run before anything else to prevent restart loops
 try:
