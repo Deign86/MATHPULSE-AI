@@ -210,6 +210,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [provenanceSourceFilter, setProvenanceSourceFilter] = useState<string>('all');
   const [provenanceMaterialFilter, setProvenanceMaterialFilter] = useState<string>('all');
+  const [showInfoBanner, setShowInfoBanner] = useState(false);
 
   // Save / Assign / Publish state
   const [saving, setSaving] = useState(false);
@@ -1402,12 +1403,12 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   return (
                     <div
                       key={s.id}
-                      className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-xl transition-all duration-500 min-w-0 ${
+                      className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-xl transition-all duration-500 ${
                         isCurrent
-                          ? 'bg-purple-50/80 shadow-[0_1px_3px_rgba(168,85,247,0.1)]'
+                          ? 'flex-1 min-w-0 bg-purple-50/80 shadow-[0_1px_3px_rgba(168,85,247,0.1)]'
                           : isCompleted
-                          ? 'bg-transparent'
-                          : 'bg-transparent opacity-60'
+                          ? 'flex-none sm:flex-1 bg-transparent'
+                          : 'flex-none sm:flex-1 bg-transparent opacity-60'
                       }`}
                     >
                       <div
@@ -1422,8 +1423,12 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                         {isCompleted ? <Check size={13} strokeWidth={3} /> : idx + 1}
                       </div>
                       <span
-                        className={`text-xs sm:text-[13px] font-bold whitespace-nowrap truncate ${
-                          isCurrent ? 'text-[#9333ea] inline' : isCompleted ? 'text-[#1e293b] hidden sm:inline' : 'text-[#64748b] hidden sm:inline'
+                        className={`text-xs sm:text-[13px] font-bold whitespace-nowrap ${
+                          isCurrent
+                            ? 'text-[#9333ea] inline'
+                            : isCompleted
+                            ? 'text-[#1e293b] hidden sm:inline truncate'
+                            : 'text-[#64748b] hidden sm:inline truncate'
                         }`}
                       >
                         {s.label}
@@ -1437,24 +1442,55 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* ─── STEP: SETUP ─── */}
           {step === 'setup' && !generating && (
-            <div className="w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
+            <div className="w-full px-3.5 sm:px-6 xl:px-8 flex-1 space-y-3.5 sm:space-y-6 pb-20 sm:pb-8">
 
-              {/* Info Banner */}
-              <div className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 backdrop-blur-sm border border-purple-100/50 rounded-[16px] p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow duration-300">
-                <div className="bg-white p-2 rounded-full shadow-sm shrink-0">
-                  <Info size={18} className="text-[#9333ea]" />
-                </div>
-                <p className="text-[13px] text-[#475569] leading-relaxed pt-0.5">
-                  This quiz maker generates <span className="font-bold text-[#9333ea]">supplemental assessments</span> to support classroom instruction. Questions follow Bloom's Taxonomy for comprehensive skill evaluation. Generation limit: up to {MAX_QUESTIONS_LIMIT} questions and {MAX_TOPICS_LIMIT} topics per quiz.
-                </p>
+              {/* Collapsible Info Banner */}
+              <div className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 backdrop-blur-sm border border-purple-100/60 rounded-[14px] overflow-hidden shadow-xs transition-all duration-200">
+                <button
+                  type="button"
+                  onClick={() => setShowInfoBanner((prev) => !prev)}
+                  className="w-full p-3 sm:p-3.5 flex items-center justify-between gap-3 text-left hover:bg-purple-100/40 transition-colors cursor-pointer group"
+                  aria-expanded={showInfoBanner}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="bg-white p-1.5 rounded-full shadow-xs shrink-0 text-[#9333ea] group-hover:scale-105 transition-transform">
+                      <Info size={15} />
+                    </div>
+                    <span className="text-xs sm:text-[13px] font-semibold text-[#475569] group-hover:text-[#9333ea] transition-colors truncate">
+                      Assessment Guidelines & Limits
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 text-[#9333ea] text-xs font-medium">
+                    <span className="hidden sm:inline text-[11px] text-[#64748b]">{showInfoBanner ? 'Hide details' : 'Show details'}</span>
+                    {showInfoBanner ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {showInfoBanner && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 pb-3.5 pt-1 border-t border-purple-100/50">
+                        <p className="text-xs sm:text-[13px] text-[#475569] leading-relaxed">
+                          This quiz maker generates <span className="font-bold text-[#9333ea]">supplemental assessments</span> to support classroom instruction. Questions follow Bloom's Taxonomy for comprehensive skill evaluation. Generation limit: up to {MAX_QUESTIONS_LIMIT} questions and {MAX_TOPICS_LIMIT} topics per quiz.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Basic Settings Card */}
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[20px] border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300">
-                <div className="p-5 border-b border-[#f1f5f9] bg-white/50">
+              <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] sm:rounded-[20px] border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300">
+                <div className="p-4 sm:p-5 border-b border-[#f1f5f9] bg-white/50">
                   <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Basic Settings</h3>
                 </div>
-                <div className="p-8 flex flex-col md:flex-row gap-8">
+                <div className="p-4 sm:p-8 flex flex-col md:flex-row gap-4 sm:gap-8">
                   {/* Grade Level */}
                   <div className="flex-1 group">
                     <label htmlFor="quiz-grade-level" className="text-[13px] font-bold text-[#1e293b] mb-2 block group-hover:text-[#a855f7] transition-colors">Grade level</label>
@@ -1506,15 +1542,17 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* ─── STEP: TOPICS ─── */}
           {step === 'topics' && !generating && (
-            <div className="w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
-              <div className="flex items-end justify-between mb-2">
+            <div className="w-full px-3.5 sm:px-6 xl:px-8 flex-1 space-y-4 sm:space-y-6 pb-20 sm:pb-8">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-2">
                 <div>
-                  <h2 className="text-[20px] font-bold text-[#1e293b] mb-1">Select topics</h2>
-                  <p className="text-[13px] text-[#64748b]">Choose up to {MAX_TOPICS_LIMIT} topics across all strands</p>
+                  <h2 className="text-lg sm:text-[20px] font-bold text-[#1e293b] mb-0.5 sm:mb-1">Select topics</h2>
+                  <p className="text-xs sm:text-[13px] text-[#64748b]">Choose up to {MAX_TOPICS_LIMIT} topics across all strands</p>
                 </div>
-                <div className="bg-purple-50 border border-purple-100 px-3 py-1.5 rounded-full flex items-center gap-2 shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-[#a855f7] animate-pulse" />
-                  <span className="text-[12px] font-bold text-[#a855f7]">{selectedTopics.filter(t => !excludeTopics.includes(t)).length} of {MAX_TOPICS_LIMIT} selected</span>
+                <div className="bg-purple-50 border border-purple-100 px-3 py-1 sm:py-1.5 rounded-full flex items-center gap-2 shadow-xs shrink-0 whitespace-nowrap self-start sm:self-auto">
+                  <div className="w-2 h-2 rounded-full bg-[#a855f7] animate-pulse shrink-0" />
+                  <span className="text-[11px] sm:text-[12px] font-bold text-[#a855f7] whitespace-nowrap">
+                    {selectedTopics.filter(t => !excludeTopics.includes(t)).length} of {MAX_TOPICS_LIMIT} selected
+                  </span>
                 </div>
               </div>
 
@@ -1532,20 +1570,20 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       <div key={category} className="border border-[#dde3eb] rounded-xl bg-white overflow-hidden shadow-sm">
                         <button
                           onClick={() => setExpandedSection(isOpen ? null : category)}
-                          className="w-full flex items-center justify-between p-4 hover:bg-[#f7f9fc] transition-colors"
+                          className="w-full flex items-center justify-between p-3.5 sm:p-4 hover:bg-[#f7f9fc] transition-colors gap-2"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-1 h-6 bg-[#9b51e0] rounded-full"></div>
-                            <div className="text-left">
-                              <p className="font-bold text-[#0a1628] text-sm">{category}</p>
-                              <p className="text-xs text-slate-500">{subtopics.length} topics</p>
+                          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                            <div className="w-1 h-6 bg-[#9b51e0] rounded-full shrink-0"></div>
+                            <div className="text-left min-w-0 flex-1">
+                              <p className="font-bold text-[#0a1628] text-xs sm:text-sm truncate">{category}</p>
+                              <p className="text-[11px] sm:text-xs text-slate-500">{subtopics.length} topics</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="bg-purple-100 text-[#9b51e0] px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                            <span className="bg-purple-100 text-[#9b51e0] px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap shrink-0">
                               {selectedCount} selected
                             </span>
-                            {isOpen ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+                            {isOpen ? <ChevronUp size={18} className="text-slate-400 shrink-0" /> : <ChevronDown size={18} className="text-slate-400 shrink-0" />}
                           </div>
                         </button>
                         
@@ -1557,7 +1595,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                               exit={{ height: 0 }}
                               className="overflow-hidden border-t border-[#edf1f7]"
                             >
-                              <div className="py-2">
+                              <div className="py-1 divide-y divide-[#f1f5f9]">
                                 {subtopics.map((topic, idx) => {
                                   const isSelected = selectedTopics.includes(topic);
                                   const isExcluded = excludeTopics.includes(topic);
@@ -1568,10 +1606,10 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                                   if (idx % 3 === 2) tag = 'Advanced';
 
                                   return (
-                                    <div key={topic} className="flex items-center justify-between px-6 py-3 hover:bg-[#f7f9fc]">
-                                      <label className="flex items-center gap-3 cursor-pointer flex-1">
-                                        <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${effectiveSelected ? 'bg-[#9b51e0] border-[#9b51e0]' : 'border-2 border-[#dde3eb] bg-white'}`}>
-                                          {effectiveSelected && <Check size={14} className="text-white" />}
+                                    <div key={topic} className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-[#f7f9fc] transition-colors gap-2">
+                                      <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
+                                        <div className={`w-4 h-4 sm:w-4.5 sm:h-4.5 rounded flex items-center justify-center shrink-0 transition-colors ${effectiveSelected ? 'bg-[#9b51e0] border-[#9b51e0]' : 'border-2 border-[#dde3eb] bg-white'}`}>
+                                          {effectiveSelected && <Check size={11} className="text-white" />}
                                         </div>
                                         <input
                                           type="checkbox"
@@ -1579,9 +1617,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                                           checked={effectiveSelected}
                                           onChange={() => toggleTopic(topic)}
                                         />
-                                        <span className={`text-sm font-semibold ${effectiveSelected ? 'text-[#0a1628]' : 'text-[#5a6578]'}`}>{topic}</span>
+                                        <span className={`text-xs sm:text-sm font-medium sm:font-semibold leading-tight break-words ${effectiveSelected ? 'text-[#0a1628]' : 'text-[#5a6578]'}`}>{topic}</span>
                                       </label>
-                                      <span className={`border px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider ${tag === 'Advanced' ? 'bg-white text-slate-400 border-[#dde3eb]' : 'bg-purple-50 text-[#9b51e0] border-purple-100'}`}>
+                                      <span className={`border px-2 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] uppercase font-bold tracking-wider shrink-0 whitespace-nowrap ${tag === 'Advanced' ? 'bg-white text-slate-400 border-[#dde3eb]' : 'bg-purple-50 text-[#9b51e0] border-purple-100'}`}>
                                         {tag}
                                       </span>
                                     </div>
@@ -1697,26 +1735,26 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* ─── STEP: PREVIEW ─── */}
           {step === 'preview' && !generating && !quizResult && (
-            <div className="w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
-              <div className="bg-white/80 backdrop-blur-md rounded-[20px] border border-[#e2e8f0] shadow-[0_8px_24px_rgba(0,0,0,0.04)] overflow-hidden p-8">
-                <h3 className="text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-6 flex items-center gap-2">
-                  <BarChart3 size={16} className="text-[#a855f7]" /> Quiz Summary
+            <div className="w-full px-3 sm:px-[24px] xl:px-[32px] flex-1 space-y-4 sm:space-y-[24px] pb-8">
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl sm:rounded-[20px] border border-[#e2e8f0] shadow-sm overflow-hidden p-3.5 sm:p-6 md:p-8">
+                <h3 className="text-[11px] sm:text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-3.5 sm:mb-6 flex items-center gap-2">
+                  <BarChart3 size={15} className="text-[#a855f7]" /> Quiz Summary
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
                   {[
                     { label: 'Questions', value: numQuestions },
                     { label: 'Topics', value: selectedTopics.filter(t => !excludeTopics.includes(t)).length },
                     { label: 'Level', value: selectedGrade.replace('Grade ', 'Gr. ') },
                   ].map(card => (
-                    <div key={card.label} className="relative overflow-hidden bg-gradient-to-br from-purple-50 to-indigo-50 rounded-[16px] p-6 text-center border border-purple-100/50 shadow-sm flex flex-col items-center justify-center group hover:-translate-y-1 transition-transform">
-                      <div className="absolute -right-4 -top-4 w-16 h-16 bg-purple-200/30 rounded-full group-hover:scale-150 transition-transform duration-500" />
-                      <span className="text-[36px] font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#a855f7] to-[#9333ea] leading-none mb-1 relative z-10">{card.value}</span>
-                      <span className="text-[13px] font-bold text-[#64748b] relative z-10">{card.label}</span>
+                    <div key={card.label} className="relative overflow-hidden bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 md:p-6 text-center border border-purple-100/50 shadow-xs sm:shadow-sm flex flex-col items-center justify-center group hover:-translate-y-0.5 transition-transform">
+                      <div className="absolute -right-3 -top-3 sm:-right-4 sm:-top-4 w-10 sm:w-16 h-10 sm:h-16 bg-purple-200/30 rounded-full group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+                      <span className="text-xl sm:text-2xl md:text-[32px] font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#a855f7] to-[#9333ea] leading-tight mb-0.5 sm:mb-1 relative z-10">{card.value}</span>
+                      <span className="text-[10px] sm:text-xs md:text-[13px] font-bold text-[#64748b] relative z-10 truncate max-w-full">{card.label}</span>
                     </div>
                   ))}
                 </div>
-                <div className="bg-slate-50/80 rounded-[14px] p-5 border border-slate-200/60 text-[#475569] text-[14px] leading-relaxed flex gap-4 items-start shadow-inner">
-                  <Info size={18} className="text-[#94a3b8] shrink-0 mt-0.5" />
+                <div className="bg-slate-50/80 rounded-xl sm:rounded-[14px] p-3 sm:p-5 border border-slate-200/60 text-[#475569] text-xs sm:text-[14px] leading-relaxed flex gap-2.5 sm:gap-4 items-start shadow-inner">
+                  <Info size={16} className="text-[#94a3b8] shrink-0 mt-0.5" />
                   <p>
                     {selectedTypes.map(t => QUESTION_TYPE_LABELS[t]?.label).join(' and ')} questions across{' '}
                     <span className="font-bold text-[#1e293b]">{selectedTopics.filter(t => !excludeTopics.includes(t)).length} topics</span>{' '}
@@ -1920,69 +1958,74 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       {/* EDGE-TO-EDGE STICKY ACTION BAR */}
       {activeTab === 'create' && (
         <div className="sticky bottom-0 mt-auto w-full bg-white/90 backdrop-blur-[12px] border-t border-[#e2e8f0] z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-          <div className="w-full px-6 xl:px-8 py-4 flex items-center justify-between">
+          <div className="w-full px-3.5 sm:px-6 xl:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
             <div>
               {step === 'topics' && !generating && (
-                <button onClick={() => { setSelectedTopics([]); setExcludeTopics([]); }} className="text-[13px] font-semibold text-[#a855f7] hover:underline">
+                <button onClick={() => { setSelectedTopics([]); setExcludeTopics([]); }} className="text-xs sm:text-[13px] font-semibold text-[#a855f7] hover:underline px-1 py-1">
                   Clear all
                 </button>
               )}
-              {(step === 'style' || step === 'preview') && !generating && (
-                <button onClick={() => setStep(step === 'preview' ? 'style' : 'topics')} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-[14px] font-semibold rounded-full px-6 py-2.5 shadow-sm transition-transform hover:scale-[1.02] flex items-center gap-2">
-                  <ChevronLeft size={16} /> Back
-                </button>
-              )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {step === 'setup' && !generating && (
-                <button onClick={() => setStep('topics')} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[14px] font-semibold rounded-full px-8 py-2.5 shadow-[0_4px_12px_rgba(168,85,247,0.3)] transition-transform hover:scale-[1.02] flex items-center gap-2">
-                  Next: Topics <ChevronRight size={16} />
+                <button onClick={() => setStep('topics')} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
+                  Next: Topics <ChevronRight size={14} />
                 </button>
               )}
               {step === 'topics' && !generating && (
                 <>
-                  <button onClick={() => setStep('setup')} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-[14px] font-semibold rounded-full px-6 py-2.5 shadow-sm transition-transform hover:scale-[1.02] flex items-center gap-2">
-                    <ChevronLeft size={16} /> Back
+                  <button onClick={() => setStep('setup')} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3 sm:px-4 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
+                    <ChevronLeft size={14} /> Back
                   </button>
-                  <button onClick={() => setStep('style')} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[14px] font-semibold rounded-full px-6 py-2.5 shadow-[0_4px_12px_rgba(168,85,247,0.3)] transition-transform hover:scale-[1.02] flex items-center gap-2">
-                    Next: Question Style <ChevronRight size={16} />
+                  <button onClick={() => setStep('style')} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
+                    Next: Question Style <ChevronRight size={14} />
                   </button>
                 </>
               )}
               {step === 'style' && !generating && (
-                <button onClick={() => setStep('preview')} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[14px] font-semibold rounded-full px-8 py-2.5 shadow-[0_4px_12px_rgba(168,85,247,0.3)] transition-transform hover:scale-[1.02] flex items-center gap-2">
-                  Next: Preview <ChevronRight size={16} />
-                </button>
+                <>
+                  <button onClick={() => setStep('topics')} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3 sm:px-4 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
+                    <ChevronLeft size={14} /> Back
+                  </button>
+                  <button onClick={() => setStep('preview')} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
+                    Next: Preview <ChevronRight size={14} />
+                  </button>
+                </>
               )}
               {step === 'preview' && !generating && !quizResult && (
-                <button onClick={handleGenerate} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[14px] font-bold rounded-full px-8 py-2.5 shadow-[0_4px_12px_rgba(168,85,247,0.3)] transition-all hover:scale-[1.02] flex items-center gap-2">
-                  <Check size={16} /> Generate Quiz
-                </button>
+                <>
+                  <button onClick={() => setStep('style')} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3 sm:px-4 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
+                    <ChevronLeft size={14} /> Back
+                  </button>
+                  <button onClick={handleGenerate} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-bold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-all hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
+                    <Check size={14} /> Generate Quiz
+                  </button>
+                </>
               )}
               {generating && (
-                <div className="flex items-center gap-3 text-slate-500 font-medium text-sm">
-                  <Loader2 size={16} className="animate-spin" /> Generating quiz... Please wait.
+                <div className="flex items-center gap-2 text-slate-500 font-medium text-xs sm:text-sm">
+                  <Loader2 size={14} className="animate-spin" /> Generating quiz...
                 </div>
               )}
               {step === 'results' && (
                 viewingBankQuizId ? (
                   <>
-                    <button onClick={() => { setActiveTab('bank'); setViewingBankQuizId(null); }} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-[14px] font-semibold rounded-full px-6 py-2.5 shadow-sm transition-transform hover:scale-[1.02]">
+                    <button onClick={() => { setActiveTab('bank'); setViewingBankQuizId(null); }} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02]">
                       Back to Quiz Bank
                     </button>
-                    <button onClick={() => handleOpenAssign(viewingBankQuizId)} className="bg-white border border-[#a855f7] text-[#9333ea] hover:bg-purple-50 text-[14px] font-bold rounded-full px-8 py-2.5 shadow-sm transition-transform hover:scale-[1.02] flex items-center gap-2">
-                      <Send size={16} /> Assign
+                    <button onClick={() => handleOpenAssign(viewingBankQuizId)} className="bg-white border border-[#a855f7] text-[#9333ea] hover:bg-purple-50 text-xs sm:text-[13px] font-bold rounded-full px-4 sm:px-6 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
+                      <Send size={14} /> Assign
                     </button>
-                    <button onClick={handleBack} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[14px] font-bold rounded-full px-10 py-2.5 shadow-[0_4px_12px_rgba(168,85,247,0.3)] transition-transform hover:scale-[1.02]">Done</button>
+                    <button onClick={handleBack} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-bold rounded-full px-5 sm:px-8 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-transform hover:scale-[1.02]">Done</button>
                   </>
                 ) : (
                   <>
-                    <button onClick={() => { setStep('setup'); setQuizResult(null); setPreviewResult(null); setSavedQuizId(null); setViewingBankQuizId(null); }} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-[14px] font-semibold rounded-full px-6 py-2.5 shadow-sm transition-transform hover:scale-[1.02]">
+                    <button onClick={() => { setStep('setup'); setQuizResult(null); setPreviewResult(null); setSavedQuizId(null); setViewingBankQuizId(null); }} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02]">
                       Create Another
                     </button>
                     {!savedQuizId ? (
-                      <button onClick={handleSaveToLibrary} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-2.5 rounded-full font-bold shadow-lg shadow-emerald-500/30 hover:-translate-y-1 transition-all flex items-center gap-2 text-[14px]">
-                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Save to Library
+                      <button onClick={handleSaveToLibrary} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full font-bold shadow-md shadow-emerald-500/25 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 text-xs sm:text-[13px]">
+                        {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save to Library
                       </button>
                     ) : (
                       <>

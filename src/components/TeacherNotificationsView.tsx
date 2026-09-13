@@ -116,14 +116,14 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
 
   return (
     <div className="w-full h-full flex flex-col bg-[#f8fafc]/50">
-      <div className="max-w-[900px] mx-auto w-full p-[24px] xl:p-[32px] space-y-[24px] flex-1 overflow-y-auto no-scrollbar pb-12">
+      <div className="max-w-[900px] mx-auto w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 flex-1 overflow-y-auto no-scrollbar pb-24 sm:pb-12">
 
         {/* Filters + controls row */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Filter tabs */}
           <button
             onClick={() => setFilter('all')}
-            className={`px-6 py-2.5 text-[13px] rounded-full whitespace-nowrap transition-all duration-300 border ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-[13px] rounded-full whitespace-nowrap transition-all duration-300 border ${
               filter === 'all'
                 ? 'bg-purple-50 text-[#9333ea] border-purple-200 shadow-md font-bold'
                 : 'bg-white/80 text-[#64748b] border-white hover:border-[#e2e8f0] shadow-sm font-medium'
@@ -133,7 +133,7 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
           </button>
           <button
             onClick={() => setFilter('unread')}
-            className={`px-6 py-2.5 text-[13px] rounded-full whitespace-nowrap transition-all duration-300 border flex items-center gap-2 ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-[13px] rounded-full whitespace-nowrap transition-all duration-300 border flex items-center gap-2 ${
               filter === 'unread'
                 ? 'bg-purple-50 text-[#9333ea] border-purple-200 shadow-md font-bold'
                 : 'bg-white/80 text-[#64748b] border-white hover:border-[#e2e8f0] shadow-sm font-medium'
@@ -146,7 +146,7 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
           </button>
           <button
             onClick={() => setFilter('important')}
-            className={`px-6 py-2.5 text-[13px] rounded-full whitespace-nowrap transition-all duration-300 border flex items-center gap-2 ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-[13px] rounded-full whitespace-nowrap transition-all duration-300 border flex items-center gap-2 ${
               filter === 'important'
                 ? 'bg-purple-50 text-[#9333ea] border-purple-200 shadow-md font-bold'
                 : 'bg-white/80 text-[#64748b] border-white hover:border-[#e2e8f0] shadow-sm font-medium'
@@ -159,14 +159,14 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
           </button>
 
           {/* Right: unread count + mark all */}
-          <div className="ml-auto flex items-center gap-3 shrink-0">
-            <span className="text-[13px] font-bold text-[#64748b]">
+          <div className="w-full sm:w-auto sm:ml-auto flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 mt-1 sm:mt-0 shrink-0">
+            <span className="text-xs sm:text-[13px] font-bold text-[#64748b]">
               {unreadCount > 0 ? `${unreadCount} unread` : 'No unread'}
             </span>
             <button
               onClick={markAllAsRead}
               disabled={unreadCount === 0}
-              className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-[13px] font-bold rounded-full px-5 py-2 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 flex items-center gap-2 group disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm"
+              className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-bold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 flex items-center gap-2 group disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-sm"
             >
               <CheckCheck className="w-4 h-4 text-[#94a3b8] group-hover:text-emerald-500 transition-colors" />
               Mark all as read
@@ -175,29 +175,29 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
         </div>
 
         {/* Notification List */}
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {isLoading ? (
-            <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white p-12 flex flex-col items-center justify-center gap-4">
+            <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] sm:rounded-[24px] border border-white p-8 sm:p-12 flex flex-col items-center justify-center gap-4">
               <Loader2 className="w-8 h-8 text-[#a855f7] animate-spin" />
               <p className="text-[14px] font-medium text-[#64748b]">Syncing notifications...</p>
             </div>
           ) : groupedNotifications.length === 0 ? (
-            <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white p-16 flex flex-col items-center justify-center text-center">
-              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 border border-slate-100">
-                <Bell className="w-10 h-10 text-slate-300" />
+            <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] sm:rounded-[24px] border border-white p-10 sm:p-16 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4 sm:mb-6 border border-slate-100">
+                <Bell className="w-8 h-8 sm:w-10 sm:h-10 text-slate-300" />
               </div>
-              <h3 className="text-[18px] font-bold text-[#1e293b] mb-2">All clear!</h3>
-              <p className="text-[14px] text-[#64748b] max-w-sm">
+              <h3 className="text-base sm:text-[18px] font-bold text-[#1e293b] mb-2">All clear!</h3>
+              <p className="text-xs sm:text-[14px] text-[#64748b] max-w-sm">
                 No notifications found for this filter. New alerts will appear here automatically.
               </p>
             </div>
           ) : (
             groupedNotifications.map((group) => (
               <div key={group.title}>
-                <h3 className="text-[12px] font-bold text-[#94a3b8] uppercase tracking-wider mb-3 ml-2 flex items-center gap-2">
-                  <group.icon className="w-4 h-4" /> {group.title}
+                <h3 className="text-[11px] sm:text-[12px] font-bold text-[#94a3b8] uppercase tracking-wider mb-2 sm:mb-3 ml-2 flex items-center gap-2">
+                  <group.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> {group.title}
                 </h3>
-                <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-[#f1f5f9]">
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] sm:rounded-[24px] border border-white shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-[#f1f5f9]">
                   {group.items.map((notification) => {
                     const Icon = iconForType(notification.type);
                     const isRisk = notification.type === 'risk_alert';
@@ -206,7 +206,7 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
                         layout
                         key={notification.id}
                         onClick={() => !notification.isRead && markAsRead(notification.id)}
-                        className={`relative p-5 flex gap-5 group cursor-pointer hover:bg-white transition-all duration-300 ${
+                        className={`relative p-3.5 sm:p-5 flex gap-3 sm:gap-5 group cursor-pointer hover:bg-white transition-all duration-300 ${
                           !notification.isRead ? getNotificationColor(notification.type, false) : 'opacity-80'
                         }`}
                       >
