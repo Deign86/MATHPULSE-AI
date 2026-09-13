@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase.ts';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models.ts';
-import { getUserProfile, getUserProfileFromServer, createUserProfile, consumePendingAuthRole, getLastAuthRole } from '../services/authService.ts';
+import { getUserProfile, getUserProfileFromServer, createUserProfile, consumePendingAuthRole, getLastAuthRole, resolveGoogleRedirect } from '../services/authService.ts';
 
 
 export interface AuthContextType {
@@ -51,6 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
+    void resolveGoogleRedirect();
     let fallbackTimer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
       setLoading(false);
     }, 1200);
