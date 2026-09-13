@@ -13,6 +13,7 @@ import {
   updateEmail,
   updatePassword,
   deleteUser,
+  browserPopupRedirectResolver,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, getDocFromServer, serverTimestamp, deleteDoc, type DocumentData } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -187,7 +188,7 @@ export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User
 
     let firebaseUser;
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
       firebaseUser = result.user;
     } catch (popupError) {
       const parsed = firebaseErrorContract.parse(popupError);
@@ -196,7 +197,7 @@ export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User
         parsed.code === 'auth/cancelled-popup-request' ||
         parsed.code === 'auth/operation-not-supported-in-this-environment'
       ) {
-        await signInWithRedirect(auth, googleProvider);
+        await signInWithRedirect(auth, googleProvider, browserPopupRedirectResolver);
         throw toAuthServiceError(
           { code: 'auth/redirect-in-progress', message: 'Redirecting to Google sign-in…' },
           'Redirecting to Google sign-in…',
@@ -224,7 +225,7 @@ export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User
 // onAuthStateChanged creates the Firestore profile on return.
 export const resolveGoogleRedirect = async (): Promise<void> => {
   try {
-    await getRedirectResult(auth);
+    await getRedirectResult(auth, browserPopupRedirectResolver);
   } catch (error: unknown) {
     logFirebaseError('Error resolving Google redirect', error);
   }
