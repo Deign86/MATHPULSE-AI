@@ -17,7 +17,7 @@ import { deactivateCurrentSessionToken } from './services/pushNotificationServic
 import PushNotificationsManager from './components/PushNotificationsManager';
 import InstallPwaButton from './components/InstallPwaButton.tsx';
 import OnlineOfflineBanner from './components/OnlineOfflineBanner.tsx';
-import { AlertTriangle, ArrowRight, Bot, Calculator, Crown, Flame, Menu, Swords, Target, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, Calculator, Crown, Flame, Menu, Swords, Target, Trophy, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
@@ -1261,9 +1261,10 @@ const App = () => {
 
                         {/* Daily Goals, XP, and Streak Slabs:
                             - Mobile (< md): Daily Goals full row, XP & Streak 2-column row below
-                            - Tablet & Desktop (>= md): All 3 in a single row [ Daily Goals (6 cols) | XP Coins (3 cols) | Streak (3 cols) ]
+                            - Tablet (md to xl): All 3 in a single row [ Daily Goals (6 cols) | Current XP (3 cols) | Streak (3 cols) ]
+                            - Desktop (xl:): Hidden here and placed into RightSidebar, moving Start Learning upwards
                         */}
-                        <div className="grid grid-cols-2 md:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
+                        <div className="xl:hidden grid grid-cols-2 md:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
                           {/* Daily Goals / Assessment Slab (Complete Emerald Green System Card) */}
                           <div className="col-span-2 md:col-span-6 flex items-center justify-between gap-3.5 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white shadow-[0_8px_20px_-4px_rgba(16,185,129,0.3)] border border-emerald-400/40 relative overflow-hidden">
                             {/* Target Emblem */}
@@ -1306,20 +1307,21 @@ const App = () => {
                             </button>
                           </div>
 
-                          {/* Coins / XP Slab — Amethyst Tinted Card with 3D royal keycap */}
+                          {/* Current XP Slab — Rewards & Achievements styling (Vibrant violet-to-cyan gradient with frosted glass keycap) */}
                           <button
                             type="button"
                             onClick={() => setActiveModal('rewards')}
-                            className="col-span-1 md:col-span-3 flex items-center gap-3 p-4 sm:p-4.5 rounded-2xl backdrop-blur-xl bg-gradient-to-br from-purple-50/85 via-indigo-50/45 to-white dark:from-purple-950/30 dark:via-slate-900/70 dark:to-slate-900/70 border border-purple-200/80 dark:border-purple-800/50 shadow-[0_4px_16px_rgba(124,58,237,0.05),inset_0_1px_1px_rgba(255,255,255,0.9)] text-left hover:border-purple-300 hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group"
+                            className="col-span-1 md:col-span-3 flex items-center gap-3 p-4 sm:p-4.5 rounded-2xl relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] border border-white/25 shadow-[0_8px_20px_-4px_rgba(114,116,237,0.35)] text-left hover:shadow-[0_12px_28px_-4px_rgba(114,116,237,0.45)] hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer group"
                           >
-                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-violet-500 via-purple-600 to-indigo-700 border-t border-white/50 shadow-[0_2.5px_0_#5b21b6,0_5px_12px_rgba(139,92,246,0.25)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                              <Crown className="w-5 h-5 text-amber-300 fill-amber-300 stroke-amber-400 stroke-[1.8] drop-shadow-sm" />
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(251,150,187,0.28),transparent_42%),radial-gradient(circle_at_85%_84%,rgba(31,167,225,0.24),transparent_40%)] pointer-events-none" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 shadow-inner flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform relative z-10">
+                              <Trophy className="w-5 h-5 text-white stroke-[2.2] drop-shadow-sm" />
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <span className="block text-[10px] sm:text-[11px] font-bold text-purple-600/80 dark:text-purple-400 uppercase tracking-wider leading-none">
-                                XP Coins
+                            <div className="min-w-0 flex-1 relative z-10">
+                              <span className="block text-[10px] sm:text-[11px] font-bold text-white/90 uppercase tracking-wider leading-none drop-shadow-sm">
+                                Current XP
                               </span>
-                              <span className="block text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1.5">
+                              <span className="block text-lg sm:text-xl font-display font-black text-white tabular-nums leading-tight mt-1.5 drop-shadow-sm">
                                 {currentXP}
                               </span>
                             </div>
@@ -1434,6 +1436,8 @@ const App = () => {
                               xpToNextLevel={xpToNextLevel}
                               overallXP={currentXP}
                               userName={firstName}
+                              hasCompletedDiagnostic={hasCompletedDiagnostic}
+                              onOpenAssessment={handleOpenInitialAssessment}
                             />
                           </Suspense>
                         ) : (
