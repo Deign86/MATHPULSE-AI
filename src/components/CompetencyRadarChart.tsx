@@ -16,31 +16,39 @@ export const CompetencyRadarChart: React.FC = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative overflow-hidden bg-white rounded-2xl md:rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-6 lg:p-8 group"
+      className="relative overflow-hidden bg-gradient-to-b from-white/95 via-white/85 to-slate-50/75 dark:from-slate-900/95 dark:via-slate-900/85 dark:to-slate-950/75 backdrop-blur-xl rounded-2xl md:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-4 sm:p-5 lg:p-6 group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Decorative circle */}
-      <div className="absolute -right-12 -bottom-12 w-32 h-32 bg-[#9956DE]/5 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4" />
+      {/* Soft ambient glows */}
+      <div className="absolute -right-16 -top-16 w-48 h-48 bg-purple-400/10 dark:bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-sky-400/10 dark:bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 relative z-10 gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-5 relative z-10 gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#a855f7] to-[#9333ea] flex items-center justify-center shadow-[0_4px_12px_rgba(168,85,247,0.2)]">
-            <Brain size={20} className="text-white" />
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-[0_4px_12px_rgba(139,92,246,0.3)]">
+            <Brain size={20} className="stroke-[2.2]" />
           </div>
           <div>
-            <h3 className="text-[15px] font-bold text-slate-900">Competency Matrix</h3>
-            <p className="text-[12px] text-slate-500">Realtime performance across modules</p>
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 leading-none">
+              Skill Analytics
+            </span>
+            <h3 className="text-sm sm:text-base font-display font-black text-slate-900 dark:text-white leading-tight mt-0.5">
+              Competency Matrix
+            </h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Realtime performance across modules</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           {/* Top Module badge */}
           {!loading && !isEmpty && !error && (
-            <div className="flex items-center gap-2 bg-[#f5f3ff] border border-[#e0e7ff] px-3 py-1.5 rounded-full">
-              <Sparkles size={12} className="text-amber-500" />
-              <span className="text-[11px] font-bold text-[#9956DE] uppercase tracking-wider">{topModule}</span>
+            <div className="flex items-center gap-1.5 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-800/60 px-3 py-1.5 rounded-full shadow-sm">
+              <Sparkles size={12} className="text-amber-500 fill-amber-500/30" />
+              <span className="text-[10px] sm:text-[11px] font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
+                {topModule}
+              </span>
             </div>
           )}
 
@@ -48,10 +56,10 @@ export const CompetencyRadarChart: React.FC = () => {
           {!loading && (
             <button
               onClick={refresh}
-              className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-[#f5f3ff] hover:border-[#9956DE]/30 transition-colors shadow-sm"
+              className="w-8 h-8 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:border-purple-300 transition-colors shadow-sm active:scale-95 cursor-pointer"
               title="Refresh"
             >
-              <RefreshCw size={13} className="text-slate-400" />
+              <RefreshCw size={13} className="text-slate-500 dark:text-slate-400" />
             </button>
           )}
         </div>
@@ -91,10 +99,10 @@ export const CompetencyRadarChart: React.FC = () => {
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart cx="50%" cy="50%" outerRadius={isHovered ? '75%' : '70%'} data={data}>
-              <PolarGrid stroke="#e2e8f0" strokeDasharray="4 4" polarRadius={[20, 40, 60, 80, 100]} />
+              <PolarGrid stroke="#cbd5e1" strokeDasharray="3 3" opacity={0.6} polarRadius={[20, 40, 60, 80, 100]} />
               <PolarAngleAxis
                 dataKey="metric"
-                tick={{ fill: '#475569', fontSize: 12, fontWeight: 600 }}
+                tick={{ fill: '#64748b', fontSize: 11, fontWeight: 700 }}
               />
               <PolarRadiusAxis
                 angle={90}
@@ -109,11 +117,11 @@ export const CompetencyRadarChart: React.FC = () => {
                   name={mod.name}
                   dataKey={mod.id}
                   stroke={mod.color}
-                  strokeWidth={2}
+                  strokeWidth={2.2}
                   fill={mod.color}
-                  fillOpacity={0.3}
-                  dot={{ r: 3, fill: '#fff', stroke: mod.color, strokeWidth: 2 }}
-                  activeDot={{ r: 5, fill: mod.color, stroke: '#fff', strokeWidth: 2 }}
+                  fillOpacity={0.25}
+                  dot={{ r: 3.5, fill: '#fff', stroke: mod.color, strokeWidth: 2 }}
+                  activeDot={{ r: 5.5, fill: mod.color, stroke: '#fff', strokeWidth: 2.5 }}
                   isAnimationActive={true}
                   animationDuration={1500}
                   animationEasing="ease-out"
@@ -124,8 +132,8 @@ export const CompetencyRadarChart: React.FC = () => {
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
                     return (
-                      <div className="bg-white/95 backdrop-blur-[12px] shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-slate-100 rounded-[12px] p-4">
-                        <p className="font-bold text-slate-800 text-[13px] mb-2">
+                      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-[0_12px_32px_rgba(0,0,0,0.15)] border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4">
+                        <p className="font-display font-bold text-slate-800 dark:text-white text-[13px] mb-2">
                           {payload[0].payload.metric}
                         </p>
                         <div className="flex flex-col gap-1.5">
@@ -136,7 +144,7 @@ export const CompetencyRadarChart: React.FC = () => {
                             <div key={pl.name} className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: pl.stroke }} />
-                                <span className="text-[11px] font-semibold text-slate-600 truncate max-w-[120px]">
+                                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 truncate max-w-[140px]">
                                   {String(pl.name)}
                                 </span>
                               </div>
@@ -160,12 +168,12 @@ export const CompetencyRadarChart: React.FC = () => {
 
       {/* Legend */}
       {!loading && !isEmpty && !error && modulesList.length > 0 && (
-        <div className="flex flex-wrap justify-center items-center gap-3 mt-4 relative z-10">
+        <div className="flex flex-wrap justify-center items-center gap-2.5 mt-4 relative z-10">
           {modulesList.map((mod) => (
-            <div key={mod.id} className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-full border border-slate-100">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: mod.color }} />
-              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                {mod.name.length > 15 ? mod.name.substring(0, 12) + '...' : mod.name}
+            <div key={mod.id} className="flex items-center gap-1.5 bg-white/80 dark:bg-slate-800/80 px-3 py-1 rounded-full border border-slate-200/70 dark:border-slate-700/70 shadow-xs">
+              <div className="w-2 h-2 rounded-full shadow-xs" style={{ backgroundColor: mod.color }} />
+              <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                {mod.name.length > 18 ? mod.name.substring(0, 15) + '...' : mod.name}
               </span>
             </div>
           ))}
