@@ -1107,7 +1107,7 @@ const App = () => {
     <ChatProvider>
       <div className="flex h-dvh w-full bg-[#f8faff] overflow-hidden">
         {/* Desktop Sidebar */}
-        <div className="hidden lg:block">
+        <div className="hidden lg:block h-full shrink-0 relative z-20">
           <Suspense fallback={sidebarShellFallback}>
             <Sidebar 
               activeTab={activeTab} 
@@ -1117,7 +1117,6 @@ const App = () => {
               onLogout={() => setActiveModal('logout_confirm')}
               sidebarCollapsed={isSidebarCollapsed}
               setSidebarCollapsed={setIsSidebarCollapsed}
-              forceCollapsed={activeTab === 'Quiz Battle'}
             />
           </Suspense>
         </div>
@@ -1154,16 +1153,20 @@ const App = () => {
         )}
 
         {/* Main Content */}
-        <div className="flex-1 min-h-0 flex flex-col min-w-0 bg-gradient-to-br from-[#f8faff] via-[#f1f5fd] to-[#f5f0fc] dark:from-[#050d18] dark:via-[#0c1527] dark:to-[#120e24] relative z-10 overflow-hidden shadow-[rgba(124,58,237,0.04)_0px_0px_30px_inset]">
+        <div className={`flex-1 min-h-0 flex flex-col min-w-0 ${activeTab === 'Quiz Battle' ? 'bg-[#0B0F19]' : 'bg-gradient-to-br from-[#f8faff] via-[#f1f5fd] to-[#f5f0fc] dark:from-[#050d18] dark:via-[#0c1527] dark:to-[#120e24] shadow-[rgba(124,58,237,0.04)_0px_0px_30px_inset]'} relative z-10 overflow-hidden`}>
           {/* Ambient glowing gradient orbs */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-purple-200/30 via-indigo-100/20 to-transparent rounded-full blur-3xl pointer-events-none -translate-y-1/3 translate-x-1/4" />
-          <div className="absolute bottom-0 left-0 w-[450px] h-[450px] bg-gradient-to-tr from-sky-200/25 via-purple-100/15 to-transparent rounded-full blur-3xl pointer-events-none translate-y-1/3 -translate-x-1/4" />
-          <div className="absolute inset-0 bg-math-pattern opacity-10 mix-blend-overlay pointer-events-none z-0" />
+          {activeTab !== 'Quiz Battle' && (
+            <>
+              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-purple-200/30 via-indigo-100/20 to-transparent rounded-full blur-3xl pointer-events-none -translate-y-1/3 translate-x-1/4" />
+              <div className="absolute bottom-0 left-0 w-[450px] h-[450px] bg-gradient-to-tr from-sky-200/25 via-purple-100/15 to-transparent rounded-full blur-3xl pointer-events-none translate-y-1/3 -translate-x-1/4" />
+              <div className="absolute inset-0 bg-math-pattern opacity-10 mix-blend-overlay pointer-events-none z-0" />
+            </>
+          )}
           
           <OnlineOfflineBanner />
 
           {/* Invisible Universal Student Header Bar — Clean & Floating (Consumes space on top of all pages without a visible box/border) */}
-          <header className="w-full px-5 sm:px-8 xl:px-12 pt-3.5 sm:pt-4 lg:pt-4.5 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent">
+          <header className={`w-full px-5 sm:px-8 xl:px-12 pt-3.5 sm:pt-4 lg:pt-4.5 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
             <div className="flex items-center justify-between gap-2">
               {/* Upper Left: Level Badge & XP Counter (XP hidden on narrow mobile <= 350px, shown on 360px+ and tablet/desktop) */}
               <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
@@ -1233,7 +1236,7 @@ const App = () => {
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : activeTab === 'Leaderboard' ? 'overflow-y-auto lg:overflow-hidden p-0 pb-28 sm:pb-32 lg:pb-0' : 'pt-1 sm:pt-2 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
+            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : activeTab === 'Leaderboard' ? 'overflow-y-auto lg:overflow-hidden p-0 pb-28 sm:pb-32 lg:pb-0' : activeTab === 'Quiz Battle' ? 'overflow-y-auto p-0 pb-28 sm:pb-32 lg:pb-8 h-full' : 'pt-1 sm:pt-2 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -1242,7 +1245,7 @@ const App = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' || activeTab === 'Leaderboard' ? 'h-full min-h-0' : ''}
+                className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' || activeTab === 'Leaderboard' || activeTab === 'Quiz Battle' ? 'h-full min-h-0' : ''}
               >
                 {activeTab === 'Dashboard' ? (
                   <div className="px-5 sm:px-8 xl:px-12 py-1.5 sm:py-2.5 lg:py-3 flex flex-col gap-3 sm:gap-4 lg:gap-4.5">

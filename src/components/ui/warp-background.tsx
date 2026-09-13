@@ -13,6 +13,7 @@ export interface WarpBackgroundProps extends HTMLAttributes<HTMLDivElement> {
    beamDuration?: number;
    gridColor?: string;
    bgVideo?: string;
+   fixedBackground?: boolean;
 }
 
 const Beam = ({
@@ -26,11 +27,6 @@ const Beam = ({
    delay: number;
    duration: number;
 }) => {
-   // Use softer hues (blues, purples, cyans) to avoid harsh neon colors
-   const hexColors = ["#9956DE", "#7274ED", "#1FA7E1", "#6ED1CF", "#75D06A", "#FFB356", "#FF8B8B", "#FB96BB"];
-   const color = hexColors[Math.floor(Math.random() * hexColors.length)];
-   const ar = Math.floor(Math.random() * 10) + 1;
-
    return (
       <motion.div
          style={
@@ -38,14 +34,14 @@ const Beam = ({
             {
                "--x": `${x}`,
                "--width": `${width}`,
-               "--aspect-ratio": `${ar}`,
-               // Brighter gamified effect against the dark background. appending 'cc' for 80% opacity.
-               "--background": `linear-gradient(${color}cc, transparent)`,
+               "--aspect-ratio": "1 / 4",
+               "--background":
+                  "linear-gradient(270deg, rgb(168 85 247) 0%, rgba(244, 114, 182, 0.8) 40%, rgba(56, 189, 248, 0) 100%)",
             } as React.CSSProperties
          }
-         className={`absolute left-[var(--x)] top-0 [aspect-ratio:1/var(--aspect-ratio)] [background:var(--background)] [width:var(--width)]`}
-         initial={{ y: "100cqmax", x: "-50%" }}
-         animate={{ y: "-100%", x: "-50%" }}
+         className="absolute left-[var(--x)] top-0 [aspect-ratio:var(--aspect-ratio)] [background:var(--background)] [width:var(--width)]"
+         initial={{ y: "100cqmax" }}
+         animate={{ y: "-100%" }}
          transition={{
             duration,
             delay,
@@ -61,6 +57,7 @@ export const WarpBackground: React.FC<WarpBackgroundProps> = ({
    perspective = 100,
    className,
    bgVideo,
+   fixedBackground = false,
    beamsPerSide = 6,
    beamSize = 4,
    beamDelayMax = 1.5,
@@ -89,17 +86,31 @@ export const WarpBackground: React.FC<WarpBackgroundProps> = ({
    const bottomBeams = useMemo(() => generateBeams(), [generateBeams]);
    const leftBeams = useMemo(() => generateBeams(), [generateBeams]);
 
-return (
+   return (
       <div className={cn("relative w-full h-full", className)} {...props}>
          {bgVideo ? (
-            <video
-               autoPlay
-               loop
-               muted
-               playsInline
-               className="pointer-events-none absolute inset-0 w-full h-full object-cover -z-10"
-               src={bgVideo}
-            />
+            fixedBackground ? (
+               <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+                  <video
+                     autoPlay
+                     loop
+                     muted
+                     playsInline
+                     className="w-full h-full object-cover"
+                     src={bgVideo}
+                  />
+                  <div className="absolute inset-0 bg-slate-950/40 pointer-events-none" />
+               </div>
+            ) : (
+               <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="pointer-events-none absolute inset-0 w-full h-full object-cover -z-10"
+                  src={bgVideo}
+               />
+            )
          ) : (
             <div
                style={

@@ -273,7 +273,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
       {/* 1. ROOT BACKGROUND LAYER: SUNBURST RAYS CENTERED ON 1ST PLACE CHAMPION    */}
       {/* (Spans full width/height, behind all content, never cut off on sides)     */}
       {/* ========================================================================= */}
-      <div className="absolute inset-0 pointer-events-none -z-20 w-full h-full overflow-hidden bg-gradient-to-br from-[#c48dfc] via-[#dcbbfd] to-[#fcd5e5]">
+      <div className="absolute inset-0 pointer-events-none -z-20 w-full h-full overflow-hidden bg-gradient-to-br from-[#8545e8] via-[#a365f5] to-[#cf6ea7] dark:from-[#1b0d33] dark:via-[#2a1152] dark:to-[#220d3d]">
         {/* Continuous Rotating Conic Rays with Origin Exactly Centered on 1st Place */}
         <div
           className="absolute pointer-events-none -z-10 w-[320vw] h-[320vw] max-w-none origin-center"
@@ -284,7 +284,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
           }}
         >
           <motion.div
-            className="w-full h-full origin-center opacity-40"
+            className="w-full h-full origin-center opacity-[0.22]"
             style={{
               background: `repeating-conic-gradient(from 0deg at 50% 50%, 
                  rgba(255,255,255,0.9) 0deg, rgba(255,255,255,0.9) 7deg, 
@@ -297,14 +297,14 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
 
         {/* Ambient warm radial glow centered on 1st Place */}
         <div
-          className="absolute pointer-events-none w-[600px] h-[450px] bg-yellow-200/40 rounded-full blur-[110px]"
+          className="absolute pointer-events-none w-[600px] h-[450px] bg-yellow-300/30 rounded-full blur-[110px]"
           style={{
             left: `${rayCenter.x}px`,
             top: `${rayCenter.y}px`,
             transform: 'translate(-50%, -50%)',
           }}
         />
-        <div className="absolute bottom-10 left-1/4 w-[480px] h-[320px] bg-white/50 rounded-full blur-[95px]" />
+        <div className="absolute bottom-10 left-1/4 w-[480px] h-[320px] bg-white/15 rounded-full blur-[95px]" />
       </div>
 
       {/* ========================================================================= */}
@@ -416,7 +416,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
             </div>
 
             {/* 2. Leaderboard Title (Centered) */}
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black tracking-tight text-white drop-shadow-[0_2px_14px_rgba(147,51,234,0.4)] mb-2">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-black tracking-tight text-white drop-shadow-[0_3px_12px_rgba(40,10,80,0.5)] mb-2">
               Leaderboard
             </h1>
 
@@ -482,7 +482,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                 </div>
 
                 {/* Name */}
-                <h3 className="font-display font-black text-white text-xs sm:text-sm drop-shadow-md text-center mt-2 max-w-[120px] truncate">
+                <h3 className="font-display font-black text-white text-xs sm:text-sm drop-shadow-[0_2px_4px_rgba(20,10,40,0.7)] text-center mt-2 max-w-[120px] truncate">
                   {topThree[1]?.name || '---'}
                 </h3>
               </div>
@@ -554,7 +554,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                 </div>
 
                 {/* Name */}
-                <h3 className="font-display font-black text-white text-sm sm:text-base drop-shadow-md text-center mt-2.5 max-w-[140px] truncate">
+                <h3 className="font-display font-black text-white text-sm sm:text-base drop-shadow-[0_2px_4px_rgba(20,10,40,0.7)] text-center mt-2.5 max-w-[140px] truncate">
                   {topThree[0]?.name || '---'}
                 </h3>
               </div>
@@ -617,7 +617,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                 </div>
 
                 {/* Name */}
-                <h3 className="font-display font-black text-white text-xs sm:text-sm drop-shadow-md text-center mt-2 max-w-[120px] truncate">
+                <h3 className="font-display font-black text-white text-xs sm:text-sm drop-shadow-[0_2px_4px_rgba(20,10,40,0.7)] text-center mt-2 max-w-[120px] truncate">
                   {topThree[2]?.name || '---'}
                 </h3>
               </div>
