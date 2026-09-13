@@ -13,10 +13,11 @@ import {
   Sparkles, 
   ArrowUpRight, 
   ChevronDown, 
+  ChevronLeft,
+  ChevronRight,
   Zap,
   BookOpen,
   GraduationCap,
-  ChevronRight,
   Flame,
   Check
 } from 'lucide-react';
@@ -41,11 +42,20 @@ interface DiagnosticSummary {
 }
 
 // Creative Radial Score Ring with smooth SVG gradient
-const RadialScoreRing: React.FC<{ value: number; size?: number; strokeWidth?: number; colorClass?: string }> = ({
+const RadialScoreRing: React.FC<{ 
+  value: number; 
+  size?: number; 
+  strokeWidth?: number; 
+  colorClass?: string;
+  trackClass?: string;
+  textColorClass?: string;
+}> = ({
   value,
   size = 64,
   strokeWidth = 6,
   colorClass = 'text-[#7C3AED]',
+  trackClass = 'text-slate-100 dark:text-slate-800',
+  textColorClass = 'text-slate-900 dark:text-white'
 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -62,7 +72,7 @@ const RadialScoreRing: React.FC<{ value: number; size?: number; strokeWidth?: nu
           fill="none"
           stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-slate-100/80"
+          className={trackClass}
         />
         <circle
           cx={size / 2}
@@ -78,7 +88,7 @@ const RadialScoreRing: React.FC<{ value: number; size?: number; strokeWidth?: nu
         />
       </svg>
       <div className="absolute flex flex-col items-center justify-center text-center">
-        <span className="text-[13px] font-black text-slate-900 tracking-tight leading-none">
+        <span className={`text-[13px] font-black tabular-nums leading-none ${textColorClass}`}>
           {clamped}%
         </span>
       </div>
@@ -92,6 +102,8 @@ const GradesPage = () => {
   const [filterType, setFilterType] = useState('all');
   const [filterQuarter, setFilterQuarter] = useState('all');
   const [activeSubjectTab, setActiveSubjectTab] = useState<string | null>(null);
+  const [assessmentPage, setAssessmentPage] = useState(1);
+  const ITEMS_PER_PAGE = 4;
   const [loading, setLoading] = useState(true);
   const [gradeSummary, setGradeSummary] = useState<GradeSummary | null>(null);
   const [assessments, setAssessments] = useState<AssessmentRecord[]>([]);
@@ -161,20 +173,20 @@ const GradesPage = () => {
 
         const summarySnap = await getDoc(doc(db, 'users', currentUser.uid, 'dashboardSummary', 'heroBannerModal'));
         if (summarySnap.exists()) {
-          const d = summarySnap.data();
-          if (d.status === 'ready') {
-            score = d.latestScorePercent || 0;
-            riskLevel = d.latestRiskLevel || 'Unknown';
-            weaknesses = d.weaknesses || [];
-            recommendation = d.recommendation || '';
+          const bannerData = summarySnap.data();
+          if (bannerData.status === 'ready') {
+            score = bannerData.latestScorePercent || 0;
+            riskLevel = bannerData.latestRiskLevel || 'Unknown';
+            weaknesses = bannerData.weaknesses || [];
+            recommendation = bannerData.recommendation || '';
           }
         } else {
           const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
           if (userSnap.exists()) {
-            const u = userSnap.data();
-            if (u.initialAssessmentCompleted || u.hasCompletedInitialAssessment) {
-              riskLevel = (u.atRiskSubjects?.length > 0) ? 'Moderate' : 'Low';
-              weaknesses = u.atRiskSubjects || [];
+            const userData = userSnap.data();
+            if (userData.initialAssessmentCompleted || userData.hasCompletedInitialAssessment) {
+              riskLevel = (userData.atRiskSubjects?.length > 0) ? 'Moderate' : 'Low';
+              weaknesses = userData.atRiskSubjects || [];
             }
           }
         }
@@ -243,15 +255,15 @@ const GradesPage = () => {
   // Compute subject metrics
   const subjectPerformance = Object.entries(userProgress?.subjects ?? {})
     .filter(([subjectId]) => allowedSubjectSet.has(subjectId))
-    .map(([subjectId, subjectData]: [string, any]) => {
+    .map(([subjectId, subjectData]: [string, { modulesProgress?: Record<string, { quizzesCompleted?: string[] }>; progress?: number; completedModules?: number }]) => {
       const info = subjectMap[subjectId] || { label: subjectId, color: 'slate' };
       
-      const subjectQuizAttempts = (userProgress?.quizAttempts || []).filter(q => {
+      const subjectQuizAttempts = (userProgress?.quizAttempts || []).filter(quizAttempt => {
         const modules = subjectData?.modulesProgress || {};
-        return Object.values(modules).some((m: any) => m.quizzesCompleted?.includes(q.quizId));
+        return Object.values(modules).some((moduleRecord) => moduleRecord.quizzesCompleted?.includes(quizAttempt.quizId));
       });
       const avg = subjectQuizAttempts.length > 0
-        ? Math.round(subjectQuizAttempts.reduce((sum: number, q) => sum + q.score, 0) / subjectQuizAttempts.length)
+        ? Math.round(subjectQuizAttempts.reduce((sum: number, attempt) => sum + attempt.score, 0) / subjectQuizAttempts.length)
         : Math.round(subjectData?.progress ?? 0);
       
       return {
@@ -276,7 +288,7 @@ const GradesPage = () => {
 
   const displaySubjectPerformance = subjectPerformance.length > 0 ? subjectPerformance : defaultSubjectPerformance;
 
-  // Ranked subjects for the Leaderboard / Competency Pods (Screen 3 inspired)
+  // Ranked subjects for the Leaderboard / Competency Pods
   const rankedSubjects = useMemo(() => {
     return [...displaySubjectPerformance].sort((a, b) => b.average - a.average);
   }, [displaySubjectPerformance]);
@@ -289,16 +301,16 @@ const GradesPage = () => {
       const shsMatch = SHS_MATH_SUBJECTS.find((s) => s.id === subj.id);
       const subjectName = shsMatch?.name || subj.title;
       subj.modules.forEach((mod) => {
-        mod.quizzes.forEach((q) => {
-          quizLookup.set(q.id, { title: q.title, subject: subjectName });
+        mod.quizzes.forEach((quiz) => {
+          quizLookup.set(quiz.id, { title: quiz.title, subject: subjectName });
         });
       });
     });
-    return userProgress.quizAttempts.map((attempt, i) => {
+    return userProgress.quizAttempts.map((attempt, index) => {
       const lookup = quizLookup.get(attempt.quizId);
       const completedDate = new Date(attempt.completedAt);
       return {
-        id: 10000 + i,
+        id: 10000 + index,
         title: lookup?.title || attempt.quizId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
         subject: lookup?.subject || 'General Mathematics',
         score: Math.round(attempt.score),
@@ -313,9 +325,9 @@ const GradesPage = () => {
   const recentQuizzes = useMemo(() => {
     const fromAssessments = assessments
       .slice()
-      .map((record, i) => ({
-        id: i + 1,
-        title: record.title || `Assessment ${i + 1}`,
+      .map((record, index) => ({
+        id: index + 1,
+        title: record.title || `Assessment ${index + 1}`,
         subject: record.subject || 'General',
         score: record.score,
         date: record.completedAt ? formatDateOnly(record.completedAt.toDate()) : 'N/A',
@@ -330,23 +342,43 @@ const GradesPage = () => {
 
     return [...fromAssessments, ...uniqueProgress]
       .sort((a, b) => (b._timestamp || 0) - (a._timestamp || 0))
-      .slice(0, 20)
+      .slice(0, 30)
       .filter((quiz) => allowedSubjectLabels.includes(quiz.subject));
   }, [assessments, progressQuizEntries, allowedSubjectLabels]);
 
-  // Filter quizzes based on active selections + interactive subject chart tab
-  const filteredQuizzes = recentQuizzes.filter(quiz => {
-    if (!allowedSubjectLabels.includes(quiz.subject)) return false;
-    
-    const activeChartSubjectMatch = !activeSubjectTab || quiz.subject === activeSubjectTab;
-    const subjectMatch = filterSubject === 'all' || quiz.subject === filterSubject;
-    const typeMatch = filterType === 'all' || quiz.type === filterType;
-    const quarterMatch = filterQuarter === 'all' || 
-      quiz.title.toLowerCase().includes(filterQuarter.toLowerCase()) || 
-      quiz.subject.toLowerCase().includes(filterQuarter.toLowerCase());
+  // Compute proficiency rate: percentage of quizzes >= 75
+  const proficiencyRate = useMemo(() => {
+    if (recentQuizzes.length === 0) return averageScore >= 75 ? averageScore : 0;
+    const passedCount = recentQuizzes.filter(q => q.score >= 75).length;
+    return Math.round((passedCount / recentQuizzes.length) * 100);
+  }, [recentQuizzes, averageScore]);
 
-    return activeChartSubjectMatch && subjectMatch && typeMatch && quarterMatch;
-  });
+  // Filter quizzes based on active selections + interactive subject chart tab
+  const filteredQuizzes = useMemo(() => {
+    return recentQuizzes.filter(quiz => {
+      if (!allowedSubjectLabels.includes(quiz.subject)) return false;
+      
+      const activeChartSubjectMatch = !activeSubjectTab || quiz.subject === activeSubjectTab;
+      const subjectMatch = filterSubject === 'all' || quiz.subject === filterSubject;
+      const typeMatch = filterType === 'all' || quiz.type === filterType;
+      const quarterMatch = filterQuarter === 'all' || 
+        quiz.title.toLowerCase().includes(filterQuarter.toLowerCase()) || 
+        quiz.subject.toLowerCase().includes(filterQuarter.toLowerCase());
+
+      return activeChartSubjectMatch && subjectMatch && typeMatch && quarterMatch;
+    });
+  }, [recentQuizzes, allowedSubjectLabels, activeSubjectTab, filterSubject, filterType, filterQuarter]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setAssessmentPage(1);
+  }, [filterSubject, filterType, filterQuarter, activeSubjectTab]);
+
+  const totalAssessmentPages = Math.max(1, Math.ceil(filteredQuizzes.length / ITEMS_PER_PAGE));
+  const paginatedQuizzes = useMemo(() => {
+    const startIndex = (assessmentPage - 1) * ITEMS_PER_PAGE;
+    return filteredQuizzes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredQuizzes, assessmentPage, ITEMS_PER_PAGE]);
 
   useEffect(() => {
     if (filterSubject === 'all') return;
@@ -436,34 +468,34 @@ const GradesPage = () => {
   }
 
   return (
-    <div className="p-3.5 sm:p-6 lg:p-8 space-y-5 sm:space-y-7 max-w-7xl mx-auto">
+    <div className="px-3.5 sm:px-6 lg:px-8 pt-0 sm:pt-0.5 pb-8 space-y-4 sm:space-y-5 max-w-[1540px] mx-auto">
       
-      {/* 1. Header Bar with Greeting, Strand Badge, and Time/Report Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/95 backdrop-blur-md p-5 sm:p-7 rounded-[2rem] border border-purple-100/70 shadow-[0_8px_30px_-12px_rgba(124,58,237,0.06)]">
-        <div className="flex items-center gap-3.5 sm:gap-4">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-[#7C3AED] via-[#8B5CF6] to-[#6366F1] flex items-center justify-center text-white shadow-lg shadow-purple-500/25 shrink-0">
-            <BarChart3 className="w-6 h-6 sm:w-7 sm:h-7" />
+      {/* 1. Header Bar with Compact Spacing & Clear Controls */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 sm:p-5 rounded-[1.75rem] border border-purple-100/80 dark:border-purple-900/40 shadow-[0_4px_20px_-8px_rgba(124,58,237,0.06)]">
+        <div className="flex items-center gap-3 sm:gap-3.5">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-[#7C3AED] via-[#8B5CF6] to-[#6366F1] flex items-center justify-center text-white shadow-md shadow-purple-500/25 shrink-0">
+            <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl sm:text-3xl font-display font-black text-slate-900 tracking-tight">Assessment</h1>
-              <span className="px-3 py-0.5 rounded-full text-[11px] font-black bg-purple-100 text-purple-800 border border-purple-200/70 shadow-xs">
+              <h1 className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white tracking-tight">Assessment</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800/50 shadow-xs">
                 Grade 11 STEM
               </span>
             </div>
-            <p className="text-slate-500 font-semibold mt-0.5 text-xs sm:text-[13px]">
+            <p className="text-slate-500 dark:text-slate-400 font-semibold text-xs mt-0.5">
               Review your performance across subjects & competency analytics
             </p>
           </div>
         </div>
 
         {/* Controls: Quarter Filter & Export CSV */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto">
+        <div className="flex items-center gap-2 w-full md:w-auto">
           <div className="relative flex-1 md:flex-none">
             <select
               value={filterQuarter}
               onChange={(e) => setFilterQuarter(e.target.value)}
-              className="appearance-none w-full md:w-auto pl-9 pr-9 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-2xl text-xs sm:text-sm font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all cursor-pointer shadow-xs"
+              className="appearance-none w-full md:w-auto pl-8 pr-8 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100/80 dark:hover:bg-slate-750 border border-slate-200/80 dark:border-slate-700 rounded-xl text-xs font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all cursor-pointer shadow-xs"
             >
               <option value="all">This Quarter</option>
               <option value="Q1">Quarter 1</option>
@@ -471,167 +503,228 @@ const GradesPage = () => {
               <option value="Q3">Quarter 3</option>
               <option value="Q4">Quarter 4</option>
             </select>
-            <Calendar className="w-4 h-4 text-purple-600 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Calendar className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           <Button 
-            className="flex-1 md:flex-none bg-gradient-to-r from-[#7C3AED] to-[#6366F1] hover:from-[#6D28D9] hover:to-[#4F46E5] text-white font-black rounded-2xl h-11 px-5 shadow-[0_8px_20px_-6px_rgba(124,58,237,0.4)] hover:-translate-y-0.5 transition-all text-xs sm:text-sm flex items-center gap-2" 
+            className="flex-1 md:flex-none bg-gradient-to-r from-[#7C3AED] to-[#6366F1] hover:from-[#6D28D9] hover:to-[#4F46E5] text-white font-black rounded-xl h-9.5 px-4 shadow-[0_6px_16px_-4px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 transition-all text-xs flex items-center gap-1.5" 
             onClick={handleExportReport}
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5" />
             Report
           </Button>
         </div>
       </div>
 
-      {/* 2. Bento Grid Tier 1: Modern 3-Column Visual Metrics (Reference Screen 1, 2, 4 Inspired) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+      {/* ------------------------------------------------------------------ */}
+      {/* 2. SOLID COLOR TACTILE FOLDER TEMPLATES (Equal Uniform Size & Breathable Tabs) */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 items-stretch pt-2">
         
-        {/* Tile 1: General Average Hero Metric (Soft Lavender `#FAF8FF`) */}
-        <div className="bg-[#FAF8FF] hover:bg-[#F6F2FF] border-2 border-purple-100/90 rounded-[2.25rem] p-6 shadow-sm transition-all duration-300 flex flex-col justify-between group">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white text-purple-800 border border-purple-200/80 shadow-xs">
-                <Award className="w-3.5 h-3.5 text-purple-600" /> General Average
-              </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
-                averageScore >= 75 ? 'bg-emerald-100 text-emerald-800' : averageScore > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
-              }`}>
-                {averageScore >= 75 ? 'Passing' : averageScore > 0 ? 'Needs Boost' : 'Pending'}
+        {/* FOLDER 1: General Average (Solid Royal Indigo/Violet #5856D6) */}
+        <div className="group text-left select-none transition-all duration-300 flex flex-col h-full">
+          <div className="relative pt-10 sm:pt-11 flex-1 flex flex-col h-full">
+            {/* Seamless Solid Folder Tab — Spacious & Breathable */}
+            <div className="absolute top-0 left-0 h-10 sm:h-11 w-52 sm:w-56 rounded-t-2xl bg-[#5856D6] flex items-center px-5 sm:px-6 gap-2.5 border-t border-x border-white/25 shadow-xs">
+              <Award className="w-4 h-4 text-white shrink-0" />
+              <span className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-white leading-none">
+                BENCHMARK
               </span>
             </div>
 
-            <div className="flex items-center justify-between mt-2">
+            {/* Solid Folder Card Body — Equal Stretch Height */}
+            <div className="bg-[#5856D6] text-white rounded-[2rem] rounded-tl-none p-5 sm:p-6 shadow-[0_10px_25px_-5px_rgba(88,86,214,0.35)] hover:shadow-[0_14px_30px_-5px_rgba(88,86,214,0.45)] transition-all duration-300 flex-1 flex flex-col justify-between h-full min-h-[220px]">
               <div>
-                <h3 className="text-4xl sm:text-5xl font-display font-black text-slate-900 tracking-tight">
-                  {generalAverage}{averageScore > 0 ? '%' : ''}
-                </h3>
-                <p className="text-slate-500 font-semibold text-xs mt-1">
-                  {averageScore >= 75 ? 'Proficient overall average' : averageScore > 0 ? 'Below 75% passing threshold' : 'No evaluations logged'}
-                </p>
+                <div className="flex items-center justify-between mb-3 h-7">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-sm text-white border border-white/25 shadow-xs">
+                    General Average
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-white/25 backdrop-blur-sm text-white border border-white/30">
+                    {averageScore >= 75 ? 'Passing' : averageScore > 0 ? 'Needs Boost' : 'Pending'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between mt-2 min-h-[72px]">
+                  <div>
+                    <h3 className="text-4xl sm:text-5xl font-display font-black text-white tracking-tight leading-none">
+                      {generalAverage}{averageScore > 0 ? '%' : ''}
+                    </h3>
+                    <p className="text-white/80 font-semibold text-xs mt-1.5">
+                      {averageScore >= 75 ? 'Proficient overall mastery' : averageScore > 0 ? 'Below 75% passing threshold' : 'No evaluations logged'}
+                    </p>
+                  </div>
+                  <RadialScoreRing 
+                    value={averageScore} 
+                    size={64} 
+                    colorClass="text-white" 
+                    trackClass="text-white/20"
+                    textColorClass="text-white"
+                  />
+                </div>
               </div>
-              <RadialScoreRing 
-                value={averageScore} 
-                size={64} 
-                colorClass={averageScore >= 75 ? 'text-emerald-500' : 'text-[#7C3AED]'} 
-              />
-            </div>
-          </div>
 
-          <div className="mt-5 pt-3 border-t border-purple-200/60 flex items-center justify-between text-xs font-black">
-            <span className="text-slate-500">DepEd Standard: 75%</span>
-            <span className={averageScore >= 75 ? 'text-emerald-700' : 'text-amber-700'}>
-              {averageScore >= 75 ? `+${averageScore - 75}% margin` : averageScore > 0 ? `-${75 - averageScore}% to pass` : 'Take diagnostic'}
-            </span>
+              <div className="mt-5 pt-3 border-t border-white/20 flex items-center justify-between h-9 text-xs">
+                <span className="text-white/80 font-bold">DepEd Standard: 75%</span>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-sm text-white font-black border border-white/25">
+                  {averageScore >= 75 ? `+${averageScore - 75}% margin` : averageScore > 0 ? `-${75 - averageScore}% to pass` : 'Take diagnostic'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Tile 2: Weakest Subject & Immediate Action (Warm Peach `#FFF8F5`) */}
-        <div className="bg-[#FFF8F5] hover:bg-[#FFF2EC] border-2 border-orange-100/90 rounded-[2.25rem] p-6 shadow-sm transition-all duration-300 flex flex-col justify-between group">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white text-orange-800 border border-orange-200/80 shadow-xs">
-                <Target className="w-3.5 h-3.5 text-orange-600" /> Weakest Subject
-              </span>
-              <span className="text-[10px] font-black text-orange-700 bg-orange-100 px-2.5 py-0.5 rounded-full">
-                Priority
+        {/* FOLDER 2: Proficiency Rate & Focus Area (Solid Warm Terracotta/Apricot #D96B43) */}
+        <div className="group text-left select-none transition-all duration-300 flex flex-col h-full">
+          <div className="relative pt-10 sm:pt-11 flex-1 flex flex-col h-full">
+            {/* Seamless Solid Folder Tab — Spacious & Breathable */}
+            <div className="absolute top-0 left-0 h-10 sm:h-11 w-52 sm:w-56 rounded-t-2xl bg-[#D96B43] flex items-center px-5 sm:px-6 gap-2.5 border-t border-x border-white/25 shadow-xs">
+              <Target className="w-4 h-4 text-white shrink-0" />
+              <span className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-white leading-none">
+                FOCUS AREA
               </span>
             </div>
 
-            <div className="mt-2">
-              <h3 className="text-2xl sm:text-3xl font-display font-black text-slate-900 tracking-tight truncate" title={diagnosticSummary?.weaknesses?.[0] || 'Finite Mathematics'}>
-                {diagnosticSummary?.weaknesses?.[0] || 'Finite Mathematics'}
-              </h3>
-              <p className="text-slate-500 font-semibold text-xs mt-1">
-                Identified as lowest relative score
-              </p>
-            </div>
-          </div>
+            {/* Solid Folder Card Body — Equal Stretch Height */}
+            <div className="bg-[#D96B43] text-white rounded-[2rem] rounded-tl-none p-5 sm:p-6 shadow-[0_10px_25px_-5px_rgba(217,107,67,0.35)] hover:shadow-[0_14px_30px_-5px_rgba(217,107,67,0.45)] transition-all duration-300 flex-1 flex flex-col justify-between h-full min-h-[220px]">
+              <div>
+                <div className="flex items-center justify-between mb-3 h-7">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-sm text-white border border-white/25 shadow-xs">
+                    Weakest Subject
+                  </span>
+                  <span className="text-[10px] font-black bg-white/25 backdrop-blur-sm text-white border border-white/30 px-2.5 py-0.5 rounded-full">
+                    Priority
+                  </span>
+                </div>
 
-          <div className="mt-5 pt-3 border-t border-orange-200/60 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400">Personalized Practice</span>
-            <button
-              onClick={() => handleStartPractice(diagnosticSummary?.weaknesses?.[0])}
-              className="inline-flex items-center gap-1.5 text-xs font-black text-orange-800 hover:text-orange-950 bg-white hover:bg-orange-50 px-3.5 py-1.5 rounded-xl border border-orange-200 shadow-xs transition-all"
-            >
-              Practice Topic <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+                <div className="flex items-center justify-between mt-2 min-h-[72px]">
+                  <div className="min-w-0 pr-2 flex-1">
+                    <h3 className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight truncate leading-none" title={diagnosticSummary?.weaknesses?.[0] || 'Finite Mathematics'}>
+                      {diagnosticSummary?.weaknesses?.[0] || 'Finite Mathematics'}
+                    </h3>
+                    <p className="text-white/80 font-semibold text-xs mt-1.5">
+                      Identified as lowest relative score
+                    </p>
+                  </div>
+                  <RadialScoreRing 
+                    value={proficiencyRate} 
+                    size={64} 
+                    colorClass="text-white" 
+                    trackClass="text-white/20"
+                    textColorClass="text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5 pt-3 border-t border-white/20 flex items-center justify-between h-9 text-xs">
+                <span className="text-white/80 font-bold">Personalized Practice</span>
+                <button
+                  type="button"
+                  onClick={() => handleStartPractice(diagnosticSummary?.weaknesses?.[0])}
+                  className="inline-flex items-center gap-1.5 text-xs font-black text-[#D96B43] bg-white hover:bg-white/95 px-3 py-1 rounded-lg shadow-xs transition-all cursor-pointer"
+                >
+                  Practice Topic <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Tile 3: Quizzes Completed & Evaluation Record (Soft Mint `#F3FAF6`) */}
-        <div className="bg-[#F3FAF6] hover:bg-[#EDF7F1] border-2 border-emerald-100/90 rounded-[2.25rem] p-6 shadow-sm transition-all duration-300 flex flex-col justify-between group">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white text-emerald-800 border border-emerald-200/80 shadow-xs">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" /> Quizzes Completed
-              </span>
-              <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <Flame className="w-3 h-3 text-emerald-600" /> Active Pace
+        {/* FOLDER 3: Evaluations Logged & Velocity (Solid Deep Pine/Emerald #1E8A70) */}
+        <div className="group text-left select-none transition-all duration-300 flex flex-col h-full">
+          <div className="relative pt-10 sm:pt-11 flex-1 flex flex-col h-full">
+            {/* Seamless Solid Folder Tab — Spacious & Breathable */}
+            <div className="absolute top-0 left-0 h-10 sm:h-11 w-52 sm:w-56 rounded-t-2xl bg-[#1E8A70] flex items-center px-5 sm:px-6 gap-2.5 border-t border-x border-white/25 shadow-xs">
+              <TrendingUp className="w-4 h-4 text-white shrink-0" />
+              <span className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-white leading-none">
+                RECORD
               </span>
             </div>
 
-            <div className="flex items-baseline gap-2 mt-2">
-              <h3 className="text-4xl sm:text-5xl font-display font-black text-slate-900 tracking-tight">
-                {totalQuizzes}
-              </h3>
-              <span className="text-slate-500 text-xs font-black uppercase tracking-wider">Evaluations</span>
-            </div>
-            <p className="text-slate-500 font-semibold text-xs mt-1">
-              {recentQuizzes.length} activities logged in learning record
-            </p>
-          </div>
+            {/* Solid Folder Card Body — Equal Stretch Height */}
+            <div className="bg-[#1E8A70] text-white rounded-[2rem] rounded-tl-none p-5 sm:p-6 shadow-[0_10px_25px_-5px_rgba(30,138,112,0.35)] hover:shadow-[0_14px_30px_-5px_rgba(30,138,112,0.45)] transition-all duration-300 flex-1 flex flex-col justify-between h-full min-h-[220px]">
+              <div>
+                <div className="flex items-center justify-between mb-3 h-7">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-sm text-white border border-white/25 shadow-xs">
+                    Evaluations Logged
+                  </span>
+                  <span className="text-[10px] font-black bg-white/25 backdrop-blur-sm text-white border border-white/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-amber-200" /> Active Pace
+                  </span>
+                </div>
 
-          <div className="mt-5 pt-3 border-t border-emerald-200/60 flex items-center justify-between text-xs font-black text-slate-500">
-            <span>Evaluation Velocity</span>
-            <span className="text-emerald-700 font-black">Consistent Learning</span>
+                <div className="flex items-center justify-between mt-2 min-h-[72px]">
+                  <div>
+                    <h3 className="text-4xl sm:text-5xl font-display font-black text-white tracking-tight leading-none">
+                      {totalQuizzes}
+                    </h3>
+                    <p className="text-white/80 font-semibold text-xs mt-1.5">
+                      {recentQuizzes.length} activities logged in learning record
+                    </p>
+                  </div>
+                  <RadialScoreRing 
+                    value={proficiencyRate} 
+                    size={64} 
+                    colorClass="text-white" 
+                    trackClass="text-white/20"
+                    textColorClass="text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5 pt-3 border-t border-white/20 flex items-center justify-between h-9 text-xs">
+                <span className="text-white/80 font-bold">Evaluation Velocity</span>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-sm text-white font-black border border-white/25">
+                  {proficiencyRate}% passing
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
       </div>
 
-      {/* 3. AI Diagnostic Intelligence Showcase Banner (Screen 4 "Olympiad" Inspiration) */}
+      {/* 3. AI Diagnostic Intelligence Showcase Banner */}
       {diagnosticSummary && (
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#FAF8FF] via-white to-[#F3EFFF] border-2 border-purple-100/90 rounded-[2.5rem] p-6 sm:p-8 shadow-[0_12px_35px_-12px_rgba(124,58,237,0.08)]">
-          {/* Subtle Ambient Radial Glow */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-purple-200/25 rounded-full blur-3xl -mt-24 -mr-24 pointer-events-none" />
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#FAF8FF] via-white to-[#F3EFFF] dark:from-slate-900 dark:via-purple-950/20 dark:to-slate-900 border-2 border-purple-200/90 dark:border-purple-800/60 rounded-[2.25rem] p-5 sm:p-7 shadow-[0_8px_25px_-10px_rgba(124,58,237,0.06)]">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-purple-200/25 dark:bg-purple-600/10 rounded-full blur-3xl -mt-24 -mr-24 pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-[#7C3AED] to-[#6366F1] flex items-center justify-center text-white shadow-lg shadow-purple-500/25 shrink-0">
-                <Brain className="w-6 h-6 sm:w-7 sm:h-7" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-[#7C3AED] to-[#6366F1] flex items-center justify-center text-white shadow-md shadow-purple-500/25 shrink-0">
+                <Brain className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-xl sm:text-2xl font-display font-black text-slate-900 tracking-tight">
+                  <h3 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tracking-tight">
                     Diagnostic Assessment Results
                   </h3>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
-                    <Sparkles className="w-3 h-3 text-purple-600" /> AI Evaluated
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" /> AI Evaluated
                   </span>
                 </div>
-                <p className="text-slate-500 font-semibold text-xs sm:text-[13px] mt-0.5">
-                  Your initial competency evaluation and personalized learning recommendation
+                <p className="text-slate-500 dark:text-slate-400 font-semibold text-xs mt-0.5">
+                  Your foundational competency evaluation and personalized learning recommendation
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 self-start md:self-auto">
-              <span className={`px-3.5 py-1.5 rounded-2xl text-xs font-black flex items-center gap-1.5 border shadow-xs ${
+            <div className="flex items-center gap-2.5 self-start md:self-auto">
+              <span className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 border shadow-xs ${
                 diagnosticSummary.riskLevel === 'Low' 
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' 
                   : diagnosticSummary.riskLevel === 'High' || diagnosticSummary.riskLevel === 'At Risk' 
-                    ? 'bg-rose-50 text-rose-800 border-rose-200' 
-                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                    ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800' 
+                    : 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
               }`}>
-                {diagnosticSummary.riskLevel === 'Low' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                {diagnosticSummary.riskLevel === 'Low' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
                 {diagnosticSummary.riskLevel} Risk
               </span>
 
               <button
+                type="button"
                 onClick={() => setShowBreakdownModal(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-black text-purple-800 hover:text-purple-950 bg-white hover:bg-purple-50 border border-purple-200 px-4 py-2 rounded-2xl transition-all shadow-xs"
+                className="inline-flex items-center gap-1 text-xs font-black text-purple-800 dark:text-purple-200 hover:text-purple-950 bg-white dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-slate-700 border border-purple-200 dark:border-purple-700 px-3.5 py-1.5 rounded-xl transition-all shadow-xs cursor-pointer"
               >
                 In-Depth Breakdown
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -640,38 +733,37 @@ const GradesPage = () => {
           </div>
 
           {/* 3 Balanced Pods Inside Diagnostic Banner */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {/* Pod 1: Score */}
-            <div className="bg-white/95 rounded-[1.75rem] p-5 border border-purple-100/80 shadow-xs flex items-center gap-4">
+            <div className="bg-white/95 dark:bg-slate-800/90 rounded-[1.5rem] p-4 border border-purple-100/80 dark:border-purple-800/50 shadow-xs flex items-center gap-3.5">
               <RadialScoreRing 
                 value={diagnosticSummary.score} 
-                size={64} 
+                size={56} 
                 colorClass={diagnosticSummary.score >= 75 ? 'text-emerald-500' : 'text-[#7C3AED]'} 
               />
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Baseline Score</p>
-                <h4 className="text-2xl sm:text-3xl font-display font-black text-slate-900">{diagnosticSummary.score}%</h4>
-                <p className="text-xs font-semibold text-slate-500 mt-0.5">Foundational evaluation</p>
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Baseline Score</p>
+                <h4 className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white">{diagnosticSummary.score}%</h4>
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Foundational evaluation</p>
               </div>
             </div>
 
             {/* Pod 2: Focus Areas */}
-            <div className="bg-white/95 rounded-[1.75rem] p-5 border border-amber-100/80 shadow-xs flex flex-col justify-between">
+            <div className="bg-white/95 dark:bg-slate-800/90 rounded-[1.5rem] p-4 border border-amber-100/80 dark:border-amber-800/50 shadow-xs flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[11px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[11px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
                     <Target className="w-3.5 h-3.5 text-amber-600" /> Focus Areas
                   </p>
-                  <span className="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full">
                     {diagnosticSummary.weaknesses.length} topics
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {diagnosticSummary.weaknesses.slice(0, 3).map((w, i) => (
-                    <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200/60">
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {diagnosticSummary.weaknesses.slice(0, 3).map((weakness, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/50">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                      {w}
+                      {weakness}
                     </span>
                   ))}
                   {diagnosticSummary.weaknesses.length === 0 && (
@@ -682,71 +774,74 @@ const GradesPage = () => {
             </div>
 
             {/* Pod 3: Recommendation */}
-            <div className="bg-white/95 rounded-[1.75rem] p-5 border border-indigo-100/80 shadow-xs flex flex-col justify-between">
+            <div className="bg-white/95 dark:bg-slate-800/90 rounded-[1.5rem] p-4 border border-indigo-100/80 dark:border-indigo-800/50 shadow-xs flex flex-col justify-between">
               <div>
-                <p className="text-[11px] font-black text-indigo-800 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <p className="text-[11px] font-black text-indigo-800 dark:text-indigo-400 uppercase tracking-wider mb-1 flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> AI Recommendation
                 </p>
-                <p className="text-xs font-medium text-slate-700 leading-relaxed line-clamp-3">
+                <p className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
                   {diagnosticSummary.recommendation}
                 </p>
               </div>
-              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400">Personalized Tutor Guidance</span>
+              <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Personalized Guidance</span>
                 <button
+                  type="button"
                   onClick={() => setShowBreakdownModal(true)}
-                  className="text-xs font-black text-indigo-700 hover:text-indigo-900 hover:underline"
+                  className="text-[11px] font-black text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 hover:underline"
                 >
                   View Analysis →
                 </button>
               </div>
             </div>
-
           </div>
         </div>
       )}
 
-      {/* 4. Bento Grid Tier 2: Interactive Performance Chart & Tactile Activity Feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+      {/* ------------------------------------------------------------------ */}
+      {/* 4. TWO-COLUMN INTERACTIVE CONTENT (MAIN CONTENT + SIDEBAR)        */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
         
-        {/* Left 2 Columns: Visual Subject Capsule Chart & Activity Feed */}
-        <div className="lg:col-span-2 space-y-6 lg:space-y-8">
+        {/* LEFT 2 COLUMNS: Subject Capsule Benchmark Chart & Activity Feed */}
+        <div className="lg:col-span-2 space-y-5 lg:space-y-6">
           
-          {/* Card A: Two-Tone Capsule Bar Chart (Reference Screen 6 Inspiration) */}
-          <div className="bg-white rounded-[2.25rem] border border-slate-100 p-5 sm:p-8 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.06)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          {/* Card A: Two-Tone Capsule Bar Chart with Passing Benchmark Line */}
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
               <div>
-                <h3 className="text-xl font-display font-black text-slate-900 tracking-tight">
+                <h3 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tracking-tight">
                   Subject Performance & Benchmark
                 </h3>
-                <p className="text-slate-400 font-bold text-xs mt-0.5">
+                <p className="text-slate-400 dark:text-slate-500 font-bold text-xs mt-0.5">
                   Visual mastery comparison against DepEd 75% Passing Standard
                 </p>
               </div>
 
               {activeSubjectTab && (
                 <button
+                  type="button"
                   onClick={() => setActiveSubjectTab(null)}
-                  className="self-start sm:self-auto text-xs font-black text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1 rounded-xl border border-purple-200 transition-all"
+                  className="self-start sm:self-auto text-xs font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 px-3 py-1 rounded-xl border border-purple-200 dark:border-purple-800 transition-all"
                 >
                   Filter: {activeSubjectTab} (Clear ✕)
                 </button>
               )}
             </div>
 
-            {/* The Creative Two-Tone Capsule Columns */}
-            <div className="relative pt-8 pb-4">
+            {/* Two-Tone Capsule Columns */}
+            <div className="relative pt-6 pb-2">
               {/* Benchmark Reference Line across the chart */}
               <div 
                 className="absolute left-0 right-0 border-t-2 border-dashed border-purple-400/60 z-10 pointer-events-none flex items-center justify-end"
                 style={{ bottom: '38%' }}
               >
-                <span className="bg-purple-100 text-purple-800 text-[10px] font-black px-2.5 py-0.5 rounded-full -translate-y-1/2 mr-2 border border-purple-300/80 shadow-xs">
+                <span className="bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 text-[10px] font-black px-2.5 py-0.5 rounded-full -translate-y-1/2 mr-2 border border-purple-300/80 dark:border-purple-800 shadow-xs">
                   75% Passing Benchmark
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 relative z-0">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5 relative z-0">
                 {displaySubjectPerformance.map((subject, idx) => {
                   const colorClasses = recordGet(colorClassBySubject, subject.color) || colorClassBySubject.slate;
                   const isPassing = subject.average >= 75;
@@ -759,19 +854,19 @@ const GradesPage = () => {
                       onClick={() => setActiveSubjectTab(isSelected ? null : subject.subject)}
                       className={`cursor-pointer rounded-2xl p-4 transition-all duration-300 flex flex-col items-center text-center ${
                         isSelected 
-                          ? 'bg-purple-50/90 border-2 border-purple-500 shadow-md scale-[1.02]' 
-                          : 'bg-slate-50/60 hover:bg-slate-100/80 border border-slate-100'
+                          ? 'bg-purple-50/90 dark:bg-purple-950/40 border-2 border-purple-500 shadow-md scale-[1.02]' 
+                          : 'bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-800'
                       }`}
                     >
                       {/* Subject Icon & Title */}
                       <span className="text-2xl mb-1">{colorClasses.icon}</span>
-                      <h4 className="text-xs sm:text-sm font-black text-slate-800 line-clamp-1">
+                      <h4 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-200 line-clamp-1">
                         {subject.subject}
                       </h4>
-                      <p className="text-[11px] text-slate-400 font-bold mb-4">{subject.quizzes} activities</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold mb-3">{subject.quizzes} activities</p>
 
                       {/* The Tall Rounded Two-Tone Capsule Bar */}
-                      <div className="w-10 sm:w-12 h-36 bg-slate-200/70 rounded-full p-1 flex flex-col justify-end overflow-hidden relative shadow-inner">
+                      <div className="w-9 sm:w-11 h-32 bg-slate-200/70 dark:bg-slate-800 rounded-full p-1 flex flex-col justify-end overflow-hidden relative shadow-inner">
                         <div 
                           className={`w-full rounded-full transition-all duration-1000 flex flex-col justify-between p-1 relative overflow-hidden ${
                             isMastered 
@@ -782,20 +877,20 @@ const GradesPage = () => {
                           }`}
                           style={{ height: `${Math.max(subject.average, 15)}%` }}
                         >
-                          <div className="w-full h-2 rounded-full bg-white/40" />
-                          <span className="text-[10px] sm:text-xs font-black text-white text-center drop-shadow-xs">
+                          <div className="w-full h-1.5 rounded-full bg-white/40" />
+                          <span className="text-[10px] font-black text-white text-center drop-shadow-xs">
                             {subject.average}%
                           </span>
                         </div>
                       </div>
 
                       {/* Status Tag Below */}
-                      <span className={`mt-3 text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                      <span className={`mt-2.5 text-[10px] font-black px-2.5 py-0.5 rounded-full ${
                         isMastered 
-                          ? 'bg-emerald-100 text-emerald-800' 
+                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' 
                           : isPassing 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-amber-100 text-amber-800'
+                            ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300' 
+                            : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
                       }`}>
                         {isMastered ? 'Mastered' : isPassing ? 'Proficient' : 'Needs Boost'}
                       </span>
@@ -806,14 +901,14 @@ const GradesPage = () => {
             </div>
           </div>
 
-          {/* Card B: Tactile Assessment Activity Feed (No Clunky Horizontal Scroll Tables!) */}
-          <div className="bg-white rounded-[2.25rem] border border-slate-100 p-5 sm:p-8 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.06)]">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+          {/* Card B: Recent Assessments Activity Table (Solution: Paged 4 items to eliminate vertical bloat!) */}
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="text-xl font-display font-black text-slate-900 tracking-tight">
-                  Assessment Activity Feed
+                <h3 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tracking-tight">
+                  Recent Assessments
                 </h3>
-                <p className="text-slate-400 font-bold text-xs mt-0.5">
+                <p className="text-slate-400 dark:text-slate-500 font-bold text-xs mt-0.5">
                   Chronological record of evaluated quiz and practice sessions
                 </p>
               </div>
@@ -824,111 +919,156 @@ const GradesPage = () => {
                   <select 
                     value={filterSubject}
                     onChange={(e) => setFilterSubject(e.target.value)}
-                    className="appearance-none w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all cursor-pointer min-w-[120px]"
+                    className="appearance-none w-full pl-3 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl text-xs font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all cursor-pointer min-w-[110px]"
                   >
                     <option value="all">All Subjects</option>
                     {allowedSubjectLabels.map(subject => (
                       <option key={subject} value={subject}>{subject}</option>
                     ))}
                   </select>
-                  <Filter className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Filter className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
 
                 <div className="relative flex-1 sm:flex-none">
                   <select 
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
-                    className="appearance-none w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all cursor-pointer min-w-[100px]"
+                    className="appearance-none w-full pl-3 pr-7 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl text-xs font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all cursor-pointer min-w-[95px]"
                   >
                     <option value="all">All Types</option>
                     <option value="quiz">Quiz</option>
                     <option value="practice">Practice</option>
                   </select>
-                  <Filter className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Filter className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
             </div>
 
-            {/* Feed Cards (Gracefully Collapsing on Mobile without Horizontal Overflow) */}
-            <div className="mt-4 space-y-3">
-              {filteredQuizzes.length > 0 ? (
-                filteredQuizzes.map((quiz) => (
+            {/* Compact Table Rows with Rich Contextual Colors (Limited to 4 per page!) */}
+            <div className="mt-3.5 space-y-2">
+              {paginatedQuizzes.length > 0 ? (
+                paginatedQuizzes.map((quiz) => (
                   <div 
                     key={quiz.id}
-                    className="bg-slate-50/70 hover:bg-purple-50/50 border border-slate-200/70 hover:border-purple-200 rounded-2xl p-4 transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                    className="bg-slate-50/75 dark:bg-slate-800/40 hover:bg-purple-50/60 dark:hover:bg-purple-950/30 border border-slate-200/70 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 rounded-2xl p-3 sm:p-3.5 transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 group shadow-2xs"
                   >
                     {/* Left: Avatar Icon + Title + Metadata */}
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-11 h-11 rounded-2xl bg-white border border-slate-200/80 flex items-center justify-center text-purple-600 shadow-xs shrink-0 group-hover:scale-105 transition-transform">
-                        {quiz.type === 'practice' ? <Zap className="w-5 h-5 text-emerald-600" /> : <Award className="w-5 h-5 text-purple-600" />}
+                    <div className="flex items-center gap-3 min-w-0 sm:w-6/12">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform border ${
+                        quiz.type === 'practice' 
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400' 
+                          : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400'
+                      }`}>
+                        {quiz.type === 'practice' ? <Zap className="w-4 h-4 text-emerald-600" /> : <Award className="w-4 h-4 text-purple-600" />}
                       </div>
                       <div className="min-w-0">
-                        <h4 className="text-sm font-black text-slate-900 tracking-tight truncate">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white tracking-tight truncate">
                           {quiz.title}
                         </h4>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className="text-xs font-bold text-slate-500">{quiz.subject}</span>
-                          <span className="text-slate-300">•</span>
-                          <span className="text-[11px] font-bold text-slate-400">{quiz.date}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{quiz.subject}</span>
+                          <span className="text-slate-300 dark:text-slate-600">•</span>
+                          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">{quiz.date}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Right: Type Badge + Score Pill */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50">
-                      <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border ${
+                    {/* Right: Type Badge + Score Pill + Action */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-800 shrink-0">
+                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
                         quiz.type === 'practice' 
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200/70' 
-                          : 'bg-purple-50 text-purple-800 border-purple-200/70'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800' 
+                          : 'bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border-purple-200/70 dark:border-purple-800'
                       }`}>
                         {quiz.type === 'practice' ? 'Practice' : 'Quiz'}
                       </span>
 
-                      <span className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-black border shadow-xs ${
+                      <span className={`px-2.5 py-1 rounded-xl text-xs font-black border shadow-xs tabular-nums ${
                         quiz.score >= 80 
-                          ? 'bg-emerald-100/90 text-emerald-900 border-emerald-300' 
+                          ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' 
                           : quiz.score >= 60 
-                            ? 'bg-amber-100/90 text-amber-900 border-amber-300' 
-                            : 'bg-rose-100/90 text-rose-900 border-rose-300'
+                            ? 'bg-amber-100/90 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' 
+                            : 'bg-rose-100/90 dark:bg-rose-950/80 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
                       }`}>
                         {quiz.score}%
                       </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleStartPractice(quiz.subject)}
+                        title="Practice topic again"
+                        className="w-7 h-7 rounded-lg bg-white dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-slate-200/80 dark:border-slate-700 text-slate-500 hover:text-purple-700 dark:hover:text-purple-300 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="py-12 text-center flex flex-col items-center justify-center">
-                  <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-3">
-                    <BookOpen className="w-7 h-7" />
+                <div className="py-8 text-center flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 bg-purple-50 dark:bg-slate-800 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center mb-2">
+                    <BookOpen className="w-5 h-5" />
                   </div>
-                  <h4 className="text-slate-800 font-black text-sm">No assessments match filters</h4>
-                  <p className="text-slate-400 font-bold text-xs mt-1">Try switching filters or start a new practice session</p>
+                  <h4 className="text-slate-800 dark:text-slate-200 font-black text-xs">No assessments match filters</h4>
+                  <p className="text-slate-400 font-bold text-[11px] mt-0.5">Try switching filters or start a new practice session</p>
                 </div>
               )}
             </div>
+
+            {/* Pagination Controls — Keeps Recent Assessments compact & tidy! */}
+            {filteredQuizzes.length > ITEMS_PER_PAGE && (
+              <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400">
+                <span className="text-[11px]">
+                  Showing {(assessmentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(assessmentPage * ITEMS_PER_PAGE, filteredQuizzes.length)} of {filteredQuizzes.length}
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={assessmentPage === 1}
+                    onClick={() => setAssessmentPage(p => Math.max(p - 1, 1))}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none transition-colors text-xs flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-3 h-3" /> Prev
+                  </button>
+                  <span className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-black text-[11px] tabular-nums">
+                    {assessmentPage} / {totalAssessmentPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={assessmentPage === totalAssessmentPages}
+                    onClick={() => setAssessmentPage(p => Math.min(p + 1, totalAssessmentPages))}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none transition-colors text-xs flex items-center gap-0.5 cursor-pointer"
+                  >
+                    Next <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            )}
+
           </div>
 
         </div>
 
-        {/* Right Column: Leaderboard Pods & Momentum Action */}
-        <div className="space-y-6 lg:space-y-8 flex flex-col">
+        {/* RIGHT COLUMN: Subject Ranking & Momentum Action */}
+        <div className="space-y-5 lg:space-y-6 flex flex-col">
           
-          {/* Card C: Subject Mastery Leaderboard (Reference Screen 3 Inspiration) */}
-          <div className="bg-white rounded-[2.25rem] border border-slate-100 p-5 sm:p-7 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.06)]">
-            <div className="flex items-center justify-between mb-4">
+          {/* Card C: Subject Mastery Leaderboard */}
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center justify-between mb-3.5">
               <div>
-                <h3 className="text-lg font-display font-black text-slate-900">
+                <h3 className="text-base sm:text-lg font-display font-black text-slate-900 dark:text-white">
                   Subject Ranking
                 </h3>
-                <p className="text-slate-400 font-bold text-xs">Top performing subjects</p>
+                <p className="text-slate-400 dark:text-slate-500 font-bold text-xs">Top performing subjects</p>
               </div>
-              <span className="text-[10px] font-black text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-200">
+              <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
                 Ranked
               </span>
             </div>
 
             {/* Ranked Pods */}
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {rankedSubjects.map((subject, rankIdx) => {
                 const isFirst = rankIdx === 0;
                 const isLast = rankIdx === rankedSubjects.length - 1 && rankedSubjects.length > 1;
@@ -936,33 +1076,38 @@ const GradesPage = () => {
                 return (
                   <div 
                     key={rankIdx}
-                    className={`rounded-2xl p-4 border transition-all duration-200 flex items-center justify-between gap-3 ${
+                    className={`rounded-2xl p-3.5 border transition-all duration-200 flex items-center justify-between gap-3 ${
                       isFirst 
-                        ? 'bg-gradient-to-r from-emerald-50/80 to-white border-emerald-200/80 shadow-xs' 
+                        ? 'bg-gradient-to-r from-emerald-50/80 via-emerald-50/40 to-white dark:from-emerald-950/40 dark:to-slate-900 border-emerald-200/80 dark:border-emerald-800/60 shadow-xs' 
                         : isLast 
-                          ? 'bg-gradient-to-r from-orange-50/80 to-white border-orange-200/80' 
-                          : 'bg-slate-50/60 border-slate-100'
+                          ? 'bg-gradient-to-r from-orange-50/80 via-orange-50/40 to-white dark:from-orange-950/40 dark:to-slate-900 border-orange-200/80 dark:border-orange-800/60' 
+                          : 'bg-slate-50/60 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
-                        isFirst ? 'bg-emerald-500 text-white' : isLast ? 'bg-orange-500 text-white' : 'bg-purple-600 text-white'
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
+                        isFirst 
+                          ? 'bg-emerald-500 text-white shadow-xs' 
+                          : isLast 
+                            ? 'bg-orange-500 text-white shadow-xs' 
+                            : 'bg-purple-600 text-white shadow-xs'
                       }`}>
                         #{rankIdx + 1}
                       </span>
                       <div className="min-w-0">
-                        <h4 className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
                           {subject.subject}
                         </h4>
-                        <p className="text-[11px] font-bold text-slate-400">{subject.quizzes} activities</p>
+                        <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{subject.quizzes} activities</p>
                       </div>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="text-sm font-black text-slate-900 block">{subject.average}%</span>
+                      <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white block tabular-nums">{subject.average}%</span>
                       <button
+                        type="button"
                         onClick={() => handleStartPractice(subject.subject)}
-                        className="text-[10px] font-black text-purple-700 hover:text-purple-900 hover:underline flex items-center gap-0.5 justify-end mt-0.5"
+                        className="text-[10px] font-black text-purple-700 dark:text-purple-400 hover:text-purple-900 hover:underline flex items-center gap-0.5 justify-end mt-0.5 cursor-pointer"
                       >
                         Practice <ChevronRight className="w-2.5 h-2.5" />
                       </button>
@@ -973,28 +1118,28 @@ const GradesPage = () => {
             </div>
           </div>
 
-          {/* Card D: Playful Learning Momentum Card (Reference Screen 1 & 5 Inspiration) */}
-          <div className="relative bg-gradient-to-br from-[#7C3AED] via-[#8B5CF6] to-[#4F46E5] rounded-[2.25rem] p-6 sm:p-8 shadow-[0_14px_35px_-10px_rgba(124,58,237,0.45)] text-white overflow-hidden group">
+          {/* Card D: Learning Momentum Card */}
+          <div className="relative bg-gradient-to-br from-[#7C3AED] via-[#8B5CF6] to-[#4F46E5] rounded-[2rem] p-5 sm:p-6 shadow-[0_12px_30px_-10px_rgba(124,58,237,0.45)] text-white overflow-hidden group">
             {/* Background elements */}
             <div className="absolute top-0 right-0 w-48 h-48 bg-white/15 rounded-full blur-3xl -mt-10 -mr-10 group-hover:bg-white/25 transition-all duration-700 ease-in-out" />
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-400/30 rounded-full blur-2xl -mb-10 -ml-10" />
 
             <div className="relative z-10">
-              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-md border border-white/30 shadow-xs group-hover:scale-110 transition-transform">
-                <GraduationCap className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3.5 backdrop-blur-md border border-white/30 shadow-xs group-hover:scale-110 transition-transform">
+                <GraduationCap className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-display font-black tracking-tight mb-2 leading-tight">
+              <h3 className="text-lg sm:text-xl font-display font-black tracking-tight mb-1.5 leading-tight">
                 Empower Your Mathematical Mastery!
               </h3>
-              <p className="text-white/85 text-xs sm:text-[13px] font-medium leading-relaxed mb-6">
+              <p className="text-white/85 text-xs font-medium leading-relaxed mb-4">
                 Reinforce your identified focus areas with adaptive practice modules aligned with DepEd Strengthened Senior High School competencies.
               </p>
               <Button
                 onClick={() => handleStartPractice()}
-                className="w-full bg-white text-purple-800 hover:bg-slate-50 border-0 font-black h-12 rounded-2xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs sm:text-sm flex items-center justify-center gap-2"
+                className="w-full bg-white text-purple-800 hover:bg-slate-50 border-0 font-black h-10 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs flex items-center justify-center gap-1.5"
               >
                 Launch Practice Center
-                <ArrowUpRight className="w-4 h-4" />
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </Button>
             </div>
           </div>
