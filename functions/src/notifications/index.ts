@@ -408,20 +408,24 @@ export const sendTestPush = functions.https.onCall(async (data, context) => {
  * `metadata.source === 'fcm_foreground'` — we skip those to avoid a loop
  * (push received → write in-app → trigger sends another push).
  */
-const PUSH_RELAYED_INAPP_TYPES = new Set([
-  "achievement_unlocked",
-  "level_up",
-  "quiz_result",
-  "new_assignment",
-  "teacher_announcement",
-  "streak_milestone",
-  "risk_alert",
-  "diagnostic_result",
-]);
+type PushRelayInAppType =
+  | "achievement_unlocked"
+  | "level_up"
+  | "quiz_result"
+  | "new_assignment"
+  | "teacher_announcement"
+  | "streak_milestone"
+  | "risk_alert"
+  | "diagnostic_result";
 
-interface InAppToFcmMap { [key: string]: "achievement" | "system" | "grade_posted" | "assignment"; }
+type PushRelayFcmType = "achievement" | "system" | "grade_posted" | "assignment";
 
-const INAPP_TO_FCM: InAppToFcmMap = {
+/**
+ * Single source for the in-app -> FCM relay. A type absent from this map is not
+ * relayed to push, so the gate below reads the map's own keys instead of
+ * keeping a second collection of the same vocabulary in sync by hand.
+ */
+const INAPP_TO_FCM: Record<PushRelayInAppType, PushRelayFcmType> = {
   achievement_unlocked: "achievement",
   level_up: "system",
   quiz_result: "grade_posted",
@@ -431,6 +435,11 @@ const INAPP_TO_FCM: InAppToFcmMap = {
   risk_alert: "system",
   diagnostic_result: "grade_posted",
 };
+
+/** `hasOwnProperty` rather than `in` so prototype keys never match. */
+function isPushRelayInAppType(value: string): value is PushRelayInAppType {
+  return Object.prototype.hasOwnProperty.call(INAPP_TO_FCM, value);
+}
 
 export const onInAppNotificationCreated = functions.firestore
   .document("notifications/{userId}/items/{notificationId}")
@@ -442,9 +451,9 @@ export const onInAppNotificationCreated = functions.firestore
     // Echo guard
     if (metadata.source === "fcm_foreground") return;
 
-    if (!PUSH_RELAYED_INAPP_TYPES.has(inAppType)) return;
+    if (!isPushRelayInAppType(inAppType)) return;
 
-    const fcmType = INAPP_TO_FCM[inAppType] || "system";
+    const fcmType = INAPP_TO_FCM[inAppType];
     const title = asString(data.title) || "MathPulse AI";
     const body = asString(data.message) || "";
     const url = asString(data.actionUrl) || "/";

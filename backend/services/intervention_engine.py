@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from services.wri_service import RiskLevel, band_for_score, normalize_risk_band
+
 logger = logging.getLogger("mathpulse.intervention_engine")
 
 # ─── Firestore helper ──────────────────────────────────────────────────────
@@ -67,7 +69,7 @@ class InterventionPlan(BaseModel):
     student_name: str = ""
     grade_level: str = ""
     section: str = ""
-    risk_level: str = "pending_assessment"
+    risk_level: RiskLevel = "pending_assessment"
     avg_score: float = 0.0
     engagement_level: Literal["Low", "Medium", "High"] = "Low"
     last_active: Optional[str] = None
@@ -83,19 +85,11 @@ class InterventionPlan(BaseModel):
 
 # ─── Risk & Engagement Classification ─────────────────────────────────────
 
-def _classify_risk(avg_score: float, quiz_count: int, days_since_active: Optional[int] = None) -> str:
+def _classify_risk(avg_score: float, quiz_count: int, days_since_active: Optional[int] = None) -> RiskLevel:
     """Canonical 5-band DepEd classification when WRI is not directly available."""
     if quiz_count == 0:
         return "pending_assessment"
-    if avg_score >= 88:
-        return "safe"
-    if avg_score >= 80:
-        return "watch"
-    if avg_score >= 75:
-        return "intervene"
-    if avg_score >= 68:
-        return "critical"
-    return "at_risk"
+    return band_for_score(avg_score)
 
 
 def _classify_engagement(days_since_active: Optional[int], recent_quiz_count: int, lessons_completed: int = 0) -> str:
@@ -242,7 +236,6 @@ class InterventionEngine:
             or student_data.get("wriRiskBand")
         )
         if raw_risk:
-            from services.wri_service import normalize_risk_band
             risk_level = normalize_risk_band(raw_risk)
         else:
             risk_level = _classify_risk(avg_score, quiz_count, days_since_active)

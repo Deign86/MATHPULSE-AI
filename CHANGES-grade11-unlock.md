@@ -16,7 +16,7 @@ New Grade 11 modules render 1:1 with existing UI/UX, all locks removed, all subj
 - `src/types/assessment.ts` — all 8 categories for Grade 11; comments fixed
 - `src/components/LessonViewer.tsx` — NEW `PdfFallbackPanel`: on RAG failure renders the DepEd source PDF in-iframe (header + retry + new-tab link) instead of dead error
 - `src/data/iarBlueprint.ts` — version id `...-g12-candidate-shortform` → `...-g11-shortform`
-- `GATES.md` — restored file (was accidentally overwritten mid-session) + appended Section D gates D1–D6, all checked
+- `GATES.md` — restored file (was accidentally overwritten mid-session) + appended Section J gates D1–D6, all checked
 
 ### Backend + functions Grade-12 removal (worker `3a6d4358`)
 - `backend/services/curriculum_service.py` — deleted pre-calc/basic-calc fallback subjects

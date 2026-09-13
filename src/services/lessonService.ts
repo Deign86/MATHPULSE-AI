@@ -90,6 +90,9 @@ interface LessonApiError extends Error {
 
 async function apiFetch<T>(endpoint: string, options?: RequestInit, forceRefresh: boolean = false): Promise<T> {
   const headers = new Headers(options?.headers);
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
   const currentUser = auth.currentUser;
   if (currentUser) {
     try {

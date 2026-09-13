@@ -10,10 +10,8 @@ picks up the new content via RAG retrieval.
 
 from __future__ import annotations
 
-import json
 import logging
 import random
-import re
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -28,6 +26,7 @@ from services.inference_client import (
     create_default_client,
     get_model_for_task,
 )
+from services.llm_json import LLMJsonError, extract_dict_list, extract_json_value
 
 logger = logging.getLogger("mathpulse.quiz_generation")
 router = APIRouter(prefix="/api/quiz", tags=["quiz-generation"])
@@ -224,30 +223,18 @@ IMPORTANT:
 
 def _parse_quiz_response(text: str, expected_count: int) -> List[Dict[str, Any]]:
     """Parse and validate QuizForge quiz generation response."""
-    cleaned = text.strip()
-
-    # Strip markdown fences
-    cleaned = re.sub(r"^```json\s*", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"^```\s*", "", cleaned)
-    cleaned = re.sub(r"\s*```$", "", cleaned)
-    cleaned = cleaned.strip()
-
     try:
-        questions = json.loads(cleaned)
-    except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse quiz response as JSON: {e}")
-        # Try to extract JSON array from text
-        match = re.search(r"\[.*\]", cleaned, re.DOTALL)
-        if match:
-            try:
-                questions = json.loads(match.group())
-            except json.JSONDecodeError:
-                raise ValueError(f"Invalid JSON in quiz response: {e}")
-        else:
-            raise ValueError(f"No JSON array found in quiz response")
+        payload = extract_json_value(text, preferred=(list, dict))
+    except LLMJsonError as exc:
+        logger.error("Failed to parse quiz response as JSON: %s", exc)
+        raise ValueError(f"No JSON array found in quiz response: {exc}") from exc
 
-    if not isinstance(questions, list):
-        raise ValueError("Quiz response is not a JSON array")
+    if isinstance(payload, list):
+        questions = payload
+    else:
+        questions = extract_dict_list(payload)
+        if not questions:
+            raise ValueError("Quiz response is not a JSON array")
 
     validated = []
     for i, q in enumerate(questions):

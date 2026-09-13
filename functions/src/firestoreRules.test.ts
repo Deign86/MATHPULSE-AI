@@ -12,5 +12,5 @@ test("Firestore push-related rules remain deny-by-default and owner scoped", () 
   assert.match(rules, /match \/notifications\/\{userId\}\/items\/\{notificationId\}/);
   assert.match(rules, /allow create: if isSelf\(userId\);/);
   assert.match(rules, /match \/assessmentResults\/\{studentId\}\/attempts\/\{attemptId\}/);
-  assert.match(rules, /allow create, update: if request\.auth != null && request\.auth\.uid == studentId;/);
+  assert.match(rules, /allow create, update: if isSelf\(studentId\);/);
 });

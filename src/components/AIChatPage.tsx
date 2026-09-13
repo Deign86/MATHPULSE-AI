@@ -157,7 +157,7 @@ const AIChatPage = () => {
         <div className="p-4 border-b border-[#dde3eb] flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-sky-600 to-sky-500 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-sky-600 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0">
                 <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-8 h-8 md:w-10 md:h-10 object-contain drop-shadow-md" />
               </div>
               <div>
@@ -169,7 +169,7 @@ const AIChatPage = () => {
             {/* New Chat Button */}
             <button
               onClick={handleNewChat}
-              className="bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 shrink-0"
+              className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 shrink-0"
             >
               <Plus size={14} />
               New Chat
@@ -287,14 +287,14 @@ const AIChatPage = () => {
                     className={`flex items-end gap-2 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     {message.sender !== 'user' && (
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-r from-sky-600 to-sky-500 flex items-center justify-center flex-shrink-0 mb-1">
+                      <div className="w-7 h-7 rounded-full bg-sky-600 flex items-center justify-center flex-shrink-0 mb-1">
                         <img src="/avatar/avatar_icon.png" alt="AI" className="w-5 h-5 object-contain" />
                       </div>
                     )}
                     <div
                       className={`max-w-[70%] rounded-2xl px-5 py-3 ${
                         message.sender === 'user'
-                          ? 'bg-gradient-to-r from-sky-600 to-sky-500 text-white'
+                          ? 'bg-sky-600 text-white'
                           : 'bg-white text-[#0a1628] shadow-md border border-[#dde3eb]'
                       }`}
                     >
@@ -349,7 +349,7 @@ const AIChatPage = () => {
                 <Button
                   onClick={handleSendMessage}
                   disabled={!currentMessage.trim() || isLoading || isSendingMessage}
-                  className="px-6 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                  className="px-6 bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                 >
                   <Send size={18} />
                 </Button>
@@ -358,7 +358,7 @@ const AIChatPage = () => {
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-24 h-24 bg-gradient-to-r from-sky-100 to-cyan-100 rounded-3xl flex items-center justify-center mb-6">
+            <div className="w-24 h-24 bg-sky-100 rounded-3xl flex items-center justify-center mb-6">
               <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-20 h-20 object-contain drop-shadow-lg" />
             </div>
             <h2 className="text-2xl font-bold font-display text-[#0a1628] mb-1">Welcome to L.O.L.I.</h2>
@@ -368,7 +368,7 @@ const AIChatPage = () => {
             </p>
             <button
               onClick={handleNewChat}
-              className="px-6 py-3 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-700 hover:to-sky-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
+              className="px-6 py-3 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
             >
               Start Your First Chat
             </button>

@@ -36,7 +36,6 @@ export async function createNotification(
     link: payload.link || null,
     actionUrl: payload.link || null,
     isRead: false,
-    read: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
   if (payload.studentId) notificationRecord.studentId = payload.studentId;
@@ -83,7 +82,6 @@ export async function sendBatchNotifications(
       link: notif.link || null,
       actionUrl: notif.link || null,
       isRead: false,
-      read: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
     if (notif.studentId) notificationRecord.studentId = notif.studentId;

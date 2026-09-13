@@ -2,8 +2,22 @@
 // Centralized at-risk formula used by all dashboards.
 // Single source of truth for risk classification.
 
-export type RiskStatus = 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk';
-export type RiskTier = 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | 'pending_assessment';
+export const RISK_TIERS = [
+  'safe',
+  'watch',
+  'intervene',
+  'critical',
+  'at_risk',
+  'pending_assessment',
+] as const;
+
+/**
+ * Canonical risk vocabulary. Mirrors `backend/services/wri_service.py::RiskLevel` —
+ * `src/utils/riskEngine.test.ts` fails if the two drift apart.
+ */
+export type RiskTier = (typeof RISK_TIERS)[number];
+/** The five scored bands (everything except the unassessed state). */
+export type RiskStatus = Exclude<RiskTier, 'pending_assessment'>;
 export type OverallRisk = 'Low' | 'Moderate' | 'High' | 'Critical' | 'Unassessed';
 
 export interface RiskWeights {

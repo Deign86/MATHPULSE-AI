@@ -154,3 +154,43 @@ class TestIsSequentialModel:
         with patch.dict(os.environ, {"INFERENCE_MODEL_ID": "deepseek-chat"}):
             from services.inference_client import is_sequential_model
             assert is_sequential_model() is False
+
+
+class TestSubjectNormalizationAndWhere:
+    def test_normalize_subject_stats_and_prob(self):
+        from rag.curriculum_rag import _normalize_subject
+        assert _normalize_subject("stat") == "statistics_and_probability"
+        assert _normalize_subject("prob") == "statistics_and_probability"
+        assert _normalize_subject("statistics") == "statistics_and_probability"
+        assert _normalize_subject("Statistics and Probability") == "statistics_and_probability"
+
+    def test_to_where_stats_and_prob(self):
+        from rag.curriculum_rag import _to_where
+        clause = _to_where(subject="statistics")
+        assert clause is not None
+        assert "subject" in clause
+        assert "$in" in clause["subject"]
+        assert "statistics_and_probability" in clause["subject"]["$in"]
+
+    def test_retrieve_lesson_pdf_context_prioritizes_lesson_title_for_competency_code(self):
+        from rag.curriculum_rag import retrieve_lesson_pdf_context
+        with patch("rag.curriculum_rag.retrieve_curriculum_context", return_value=[{"score": 0.9}]) as mock_ret:
+            retrieve_lesson_pdf_context(
+                topic="GM11-01",
+                subject="general_mathematics",
+                quarter=1,
+                lesson_title="Simple Interest",
+                competency="computes simple interest",
+            )
+            assert mock_ret.call_args[1]["query"] == "Simple Interest - computes simple interest"
+
+    def test_retrieve_lesson_pdf_context_prioritizes_competency_when_no_title(self):
+        from rag.curriculum_rag import retrieve_lesson_pdf_context
+        with patch("rag.curriculum_rag.retrieve_curriculum_context", return_value=[{"score": 0.9}]) as mock_ret:
+            retrieve_lesson_pdf_context(
+                topic="GM11-01",
+                subject="general_mathematics",
+                quarter=1,
+                competency="computes simple interest",
+            )
+            assert mock_ret.call_args[1]["query"] == "computes simple interest"

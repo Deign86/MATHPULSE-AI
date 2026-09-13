@@ -298,6 +298,10 @@ export const LoginPage: React.FC = () => {
       }
       await signInWithGoogle(isSignUp ? selectedRole : undefined);
     } catch (err: unknown) {
+      const { code } = extractAuthErrorDetails(err);
+      if (code === 'auth/redirect-in-progress') {
+        return;
+      }
       setError(
         getFriendlyErrorMessage(
           err,
