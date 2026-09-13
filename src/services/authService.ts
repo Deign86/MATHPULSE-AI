@@ -46,7 +46,9 @@ export interface AuthServiceError extends Error {
 
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
+if ('setCustomParameters' in googleProvider && Boolean(googleProvider.setCustomParameters)) {
+  googleProvider.setCustomParameters({ prompt: 'select_account' });
+}
 const PENDING_AUTH_ROLE_KEY = 'mathpulse.pendingAuthRole';
 const LAST_AUTH_ROLE_KEY = 'mathpulse.lastAuthRole';
 

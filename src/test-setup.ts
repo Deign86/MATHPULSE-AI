@@ -45,7 +45,17 @@ vi.spyOn(firebaseAuth, 'signInWithEmailAndPassword').mockImplementation(vi.fn())
 vi.spyOn(firebaseAuth, 'createUserWithEmailAndPassword').mockImplementation(vi.fn());
 vi.spyOn(firebaseAuth, 'sendPasswordResetEmail').mockImplementation(vi.fn());
 vi.spyOn(firebaseAuth, 'updateProfile').mockImplementation(vi.fn());
-vi.spyOn(firebaseAuth, 'GoogleAuthProvider').mockImplementation(vi.fn());
+class MockGoogleAuthProvider {
+  setCustomParameters = vi.fn();
+  addScope = vi.fn();
+  providerId = 'google.com';
+  static credential = vi.fn();
+}
+
+// SAFETY: MockGoogleAuthProvider satisfies the constructor contract for Vitest suites.
+vi.spyOn(firebaseAuth, 'GoogleAuthProvider').mockImplementation(
+  MockGoogleAuthProvider as never,
+);
 vi.spyOn(firebaseAuth, 'signInWithPopup').mockImplementation(vi.fn());
 
 const stubFirestore = () =>
