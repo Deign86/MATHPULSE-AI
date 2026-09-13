@@ -31,6 +31,10 @@ vi.spyOn(firebaseAuth, 'browserLocalPersistence', 'get').mockReturnValue(
   // SAFETY: persistence value is only passed back into initializeAuth stubs.
   {} as typeof firebaseAuth.browserLocalPersistence,
 );
+vi.spyOn(firebaseAuth, 'indexedDBLocalPersistence', 'get').mockReturnValue(
+  // SAFETY: persistence value is only passed back into initializeAuth stubs.
+  {} as typeof firebaseAuth.indexedDBLocalPersistence,
+);
 vi.spyOn(firebaseAuth, 'browserSessionPersistence', 'get').mockReturnValue(
   // SAFETY: persistence value is only passed back into initializeAuth stubs.
   {} as typeof firebaseAuth.browserSessionPersistence,
@@ -39,13 +43,27 @@ vi.spyOn(firebaseAuth, 'inMemoryPersistence', 'get').mockReturnValue(
   // SAFETY: persistence value is only passed back into initializeAuth stubs.
   {} as typeof firebaseAuth.inMemoryPersistence,
 );
+vi.spyOn(firebaseAuth, 'browserPopupRedirectResolver', 'get').mockReturnValue(
+  // SAFETY: resolver stub passed back into initializeAuth/popup stubs.
+  {} as typeof firebaseAuth.browserPopupRedirectResolver,
+);
 vi.spyOn(firebaseAuth, 'onAuthStateChanged').mockImplementation(vi.fn());
 vi.spyOn(firebaseAuth, 'signOut').mockImplementation(async () => undefined);
 vi.spyOn(firebaseAuth, 'signInWithEmailAndPassword').mockImplementation(vi.fn());
 vi.spyOn(firebaseAuth, 'createUserWithEmailAndPassword').mockImplementation(vi.fn());
 vi.spyOn(firebaseAuth, 'sendPasswordResetEmail').mockImplementation(vi.fn());
 vi.spyOn(firebaseAuth, 'updateProfile').mockImplementation(vi.fn());
-vi.spyOn(firebaseAuth, 'GoogleAuthProvider').mockImplementation(vi.fn());
+class MockGoogleAuthProvider {
+  setCustomParameters = vi.fn();
+  addScope = vi.fn();
+  providerId = 'google.com';
+  static credential = vi.fn();
+}
+
+// SAFETY: MockGoogleAuthProvider satisfies the constructor contract for Vitest suites.
+vi.spyOn(firebaseAuth, 'GoogleAuthProvider').mockImplementation(
+  MockGoogleAuthProvider as never,
+);
 vi.spyOn(firebaseAuth, 'signInWithPopup').mockImplementation(vi.fn());
 
 const stubFirestore = () =>

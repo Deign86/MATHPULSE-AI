@@ -5,6 +5,8 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 
+from services.wri_service import ATTENTION_RISK_STATUSES
+
 logger = logging.getLogger("mathpulse.class_analytics_routes")
 
 router = APIRouter(prefix="/api/analytics/class", tags=["class-analytics"])
@@ -53,7 +55,7 @@ async def get_class_students(
         )[:10]
     elif filter == "needs_attention":
         students = sorted(
-            [s for s in students if s.risk_level in ("intervene", "critical", "at_risk")],
+            [s for s in students if s.risk_level in ATTENTION_RISK_STATUSES],
             key=lambda s: s.avg_score,
         )
 

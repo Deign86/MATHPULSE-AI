@@ -3,10 +3,11 @@ import { motion } from 'motion/react';
 import { Bot } from 'lucide-react';
 import CompositeAvatar, { type AvatarLayers } from '../CompositeAvatar';
 import { getUserProfile } from '../../services/authService';
+import type { BattleFooterMatchView, BattlePlayerView } from './types';
 
 interface BattleFooterProps {
-  studentProfile: any;
-  activeMatch: any;
+  studentProfile: BattlePlayerView | null;
+  activeMatch: BattleFooterMatchView;
   scorePulseTarget: 'player' | 'opponent' | null;
   quizBattleAvatar: string;
   opponentId?: string | null;

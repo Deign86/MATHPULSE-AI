@@ -98,7 +98,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-8 text-center">
+        <div className="flex min-h-dvh flex-col items-center justify-center bg-slate-50 p-8 text-center">
           <div className="max-w-md rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
             <h2 className="mb-2 text-xl font-semibold text-slate-900">
               Something went wrong

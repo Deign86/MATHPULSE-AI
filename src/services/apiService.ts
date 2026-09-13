@@ -1254,6 +1254,64 @@ export async function warmupBackend(): Promise<boolean> {
 // ─── Core fetch wrapper ──────────────────────────────────────
 
 /**
+ * Single owner of outbound request headers: JSON content-type plus the Firebase
+ * bearer token. Shared by the JSON, blob, and streaming request paths so a
+ * token-acquisition change only has to land once.
+ */
+async function buildRequestHeaders(
+  endpoint: string,
+  method: string,
+  options: RequestInit | undefined,
+  forceTokenRefresh: boolean,
+): Promise<Headers> {
+  const headers = new Headers(options?.headers ?? {});
+  if (!(options?.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const idToken = await currentUser.getIdToken(forceTokenRefresh);
+      if (idToken) {
+        headers.set('Authorization', `Bearer ${idToken}`);
+      }
+    } catch (err) {
+      logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err instanceof Error ? err : { caught: String(err) });
+    }
+  }
+
+  return headers;
+}
+
+/**
+ * Single owner of outbound error classification, including rate-limit
+ * signalling. Every request path reports failures through this so an identical
+ * backend status is never handled differently depending on which path was used.
+ */
+async function logAndSignalApiError(endpoint: string, method: string, cause: unknown): Promise<void> {
+  if (cause instanceof ApiError) {
+    logApiError(endpoint, method, `HTTP ${cause.status}: ${cause.responseBody.slice(0, 300)}`);
+
+    if (cause.status === 429) {
+      await handleRateLimitError(
+        new Response(cause.responseBody, {
+          status: 429,
+          headers: { 'retry-after': '60' },
+        }),
+        endpoint,
+      );
+    }
+  } else if (cause instanceof ApiTimeoutError) {
+    logApiError(endpoint, method, `Timeout after ${cause.timeoutMs}ms`);
+  } else if (cause instanceof ApiNetworkError) {
+    logApiError(endpoint, method, `Network error: ${cause.originalError.message}`);
+  } else {
+    logApiError(endpoint, method, `Unexpected: ${cause instanceof Error ? cause.message : String(cause)}`);
+  }
+}
+
+/**
  * Central API fetch with retry, timeout, and structured error handling.
  * All `apiService` methods funnel through this function.
  */
@@ -1267,29 +1325,10 @@ export async function apiFetch<T>(
 
   logApiInfo(endpoint, method, 'Starting request');
 
-  const buildFetchOptions = async (forceTokenRefresh: boolean): Promise<RequestInit> => {
-    const headers = new Headers(options?.headers ?? {});
-    if (!(options?.body instanceof FormData) && !headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json');
-    }
-
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        const idToken = await currentUser.getIdToken(forceTokenRefresh);
-        if (idToken) {
-          headers.set('Authorization', `Bearer ${idToken}`);
-        }
-      } catch (err) {
-        logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err instanceof Error ? err : { caught: String(err) });
-      }
-    }
-
-    return {
-      ...options,
-      headers,
-    };
-  };
+  const buildFetchOptions = async (forceTokenRefresh: boolean): Promise<RequestInit> => ({
+    ...options,
+    headers: await buildRequestHeaders(endpoint, method, options, forceTokenRefresh),
+  });
 
   let fetchOptions = await buildFetchOptions(false);
 
@@ -1319,27 +1358,8 @@ export async function apiFetch<T>(
       }
     }
 
-    // Enrich the error log with endpoint context
-    if (err instanceof ApiError) {
-      logApiError(endpoint, method, `HTTP ${err.status}: ${err.responseBody.slice(0, 300)}`);
-      
-      // After logging the error and before throwing, check for rate limit
-      if (err.status === 429) {
-        await handleRateLimitError(
-          new Response(err.responseBody, { 
-            status: 429,
-            headers: { 'retry-after': '60' }
-          }),
-          endpoint
-        );
-      }
-    } else if (err instanceof ApiTimeoutError) {
-      logApiError(endpoint, method, `Timeout after ${err.timeoutMs}ms`);
-    } else if (err instanceof ApiNetworkError) {
-      logApiError(endpoint, method, `Network error: ${err.originalError.message}`);
-    } else {
-      logApiError(endpoint, method, `Unexpected: ${err instanceof Error ? err.message : String(err)}`);
-    }
+    // Enrich the error log with endpoint context, then surface rate limits.
+    await logAndSignalApiError(endpoint, method, err);
     throw err;
   }
 }
@@ -1354,18 +1374,7 @@ async function apiFetchBlob(
   logApiInfo(endpoint, method, 'Starting blob request');
 
   const fetchBlobOnce = async (forceTokenRefresh: boolean): Promise<Blob> => {
-    const headers = new Headers(options?.headers ?? {});
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      try {
-        const idToken = await currentUser.getIdToken(forceTokenRefresh);
-        if (idToken) {
-          headers.set('Authorization', `Bearer ${idToken}`);
-        }
-      } catch (err) {
-        logApiError(endpoint, method, 'Failed to acquire Firebase ID token', err instanceof Error ? err : { caught: String(err) });
-      }
-    }
+    const headers = await buildRequestHeaders(endpoint, method, options, forceTokenRefresh);
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -1398,6 +1407,7 @@ async function apiFetchBlob(
       logApiInfo(endpoint, method, '401 received for blob request, refreshing Firebase token and retrying once');
       return fetchBlobOnce(true);
     }
+    await logAndSignalApiError(endpoint, method, err);
     throw err;
   }
 }
@@ -1560,21 +1570,9 @@ export const apiService = {
 
       totalTimer = setTimeout(() => abortStream('total'), CHAT_STREAM_TOTAL_TIMEOUT_MS);
 
-      const headers = new Headers({
-        'Content-Type': 'application/json',
-      });
-
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        try {
-          const idToken = await currentUser.getIdToken(false);
-          if (idToken) {
-            headers.set('Authorization', `Bearer ${idToken}`);
-          }
-        } catch (err) {
-          logApiError('/api/chat/stream', 'POST', 'Failed to acquire Firebase ID token', err instanceof Error ? err : { caught: String(err) });
-        }
-      }
+      const headers = await buildRequestHeaders('/api/chat/stream', 'POST', {
+        headers: { 'Content-Type': 'application/json' },
+      }, false);
 
       let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 

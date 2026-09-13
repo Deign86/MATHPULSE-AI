@@ -1,4 +1,5 @@
 import { db } from '../lib/firebase';
+import { z } from 'zod';
 import {
   doc,
   getDoc,
@@ -41,16 +42,40 @@ function getDefaultSubjectAvailability() {
   };
 }
 
-/** Values Firestore may store for timestamp fields. */
-type FirestoreDateValue = Timestamp | Date | null | undefined;
+type FirestoreFieldInput = Timestamp | Date | { seconds?: number; _seconds?: number } | string | number | null | undefined;
 
-/** Firestore timestamp-like values; parsing never throws. */
-const firestoreToDate = (value: FirestoreDateValue): Date => {
-  // NOTE: call toDate() on the original Timestamp instance — detaching the
-  // method (e.g. via a generic object parser) breaks its internal this.toMillis().
-  if (value instanceof Timestamp) return value.toDate();
-  if (value instanceof Date) return value;
-  return new Date();
+const firestoreDateSchema = z.union([
+  z.instanceof(Timestamp).transform((t) => {
+    try {
+      return t.toDate();
+    } catch {
+      return new Date();
+    }
+  }),
+  z.instanceof(Date),
+  z.object({
+    seconds: z.number().optional(),
+    _seconds: z.number().optional(),
+  }).transform((obj) => {
+    const sec = obj.seconds ?? obj._seconds;
+    return sec !== undefined ? new Date(sec * 1000) : new Date();
+  }),
+  z.string().transform((str) => {
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }),
+  z.number().transform((num) => {
+    const d = new Date(num);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }),
+  z.null().transform(() => new Date()),
+  z.undefined().transform(() => new Date()),
+]);
+
+/** Firestore timestamp-like values parsed safely without throwing. */
+const firestoreToDate = (raw: FirestoreFieldInput): Date => {
+  const parsed = firestoreDateSchema.safeParse(raw);
+  return parsed.success ? parsed.data : new Date();
 };
 
 function convertTimestamps(data: DocumentData): PlatformSubjectsConfig {
@@ -137,22 +162,56 @@ export function subscribeToSubjectAvailability(
   );
 }
 
+/** Field-level patch applied to one subject entry. */
+type SubjectEntryPatch = Partial<Pick<SubjectAvailabilityEntry, 'available' | 'pdfPath'>>;
+
+/** Defaults used when a stored subject entry is missing or malformed. */
+const SUBJECT_ENTRY_DEFAULTS = { available: true, pdfPath: null } as const;
+
+/** Type predicate: a stored subject field decoded as a boolean. */
+function isBooleanField(value: unknown): value is boolean {
+  return typeof value === 'boolean';
+}
+
+/** Type predicate: a stored subject field decoded as a string. */
+function isStringField(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
 /**
- * Toggle a subject's availability status.
- * Also updates the timestamp and admin user ID.
+ * Read a stored subject entry, defaulting fields that were not written.
+ * `available` defaults to true and `pdfPath` to null so a partially written
+ * entry never disables a subject or silently drops its PDF.
  */
-export async function toggleSubjectAvailability(
+function readSubjectEntry(subjects: DocumentData, subjectId: string): SubjectAvailabilityEntry {
+  const stored = subjects[subjectId];
+  return {
+    available: isBooleanField(stored?.available) ? stored.available : SUBJECT_ENTRY_DEFAULTS.available,
+    pdfPath: isStringField(stored?.pdfPath) ? stored.pdfPath : SUBJECT_ENTRY_DEFAULTS.pdfPath,
+    lastUpdated: new Date(),
+  };
+}
+
+/**
+ * Single owner of the platformConfig/subjects read-modify-write.
+ *
+ * Both public mutators previously duplicated this sequence, so each carried its
+ * own fallback defaults and could overwrite the other's field.
+ */
+async function updateSubjectEntry(
   subjectId: string,
-  available: boolean,
+  patch: SubjectEntryPatch,
   adminUserId: string,
+  operation: string,
 ): Promise<void> {
   try {
     const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID);
     const snap = await getDoc(docRef);
-
+    // SAFETY: subjects is a map of SubjectAvailabilityEntry records written by this service.
     const existingSubjects: DocumentData = snap.exists()
-      ? snap.data().subjects || {}
+      ? (snap.data().subjects as DocumentData) || {}
       : {};
+    const current = readSubjectEntry(existingSubjects, subjectId);
 
     await setDoc(
       docRef,
@@ -160,8 +219,8 @@ export async function toggleSubjectAvailability(
         subjects: {
           ...existingSubjects,
           [subjectId]: {
-            available,
-            pdfPath: existingSubjects[subjectId]?.pdfPath ?? null,
+            available: patch.available ?? current.available,
+            pdfPath: patch.pdfPath !== undefined ? patch.pdfPath : current.pdfPath,
             lastUpdated: serverTimestamp(),
           },
         },
@@ -171,9 +230,21 @@ export async function toggleSubjectAvailability(
       { merge: true },
     );
   } catch (err) {
-    console.error('[platformConfigService] toggleSubjectAvailability error:', err);
+    console.error(`[platformConfigService] ${operation} error:`, err);
     throw err;
   }
+}
+
+/**
+ * Toggle a subject's availability status.
+ * Also updates the timestamp and admin user ID.
+ */
+export async function toggleSubjectAvailability(
+  subjectId: string,
+  available: boolean,
+  adminUserId: string,
+): Promise<void> {
+  await updateSubjectEntry(subjectId, { available }, adminUserId, 'toggleSubjectAvailability');
 }
 
 /**
@@ -184,32 +255,5 @@ export async function updateSubjectPdfPath(
   pdfPath: string | null,
   adminUserId: string,
 ): Promise<void> {
-  try {
-    const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID);
-    const snap = await getDoc(docRef);
-
-    const existingSubjects: DocumentData = snap.exists()
-      ? snap.data().subjects || {}
-      : {};
-
-    await setDoc(
-      docRef,
-      {
-        subjects: {
-          ...existingSubjects,
-          [subjectId]: {
-            available: existingSubjects[subjectId]?.available ?? true,
-            pdfPath,
-            lastUpdated: serverTimestamp(),
-          },
-        },
-        updatedAt: serverTimestamp(),
-        updatedBy: adminUserId,
-      },
-      { merge: true },
-    );
-  } catch (err) {
-    console.error('[platformConfigService] updateSubjectPdfPath error:', err);
-    throw err;
-  }
+  await updateSubjectEntry(subjectId, { pdfPath }, adminUserId, 'updateSubjectPdfPath');
 }

@@ -11,13 +11,22 @@ export type CurriculumSubjectId =
   | 'stats-prob'
   | 'finite-math';
 
-const COMPETENCY_TO_LESSON: Record<string, { lessonId: string; storagePath: string; sourceFile: string }> =
+export const COMPETENCY_TO_LESSON: Record<string, { lessonId: string; storagePath: string; sourceFile: string }> =
   Object.fromEntries(
     CURRICULUM_LESSONS.map((l) => [
       l.competencyCode,
       { lessonId: l.lessonId, storagePath: l.storagePath, sourceFile: l.sourceFile },
     ])
   );
+
+/** Invariant: every blueprint competency must resolve to an authored lesson. */
+export function assertCompetencyJoin(blueprint: CurriculumModuleBlueprint): void {
+  for (const comp of blueprint.competencies) {
+    if (!COMPETENCY_TO_LESSON[comp.code]) {
+      console.warn(`[curriculumModules] Missing authored lesson for competency: ${comp.code} in ${blueprint.id}`);
+    }
+  }
+}
 
 export interface CurriculumAssessmentMeta {
   id: string;

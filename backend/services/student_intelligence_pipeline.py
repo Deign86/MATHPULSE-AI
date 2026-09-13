@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from services.wri_service import ESCALATION_RISK_STATUSES, FLAGGED_RISK_STATUSES, compute_wri
+
 logger = logging.getLogger("mathpulse.pipeline")
 
 # ─── Firestore ─────────────────────────────────────────────────────────────
@@ -125,7 +127,6 @@ class StudentIntelligencePipeline:
             weights = managed.get("weights") or profile.get("wri_weights") or {"w1": 0.30, "w2": 0.40, "w3": 0.30}
 
             if d is not None and event.event_type != "session":
-                from services.wri_service import compute_wri
                 wri_result = compute_wri(d=d, g=g, p=new_p, weights=weights)
 
                 previous_status = profile.get("risk_status", "pending_assessment")
@@ -157,7 +158,7 @@ class StudentIntelligencePipeline:
 
             # 6b. Proactive tutor nudge (fire-and-forget, non-blocking)
             new_status = profile.get("risk_status", "safe")
-            if new_status in ("watch", "intervene", "critical", "at_risk"):
+            if new_status in FLAGGED_RISK_STATUSES:
                 weak_topics = (
                     profile.get("quiz_performance", {}).get("lowest_accuracy_topics", [])
                     or profile.get("diagnostic", {}).get("weak_topics", [])
@@ -463,7 +464,7 @@ class StudentIntelligencePipeline:
                 return False
         except Exception:
             pass
-        return event.event_type in ("quiz", "battle") and result.new_risk_status in ("critical", "at_risk")
+        return event.event_type in ("quiz", "battle") and result.new_risk_status in ESCALATION_RISK_STATUSES
 
     async def _generate_ai_context(self, profile: Dict, event: StudentActivityEvent) -> Optional[Dict]:
         """Call DeepSeek for AI context generation."""

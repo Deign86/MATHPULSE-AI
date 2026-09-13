@@ -14,6 +14,14 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from services.wri_service import (
+    ATTENTION_RISK_STATUSES,
+    RiskLevel,
+    band_for_score,
+    empty_risk_distribution,
+    normalize_risk_band,
+)
+
 logger = logging.getLogger("mathpulse.class_analytics")
 
 # ─── Firestore helper ──────────────────────────────────────────────────────
@@ -46,7 +54,7 @@ class StudentAnalyticsSummary(BaseModel):
     avg_score: float = 0.0
     quiz_attempt_count: int = 0
     last_active: Optional[str] = None
-    risk_level: Literal["safe", "watch", "intervene", "critical", "at_risk", "pending_assessment"] = "pending_assessment"
+    risk_level: RiskLevel = "pending_assessment"
     engagement_level: Literal["Low", "Medium", "High"] = "Low"
     weakest_topic: Optional[str] = None
     accuracy_by_topic: Dict[str, float] = Field(default_factory=dict)
@@ -89,20 +97,11 @@ class ClassAnalyticsReport(BaseModel):
 
 # ─── Risk & Engagement Classification ─────────────────────────────────────
 
-def classify_risk(avg_score: float, quiz_count: int, days_since_active: Optional[int]) -> str:
+def classify_risk(avg_score: float, quiz_count: int, days_since_active: Optional[int]) -> RiskLevel:
     """Map to WRI status bands. When no WRI is available, estimate from avg_score."""
     if quiz_count == 0:
         return "pending_assessment"
-    # Approximate WRI bands from avg_score (actual WRI uses D, G, P weights)
-    if avg_score >= 88:
-        return "safe"
-    if avg_score >= 80:
-        return "watch"
-    if avg_score >= 75:
-        return "intervene"
-    if avg_score >= 68:
-        return "critical"
-    return "at_risk"
+    return band_for_score(avg_score)
 
 
 def classify_engagement(days_since_active: Optional[int], recent_quiz_count: int) -> str:
@@ -182,14 +181,13 @@ class ClassAnalyticsEngine:
         participation_rate = (active_count / student_count * 100) if student_count > 0 else 0.0
 
         # Attention = intervene + critical + at_risk
-        attention_count = sum(1 for s in student_summaries if s.risk_level in ("intervene", "critical", "at_risk"))
+        attention_count = sum(1 for s in student_summaries if s.risk_level in ATTENTION_RISK_STATUSES)
 
         # Topic performance
         topic_perf = self._compute_topic_performance(student_summaries)
 
         # Risk distribution
-        from services.wri_service import normalize_risk_band
-        risk_dist = {"safe": 0, "watch": 0, "intervene": 0, "critical": 0, "at_risk": 0, "pending_assessment": 0}
+        risk_dist = empty_risk_distribution()
         for s in student_summaries:
             # Prefer stored WRI status from managedStudents if available
             stored_status = None

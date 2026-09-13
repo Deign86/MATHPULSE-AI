@@ -35,14 +35,6 @@ import { awardXP, unlockAvatarItem } from './gamificationService';
 
 const MILESTONE_STREAKS = new Set([7, 14, 30, 60, 100]);
 
-export function isNum<T>(value: T): value is T & number {
-  return typeof value === 'number';
-}
-
-export function isString<T>(value: T): value is T & string {
-  return typeof value === 'string';
-}
-
 const INITIAL_STATE: DailyRewardState = {
   lastClaimedDate: '',
   lastClaimedWeekSeed: 0,
@@ -216,30 +208,25 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
 
       switch (reward.type) {
         case 'xp': {
-          const baseXP = isNum(reward.value) ? reward.value : parseInt(reward.value, 10) || 0;
           multiplierApplied = isMultiplierActive(state.activeMultiplier)
             ? (state.activeMultiplier?.multiplier ?? 1)
             : 1;
-          xpAwarded = Math.floor(baseXP * multiplierApplied);
+          xpAwarded = Math.floor(reward.value * multiplierApplied);
           break;
         }
         case 'hint_token': {
-          const hintAmount = isNum(reward.value) ? reward.value : parseInt(reward.value, 10) || 0;
-          state.hintTokens += hintAmount;
+          state.hintTokens += reward.value;
           break;
         }
         case 'streak_shield': {
-          const shieldAmount = isNum(reward.value) ? reward.value : parseInt(reward.value, 10) || 0;
-          state.streakShields += shieldAmount;
+          state.streakShields += reward.value;
           break;
         }
         case 'xp_multiplier': {
-          const durationMinutes = isNum(reward.value) ? reward.value : parseInt(reward.value, 10) || 60;
-          const multiplierValue = reward.id.includes('2') ? 2.0 : 1.5;
           const expiresAt = new Date();
-          expiresAt.setMinutes(expiresAt.getMinutes() + durationMinutes);
+          expiresAt.setMinutes(expiresAt.getMinutes() + reward.durationMinutes);
           state.activeMultiplier = {
-            multiplier: multiplierValue,
+            multiplier: reward.multiplier,
             expiresAt: expiresAt.toISOString(),
           };
           break;
@@ -310,9 +297,9 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
     }
 
     // Handle badge unlock outside transaction
-    if (reward.type === 'badge_unlock' && isString(reward.value)) {
+    if (reward.type === 'badge_unlock') {
       try {
-        await unlockAvatarItem(userId, reward.value);
+        await unlockAvatarItem(userId, reward.badgeId);
       } catch (badgeError) {
         console.error('[dailyRewardService] Error unlocking avatar item:', badgeError);
       }

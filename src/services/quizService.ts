@@ -133,7 +133,7 @@ export async function assignQuizToStudent(
     title: 'New Quiz Assigned',
     message: 'Your teacher has assigned you a new quiz. Complete it to earn XP!',
     quizId,
-    read: false,
+    isRead: false,
     createdAt: serverTimestamp(),
   });
 }

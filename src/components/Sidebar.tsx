@@ -6,8 +6,10 @@ import { cn } from './ui/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 
+import type { AdminTab } from './AdminDashboard';
+
 interface SidebarProps {
-  activeTab: string;
+  activeTab: string | AdminTab;
   setActiveTab: (tab: string) => void;
   userRole?: 'student' | 'teacher' | 'admin';
   onOpenSettings?: () => void;

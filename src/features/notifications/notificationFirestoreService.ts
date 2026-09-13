@@ -35,6 +35,27 @@ function requireAuth(): string | null {
   return uid;
 }
 
+/**
+ * `isRead` is the canonical read flag. Older documents were written with a
+ * `read` field only; that fallback exists purely for migration and should be
+ * removed once scripts/backfill-notification-read-flag.ts has run in production.
+ */
+const LEGACY_READ_FIELD = 'read';
+/** Migration kill switch: flip to false (and drop LEGACY_READ_FIELD) once the
+ *  backfill script has run and no `read`-only document remains in production. */
+const HAS_LEGACY_READ_FIELD = true;
+
+/** Type predicate: a stored Firestore field decoded as a boolean flag. */
+function isBooleanFlag(value: unknown): value is boolean {
+  return typeof value === 'boolean';
+}
+
+function readNotificationFlag(data: DocumentData): boolean {
+  if (isBooleanFlag(data.isRead)) return data.isRead;
+  if (isBooleanFlag(data[LEGACY_READ_FIELD])) return data[LEGACY_READ_FIELD];
+  return false;
+}
+
 const mapNotificationDoc = (docSnap: { id: string; data: () => DocumentData }): Notification => {
   const data = docSnap.data();
   // SAFETY: Firestore `createdAt` is written as serverTimestamp() (read back as Timestamp) or a Date;
@@ -53,7 +74,7 @@ const mapNotificationDoc = (docSnap: { id: string; data: () => DocumentData }): 
     type: data.type as Notification['type'],
     title: data.title as string,
     message: data.message as string,
-    isRead: Boolean(data.isRead ?? data.read ?? false),
+    isRead: readNotificationFlag(data),
     createdAt,
     metadata: data.metadata,
     actionUrl: data.actionUrl as string | undefined,
@@ -71,7 +92,6 @@ export const createNotification = async (payload: NotificationPayload): Promise<
       title: payload.title,
       message: payload.message,
       isRead: false,
-      read: false,
       createdAt: serverTimestamp(),
     };
     if (payload.metadata) notificationData.metadata = payload.metadata;
@@ -108,7 +128,7 @@ export const markAsRead = async (userId: string, notificationId: string): Promis
   if (!requireAuth()) return;
   try {
     const subRef = doc(db, 'notifications', userId, 'items', notificationId);
-    await updateDoc(subRef, { isRead: true, read: true });
+    await updateDoc(subRef, { isRead: true });
   } catch (error) {
     console.error('[notificationFirestoreService] Error marking as read:', error);
     throw error;
@@ -119,17 +139,18 @@ export const markAllAsRead = async (userId: string): Promise<void> => {
   if (!requireAuth()) throw new Error('Cannot mark all as read — not authenticated');
   try {
     const itemsRef = collection(db, 'notifications', userId, 'items');
-    const [isReadSnap, legacySnap] = await Promise.all([
-      getDocs(query(itemsRef, where('isRead', '==', false))),
-      getDocs(query(itemsRef, where('read', '==', false))),
-    ]);
+    const queries = [query(itemsRef, where('isRead', '==', false))];
+    if (HAS_LEGACY_READ_FIELD) {
+      queries.push(query(itemsRef, where(LEGACY_READ_FIELD, '==', false)));
+    }
+    const snapshots = await Promise.all(queries.map((pending) => getDocs(pending)));
     const seen = new Set<string>();
     const batch = writeBatch(db);
     let count = 0;
-    for (const docSnap of [...isReadSnap.docs, ...legacySnap.docs]) {
+    for (const docSnap of snapshots.flatMap((snapshot) => snapshot.docs)) {
       if (seen.has(docSnap.id)) continue;
       seen.add(docSnap.id);
-      batch.update(docSnap.ref, { isRead: true, read: true });
+      batch.update(docSnap.ref, { isRead: true });
       count += 1;
     }
     if (count > 0) await batch.commit();

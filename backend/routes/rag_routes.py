@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
+from services.llm_json import extract_json_object
+
 from services.inference_client import (
     InferenceRequest,
     create_default_client,
@@ -104,17 +106,9 @@ def _log_rag_usage(
 
 
 def _strip_thinking_and_parse(text: str) -> dict:
-    cleaned = text.strip()
-    cleaned = re.sub(r" </think>", "", cleaned, flags=re.DOTALL).strip()
-    if "{" in cleaned and "}" in cleaned:
-        try:
-            start = cleaned.find("{")
-            end = cleaned.rfind("}") + 1
-            parsed = json.loads(cleaned[start:end])
-            if isinstance(parsed, dict):
-                return parsed
-        except Exception:
-            pass
+    parsed = extract_json_object(text)
+    if parsed is not None:
+        return parsed
     return {"explanation": text}
 
 

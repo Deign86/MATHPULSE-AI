@@ -13,7 +13,20 @@
           "package_name": "com.deign86.mathpulse"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "441656461-t1sdr2ko4iqj7febil46c9h080hd3a0r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.deign86.mathpulse",
+            "certificate_hash": "57f556f4b926045b32c0a547d5f140fa7f1e285a"
+          }
+        },
+        {
+          "client_id": "441656461-oko1pj01jo4h1gah81p2mbcn1auhqgcr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA_d3LJXGen48L-BE4PjujMQeIbsX9Apq4"
@@ -21,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "441656461-oko1pj01jo4h1gah81p2mbcn1auhqgcr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

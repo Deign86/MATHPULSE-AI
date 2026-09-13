@@ -8,6 +8,8 @@ then writes them to Firestore for the floating tutor to surface.
 import logging
 from datetime import datetime, timezone
 
+from services.wri_service import FLAGGED_RISK_STATUSES
+
 logger = logging.getLogger("mathpulse.tutor_nudge")
 
 NUDGE_COOLDOWN_HOURS = 24
@@ -133,7 +135,7 @@ async def check_and_generate_nudge(student_id: str) -> dict | None:
 
     data = managed_snap.to_dict() or {}
     risk_status = data.get("riskStatus")
-    if risk_status not in ("watch", "intervene", "critical", "at_risk"):
+    if risk_status not in FLAGGED_RISK_STATUSES:
         return None
 
     # Get weak topics from student_profiles

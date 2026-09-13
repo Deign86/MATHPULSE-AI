@@ -205,7 +205,7 @@ export async function notifyTeacher(
     studentName,
     wri,
     riskStatus: status,
-    read: false,
+    isRead: false,
     createdAt: serverTimestamp(),
   });
 
