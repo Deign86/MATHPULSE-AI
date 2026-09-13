@@ -39,6 +39,9 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard.tsx'));
 const Sidebar = lazy(() => import('./components/Sidebar.tsx'));
 const HeroBanner = lazy(() => import('./components/HeroBanner.tsx'));
 const RightSidebar = lazy(() => import('./components/RightSidebar.tsx'));
+const LeaderboardPreviewCard = lazy(() =>
+  import('./components/RightSidebar.tsx').then((m) => ({ default: m.LeaderboardPreviewCard })),
+);
 const XPNotification = lazy(() => import('./components/XPNotification.tsx'));
 const NotificationBell = lazy(() => import('@/features/notifications').then(m => ({ default: m.NotificationBell })));
 
@@ -1265,46 +1268,63 @@ const App = () => {
                             - Desktop (xl:): Hidden here and placed into RightSidebar, moving Start Learning upwards
                         */}
                         <div className="xl:hidden grid grid-cols-2 md:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
-                          {/* Daily Goals / Assessment Slab (Complete Emerald Green System Card) */}
-                          <div className="col-span-2 md:col-span-6 flex items-center justify-between gap-3.5 p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white shadow-[0_8px_20px_-4px_rgba(16,185,129,0.3)] border border-emerald-400/40 relative overflow-hidden">
-                            {/* Target Emblem */}
-                            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 shadow-inner flex items-center justify-center shrink-0">
-                              <Target className="w-5 h-5 text-white stroke-[2.4] drop-shadow-sm" />
+                          {/* Daily Goals / Assessment Slab (Complete Emerald Green Bento Card) */}
+                          <div
+                            onClick={() => {
+                              if (!hasCompletedDiagnostic && hasCompletedDiagnostic !== null) {
+                                handleOpenInitialAssessment();
+                              } else {
+                                handleStudentNavigation('Modules');
+                              }
+                            }}
+                            className="col-span-2 md:col-span-6 flex flex-col justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-[0_8px_20px_-4px_rgba(16,185,129,0.35)] border border-emerald-400/40 relative overflow-hidden group cursor-pointer hover:shadow-[0_12px_28px_-4px_rgba(16,185,129,0.45)] hover:-translate-y-0.5 transition-all"
+                          >
+                            {/* Ambient glow highlight */}
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.25),transparent_45%),radial-gradient(circle_at_85%_84%,rgba(16,185,129,0.3),transparent_40%)] pointer-events-none" />
+
+                            {/* Header Row: Target Emblem + Title + Arrow */}
+                            <div className="flex items-center justify-between gap-2.5 relative z-10">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-10 h-10 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 shadow-inner flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                  <Target className="w-5 h-5 text-white stroke-[2.4] drop-shadow-sm" />
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-100 drop-shadow-sm leading-none">
+                                    Target Tracker
+                                  </span>
+                                  <h3 className="text-sm sm:text-base font-display font-black text-white leading-tight drop-shadow-sm mt-0.5 truncate">
+                                    Daily Goals
+                                  </h3>
+                                </div>
+                              </div>
+
+                              <div
+                                className="w-8 h-8 rounded-full bg-white/20 group-hover:bg-white text-white group-hover:text-emerald-700 backdrop-blur-md border border-white/40 shadow-sm flex items-center justify-center transition-all shrink-0 group-hover:translate-x-0.5"
+                                aria-hidden="true"
+                              >
+                                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                              </div>
                             </div>
 
-                            {/* Center Progress Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <h3 className="text-xs sm:text-sm font-display font-black text-white leading-none drop-shadow-sm">
-                                  Daily Goals
-                                </h3>
-                                <span className="text-[10px] sm:text-[11px] font-bold text-white bg-black/20 backdrop-blur-md px-2.5 py-0.5 rounded-full tabular-nums border border-white/20">
-                                  2 / 5 Lessons
+                            {/* Full-width descriptive subtitle (no truncation!) */}
+                            <p className="text-xs sm:text-[13px] text-white/90 font-medium leading-snug mt-3 relative z-10">
+                              {hasCompletedDiagnostic ? 'Maintain your daily practice pace' : 'Complete Initial Diagnostic Assessment'}
+                            </p>
+
+                            {/* Progress Section: Single-line badge and full width bar */}
+                            <div className="mt-3.5 pt-2.5 border-t border-white/15 relative z-10">
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <span className="text-[11px] font-bold text-emerald-100">
+                                  Lesson Progress
+                                </span>
+                                <span className="text-[11px] font-bold text-white bg-black/20 backdrop-blur-md px-2.5 py-0.5 rounded-full tabular-nums border border-white/20 whitespace-nowrap">
+                                  2 of 5 Lessons
                                 </span>
                               </div>
-                              <p className="text-[10px] sm:text-xs text-white/90 mt-1.5 font-medium leading-snug">
-                                {hasCompletedDiagnostic ? 'Maintain your daily practice pace' : 'Complete Initial Diagnostic Assessment'}
-                              </p>
-                              <div className="h-1.5 sm:h-2 w-full bg-black/20 rounded-full overflow-hidden mt-2 sm:mt-2.5 shadow-inner">
-                                <div className="h-full bg-white rounded-full w-[40%] shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+                              <div className="h-2 w-full bg-black/25 rounded-full overflow-hidden shadow-inner">
+                                <div className="h-full bg-white rounded-full w-[40%] shadow-[0_0_8px_rgba(255,255,255,0.7)] transition-all duration-500" />
                               </div>
                             </div>
-
-                            {/* Action button */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!hasCompletedDiagnostic && hasCompletedDiagnostic !== null) {
-                                  handleOpenInitialAssessment();
-                                } else {
-                                  handleStudentNavigation('Modules');
-                                }
-                              }}
-                              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 font-bold border border-white shadow-md flex items-center justify-center transition-all shrink-0 active:translate-y-[1px] cursor-pointer"
-                              aria-label="View Daily Goals"
-                            >
-                              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                            </button>
                           </div>
 
                           {/* Current XP Slab — Rewards & Achievements styling (Vibrant violet-to-cyan gradient with frosted glass keycap) */}
@@ -1415,13 +1435,24 @@ const App = () => {
                         {profileReady && dashboardShellDeferredReady && (
                           <Suspense fallback={dashboardWidgetFallback}>
                             <div className="pb-4">
-                              <CompetencyRadarChart />
+                              <div className="grid grid-cols-1 md:grid-cols-12 xl:grid-cols-1 gap-4 sm:gap-6 items-start">
+                                <div className="col-span-1 md:col-span-7 xl:col-span-1">
+                                  <CompetencyRadarChart />
+                                </div>
+                                <div className="col-span-1 md:col-span-5 xl:hidden">
+                                  <LeaderboardPreviewCard
+                                    currentUserId={userProfile?.uid || ''}
+                                    userPhoto={profileData.photo}
+                                    onOpenLeaderboard={() => setActiveTab('Leaderboard')}
+                                  />
+                                </div>
+                              </div>
                             </div>
                           </Suspense>
                         )}
                       </div>
 
-                      <div className="col-span-12 xl:col-span-3 pt-2">
+                      <div className="hidden xl:block xl:col-span-3 pt-0">
                         {dashboardShellDeferredReady ? (
                           <Suspense fallback={dashboardPanelFallback}>
                             <RightSidebar 
