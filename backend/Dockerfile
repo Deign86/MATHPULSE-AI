@@ -7,7 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME=/data/.huggingface \
     HUGGINGFACE_HUB_CACHE=/data/.huggingface/hub \
     TRANSFORMERS_CACHE=/data/.huggingface/transformers \
-    MPLCONFIGDIR=/tmp/matplotlib
+    MPLCONFIGDIR=/tmp/matplotlib \
+    EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
 
 WORKDIR /app
 

@@ -194,3 +194,8 @@ class TestSubjectNormalizationAndWhere:
                 competency="computes simple interest",
             )
             assert mock_ret.call_args[1]["query"] == "computes simple interest"
+
+    def test_vectorstore_dimension_alignment(self):
+        from rag.vectorstore_loader import _get_collection_dimension, _resolve_vectorstore_dir
+        dim = _get_collection_dimension(_resolve_vectorstore_dir())
+        assert dim in (384, None)

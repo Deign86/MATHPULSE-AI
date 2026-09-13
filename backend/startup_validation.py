@@ -144,6 +144,12 @@ def _validate_embedding_model() -> None:
             f"Expected: {EXPECTED_EMBEDDING_MODEL}. "
             "RAG retrieval will fail without an embedding model."
         )
+    elif embedding_model == "BAAI/bge-base-en-v1.5":
+        logger.warning(
+            f"Overriding legacy EMBEDDING_MODEL '{embedding_model}' to canonical '{EXPECTED_EMBEDDING_MODEL}'."
+        )
+        os.environ["EMBEDDING_MODEL"] = EXPECTED_EMBEDDING_MODEL
+        embedding_model = EXPECTED_EMBEDDING_MODEL
     elif embedding_model != EXPECTED_EMBEDDING_MODEL:
         logger.warning(
             f"WARNING: EMBEDDING_MODEL is set to '{embedding_model}' — "
