@@ -97,7 +97,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0.15 : 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="relative w-full mt-0 rounded-3xl md:rounded-[2rem] p-5 sm:p-6 md:p-7 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg shadow-sm overflow-visible"
+      className="relative w-full mt-0 rounded-3xl md:rounded-[2rem] p-4 min-[360px]:p-5 sm:p-6 md:p-7 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg shadow-sm overflow-visible"
     >
       {/* Background elements wrapped in overflow-hidden */}
       <div className="absolute inset-0 overflow-hidden rounded-3xl md:rounded-[2rem] pointer-events-none">
@@ -112,7 +112,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
 
       {/* Unified Banner Content across Mobile, Tablet, and Desktop */}
       <div className="relative z-10 min-h-[140px] sm:min-h-[150px] lg:min-h-[165px] flex items-center justify-between gap-4 pb-0">
-        <div className="flex-1 max-w-[210px] sm:max-w-md lg:max-w-xl pr-2 sm:pr-4 lg:pr-8 py-1">
+        <div className="flex-1 max-w-[185px] min-[360px]:max-w-[210px] sm:max-w-md lg:max-w-xl pr-2 sm:pr-4 lg:pr-8 py-1">
           {/* Top Badges */}
           <div className="flex items-center gap-1.5 sm:gap-2 mb-2">
             <div className="px-2.5 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-sky-100 border border-sky-200">
@@ -142,7 +142,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
             onClick={onContinueLearning}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="mt-2.5 sm:mt-3 bg-gradient-to-r from-indigo-700 to-[#5d5195] hover:from-indigo-600 hover:to-[#524687] text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-full font-body font-bold text-xs sm:text-sm shadow-md shadow-indigo-950/20 border border-white/20 transition-all flex items-center gap-2 group w-fit min-h-[38px] sm:min-h-[44px] cursor-pointer active:scale-95"
+            className="mt-2.5 sm:mt-3 bg-gradient-to-r from-indigo-700 to-[#5d5195] hover:from-indigo-600 hover:to-[#524687] text-white px-3.5 min-[360px]:px-5 sm:px-6 py-2 sm:py-2.5 rounded-full font-body font-bold text-xs sm:text-sm shadow-md shadow-indigo-950/20 border border-white/20 transition-all flex items-center gap-2 group w-fit min-h-[38px] sm:min-h-[44px] cursor-pointer active:scale-95"
           >
             <span>Continue Learning</span>
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform stroke-[2.5]" />
@@ -159,7 +159,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           animate={{ opacity: 1, scale: 1, x: 0 }}
           transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
           onClick={onOpenAssessment}
-          className="absolute right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-amber-500"
+          className="absolute right-[68px] min-[360px]:right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-amber-500"
         >
           <div className="bg-white px-2.5 sm:px-4 py-1.5 sm:py-3 rounded-2xl rounded-br-sm border-2 border-amber-300 relative transition-all group-hover:bg-amber-50 group-hover:border-amber-400 group-hover:-translate-y-0.5">
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -182,7 +182,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           animate={{ opacity: 1, scale: 1, x: 0 }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
-          className="absolute right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 drop-shadow-lg group text-left"
+          className="absolute right-[68px] min-[360px]:right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 drop-shadow-lg group text-left"
         >
           <div
             onClick={handleNavigateGrades}
@@ -232,12 +232,12 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
 
       {/* Uncropped Headroom Avatar Container across Mobile, Tablet, and Desktop (Legs cropped at bottom border only) */}
       <div
-        className="absolute right-0 sm:right-2 md:right-4 lg:right-8 bottom-0 w-[130px] sm:w-[160px] md:w-[188px] lg:w-[245px] xl:w-[265px] pointer-events-none z-20"
+        className="absolute right-0 sm:right-2 md:right-4 lg:right-8 bottom-0 w-[105px] min-[360px]:w-[130px] sm:w-[160px] md:w-[188px] lg:w-[245px] xl:w-[265px] pointer-events-none z-20"
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
       >
         <div className="relative w-full aspect-[4/5] translate-y-[17%] sm:translate-y-[18%] md:translate-y-[16%] lg:translate-y-[15%] drop-shadow-2xl">
-          <Suspense fallback={<Skeleton className="w-full aspect-[4/5] scale-[1.18] lg:scale-[1.22] origin-bottom" aria-label="Loading avatar" />}>
-            <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.18] lg:scale-[1.22] origin-bottom" />
+          <Suspense fallback={<Skeleton className="w-full aspect-[4/5] scale-[1.05] min-[360px]:scale-[1.18] lg:scale-[1.22] origin-bottom" aria-label="Loading avatar" />}>
+            <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.05] min-[360px]:scale-[1.18] lg:scale-[1.22] origin-bottom" />
           </Suspense>
         </div>
       </div>
