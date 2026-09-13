@@ -18,9 +18,14 @@
 - [x] Gate 4: RAG retrieval unit tests pass in backend test suite.
       CHECK: python -m pytest backend/tests/test_rag_pipeline.py -q
       EXPECT: All tests pass.
-      EVIDENCE: 17 passed, 1 warning in 8.57s.
+      EVIDENCE: 18 passed, 1 warning in 9.22s.
 
 - [x] Gate 5: Frontend LessonViewer and types compile cleanly with 0 type errors.
       CHECK: npm run typecheck
       EXPECT: Found 0 errors.
       EVIDENCE: tsc --noEmit exited 0 with 0 errors.
+
+- [x] Gate 6: Embedding dimension auto-alignment resolves 384 vs 768 mismatch without 503 errors.
+      CHECK: python -c "import sys; sys.path.insert(0, 'backend'); from rag.vectorstore_loader import get_vectorstore_components, reset_vectorstore_singleton; reset_vectorstore_singleton(); _, _, emb = get_vectorstore_components(model_name='BAAI/bge-base-en-v1.5'); print('dim=' + str(emb.get_sentence_embedding_dimension()))"
+      EXPECT: Auto-aligns to 384 dimensions matching collection.
+      EVIDENCE: dim=384, collection dimension read from chroma.sqlite3, self-healing query retry active in curriculum_rag.py.
