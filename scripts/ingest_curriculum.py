@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -19,7 +20,7 @@ try:
     from backend.rag.liteparse_utils import extract_text
 except ImportError:
     from rag.liteparse_utils import extract_text
-CURRICULUM_DIR = Path(os.getenv("CURRICULUM_DIR", BASE_DIR / "datasets" / "curriculum" / "sshs_learning_resources"))
+CURRICULUM_DIR = Path(os.getenv("CURRICULUM_DIR", BASE_DIR / "datasets" / "curriculum"))
 VECTORSTORE_DIR = Path(os.getenv("VECTORSTORE_DIR", BASE_DIR / "datasets" / "vectorstore"))
 COLLECTION_NAME = "curriculum_chunks"
 EMBED_MODEL_NAME = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
@@ -35,24 +36,66 @@ def _norm(text: str) -> str:
 def infer_metadata(path: Path, text: str = "") -> Dict[str, object]:
     parts = [part.lower() for part in path.parts]
     joined = " ".join(parts)
-    subject = "finite_mathematics" if "finite mathematics" in joined else "general_mathematics"
-    quarter_match = re.search(r"quarter\s*([1-4])|\bq([1-4])\b", joined)
-    quarter = int(next(group for group in quarter_match.groups() if group)) if quarter_match else 0
-    if "finite math 1" in joined:
+    stem_lower = path.stem.lower()
+
+    clean_joined = re.sub(r"problems?", "", joined)
+    clean_stem = re.sub(r"problems?", "", stem_lower)
+    if "stat" in clean_joined or "prob" in clean_joined or "stat" in clean_stem or "prob" in clean_stem:
+        subject = "statistics_and_probability"
+    elif "finite math 1" in joined or "finite_mathematics_1" in joined:
         subject = "finite_mathematics_1"
-    elif "finite math 2" in joined:
+    elif "finite math 2" in joined or "finite_mathematics_2" in joined:
         subject = "finite_mathematics_2"
-    resource_type = "learning_activity_sheet" if "learning activity" in joined or "las" in path.stem.lower() else "lesson_exemplar"
+    elif "finite" in joined or "finite" in stem_lower:
+        subject = "finite_mathematics"
+    else:
+        subject = "general_mathematics"
+
+    name_and_parts = f"{joined} {stem_lower}"
+    quarter_match = re.search(
+        r"quarter\s*([1-4])|[_\-\b\s]q([1-4])[_\-\b\s.]|^q([1-4])[_\-\b\s.]|[\b_]q([1-4])[\b_]",
+        name_and_parts,
+    )
+    quarter = 0
+    if quarter_match:
+        quarter = int(next(group for group in quarter_match.groups() if group))
+    else:
+        mod_match = re.search(r"module\s*([1-4])|[\b_]mod([1-4])[\b_]", name_and_parts)
+        if mod_match:
+            quarter = int(next(group for group in mod_match.groups() if group))
+
+    resource_type = "learning_activity_sheet" if "learning activity" in joined or "las" in stem_lower else "lesson_exemplar"
     if "curriculum" in joined:
         resource_type = "curriculum_guide"
     elif "budget" in joined:
         resource_type = "budget_of_work"
+
+    try:
+        storage_path = path.resolve().relative_to((BASE_DIR / "datasets").resolve()).as_posix()
+    except ValueError:
+        norm_posix = path.as_posix()
+        if "datasets/" in norm_posix:
+            storage_path = norm_posix.split("datasets/", 1)[1]
+        elif "curriculum" in norm_posix:
+            storage_path = "curriculum" + norm_posix.split("curriculum", 1)[1]
+        else:
+            storage_path = f"curriculum/{path.name}"
+
+    if subject == "statistics_and_probability":
+        content_domain = "statistics"
+    elif "business" in joined or "bus_math" in joined:
+        content_domain = "business_math"
+    else:
+        content_domain = "general"
+
     return {
         "subject": subject,
         "quarter": quarter,
+        "content_domain": content_domain,
         "resource_type": resource_type,
         "source_file": path.name,
         "source_path": path.as_posix(),
+        "storage_path": storage_path,
     }
 
 
@@ -88,15 +131,36 @@ def _resolve_source_dir() -> Path:
     return CURRICULUM_DIR
 
 
+def _clean_text(text: str) -> str:
+    if not text:
+        return ""
+    # Strip lone surrogate characters that invalidate UTF-8 encoding in Rust tokenizers
+    return text.encode("utf-8", "ignore").decode("utf-8")
+
+
 def chunk_text(text: str) -> List[str]:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+    cleaned = _clean_text(text)
     splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200, separators=["\n\n", "\n", ". ", " ", ""])
-    return [chunk.strip() for chunk in splitter.split_text(text) if chunk.strip()]
+    return [_clean_text(chunk.strip()) for chunk in splitter.split_text(cleaned) if chunk.strip()]
 
 
 def _read_source(path: Path) -> str:
-    return path.read_text(encoding="utf-8") if path.suffix.lower() == ".md" else extract_text(path)
+    if path.suffix.lower() == ".md":
+        raw = path.read_text(encoding="utf-8", errors="ignore")
+    else:
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(path)
+            extracted = "\n".join(page.extract_text() or "" for page in reader.pages)
+            if len(extracted.strip()) >= 100:
+                raw = extracted
+            else:
+                raw = extract_text(path)
+        except Exception:
+            raw = extract_text(path)
+    return _clean_text(raw)
 
 
 def build_documents(data_dir: Path) -> tuple[List[str], List[Dict[str, object]], List[str]]:
@@ -106,10 +170,12 @@ def build_documents(data_dir: Path) -> tuple[List[str], List[Dict[str, object]],
     for source_file in discover_curriculum_files(data_dir):
         text = _read_source(source_file)
         metadata = infer_metadata(source_file, text)
+        storage_path = str(metadata.get("storage_path") or source_file.stem)
+        path_hash = hashlib.md5(storage_path.encode("utf-8")).hexdigest()[:8]
         for index, chunk in enumerate(chunk_text(text), start=1):
             documents.append(chunk)
             metadatas.append({**metadata, "chunk_index": index})
-            ids.append(f"{source_file.stem}-{index}")
+            ids.append(f"{path_hash}-{source_file.stem}-{index}")
     return documents, metadatas, ids
 
 
@@ -119,6 +185,11 @@ def main(argv: List[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Ingest the SSHS curriculum corpus into ChromaDB")
     parser.add_argument("--data-dir", type=Path, default=None)
     parser.add_argument("--vectorstore-dir", type=Path, default=None)
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print discovered files, inferred metadata (subject, quarter, storage_path), and estimated chunks without updating Chroma",
+    )
     args = parser.parse_args(argv)
 
     data_dir = args.data_dir or _resolve_source_dir()
@@ -126,6 +197,34 @@ def main(argv: List[str] | None = None) -> None:
     files = discover_curriculum_files(data_dir)
     if not files:
         raise SystemExit(f"No Markdown or PDF curriculum files found in {data_dir}")
+
+    if args.dry_run:
+        print(f"=== DRY RUN: Ingesting curriculum from {data_dir} ===")
+        print(f"Discovered {len(files)} files:\n")
+        total_estimated_chunks = 0
+        chunks_by_subject: Dict[str, int] = Counter()
+        for idx, source_file in enumerate(files, start=1):
+            text = _read_source(source_file)
+            metadata = infer_metadata(source_file, text)
+            chunks = chunk_text(text)
+            chunk_count = len(chunks)
+            total_estimated_chunks += chunk_count
+            subj = str(metadata["subject"])
+            chunks_by_subject[subj] += chunk_count
+            print(
+                f"[{idx:02d}/{len(files):02d}] {source_file.name}\n"
+                f"     storage_path:   {metadata['storage_path']}\n"
+                f"     subject:        {metadata['subject']}\n"
+                f"     quarter:        {metadata['quarter']}\n"
+                f"     content_domain: {metadata['content_domain']}\n"
+                f"     chunks:         {chunk_count}\n"
+            )
+        print("=== DRY RUN SUMMARY ===")
+        print(f"Total discovered files: {len(files)}")
+        print(f"Total estimated chunks: {total_estimated_chunks}")
+        print(f"Chunks per subject:     {dict(chunks_by_subject)}")
+        return
+
     vectorstore_dir.mkdir(parents=True, exist_ok=True)
     documents, metadatas, ids = build_documents(data_dir)
     if not documents:
@@ -149,6 +248,7 @@ def main(argv: List[str] | None = None) -> None:
         embedder = SentenceTransformer(EMBED_MODEL_NAME)
         encoded = embedder.encode(
             documents,
+            batch_size=64,
             normalize_embeddings=True,
             show_progress_bar=True,
         )
