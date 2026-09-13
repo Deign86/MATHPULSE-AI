@@ -613,9 +613,9 @@ function mergeStudentViews(primary: StudentView[], imported: StudentView[]): Stu
           : existing.hasRegisteredAccount ?? item.hasRegisteredAccount,
       source:
         (existing.source === 'registered' && item.source === 'import')
-        || (existing.source === 'import' && item.source === 'registered')
-        || existing.source === 'both'
-        || item.source === 'both'
+          || (existing.source === 'import' && item.source === 'registered')
+          || existing.source === 'both'
+          || item.source === 'both'
           ? 'both'
           : existing.source || item.source,
       accountUid: existing.accountUid || item.accountUid,
@@ -1324,12 +1324,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         prev.map((entry) =>
           entry.id === result.rosterId
             ? {
-                ...entry,
-                hasRegisteredAccount: true,
-                source: 'both',
-                accountUid: result.uid,
-                email: result.email || entry.email,
-              }
+              ...entry,
+              hasRegisteredAccount: true,
+              source: 'both',
+              accountUid: result.uid,
+              email: result.email || entry.email,
+            }
             : entry,
         ),
       );
@@ -1414,20 +1414,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     if (!currentUser || !pendingRemoveStudent) return;
     const student = pendingRemoveStudent;
     setPendingRemoveStudent(null);
-      const classSectionId = student.classSectionId || student.classroomId || '';
-      if (!classSectionId) {
-        toast.error('Cannot determine class section for this student.');
-        return;
-      }
-      try {
-        await removeStudentFromClass(student.accountUid || student.id, classSectionId);
-        setStudents((prev) => prev.filter((s) => s.id !== student.id));
-        toast.success(`Removed ${student.name} from class.`);
-      } catch (err) {
-        console.error('Remove student failed:', err);
-        toast.error('Failed to remove student.');
-      }
-    },
+    const classSectionId = student.classSectionId || student.classroomId || '';
+    if (!classSectionId) {
+      toast.error('Cannot determine class section for this student.');
+      return;
+    }
+    try {
+      await removeStudentFromClass(student.accountUid || student.id, classSectionId);
+      setStudents((prev) => prev.filter((s) => s.id !== student.id));
+      toast.success(`Removed ${student.name} from class.`);
+    } catch (err) {
+      console.error('Remove student failed:', err);
+      toast.error('Failed to remove student.');
+    }
+  },
     [currentUser, pendingRemoveStudent],
   );
 
@@ -1506,7 +1506,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       {isMobileViewport && mobileNavOpen && (
         <button
           aria-label="Close navigation"
-          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-[1px]"
+          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-[2px]"
           onClick={() => setMobileNavOpen(false)}
         />
       )}
@@ -1516,12 +1516,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         initial={false}
         animate={{
           width: isMobileViewport ? 280 : sidebarCollapsed && !sidebarHovered ? 80 : 280,
-          x: isMobileViewport ? (mobileNavOpen ? 0 : -300) : 0,
+          x: isMobileViewport ? (mobileNavOpen ? 0 : 320) : 0,
         }}
         transition={{ type: 'spring', stiffness: 360, damping: 34 }}
         onMouseEnter={() => !isMobileViewport && sidebarCollapsed && setSidebarHovered(true)}
         onMouseLeave={() => setSidebarHovered(false)}
-        className="fixed inset-y-0 left-0 z-40 bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] flex flex-col shadow-sm lg:static lg:z-auto p-5"
+        className="fixed top-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] right-0 z-40 bg-[#f7f9fc] rounded-none rounded-l-3xl lg:rounded-3xl border border-[#dde3eb] flex flex-col shadow-2xl lg:shadow-sm lg:static lg:right-auto lg:top-auto lg:bottom-auto lg:z-auto p-5 overflow-y-auto pb-6"
       >
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : 'justify-between'}`}>
@@ -1690,20 +1690,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery', 'calendar', 'notifications', 'question_bank', 'import', 'quiz_maker'].includes(activeView) && (
-            <header className="bg-transparent border-b border-[#e2e8f0]/40 px-[24px] xl:px-[32px] pt-[24px] pb-[16px] flex-shrink-0 z-30">
+            <header className="bg-transparent border-b border-[#e2e8f0]/40 px-3.5 sm:px-6 xl:px-8 pt-3 sm:pt-6 pb-2 sm:pb-4 flex-shrink-0 z-30">
               <div className="flex flex-row items-center justify-between gap-2 mb-0">
-                <div className="flex-1 min-w-0 flex items-center gap-2">
-                  {isMobileViewport && (
-                    <button
-                      onClick={() => setMobileNavOpen(true)}
-                      className="mt-1 p-2 rounded-lg border border-border text-muted-foreground hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-[#9956DE]/12 transition-colors"
-                      aria-label="Open navigation"
-                    >
-                      <Menu size={18} />
-                    </button>
-                  )}
-                  <div>
-                    <h1 className="text-lg sm:text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight truncate text-balance">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-base sm:text-xl lg:text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight truncate text-balance">
                       {activeView === 'dashboard' && 'Teacher Dashboard'}
                       {activeView === 'analytics' && 'Class Analytics'}
                       {activeView === 'intervention' && 'Intervention Center'}
@@ -1715,7 +1706,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       {activeView === 'import' && 'Data Import'}
                       {activeView === 'quiz_maker' && 'AI Quiz Maker'}
                     </h1>
-                    <p className="text-[13px] text-[#64748b] mt-1">
+                    <p className="text-xs sm:text-[13px] text-[#64748b] mt-0.5 sm:mt-1 line-clamp-1 sm:line-clamp-none">
                       {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
                       {activeView === 'analytics' && 'Analyze performance and risk across your classes.'}
                       {activeView === 'intervention' && 'Identify and support students who need immediate help.'}
@@ -1747,7 +1738,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   {/* AI Insights Button */}
                   <div className="relative group">
                     <button
@@ -1755,12 +1746,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                         setInsightModalOpen(true);
                         setInsightDismissed(true);
                       }}
-                      className="relative w-10 h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer hover:scale-[1.02]"
+                      className="relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-[#eef2ff]/80 hover:bg-[#e0e7ff] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#a5b4fc]/60 text-[#4f46e5] hover:border-[#818cf8] transition-colors cursor-pointer active:scale-95 sm:hover:scale-[1.02]"
                       aria-label="View AI Insight"
                     >
-                      <Sparkles size={18} />
+                      <Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
                       {!insightDismissed && dailyInsight && (
-                        <div className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
+                        <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
                       )}
                     </button>
                     <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
@@ -1771,26 +1762,26 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {isMobileViewport && activeView === 'dashboard' && (
                     <button
                       onClick={() => setShowMobileCalendar(v => !v)}
-                      className={`relative w-10 h-10 flex items-center justify-center rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border transition-colors cursor-pointer hover:scale-[1.02] ${showMobileCalendar
+                      className={`relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border transition-colors cursor-pointer active:scale-95 sm:hover:scale-[1.02] ${showMobileCalendar
                         ? 'bg-[#818cf8] border-[#6366f1] text-white'
                         : 'bg-white/60 hover:bg-white/80 border-white/50 text-[#64748b] hover:text-[#1e293b]'
                         }`}
                       aria-label={showMobileCalendar ? 'Close calendar panel' : 'Open calendar panel'}
                       title={showMobileCalendar ? 'Close calendar' : 'View calendar'}
                     >
-                      <Calendar size={18} />
+                      <Calendar size={16} className="sm:w-[18px] sm:h-[18px]" />
                     </button>
                   )}
                   {/* Notification Bell */}
                   <div className="relative">
                     <button
                       onClick={() => setShowNotifications(!showNotifications)}
-                      className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
+                      className="relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer active:scale-95 sm:hover:scale-[1.02]"
                       aria-label="View notifications"
                       title="Notifications"
                     >
-                      <Bell size={18} />
-                      {teacherUnreadCount > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>}
+                      <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />
+                      {teacherUnreadCount > 0 && <span className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>}
                     </button>
 
                     <NotificationDropdown
@@ -1799,16 +1790,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       onViewAll={() => setActiveView('notifications')}
                     />
                   </div>
-                  {/* Profile Pill - Hidden on Dashboard view since it has its own profile in the right sidebar */}
+                  {/* Profile Pill - Avatar only on mobile to prevent squishing header */}
                   {activeView !== 'dashboard' && (
                     <div
                       onClick={onOpenProfile}
-                      className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02]"
+                      className="flex items-center gap-2 bg-white/60 p-1 sm:px-4 sm:py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-8 sm:h-10 active:scale-95 sm:hover:scale-[1.02]"
+                      title={teacherName || 'Teacher Profile'}
                     >
                       <div className="w-6 h-6 rounded-full bg-indigo-100 overflow-hidden shrink-0">
                         <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=e0e7ff&color=4f46e5`} alt="Profile" className="w-full h-full object-cover" />
                       </div>
-                      <span className="text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
+                      <span className="hidden sm:inline text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
                     </div>
                   )}
                 </div>
@@ -1817,7 +1809,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           )}
 
           {/* View Content */}
-          <main className={`flex-1 flex flex-col ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          <main className={`flex-1 flex flex-col ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden pb-16 lg:pb-0' : 'overflow-y-auto overscroll-y-contain pb-24 lg:pb-0'}`}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeView}
@@ -1825,253 +1817,253 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="flex-1 flex flex-col min-h-0"
+                className="flex-1 flex flex-col min-h-0 w-full"
               >
-              {activeView === 'dashboard' && (
-                <DashboardView
-                  classes={managedClasses}
-                  liveActivity={liveActivity}
-                  onViewClass={handleViewClass}
-                  onViewAllClasses={() => setActiveView('analytics')}
-                  onViewActivityStudent={(name) => {
-                    const match = students.find(s => s.name === name);
-                    if (match) handleViewStudent(match);
-                  }}
-                  dailyInsight={dailyInsight}
-                  insightLoading={insightLoading}
-                  isInsightDismissed={insightDismissed}
-                  onDismissInsight={() => setInsightDismissed(true)}
-                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                  totalStudents={totalStudents}
-                  totalAtRisk={totalAtRisk}
-                  avgPerformance={avgPerformance}
-                  onCreateClass={() => setShowCreateClassModal(true)}
-                />
-              )}
-              {activeView === 'analytics' && effectiveAnalyticsClass && (
-                <AnalyticsView
-                  selectedClass={effectiveAnalyticsClass}
-                  students={filteredStudentsForAnalytics}
-                  allClasses={classes}
-                  riskDistribution={riskDistribution}
-                  topicPerformance={topicPerformance}
-                  onViewStudent={handleViewStudent}
-                  onCreateAccount={handleOpenCreateAccount}
-                  onReassignSection={handleReassignSection}
-                  reassignBusyId={reassignBusyId}
-                  onBack={() => setSelectedClass(null)}
-                  teacherOptions={teacherDirectory}
-                  managerUpdating={managerUpdating}
-                  onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  onOpenProfile={onOpenProfile}
-                  classColor={effectiveClassColor}
-                  insightDismissed={insightDismissed}
-                  onOpenInsightModal={() => setInsightModalOpen(true)}
-                  onAddStudents={() => setShowAddStudentsModal(true)}
-                  onRemoveStudent={handleRemoveStudent}
-                />
-              )}
-              {activeView === 'analytics' && !effectiveAnalyticsClass && managedClasses.length > 0 && (
-                <ClassesOverviewMenu
-                  classes={managedClasses}
-                  onSelectClass={handleViewClass}
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  onOpenProfile={onOpenProfile}
-                  insightDismissed={insightDismissed}
-                  onOpenInsightModal={() => setInsightModalOpen(true)}
-                  onCreateClass={() => setShowCreateClassModal(true)}
-                />
-              )}
-              {activeView === 'analytics' && !effectiveAnalyticsClass && managedClasses.length === 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="p-6"
-                >
-                  <div className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
-                    <div className="w-12 h-12 rounded-xl bg-[#9956DE]/20 text-[#9956DE] flex items-center justify-center mb-4">
-                      <BarChart3 size={24} />
+                {activeView === 'dashboard' && (
+                  <DashboardView
+                    classes={managedClasses}
+                    liveActivity={liveActivity}
+                    onViewClass={handleViewClass}
+                    onViewAllClasses={() => setActiveView('analytics')}
+                    onViewActivityStudent={(name) => {
+                      const match = students.find(s => s.name === name);
+                      if (match) handleViewStudent(match);
+                    }}
+                    dailyInsight={dailyInsight}
+                    insightLoading={insightLoading}
+                    isInsightDismissed={insightDismissed}
+                    onDismissInsight={() => setInsightDismissed(true)}
+                    onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                    totalStudents={totalStudents}
+                    totalAtRisk={totalAtRisk}
+                    avgPerformance={avgPerformance}
+                    onCreateClass={() => setShowCreateClassModal(true)}
+                  />
+                )}
+                {activeView === 'analytics' && effectiveAnalyticsClass && (
+                  <AnalyticsView
+                    selectedClass={effectiveAnalyticsClass}
+                    students={filteredStudentsForAnalytics}
+                    allClasses={classes}
+                    riskDistribution={riskDistribution}
+                    topicPerformance={topicPerformance}
+                    onViewStudent={handleViewStudent}
+                    onCreateAccount={handleOpenCreateAccount}
+                    onReassignSection={handleReassignSection}
+                    reassignBusyId={reassignBusyId}
+                    onBack={() => setSelectedClass(null)}
+                    teacherOptions={teacherDirectory}
+                    managerUpdating={managerUpdating}
+                    onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                    classColor={effectiveClassColor}
+                    insightDismissed={insightDismissed}
+                    onOpenInsightModal={() => setInsightModalOpen(true)}
+                    onAddStudents={() => setShowAddStudentsModal(true)}
+                    onRemoveStudent={handleRemoveStudent}
+                  />
+                )}
+                {activeView === 'analytics' && !effectiveAnalyticsClass && managedClasses.length > 0 && (
+                  <ClassesOverviewMenu
+                    classes={managedClasses}
+                    onSelectClass={handleViewClass}
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                    insightDismissed={insightDismissed}
+                    onOpenInsightModal={() => setInsightModalOpen(true)}
+                    onCreateClass={() => setShowCreateClassModal(true)}
+                  />
+                )}
+                {activeView === 'analytics' && !effectiveAnalyticsClass && managedClasses.length === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="p-6"
+                  >
+                    <div className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
+                      <div className="w-12 h-12 rounded-xl bg-[#9956DE]/20 text-[#9956DE] flex items-center justify-center mb-4">
+                        <BarChart3 size={24} />
+                      </div>
+                      <h2 className="text-2xl font-display font-semibold text-foreground mb-2">Class Analytics</h2>
+                      <p className="text-sm text-muted-foreground font-body leading-relaxed mb-4">No classes available yet. Create a class or import class records to unlock analytics views.</p>
+                      <Button onClick={() => setShowCreateClassModal(true)} className="bg-[#9956DE] hover:bg-[#7c3aed] text-white">
+                        <Plus size={16} className="mr-1.5" />Create Class
+                      </Button>
                     </div>
-                    <h2 className="text-2xl font-display font-semibold text-foreground mb-2">Class Analytics</h2>
-                    <p className="text-sm text-muted-foreground font-body leading-relaxed mb-4">No classes available yet. Create a class or import class records to unlock analytics views.</p>
-                    <Button onClick={() => setShowCreateClassModal(true)} className="bg-[#9956DE] hover:bg-[#7c3aed] text-white">
-                      <Plus size={16} className="mr-1.5" />Create Class
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-              {activeView === 'intervention' && selectedStudent && (
-                <InterventionView
-                  student={selectedStudent}
-                  teacherId={currentUser?.uid || ''}
-                  teacherName={teacherName}
-                  initialCache={interventionCacheRef.current.get(selectedStudent.id)}
-                  onCacheUpdate={(id, cache) => interventionCacheRef.current.set(id, cache)}
-                  onStudentUpdated={(updatedStudent) => {
-                    const previousStudentKey = selectedStudent ? buildStudentViewKey(selectedStudent) : null;
-                    setSelectedStudent(updatedStudent);
-                    setStudents((prev) =>
-                      prev.map((item) => {
-                        const itemKey = buildStudentViewKey(item);
-                        const matchesPreviousKey = previousStudentKey ? itemKey === previousStudentKey : false;
-                        const matchesExactIdentity =
-                          item.id === updatedStudent.id
-                          && normalizeClassSectionId(item.classSectionId) === normalizeClassSectionId(updatedStudent.classSectionId);
-                        return matchesPreviousKey || matchesExactIdentity ? updatedStudent : item;
-                      })
-                    );
-                  }}
-                  onBack={handleBackToAnalytics}
-                  onNavigateToQuizMaker={(tab) => {
-                    setActiveView('quiz_maker');
-                    // pass tab hint via sessionStorage so QuizMaker can pick it up
-                    if (tab) sessionStorage.setItem('quizMakerInitialTab', tab);
-                  }}
-                />
-              )}
-              {activeView === 'topic_mastery' && (
-                <TopicMasteryView
-                  classSectionId={selectedClassSectionId}
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  onOpenProfile={onOpenProfile}
-                />
-              )}
-              {activeView === 'competency' && effectiveAnalyticsClass && (
-                <StudentCompetencyTable
-                  classSectionId={selectedClassSectionId}
-                  className={selectedClass?.name}
-                  fallbackStudents={students}
-                  onBack={() => setSelectedClass(null)}
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  onOpenProfile={onOpenProfile}
-                  insightDismissed={insightDismissed}
-                  onOpenInsightModal={() => setInsightModalOpen(true)}
-                />
-              )}
-              {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
-                <ClassesOverviewMenu
-                  classes={managedClasses}
-                  onSelectClass={(cls) => setSelectedClass(cls)}
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  onOpenProfile={onOpenProfile}
-                  insightDismissed={insightDismissed}
-                  onOpenInsightModal={() => setInsightModalOpen(true)}
-                  viewType="competency"
-                />
-              )}
-              {activeView === 'competency' && !effectiveAnalyticsClass && classes.length === 0 && (
-                <ToolsPlaceholderView
-                  icon={Users}
-                  title="Student Competency"
-                  description="No classes available yet. Import class records to view competency breakdowns."
-                />
-              )}
-              {activeView === 'import' && (
-                <>
-                <DataImportView
-                  classSectionId={selectedClassSectionId}
-                  className={selectedClass?.name}
-                  classMetadata={selectedClass?.classMetadata}
-                  students={students}
-                  classes={managedClasses.map(c => ({ id: c.id, name: c.name, classSectionId: c.classSectionId }))}
-                  teacherId={currentUser?.uid || ''}
-                  teacherName={teacherName}
-                  onStudentsUpdated={(updated) => setStudents(updated)}
-                  onBackToClasses={() => setActiveView('dashboard')}
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  onOpenProfile={onOpenProfile}
-                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                  userPhoto={userProfile?.photo}
-                  onImportedClassRecords={(payload) => {
-                    const uploadedStudents = payload.students.map((item) =>
-                      toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
-                    );
+                  </motion.div>
+                )}
+                {activeView === 'intervention' && selectedStudent && (
+                  <InterventionView
+                    student={selectedStudent}
+                    teacherId={currentUser?.uid || ''}
+                    teacherName={teacherName}
+                    initialCache={interventionCacheRef.current.get(selectedStudent.id)}
+                    onCacheUpdate={(id, cache) => interventionCacheRef.current.set(id, cache)}
+                    onStudentUpdated={(updatedStudent) => {
+                      const previousStudentKey = selectedStudent ? buildStudentViewKey(selectedStudent) : null;
+                      setSelectedStudent(updatedStudent);
+                      setStudents((prev) =>
+                        prev.map((item) => {
+                          const itemKey = buildStudentViewKey(item);
+                          const matchesPreviousKey = previousStudentKey ? itemKey === previousStudentKey : false;
+                          const matchesExactIdentity =
+                            item.id === updatedStudent.id
+                            && normalizeClassSectionId(item.classSectionId) === normalizeClassSectionId(updatedStudent.classSectionId);
+                          return matchesPreviousKey || matchesExactIdentity ? updatedStudent : item;
+                        })
+                      );
+                    }}
+                    onBack={handleBackToAnalytics}
+                    onNavigateToQuizMaker={(tab) => {
+                      setActiveView('quiz_maker');
+                      // pass tab hint via sessionStorage so QuizMaker can pick it up
+                      if (tab) sessionStorage.setItem('quizMakerInitialTab', tab);
+                    }}
+                  />
+                )}
+                {activeView === 'topic_mastery' && (
+                  <TopicMasteryView
+                    classSectionId={selectedClassSectionId}
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                  />
+                )}
+                {activeView === 'competency' && effectiveAnalyticsClass && (
+                  <StudentCompetencyTable
+                    classSectionId={selectedClassSectionId}
+                    className={selectedClass?.name}
+                    fallbackStudents={students}
+                    onBack={() => setSelectedClass(null)}
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                    insightDismissed={insightDismissed}
+                    onOpenInsightModal={() => setInsightModalOpen(true)}
+                  />
+                )}
+                {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
+                  <ClassesOverviewMenu
+                    classes={managedClasses}
+                    onSelectClass={(cls) => setSelectedClass(cls)}
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                    insightDismissed={insightDismissed}
+                    onOpenInsightModal={() => setInsightModalOpen(true)}
+                    viewType="competency"
+                  />
+                )}
+                {activeView === 'competency' && !effectiveAnalyticsClass && classes.length === 0 && (
+                  <ToolsPlaceholderView
+                    icon={Users}
+                    title="Student Competency"
+                    description="No classes available yet. Import class records to view competency breakdowns."
+                  />
+                )}
+                {activeView === 'import' && (
+                  <>
+                    <DataImportView
+                      classSectionId={selectedClassSectionId}
+                      className={selectedClass?.name}
+                      classMetadata={selectedClass?.classMetadata}
+                      students={students}
+                      classes={managedClasses.map(c => ({ id: c.id, name: c.name, classSectionId: c.classSectionId }))}
+                      teacherId={currentUser?.uid || ''}
+                      teacherName={teacherName}
+                      onStudentsUpdated={(updated) => setStudents(updated)}
+                      onBackToClasses={() => setActiveView('dashboard')}
+                      onOpenNotifications={() => setActiveView('notifications')}
+                      onOpenProfile={onOpenProfile}
+                      onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                      userPhoto={userProfile?.photo}
+                      onImportedClassRecords={(payload) => {
+                        const uploadedStudents = payload.students.map((item) =>
+                          toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
+                        );
 
-                    const resolvedClassMetadata = resolveClassMetadata({
-                      metadata: payload.classMetadata,
-                      classSectionId: payload.classSectionId,
-                      className: payload.className,
-                    });
-                    const classSection = resolvedClassMetadata.classSectionId || 'imported_class';
-                    const resolvedClassName = resolvedClassMetadata.className || 'Imported Class';
-                    const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
-                    const avgScore = uploadedStudents.length > 0
-                      ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
-                      : 0;
+                        const resolvedClassMetadata = resolveClassMetadata({
+                          metadata: payload.classMetadata,
+                          classSectionId: payload.classSectionId,
+                          className: payload.className,
+                        });
+                        const classSection = resolvedClassMetadata.classSectionId || 'imported_class';
+                        const resolvedClassName = resolvedClassMetadata.className || 'Imported Class';
+                        const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
+                        const avgScore = uploadedStudents.length > 0
+                          ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
+                          : 0;
 
-                    const uploadedClass: ClassView = {
-                      id: classSection,
-                      name: resolvedClassName,
-                      classSectionId: classSection,
-                      classMetadata: {
-                        ...resolvedClassMetadata,
-                        classSectionId: classSection,
-                        className: resolvedClassName,
-                      },
-                      schedule: 'Mon-Fri',
-                      studentCount: uploadedStudents.length,
-                      avgScore,
-                      atRiskCount,
-                      riskLevel: atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low',
-                    };
+                        const uploadedClass: ClassView = {
+                          id: classSection,
+                          name: resolvedClassName,
+                          classSectionId: classSection,
+                          classMetadata: {
+                            ...resolvedClassMetadata,
+                            classSectionId: classSection,
+                            className: resolvedClassName,
+                          },
+                          schedule: 'Mon-Fri',
+                          studentCount: uploadedStudents.length,
+                          avgScore,
+                          atRiskCount,
+                          riskLevel: atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low',
+                        };
 
-                    setStudents((prev) => mergeStudentViews(prev, uploadedStudents));
-                    setClasses((prev) => mergeClassViews(prev, [uploadedClass]));
-                  }}
-                  onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
-                />
-                <div className="mt-6">
-                  <TeacherModuleStatusControl teacherId={currentUser?.uid || ''} />
-                </div>
-                </>
-              )}
-              {activeView === 'notifications' && (
-                <TeacherNotificationsView
-                  liveActivity={liveActivity}
-                  atRiskStudents={students
-                    .filter(s => s.riskLevel === 'high')
-                    .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  onOpenProfile={onOpenProfile}
-                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                  userPhoto={userProfile?.photo}
-                  teacherName={teacherName}
-                />
-              )}
-              {activeView === 'calendar' && (
-                <TeacherCalendarView
-                  classes={classes}
-                  teacherId={currentUser?.uid}
-                />
-              )}
-              {/* Edit records view is now handled internally by DataImportView */}
-              {activeView === 'quiz_maker' && (
-                <QuizMaker
-                  onBack={() => {
-                    const returnTo = sessionStorage.getItem('quizMakerReturnTo');
-                    sessionStorage.removeItem('quizMakerReturnTo');
-                    sessionStorage.removeItem('quizMakerInitialTab');
-                    // SAFETY: trusted internal value already conforms to the asserted type.
-                    setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
-                  }}
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  onOpenProfile={onOpenProfile}
-                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                  userPhoto={userProfile?.photo}
-                  teacherName={teacherName}
-                />
-              )}
-              {activeView === 'question_bank' && (
-                <QuestionBankPanel
-                  onOpenNotifications={() => setActiveView('notifications')}
-                  onOpenProfile={onOpenProfile}
-                  onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                  userPhoto={userProfile?.photo}
-                  teacherName={teacherName}
-                />
-              )}
+                        setStudents((prev) => mergeStudentViews(prev, uploadedStudents));
+                        setClasses((prev) => mergeClassViews(prev, [uploadedClass]));
+                      }}
+                      onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
+                    />
+                    <div className="mt-6">
+                      <TeacherModuleStatusControl teacherId={currentUser?.uid || ''} />
+                    </div>
+                  </>
+                )}
+                {activeView === 'notifications' && (
+                  <TeacherNotificationsView
+                    liveActivity={liveActivity}
+                    atRiskStudents={students
+                      .filter(s => s.riskLevel === 'high')
+                      .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                    onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                    userPhoto={userProfile?.photo}
+                    teacherName={teacherName}
+                  />
+                )}
+                {activeView === 'calendar' && (
+                  <TeacherCalendarView
+                    classes={classes}
+                    teacherId={currentUser?.uid}
+                  />
+                )}
+                {/* Edit records view is now handled internally by DataImportView */}
+                {activeView === 'quiz_maker' && (
+                  <QuizMaker
+                    onBack={() => {
+                      const returnTo = sessionStorage.getItem('quizMakerReturnTo');
+                      sessionStorage.removeItem('quizMakerReturnTo');
+                      sessionStorage.removeItem('quizMakerInitialTab');
+                      // SAFETY: trusted internal value already conforms to the asserted type.
+                      setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
+                    }}
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                    onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                    userPhoto={userProfile?.photo}
+                    teacherName={teacherName}
+                  />
+                )}
+                {activeView === 'question_bank' && (
+                  <QuestionBankPanel
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                    onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                    userPhoto={userProfile?.photo}
+                    teacherName={teacherName}
+                  />
+                )}
               </motion.div>
             </AnimatePresence>
           </main>
@@ -2089,6 +2081,82 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         )}
       </div>
 
+      {/* Mobile Bottom Navigation Bar */}
+      {isMobileViewport && (
+        <nav
+          aria-label="Bottom Navigation"
+          className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-[#dde3eb] shadow-[0_-2px_12px_rgba(0,0,0,0.06)] px-2 pt-1 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden touch-manipulation"
+        >
+          <div className="grid grid-cols-5 items-center justify-around max-w-lg mx-auto">
+            {/* Dashboard */}
+            <button
+              type="button"
+              onClick={handleBackToDashboard}
+              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${activeView === 'dashboard'
+                  ? 'text-[#4f46e5] font-bold'
+                  : 'text-[#64748b] hover:text-[#1e293b]'
+                }`}
+            >
+              <LayoutDashboard size={20} strokeWidth={activeView === 'dashboard' ? 2.4 : 1.8} />
+              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Dashboard</span>
+            </button>
+
+            {/* Class Analytics */}
+            <button
+              type="button"
+              onClick={() => handleSidebarNav('analytics')}
+              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${activeView === 'analytics' || activeView === 'intervention'
+                  ? 'text-[#4f46e5] font-bold'
+                  : 'text-[#64748b] hover:text-[#1e293b]'
+                }`}
+            >
+              <BarChart3 size={20} strokeWidth={activeView === 'analytics' || activeView === 'intervention' ? 2.4 : 1.8} />
+              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Analytics</span>
+            </button>
+
+            {/* Students / Topic Mastery */}
+            <button
+              type="button"
+              onClick={() => handleSidebarNav('topic_mastery')}
+              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${activeView === 'topic_mastery' || activeView === 'competency'
+                  ? 'text-[#4f46e5] font-bold'
+                  : 'text-[#64748b] hover:text-[#1e293b]'
+                }`}
+            >
+              <Target size={20} strokeWidth={activeView === 'topic_mastery' || activeView === 'competency' ? 2.4 : 1.8} />
+              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Mastery</span>
+            </button>
+
+            {/* AI Quiz Maker */}
+            <button
+              type="button"
+              onClick={() => setActiveView('quiz_maker')}
+              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${activeView === 'quiz_maker' || activeView === 'question_bank'
+                  ? 'text-[#4f46e5] font-bold'
+                  : 'text-[#64748b] hover:text-[#1e293b]'
+                }`}
+            >
+              <ClipboardCheck size={20} strokeWidth={activeView === 'quiz_maker' || activeView === 'question_bank' ? 2.4 : 1.8} />
+              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Quiz Maker</span>
+            </button>
+
+            {/* More / Menu Drawer */}
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(prev => !prev)}
+              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${mobileNavOpen
+                  ? 'text-[#4f46e5] font-bold'
+                  : 'text-[#64748b] hover:text-[#1e293b]'
+                }`}
+              aria-label="Toggle navigation menu"
+            >
+              <Menu size={20} strokeWidth={1.8} />
+              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Menu</span>
+            </button>
+          </div>
+        </nav>
+      )}
+
       {/* Mobile: calendar/profile panel as a fixed right-side drawer */}
       <AnimatePresence>
         {isMobileViewport && activeView === 'dashboard' && showMobileCalendar && (
@@ -2100,7 +2168,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[2px]"
+              className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-[2px]"
               aria-label="Close calendar panel"
               onClick={() => setShowMobileCalendar(false)}
             />
@@ -2111,14 +2179,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="fixed top-0 right-0 bottom-0 z-50 w-[300px] max-w-[85vw] shadow-2xl"
+              className="fixed top-0 right-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] z-40 w-[320px] max-w-[88vw] shadow-2xl bg-white overflow-hidden flex flex-col rounded-l-3xl"
             >
               <DashboardRightSidebar
                 onViewCalendar={() => { setActiveView('calendar'); setShowMobileCalendar(false); }}
                 onOpenProfile={() => { onOpenProfile?.(); setShowMobileCalendar(false); }}
+                onClose={() => setShowMobileCalendar(false)}
                 userProfile={userProfile}
                 teacherName={teacherName}
                 liveActivity={liveActivity}
+                isMobile={true}
               />
             </motion.div>
           </>
@@ -2151,11 +2221,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 </button>
               </div>
               <div className="p-6">
-                  <div className="text-sm text-slate-600 leading-relaxed">
-                    <ChatMarkdown>
-                      {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `**${totalAtRisk} students (${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%)** are currently at high risk of falling behind in recent topics. Review their progress in the analytics view to plan interventions.`}
-                    </ChatMarkdown>
-                  </div>
+                <div className="text-sm text-slate-600 leading-relaxed">
+                  <ChatMarkdown>
+                    {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `**${totalAtRisk} students (${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%)** are currently at high risk of falling behind in recent topics. Review their progress in the analytics view to plan interventions.`}
+                  </ChatMarkdown>
+                </div>
               </div>
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
                 <button
@@ -2221,7 +2291,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
         schoolYear={
           createAccountSeed
             ? students.find((entry) => entry.id === createAccountSeed.rosterId)?.classMetadata?.schoolYear
-              || String(new Date().getFullYear())
+            || String(new Date().getFullYear())
             : undefined
         }
         onCreated={handleAccountCreated}
@@ -2331,78 +2401,78 @@ const DashboardView: React.FC<{
               Some students may be at risk of falling behind. Click to view detailed analysis.
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0 self-end sm:self-auto">
-            <button onClick={(e) => { e.stopPropagation(); onDismissInsight(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors">Dismiss</button>
-            <button onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }} className="px-[15px] py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#4f46e5] bg-[#4f46e5] text-white shadow-[0_2px_8px_rgba(79,70,229,0.13)] hover:bg-[#4338ca] transition-colors">Review students</button>
+          <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
+            <button onClick={(e) => { e.stopPropagation(); onDismissInsight(); }} className="px-3 sm:px-[15px] py-1.5 sm:py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors active:scale-95">Dismiss</button>
+            <button onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }} className="px-3 sm:px-[15px] py-1.5 sm:py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#4f46e5] bg-[#4f46e5] text-white shadow-[0_2px_8px_rgba(79,70,229,0.13)] hover:bg-[#4338ca] transition-colors active:scale-95">Review students</button>
           </div>
         </div>
       )}
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         {/* Card 1 — Total Students */}
-        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-xl sm:rounded-lg p-3 sm:p-[15px] text-white flex flex-col gap-1.5 sm:gap-[10px]">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+        <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out pointer-events-none" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out pointer-events-none" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">Total students</span>
-            <div className="flex bg-white/20 p-1.5 rounded-lg"><Users size={15} /></div>
+            <span className="text-[11px] font-semibold opacity-90 leading-tight">Total students</span>
+            <div className="flex bg-white/20 p-1 sm:p-1.5 rounded-lg"><Users size={14} className="sm:w-[15px] sm:h-[15px]" /></div>
           </div>
-          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight tabular-nums">{totalStudents}</div>
-          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
-            <span>Added this year</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums">{totalStudents > 0 ? '+1' : '0'}</span>
+          <div className="relative z-10 text-lg sm:text-[26px] font-bold sm:font-semibold tracking-tight tabular-nums">{totalStudents}</div>
+          <div className="relative z-10 border-t border-white/30 pt-1 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
+            <span className="truncate pr-1">Added this year</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums shrink-0">{totalStudents > 0 ? '+1' : '0'}</span>
           </div>
         </div>
 
         {/* Card 2 — Class Average */}
-        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-xl sm:rounded-lg p-3 sm:p-[15px] text-white flex flex-col gap-1.5 sm:gap-[10px]">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+        <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out pointer-events-none" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out pointer-events-none" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">Class average</span>
-            <div className="flex bg-white/20 p-1.5 rounded-lg"><Target size={15} /></div>
+            <span className="text-[11px] font-semibold opacity-90 leading-tight">Class average</span>
+            <div className="flex bg-white/20 p-1 sm:p-1.5 rounded-lg"><Target size={14} className="sm:w-[15px] sm:h-[15px]" /></div>
           </div>
-          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight tabular-nums">{avgPerformance}%</div>
-          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
-            <span>Vs. last month</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums">+2.5%</span>
+          <div className="relative z-10 text-lg sm:text-[26px] font-bold sm:font-semibold tracking-tight tabular-nums">{avgPerformance}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-1 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
+            <span className="truncate pr-1">Vs. last month</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums shrink-0">+2.5%</span>
           </div>
         </div>
 
         {/* Card 3 — Engagement Rate */}
-        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-xl sm:rounded-lg p-3 sm:p-[15px] text-white flex flex-col gap-1.5 sm:gap-[10px]">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+        <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out pointer-events-none" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out pointer-events-none" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">Engagement</span>
-            <div className="flex bg-white/20 p-1.5 rounded-lg"><Activity size={15} /></div>
+            <span className="text-[11px] font-semibold opacity-90 leading-tight">Engagement</span>
+            <div className="flex bg-white/20 p-1 sm:p-1.5 rounded-lg"><Activity size={14} className="sm:w-[15px] sm:h-[15px]" /></div>
           </div>
-          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight tabular-nums">{engagementRate}%</div>
-          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
-            <span>Active participants</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums">{Math.round((engagementRate / 100) * totalStudents)}</span>
+          <div className="relative z-10 text-lg sm:text-[26px] font-bold sm:font-semibold tracking-tight tabular-nums">{engagementRate}%</div>
+          <div className="relative z-10 border-t border-white/30 pt-1 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
+            <span className="truncate pr-1">Active rate</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums shrink-0">{Math.round((engagementRate / 100) * totalStudents)}</span>
           </div>
         </div>
 
         {/* Card 4 — At Risk */}
-        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-xl sm:rounded-lg p-3 sm:p-[15px] text-white flex flex-col gap-1.5 sm:gap-[10px]">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+        <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px]">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out pointer-events-none" />
+          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out pointer-events-none" />
           <div className="relative z-10 flex justify-between items-start">
-            <span className="text-xs sm:text-[11px] font-semibold opacity-90 leading-tight">At risk</span>
-            <div className="flex bg-white/20 p-1.5 rounded-lg"><AlertCircle size={15} /></div>
+            <span className="text-[11px] font-semibold opacity-90 leading-tight">At risk</span>
+            <div className="flex bg-white/20 p-1 sm:p-1.5 rounded-lg"><AlertCircle size={14} className="sm:w-[15px] sm:h-[15px]" /></div>
           </div>
-          <div className="relative z-10 text-xl sm:text-[26px] font-semibold tracking-tight tabular-nums">{totalAtRisk}</div>
-          <div className="relative z-10 border-t border-white/30 pt-1.5 sm:pt-2 flex justify-between items-center text-[10px] opacity-90">
-            <span>Requires attention</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums">{riskPercentage}%</span>
+          <div className="relative z-10 text-lg sm:text-[26px] font-bold sm:font-semibold tracking-tight tabular-nums">{totalAtRisk}</div>
+          <div className="relative z-10 border-t border-white/30 pt-1 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90">
+            <span className="truncate pr-1">Needs attention</span>
+            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-semibold tabular-nums shrink-0">{riskPercentage}%</span>
           </div>
         </div>
       </div>
 
       {/* Classes Container */}
-      <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[18px_20px] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+      <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-3.5 sm:p-[18px_20px] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <div className="flex justify-between items-center mb-[14px]">
           <h2 className="text-[15px] font-semibold text-[#1e293b] text-balance">My classes</h2>
           <span onClick={onViewAllClasses} className="text-[12px] text-[#10b981] font-semibold cursor-pointer hover:underline">View all</span>
@@ -2433,22 +2503,25 @@ const DashboardView: React.FC<{
               <div
                 key={classItem.id}
                 onClick={() => onViewClass(classItem)}
-                className={`relative overflow-hidden flex items-center gap-3 p-[12px_13px] pl-[16px] border border-[#f1f5f9] rounded-[14px] cursor-pointer ${color.borderHover} hover:shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:bg-[#fafbff] transition-all group`}
+                className={`relative overflow-hidden flex items-center gap-2.5 sm:gap-3 p-3 sm:p-[12px_13px] pl-3.5 sm:pl-[16px] border border-[#f1f5f9] rounded-[14px] cursor-pointer ${color.borderHover} hover:shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:bg-[#fafbff] active:scale-[0.99] transition-all group`}
               >
                 <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${color.stripe}`} />
-                <div className={`w-[38px] h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0 text-[17px] ${color.bg} ${color.text} group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`w-[36px] h-[36px] sm:w-[38px] sm:h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0 text-[17px] ${color.bg} ${color.text} group-hover:scale-110 transition-transform duration-300`}>
                   <BookOpen size={18} />
                 </div>
-                <div className="flex-1">
-                  <div className="text-[12.5px] font-medium text-[#1e293b]">{classItem.name}</div>
-                  <div className="text-[11px] text-[#94a3b8] mt-[1px]">{classItem.classification || 'High School'}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12.5px] font-medium text-[#1e293b] truncate">{classItem.name}</div>
+                  <div className="text-[11px] text-[#94a3b8] mt-[1px] truncate">
+                    {classItem.classification || 'High School'}
+                    <span className="sm:hidden font-medium"> • {classItem.studentCount} students</span>
+                  </div>
                 </div>
                 <div className="hidden sm:block text-[12px] text-[#64748b] min-w-[65px]">{classItem.schedule || 'Mon-Fri'}</div>
                 <div className="hidden sm:block text-[12px] text-[#64748b] min-w-[85px]"><span className="tabular-nums">{classItem.studentCount}</span> students</div>
-                <span className={`text-[10px] font-semibold px-[9px] py-[3px] rounded-[6px] ${classItem.riskLevel === 'high' ? 'bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]' : classItem.riskLevel === 'medium' ? 'bg-[#fffbeb] text-[#b45309] border border-[#fcd34d]' : 'bg-[#ecfdf5] text-[#065f46] border border-[#6ee7b7]'}`}>
+                <span className={`text-[10px] font-semibold px-2 sm:px-[9px] py-0.5 sm:py-[3px] rounded-[6px] shrink-0 ${classItem.riskLevel === 'high' ? 'bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]' : classItem.riskLevel === 'medium' ? 'bg-[#fffbeb] text-[#b45309] border border-[#fcd34d]' : 'bg-[#ecfdf5] text-[#065f46] border border-[#6ee7b7]'}`}>
                   {classItem.riskLevel === 'high' ? 'High risk' : classItem.riskLevel === 'medium' ? 'Medium risk' : 'On track'}
                 </span>
-                <MoreHorizontal size={16} className="text-[#cbd5e1] ml-auto hover:text-[#64748b]" />
+                <MoreHorizontal size={16} className="text-[#cbd5e1] ml-1 sm:ml-auto hover:text-[#64748b] shrink-0" />
               </div>
             );
           })}
@@ -2826,7 +2899,7 @@ const AnalyticsView: React.FC<{
             debounceTimer = setTimeout(() => {
               getClassAnalytics(selectedClass.id)
                 .then(setBackendReport)
-                .catch(() => {});
+                .catch(() => { });
             }, 2000);
           });
         } catch { /* Firestore listener non-critical */ }
@@ -2896,17 +2969,17 @@ const AnalyticsView: React.FC<{
     // Compute risk distribution with Unassessed + Critical categories
     const riskDistribution = backendReport?.insights?.risk_distribution
       ? [
-          { name: 'Critical', value: backendReport.insights.risk_distribution['Critical'] || 0, color: '#dc2626' },
-          { name: 'High Risk', value: backendReport.insights.risk_distribution['High Risk'] || 0, color: '#f43f5e' },
-          { name: 'Medium Risk', value: backendReport.insights.risk_distribution['Medium Risk'] || 0, color: '#f59e0b' },
-          { name: 'Low Risk', value: backendReport.insights.risk_distribution['Low Risk'] || 0, color: '#10b981' },
-          { name: 'Unassessed', value: backendReport.insights.risk_distribution['Unassessed'] || 0, color: '#94a3b8' },
-        ].filter(d => d.value > 0)
+        { name: 'Critical', value: backendReport.insights.risk_distribution['Critical'] || 0, color: '#dc2626' },
+        { name: 'High Risk', value: backendReport.insights.risk_distribution['High Risk'] || 0, color: '#f43f5e' },
+        { name: 'Medium Risk', value: backendReport.insights.risk_distribution['Medium Risk'] || 0, color: '#f59e0b' },
+        { name: 'Low Risk', value: backendReport.insights.risk_distribution['Low Risk'] || 0, color: '#10b981' },
+        { name: 'Unassessed', value: backendReport.insights.risk_distribution['Unassessed'] || 0, color: '#94a3b8' },
+      ].filter(d => d.value > 0)
       : [
-          { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
-          { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
-          { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
-        ];
+        { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
+        { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
+        { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
+      ];
 
     useEffect(() => {
       setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
@@ -3086,52 +3159,52 @@ const AnalyticsView: React.FC<{
         </header>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-[18px] w-full">
-          <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="group relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-xl sm:rounded-2xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px]">
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out pointer-events-none" />
+            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out pointer-events-none" />
             <div className="relative z-10 flex justify-between items-start">
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Class Average</span>
-              <div className="bg-white/20 p-1.5 rounded-lg flex"><Target size={14} /></div>
+              <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg flex"><Target size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight tabular-nums">{Math.round(classAverage)}%</div>
+            <div className="relative z-10 text-lg sm:text-[26px] font-bold sm:font-semibold tracking-tight tabular-nums">{Math.round(classAverage)}%</div>
           </div>
 
-          <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="group relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-xl sm:rounded-2xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px]">
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out pointer-events-none" />
+            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out pointer-events-none" />
             <div className="relative z-10 flex justify-between items-start">
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Completion</span>
-              <div className="bg-white/20 p-1.5 rounded-lg flex"><CheckCircle size={14} /></div>
+              <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg flex"><CheckCircle size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight tabular-nums">{Math.round(completionRate)}%</div>
+            <div className="relative z-10 text-lg sm:text-[26px] font-bold sm:font-semibold tracking-tight tabular-nums">{Math.round(completionRate)}%</div>
           </div>
 
-          <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="group relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-xl sm:rounded-2xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px]">
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out pointer-events-none" />
+            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out pointer-events-none" />
             <div className="relative z-10 flex justify-between items-start">
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Participation</span>
-              <div className="bg-white/20 p-1.5 rounded-lg flex"><Users size={14} /></div>
+              <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg flex"><Users size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight tabular-nums">{Math.round(participationRate)}%</div>
+            <div className="relative z-10 text-lg sm:text-[26px] font-bold sm:font-semibold tracking-tight tabular-nums">{Math.round(participationRate)}%</div>
           </div>
 
-          <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-lg sm:rounded-2xl p-[12px] sm:p-[15px] text-white flex flex-col gap-[8px] sm:gap-[10px]">
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out" />
-            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out" />
+          <div className="group relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-xl sm:rounded-2xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px]">
+            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-500 ease-out pointer-events-none" />
+            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-500 delay-75 ease-out pointer-events-none" />
             <div className="relative z-10 flex justify-between items-start">
               <span className="text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-semibold">Attention</span>
-              <div className="bg-white/20 p-1.5 rounded-lg flex"><AlertTriangle size={14} /></div>
+              <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg flex"><AlertTriangle size={14} /></div>
             </div>
-            <div className="relative z-10 text-[22px] sm:text-[26px] font-semibold tracking-tight">
-              <span className="tabular-nums">{attentionStudents.length}</span> <span className="text-[12px] opacity-90 font-medium">students</span>
+            <div className="relative z-10 text-lg sm:text-[26px] font-bold sm:font-semibold tracking-tight">
+              <span className="tabular-nums">{attentionStudents.length}</span> <span className="text-[11px] sm:text-[12px] opacity-90 font-medium">students</span>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-[24px] h-auto xl:h-[600px]">
           {/* Left Column - Student List */}
-          <div className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[500px] xl:h-full">
+          <div className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[400px] sm:h-[480px] xl:h-full">
             <div className="p-5 border-b border-[#f1f5f9] shrink-0">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[15px] font-semibold text-[#1e293b] text-balance">Students <span className="text-[#64748b] text-[13px] tabular-nums">({visibleStudents.length})</span></h2>
@@ -3352,16 +3425,16 @@ const AnalyticsView: React.FC<{
           </div>
         )}
 
-      <SectionManagementPanel
-        students={students}
-        allClasses={allClasses}
-        currentClass={selectedClass}
-        onReassignSection={onReassignSection}
-        reassignBusyId={reassignBusyId}
-      />
-    </motion.div>
-  );
-};
+        <SectionManagementPanel
+          students={students}
+          allClasses={allClasses}
+          currentClass={selectedClass}
+          onReassignSection={onReassignSection}
+          reassignBusyId={reassignBusyId}
+        />
+      </motion.div>
+    );
+  };
 
 // Intervention View
 const InterventionView: React.FC<{
@@ -3436,7 +3509,7 @@ const InterventionView: React.FC<{
     // Check if already assigned
     getAssignedModuleIds(student.id)
       .then((ids) => { if (!cancelled) setIsPathAssigned(ids.length > 0); })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
   }, [student.id]);
 
@@ -3465,7 +3538,7 @@ const InterventionView: React.FC<{
           setStudentModulesCompleted({ completed, total });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
   }, [student.id, student.accountUid]);
 
@@ -3842,16 +3915,16 @@ const InterventionView: React.FC<{
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="w-full h-full flex overflow-hidden relative"
+      className="w-full h-full flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative"
     >
       {/* Center Scrollable Content: Insights & Tools */}
-      <div className="flex-1 overflow-y-auto p-[24px] xl:p-[32px] no-scrollbar">
-        <div className="max-w-[1000px] mx-auto space-y-[24px]">
+      <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-3.5 sm:p-6 xl:p-8 no-scrollbar">
+        <div className="max-w-[1000px] mx-auto space-y-4 sm:space-y-6">
 
           {/* Top Navigation & Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-[8px]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 sm:mb-[8px]">
             <div>
-              <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] mb-[16px] w-max shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
+              <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] mb-2 sm:mb-[16px] w-max shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Analytics
               </button>
@@ -3886,40 +3959,40 @@ const InterventionView: React.FC<{
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full relative z-10">
-                {/* Learning Strengths */}
-                <div className="bg-white/70 backdrop-blur-sm rounded-[14px] p-4 border border-emerald-100/60 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden">
-                  <div className="absolute left-0 top-0 w-1 h-full bg-emerald-400 rounded-l-[14px]" />
-                  <h4 className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 pl-2">
-                    <TrendingUp className="w-3.5 h-3.5" /> Learning Strengths
-                  </h4>
-                  <p className="text-[13px] text-[#475569] leading-relaxed pl-2">
-                    {interventionPlan?.learning_strengths || (
-                      !isUrgentBarrier
-                        ? <>Excels in <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
-                        : <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
-                    )}
-                  </p>
-                </div>
-
-                {/* Next Steps */}
-                <div className="bg-white/70 backdrop-blur-sm rounded-[14px] p-4 border border-rose-100/60 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden">
-                  <div className="absolute left-0 top-0 w-1 h-full bg-rose-400 rounded-l-[14px]" />
-                  <h4 className="text-[11px] font-bold text-rose-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 pl-2">
-                    <Target className="w-3.5 h-3.5" /> Next Steps
-                  </h4>
-                  <ul className="text-[13px] text-[#475569] leading-relaxed list-none p-0 m-0 space-y-1 pl-2">
-                    {interventionPlan?.next_steps_summary ? (
-                      <li>{interventionPlan.next_steps_summary}</li>
-                    ) : student.struggles.length > 0 ? (
-                      student.struggles.map((s, i) => (
-                        <li key={i}>Must continue strengthening <span className="font-semibold text-[#1e293b]">{s}</span>.</li>
-                      ))
-                    ) : (
-                      <li>Focus on repetitive practice modules for <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>.</li>
-                    )}
-                  </ul>
-                </div>
+              {/* Learning Strengths */}
+              <div className="bg-white/70 backdrop-blur-sm rounded-[14px] p-4 border border-emerald-100/60 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden">
+                <div className="absolute left-0 top-0 w-1 h-full bg-emerald-400 rounded-l-[14px]" />
+                <h4 className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 pl-2">
+                  <TrendingUp className="w-3.5 h-3.5" /> Learning Strengths
+                </h4>
+                <p className="text-[13px] text-[#475569] leading-relaxed pl-2">
+                  {interventionPlan?.learning_strengths || (
+                    !isUrgentBarrier
+                      ? <>Excels in <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
+                      : <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
+                  )}
+                </p>
               </div>
+
+              {/* Next Steps */}
+              <div className="bg-white/70 backdrop-blur-sm rounded-[14px] p-4 border border-rose-100/60 shadow-[0_1px_4px_rgba(0,0,0,0.04)] relative overflow-hidden">
+                <div className="absolute left-0 top-0 w-1 h-full bg-rose-400 rounded-l-[14px]" />
+                <h4 className="text-[11px] font-bold text-rose-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 pl-2">
+                  <Target className="w-3.5 h-3.5" /> Next Steps
+                </h4>
+                <ul className="text-[13px] text-[#475569] leading-relaxed list-none p-0 m-0 space-y-1 pl-2">
+                  {interventionPlan?.next_steps_summary ? (
+                    <li>{interventionPlan.next_steps_summary}</li>
+                  ) : student.struggles.length > 0 ? (
+                    student.struggles.map((s, i) => (
+                      <li key={i}>Must continue strengthening <span className="font-semibold text-[#1e293b]">{s}</span>.</li>
+                    ))
+                  ) : (
+                    <li>Focus on repetitive practice modules for <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
           </div>
 
           {/* Learning Path Timeline */}
@@ -3947,19 +4020,19 @@ const InterventionView: React.FC<{
                   {isPathAssigned ? <><X className="w-3 h-3" /> Revoke</> : <><Send className="w-3 h-3" /> Assign to Student</>}
                 </button>
                 <button disabled={pathLoading || interventionLoading} onClick={async () => {
-                setInterventionLoading(true);
-                try {
-                  const plan = await generateInterventionPlan(student.id);
-                  setInterventionPlan(plan);
-                } catch (err) {
-                  console.warn('[InterventionView] Regenerate failed:', err);
-                } finally {
-                  setInterventionLoading(false);
-                }
-                setLessonTrigger(n => n + 1);
-              }} className="bg-[#f8fafc] hover:bg-white text-[#4f46e5] border border-[#e0e7ff] text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
-                <RefreshCw className={`w-3 h-3 ${interventionLoading ? 'animate-spin' : ''}`} /> {interventionLoading ? 'Analyzing...' : 'Regenerate'}
-              </button>
+                  setInterventionLoading(true);
+                  try {
+                    const plan = await generateInterventionPlan(student.id);
+                    setInterventionPlan(plan);
+                  } catch (err) {
+                    console.warn('[InterventionView] Regenerate failed:', err);
+                  } finally {
+                    setInterventionLoading(false);
+                  }
+                  setLessonTrigger(n => n + 1);
+                }} className="bg-[#f8fafc] hover:bg-white text-[#4f46e5] border border-[#e0e7ff] text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
+                  <RefreshCw className={`w-3 h-3 ${interventionLoading ? 'animate-spin' : ''}`} /> {interventionLoading ? 'Analyzing...' : 'Regenerate'}
+                </button>
               </div>
             </div>
 
@@ -4191,9 +4264,9 @@ const InterventionView: React.FC<{
         </div>
       </div>
 
-      {/* RIGHT SIDEBAR: Student Profile & Actions (Fixed) */}
-      <aside className="w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex flex-col h-full shrink-0 overflow-y-auto z-10 no-scrollbar relative">
-        <div className="p-[24px] space-y-[24px] flex flex-col items-center">
+      {/* RIGHT SIDEBAR: Student Profile & Actions (Responsive Stack on Mobile) */}
+      <aside className="w-full lg:w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-t lg:border-t-0 lg:border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex flex-col shrink-0 lg:h-full lg:overflow-y-auto z-10 no-scrollbar relative">
+        <div className="p-4 sm:p-[24px] space-y-4 sm:space-y-[24px] flex flex-col items-center">
 
           {/* Profile Block */}
           <div className="flex flex-col items-center text-center w-full">
@@ -4412,7 +4485,7 @@ const InterventionView: React.FC<{
                                 doc.text('Topic Accuracy Breakdown:', margin + 2, y); y += 7;
                                 doc.setFontSize(9);
                                 doc.setFont('helvetica', 'normal');
-                                for (const [topic, accuracy] of topicEntries.sort(([,a], [,b]) => a - b)) {
+                                for (const [topic, accuracy] of topicEntries.sort(([, a], [, b]) => a - b)) {
                                   checkPage(7);
                                   const barW = 60;
                                   const fillW = (accuracy / 100) * barW;
@@ -4775,7 +4848,7 @@ const InterventionView: React.FC<{
           onStepCompleted={() => {
             setSelectedStep(null);
             // Refresh intervention plan
-            getInterventionPlan(student.id).then(setInterventionPlan).catch(() => {});
+            getInterventionPlan(student.id).then(setInterventionPlan).catch(() => { });
           }}
         />
       )}
@@ -5549,10 +5622,12 @@ const EditRecordsView: React.FC<{
 const DashboardRightSidebar: React.FC<{
   onViewCalendar?: () => void;
   onOpenProfile?: () => void;
+  onClose?: () => void;
   userProfile?: any;
   teacherName: string;
   liveActivity?: { id: string; student: string; action: string; topic: string; time: string; type: string }[];
-}> = ({ onViewCalendar, onOpenProfile, userProfile, teacherName, liveActivity = [] }) => {
+  isMobile?: boolean;
+}> = ({ onViewCalendar, onOpenProfile, onClose, userProfile, teacherName, liveActivity = [], isMobile = false }) => {
   const { currentUser } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'pulse' | 'reminders'>('pulse');
@@ -5628,9 +5703,23 @@ const DashboardRightSidebar: React.FC<{
   };
 
   return (
-    <aside className="w-[280px] bg-white border-l border-[#e2e8f0] flex flex-col flex-shrink-0 overflow-hidden">
+    <aside className="w-full lg:w-[280px] bg-white border-l border-[#e2e8f0] flex flex-col flex-shrink-0 overflow-hidden h-full">
+      {/* Mobile Drawer Header Bar */}
+      {onClose && (
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#f1f5f9] bg-slate-50/70 shrink-0">
+          <span className="text-xs font-bold text-[#1e293b]">Activity & Calendar</span>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors active:scale-95"
+            aria-label="Close drawer"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Profile Section */}
-      <div className="p-[22px_16px_10px] border-b border-[#f1f5f9] flex flex-col items-center gap-[5px]">
+      <div className="p-[20px_16px_10px] border-b border-[#f1f5f9] flex flex-col items-center gap-[5px] shrink-0">
         <div className="w-[48px] h-[48px] rounded-full bg-[#e0e7ff] flex items-center justify-center text-[22px] text-[#4f46e5] shadow-[0_0_0_3px_#c7d2fe] flex-shrink-0">
           <UserAvatar src={userProfile?.photo} name={teacherName} className="w-full h-full rounded-full" />
         </div>
