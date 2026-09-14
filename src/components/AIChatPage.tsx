@@ -450,32 +450,31 @@ const AIChatPage = () => {
           </>
         ) : (
           /* ── Welcome / Empty State ── */
-          <div className="flex-1 flex flex-col overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
 
             {/* Hero */}
-            <div className="relative flex-shrink-0 px-6 pt-8 pb-14 overflow-hidden" style={{ background: 'linear-gradient(135deg, #9956DE 0%, #7274ED 60%, #1FA7E1 100%)' }}>
+            <div className="relative px-6 pt-8 pb-8 overflow-hidden" style={{ background: 'linear-gradient(135deg, #9956DE 0%, #7274ED 60%, #1FA7E1 100%)' }}>
               <div className="absolute inset-0 opacity-15" style={{ backgroundImage: 'radial-gradient(circle at 10% 80%, #fff 0%, transparent 50%), radial-gradient(circle at 90% 20%, #fff 0%, transparent 40%)' }} />
               <div className="relative max-w-xl mx-auto text-center">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-3xl flex items-center justify-center border border-white/30 shadow-xl">
-                    <img src="/avatar/avatar_icon.png" alt="L.O.L.I." className="w-16 h-16 object-contain drop-shadow-lg" />
+                <div className="flex items-center justify-center mb-3">
+                  <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/30 shadow-xl">
+                    <img src="/avatar/avatar_icon.png" alt="L.O.L.I." className="w-13 h-13 object-contain drop-shadow-lg" />
                   </div>
                 </div>
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <Sparkles size={13} className="text-white/70" />
+                <div className="flex items-center justify-center gap-2 mb-1.5">
+                  <Sparkles size={11} className="text-white/70" />
                   <span className="text-white/70 text-[10px] font-bold tracking-widest uppercase">Powered by AI</span>
-                  <Sparkles size={13} className="text-white/70" />
+                  <Sparkles size={11} className="text-white/70" />
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold font-display text-white mb-1">Meet L.O.L.I.</h1>
-                <p className="text-white/70 text-sm font-medium mb-1">Logical Operations &amp; Learning Intelligence</p>
-                <p className="text-white/55 text-xs max-w-sm mx-auto">Your personal AI math tutor for Senior High School STEM. Ask anything, anytime.</p>
+                <h1 className="text-xl md:text-2xl font-bold font-display text-white mb-1">Meet L.O.L.I.</h1>
+                <p className="text-white/70 text-xs font-medium">Logical Operations &amp; Learning Intelligence</p>
               </div>
             </div>
 
-            <div className="flex-1 px-4 md:px-8 -mt-8">
+            <div className="px-4 md:px-8 py-6 space-y-6">
 
               {/* CTA Card */}
-              <div className="max-w-xl mx-auto mb-6">
+              <div className="max-w-xl mx-auto">
                 <div className="bg-white rounded-2xl border border-[#e4e4e7] shadow-lg p-5 text-center">
                   <p className="text-[#71717a] text-sm mb-4">Select an existing conversation or start a new one</p>
                   <button
@@ -490,7 +489,7 @@ const AIChatPage = () => {
               </div>
 
               {/* Topic cards */}
-              <div className="max-w-2xl mx-auto mb-6">
+              <div className="max-w-2xl mx-auto">
                 <p className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-3">Explore Topics</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {TOPIC_CARDS.map(({ label, icon: Icon, color, desc }) => (
@@ -515,7 +514,7 @@ const AIChatPage = () => {
 
               {/* Recent sessions */}
               {sessions.length > 0 && (
-                <div className="max-w-2xl mx-auto mb-8">
+                <div className="max-w-2xl mx-auto pb-4">
                   <p className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-3">Recent Conversations</p>
                   <div className="space-y-2">
                     {sessions.slice(0, 3).map(session => (
@@ -523,7 +522,7 @@ const AIChatPage = () => {
                         key={session.id}
                         onClick={() => setActiveSessionId(session.id)}
                         className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-[#f4f4f5] hover:border-[#9956DE]/30 transition-all text-left"
-                        style={{}}
+
                         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(153,86,222,0.04)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}
                       >
