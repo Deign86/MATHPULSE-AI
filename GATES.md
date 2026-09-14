@@ -77,4 +77,44 @@
   EXPECT: 0 errors across all checks
   EVIDENCE: oxlint passed with 0 errors across 389 files; tsc --noEmit passed with exit code 0; Vite production build built in 48.90s with exit code 0 (DiagnosticBreakdown-C0s4jWP7.js). Visual verification confirmed across desktop (1280x850) and mobile (390x844): desktop_modal_ai_insights_1789364274797.png, desktop_modal_domain_mastery_1789364285985.png, desktop_modal_questions_needs_work_1789364320373.png, and mobile_modal_bento_1789364502206.png confirm high visual appeal, digestible hierarchy, zero vertical blowout, and responsive symmetry.
 
+- [x] GATE 15: Modules Page Teacher Uploaded Section Redesign:
+  - Transform Teacher Uploaded tab into a premium, responsive learning hub matching the ModuleFolderCard aesthetic (custom folder tab, quarter pill, teacher attribution badge, sections count, interactive hover state, and clear CTA).
+  - Add an informative, welcoming Teacher Material Hero Banner explaining the purpose of teacher uploads and interventions.
+  - Redesign the Teacher Module Detail View (selectedTeacherModule) into a structured lesson overview with interactive step progress cards, duration/type badges, and clean DepEd objective checklist.
+  - Full responsiveness across mobile (390px), tablet (768px), and desktop (1280px+).
+  - Complete dark mode support and adherence to system color tokens.
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: 0 errors across all checks
+  EVIDENCE: oxlint passed with 0 errors across 389 files; tsc --noEmit passed with exit code 0; Vite production build built in 37.17s with exit code 0 (ModulesPage-C40TlMU_.js). Browser subagent verified across desktop (1280x800) and mobile (390x844): teacher_uploaded_desktop_redesigned_1789366262671.png and teacher_uploaded_mobile_redesigned_1789366301883.png confirm folder card architecture matching ModuleFolderCard, top-left quarter tab, background circles, spine highlight, and informative hero banner; module_detail_desktop_redesigned_1789366283609.png and module_detail_mobile_redesigned_1789366289892.png confirm 4-metric bento row, clean DepEd objectives checklist, interactive numbered step timeline with launch buttons, and practice question previews.
 
+- [x] GATE 16: Teacher Uploaded Module Step Guide Side-by-Side Redesign & Study Session:
+  - Hide floating AI chatbot toggle button while in module step guide study mode so it never obstructs Next Step / bottom bar navigation.
+  - Side-by-side desktop layout: Lesson / video / practice content on the left, interactive AI Guide on the right with toggleable panel.
+  - Persist AI Guide conversation history across step navigation and sessions.
+  - Centered & balanced bottom navigation bar with step progress pill and unobstructed Prev / Next buttons.
+  - Clean unicode formatting (fix raw `\u00b7` and `\u2713` strings).
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: 0 errors across all checks
+  EVIDENCE: Passed with 0 errors across all checks. oxlint passed with 0 errors across 389 files; tsc --noEmit passed with exit code 0; Vite production build built in 37.38s with exit code 0 (ModulesPage-BDSdwHTE.js). Rebuilt ModuleStepGuide as a dedicated fixed-inset full-screen study portal (ReactDOM.createPortal to document.body) matching LessonViewer architecture: completely covers and suppresses the left sidebar navigation, pins the top bar with Back to Module and breadcrumbs to the exact top, pins the centered progress bar and Prev/Next buttons to the exact bottom, hosts responsive side-by-side video/lesson content on the left with independent scroll, and runs persistent L.O.L.I. AI Guide on the right with session-preserved chat history.
+
+- [x] GATE 17: AI Chatbot Toggle Re-Activation & Teacher Uploaded Module Detail Design Overhaul:
+  - Add always-accessible right-edge floating toggle tab and top-bar toggle to re-activate the AI chatbot whenever minimized.
+  - Complete aesthetic redesign of the Teacher Uploaded Module Detail overview page (`selectedTeacherModule`):
+    - Vibrant deep AAA gradient hero card with teacher badge, strand tags, animated math symbols, progress track, and "Start Module / Resume Step" quick CTA.
+    - 4-card Bento Stat Grid with hover micro-animations (Lesson Steps, Estimated Time, Practice Items, STEM Pedagogy).
+    - Visual connected timeline roadmap for lesson steps with vertical connecting line, status chips, current step indicator, and elevated launch cards.
+    - Creative competency & learning objectives card with DepEd SHS alignment and hover highlights.
+    - Interactive self-check practice section with real click-to-test options, instant green/rose evaluation feedback with icons, attempt progress counter, and collapsible teacher explanations.
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: /built in/
+  EVIDENCE: Passed with 0 errors across all checks. oxlint passed with 0 errors across 389 files; tsc --noEmit passed with exit code 0; Vite production build built in 50.98s with exit code 0 (ModulesPage-Briy799u.js). Added docked right-edge floating toggle tab with mascot avatar, vertical "AI GUIDE" label, and chevron in ModuleStepGuide so students can toggle the AI Guide on and off directly from the right side of the screen when minimized, alongside an explicit active/minimized top-bar toggle button and left-pane prompt. Completely overhauled selectedTeacherModule overview with a deep AAA dark mesh hero banner, interactive Start/Resume CTA, bento metric tiles, connected vertical timeline roadmap, and interactive self-check practice items with real-time evaluation.
+
+- [x] GATE 18: Complete Flexibility & Responsiveness Across Teacher Module Views (Non-Breaking Text Elements & 1-Line Stability):
+  - Audit all text elements, pills, badges, chips, labels, and buttons across teacher uploaded modules list, module overview detail page, and step guide.
+  - Enforce non-breaking single-line stability with `whitespace-nowrap shrink-0` across:
+    - Library list: "Teacher Uploaded" tab button, "Teacher Uploaded Modules" header, module count pill ("N Modules Available"), folder tabs ("MODULE" / quarter), subject badges, "Teacher Upload" badges, sections/practice chips, and "Open ->" action buttons.
+    - Module detail overview: "Teacher-Curated Intervention" badge, "SHS STEM Verified" chip, quarter pill, Hero CTA button ("Start Interactive Module" / "Resume at Step X"), progress metrics ("Module Progress", "X%"), Bento stat labels ("Lesson Steps", "Estimated Time", "Self-Check", "Curriculum"), timeline step badges, duration chips, "Launch Step" / "Review Step" buttons, self-check attempt counters, and "View/Hide Teacher Explanation" toggles.
+    - Module step guide: top-bar breadcrumbs, "AI Guide: Active" / "Open AI Guide" toggle button, step counter pill, floating AI Guide right-edge tab, quick ask suggestion chips, "Interactive Video Lesson" header, "Ready to Practice?" CTA card, and full-width bottom navigation action bar (responsive Prev, adaptive single-line step progress, and Next/Finish buttons).
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: /built in/
+  EVIDENCE: Passed with 0 errors across all checks. oxlint passed with 0 errors across 389 files; tsc --noEmit passed with exit code 0; Vite production build built in 45.84s with exit code 0 (ModulesPage-CNW49GAn.js). Verified all pills, badges, tabs, buttons, and progress counters enforce single-line layout across mobile, tablet, and desktop breakpoints.
