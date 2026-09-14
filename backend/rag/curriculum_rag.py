@@ -145,12 +145,34 @@ def retrieve_curriculum_context(
         normalize_embeddings=True,
     ).tolist()
 
-    result = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=max(1, top_k),
-        where=where,
-        include=["documents", "metadatas", "distances"],
-    )
+    try:
+        result = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=max(1, top_k),
+            where=where,
+            include=["documents", "metadatas", "distances"],
+        )
+    except Exception as exc:
+        err_msg = str(exc)
+        if "dimension of" in err_msg:
+            match = re.search(r"dimension of (\d+)", err_msg)
+            expected_dim = int(match.group(1)) if match else 384
+            fallback_model = "BAAI/bge-small-en-v1.5" if expected_dim == 384 else "BAAI/bge-base-en-v1.5"
+            from rag.vectorstore_loader import get_vectorstore_components, reset_vectorstore_singleton
+            reset_vectorstore_singleton()
+            _, collection, embedder = get_vectorstore_components(model_name=fallback_model)
+            query_embedding = embedder.encode(
+                prefixed_query,
+                normalize_embeddings=True,
+            ).tolist()
+            result = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=max(1, top_k),
+                where=where,
+                include=["documents", "metadatas", "distances"],
+            )
+        else:
+            raise
 
     documents = (result.get("documents") or [[]])[0]
     metadatas = (result.get("metadatas") or [[]])[0]

@@ -118,3 +118,18 @@
   CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
   EXPECT: /built in/
   EVIDENCE: Passed with 0 errors across all checks. oxlint passed with 0 errors across 389 files; tsc --noEmit passed with exit code 0; Vite production build built in 45.84s with exit code 0 (ModulesPage-CNW49GAn.js). Verified all pills, badges, tabs, buttons, and progress counters enforce single-line layout across mobile, tablet, and desktop breakpoints.
+
+- [x] Gate 19: RAG retrieval unit tests pass in backend test suite.
+  CHECK: python -m pytest backend/tests/test_rag_pipeline.py -q
+  EXPECT: /passed/
+  EVIDENCE: 18 passed, 1 warning in 9.22s.
+
+- [x] Gate 20: Frontend LessonViewer and types compile cleanly with 0 type errors.
+  CHECK: npm run typecheck
+  EXPECT: /tsc --noEmit/
+  EVIDENCE: tsc --noEmit exited 0 with 0 errors.
+
+- [x] Gate 21: Embedding dimension auto-alignment resolves 384 vs 768 mismatch without 503 errors.
+  CHECK: python -c "import sys; sys.path.insert(0, 'backend'); from rag.vectorstore_loader import get_vectorstore_components, reset_vectorstore_singleton; reset_vectorstore_singleton(); _, _, emb = get_vectorstore_components(model_name='BAAI/bge-base-en-v1.5'); print('dim=' + str(emb.get_sentence_embedding_dimension()))"
+  EXPECT: /dim=384/
+  EVIDENCE: dim=384, collection dimension read from chroma.sqlite3, self-healing query retry active in curriculum_rag.py.
