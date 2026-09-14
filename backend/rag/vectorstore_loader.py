@@ -37,6 +37,25 @@ def _resolve_vectorstore_dir() -> Path:
 # cold start triggers a ~130 MB download that can exceed the 60s startup timeout.
 _DEFAULT_EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
 
+
+def _get_collection_dimension(vectorstore_dir: Path, collection_name: str = "curriculum_chunks") -> int | None:
+    db_path = vectorstore_dir / "chroma.sqlite3"
+    if not db_path.exists():
+        return None
+    try:
+        import sqlite3
+        conn = sqlite3.connect(str(db_path))
+        cur = conn.cursor()
+        cur.execute("SELECT dimension FROM collections WHERE name = ?", (collection_name,))
+        row = cur.fetchone()
+        conn.close()
+        if row and row[0]:
+            return int(row[0])
+    except Exception:
+        pass
+    return None
+
+
 def get_vectorstore_components(
     collection_name: str = "curriculum_chunks",
     model_name: str = _DEFAULT_EMBEDDING_MODEL,
@@ -52,7 +71,22 @@ def get_vectorstore_components(
                     name=collection_name,
                     metadata={"hnsw:space": "cosine"},
                 )
+
+                expected_dim = _get_collection_dimension(vectorstore_dir, collection_name)
+                # Auto-align model_name with the collection dimension to prevent 384 vs 768 mismatch
+                if expected_dim == 384 and ("bge-base" in model_name or "768" in model_name):
+                    model_name = "BAAI/bge-small-en-v1.5"
+                elif expected_dim == 768 and ("bge-small" in model_name or "384" in model_name):
+                    model_name = "BAAI/bge-base-en-v1.5"
+
                 embedder = SentenceTransformer(model_name)
+                actual_dim = getattr(embedder, "get_sentence_embedding_dimension", lambda: None)()
+                if expected_dim is not None and actual_dim is not None and actual_dim != expected_dim:
+                    if expected_dim == 384:
+                        embedder = SentenceTransformer("BAAI/bge-small-en-v1.5")
+                    elif expected_dim == 768:
+                        embedder = SentenceTransformer("BAAI/bge-base-en-v1.5")
+
                 _VECTORSTORE_SINGLETON = (client, collection, embedder)
     return _VECTORSTORE_SINGLETON
 
