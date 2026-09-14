@@ -715,7 +715,7 @@ class InferenceClient:
         }
 
         if target_model == REASONER_MODEL:
-            params["max_tokens"] = req.max_new_tokens or 1024
+            params["max_tokens"] = max(req.max_new_tokens or 4096, 4096)
         else:
             params["temperature"] = req.temperature
             params["top_p"] = req.top_p
@@ -741,7 +741,7 @@ class InferenceClient:
 
                 text = content.strip()
                 if reasoning:
-                    text = f"{reasoning}\n{text}"
+                    text = f"<think>\n{reasoning}\n</think>\n{text}"
 
                 log_model_call(
                     LOGGER,

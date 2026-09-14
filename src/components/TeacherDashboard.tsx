@@ -257,7 +257,7 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
     riskLevel,
     riskStatus: s.riskStatus || null,
     wri: s.wri ?? null,
-    weakestTopic: s.weakestTopic || 'N/A',
+    weakestTopic: s.weakestTopic && s.weakestTopic !== 'N/A' ? s.weakestTopic : (s.struggles?.[0] || 'Foundational Mathematics'),
     classroomId: s.classroomId || classMetadata.classSectionId || baseClassName,
     className: classMetadata.className || [grade, section].filter(Boolean).join(' - ') || baseClassName,
     grade,
@@ -270,7 +270,9 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
     managerId: classMetadata.managerId || undefined,
     managerName: classMetadata.managerName || undefined,
     lastActive: lastActiveStr,
-    struggles: s.struggles || [],
+    struggles: s.struggles && s.struggles.length > 0
+      ? s.struggles
+      : (s.weakestTopic && s.weakestTopic !== 'N/A' ? [s.weakestTopic] : ['Foundational Mathematics']),
     engagementScore: s.engagementScore,
     attendance: s.attendance,
     assignmentCompletion: s.assignmentCompletion,
@@ -3389,6 +3391,20 @@ const InterventionView: React.FC<{
       bullet: 'text-[#9956DE]',
     };
   const rolloutFlags = useMemo(() => apiService.getImportGroundedRolloutFlags(), []);
+  const effectiveWeakestTopic = useMemo(() => {
+    if (student.weakestTopic && student.weakestTopic !== 'N/A' && student.weakestTopic.trim()) {
+      return student.weakestTopic.trim();
+    }
+    const fromStruggles = student.struggles?.find((s) => s && s !== 'N/A' && s.trim());
+    if (fromStruggles) return fromStruggles.trim();
+    return 'Foundational Mathematics';
+  }, [student.weakestTopic, student.struggles]);
+
+  const effectiveStruggles = useMemo(() => {
+    const valid = (student.struggles || []).filter((s) => s && s !== 'N/A' && s.trim());
+    return valid.length > 0 ? valid : [effectiveWeakestTopic];
+  }, [student.struggles, effectiveWeakestTopic]);
+
   const [interventionPlan, setInterventionPlan] = useState<InterventionPlan | null>(null);
   const [interventionLoading, setInterventionLoading] = useState(true);
   const [isPathAssigned, setIsPathAssigned] = useState(false);
@@ -3504,7 +3520,7 @@ const InterventionView: React.FC<{
         let curriculumContext = '';
         try {
           curriculumContext = await fetchAnalysisCurriculumContext(
-            student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
+            effectiveStruggles,
             'general_math',
           );
           setAnalysisCurriculumContext(curriculumContext);
@@ -3513,7 +3529,7 @@ const InterventionView: React.FC<{
         }
 
         const response = await apiService.getLearningPath({
-          weaknesses: student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
+          weaknesses: effectiveStruggles,
           gradeLevel: 'High School',
           subject: 'general_math',
         });
@@ -3529,14 +3545,14 @@ const InterventionView: React.FC<{
       }
     };
     fetchPath();
-  }, [student]);
+  }, [student, effectiveStruggles]);
 
   const generateTargetedLessonPlan = useCallback(async () => {
     setLessonLoading(true);
     setLessonError('');
     try {
       const classSectionId = student.classSectionId || buildClassSectionId(gradeDraft || 'Grade 11', sectionDraft || 'Section A');
-      const selectedCompetency = student.struggles.length > 0 ? student.struggles[0] : student.weakestTopic;
+      const selectedCompetency = effectiveStruggles[0];
       const response = await generateLessonPlanWithCurriculumGrounding({
         gradeLevel: gradeDraft || student.grade || 'Grade 11',
         subject: 'general_math',
@@ -3547,7 +3563,7 @@ const InterventionView: React.FC<{
         learnerLevel: student.avgScore < 60 ? 'support' : student.avgScore < 80 ? 'developing' : 'advanced',
         classSectionId,
         className: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
-        focusTopics: student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
+        focusTopics: effectiveStruggles,
         topicCount: 5,
         preferImportedTopics: rolloutFlags.lessonEnabled,
         allowReviewSources,
@@ -3589,7 +3605,7 @@ const InterventionView: React.FC<{
           if (detail?.selfValidation && !allowUnverifiedLesson) {
             try {
               const classSectionId = student.classSectionId || buildClassSectionId(gradeDraft || 'Grade 11', sectionDraft || 'Section A');
-              const selectedCompetency = student.struggles.length > 0 ? student.struggles[0] : student.weakestTopic;
+              const selectedCompetency = effectiveStruggles[0];
               const retryResponse = await generateLessonPlanWithCurriculumGrounding({
                 gradeLevel: gradeDraft || student.grade || 'Grade 11',
                 subject: 'general_math',
@@ -3600,7 +3616,7 @@ const InterventionView: React.FC<{
                 learnerLevel: student.avgScore < 60 ? 'support' : student.avgScore < 80 ? 'developing' : 'advanced',
                 classSectionId,
                 className: [gradeDraft, sectionDraft].filter(Boolean).join(' - ') || student.className,
-                focusTopics: student.struggles.length > 0 ? student.struggles : [student.weakestTopic],
+                focusTopics: effectiveStruggles,
                 topicCount: 5,
                 preferImportedTopics: rolloutFlags.lessonEnabled,
                 allowReviewSources,
@@ -3795,11 +3811,11 @@ const InterventionView: React.FC<{
       }));
     }
     return [
-      { id: 1, type: 'video', title: `${student.weakestTopic} Fundamentals`, duration: '8 mins', questions: undefined, icon: Video, competency: '', difficulty: 'easy' as const, is_completed: false },
-      { id: 2, type: 'quiz', title: `${student.weakestTopic} Practice`, duration: '12 mins', questions: 10, icon: ClipboardCheck, competency: '', difficulty: 'easy' as const, is_completed: false },
+      { id: 1, type: 'video', title: `${effectiveWeakestTopic} Fundamentals`, duration: '8 mins', questions: undefined, icon: Video, competency: '', difficulty: 'easy' as const, is_completed: false },
+      { id: 2, type: 'quiz', title: `${effectiveWeakestTopic} Practice`, duration: '12 mins', questions: 10, icon: ClipboardCheck, competency: '', difficulty: 'easy' as const, is_completed: false },
       { id: 3, type: 'assessment', title: 'Final Check', duration: '10 mins', questions: 5, icon: CheckCircle2, competency: '', difficulty: 'medium' as const, is_completed: false },
     ];
-  }, [interventionPlan, student.weakestTopic]);
+  }, [interventionPlan, effectiveWeakestTopic]);
 
   const handleSaveSectionAssignment = async () => {
     if (!teacherId) {
@@ -3895,7 +3911,7 @@ const InterventionView: React.FC<{
                   <p className="text-[13px] text-[#475569] leading-relaxed pl-2">
                     {interventionPlan?.learning_strengths || (
                       !isUrgentBarrier
-                        ? <>Excels in <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
+                        ? <>Excels in <span className="font-semibold text-[#1e293b]">{effectiveWeakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
                         : <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
                     )}
                   </p>
@@ -3910,12 +3926,12 @@ const InterventionView: React.FC<{
                   <ul className="text-[13px] text-[#475569] leading-relaxed list-none p-0 m-0 space-y-1 pl-2">
                     {interventionPlan?.next_steps_summary ? (
                       <li>{interventionPlan.next_steps_summary}</li>
-                    ) : student.struggles.length > 0 ? (
-                      student.struggles.map((s, i) => (
+                    ) : effectiveStruggles.length > 0 && effectiveStruggles[0] !== 'Foundational Mathematics' ? (
+                      effectiveStruggles.map((s, i) => (
                         <li key={i}>Must continue strengthening <span className="font-semibold text-[#1e293b]">{s}</span>.</li>
                       ))
                     ) : (
-                      <li>Focus on repetitive practice modules for <span className="font-semibold text-[#1e293b]">{student.weakestTopic}</span>.</li>
+                      <li>Focus on repetitive practice modules for <span className="font-semibold text-[#1e293b]">{effectiveWeakestTopic}</span>.</li>
                     )}
                   </ul>
                 </div>
@@ -4049,12 +4065,14 @@ const InterventionView: React.FC<{
           {/* Targeted Lesson Generator Settings */}
           <div className="relative bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white overflow-hidden">
             {/* Locked overlay */}
-            <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-[2px] flex items-center justify-center rounded-[18px]">
-              <div className="text-center">
-                <span className="inline-block px-4 py-2 bg-slate-100 border border-slate-200 rounded-full text-[13px] font-semibold text-slate-500">Coming Soon</span>
-                <p className="text-[11px] text-slate-400 mt-2">This feature is temporarily locked.</p>
+            {!rolloutFlags.lessonEnabled && (
+              <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-[2px] flex items-center justify-center rounded-[18px]">
+                <div className="text-center">
+                  <span className="inline-block px-4 py-2 bg-slate-100 border border-slate-200 rounded-full text-[13px] font-semibold text-slate-500">Coming Soon</span>
+                  <p className="text-[11px] text-slate-400 mt-2">This feature is temporarily locked.</p>
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[15px] font-semibold text-[#1e293b] text-balance">Targeted Lesson Generation</h3>
               <Button
@@ -4221,7 +4239,7 @@ const InterventionView: React.FC<{
             </div>
             <div className="bg-rose-50/60 rounded-[14px] p-4 border border-rose-100 text-left flex flex-col justify-center">
               <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider mb-1">Weakest Topic</p>
-              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={interventionPlan?.weakest_topic || student.weakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || student.weakestTopic || '')}</p>
+              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={interventionPlan?.weakest_topic || effectiveWeakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}</p>
             </div>
           </div>
 
