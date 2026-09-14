@@ -241,30 +241,30 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
 
   return (
     <>
-      <section className={`flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm ${className}`}>
+      <section className={`flex items-center gap-2.5 sm:gap-3.5 rounded-xl border border-slate-200 bg-white p-2.5 sm:p-3.5 shadow-sm ${className}`}>
         <div 
-          className="relative cursor-pointer group" 
+          className="relative cursor-pointer group shrink-0" 
           onClick={triggerFilePicker}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && triggerFilePicker()}
           aria-label="Change profile picture"
         >
-          <Avatar className="size-16 sm:size-20 ring-4 ring-sky-50 shadow-sm transition-transform duration-200 group-hover:scale-105">
+          <Avatar className="size-10 sm:size-14 ring-2 sm:ring-3 ring-[#f3e8ff] shadow-sm transition-transform duration-200 group-hover:scale-105">
             <AvatarImage src={activePreview} alt={`${displayName || 'User'} profile picture`} />
-            <AvatarFallback className="bg-gradient-to-br from-sky-600 to-cyan-500 text-lg font-semibold text-white">
+            <AvatarFallback className="bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-xs sm:text-sm font-semibold text-white">
               {getInitials(displayName)}
             </AvatarFallback>
           </Avatar>
-          <span className="absolute -right-1 -top-1 inline-flex items-center justify-center rounded-full bg-slate-900 p-1.5 text-white shadow-md transition-colors group-hover:bg-slate-700">
-            <Camera size={14} />
+          <span className="absolute -right-0.5 -top-0.5 inline-flex items-center justify-center rounded-full bg-slate-900 p-0.5 sm:p-1 text-white shadow-md transition-colors group-hover:bg-slate-700">
+            <Camera size={10} />
           </span>
         </div>
 
-        <div className="space-y-1 flex-1">
-          <p className="text-sm font-semibold text-slate-900">Profile picture</p>
-          <p className="text-xs text-slate-500">Click your avatar to upload a new photo.</p>
-          {error && <p className="text-xs font-medium text-rose-600 mt-1">{error}</p>}
+        <div className="space-y-0.5 flex-1 min-w-0">
+          <p className="text-[11px] sm:text-xs font-semibold text-slate-800">Profile picture</p>
+          <p className="text-[10px] sm:text-[11px] text-slate-500">Click avatar to upload a new photo.</p>
+          {error && <p className="text-[10px] sm:text-xs font-medium text-rose-600 mt-0.5">{error}</p>}
         </div>
 
         <input
@@ -362,7 +362,7 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
                     type="button"
                     onClick={handleUpload}
                     disabled={isUploading || !selectedFile}
-                    className="bg-sky-600 hover:bg-sky-700 text-white min-w-[120px] gap-2 shadow-sm"
+                    className="bg-[#a855f7] hover:bg-[#9333ea] text-white min-w-[120px] gap-2 shadow-sm transition-colors"
                   >
                     {isUploading ? (
                       <>

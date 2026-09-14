@@ -97,7 +97,7 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
                   if (selected.size === filtered.length) setSelected(new Set());
                   else setSelected(new Set(filtered.map((s) => s.uid)));
                 }}
-                className="text-[11px] font-semibold text-[#9956DE] hover:text-[#7c3aed] bg-[#9956DE]/10 hover:bg-[#9956DE]/20 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                className="text-[11px] font-semibold text-[#a855f7] hover:text-[#9333ea] bg-[#a855f7]/10 hover:bg-[#a855f7]/20 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
               >
                 {selected.size === filtered.length && filtered.length > 0 ? 'Deselect All' : 'Select All'}
               </button>
@@ -112,7 +112,7 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
                 filtered.map((s) => (
                   <button key={s.uid} onClick={() => setSelected((prev) => { const n = new Set(prev); n.has(s.uid) ? n.delete(s.uid) : n.add(s.uid); return n; })}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${selected.has(s.uid) ? 'bg-purple-50 border border-purple-200' : 'hover:bg-[#f8fafc] border border-transparent'}`}>
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${selected.has(s.uid) ? 'bg-[#9956DE] border-[#9956DE]' : 'border-[#cbd5e1]'}`}>
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${selected.has(s.uid) ? 'bg-[#a855f7] border-[#a855f7]' : 'border-[#cbd5e1]'}`}>
                       {selected.has(s.uid) && <Check size={12} className="text-white" />}
                     </div>
                     <div className="min-w-0">
@@ -126,7 +126,7 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
           </div>
           <div className="flex items-center justify-between p-4 border-t border-[#f1f5f9]">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleAdd} disabled={saving || selected.size === 0} className="bg-[#9956DE] hover:bg-[#7c3aed] text-white">
+            <Button size="sm" onClick={handleAdd} disabled={saving || selected.size === 0} className="bg-[#a855f7] hover:bg-[#9333ea] text-white">
               <UserPlus size={14} className="mr-1.5" />{saving ? 'Adding...' : `Add ${selected.size} Student${selected.size !== 1 ? 's' : ''}`}
             </Button>
           </div>
