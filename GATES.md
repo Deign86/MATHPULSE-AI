@@ -30,4 +30,22 @@
   EXPECT: 0 errors across all checks
   EVIDENCE: oxlint passed with 0 errors; tsc --noEmit passed with 0 errors; Vite production build built in 32.18s with exit code 0. Chunk LeaderboardPage-Dge0B-9L.js built successfully.
 
+- [x] GATE 7: Prominent clickable CTAs (AI Study Plan card with vibrant button, interactive topic chips, obvious row practice buttons) and student-friendly non-technical terminology across Assessment page
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: 0 errors across all checks
+  EVIDENCE: oxlint passed with 0 errors across 389 files; tsc --noEmit passed with 0 errors; Vite production build built in 51.01s with exit code 0. Chunk GradesPage-e6W3x-w8.js built successfully.
 
+- [x] GATE 8: Add "Quarter Exam Readiness & Key Milestones" card in the lower right of Assessment page to balance layout, eliminate empty space, and provide actionable SHS milestone tracking
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: 0 errors across all checks
+  EVIDENCE: oxlint passed with 0 errors across 389 files; tsc --noEmit passed with 0 errors; Vite production build built in 37.38s with exit code 0 (GradesPage-CWuL7kOv.js).
+
+- [x] GATE 9: Modal portal overlay covers entire screen (dimming sidebar completely), bounded scrollable container heights for responsive overflow without vertical blowout, and semantic content-specific color theory
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: 0 errors across all checks
+  EVIDENCE: oxlint passed with 0 errors across 389 files; tsc --noEmit passed with exit code 0; Vite production build built in 58.59s with exit code 0. DiagnosticBreakdown-BK05sMxS.js and GradesPage-BzDUmJSR.js built successfully.
+
+- [x] GATE 10: Temporarily populate containers with dense data (8+ quizzes, 5+ subjects, 8+ milestones), capture layout screenshots confirming bounded scrolling, and cleanly revert placeholder data
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: 0 errors across all checks
+  EVIDENCE: oxlint passed with 0 errors across 389 files; tsc --noEmit passed with exit code 0; Vite production build built in 46.12s with exit code 0. Captured dense_data_layout_1789355330352.png and recent_quizzes_internal_scroll_1789355342890.png confirming bounded heights with smooth internal scroll, then cleanly reverted all mock data.

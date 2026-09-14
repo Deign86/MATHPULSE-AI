@@ -12,6 +12,7 @@ import {
   BarChart3, 
   Sparkles, 
   ArrowUpRight, 
+  ArrowRight,
   ChevronDown, 
   ChevronLeft,
   ChevronRight,
@@ -39,6 +40,13 @@ interface DiagnosticSummary {
   riskLevel: string;
   weaknesses: string[];
   recommendation: string;
+}
+
+interface ExamMilestone {
+  title: string;
+  subject: string;
+  status: 'completed' | 'in-progress' | 'ready';
+  statusLabel: string;
 }
 
 // Creative Radial Score Ring with smooth SVG gradient
@@ -353,6 +361,51 @@ const GradesPage = () => {
     return Math.round((passedCount / recentQuizzes.length) * 100);
   }, [recentQuizzes, averageScore]);
 
+  // Compute exam readiness score from average & quiz proficiency
+  const examReadinessScore = useMemo(() => {
+    if (averageScore > 0 && proficiencyRate > 0) {
+      return Math.round((averageScore * 0.6) + (proficiencyRate * 0.4));
+    }
+    if (averageScore > 0) return averageScore;
+    if (diagnosticSummary?.score) return diagnosticSummary.score;
+    return 70;
+  }, [averageScore, proficiencyRate, diagnosticSummary?.score]);
+
+  // Derive core Senior High School STEM exam milestones
+  const examMilestones = useMemo<ExamMilestone[]>(() => {
+    const genMathSubject = displaySubjectPerformance.find(s => s.subject.toLowerCase().includes('general'));
+    const statsSubject = displaySubjectPerformance.find(s => s.subject.toLowerCase().includes('stat'));
+    const genMathScore = genMathSubject?.average ?? 0;
+    const statsScore = statsSubject?.average ?? 0;
+
+    return [
+      {
+        title: 'Functions & Rational Relations',
+        subject: 'General Mathematics',
+        status: genMathScore >= 75 ? 'completed' : genMathScore > 0 ? 'in-progress' : 'ready',
+        statusLabel: genMathScore >= 75 ? 'Mastered' : genMathScore > 0 ? `${genMathScore}%` : 'Up Next',
+      },
+      {
+        title: 'Business Mathematics & Annuities',
+        subject: 'General Mathematics',
+        status: genMathScore >= 85 ? 'completed' : 'in-progress',
+        statusLabel: genMathScore >= 85 ? 'Mastered' : 'In Review',
+      },
+      {
+        title: 'Normal Distribution & Z-Scores',
+        subject: 'Statistics & Probability',
+        status: statsScore >= 75 ? 'completed' : statsScore > 0 ? 'in-progress' : 'ready',
+        statusLabel: statsScore >= 75 ? 'Mastered' : statsScore > 0 ? `${statsScore}%` : 'Up Next',
+      },
+      {
+        title: 'Sampling & Hypothesis Testing',
+        subject: 'Statistics & Probability',
+        status: statsScore >= 85 ? 'completed' : 'ready',
+        statusLabel: statsScore >= 85 ? 'Mastered' : 'Upcoming',
+      },
+    ];
+  }, [displaySubjectPerformance]);
+
   // Filter quizzes based on active selections + interactive subject chart tab
   const filteredQuizzes = useMemo(() => {
     return recentQuizzes.filter(quiz => {
@@ -478,13 +531,13 @@ const GradesPage = () => {
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white tracking-tight">Assessment</h1>
+              <h1 className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white tracking-tight">Grades & Assessment</h1>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800/50 shadow-xs">
                 Grade 11 STEM
               </span>
             </div>
             <p className="text-slate-500 dark:text-slate-400 font-semibold text-xs mt-0.5">
-              Review your performance across subjects & competency analytics
+              Check your math grades, quiz scores, and subject progress
             </p>
           </div>
         </div>
@@ -508,11 +561,11 @@ const GradesPage = () => {
           </div>
 
           <Button 
-            className="flex-1 md:flex-none bg-gradient-to-r from-[#7C3AED] to-[#6366F1] hover:from-[#6D28D9] hover:to-[#4F46E5] text-white font-black rounded-xl h-9.5 px-4 shadow-[0_6px_16px_-4px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 transition-all text-xs flex items-center gap-1.5" 
+            className="flex-1 md:flex-none bg-gradient-to-r from-[#7C3AED] to-[#6366F1] hover:from-[#6D28D9] hover:to-[#4F46E5] text-white font-black rounded-xl h-9.5 px-4 shadow-[0_6px_16px_-4px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 transition-all text-xs flex items-center gap-1.5 cursor-pointer" 
             onClick={handleExportReport}
           >
             <Download className="w-3.5 h-3.5" />
-            Report
+            Export Report
           </Button>
         </div>
       </div>
@@ -529,7 +582,7 @@ const GradesPage = () => {
             <div className="absolute top-0 left-0 h-10 sm:h-11 w-52 sm:w-56 rounded-t-2xl bg-[#5856D6] flex items-center px-5 sm:px-6 gap-2.5 border-t border-x border-white/25 shadow-xs">
               <Award className="w-4 h-4 text-white shrink-0" />
               <span className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-white leading-none">
-                BENCHMARK
+                GENERAL AVERAGE
               </span>
             </div>
 
@@ -538,7 +591,7 @@ const GradesPage = () => {
               <div>
                 <div className="flex items-center justify-between mb-3 h-7">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-sm text-white border border-white/25 shadow-xs">
-                    General Average
+                    Overall Grade
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-white/25 backdrop-blur-sm text-white border border-white/30">
                     {averageScore >= 75 ? 'Passing' : averageScore > 0 ? 'Needs Boost' : 'Pending'}
@@ -551,7 +604,7 @@ const GradesPage = () => {
                       {generalAverage}{averageScore > 0 ? '%' : ''}
                     </h3>
                     <p className="text-white/80 font-semibold text-xs mt-1.5">
-                      {averageScore >= 75 ? 'Proficient overall mastery' : averageScore > 0 ? 'Below 75% passing threshold' : 'No evaluations logged'}
+                      {averageScore >= 75 ? 'Passing with good standing' : averageScore > 0 ? 'Aim for 75% to reach passing grade' : 'Take a quiz to calculate grade'}
                     </p>
                   </div>
                   <RadialScoreRing 
@@ -565,9 +618,9 @@ const GradesPage = () => {
               </div>
 
               <div className="mt-5 pt-3 border-t border-white/20 flex items-center justify-between h-9 text-xs">
-                <span className="text-white/80 font-bold">DepEd Standard: 75%</span>
+                <span className="text-white/80 font-bold">Passing Mark: 75%</span>
                 <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-sm text-white font-black border border-white/25">
-                  {averageScore >= 75 ? `+${averageScore - 75}% margin` : averageScore > 0 ? `-${75 - averageScore}% to pass` : 'Take diagnostic'}
+                  {averageScore >= 75 ? `+${averageScore - 75}% above passing` : averageScore > 0 ? `-${75 - averageScore}% to pass` : 'Take quiz'}
                 </span>
               </div>
             </div>
@@ -581,7 +634,7 @@ const GradesPage = () => {
             <div className="absolute top-0 left-0 h-10 sm:h-11 w-52 sm:w-56 rounded-t-2xl bg-[#D96B43] flex items-center px-5 sm:px-6 gap-2.5 border-t border-x border-white/25 shadow-xs">
               <Target className="w-4 h-4 text-white shrink-0" />
               <span className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-white leading-none">
-                FOCUS AREA
+                FOCUS TOPIC
               </span>
             </div>
 
@@ -590,10 +643,10 @@ const GradesPage = () => {
               <div>
                 <div className="flex items-center justify-between mb-3 h-7">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-sm text-white border border-white/25 shadow-xs">
-                    Weakest Subject
+                    Needs Practice
                   </span>
                   <span className="text-[10px] font-black bg-white/25 backdrop-blur-sm text-white border border-white/30 px-2.5 py-0.5 rounded-full">
-                    Priority
+                    Priority Topic
                   </span>
                 </div>
 
@@ -603,7 +656,7 @@ const GradesPage = () => {
                       {diagnosticSummary?.weaknesses?.[0] || 'Finite Mathematics'}
                     </h3>
                     <p className="text-white/80 font-semibold text-xs mt-1.5">
-                      Identified as lowest relative score
+                      Practice this topic to boost your overall score
                     </p>
                   </div>
                   <RadialScoreRing 
@@ -617,11 +670,11 @@ const GradesPage = () => {
               </div>
 
               <div className="mt-5 pt-3 border-t border-white/20 flex items-center justify-between h-9 text-xs">
-                <span className="text-white/80 font-bold">Personalized Practice</span>
+                <span className="text-white/80 font-bold">Recommended Drill</span>
                 <button
                   type="button"
                   onClick={() => handleStartPractice(diagnosticSummary?.weaknesses?.[0])}
-                  className="inline-flex items-center gap-1.5 text-xs font-black text-[#D96B43] bg-white hover:bg-white/95 px-3 py-1 rounded-lg shadow-xs transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-xs font-black text-[#D96B43] bg-white hover:bg-white/90 px-3.5 py-1.5 rounded-xl shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                 >
                   Practice Topic <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
@@ -637,7 +690,7 @@ const GradesPage = () => {
             <div className="absolute top-0 left-0 h-10 sm:h-11 w-52 sm:w-56 rounded-t-2xl bg-[#1E8A70] flex items-center px-5 sm:px-6 gap-2.5 border-t border-x border-white/25 shadow-xs">
               <TrendingUp className="w-4 h-4 text-white shrink-0" />
               <span className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-white leading-none">
-                RECORD
+                QUIZ LOG
               </span>
             </div>
 
@@ -646,7 +699,7 @@ const GradesPage = () => {
               <div>
                 <div className="flex items-center justify-between mb-3 h-7">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-sm text-white border border-white/25 shadow-xs">
-                    Evaluations Logged
+                    Quizzes Completed
                   </span>
                   <span className="text-[10px] font-black bg-white/25 backdrop-blur-sm text-white border border-white/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                     <Flame className="w-3 h-3 text-amber-200" /> Active Pace
@@ -659,7 +712,7 @@ const GradesPage = () => {
                       {totalQuizzes}
                     </h3>
                     <p className="text-white/80 font-semibold text-xs mt-1.5">
-                      {recentQuizzes.length} activities logged in learning record
+                      {recentQuizzes.length} quizzes and drills completed
                     </p>
                   </div>
                   <RadialScoreRing 
@@ -673,9 +726,9 @@ const GradesPage = () => {
               </div>
 
               <div className="mt-5 pt-3 border-t border-white/20 flex items-center justify-between h-9 text-xs">
-                <span className="text-white/80 font-bold">Evaluation Velocity</span>
+                <span className="text-white/80 font-bold">Passing Accuracy</span>
                 <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-sm text-white font-black border border-white/25">
-                  {proficiencyRate}% passing
+                  {proficiencyRate}% passed
                 </span>
               </div>
             </div>
@@ -684,7 +737,7 @@ const GradesPage = () => {
 
       </div>
 
-      {/* 3. AI Diagnostic Intelligence Showcase Banner */}
+      {/* 3. AI Diagnostic Results Banner */}
       {diagnosticSummary && (
         <div className="relative overflow-hidden bg-gradient-to-br from-[#FAF8FF] via-white to-[#F3EFFF] dark:from-slate-900 dark:via-purple-950/20 dark:to-slate-900 border-2 border-purple-200/90 dark:border-purple-800/60 rounded-[2.25rem] p-5 sm:p-7 shadow-[0_8px_25px_-10px_rgba(124,58,237,0.06)]">
           <div className="absolute top-0 right-0 w-80 h-80 bg-purple-200/25 dark:bg-purple-600/10 rounded-full blur-3xl -mt-24 -mr-24 pointer-events-none" />
@@ -697,20 +750,20 @@ const GradesPage = () => {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tracking-tight">
-                    Diagnostic Assessment Results
+                    Initial Diagnostic Results
                   </h3>
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                    <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" /> AI Evaluated
+                    <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" /> AI Checked
                   </span>
                 </div>
                 <p className="text-slate-500 dark:text-slate-400 font-semibold text-xs mt-0.5">
-                  Your foundational competency evaluation and personalized learning recommendation
+                  See your starting math strengths and where your AI tutor recommends focusing next
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2.5 self-start md:self-auto">
-              <span className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 border shadow-xs ${
+              <span className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border shadow-xs ${
                 diagnosticSummary.riskLevel === 'Low' 
                   ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' 
                   : diagnosticSummary.riskLevel === 'High' || diagnosticSummary.riskLevel === 'At Risk' 
@@ -724,9 +777,9 @@ const GradesPage = () => {
               <button
                 type="button"
                 onClick={() => setShowBreakdownModal(true)}
-                className="inline-flex items-center gap-1 text-xs font-black text-purple-800 dark:text-purple-200 hover:text-purple-950 bg-white dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-slate-700 border border-purple-200 dark:border-purple-700 px-3.5 py-1.5 rounded-xl transition-all shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-black text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-4 py-2 rounded-xl transition-all shadow-md shadow-purple-500/20 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer"
               >
-                In-Depth Breakdown
+                View Full Analysis
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -742,55 +795,93 @@ const GradesPage = () => {
                 colorClass={diagnosticSummary.score >= 75 ? 'text-emerald-500' : 'text-[#7C3AED]'} 
               />
               <div>
-                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Baseline Score</p>
-                <h4 className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white">{diagnosticSummary.score}%</h4>
-                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Foundational evaluation</p>
+                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Diagnostic Score</p>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white">{diagnosticSummary.score}%</h4>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    diagnosticSummary.score >= 75 
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' 
+                      : 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300'
+                  }`}>
+                    {diagnosticSummary.score >= 75 ? 'Passing' : 'Needs Work'}
+                  </span>
+                </div>
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Starting math assessment</p>
               </div>
             </div>
 
-            {/* Pod 2: Focus Areas */}
+            {/* Pod 2: Focus Areas / Topics to Practice */}
             <div className="bg-white/95 dark:bg-slate-800/90 rounded-[1.5rem] p-4 border border-amber-100/80 dark:border-amber-800/50 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-[11px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
-                    <Target className="w-3.5 h-3.5 text-amber-600" /> Focus Areas
+                    <Target className="w-3.5 h-3.5 text-amber-600" /> Topics to Practice
                   </p>
                   <span className="text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full">
-                    {diagnosticSummary.weaknesses.length} topics
+                    {diagnosticSummary.weaknesses.length} {diagnosticSummary.weaknesses.length === 1 ? 'topic' : 'topics'}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {diagnosticSummary.weaknesses.slice(0, 3).map((weakness, i) => (
-                    <span key={i} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/50">
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleStartPractice(weakness)}
+                      title={`Practice ${weakness}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/60 transition-all cursor-pointer shadow-2xs hover:scale-[1.02] active:scale-[0.98]"
+                    >
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                      {weakness}
-                    </span>
+                      <span>{weakness}</span>
+                      <ArrowUpRight className="w-3 h-3 text-amber-600 shrink-0 opacity-70 group-hover:opacity-100" />
+                    </button>
                   ))}
                   {diagnosticSummary.weaknesses.length === 0 && (
-                    <p className="text-xs font-medium text-slate-400 italic">No specific weak areas detected</p>
+                    <p className="text-xs font-medium text-slate-400 italic">All foundational topics look solid!</p>
                   )}
                 </div>
               </div>
+              {diagnosticSummary.weaknesses.length > 0 && (
+                <p className="text-[10px] font-bold text-amber-700/80 dark:text-amber-400/80 mt-2">
+                  💡 Tap any topic to start practice questions
+                </p>
+              )}
             </div>
 
-            {/* Pod 3: Recommendation */}
-            <div className="bg-white/95 dark:bg-slate-800/90 rounded-[1.5rem] p-4 border border-indigo-100/80 dark:border-indigo-800/50 shadow-xs flex flex-col justify-between">
-              <div>
-                <p className="text-[11px] font-black text-indigo-800 dark:text-indigo-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> AI Recommendation
-                </p>
-                <p className="text-xs font-medium text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
-                  {diagnosticSummary.recommendation}
+            {/* Pod 3: AI Recommendation with high affordance and unmistakable CTA */}
+            <div 
+              onClick={() => setShowBreakdownModal(true)}
+              className="bg-gradient-to-br from-purple-50/90 via-white to-indigo-50/80 dark:from-purple-950/40 dark:via-slate-800 dark:to-indigo-950/40 rounded-[1.5rem] p-4 border-2 border-purple-200/90 dark:border-purple-800/80 hover:border-purple-500 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+            >
+              {/* Subtle ambient spotlight */}
+              <div className="absolute top-0 right-0 w-24 h-24 bg-purple-400/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform" />
+
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-black text-purple-800 dark:text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse" /> AI Study Advice
+                  </span>
+                  <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-purple-100/90 dark:bg-purple-900/60 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800 shadow-2xs">
+                    Tap to open ↗
+                  </span>
+                </div>
+
+                <p className="text-xs font-medium text-slate-700 dark:text-slate-200 leading-relaxed line-clamp-2 mt-1">
+                  "{diagnosticSummary.recommendation}"
                 </p>
               </div>
-              <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">Personalized Guidance</span>
+
+              {/* Unmistakable CTA Button */}
+              <div className="relative z-10 mt-3 pt-2 border-t border-purple-100 dark:border-slate-700">
                 <button
                   type="button"
-                  onClick={() => setShowBreakdownModal(true)}
-                  className="text-[11px] font-black text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 hover:underline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowBreakdownModal(true);
+                  }}
+                  className="w-full py-2 px-3.5 rounded-xl bg-gradient-to-r from-[#7C3AED] to-[#6366F1] hover:from-[#6D28D9] hover:to-[#4F46E5] text-white font-black text-xs shadow-md shadow-purple-500/25 flex items-center justify-center gap-1.5 transition-all group-hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                 >
-                  View Analysis →
+                  <span>Open Full AI Study Plan</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
             </div>
@@ -810,22 +901,31 @@ const GradesPage = () => {
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
               <div>
-                <h3 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tracking-tight">
-                  Subject Performance & Benchmark
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tracking-tight">
+                    Subject Grades & Passing Line
+                  </h3>
+                  <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800 hidden sm:inline-block">
+                    Interactive
+                  </span>
+                </div>
                 <p className="text-slate-400 dark:text-slate-500 font-bold text-xs mt-0.5">
-                  Visual mastery comparison against DepEd 75% Passing Standard
+                  Compare your subject averages against the DepEd 75% passing mark
                 </p>
               </div>
 
-              {activeSubjectTab && (
+              {activeSubjectTab ? (
                 <button
                   type="button"
                   onClick={() => setActiveSubjectTab(null)}
-                  className="self-start sm:self-auto text-xs font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 px-3 py-1 rounded-xl border border-purple-200 dark:border-purple-800 transition-all"
+                  className="self-start sm:self-auto text-xs font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 px-3 py-1 rounded-xl border border-purple-200 dark:border-purple-800 transition-all cursor-pointer shadow-2xs"
                 >
-                  Filter: {activeSubjectTab} (Clear ✕)
+                  Filtered: {activeSubjectTab} (Clear ✕)
                 </button>
+              ) : (
+                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1 self-start sm:self-auto">
+                  <span>👆 Click any subject bar to filter</span>
+                </span>
               )}
             </div>
 
@@ -837,7 +937,7 @@ const GradesPage = () => {
                 style={{ bottom: '38%' }}
               >
                 <span className="bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 text-[10px] font-black px-2.5 py-0.5 rounded-full -translate-y-1/2 mr-2 border border-purple-300/80 dark:border-purple-800 shadow-xs">
-                  75% Passing Benchmark
+                  75% Passing Mark (DepEd)
                 </span>
               </div>
 
@@ -872,7 +972,9 @@ const GradesPage = () => {
                             isMastered 
                               ? 'bg-gradient-to-t from-emerald-600 via-emerald-500 to-teal-400' 
                               : isPassing 
-                                ? 'bg-gradient-to-t from-[#6D28D9] via-[#7C3AED] to-[#8B5CF6]' 
+                                ? subject.subject.toLowerCase().includes('general')
+                                  ? 'bg-gradient-to-t from-indigo-700 via-indigo-600 to-sky-400'
+                                  : 'bg-gradient-to-t from-[#6D28D9] via-[#7C3AED] to-[#8B5CF6]' 
                                 : 'bg-gradient-to-t from-orange-500 via-amber-500 to-yellow-400'
                           }`}
                           style={{ height: `${Math.max(subject.average, 15)}%` }}
@@ -885,14 +987,16 @@ const GradesPage = () => {
                       </div>
 
                       {/* Status Tag Below */}
-                      <span className={`mt-2.5 text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                      <span className={`mt-2.5 text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
                         isMastered 
-                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' 
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' 
                           : isPassing 
-                            ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300' 
-                            : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
+                            ? subject.subject.toLowerCase().includes('general')
+                              ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                              : 'bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800' 
+                            : 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                       }`}>
-                        {isMastered ? 'Mastered' : isPassing ? 'Proficient' : 'Needs Boost'}
+                        {isMastered ? 'Honors (≥85%)' : isPassing ? 'Passing (≥75%)' : 'Needs Practice'}
                       </span>
                     </div>
                   );
@@ -901,15 +1005,15 @@ const GradesPage = () => {
             </div>
           </div>
 
-          {/* Card B: Recent Assessments Activity Table (Solution: Paged 4 items to eliminate vertical bloat!) */}
+          {/* Card B: Recent Quizzes & Practice Activity Table */}
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <h3 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tracking-tight">
-                  Recent Assessments
+                  Recent Quizzes & Practice
                 </h3>
                 <p className="text-slate-400 dark:text-slate-500 font-bold text-xs mt-0.5">
-                  Chronological record of evaluated quiz and practice sessions
+                  Your latest quiz scores and practice session records
                 </p>
               </div>
 
@@ -944,66 +1048,88 @@ const GradesPage = () => {
               </div>
             </div>
 
-            {/* Compact Table Rows with Rich Contextual Colors (Limited to 4 per page!) */}
-            <div className="mt-3.5 space-y-2">
+            {/* Scrollable Container with Fixed Bounds to Prevent Vertical Blowout */}
+            <div className="mt-3.5 space-y-2 max-h-[320px] sm:max-h-[350px] overflow-y-auto pr-1 sm:pr-1.5 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
               {paginatedQuizzes.length > 0 ? (
-                paginatedQuizzes.map((quiz) => (
-                  <div 
-                    key={quiz.id}
-                    className="bg-slate-50/75 dark:bg-slate-800/40 hover:bg-purple-50/60 dark:hover:bg-purple-950/30 border border-slate-200/70 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-700 rounded-2xl p-3 sm:p-3.5 transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 group shadow-2xs"
-                  >
-                    {/* Left: Avatar Icon + Title + Metadata */}
-                    <div className="flex items-center gap-3 min-w-0 sm:w-6/12">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform border ${
-                        quiz.type === 'practice' 
-                          ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400' 
-                          : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400'
-                      }`}>
-                        {quiz.type === 'practice' ? <Zap className="w-4 h-4 text-emerald-600" /> : <Award className="w-4 h-4 text-purple-600" />}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white tracking-tight truncate">
-                          {quiz.title}
-                        </h4>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{quiz.subject}</span>
-                          <span className="text-slate-300 dark:text-slate-600">•</span>
-                          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">{quiz.date}</span>
+                paginatedQuizzes.map((quiz) => {
+                  const isGenMath = quiz.subject.toLowerCase().includes('general');
+                  const isStats = quiz.subject.toLowerCase().includes('stat');
+
+                  return (
+                    <div 
+                      key={quiz.id}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 group ${
+                        isGenMath 
+                          ? 'bg-indigo-50/20 dark:bg-indigo-950/10 border-indigo-100/60 dark:border-indigo-900/30 hover:border-indigo-300 dark:hover:border-indigo-700' 
+                          : isStats 
+                            ? 'bg-purple-50/20 dark:bg-purple-950/10 border-purple-100/60 dark:border-purple-900/30 hover:border-purple-300 dark:hover:border-purple-700'
+                            : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 hover:border-slate-300'
+                      }`}
+                    >
+                      {/* Left: Avatar Icon + Title + Metadata */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                          quiz.score >= 75 
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' 
+                            : quiz.score >= 60 
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800' 
+                              : 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                        }`}>
+                          {quiz.type === 'practice' ? <Zap className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
+                        </div>
+
+                        <div className="min-w-0">
+                          <h4 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 truncate group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">
+                            {quiz.title}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-0.5 text-[11px] font-semibold">
+                            <span className={isGenMath ? 'text-indigo-600 dark:text-indigo-400' : isStats ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'}>
+                              {isGenMath ? '📐 General Math' : isStats ? '🎲 Statistics & Prob' : quiz.subject}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span className="text-slate-400 dark:text-slate-500">{quiz.date}</span>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Right: Type Badge + Score Pill + Action */}
+                      <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                          quiz.type === 'practice' 
+                            ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200/70 dark:border-amber-800' 
+                            : isGenMath 
+                              ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 border-indigo-200/70 dark:border-indigo-800'
+                              : 'bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border-purple-200/70 dark:border-purple-800'
+                        }`}>
+                          {quiz.type === 'practice' ? 'Practice' : 'Quiz'}
+                        </span>
+
+                        <span className={`px-2.5 py-1 rounded-xl text-xs font-black border shadow-xs tabular-nums ${
+                          quiz.score >= 75 
+                            ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' 
+                            : quiz.score >= 60 
+                              ? 'bg-amber-100/90 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' 
+                              : 'bg-rose-100/90 dark:bg-rose-950/80 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
+                        }`}>
+                          {quiz.score}%
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => handleStartPractice(quiz.subject)}
+                          title={`Practice ${quiz.subject}`}
+                          className={`px-2.5 py-1 rounded-xl border text-xs font-black transition-all flex items-center gap-1 shadow-2xs hover:shadow-xs cursor-pointer ${
+                            isGenMath
+                              ? 'bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 hover:text-white border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300'
+                              : 'bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-600 hover:text-white border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300'
+                          }`}
+                        >
+                          Practice <ArrowUpRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Right: Type Badge + Score Pill + Action */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-800 shrink-0">
-                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border ${
-                        quiz.type === 'practice' 
-                          ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800' 
-                          : 'bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border-purple-200/70 dark:border-purple-800'
-                      }`}>
-                        {quiz.type === 'practice' ? 'Practice' : 'Quiz'}
-                      </span>
-
-                      <span className={`px-2.5 py-1 rounded-xl text-xs font-black border shadow-xs tabular-nums ${
-                        quiz.score >= 80 
-                          ? 'bg-emerald-100/90 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700' 
-                          : quiz.score >= 60 
-                            ? 'bg-amber-100/90 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700' 
-                            : 'bg-rose-100/90 dark:bg-rose-950/80 text-rose-900 dark:text-rose-200 border-rose-300 dark:border-rose-700'
-                      }`}>
-                        {quiz.score}%
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => handleStartPractice(quiz.subject)}
-                        title="Practice topic again"
-                        className="w-7 h-7 rounded-lg bg-white dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-slate-200/80 dark:border-slate-700 text-slate-500 hover:text-purple-700 dark:hover:text-purple-300 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="py-8 text-center flex flex-col items-center justify-center">
                   <div className="w-10 h-10 bg-purple-50 dark:bg-slate-800 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center mb-2">
@@ -1053,25 +1179,27 @@ const GradesPage = () => {
         {/* RIGHT COLUMN: Subject Ranking & Momentum Action */}
         <div className="space-y-5 lg:space-y-6 flex flex-col">
           
-          {/* Card C: Subject Mastery Leaderboard */}
+          {/* Card C: Subject Standings */}
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)]">
             <div className="flex items-center justify-between mb-3.5">
               <div>
                 <h3 className="text-base sm:text-lg font-display font-black text-slate-900 dark:text-white">
-                  Subject Ranking
+                  Subject Standings
                 </h3>
-                <p className="text-slate-400 dark:text-slate-500 font-bold text-xs">Top performing subjects</p>
+                <p className="text-slate-400 dark:text-slate-500 font-bold text-xs">Ranked by your highest average</p>
               </div>
-              <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+              <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
                 Ranked
               </span>
             </div>
 
-            {/* Ranked Pods */}
-            <div className="space-y-2.5">
+            {/* Ranked Pods - Bounded Scrollable Container */}
+            <div className="space-y-2.5 max-h-[200px] sm:max-h-[220px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
               {rankedSubjects.map((subject, rankIdx) => {
                 const isFirst = rankIdx === 0;
-                const isLast = rankIdx === rankedSubjects.length - 1 && rankedSubjects.length > 1;
+                const isGenMath = subject.subject.toLowerCase().includes('general');
+                const isStats = subject.subject.toLowerCase().includes('stat');
+                const isPassing = subject.average >= 75;
 
                 return (
                   <div 
@@ -1079,37 +1207,43 @@ const GradesPage = () => {
                     className={`rounded-2xl p-3.5 border transition-all duration-200 flex items-center justify-between gap-3 ${
                       isFirst 
                         ? 'bg-gradient-to-r from-emerald-50/80 via-emerald-50/40 to-white dark:from-emerald-950/40 dark:to-slate-900 border-emerald-200/80 dark:border-emerald-800/60 shadow-xs' 
-                        : isLast 
-                          ? 'bg-gradient-to-r from-orange-50/80 via-orange-50/40 to-white dark:from-orange-950/40 dark:to-slate-900 border-orange-200/80 dark:border-orange-800/60' 
-                          : 'bg-slate-50/60 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800'
+                        : isGenMath
+                          ? 'bg-gradient-to-r from-indigo-50/60 via-indigo-50/30 to-white dark:from-indigo-950/40 dark:to-slate-900 border-indigo-100 dark:border-indigo-900/60'
+                          : 'bg-gradient-to-r from-violet-50/60 via-violet-50/30 to-white dark:from-violet-950/40 dark:to-slate-900 border-violet-100 dark:border-violet-900/60'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
                         isFirst 
                           ? 'bg-emerald-500 text-white shadow-xs' 
-                          : isLast 
-                            ? 'bg-orange-500 text-white shadow-xs' 
+                          : isGenMath 
+                            ? 'bg-indigo-600 text-white shadow-xs' 
                             : 'bg-purple-600 text-white shadow-xs'
                       }`}>
                         #{rankIdx + 1}
                       </span>
                       <div className="min-w-0">
                         <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
-                          {subject.subject}
+                          {isGenMath ? '📐 ' : isStats ? '🎲 ' : ''}{subject.subject}
                         </h4>
                         <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{subject.quizzes} activities</p>
                       </div>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white block tabular-nums">{subject.average}%</span>
+                      <span className={`text-xs sm:text-sm font-black block tabular-nums ${
+                        isPassing ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                      }`}>{subject.average}%</span>
                       <button
                         type="button"
                         onClick={() => handleStartPractice(subject.subject)}
-                        className="text-[10px] font-black text-purple-700 dark:text-purple-400 hover:text-purple-900 hover:underline flex items-center gap-0.5 justify-end mt-0.5 cursor-pointer"
+                        className={`text-[11px] font-black hover:text-white border px-2.5 py-1 rounded-xl transition-all flex items-center gap-1 justify-end mt-1 cursor-pointer shadow-2xs hover:shadow-xs ${
+                          isGenMath
+                            ? 'text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 border-indigo-200 dark:border-indigo-800'
+                            : 'text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-600 border-purple-200 dark:border-purple-800'
+                        }`}
                       >
-                        Practice <ChevronRight className="w-2.5 h-2.5" />
+                        Practice <ArrowUpRight className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
@@ -1129,19 +1263,131 @@ const GradesPage = () => {
                 <GraduationCap className="w-5 h-5 text-white" />
               </div>
               <h3 className="text-lg sm:text-xl font-display font-black tracking-tight mb-1.5 leading-tight">
-                Empower Your Mathematical Mastery!
+                Ready to Boost Your Grades?
               </h3>
               <p className="text-white/85 text-xs font-medium leading-relaxed mb-4">
-                Reinforce your identified focus areas with adaptive practice modules aligned with DepEd Strengthened Senior High School competencies.
+                Practice math questions tailored to what you need to review, with helpful hints to get you exam-ready.
               </p>
               <Button
                 onClick={() => handleStartPractice()}
-                className="w-full bg-white text-purple-800 hover:bg-slate-50 border-0 font-black h-10 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs flex items-center justify-center gap-1.5"
+                className="w-full bg-white text-purple-800 hover:bg-slate-50 border-0 font-black h-10 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                Launch Practice Center
+                Start Math Practice ⚡
                 <ArrowUpRight className="w-3.5 h-3.5" />
               </Button>
             </div>
+          </div>
+
+          {/* Card E: Quarter Exam Readiness & Key Milestones */}
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                  <Target className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-display font-black text-slate-900 dark:text-white leading-tight">
+                    Exam Readiness
+                  </h3>
+                  <p className="text-slate-400 dark:text-slate-500 font-bold text-xs">Senior High School Milestones</p>
+                </div>
+              </div>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                examReadinessScore >= 75 
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800' 
+                  : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200/70 dark:border-amber-800'
+              }`}>
+                {examReadinessScore >= 75 ? 'On Track 🚀' : 'Prep Needed ⚡'}
+              </span>
+            </div>
+
+            {/* Readiness Gauge / Progress Bar */}
+            <div className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 mb-4">
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="font-bold text-slate-600 dark:text-slate-300">Quarter Exam Target</span>
+                <span className="font-black text-slate-900 dark:text-white tabular-nums text-sm">{examReadinessScore}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-slate-200/70 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 rounded-full transition-all duration-700" 
+                  style={{ width: `${Math.min(100, Math.max(12, examReadinessScore))}%` }} 
+                />
+              </div>
+              <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-2">
+                Calculated from quiz passing rate and completed practice modules.
+              </p>
+            </div>
+
+            {/* Milestones Header */}
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5 flex items-center justify-between px-1">
+              <span>Core SHS Competencies</span>
+              <span>Status</span>
+            </div>
+
+            {/* Milestones List - Bounded Scrollable Container */}
+            <div className="space-y-2 mb-4 max-h-[190px] sm:max-h-[210px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+              {examMilestones.map((milestone, milestoneIdx) => {
+                const isGenMath = milestone.subject.toLowerCase().includes('general');
+                const isStats = milestone.subject.toLowerCase().includes('stat');
+
+                return (
+                  <button
+                    key={milestoneIdx}
+                    type="button"
+                    onClick={() => handleStartPractice(milestone.subject)}
+                    className="w-full text-left p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-purple-200 dark:hover:border-purple-800 bg-white dark:bg-slate-900 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition-all flex items-center justify-between gap-2 group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
+                        milestone.status === 'completed' 
+                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400' 
+                          : isGenMath
+                            ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                            : 'bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400'
+                      }`}>
+                        {milestone.status === 'completed' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        ) : (
+                          <span className="text-[10px] font-black">{milestoneIdx + 1}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">
+                          {milestone.title}
+                        </p>
+                        <p className={`text-[10px] font-bold ${
+                          isGenMath ? 'text-indigo-600 dark:text-indigo-400' : isStats ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'
+                        }`}>
+                          {isGenMath ? '📐 General Math' : isStats ? '🎲 Statistics & Prob' : milestone.subject}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-md shrink-0 border ${
+                      milestone.status === 'completed'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                        : milestone.status === 'in-progress'
+                          ? isGenMath
+                            ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                            : 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                    }`}>
+                      {milestone.statusLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Action Button */}
+            <button
+              type="button"
+              onClick={() => handleStartPractice()}
+              className="w-full py-2.5 px-3 rounded-xl bg-slate-900 dark:bg-white hover:bg-purple-700 dark:hover:bg-purple-100 text-white dark:text-slate-900 hover:text-white dark:hover:text-purple-900 font-black text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+            >
+              <span>Practice Next Exam Milestone</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
           </div>
 
         </div>
