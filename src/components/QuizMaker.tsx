@@ -1486,37 +1486,38 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               </div>
 
               {/* Basic Settings Card */}
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] sm:rounded-[20px] border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300">
-                <div className="p-4 sm:p-5 border-b border-[#f1f5f9] bg-white/50">
-                  <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Basic Settings</h3>
+              <div className="bg-white/80 backdrop-blur-[12px] rounded-[16px] border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300">
+                <div className="px-3.5 py-2.5 sm:px-5 sm:py-3 border-b border-[#f1f5f9] bg-white/50">
+                  <h3 className="text-[10.5px] sm:text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Basic Settings</h3>
                 </div>
-                <div className="p-4 sm:p-8 flex flex-col md:flex-row gap-4 sm:gap-8">
+                <div className="p-3.5 sm:p-5 flex flex-col md:flex-row gap-3 sm:gap-6">
                   {/* Grade Level */}
                   <div className="flex-1 group">
-                    <label htmlFor="quiz-grade-level" className="text-[13px] font-bold text-[#1e293b] mb-2 block group-hover:text-[#a855f7] transition-colors">Grade level</label>
+                    <label htmlFor="quiz-grade-level" className="text-xs sm:text-[13px] font-semibold text-[#1e293b] mb-1.5 block group-hover:text-[#a855f7] transition-colors">Grade level</label>
                     <div className="relative">
                       <select
                         id="quiz-grade-level"
                         value={selectedGrade}
                         onChange={e => setSelectedGrade(normalizeGradeLevel(e.target.value))}
-                        className="appearance-none w-full bg-white border border-[#e2e8f0] hover:border-[#cbd5e1] text-[#475569] text-[14px] font-medium rounded-xl px-4 py-3.5 outline-none focus:border-[#a855f7] focus:ring-4 focus:ring-[#a855f7]/10 cursor-pointer transition-all duration-200 shadow-sm"
+                        className="appearance-none w-full bg-white border border-[#e2e8f0] hover:border-[#cbd5e1] text-[#475569] text-xs sm:text-[13px] font-medium rounded-xl px-3.5 py-2 sm:py-2.5 h-[40px] sm:h-[42px] outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/10 cursor-pointer transition-all duration-200 shadow-xs pr-9"
                       >
                         {GRADE_LEVELS.map(g => (
                           <option key={g} value={g}>{g}</option>
                         ))}
                       </select>
-                      <ChevronDown size={18} className="text-[#64748b] absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown size={15} className="text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                   {/* Question Counter */}
                   <div className="flex-1 group">
-                    <label htmlFor="quiz-num-questions" className="text-[13px] font-bold text-[#1e293b] mb-2 block group-hover:text-[#a855f7] transition-colors">Number of questions</label>
-                    <div className="flex items-center bg-white border border-[#e2e8f0] rounded-xl overflow-hidden focus-within:border-[#a855f7] focus-within:ring-4 focus-within:ring-[#a855f7]/10 transition-all duration-200 h-[50px] shadow-sm hover:border-[#cbd5e1]">
+                    <label htmlFor="quiz-num-questions" className="text-xs sm:text-[13px] font-semibold text-[#1e293b] mb-1.5 block group-hover:text-[#a855f7] transition-colors">Number of questions</label>
+                    <div className="flex items-center bg-white border border-[#e2e8f0] rounded-xl overflow-hidden focus-within:border-[#a855f7] focus-within:ring-2 focus-within:ring-[#a855f7]/10 transition-all duration-200 h-[40px] sm:h-[42px] shadow-xs hover:border-[#cbd5e1]">
                       <button
                         onClick={() => setNumQuestions(Math.max(1, numQuestions - 1))}
-                        className="w-14 h-full flex items-center justify-center text-[#64748b] bg-slate-50 hover:bg-slate-100 hover:text-[#1e293b] transition-colors border-r border-[#e2e8f0] active:bg-slate-200"
+                        className="w-10 sm:w-11 h-full flex items-center justify-center text-[#64748b] bg-slate-50 hover:bg-slate-100 hover:text-[#1e293b] transition-colors border-r border-[#e2e8f0] active:bg-slate-200"
+                        aria-label="Decrease number of questions"
                       >
-                        <Minus size={16} />
+                        <Minus size={14} />
                       </button>
                       <input
                         id="quiz-num-questions"
@@ -1525,13 +1526,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                         max={MAX_QUESTIONS_LIMIT}
                         value={numQuestions}
                         onChange={e => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, Math.max(1, parseInt(e.target.value) || 1)))}
-                        className="flex-1 text-center font-bold text-[16px] text-[#1e293b] border-none outline-none focus:ring-0 w-full h-full p-0"
+                        className="flex-1 text-center font-bold text-sm sm:text-[15px] text-[#1e293b] border-none outline-none focus:ring-0 w-full h-full p-0"
                       />
                       <button
                         onClick={() => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, numQuestions + 1))}
-                        className="w-14 h-full flex items-center justify-center text-[#64748b] bg-slate-50 hover:bg-slate-100 hover:text-[#1e293b] transition-colors border-l border-[#e2e8f0] active:bg-slate-200"
+                        className="w-10 sm:w-11 h-full flex items-center justify-center text-[#64748b] bg-slate-50 hover:bg-slate-100 hover:text-[#1e293b] transition-colors border-l border-[#e2e8f0] active:bg-slate-200"
+                        aria-label="Increase number of questions"
                       >
-                        <Plus size={16} />
+                        <Plus size={14} />
                       </button>
                     </div>
                   </div>
