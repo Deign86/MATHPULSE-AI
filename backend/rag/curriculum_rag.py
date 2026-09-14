@@ -4,6 +4,7 @@ Updated curriculum RAG with exact match retrieval and 7-section notebook output.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -11,6 +12,9 @@ def _normalize_subject(subject: Optional[str]) -> Optional[str]:
     if not subject:
         return None
     raw = subject.strip().lower().replace("-", "_").replace(" ", "_")
+    clean_raw = re.sub(r"problems?", "", raw)
+    if "stat" in clean_raw or "prob" in clean_raw or "statistics" in clean_raw:
+        return "statistics_and_probability"
     if "gen" in raw or "general" in raw:
         return "general_mathematics"
     if "finite" in raw and "1" in raw:
@@ -73,10 +77,18 @@ def _to_where(
     clauses = []
     if subject:
         norm = _normalize_subject(subject)
-        if norm and norm != subject:
-            clauses.append({"subject": {"$in": [subject, norm]}})
-        else:
-            clauses.append({"subject": {"$eq": subject}})
+        candidates = [subject]
+        if norm:
+            candidates.append(norm)
+        if norm == "statistics_and_probability":
+            candidates.extend(["statistics_and_probability", "stat_prob", "statistics", "probability", "statistics and probability"])
+        elif norm == "general_mathematics":
+            candidates.extend(["general_mathematics", "general_math", "general mathematics"])
+        deduped = list(dict.fromkeys([c for c in candidates if c]))
+        if len(deduped) > 1:
+            clauses.append({"subject": {"$in": deduped}})
+        elif len(deduped) == 1:
+            clauses.append({"subject": {"$eq": deduped[0]}})
     if quarter is not None:
         clauses.append({"quarter": {"$eq": int(quarter)}})
     if content_domain:
@@ -133,12 +145,34 @@ def retrieve_curriculum_context(
         normalize_embeddings=True,
     ).tolist()
 
-    result = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=max(1, top_k),
-        where=where,
-        include=["documents", "metadatas", "distances"],
-    )
+    try:
+        result = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=max(1, top_k),
+            where=where,
+            include=["documents", "metadatas", "distances"],
+        )
+    except Exception as exc:
+        err_msg = str(exc)
+        if "dimension of" in err_msg:
+            match = re.search(r"dimension of (\d+)", err_msg)
+            expected_dim = int(match.group(1)) if match else 384
+            fallback_model = "BAAI/bge-small-en-v1.5" if expected_dim == 384 else "BAAI/bge-base-en-v1.5"
+            from rag.vectorstore_loader import get_vectorstore_components, reset_vectorstore_singleton
+            reset_vectorstore_singleton()
+            _, collection, embedder = get_vectorstore_components(model_name=fallback_model)
+            query_embedding = embedder.encode(
+                prefixed_query,
+                normalize_embeddings=True,
+            ).tolist()
+            result = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=max(1, top_k),
+                where=where,
+                include=["documents", "metadatas", "distances"],
+            )
+        else:
+            raise
 
     documents = (result.get("documents") or [[]])[0]
     metadatas = (result.get("metadatas") or [[]])[0]
@@ -251,12 +285,33 @@ def retrieve_lesson_pdf_context(
     When storage_path is specified, exact-match retrieval searches by exact path/filename with
     hierarchical fallback (exact quarter -> subject only -> file only) before falling back to general queries.
     """
+    stripped_topic = (topic or "").strip()
+    is_code_like = bool(
+        stripped_topic.upper().startswith(("GM11-", "M11GM-", "SP11-", "M11SP-", "FM11-", "GM11", "M11", "SP11"))
+        or (" " not in stripped_topic and any(c.isdigit() for c in stripped_topic) and ("-" in stripped_topic or "_" in stripped_topic))
+        or re.match(r"^[A-Za-z0-9]+([-_][A-Za-z0-9]+)+$", stripped_topic)
+    )
+
+    if is_code_like or (lesson_title and lesson_title.strip()):
+        query_parts: List[str] = []
+        if lesson_title and lesson_title.strip():
+            query_parts.append(lesson_title.strip())
+        if competency and competency.strip() and competency.strip() not in query_parts:
+            query_parts.append(competency.strip())
+        if not query_parts:
+            query_parts.append(stripped_topic)
+        search_query = " - ".join(query_parts)
+    elif competency and competency.strip():
+        search_query = f"{stripped_topic} - {competency.strip()}"
+    else:
+        search_query = stripped_topic
+
     exact_chunks: list[dict] = []
     if storage_path:
         # Try 1: Exact match with storage_path + quarter
         if quarter and quarter > 0:
             exact_chunks = retrieve_curriculum_context(
-                query=topic,
+                query=search_query,
                 subject=subject,
                 quarter=quarter,
                 storage_path=storage_path,
@@ -268,7 +323,7 @@ def retrieve_lesson_pdf_context(
         # Try 1b: Exact match with storage_path + subject (without quarter filter)
         if not exact_chunks or not any(c.get("score", 0) >= 0.65 for c in exact_chunks):
             fallback_chunks = retrieve_curriculum_context(
-                query=topic,
+                query=search_query,
                 subject=subject,
                 storage_path=storage_path,
                 top_k=top_k,
@@ -281,7 +336,7 @@ def retrieve_lesson_pdf_context(
         # Try 1c: Exact match with storage_path alone (file only)
         if not exact_chunks or not any(c.get("score", 0) >= 0.65 for c in exact_chunks):
             fallback_chunks = retrieve_curriculum_context(
-                query=topic,
+                query=search_query,
                 storage_path=storage_path,
                 top_k=top_k,
             )
@@ -292,7 +347,7 @@ def retrieve_lesson_pdf_context(
 
     # Try 2: General query with exact quarter
     general_chunks = retrieve_curriculum_context(
-        query=topic,
+        query=search_query,
         subject=subject,
         quarter=quarter,
         top_k=top_k,
@@ -301,7 +356,7 @@ def retrieve_lesson_pdf_context(
     # Try 3: Fallback to quarter=1 (most curriculum PDFs are tagged Q1)
     if not general_chunks and quarter != 1:
         general_chunks = retrieve_curriculum_context(
-            query=topic,
+            query=search_query,
             subject=subject,
             quarter=1,
             top_k=top_k,
@@ -310,7 +365,7 @@ def retrieve_lesson_pdf_context(
     # Try 4: Final fallback - no quarter filter at all
     if not general_chunks:
         general_chunks = retrieve_curriculum_context(
-            query=topic,
+            query=search_query,
             subject=subject,
             top_k=top_k,
         )

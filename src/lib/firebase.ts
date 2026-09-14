@@ -1,5 +1,13 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, getAuth, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence } from 'firebase/auth';
+import {
+  initializeAuth,
+  getAuth,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  inMemoryPersistence,
+  indexedDBLocalPersistence,
+  browserPopupRedirectResolver,
+} from 'firebase/auth';
 import { initializeFirestore, getFirestore, memoryLocalCache } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
 import { getDatabase } from 'firebase/database';
@@ -80,7 +88,8 @@ function buildAuthInstance() {
     const hasValidPersistence = Boolean(browserLocalPersistence);
     if (hasWindow && hasValidPersistence) {
       return initializeAuth(app, {
-        persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
+        persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence, inMemoryPersistence],
+        popupRedirectResolver: browserPopupRedirectResolver,
       });
     }
     return initializeAuth(app, { persistence: [inMemoryPersistence] });

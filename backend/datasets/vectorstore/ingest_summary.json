@@ -1,8 +1,8 @@
 {
-  "lastIngested": "2026-09-07T04:19:25.501109+00:00",
-  "totalChunks": 3054,
+  "lastIngested": "2026-09-13T14:17:28.500421+00:00",
+  "totalChunks": 3510,
   "chunkCountBefore": 3054,
-  "chunkCountAfter": 3054,
+  "chunkCountAfter": 3510,
   "sourceFiles": [
     "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/Parsed Markdown/Finite Math 1_LAS.md",
     "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/Parsed Markdown/Finite Math 1_LE.md",
@@ -33,11 +33,20 @@
     "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/Parsed Markdown/SHS_GM_Q4_LAS_LE12.md",
     "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/Parsed Markdown/SHS_GM_Q4_LE10.md",
     "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/Parsed Markdown/SHS_GM_Q4_LE11.md",
-    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/Parsed Markdown/SHS_GM_Q4_LE12.md"
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/Parsed Markdown/SHS_GM_Q4_LE12.md",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/gen_math_sdo/SHS_GM_Q1_LAS1_LE1.pdf",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/gen_math_sdo/SHS_GM_Q1_LAS2_LE1.pdf",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/gen_math_sdo/SHS_GM_Q1_LAS3_LE1.pdf",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/general_math/genmath_q2_mod1_simpleandcompoundinterests_v2.pdf",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/general_math/genmath_q2_mod2_interestmaturityfutureandpresentvaluesinsimpleandcompoundinterests_v2.pdf",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/general_math/genmath_q2_mod3_SolvingProblemsInvolvingSimpleandCompoundInterest_v2.pdf",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/general_math/genmath_q2_mod4_simpleandgeneralannuities_v2.pdf",
+    "C:/Users/Deign/Downloads/MATHPULSE-AI/datasets/curriculum/stat_prob/Full.pdf"
   ],
   "chunksPerSubject": {
     "finite_mathematics_1": 544,
     "finite_mathematics_2": 606,
-    "general_mathematics": 1904
+    "general_mathematics": 2013,
+    "statistics_and_probability": 347
   }
 }

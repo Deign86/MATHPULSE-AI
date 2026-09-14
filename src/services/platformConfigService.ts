@@ -1,4 +1,5 @@
 import { db } from '../lib/firebase';
+import { z } from 'zod';
 import {
   doc,
   getDoc,
@@ -41,16 +42,40 @@ function getDefaultSubjectAvailability() {
   };
 }
 
-/** Values Firestore may store for timestamp fields. */
-type FirestoreDateValue = Timestamp | Date | null | undefined;
+type FirestoreFieldInput = Timestamp | Date | { seconds?: number; _seconds?: number } | string | number | null | undefined;
 
-/** Firestore timestamp-like values; parsing never throws. */
-const firestoreToDate = (value: FirestoreDateValue): Date => {
-  // NOTE: call toDate() on the original Timestamp instance — detaching the
-  // method (e.g. via a generic object parser) breaks its internal this.toMillis().
-  if (value instanceof Timestamp) return value.toDate();
-  if (value instanceof Date) return value;
-  return new Date();
+const firestoreDateSchema = z.union([
+  z.instanceof(Timestamp).transform((t) => {
+    try {
+      return t.toDate();
+    } catch {
+      return new Date();
+    }
+  }),
+  z.instanceof(Date),
+  z.object({
+    seconds: z.number().optional(),
+    _seconds: z.number().optional(),
+  }).transform((obj) => {
+    const sec = obj.seconds ?? obj._seconds;
+    return sec !== undefined ? new Date(sec * 1000) : new Date();
+  }),
+  z.string().transform((str) => {
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }),
+  z.number().transform((num) => {
+    const d = new Date(num);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }),
+  z.null().transform(() => new Date()),
+  z.undefined().transform(() => new Date()),
+]);
+
+/** Firestore timestamp-like values parsed safely without throwing. */
+const firestoreToDate = (raw: FirestoreFieldInput): Date => {
+  const parsed = firestoreDateSchema.safeParse(raw);
+  return parsed.success ? parsed.data : new Date();
 };
 
 function convertTimestamps(data: DocumentData): PlatformSubjectsConfig {

@@ -6,13 +6,18 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithCredential,
   User as FirebaseUser,
   updateEmail,
   updatePassword,
   deleteUser,
+  browserPopupRedirectResolver,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, getDocFromServer, serverTimestamp, deleteDoc, type DocumentData } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { IS_NATIVE_PLATFORM } from '../config/env';
 import { z } from 'zod';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
 
@@ -42,6 +47,9 @@ export interface AuthServiceError extends Error {
 
 // Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
+if ('setCustomParameters' in googleProvider && Boolean(googleProvider.setCustomParameters)) {
+  googleProvider.setCustomParameters({ prompt: 'select_account' });
+}
 const PENDING_AUTH_ROLE_KEY = 'mathpulse.pendingAuthRole';
 const LAST_AUTH_ROLE_KEY = 'mathpulse.lastAuthRole';
 
@@ -160,13 +168,43 @@ export const signInWithEmail = async (email: string, password: string): Promise<
   }
 };
 
-// Sign in with Google
+// Sign in with Google (native plugin on Android, popup with redirect fallback on web)
 export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User> => {
   try {
     ensurePublicSignupRole(role);
+    setPendingAuthRole(role);
 
-    const result = await signInWithPopup(auth, googleProvider);
-    const firebaseUser = result.user;
+    if (IS_NATIVE_PLATFORM) {
+      const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+      const nativeResult = await FirebaseAuthentication.signInWithGoogle();
+      const credential = GoogleAuthProvider.credential(nativeResult.credential?.idToken);
+      const result = await signInWithCredential(auth, credential);
+      let userProfile = await getUserProfile(result.user.uid);
+      if (!userProfile) {
+        userProfile = await createUserProfile(result.user, role, {});
+      }
+      return userProfile;
+    }
+
+    let firebaseUser;
+    try {
+      const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
+      firebaseUser = result.user;
+    } catch (popupError) {
+      const parsed = firebaseErrorContract.parse(popupError);
+      if (
+        parsed.code === 'auth/popup-blocked' ||
+        parsed.code === 'auth/cancelled-popup-request' ||
+        parsed.code === 'auth/operation-not-supported-in-this-environment'
+      ) {
+        await signInWithRedirect(auth, googleProvider, browserPopupRedirectResolver);
+        throw toAuthServiceError(
+          { code: 'auth/redirect-in-progress', message: 'Redirecting to Google sign-in…' },
+          'Redirecting to Google sign-in…',
+        );
+      }
+      throw popupError;
+    }
 
     // Check if user profile exists
     let userProfile = await getUserProfile(firebaseUser.uid);
@@ -180,6 +218,16 @@ export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User
   } catch (error: unknown) {
     console.error('Error signing in with Google:', error);
     throw toAuthServiceError(error, 'Failed to sign in with Google');
+  }
+};
+
+// Resolve a pending redirect sign-in (no-op when none). AuthContext's
+// onAuthStateChanged creates the Firestore profile on return.
+export const resolveGoogleRedirect = async (): Promise<void> => {
+  try {
+    await getRedirectResult(auth, browserPopupRedirectResolver);
+  } catch (error: unknown) {
+    logFirebaseError('Error resolving Google redirect', error);
   }
 };
 

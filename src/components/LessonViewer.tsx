@@ -441,6 +441,7 @@ function PdfFallbackPanel({
   subject,
   sourceLabel,
   pdfUrl,
+  reason,
   onRetry,
 }: {
   lessonTitle: string;
@@ -448,8 +449,13 @@ function PdfFallbackPanel({
   subject?: string;
   sourceLabel: string;
   pdfUrl: string;
+  reason?: string;
   onRetry: () => void;
 }) {
+  const [iframeLoading, setIframeLoading] = useState(true);
+  const [iframeError, setIframeError] = useState(false);
+  const [showCardFallback, setShowCardFallback] = useState(false);
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-50">
       <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
@@ -482,10 +488,117 @@ function PdfFallbackPanel({
           <RefreshCw size={16} />
         </button>
       </div>
-      <p className="px-4 py-2 text-xs text-slate-500 bg-amber-50 border-b border-amber-100">
-        AI lesson unavailable — showing the DepEd source PDF this lesson derives from.
-      </p>
-      <iframe src={pdfUrl} title={lessonTitle} className="flex-1 w-full border-0" />
+      <div className="px-4 py-2.5 text-xs text-amber-800 bg-amber-50 border-b border-amber-200/70 flex items-center gap-2">
+        <AlertTriangle className="text-amber-600 shrink-0" size={14} />
+        <p className="leading-relaxed">
+          <span className="font-semibold">AI lesson unavailable</span>
+          {reason ? ` (${reason})` : ''} — showing the DepEd source PDF this lesson derives from.
+        </p>
+      </div>
+
+      {iframeError || showCardFallback ? (
+        <div className="flex-1 flex items-center justify-center p-6 bg-slate-50 overflow-y-auto">
+          <div className="max-w-md w-full bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 text-center flex flex-col items-center">
+            <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
+              <BookOpen size={28} />
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-2">
+              Read DepEd Curriculum Material
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 mb-6 leading-relaxed">
+              {reason
+                ? `The AI lesson is currently unavailable (${reason}). You can read the official DepEd source module directly in a new window or retry.`
+                : 'If the embedded PDF document does not render properly in your browser, you can read the official DepEd source module directly in a new window.'}
+            </p>
+            <div className="w-full flex flex-col gap-3">
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm inline-flex items-center justify-center gap-2 shadow-sm transition-colors"
+              >
+                <span>Open PDF in New Window / Tab</span>
+                <ExternalLink size={16} />
+              </a>
+              <button
+                onClick={onRetry}
+                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium text-sm inline-flex items-center justify-center gap-2 transition-colors"
+              >
+                <RefreshCw size={15} />
+                <span>Retry Generating AI Lesson</span>
+              </button>
+              {!iframeError && (
+                <button
+                  onClick={() => setShowCardFallback(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600 underline mt-1"
+                >
+                  Back to PDF preview
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="relative flex-1 w-full bg-slate-100 flex flex-col overflow-hidden">
+          {iframeLoading && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-50/90 backdrop-blur-sm p-4 text-center">
+              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3" />
+              <p className="text-sm font-medium text-slate-700">Loading DepEd PDF document...</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs">
+                If the document does not display in your browser, you can open it directly.
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <a
+                  href={pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                >
+                  <ExternalLink size={13} />
+                  Open in New Window
+                </a>
+                <button
+                  onClick={() => setShowCardFallback(true)}
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 bg-slate-200/70 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  View Options
+                </button>
+              </div>
+            </div>
+          )}
+          <iframe
+            src={pdfUrl}
+            title={lessonTitle}
+            loading="lazy"
+            onLoad={() => setIframeLoading(false)}
+            onError={() => {
+              setIframeLoading(false);
+              setIframeError(true);
+            }}
+            className="flex-1 w-full border-0"
+          />
+          <div className="px-4 py-2 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+            <span>Can't view the embedded PDF?</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCardFallback(true)}
+                className="font-medium text-indigo-600 hover:text-indigo-800 underline"
+              >
+                Show options
+              </button>
+              <a
+                href={pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 font-medium text-indigo-600 hover:text-indigo-800 underline"
+              >
+                <span>Open in new window</span>
+                <ExternalLink size={12} />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1144,6 +1257,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           subject={(lesson as any).subject}
           sourceLabel={primarySourceLabel}
           pdfUrl={depedPdfUrl}
+          reason={error}
           onRetry={retry}
         />
       );

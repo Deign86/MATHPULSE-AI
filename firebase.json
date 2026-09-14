@@ -34,6 +34,7 @@
     }
   },
   "hosting": {
+    "site": "mathpulse-ai-2026",
     "public": "build",
     "ignore": [
       "firebase.json",

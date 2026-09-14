@@ -157,24 +157,8 @@ export default defineConfig({
             return 'vendor-react';
           }
 
-          if (/node_modules\/(?:firebase|@firebase)\/auth/.test(id)) {
-            return 'vendor-firebase-auth';
-          }
-
-          if (/node_modules\/(?:firebase|@firebase)\/firestore/.test(id)) {
-            return 'vendor-firebase-firestore';
-          }
-
-          if (/node_modules\/(?:firebase|@firebase)\/storage/.test(id)) {
-            return 'vendor-firebase-storage';
-          }
-
-          if (/node_modules\/(?:firebase|@firebase)\/analytics/.test(id)) {
-            return 'vendor-firebase-analytics';
-          }
-
-          if (id.includes('firebase') || id.includes('@firebase')) {
-            return 'vendor-firebase-core';
+          if (/node_modules\/(?:firebase|@firebase)\//.test(id)) {
+            return 'vendor-firebase';
           }
 
           if (id.includes('@radix-ui')) {

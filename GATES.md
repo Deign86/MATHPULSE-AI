@@ -1,4 +1,4 @@
-# GATES.md - Fix Teacher Dashboard Scrollability
+# GATES.md - Fix Teacher Dashboard Scrollability & Redesign
 
 - [x] Gate 1: Flex Container & Scroll Hierarchy
   CHECK: npm run typecheck
@@ -64,6 +64,7 @@
   3. Nested Mobile Scroll Bug Fix: Fixed right column in AnalyticsView from trapped 'h-full overflow-y-auto' to 'h-auto xl:h-full xl:overflow-y-auto no-scrollbar pb-10 xl:pb-0', allowing a single fluid vertical scroll without nested scroll containers on mobile.
   4. Student Directory: Compacted StudentCard 'Roster Only' note into an ultra-clean micro-badge, and gave Student Directory a comfortable mobile scroll container height (h-[440px]).
   5. Responsive Charts: Topic Performance legend now wraps cleanly on narrow screens (flex-col sm:flex-row gap-1.5) without colliding with the card title, and chart heights adjust gracefully (h-[290px] sm:h-[340px] for Risk, h-[320px] sm:h-[340px] for Topics). Verified in live browser subagent at 412x800 with recording verify_mobile_cleanup_1789354118560.webp and screenshots mobile_dashboard_view_1789353820839.png, mobile_class_analytics_view_1789353837147.png.
+
 - [x] Gate 13: Question Bank Stat Cards & Layout Compacting (Mobile & Desktop)
   CHECK: npm run typecheck && npx oxlint --quiet
   EXPECT: 0 errors
@@ -80,6 +81,7 @@
   2. Unified Header & Navigation: Removed duplicate 'Account' header text on mobile by introducing a single clean top bar ('Settings · [Section]') and converting the tall, cramped tab bar into a sleek horizontal pill navigation row.
   3. Form Spacing & Controls: Replaced loud all-caps labels with clean, modern text-xs font-semibold labels, normalized form field heights to h-10/h-11, and established generous spacing between elements.
   4. Single-Row Responsive Footer: Placed 'Cancel' and 'Save Changes' side-by-side with clear button contrast, proportional flex sizing, and eliminated vertical button crowding at the bottom edge. Verified in live browser subagent with recording verify_settings_modal_cleaned_1789358486515.webp and screenshot settings_modal_mobile_1789358506682.png.
+
 - [x] Gate 15: Compact Processing Status & Question Bank Table/Empty States
   CHECK: npm run typecheck && npx oxlint --quiet
   EXPECT: 0 errors
@@ -87,6 +89,7 @@
   1. Table Header: Compacted the purple table header bar from h-12 (48px) to h-8/h-9 (32px), reduced column horizontal padding (px-3.5), and proportioned typography to text-[10px]/text-[11px].
   2. Empty State Height Reduced by ~70%: Replaced the 230px empty state block (py-12 with w-16 h-16 icon) with a compact, clean banner (py-4 sm:py-5, w-8 h-8 icon, ~70px total height).
   3. Proportioned Question Bank (0) Card: Compacted empty state padding and container padding (p-3.5 sm:p-5) so both Processing Status and Question Bank fit together on mobile screens. Verified via live browser subagent in 502x672 viewport with recording verify_processing_status_compact_1789358651187.webp and screenshot processing_status_compact_1789358684442.png.
+
 - [x] Gate 16: Settings Modal Typography & Control Scaling on Mobile
   CHECK: npm run typecheck && npx oxlint --quiet
   EXPECT: 0 errors
@@ -114,6 +117,7 @@
   4. Body Copy, Descriptions & Paragraphs (font-body): Applied font-body font-medium (500) and font-normal (400) to subtitles, instructions, tooltips, and analytical explanations.
   5. Buttons, Badges & Labels: Applied font-bold (700) or font-black (900) with uppercase tracking-wider to status pills (ON TRACK, MEDIUM RISK, HIGH RISK, NO ACCOUNT), action buttons (INGEST PDF, + Add, Review students, Mark all as read), and table column headers.
   6. Dynamic Numerals & Timers: Applied tabular-nums (font-variant-numeric: tabular-nums) to all metrics, student count pills, progress percentages, and timestamps to eliminate Cumulative Layout Shift (CLS). Verified in live browser subagent across desktop (1280x800) and mobile (390x844) viewports with recordings verify_teacher_fonts and verify_teacher_mobile_fonts_1789367938665.webp, and screenshots teacher_dashboard_desktop_1789366746557.png, class_analytics_desktop_1789366774189.png, question_bank_page_1789367116049.png, and teacher_dashboard_mobile_fonts_1789367981052.png.
+
 - [x] Gate 19: Unified Purple Palette (#a855f7) Across Teacher Side
   CHECK: npm run typecheck && npx oxlint --quiet
   EXPECT: 0 errors
@@ -123,6 +127,7 @@
   3. Class Analytics & Modals: Class Analytics '+ Add' button and 'All Students' active filter pill unified to '#a855f7', search bar focus rings unified to '#a855f7/20', and AddStudentsModal/CreateClassModal checkboxes and primary buttons unified to '#a855f7'.
   4. Mobile Bottom Navigation: Active tab icon and label ('Dashboard', 'Analytics', 'Mastery', 'Quiz Maker') unified to '#a855f7'.
   5. Question Bank & Lessons: Table header gradient unified to 'from-[#a855f7] to-[#9333ea]', Ingest PDF and loader animations unified to '#a855f7', and remedial action buttons and tags unified to '#a855f7'.
+
 - [x] Gate 20: Profile Settings Modal Purple Palette Alignment (#a855f7)
   CHECK: npm run typecheck && npx oxlint --quiet
   EXPECT: 0 errors
@@ -134,3 +139,37 @@
   5. Action Buttons: Unified 'Edit Profile', 'Save Changes', and 'Save picture' primary action buttons to 'bg-[#a855f7] hover:bg-[#9333ea] text-white'.
   6. Avatar Uploader: Aligned ring-sky-50 to 'ring-[#f3e8ff]' and avatar fallback gradient to 'from-[#a855f7] to-[#9333ea]'.
   Verified via live browser subagent with recording verify_profile_modal_purple_1789369963892.webp and screenshots profile_modal_top_1789369971686.png and profile_modal_teaching_info_1789369979449.png.
+
+---
+
+# Acceptance Gates: AI Lessons with New PDFs and RAG Pipeline
+
+- [x] Gate 1: Ingestion script discovers all curriculum files across all 4 directories (`sshs_learning_resources`, `gen_math_sdo`, `general_math`, `stat_prob`).
+      CHECK: python scripts/ingest_curriculum.py --dry-run
+      EXPECT: Discovered files from all 4 subdirectories.
+      EVIDENCE: Discovered 38 files across sshs_learning_resources, gen_math_sdo, general_math, stat_prob. Total estimated chunks: 3,510 ('finite_mathematics_1': 544, 'finite_mathematics_2': 606, 'general_mathematics': 2013, 'statistics_and_probability': 347).
+
+- [x] Gate 2: Chroma vector store ingested with normalized `storage_path` and `subject` metadata.
+      CHECK: python -c "import sys; sys.path.insert(0, 'backend'); from rag.vectorstore_loader import get_vectorstore_health; h = get_vectorstore_health(); print('chunks=' + str(h.get('chunkCount')) + ', subjects=' + str(list(h.get('subjects', {}).keys())))"
+      EXPECT: chunkCount > 3054 and 'statistics_and_probability' in subjects.
+      EVIDENCE: chunks=3510, subjects=['finite_mathematics_1', 'finite_mathematics_2', 'general_mathematics', 'statistics_and_probability'].
+
+- [x] Gate 3: Exact-match and semantic RAG retrieval succeeds for GM11-BF-1 and new PDF topics.
+      CHECK: python -c "import sys; sys.path.insert(0, 'backend'); from rag.curriculum_rag import retrieve_lesson_pdf_context; chunks, mode = retrieve_lesson_pdf_context(topic='Represent business transactions and financial goals using variables and equations.', subject='General Mathematics', quarter=1); print('chunks=' + str(len(chunks)) + ', mode=' + str(mode))"
+      EXPECT: chunks >= 5 and mode in ('exact', 'hybrid', 'general').
+      EVIDENCE: chunks=8, mode=general; exact storage_path query returns chunks=8, mode=exact from SHS_GM_Q1_LE1.md. New PDFs: genmath q2 mod1: 8 exact, stat_prob Full: 8 exact, gen_math_sdo LAS3: 5 exact.
+
+- [x] Gate 4: RAG retrieval unit tests pass in backend test suite.
+      CHECK: python -m pytest backend/tests/test_rag_pipeline.py -q
+      EXPECT: All tests pass.
+      EVIDENCE: 18 passed, 1 warning in 9.22s.
+
+- [x] Gate 5: Frontend LessonViewer and types compile cleanly with 0 type errors.
+      CHECK: npm run typecheck
+      EXPECT: Found 0 errors.
+      EVIDENCE: tsc --noEmit exited 0 with 0 errors.
+
+- [x] Gate 6: Embedding dimension auto-alignment resolves 384 vs 768 mismatch without 503 errors.
+      CHECK: python -c "import sys; sys.path.insert(0, 'backend'); from rag.vectorstore_loader import get_vectorstore_components, reset_vectorstore_singleton; reset_vectorstore_singleton(); _, _, emb = get_vectorstore_components(model_name='BAAI/bge-base-en-v1.5'); print('dim=' + str(emb.get_sentence_embedding_dimension()))"
+      EXPECT: Auto-aligns to 384 dimensions matching collection.
+      EVIDENCE: dim=384, collection dimension read from chroma.sqlite3, self-healing query retry active in curriculum_rag.py.
