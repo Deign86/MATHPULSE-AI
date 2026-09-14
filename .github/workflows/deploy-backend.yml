@@ -7,9 +7,6 @@ name: Deploy FastAPI backend
 on:
   push:
     branches: [main]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
 permissions:
@@ -83,6 +80,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ -f config/models.yaml ]; then
+            cp config/models.yaml backend/config/models.yaml
+          fi
           rsync -av --delete \
             --exclude='.git' \
             --exclude='__pycache__' \

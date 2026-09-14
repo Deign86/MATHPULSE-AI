@@ -13,6 +13,11 @@ export CURRICULUM_DIR
 export VECTORSTORE_DIR
 export CURRICULUM_VECTORSTORE_DIR="${VECTORSTORE_DIR}"
 
+# Force canonical 384-dim embedding model to prevent dimension mismatch on HF Spaces
+if [ "${EMBEDDING_MODEL:-}" = "BAAI/bge-base-en-v1.5" ] || [ -z "${EMBEDDING_MODEL:-}" ]; then
+    export EMBEDDING_MODEL="BAAI/bge-small-en-v1.5"
+fi
+
 echo "=========================================="
 echo "MathPulse AI Startup"
 echo "=========================================="
