@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Brain, Clock, Target, TrendingUp, AlertTriangle,
@@ -420,40 +421,44 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
   );
 
   if (mode === 'modal') {
-    return (
+    if (typeof document === 'undefined') return null;
+    return createPortal(
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6"
             onClick={onClose}
           >
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[90dvh] overflow-y-auto"
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90dvh] overflow-y-auto border border-slate-100"
               onClick={e => e.stopPropagation()}
             >
               {content}
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
     );
   }
 
   // Fullscreen mode
-  return (
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-indigo-50/30"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-indigo-50/30"
     >
       {content}
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };
 
