@@ -74,7 +74,7 @@ describe('NotificationPanel', () => {
 
     render(<NotificationPanel onClose={() => {}} />);
 
-    expect(screen.getByText(/caught up/i)).toBeInTheDocument();
+    expect(screen.getByText(/You're all caught up!/i)).toBeInTheDocument();
   });
 
   it('calls onClose when clicking outside', () => {
@@ -101,7 +101,7 @@ describe('NotificationPanel', () => {
 
     render(<NotificationPanel onClose={() => {}} />);
 
-    const markAllButton = screen.getByText(/mark all read/i);
+    const markAllButton = screen.getByRole('button', { name: /mark all notifications as read/i });
     fireEvent.click(markAllButton);
 
     expect(markAllAsReadMock).toHaveBeenCalled();

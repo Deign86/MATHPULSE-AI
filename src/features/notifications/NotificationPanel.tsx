@@ -29,64 +29,77 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
   }, [onClose]);
 
   const panel = (
-    <div
-      ref={panelRef}
-      className="fixed right-4 top-20 w-80 bg-[#f7f9fc] rounded-xl shadow-2xl border border-[#dde3eb] max-h-96 overflow-y-auto z-50 overflow-hidden"
-      style={{ right: '1rem', top: '5rem' }}
-    >
-      {/* Header */}
-      <div className="p-4 border-b border-[#dde3eb] flex items-center justify-between bg-gradient-to-r from-sky-600 to-sky-500">
-        <div>
-          <h3 className="font-display font-bold text-white text-sm">Notifications</h3>
-          <p className="text-xs text-sky-100 mt-0.5 tabular-nums">
-            {unreadCount > 0 ? `${unreadCount} unread` : 'No new alerts'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllAsRead}
-              className="text-xs text-sky-200 hover:text-white font-bold transition-colors flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none rounded px-1"
-              aria-label="Mark all notifications as read"
-            >
-              <CheckCheck size={14} aria-hidden="true" />
-              Mark all read
-            </button>
-          )}
-          <button
-            onClick={onClose}
-            className="text-sky-200 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none rounded p-0.5"
-            title="Close"
-            aria-label="Close notifications panel"
-          >
-            <X size={16} aria-hidden="true" />
-          </button>
-        </div>
-      </div>
+    <>
+      {/* Mobile Backdrop to click outside easily on small screens */}
+      <div
+        className="fixed inset-0 bg-black/30 backdrop-blur-xs sm:hidden z-40"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
-      {/* Content */}
-      <div className="max-h-80 overflow-y-auto">
-        {isLoading ? (
-          <div className="p-4 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse bg-[#dde3eb] rounded h-12" />
-            ))}
+      <div
+        ref={panelRef}
+        className="fixed right-4 sm:right-6 top-16 sm:top-20 w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 max-h-[85vh] sm:max-h-[32rem] overflow-hidden z-50 flex flex-col"
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-purple-200/40 dark:border-purple-900/30 flex items-center justify-between bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#1FA7E1] text-white shrink-0">
+          <div>
+            <h3 className="font-display font-black text-white text-sm tracking-tight">Notifications</h3>
+            <p className="text-xs text-white/85 mt-0.5 tabular-nums">
+              {unreadCount > 0 ? `${unreadCount} unread alerts` : 'All caught up'}
+            </p>
           </div>
-        ) : notifications.length === 0 ? (
-          <div className="p-8 text-center">
-            <Bell size={48} className="text-[#d1cec6] mx-auto mb-3" />
-            <p className="text-[#5a6578] text-sm font-body">You're all caught up!</p>
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={markAllAsRead}
+                className="text-xs text-white/90 hover:text-white font-bold transition-colors flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none rounded-lg px-2 py-1 bg-white/15 hover:bg-white/25"
+                aria-label="Mark all notifications as read"
+              >
+                <CheckCheck size={14} aria-hidden="true" />
+                <span>Mark read</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-white/80 hover:text-white hover:bg-white/20 transition-colors focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none rounded-lg p-1"
+              title="Close notifications"
+              aria-label="Close notifications panel"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
           </div>
-        ) : (
-          notifications.map((notification) => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-            />
-          ))
-        )}
+        </div>
+
+        {/* Content */}
+        <div className="overflow-y-auto flex-1 divide-y divide-slate-100 dark:divide-slate-800">
+          {isLoading ? (
+            <div className="p-4 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse bg-slate-100 dark:bg-slate-800 rounded-xl h-14" />
+              ))}
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="p-10 text-center space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-400 mx-auto flex items-center justify-center">
+                <Bell size={24} />
+              </div>
+              <p className="text-slate-800 dark:text-slate-200 text-sm font-bold font-display">You're all caught up!</p>
+              <p className="text-slate-500 dark:text-slate-400 text-xs">No pending notifications at this moment.</p>
+            </div>
+          ) : (
+            notifications.map((notification) => (
+              <NotificationItem
+                key={notification.id}
+                notification={notification}
+              />
+            ))
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 
   return createPortal(panel, document.body);

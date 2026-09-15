@@ -98,7 +98,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
       <DialogContent
         aria-labelledby="iar-title"
         aria-describedby="iar-description"
-        className="bg-white rounded-2xl shadow-2xl max-w-[44rem] w-full flex flex-col overflow-hidden p-0 gap-0"
+        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-[44rem] w-full max-h-[90dvh] overflow-y-auto flex flex-col p-0 gap-0 border border-slate-100 dark:border-slate-800"
       >
       <motion.div
         initial={{ opacity: 0 }}
@@ -106,31 +106,31 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
         transition={{ duration: 0.2, ease: 'easeOut' }}
         className="flex flex-col overflow-hidden"
       >
-        <div className="px-5 py-3 border-b border-[#dde3eb] flex items-center justify-between bg-[#edf1f7] flex-shrink-0">
+        <div className="px-4 sm:px-5 py-3 border-b border-[#dde3eb] dark:border-slate-800 flex items-center justify-between bg-[#edf1f7] dark:bg-slate-800/80 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600">
+            <div className="w-8 h-8 bg-purple-100 dark:bg-purple-950/60 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
               <Brain size={18} />
             </div>
             <div>
-              <DialogTitle id="iar-title" className="text-base font-bold text-[#0a1628] leading-tight">
+              <DialogTitle id="iar-title" className="text-base font-bold text-[#0a1628] dark:text-white leading-tight">
                 Initial Assessment
               </DialogTitle>
-              <DialogDescription id="iar-description" className="text-[11px] text-[#5a6578]">
+              <DialogDescription id="iar-description" className="text-[11px] text-[#5a6578] dark:text-slate-400">
                 Analyze your strengths & weaknesses
               </DialogDescription>
             </div>
           </div>
         </div>
 
-        <div className="p-5 text-center space-y-3">
+        <div className="p-4 sm:p-6 text-center space-y-3">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
           >
-            <div className="w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-3">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-purple-50 dark:bg-purple-950/40 rounded-full flex items-center justify-center mx-auto mb-3">
               <svg
-                className="w-9 h-9 text-purple-600"
+                className="w-8 h-8 sm:w-9 sm:h-9 text-purple-600 dark:text-purple-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -144,30 +144,30 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               </svg>
             </div>
 
-            <h3 className="text-lg font-bold text-[#0a1628]">
+            <h3 className="text-base sm:text-lg font-bold text-[#0a1628] dark:text-white">
               Welcome to MathPulse AI!
             </h3>
-            <p className="text-[13px] text-[#5a6578] max-w-[24rem] mx-auto leading-relaxed">
+            <p className="text-xs sm:text-[13px] text-[#5a6578] dark:text-slate-300 max-w-[24rem] mx-auto leading-relaxed">
               To personalize your learning path, complete a DepEd competency-based
               SHS diagnostic (15 items, around 11.6 minutes).
             </p>
 
-            <div className="grid grid-cols-2 gap-2.5 max-w-[28rem] mx-auto text-left mt-4">
-              <div className="bg-[#edf1f7] p-2.5 rounded-lg border border-[#dde3eb]">
-                <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0a1628] mb-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-[28rem] mx-auto text-left mt-4">
+              <div className="bg-[#edf1f7] dark:bg-slate-800/70 p-2.5 rounded-lg border border-[#dde3eb] dark:border-slate-700/70">
+                <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0a1628] dark:text-white mb-1">
                   <CheckCircle size={14} className="text-teal-500" />
                   Personalized Path
                 </div>
-                <p className="text-[10px] text-[#5a6578] pl-[18px]">
+                <p className="text-[10px] text-[#5a6578] dark:text-slate-400 pl-[18px]">
                   Get recommendations based on your level.
                 </p>
               </div>
-              <div className="bg-[#edf1f7] p-2.5 rounded-lg border border-[#dde3eb]">
-                <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0a1628] mb-1">
+              <div className="bg-[#edf1f7] dark:bg-slate-800/70 p-2.5 rounded-lg border border-[#dde3eb] dark:border-slate-700/70">
+                <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0a1628] dark:text-white mb-1">
                   <AlertTriangle size={14} className="text-rose-500" />
                   Identify Risks
                 </div>
-                <p className="text-[10px] text-[#5a6578] pl-[18px]">
+                <p className="text-[10px] text-[#5a6578] dark:text-slate-400 pl-[18px]">
                   Spot areas that need more attention early.
                 </p>
               </div>
