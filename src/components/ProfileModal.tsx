@@ -114,11 +114,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'student':
-        return 'bg-sky-100 text-sky-700 border-sky-200';
+        return 'bg-[#f3e8ff] text-[#9333ea] border-[#d8b4fe]';
       case 'teacher':
-        return 'bg-rose-100 text-rose-700 border-rose-200';
+        return 'bg-[#f3e8ff] text-[#9333ea] border-[#d8b4fe]';
       case 'admin':
-        return 'bg-rose-100 text-rose-700 border-rose-200';
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       default:
         return 'bg-zinc-100 text-zinc-700 border-zinc-200';
     }
@@ -145,25 +145,24 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', duration: 0.5 }}
-            className="fixed inset-0 z-50 overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative my-auto bg-[#f7f9fc] dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90dvh] overflow-hidden border border-[#dde3eb] dark:border-slate-800">
+            <div className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90dvh] overflow-hidden border border-[#dde3eb]">
               {/* Header */}
-              <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-4 sm:p-6 relative overflow-hidden">
+              <div className="bg-gradient-to-r from-[#a855f7] to-[#9333ea] p-6 relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24"></div>
                 <div className="absolute bottom-0 left-0 w-36 h-36 bg-white/5 rounded-full -ml-18 -mb-18"></div>
                 
                 <div className="relative z-10 flex items-start justify-between">
                   <div className="flex-1">
-                    <h2 className="text-lg sm:text-xl font-display font-bold text-white mb-1">Profile Settings</h2>
-                    <p className="text-white/90 text-xs sm:text-sm font-body">Manage your account information</p>
+                    <h2 className="text-xl font-display font-bold text-white mb-1">Profile Settings</h2>
+                    <p className="text-white/90 text-sm font-body">Manage your account information</p>
                   </div>
                   <button
                     onClick={onClose}
-                    aria-label="Close profile modal"
-                    className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all cursor-pointer"
+                    className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all"
                   >
                     <X size={20} />
                   </button>
@@ -171,7 +170,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
               </div>
 
               {/* Content */}
-              <div className="overflow-y-auto max-h-[calc(90dvh-160px)] sm:max-h-[calc(90dvh-200px)] p-4 sm:p-6 scrollbar-thin scrollbar-thumb-[#d1cec6] dark:scrollbar-thumb-slate-700 scrollbar-track-[#edf1f7] dark:scrollbar-track-slate-800">
+              <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6 scrollbar-thin scrollbar-thumb-[#d1cec6] scrollbar-track-[#edf1f7]">
                 {/* Profile Photo Section */}
                 <div className="mb-8 space-y-4">
                   <ProfilePictureUploader
@@ -193,7 +192,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   {/* Basic Information */}
                   <div>
                     <h4 className="text-sm font-display font-bold text-[#0a1628] mb-4 flex items-center gap-2">
-                      <div className="w-1 h-4 bg-sky-600 rounded-full"></div>
+                      <div className="w-1 h-4 bg-[#a855f7] rounded-full"></div>
                       Basic Information
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -207,7 +206,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                             disabled={!isEditing}
                             maxLength={100}
                             autoComplete="name"
-                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                           />
                         </div>
                       </div>
@@ -220,11 +219,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                             value={editedData.email}
                             onChange={(e) => setEditedData({ ...editedData, email: e.target.value })}
                             disabled={!isEditing}
-                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                           />
                         </div>
                       </div>
-<div>
+                      <div>
                         <label className="block text-xs font-body font-semibold text-[#5a6578] mb-2 uppercase tracking-wider">Phone Number</label>
                         <div className="relative">
                           <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -238,7 +237,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                             autoComplete="tel"
                             pattern="^\+?[0-9 ()\-.]{7,20}$"
                             placeholder="+63 912 345 6789"
-                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                            className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                           />
                         </div>
                       </div>
@@ -290,7 +289,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                     <>
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] mb-4 flex items-center gap-2">
-                        <div className="w-1 h-4 bg-teal-600 rounded-full"></div>
+                        <div className="w-1 h-4 bg-[#a855f7] rounded-full"></div>
                         Academic Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -314,7 +313,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               value={editedData.grade || ''}
                               onChange={(e) => setEditedData({ ...editedData, grade: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -326,7 +325,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               value={editedData.section || ''}
                               onChange={(e) => setEditedData({ ...editedData, section: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -335,7 +334,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
 
                     <div>
                       <h4 className="text-sm font-bold text-[#0a1628] mb-4 flex items-center gap-2">
-                        <div className="w-1 h-4 bg-rose-600 rounded-full"></div>
+                        <div className="w-1 h-4 bg-[#a855f7] rounded-full"></div>
                         Leaderboard Overview
                       </h4>
 
@@ -350,9 +349,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               <p className="text-xs font-body font-semibold text-rose-700 uppercase tracking-wider">Your Rank</p>
                               <p className="text-2xl font-display font-bold text-rose-800 mt-1">{studentRank > 0 ? `#${studentRank}` : 'Unranked'}</p>
                             </div>
-                            <div className="rounded-lg border border-sky-200 bg-sky-50 p-3">
-                              <p className="text-xs font-body font-semibold text-sky-700 uppercase tracking-wider">Total XP</p>
-                              <p className="text-2xl font-display font-bold text-sky-800 mt-1">{currentUserLeaderboardEntry?.xp ?? 0}</p>
+                            <div className="rounded-lg border border-[#d8b4fe] bg-[#f3e8ff] p-3">
+                              <p className="text-xs font-body font-semibold text-[#9333ea] uppercase tracking-wider">Total XP</p>
+                              <p className="text-2xl font-display font-bold text-[#7e22ce] mt-1">{currentUserLeaderboardEntry?.xp ?? 0}</p>
                             </div>
                             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
                               <p className="text-xs font-body font-semibold text-emerald-700 uppercase tracking-wider">Level</p>
@@ -400,7 +399,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   {editedData.role === 'teacher' && (
                     <div>
                       <h4 className="text-sm font-display font-bold text-[#0a1628] mb-4 flex items-center gap-2">
-                        <div className="w-1 h-4 bg-rose-500 rounded-full"></div>
+                        <div className="w-1 h-4 bg-[#a855f7] rounded-full"></div>
                         Teaching Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -412,7 +411,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               value={editedData.teacherId || ''}
                               onChange={(e) => setEditedData({ ...editedData, teacherId: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -424,7 +423,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               value={editedData.subject || ''}
                               onChange={(e) => setEditedData({ ...editedData, subject: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -436,7 +435,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               value={editedData.yearsOfExperience || ''}
                               onChange={(e) => setEditedData({ ...editedData, yearsOfExperience: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -448,7 +447,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               value={editedData.qualification || ''}
                               onChange={(e) => setEditedData({ ...editedData, qualification: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -460,7 +459,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   {editedData.role === 'admin' && (
                     <div>
                       <h4 className="text-sm font-display font-bold text-[#0a1628] mb-4 flex items-center gap-2">
-                        <div className="w-1 h-4 bg-rose-600 rounded-full"></div>
+                        <div className="w-1 h-4 bg-[#a855f7] rounded-full"></div>
                         Administrative Information
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -472,7 +471,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               value={editedData.adminId || ''}
                               onChange={(e) => setEditedData({ ...editedData, adminId: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -484,7 +483,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               value={editedData.position || ''}
                               onChange={(e) => setEditedData({ ...editedData, position: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -496,7 +495,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                               value={editedData.permissions || ''}
                               onChange={(e) => setEditedData({ ...editedData, permissions: e.target.value })}
                               disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-sky-400 focus:ring-sky-400/20 disabled:opacity-50 disabled:cursor-default"
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>
@@ -520,7 +519,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                       </Button>
                       <Button
                         onClick={() => setIsEditing(true)}
-                        className="px-5 py-2.5 min-h-[44px] rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold"
+                        className="px-5 py-2.5 min-h-[44px] rounded-lg bg-[#a855f7] hover:bg-[#9333ea] text-white font-body font-semibold shadow-sm transition-colors"
                       >
                         Edit Profile
                       </Button>
@@ -536,7 +535,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                       </Button>
                       <Button
                         onClick={handleSave}
-                        className="px-5 py-2.5 min-h-[44px] rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-body font-semibold flex items-center gap-2"
+                        className="px-5 py-2.5 min-h-[44px] rounded-lg bg-[#a855f7] hover:bg-[#9333ea] text-white font-body font-semibold flex items-center gap-2 shadow-sm transition-colors"
                       >
                         <Save size={16} />
                         Save Changes

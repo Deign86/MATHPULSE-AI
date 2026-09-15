@@ -1508,10 +1508,19 @@ export const apiService = {
       };
     }
 
-    return apiFetch<ImportGroundedFeedbackResponse>('/api/feedback/import-grounded', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    try {
+      return await apiFetch<ImportGroundedFeedbackResponse>('/api/feedback/import-grounded', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      console.warn('[apiService] Telemetry reportImportGroundedFeedback failed:', error);
+      return {
+        success: false,
+        stored: false,
+        warnings: [error instanceof Error ? error.message : 'Telemetry request failed'],
+      };
+    }
   },
 
   /** Health check */
@@ -2359,18 +2368,22 @@ export const apiService = {
     };
 
     if (ASYNC_GENERATION_ENABLED) {
-      const submitted = await apiService.submitLessonPlanAsync(effectiveRequest);
-      const task = await apiService.waitForTaskResult(submitted.taskId, {
-        timeoutMs: 240_000,
-        pollIntervalMs: 1_500,
-      });
-      const payload = task.result;
-      if (!isObj(payload)) {
-        throw new Error('Lesson generation completed without a valid result payload.');
+      try {
+        const submitted = await apiService.submitLessonPlanAsync(effectiveRequest);
+        const task = await apiService.waitForTaskResult(submitted.taskId, {
+          timeoutMs: 240_000,
+          pollIntervalMs: 1_500,
+        });
+        const payload = task.result;
+        if (!isObj(payload)) {
+          throw new Error('Lesson generation completed without a valid result payload.');
+        }
+        const taskResult: object = payload;
+        // SAFETY: async lesson-plan task payloads mirror the synchronous LessonPlanResponse contract.
+        return taskResult as LessonPlanResponse;
+      } catch (asyncErr) {
+        console.warn('[apiService] Async lesson generation failed or unavailable, falling back to sync:', asyncErr);
       }
-      const taskResult: object = payload;
-      // SAFETY: async lesson-plan task payloads mirror the synchronous LessonPlanResponse contract.
-      return taskResult as LessonPlanResponse;
     }
 
     return apiFetch<LessonPlanResponse>(
@@ -2401,21 +2414,25 @@ export const apiService = {
     };
 
     if (ASYNC_GENERATION_ENABLED) {
-      const submitted = await apiService.submitQuizAsync(effectiveRequest);
-      options?.onTaskCreated?.(submitted.taskId);
-      const task = await apiService.waitForTaskResult(submitted.taskId, {
-        timeoutMs: 240_000,
-        pollIntervalMs: 1_500,
-        onProgress: options?.onProgress,
-      });
-      const payload = task.result;
-      if (!isObj(payload)) {
-        throw new Error('Quiz generation completed without a valid result payload.');
+      try {
+        const submitted = await apiService.submitQuizAsync(effectiveRequest);
+        options?.onTaskCreated?.(submitted.taskId);
+        const task = await apiService.waitForTaskResult(submitted.taskId, {
+          timeoutMs: 240_000,
+          pollIntervalMs: 1_500,
+          onProgress: options?.onProgress,
+        });
+        const payload = task.result;
+        if (!isObj(payload)) {
+          throw new Error('Quiz generation completed without a valid result payload.');
+        }
+        if (!validateQuizResponse(payload)) {
+          throw new Error('Invalid quiz generation response from async task payload.');
+        }
+        return payload;
+      } catch (asyncErr) {
+        console.warn('[apiService] Async quiz generation failed or unavailable, falling back to sync:', asyncErr);
       }
-      if (!validateQuizResponse(payload)) {
-        throw new Error('Invalid quiz generation response from async task payload.');
-      }
-      return payload;
     }
 
     const result = await apiFetch<QuizGenerationResponse>(

@@ -326,7 +326,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   return (
     <AnimatePresence>
       <>
-      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -336,16 +336,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         />
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
           transition={{ duration: 0.2 }}
-          className="relative bg-[#f7f9fc] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-[#dde3eb] w-full sm:max-w-4xl h-[92dvh] sm:max-h-[85dvh] overflow-hidden flex flex-col sm:flex-row"
+          className="relative bg-white rounded-2xl shadow-2xl border border-slate-200/80 w-full max-w-[400px] sm:max-w-4xl h-[68vh] sm:h-[82vh] max-h-[490px] sm:max-h-[740px] overflow-hidden flex flex-col sm:flex-row z-10"
         >
           {/* Desktop Sidebar — hidden on mobile */}
           <div className="hidden sm:flex w-64 flex-shrink-0 bg-slate-50 border-r border-slate-200 flex-col p-6 overflow-y-auto">
             <div className="mb-6">
-              <h2 className="text-xl font-display font-bold text-[#0a1628]">Settings</h2>
+              <h2 className="text-xl font-display font-extrabold text-[#0a1628]">Settings</h2>
               <p className="text-xs text-slate-500 mt-1 font-body">Manage your preferences</p>
             </div>
             <nav className="space-y-1">
@@ -355,14 +355,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-left transition-all ${
                       activeSection === section.id
-                        ? 'bg-sky-50 text-sky-700 shadow-sm'
-                        : 'text-slate-500 hover:bg-slate-100 hover:text-sky-700'
+                        ? 'bg-sky-50 text-sky-700 font-semibold shadow-sm'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
                     }`}
                   >
                     <Icon size={18} />
-                    <span className="text-sm font-medium">{section.label}</span>
+                    <span className="text-sm font-body">{section.label}</span>
                   </button>
                 );
               })}
@@ -370,42 +370,57 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Content */}
-          <div className="flex-1 flex flex-col min-h-0">
-            {/* Mobile tab-bar — shown only on mobile */}
-            <div className="sm:hidden flex items-center border-b border-[#dde3eb] bg-slate-50 overflow-x-auto no-scrollbar px-2 snap-x snap-mandatory">
+          <div className="flex-1 flex flex-col min-h-0 bg-[#f8fafc]">
+            {/* Mobile Header with Close button (single unified header) */}
+            <div className="sm:hidden flex items-center justify-between px-3.5 py-2 border-b border-slate-200 bg-white shrink-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h3 className="text-xs sm:text-sm font-display font-bold text-[#0a1628]">Settings</h3>
+                <span className="text-slate-300">·</span>
+                <span className="text-[10.5px] font-body font-semibold text-sky-700 truncate">
+                  {sections.find((s) => s.id === activeSection)?.label}
+                </span>
+              </div>
+              <button onClick={handleCancel} className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors shrink-0" aria-label="Close settings">
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Mobile horizontal pill navigation */}
+            <div className="sm:hidden flex items-center gap-1 border-b border-slate-200 bg-slate-50/90 overflow-x-auto no-scrollbar px-2.5 py-1 shrink-0">
               {sections.map((section) => {
                 const Icon = section.icon;
+                const isActive = activeSection === section.id;
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`flex flex-col items-center justify-center gap-1 px-3.5 py-2.5 shrink-0 text-xs font-medium border-b-2 transition-colors min-h-[44px] snap-start ${
-                      activeSection === section.id
-                        ? 'border-sky-600 text-sky-700 bg-sky-50/50'
-                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium whitespace-nowrap transition-all shrink-0 font-body ${
+                      isActive
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    <Icon size={16} />
-                    <span className="whitespace-nowrap">{section.label}</span>
+                    <Icon size={11} />
+                    <span>{section.label}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Content header */}
-            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#dde3eb]">
-              <h3 className="text-base sm:text-lg font-display font-bold text-[#0a1628]">
+            {/* Desktop content header */}
+            <div className="hidden sm:flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white shrink-0">
+              <h3 className="text-lg font-display font-extrabold sm:font-black text-[#0a1628]">
                 {sections.find((s) => s.id === activeSection)?.label}
               </h3>
-              <button onClick={handleCancel} className="p-2 hover:bg-[#edf1f7] rounded-xl transition-colors">
-                <X size={20} className="text-[#5a6578]" />
+              <button onClick={handleCancel} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors" aria-label="Close settings">
+                <X size={20} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="flex-1 overflow-y-auto px-3.5 sm:px-8 py-3 sm:py-6">
               {/* ─── Account Section ─── */}
               {activeSection === 'account' && (
-                <div className="space-y-6">
+                <div className="space-y-2.5 sm:space-y-4 max-w-2xl">
                   <ProfilePictureUploader
                     uid={accountData.uid}
                     photoURL={accountData.photo}
@@ -413,28 +428,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     onUploaded={(photoURL) => setAccountData((prev) => ({ ...prev, photo: photoURL }))}
                   />
 
-                  <div>
-                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Full Name</label>
+                  <div className="space-y-0.5">
+                    <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Full Name</label>
                     <Input
                       type="text"
                       value={accountData.name || ''}
                       onChange={(e) => setAccountData((prev) => ({ ...prev, name: e.target.value }))}
                       maxLength={100}
                       autoComplete="name"
-                      className="max-w-md"
+                      className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md focus-visible:ring-sky-500/20 focus-visible:border-sky-500"
                     />
                   </div>
-                  <div>
-                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Email Address</label>
+                  <div className="space-y-0.5">
+                    <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Email Address</label>
                     <div className="flex items-center gap-2 max-w-md">
-                      <Input type="email" value={accountData.email || ''} disabled className="flex-1 bg-slate-100" />
-                      <Button variant="outline" size="sm" onClick={() => openReAuth('email')}>
+                      <Input type="email" value={accountData.email || ''} disabled className="h-8 sm:h-9 rounded-lg sm:rounded-xl flex-1 bg-slate-100/80 border-slate-200 text-slate-600 !text-xs sm:!text-sm" />
+                      <Button variant="outline" size="sm" onClick={() => openReAuth('email')} className="h-8 sm:h-9 px-2.5 rounded-lg sm:rounded-xl border-slate-200 text-[11px] font-semibold hover:bg-slate-50 shrink-0">
                         Change
                       </Button>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Phone Number</label>
+                  <div className="space-y-0.5">
+                    <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Phone Number</label>
                     <Input
                       type="tel"
                       value={accountData.phone || ''}
@@ -444,78 +459,78 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       autoComplete="tel"
                       pattern="^\+?[0-9 ()\-.]{7,20}$"
                       placeholder="+63 912 345 6789"
-                      className="max-w-md"
+                      className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md focus-visible:ring-sky-500/20 focus-visible:border-sky-500"
                     />
                   </div>
 
-                  <div>
-                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Gender</label>
+                  <div className="space-y-0.5">
+                    <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Gender</label>
                     <Select
                       value={accountData.gender || ''}
                       // SAFETY: trusted internal value already conforms to the asserted type.
                       onValueChange={(value) => setAccountData((prev) => ({ ...prev, gender: value as 'male' | 'female' | 'prefer_not_to_say' }))}
                     >
-                      <SelectTrigger className="max-w-md bg-white border-[#dde3eb] rounded-lg">
+                      <SelectTrigger className="max-w-md h-8 sm:h-9 bg-white border-slate-200 rounded-lg sm:rounded-xl text-xs sm:text-sm">
                         <SelectValue placeholder="Select gender (optional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="male"><div className="flex items-center gap-2"><Mars className="size-4 text-blue-500" /><span>Male</span></div></SelectItem>
-                        <SelectItem value="female"><div className="flex items-center gap-2"><Venus className="size-4 text-pink-500" /><span>Female</span></div></SelectItem>
-                        <SelectItem value="prefer_not_to_say"><div className="flex items-center gap-2"><HelpCircle className="size-4 text-gray-500" /><span>Prefer not to say</span></div></SelectItem>
+                        <SelectItem value="male"><div className="flex items-center gap-2"><Mars className="size-3.5 sm:size-4 text-blue-500" /><span className="text-xs sm:text-sm">Male</span></div></SelectItem>
+                        <SelectItem value="female"><div className="flex items-center gap-2"><Venus className="size-3.5 sm:size-4 text-pink-500" /><span className="text-xs sm:text-sm">Female</span></div></SelectItem>
+                        <SelectItem value="prefer_not_to_say"><div className="flex items-center gap-2"><HelpCircle className="size-3.5 sm:size-4 text-gray-500" /><span className="text-xs sm:text-sm">Prefer not to say</span></div></SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {role === 'student' && (
                     <>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">LRN</label>
-                        <Input value={accountData.lrn || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, lrn: e.target.value }))} className="max-w-md" />
+                      <div className="space-y-0.5">
+                        <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">LRN</label>
+                        <Input value={accountData.lrn || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, lrn: e.target.value }))} className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md" />
                       </div>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Grade Level</label>
-                        <Input value={accountData.grade || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, grade: e.target.value }))} className="max-w-md" />
+                      <div className="space-y-0.5">
+                        <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Grade Level</label>
+                        <Input value={accountData.grade || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, grade: e.target.value }))} className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md" />
                       </div>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Section</label>
-                        <Input value={accountData.section || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, section: e.target.value }))} className="max-w-md" />
+                      <div className="space-y-0.5">
+                        <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Section</label>
+                        <Input value={accountData.section || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, section: e.target.value }))} className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md" />
                       </div>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">School</label>
-                        <Input value={accountData.school || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, school: e.target.value }))} className="max-w-md" />
+                      <div className="space-y-0.5">
+                        <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">School</label>
+                        <Input value={accountData.school || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, school: e.target.value }))} className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md" />
                       </div>
                     </>
                   )}
 
                   {role === 'teacher' && (
                     <>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Department</label>
-                        <Input value={accountData.department || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, department: e.target.value }))} className="max-w-md" />
+                      <div className="space-y-0.5">
+                        <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Department</label>
+                        <Input value={accountData.department || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, department: e.target.value }))} className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md" />
                       </div>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Subject</label>
-                        <Input value={accountData.subject || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, subject: e.target.value }))} className="max-w-md" />
+                      <div className="space-y-0.5">
+                        <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Subject</label>
+                        <Input value={accountData.subject || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, subject: e.target.value }))} className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md" />
                       </div>
-                      <div>
-                        <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Years of Experience</label>
-                        <Input value={accountData.yearsOfExperience || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, yearsOfExperience: e.target.value }))} className="max-w-md" />
+                      <div className="space-y-0.5">
+                        <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Years of Experience</label>
+                        <Input value={accountData.yearsOfExperience || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, yearsOfExperience: e.target.value }))} className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md" />
                       </div>
                     </>
                   )}
 
                   {role === 'admin' && (
-                    <div>
-                      <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Position</label>
-                      <Input value={accountData.position || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, position: e.target.value }))} className="max-w-md" />
+                    <div className="space-y-0.5">
+                      <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Position</label>
+                      <Input value={accountData.position || ''} onChange={(e) => setAccountData((prev) => ({ ...prev, position: e.target.value }))} className="h-8 sm:h-9 rounded-lg sm:rounded-xl bg-white border-slate-200 !text-xs sm:!text-sm max-w-md" />
                     </div>
                   )}
 
-                  <div>
-                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">Change Password</label>
-                    <Button variant="outline" className="rounded-xl" onClick={() => openReAuth('password')}>
-                      <Lock size={16} className="mr-2" />
-                      Update Password
+                  <div className="space-y-0.5 pt-0.5">
+                    <label className="text-[10.5px] sm:text-xs font-semibold text-slate-600 block">Security</label>
+                    <Button variant="outline" className="h-8 sm:h-9 rounded-lg sm:rounded-xl border-slate-200 text-xs font-semibold hover:bg-slate-50" onClick={() => openReAuth('password')}>
+                      <Lock size={13} className="mr-1.5 text-slate-500" />
+                      Change Password
                     </Button>
                   </div>
                 </div>
@@ -524,18 +539,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* ─── Notifications Section ─── */}
               {activeSection === 'notifications' && (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
 
-                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                  <div className="flex items-center justify-between py-2.5 sm:py-3 border-b border-[#dde3eb]">
                     <div>
-                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Push Notifications</h4>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Push Notifications</h4>
+                      <p className="text-[10.5px] sm:text-xs text-slate-500 mt-0.5">
                         {pushControls.status === 'unsupported' ? 'This browser does not support push notifications.' :
                           pushControls.status === 'denied' ? 'Notifications are blocked. Allow them in your browser settings, then try again.' :
                           pushControls.status === 'enabled' ? 'Enabled on this device.' :
                           pushControls.status === 'registering' ? 'Setting up this device...' : 'Enable notifications on this device.'}
                       </p>
-                      {pushControls.status === 'error' && <p className="text-xs text-red-600 mt-1">Could not register this device. Please try again.</p>}
+                      {pushControls.status === 'error' && <p className="text-[10px] sm:text-xs text-red-600 mt-0.5">Could not register this device. Please try again.</p>}
                     </div>
                     <Switch
                       checked={pushControls.status === 'enabled'}
@@ -551,10 +566,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       }}
                     />
                   </div>
-                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                  <div className="flex items-center justify-between py-2.5 sm:py-3 border-b border-[#dde3eb]">
                     <div>
-                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Sound Effects</h4>
-                      <p className="text-xs text-slate-500 mt-1">Play sounds for notifications</p>
+                      <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Sound Effects</h4>
+                      <p className="text-[10.5px] sm:text-xs text-slate-500 mt-0.5">Play sounds for notifications</p>
                     </div>
                     <Switch
                       checked={localSettings.notifications.soundEnabled}
@@ -564,20 +579,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   {role === 'teacher' && (
                     <>
-                      <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                      <div className="flex items-center justify-between py-2.5 sm:py-3 border-b border-[#dde3eb]">
                         <div>
-                          <h4 className="text-sm font-bold text-[#0a1628] font-body">Student Submissions</h4>
-                          <p className="text-xs text-slate-500 mt-1">Notify when students submit work</p>
+                          <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Student Submissions</h4>
+                          <p className="text-[10.5px] sm:text-xs text-slate-500 mt-0.5">Notify when students submit work</p>
                         </div>
                         <Switch
                           checked={localTeacherPrefs.notifyOnSubmission}
                           onCheckedChange={(v) => setLocalTeacherPrefs((p) => ({ ...p, notifyOnSubmission: v }))}
                         />
                       </div>
-                      <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                      <div className="flex items-center justify-between py-2.5 sm:py-3 border-b border-[#dde3eb]">
                         <div>
-                          <h4 className="text-sm font-bold text-[#0a1628] font-body">Student Activity Alerts</h4>
-                          <p className="text-xs text-slate-500 mt-1">Notify on at-risk student activity</p>
+                          <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Student Activity Alerts</h4>
+                          <p className="text-[10.5px] sm:text-xs text-slate-500 mt-0.5">Notify on at-risk student activity</p>
                         </div>
                         <Switch
                           checked={localTeacherPrefs.notifyOnStudentActivity}
@@ -587,9 +602,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </>
                   )}
 
-                  <div className="pt-4">
-                    <h4 className="text-sm font-bold text-[#0a1628] mb-3 font-body">Notification Types</h4>
-                    <div className="space-y-3">
+                  <div className="pt-2 sm:pt-4">
+                    <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] mb-2 sm:mb-3 font-body">Notification Types</h4>
+                    <div className="space-y-2 sm:space-y-3">
                       {[
                         { key: 'quizReminders', label: 'Quiz Reminders' },
                         { key: 'newContent', label: 'New Content' },
@@ -597,7 +612,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         { key: 'streakAlerts', label: 'Streak Alerts' },
                         { key: 'weeklySummary', label: 'Weekly Summary' },
                       ].map((item) => (
-                        <div key={item.key} className="flex items-center gap-3">
+                        <div key={item.key} className="flex items-center gap-2.5">
                           <input
                             type="checkbox"
                             // SAFETY: trusted internal value already conforms to the asserted type.
@@ -611,28 +626,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 },
                               }))
                             }
-                            className="w-4 h-4 rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500"
+                            className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-[#dde3eb] text-sky-600 focus:ring-sky-500"
                           />
-                          <span className="text-sm text-[#0a1628] font-body">{item.label}</span>
+                          <span className="text-xs sm:text-sm text-[#0a1628] font-body">{item.label}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-[#dde3eb]">
-                    <h4 className="text-sm font-bold text-[#0a1628] mb-1 font-body">Push Notification Categories</h4>
-                    <p className="text-xs text-slate-500 mb-3">Choose which kinds of pushes you want to receive on this device.</p>
-                    <div className="flex items-center justify-between py-2 mb-2 border-b border-[#dde3eb]">
+                  <div className="pt-3 sm:pt-4 border-t border-[#dde3eb]">
+                    <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] mb-1 font-body">Push Notification Categories</h4>
+                    <p className="text-[10.5px] sm:text-xs text-slate-500 mb-2 sm:mb-3">Choose which kinds of pushes you want to receive on this device.</p>
+                    <div className="flex items-center justify-between py-1.5 sm:py-2 mb-2 border-b border-[#dde3eb]">
                       <div>
-                        <h5 className="text-sm font-bold text-[#0a1628] font-body">Enable Push (master)</h5>
-                        <p className="text-xs text-slate-500 mt-0.5">Turn off to silence ALL push categories.</p>
+                        <h5 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Enable Push (master)</h5>
+                        <p className="text-[10.5px] sm:text-xs text-slate-500 mt-0.5">Turn off to silence ALL push categories.</p>
                       </div>
                       <Switch
                         checked={localSettings.pushPreferences.pushEnabled}
                         onCheckedChange={(v) => updateSettings((p) => ({ ...p, pushPreferences: { ...p.pushPreferences, pushEnabled: v } }))}
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       {[
                         { key: 'achievement', label: 'Achievements unlocked', icon: Trophy },
                         { key: 'quiz_battle', label: 'Quiz battle invites & results', icon: Swords },
@@ -646,8 +661,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         const k = item.key as keyof UserSettings['pushPreferences'];
                         const Icon = item.icon;
                         return (
-                          <label key={item.key} className="flex items-center justify-between py-1.5">
-                            <span className="text-sm text-[#0a1628] font-body flex items-center gap-2"><Icon className="h-4 w-4 text-[#6c47ff]" />{item.label}</span>
+                          <label key={item.key} className="flex items-center justify-between py-1 sm:py-1.5">
+                            <span className="text-xs sm:text-sm text-[#0a1628] font-body flex items-center gap-2"><Icon className="h-3.5 w-3.5 text-[#6c47ff]" />{item.label}</span>
                             <Switch
                               checked={Boolean(localSettings.pushPreferences[k])}
                               onCheckedChange={(v) => updateSettings((p) => ({ ...p, pushPreferences: { ...p.pushPreferences, [item.key]: v } }))}
@@ -658,7 +673,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       })}
                     </div>
                     {role === 'admin' && (
-                      <div className="mt-4">
+                      <div className="mt-3 sm:mt-4">
                         <Button
                           type="button"
                           variant="outline"
@@ -699,23 +714,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     )}
                   </div>
 
-                  <div className="pt-4 border-t border-[#dde3eb]">
-                    <label className="text-sm font-bold text-[#5a6578] mb-2 block font-body uppercase tracking-wider text-xs">
-                      <Clock size={16} className="inline mr-2" />Quiet Hours
+                  <div className="pt-3 sm:pt-4 border-t border-[#dde3eb]">
+                    <label className="text-[10.5px] sm:text-xs font-semibold text-[#5a6578] mb-1.5 block font-body uppercase tracking-wider">
+                      <Clock size={14} className="inline mr-1.5" />Quiet Hours
                     </label>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <Input
                         type="time"
                         value={localSettings.notifications.quietHours.start}
                         onChange={(e) => updateSettings((p) => ({ ...p, notifications: { ...p.notifications, quietHours: { ...p.notifications.quietHours, start: e.target.value } } }))}
-                        className="w-32"
+                        className="w-28 h-8 sm:h-9 !text-xs rounded-lg"
                       />
-                      <span className="text-[#5a6578]">to</span>
+                      <span className="text-xs text-[#5a6578]">to</span>
                       <Input
                         type="time"
                         value={localSettings.notifications.quietHours.end}
                         onChange={(e) => updateSettings((p) => ({ ...p, notifications: { ...p.notifications, quietHours: { ...p.notifications.quietHours, end: e.target.value } } }))}
-                        className="w-32"
+                        className="w-28 h-8 sm:h-9 !text-xs rounded-lg"
                       />
                     </div>
                   </div>
@@ -724,11 +739,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* ─── Appearance Section ─── */}
               {activeSection === 'appearance' && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="flex items-center justify-between py-2.5 sm:py-3 border-b border-[#dde3eb]">
                     <div>
-                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Dark Mode</h4>
-                      <p className="text-xs text-slate-500 mt-1">Toggle dark theme</p>
+                      <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Dark Mode</h4>
+                      <p className="text-[10.5px] sm:text-xs text-slate-500 mt-0.5">Toggle dark theme</p>
                     </div>
                     <Switch
                       checked={localSettings.appearance.darkMode}
@@ -737,9 +752,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-sm font-bold text-[#5a6578] mb-3 block font-body uppercase tracking-wider text-xs">Font Size</label>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs text-slate-500">Small</span>
+                    <label className="text-[10.5px] sm:text-xs font-semibold text-[#5a6578] mb-2 block font-body uppercase tracking-wider">Font Size</label>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] sm:text-xs text-slate-500">Small</span>
                       <input
                         type="range"
                         min="12"
@@ -748,15 +763,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         onChange={(e) => updateSettings((p) => ({ ...p, appearance: { ...p.appearance, fontSize: Number(e.target.value) } }))}
                         className="flex-1"
                       />
-                      <span className="text-xs text-slate-500">Large</span>
-                      <span className="text-xs font-mono text-slate-600 w-8">{localSettings.appearance.fontSize}px</span>
+                      <span className="text-[10px] sm:text-xs text-slate-500">Large</span>
+                      <span className="text-[10px] sm:text-xs font-mono text-slate-600 w-8">{localSettings.appearance.fontSize}px</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                  <div className="flex items-center justify-between py-2.5 sm:py-3 border-b border-[#dde3eb]">
                     <div>
-                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Compact View</h4>
-                      <p className="text-xs text-slate-500 mt-1">Show more content on screen</p>
+                      <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Compact View</h4>
+                      <p className="text-[10.5px] sm:text-xs text-slate-500 mt-0.5">Show more content on screen</p>
                     </div>
                     <Switch
                       checked={localSettings.appearance.compactView}
@@ -764,10 +779,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     />
                   </div>
 
-                  <div className="flex items-center justify-between py-3 border-b border-[#dde3eb]">
+                  <div className="flex items-center justify-between py-2.5 sm:py-3 border-b border-[#dde3eb]">
                     <div>
-                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Reduce Animations</h4>
-                      <p className="text-xs text-slate-500 mt-1">Minimize motion effects</p>
+                      <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Reduce Animations</h4>
+                      <p className="text-[10.5px] sm:text-xs text-slate-500 mt-0.5">Minimize motion effects</p>
                     </div>
                     <Switch
                       checked={localSettings.appearance.reduceAnimations}
@@ -896,41 +911,44 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* ─── Teaching Section (Teacher only) ─── */}
               {activeSection === 'teaching' && role === 'teacher' && (
-                <div className="space-y-6">
-                  <h4 className="text-sm font-bold text-[#0a1628] font-body">Quiz Defaults</h4>
-                  <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-4 sm:space-y-6">
+                  <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Quiz Defaults</h4>
+                  <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
                     <div>
-                      <label className="text-xs text-[#5a6578] block mb-1">Time Limit (min)</label>
+                      <label className="text-[10px] sm:text-xs text-slate-500 block mb-1">Time Limit (min)</label>
                       <Input
                         type="number"
                         value={localTeacherPrefs.quizDefaults.timeLimitMinutes}
                         onChange={(e) => setLocalTeacherPrefs((p) => ({ ...p, quizDefaults: { ...p.quizDefaults, timeLimitMinutes: Number(e.target.value) } }))}
+                        className="h-8 sm:h-9 !text-xs sm:!text-sm rounded-lg"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-[#5a6578] block mb-1">Passing Score (%)</label>
+                      <label className="text-[10px] sm:text-xs text-slate-500 block mb-1">Passing Score (%)</label>
                       <Input
                         type="number"
                         value={localTeacherPrefs.quizDefaults.passingScore}
                         onChange={(e) => setLocalTeacherPrefs((p) => ({ ...p, quizDefaults: { ...p.quizDefaults, passingScore: Number(e.target.value) } }))}
+                        className="h-8 sm:h-9 !text-xs sm:!text-sm rounded-lg"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-[#5a6578] block mb-1">Max Attempts</label>
+                      <label className="text-[10px] sm:text-xs text-slate-500 block mb-1">Max Attempts</label>
                       <Input
                         type="number"
                         value={localTeacherPrefs.quizDefaults.maxAttempts}
                         onChange={(e) => setLocalTeacherPrefs((p) => ({ ...p, quizDefaults: { ...p.quizDefaults, maxAttempts: Number(e.target.value) } }))}
+                        className="h-8 sm:h-9 !text-xs sm:!text-sm rounded-lg"
                       />
                     </div>
                   </div>
 
-                  <h4 className="text-sm font-bold text-[#0a1628] font-body pt-4">Class Preferences</h4>
+                  <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body pt-2 sm:pt-4">Class Preferences</h4>
 
-                  <div className="flex items-center justify-between py-3 border-t border-[#dde3eb]">
+                  <div className="flex items-center justify-between py-2.5 sm:py-3 border-t border-[#dde3eb]">
                     <div>
-                      <h4 className="text-sm font-bold text-[#0a1628] font-body">Student Analytics Visibility</h4>
-                      <p className="text-xs text-slate-500 mt-1">Let students see their leaderboard rank</p>
+                      <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] font-body">Student Analytics Visibility</h4>
+                      <p className="text-[10.5px] sm:text-xs text-slate-500 mt-0.5">Let students see their leaderboard rank</p>
                     </div>
                     <Switch
                       checked={localTeacherPrefs.studentAnalyticsVisibility}
@@ -1019,27 +1037,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {/* ─── Data & Storage Section ─── */}
               {activeSection === 'data' && (
-                <div className="space-y-6">
-                  <div className="p-4 bg-sky-50 border border-sky-200 rounded-xl">
-                    <h4 className="text-sm font-bold text-sky-900 mb-1 font-body">Download Your Data</h4>
-                    <p className="text-xs text-sky-700 mb-3">Export all your learning data and progress</p>
-                    <Button variant="outline" size="sm" className="rounded-xl" onClick={handleExport} disabled={isExporting}>
-                      <Download size={16} className="mr-2" />
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="p-3 sm:p-4 bg-sky-50 border border-sky-200 rounded-xl">
+                    <h4 className="text-xs sm:text-sm font-semibold text-sky-900 mb-0.5 font-body">Download Your Data</h4>
+                    <p className="text-[10.5px] sm:text-xs text-sky-700 mb-2.5">Export all your learning data and progress</p>
+                    <Button variant="outline" size="sm" className="rounded-lg h-8 sm:h-9 px-3 text-xs font-semibold" onClick={handleExport} disabled={isExporting}>
+                      <Download size={14} className="mr-1.5" />
                       {isExporting ? 'Exporting...' : 'Request Data Export'}
                     </Button>
                   </div>
 
-                  <div className="p-4 bg-white border border-[#dde3eb] rounded-xl">
-                    <h4 className="text-sm font-bold text-[#0a1628] mb-1 font-body">Clear Cache</h4>
-                    <p className="text-xs text-[#5a6578] mb-3">Free up space by clearing cached data</p>
-                    <Button variant="outline" size="sm" className="rounded-xl" onClick={handleClearCache} disabled={isClearingCache}>
+                  <div className="p-3 sm:p-4 bg-white border border-[#dde3eb] rounded-xl">
+                    <h4 className="text-xs sm:text-sm font-semibold text-[#0a1628] mb-0.5 font-body">Clear Cache</h4>
+                    <p className="text-[10.5px] sm:text-xs text-[#5a6578] mb-2.5">Free up space by clearing cached data</p>
+                    <Button variant="outline" size="sm" className="rounded-lg h-8 sm:h-9 px-3 text-xs font-semibold" onClick={handleClearCache} disabled={isClearingCache}>
                       {isClearingCache ? 'Clearing...' : 'Clear Cache'}
                     </Button>
                   </div>
 
-                  <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
-                    <h4 className="text-sm font-bold text-rose-900 mb-1">Reset Progress</h4>
-                    <p className="text-xs text-rose-700 mb-3">
+                  <div className="p-3 sm:p-4 bg-rose-50 border border-rose-200 rounded-xl">
+                    <h4 className="text-xs sm:text-sm font-semibold text-rose-900 mb-0.5 font-body">Reset Progress</h4>
+                    <p className="text-[10.5px] sm:text-xs text-rose-700 mb-2.5">
                       {role === 'student' && 'Reset quizzes, diagnostic state, XP, and learning progress for retesting.'}
                       {role === 'teacher' && 'Reset imported records, managed classrooms, and teacher-generated quiz artifacts.'}
                       {role === 'admin' && 'Reset admin testing artifacts like personal audit/content update records.'}
@@ -1047,7 +1065,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="rounded-xl text-rose-700 border-rose-300"
+                      className="rounded-lg h-8 sm:h-9 px-3 text-xs font-semibold text-rose-700 border-rose-300"
                       disabled={!onResetData || isResetting}
                       onClick={() => setIsResetConfirmOpen(true)}
                     >
@@ -1055,17 +1073,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     </Button>
                   </div>
 
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                    <h4 className="text-sm font-bold text-red-900 mb-1">Delete Account</h4>
-                    <p className="text-xs text-red-700 mb-3">Permanently delete your account and all data</p>
+                  <div className="p-3 sm:p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <h4 className="text-xs sm:text-sm font-semibold text-red-900 mb-0.5 font-body">Delete Account</h4>
+                    <p className="text-[10.5px] sm:text-xs text-red-700 mb-2.5">Permanently delete your account and all data</p>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="rounded-xl text-red-700 border-red-300"
+                      className="rounded-lg h-8 sm:h-9 px-3 text-xs font-semibold text-red-700 border-red-300"
                       onClick={() => setIsDeleteConfirmOpen(true)}
                       disabled={isDeleting}
                     >
-                      <Trash2 size={16} className="mr-2" />
+                      <Trash2 size={14} className="mr-1.5" />
                       {isDeleting ? 'Deleting...' : 'Delete Account'}
                     </Button>
                   </div>
@@ -1074,13 +1092,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-t border-[#dde3eb] bg-[#edf1f7] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0 sticky bottom-0 z-10">
-              <p className="text-xs text-slate-500 font-body text-center sm:text-left">MathPulse AI v2.1.0</p>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button variant="outline" onClick={handleCancel} className="rounded-lg border-[#dde3eb] flex-1 sm:flex-none min-h-[44px]" disabled={isSaving}>
+            <div className="shrink-0 px-3.5 sm:px-6 py-2 sm:py-2.5 border-t border-slate-200 bg-white/95 backdrop-blur-sm flex items-center justify-between gap-2 sticky bottom-0 z-10">
+              <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 font-body hidden sm:inline">MathPulse AI v2.1.0</p>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  className="rounded-lg sm:rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 flex-1 sm:flex-none h-8 sm:h-9 px-3.5 sm:px-4 text-xs font-semibold"
+                  disabled={isSaving}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleSaveChanges} className="rounded-lg bg-sky-600 hover:bg-sky-700 text-white flex-1 sm:flex-none min-h-[44px]" disabled={isSaving}>
+                <Button
+                  onClick={handleSaveChanges}
+                  className="rounded-lg sm:rounded-xl bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-700 hover:to-sky-800 text-white shadow-sm hover:shadow flex-1 sm:flex-none h-8 sm:h-9 px-4 sm:px-5 text-xs font-semibold transition-all"
+                  disabled={isSaving}
+                >
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>

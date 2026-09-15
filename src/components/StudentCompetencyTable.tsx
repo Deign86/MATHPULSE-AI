@@ -639,102 +639,40 @@ const StudentCompetencyTable: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6 space-y-6"
+      className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8"
     >
       {onBack && (
         <div className="flex items-center justify-between mb-2">
-          <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
+          <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-3.5 sm:px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
               <ChevronLeft className="w-4 h-4" />
               Back to Classes
           </button>
         </div>
       )}
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px] mb-6">
-        {/* Card 1 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-5 shadow-[0_4px_12px_rgba(168,85,247,0.2)] hover:shadow-[0_8px_24px_rgba(168,85,247,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2">
-            <span className="text-[13px] font-medium text-white/90">Total Students</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <User className="w-4 h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{totalStudents}</div>
-          <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-            <span className="text-[12px] font-medium text-white/90">Evaluated in this class</span>
-          </div>
-        </div>
 
-        {/* Card 2 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[16px] p-5 shadow-[0_4px_12px_rgba(249,115,22,0.2)] hover:shadow-[0_8px_24px_rgba(249,115,22,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2">
-            <span className="text-[13px] font-medium text-white/90">At-Risk Students</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <AlertTriangle className="w-4 h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{highRisk}</div>
-          <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-            <span className="text-[12px] font-medium text-white/90">Need immediate intervention</span>
-          </div>
-        </div>
-
-        {/* Card 3 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[16px] p-5 shadow-[0_4px_12px_rgba(14,165,233,0.2)] hover:shadow-[0_8px_24px_rgba(14,165,233,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2">
-            <span className="text-[13px] font-medium text-white/90">Class Average</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <BarChart3 className="w-4 h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{avgScore}%</div>
-          <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-            <span className="text-[12px] font-medium text-white/90">Vs. expected benchmark</span>
-          </div>
-        </div>
-
-        {/* Card 4 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-[16px] p-5 shadow-[0_4px_12px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.3)] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2">
-            <span className="text-[13px] font-medium text-white/90">Avg. Engagement</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <TrendingUp className="w-4 h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-[28px] font-bold relative z-10 leading-none mb-4">{avgEngagement}%</div>
-          <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-            <span className="text-[12px] font-medium text-white/90">Activity completion rate</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Sticky Filter Row Wrapper */}
-      <div className="sticky top-0 z-30 py-4 -my-4 bg-[#f8fafc]/80 backdrop-blur-[16px] border-b border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] px-2 sm:-mx-6 sm:px-6 mb-6 rounded-b-[18px]">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
+      {/* Sticky Filter Row Wrapper — Positioned at TOP before summary cards */}
+      <div className="sticky top-0 z-30 py-2 sm:py-3 bg-[#f8fafc]/90 backdrop-blur-[16px] border-b border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] px-2 sm:px-4 mb-3 sm:mb-4 rounded-b-[18px]">
+        <div className="flex flex-col md:flex-row gap-2.5 sm:gap-4 items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 w-full md:w-auto items-center">
             {/* Search */}
-            <div className="flex items-center bg-white px-4 py-2.5 rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full sm:w-64">
+            <div className="flex items-center bg-white px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full sm:w-64">
               <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#9956DE] transition-colors" />
               <input
                 type="text"
                 placeholder="Search students..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
+                className="bg-transparent border-none focus:outline-none ml-2 text-xs sm:text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
               />
             </div>
             
             {/* Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto p-2 -m-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto p-1 -m-1">
               {['all', 'High', 'Medium', 'Low'].map(level => (
                 <button
                   key={level}
                   onClick={() => setRiskFilter(level)}
-                  className={`px-4 py-1.5 text-[13px] font-semibold rounded-full whitespace-nowrap transition-colors shadow-md ${
+                  className={`px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-[13px] font-semibold rounded-full whitespace-nowrap transition-colors shadow-xs ${
                     riskFilter === level
                       ? 'bg-[#9956DE] text-white'
                       : 'bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50'
@@ -748,15 +686,78 @@ const StudentCompetencyTable: React.FC<{
           
           <button
             onClick={loadStudents}
-            className="flex items-center gap-2 text-[13px] font-semibold text-slate-500 hover:text-slate-700 transition-colors shrink-0 bg-white px-4 py-2 rounded-full shadow-md hover:bg-slate-50 self-end sm:self-auto"
+            className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-[13px] font-semibold text-slate-500 hover:text-slate-700 transition-colors shrink-0 bg-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-xs hover:bg-slate-50 self-end sm:self-auto"
           >
-            <RefreshCw className="w-4 h-4" /> Refresh
+            <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Refresh
           </button>
         </div>
       </div>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-4 sm:mb-6">
+        {/* Card 1 */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(168,85,247,0.2)] hover:shadow-[0_8px_24px_rgba(168,85,247,0.3)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
+          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8]"></div>
+          <div className="flex items-start justify-between relative z-10 mb-1.5 sm:mb-2">
+            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Total Students</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
+              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl lg:text-[28px] font-bold relative z-10 leading-none mb-1 sm:mb-4">{totalStudents}</div>
+          <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-2.5 sm:pt-3 mt-auto">
+            <span className="text-[11px] sm:text-[12px] font-medium text-white/90">Evaluated in this class</span>
+          </div>
+        </div>
+
+        {/* Card 2 */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(249,115,22,0.2)] hover:shadow-[0_8px_24px_rgba(249,115,22,0.3)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
+          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8]"></div>
+          <div className="flex items-start justify-between relative z-10 mb-1.5 sm:mb-2">
+            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">At-Risk Students</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
+              <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl lg:text-[28px] font-bold relative z-10 leading-none mb-1 sm:mb-4">{highRisk}</div>
+          <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-2.5 sm:pt-3 mt-auto">
+            <span className="text-[11px] sm:text-[12px] font-medium text-white/90">Need immediate intervention</span>
+          </div>
+        </div>
+
+        {/* Card 3 */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(14,165,233,0.2)] hover:shadow-[0_8px_24px_rgba(14,165,233,0.3)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
+          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8]"></div>
+          <div className="flex items-start justify-between relative z-10 mb-1.5 sm:mb-2">
+            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Class Average</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
+              <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl lg:text-[28px] font-bold relative z-10 leading-none mb-1 sm:mb-4">{avgScore}%</div>
+          <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-2.5 sm:pt-3 mt-auto">
+            <span className="text-[11px] sm:text-[12px] font-medium text-white/90">Vs. expected benchmark</span>
+          </div>
+        </div>
+
+        {/* Card 4 */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.3)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
+          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8]"></div>
+          <div className="flex items-start justify-between relative z-10 mb-1.5 sm:mb-2">
+            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Avg. Engagement</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
+              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl lg:text-[28px] font-bold relative z-10 leading-none mb-1 sm:mb-4">{avgEngagement}%</div>
+          <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-2.5 sm:pt-3 mt-auto">
+            <span className="text-[11px] sm:text-[12px] font-medium text-white/90">Activity completion rate</span>
+          </div>
+        </div>
+      </div>
+
       {/* Imported Topic Context Banner (Compact) */}
-      <div className="bg-[#f5f3ff]/60 border border-[#e0e7ff] rounded-[14px] px-5 py-3 mb-6 flex items-start sm:items-center gap-3">
+      <div className="bg-[#f5f3ff]/60 border border-[#e0e7ff] rounded-[14px] px-4 sm:px-5 py-3 mb-4 sm:mb-6 flex items-start sm:items-center gap-3">
         <div className="mt-0.5 sm:mt-0 shrink-0">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#9956DE]"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
         </div>
@@ -786,13 +787,19 @@ const StudentCompetencyTable: React.FC<{
         </div>
       </div>
 
+      {/* Mobile scroll hint */}
+      <div className="md:hidden flex items-center justify-between text-[11px] text-slate-400 mb-1 px-1">
+        <span>Swipe horizontally to view full matrix</span>
+        <span className="text-slate-300">→</span>
+      </div>
+
       {/* Table */}
-      <div className="bg-white rounded-[18px] border border-slate-200 overflow-hidden shadow-sm overflow-x-auto table-scrollbar relative">
+      <div className="bg-white rounded-[14px] sm:rounded-[18px] border border-slate-200 overflow-hidden shadow-sm overflow-x-auto table-scrollbar relative">
         <div className="min-w-[1320px] flex flex-col">
           {/* Header */}
-          <div className="flex items-center bg-[#9956DE] border-b border-[#8b5cf6] text-[11px] font-bold text-white tracking-wider uppercase h-12 sticky top-0 z-20 shadow-md">
+          <div className="flex items-center bg-[#9956DE] border-b border-[#8b5cf6] text-[10px] sm:text-[11px] font-bold text-white tracking-wider uppercase h-11 sm:h-12 sticky top-0 z-20 shadow-md">
             <div 
-              className="w-[260px] shrink-0 sticky left-0 z-30 bg-[#9956DE] backdrop-blur-sm px-5 h-full flex items-center border-r border-[#8b5cf6] shadow-[2px_0_4px_rgba(0,0,0,0.1)] cursor-pointer hover:text-white/80 transition-colors"
+              className="w-[180px] sm:w-[260px] shrink-0 sticky left-0 z-30 bg-[#9956DE] backdrop-blur-sm px-3 sm:px-5 h-full flex items-center border-r border-[#8b5cf6] shadow-[2px_0_4px_rgba(0,0,0,0.1)] cursor-pointer hover:text-white/80 transition-colors"
               onClick={() => handleSort('name')}
             >
               Student <SortIcon field="name" />
@@ -858,16 +865,16 @@ const StudentCompetencyTable: React.FC<{
                   return (
                   <div key={row.rowKey} className="flex flex-col border-b border-slate-100 group">
                     <div 
-                      className="flex items-center min-h-[64px] hover:bg-slate-50/60 transition-colors cursor-pointer relative"
+                      className="flex items-center min-h-[56px] sm:min-h-[64px] hover:bg-slate-50/60 transition-colors cursor-pointer relative"
                       onClick={() => void toggleExpand(row.rowKey)}
                     >
                       {/* Sticky Student Column */}
-                      <div className="w-[260px] shrink-0 sticky left-0 z-10 bg-white group-hover:bg-slate-50/90 transition-colors px-5 h-full min-h-[64px] flex items-center border-r border-slate-100 shadow-[2px_0_4px_rgba(0,0,0,0.01)]">
-                        <div className={`transition-transform duration-200 mr-3 shrink-0 ${row.expanded ? 'rotate-90' : ''}`}>
+                      <div className="w-[180px] sm:w-[260px] shrink-0 sticky left-0 z-10 bg-white group-hover:bg-slate-50/90 transition-colors px-3 sm:px-5 h-full min-h-[56px] sm:min-h-[64px] flex items-center border-r border-slate-100 shadow-[2px_0_4px_rgba(0,0,0,0.01)]">
+                        <div className={`transition-transform duration-200 mr-2 sm:mr-3 shrink-0 ${row.expanded ? 'rotate-90' : ''}`}>
                           <ChevronRight className="w-4 h-4 text-slate-400" />
                         </div>
-                        <img src={row.student.avatar} alt={row.student.name} className="w-8 h-8 rounded-full bg-border object-cover shrink-0 mr-3" />
-                        <span className="font-semibold text-slate-800 text-[14px] truncate">{row.student.name}</span>
+                        <img src={row.student.avatar} alt={row.student.name} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-border object-cover shrink-0 mr-2 sm:mr-3" />
+                        <span className="font-semibold text-slate-800 text-xs sm:text-[14px] truncate">{row.student.name}</span>
                       </div>
 
                       {/* Risk Level */}
@@ -945,30 +952,30 @@ const StudentCompetencyTable: React.FC<{
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden bg-slate-50/80 border-t border-slate-100 shadow-inner"
+                      className="sticky left-0 w-full max-w-[calc(100vw-1.75rem)] sm:max-w-none overflow-hidden bg-slate-50/95 border-t border-slate-200 shadow-inner z-10"
                     >
-                      <div className="flex min-w-[1320px]">
-                        {/* Filler sticky left space to match layout */}
-                        <div className="w-[260px] shrink-0 sticky left-0 z-10 bg-slate-50/90 border-r border-slate-100 flex items-start justify-end pr-4 py-4">
+                      <div className="flex flex-col sm:flex-row w-full sm:min-w-[1320px]">
+                        {/* Filler sticky left space to match layout — hidden on mobile */}
+                        <div className="hidden sm:flex w-[260px] shrink-0 sticky left-0 z-10 bg-slate-50/90 border-r border-slate-100 items-start justify-end pr-4 py-4">
                           <div className="w-1.5 h-full rounded-full bg-[#9956DE]/30"></div>
                         </div>
-                        <div className="flex-1 py-4 pl-6 pr-6">
+                        <div className="flex-1 py-3.5 px-3 sm:py-4 sm:pl-6 sm:pr-6 max-w-full">
                           {row.loading ? (
                             <div className="flex items-center py-4">
                               <Loader2 size={16} className="animate-spin text-indigo-500 mr-2" />
-                              <span className="text-sm text-slate-500">Analyzing competency data...</span>
+                              <span className="text-xs sm:text-sm text-slate-500">Analyzing competency data...</span>
                             </div>
                           ) : row.competency ? (
-                            <div className="space-y-4 max-w-4xl">
+                            <div className="space-y-3 sm:space-y-4 max-w-4xl">
                               {/* Recommendations Banner */}
                               {row.competency.recommendedTopics.length > 0 && (
-                                <div className="bg-[#f5f3ff] rounded-[12px] p-4 border border-[#e0e7ff] inline-block shadow-sm mb-4">
-                                  <h4 className="text-[#7274ED] font-semibold text-[13px] flex items-center gap-2 mb-1.5">
-                                    <BookOpen className="w-4 h-4" /> Recommended Focus Areas
+                                <div className="bg-[#f5f3ff] rounded-[12px] p-3 sm:p-4 border border-[#e0e7ff] block sm:inline-block shadow-xs">
+                                  <h4 className="text-[#7274ED] font-semibold text-xs sm:text-[13px] flex items-center gap-1.5 sm:gap-2 mb-1.5">
+                                    <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Recommended Focus Areas
                                   </h4>
-                                  <div className="flex flex-wrap gap-1.5 mt-2">
+                                  <div className="flex flex-wrap gap-1.5 mt-1.5 sm:mt-2">
                                     {row.competency.recommendedTopics.map((topic, i) => (
-                                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full border border-indigo-100 bg-white text-indigo-700 text-xs font-medium shadow-sm">
+                                      <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full border border-indigo-100 bg-white text-indigo-700 text-[11px] sm:text-xs font-medium shadow-xs">
                                         {topic}
                                       </span>
                                     ))}
@@ -977,14 +984,14 @@ const StudentCompetencyTable: React.FC<{
                               )}
 
                               {/* Competency breakdown */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4">
                                 {row.competency.competencies.map((c, i) => (
                                   <CompetencyCard key={i} competency={c} />
                                 ))}
                               </div>
                             </div>
                           ) : (
-                            <div className="text-sm text-slate-500 py-4">Failed to load competency details.</div>
+                            <div className="text-xs sm:text-sm text-slate-500 py-3">Failed to load competency details.</div>
                           )}
                         </div>
                       </div>
