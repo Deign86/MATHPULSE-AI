@@ -50,6 +50,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const isModulesActive = activeTab === 'Modules' || activeTab === 'Grades';
   const isAIActive = activeTab === 'AI Chat' || activeTab === 'Avatar Studio';
   const isBattleActive = activeTab === 'Quiz Battle' || activeTab === 'Leaderboard';
+  const isProfileActive = activeTab === 'Settings' || activeTab === 'profile';
 
   return (
     <nav
@@ -293,21 +294,28 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <span className="text-[10px] mt-1 leading-none truncate font-display">Quiz Battle</span>
           </button>
 
-          {/* 5. PROFILE (Bottom Right - Replaces Assessment) */}
+          {/* 5. PROFILE (Bottom Right) */}
           <button
             type="button"
             onClick={handleProfileClick}
             aria-label={`Profile: ${profileName || 'User'}`}
-            className="flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800"
+            aria-current={isProfileActive ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+              isProfileActive
+                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
+                : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800'
+            }`}
           >
             {profilePhoto ? (
               <img
                 src={profilePhoto}
                 alt={profileName || 'Profile'}
-                className="w-5 h-5 rounded-full object-cover border border-purple-200 dark:border-purple-800"
+                className={`w-5 h-5 rounded-full object-cover border ${
+                  isProfileActive ? 'border-purple-600 ring-1 ring-purple-400' : 'border-purple-200 dark:border-purple-800'
+                }`}
               />
             ) : (
-              <User size={20} className="stroke-[1.8]" aria-hidden="true" />
+              <User size={20} className={isProfileActive ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
             )}
             <span className="text-[10px] mt-1 leading-none truncate font-display">Profile</span>
           </button>

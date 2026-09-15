@@ -64,6 +64,7 @@ const RewardsModal = lazy(() => import('./components/RewardsModal.tsx'));
 const ProfileModal = lazy(() => import('./components/ProfileModal.tsx'));
 const ConfirmModal = lazy(() => import('./components/ConfirmModal.tsx'));
 const SettingsModal = lazy(() => import('./components/SettingsModal.tsx'));
+const SettingsPage = lazy(() => import('./components/SettingsPage.tsx'));
 const ScientificCalculator = lazy(() => import('./components/ScientificCalculator.tsx'));
 const InitialAssessmentModal = lazy(() => import('./components/assessment/InitialAssessmentModal.tsx'));
 const AssessmentPage = lazy(() => import('./pages/AssessmentPage.tsx'));
@@ -177,6 +178,7 @@ const App = () => {
 
   // App-level Navigation State
   const [sidebarRevertState, setSidebarRevertState] = useState<{ collapsed: boolean }>({ collapsed: false });
+  const [previousTab, setPreviousTab] = useState<string>('Dashboard');
 
   // URL path mapping for tab navigation
   /** Tab label to URL path for sidebar navigation routes. */
@@ -191,6 +193,7 @@ const App = () => {
     'Leaderboard': '/leaderboard',
     'Grades': '/grades',
     'Avatar Studio': '/avatar',
+    'Settings': '/settings',
   };
 
   const pathToTab: RouteTabMap = {
@@ -202,6 +205,7 @@ const App = () => {
     '/leaderboard': 'Leaderboard',
     '/grades': 'Grades',
     '/avatar': 'Avatar Studio',
+    '/settings': 'Settings',
   };
 
   // Sync activeTab from URL on mount and location change
@@ -227,6 +231,10 @@ const App = () => {
       setTargetModuleId(moduleId);
     } else if (tab === 'Modules' && activeTab !== 'Modules') {
       setTargetModuleId(null);
+    }
+
+    if (tab === 'Settings' && activeTab !== 'Settings') {
+      setPreviousTab(activeTab);
     }
 
     if (tab === 'Quiz Battle' && activeTab !== 'Quiz Battle') {
@@ -874,13 +882,14 @@ const App = () => {
   };
 
   // Get profile data from userProfile or use defaults
-  const profileData = userProfile ? {
+  const profileData = useMemo(() => (userProfile ? {
     uid: userProfile.uid,
     name: userProfile.name,
     email: userProfile.email,
     phone: userProfile.phone || '',
     photo: userProfile.photo || '',
     avatarLayers: userProfile.avatarLayers,
+    gender: profileOverrides.gender ?? userProfile.gender ?? studentProfile?.gender ?? 'prefer_not_to_say',
     role: userProfile.role,
     ...(userRole === 'student' && studentProfile ? {
       lrn: studentProfile.lrn,
@@ -899,8 +908,9 @@ const App = () => {
     phone: '',
     photo: '',
     avatarLayers: undefined,
+    gender: 'prefer_not_to_say' as const,
     role: userRole,
-  };
+  }), [userProfile, userRole, studentProfile, computedGpa, profileOverrides]);
 
   const firstName = profileData.name
     .trim()
@@ -937,11 +947,11 @@ const App = () => {
             break;
           case 's':
             e.preventDefault();
-            setActiveModal('settings');
+            handleStudentNavigation('Settings');
             break;
           case 'p':
             e.preventDefault();
-            setActiveModal('profile');
+            handleStudentNavigation('Settings');
             break;
           case 'k':
             e.preventDefault();
@@ -1113,7 +1123,7 @@ const App = () => {
               activeTab={activeTab} 
               setActiveTab={handleStudentNavigation}
               userRole={userRole}
-              onOpenSettings={() => setActiveModal('settings')}
+              onOpenSettings={() => handleStudentNavigation('Settings')}
               onLogout={() => setActiveModal('logout_confirm')}
               sidebarCollapsed={isSidebarCollapsed}
               setSidebarCollapsed={setIsSidebarCollapsed}
@@ -1138,7 +1148,7 @@ const App = () => {
                   setActiveTab={handleStudentNavigation}
                   userRole={userRole}
                   onOpenSettings={() => {
-                    setActiveModal('settings');
+                    handleStudentNavigation('Settings');
                     setIsMobileSidebarOpen(false);
                   }}
                   onLogout={() => {
@@ -1219,7 +1229,7 @@ const App = () => {
                 {/* Profile button on top right: hidden on mobile (< md) because it's on bottom right of the navbar; shown on tablet & desktop (md:) */}
                 <button
                   type="button"
-                  onClick={() => setActiveModal('profile')}
+                  onClick={() => handleStudentNavigation('Settings')}
                   className="hidden md:flex w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] items-center justify-center hover:ring-2 hover:ring-purple-400 transition-all active:scale-95 cursor-pointer"
                   aria-label={`Profile: ${profileData.name}`}
                 >
@@ -1526,7 +1536,26 @@ const App = () => {
                       onConfirmLeave={() => { const nav = pendingAvatarNav; setPendingAvatarNav(null); if (nav) setTimeout(() => handleStudentNavigation(nav), 0); }}
                       onCancelNavigation={() => setPendingAvatarNav(null)}
                     />
-</Suspense>
+                  </Suspense>
+                ) : activeTab === 'Settings' ? (
+                  <Suspense fallback={tabLoadingFallback}>
+                    <SettingsPage
+                      profileData={profileData}
+                      settingsData={userSettings}
+                      userLevel={userLevel}
+                      userXP={currentXP}
+                      onSaveProfile={handleSaveProfile}
+                      onSaveSettings={handleSaveSettings}
+                      onApplySettingsPreview={setUserSettings}
+                      onExportData={handleExportData}
+                      onClearCache={handleClearCache}
+                      onResetData={handleResetTestingData}
+                      onLogout={() => setActiveModal('logout_confirm')}
+                      onNavigateToAvatarShop={() => handleStudentNavigation('Avatar Studio')}
+                      onBack={() => handleStudentNavigation(previousTab || 'Dashboard')}
+                      previousTabName={previousTab || 'Dashboard'}
+                    />
+                  </Suspense>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
                     {activeTab} Content Coming Soon
@@ -1683,7 +1712,7 @@ const App = () => {
             <MobileBottomNav
               activeTab={activeTab}
               onSelectTab={handleStudentNavigation}
-              onOpenProfile={() => setActiveModal('profile')}
+              onOpenProfile={() => handleStudentNavigation('Settings')}
               profilePhoto={profileData.photo}
               profileName={profileData.name}
             />

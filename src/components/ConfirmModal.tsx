@@ -88,7 +88,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className={`fixed inset-0 bg-black/50 backdrop-blur-sm ${zIndexClass} flex items-center justify-center p-4`}
+            className={`fixed inset-0 bg-black/60 backdrop-blur-sm ${zIndexClass} overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-4`}
           >
             {/* Modal */}
             <motion.div
@@ -97,53 +97,53 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#f7f9fc] rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-[#dde3eb]"
+              className="relative my-auto bg-[#f7f9fc] dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full max-h-[90dvh] overflow-y-auto border border-[#dde3eb] dark:border-slate-800"
             >
               {/* Close Button */}
               <button
                 onClick={onClose}
                 aria-label="Close dialog"
-                className="absolute top-4 right-4 p-2 text-slate-500 hover:text-[#0a1628] hover:bg-[#dde3eb] rounded-xl transition-colors z-10"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 text-slate-500 hover:text-[#0a1628] dark:text-slate-400 dark:hover:text-white hover:bg-[#dde3eb] dark:hover:bg-slate-800 rounded-xl transition-colors z-10 cursor-pointer"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
 
               {/* Content */}
-              <div className="p-8 text-center">
+              <div className="p-5 sm:p-8 text-center">
                 {/* Icon */}
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.1, type: 'spring', damping: 15 }}
-                  className={`w-20 h-20 ${colors.iconBg} rounded-full flex items-center justify-center mx-auto mb-6 ${colors.iconColor}`}
+                  className={`w-16 h-16 sm:w-20 sm:h-20 ${colors.iconBg} rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 ${colors.iconColor}`}
                 >
                   {getIcon()}
                 </motion.div>
 
                 {/* Title */}
-                <h2 className="text-2xl font-display font-bold text-[#0a1628] mb-3">
+                <h2 className="text-xl sm:text-2xl font-display font-bold text-[#0a1628] dark:text-white mb-2 sm:mb-3">
                   {title}
                 </h2>
 
                 {/* Message */}
-                <p className="text-[#5a6578] mb-8 leading-relaxed">
+                <p className="text-sm sm:text-base text-[#5a6578] dark:text-slate-300 mb-6 sm:mb-8 leading-relaxed">
                   {message}
                 </p>
 
                 {/* Buttons */}
-                <div className="flex gap-3">
+                <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3">
                   <Button
                     onClick={onClose}
                     variant="outline"
                     size="lg"
-                    className="flex-1 h-12 rounded-xl border-[#dde3eb] hover:border-[#d1cec6] hover:bg-[#edf1f7] font-bold"
+                    className="flex-1 h-11 sm:h-12 rounded-xl border-[#dde3eb] dark:border-slate-700 hover:border-[#d1cec6] hover:bg-[#edf1f7] dark:hover:bg-slate-800 dark:text-slate-200 font-bold"
                   >
                     {cancelText}
                   </Button>
                   <Button
                     onClick={handleConfirm}
                     size="lg"
-                    className={`flex-1 h-12 rounded-xl font-bold ${colors.buttonBg} ${colors.buttonText} transition-colors shadow-lg`}
+                    className={`flex-1 h-11 sm:h-12 rounded-xl font-bold ${colors.buttonBg} ${colors.buttonText} transition-colors shadow-lg`}
                   >
                     {confirmText}
                   </Button>

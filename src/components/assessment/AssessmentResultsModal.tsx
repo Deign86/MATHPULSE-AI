@@ -420,26 +420,26 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto p-0 bg-white rounded-2xl shadow-2xl border-0">
+      <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto p-0 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800">
         {/* Header (DialogContent owns the single X close button) */}
-        <div className="sticky top-0 z-10 bg-white border-b border-slate-200 rounded-t-2xl px-6 py-4">
-          <div className="mb-3 pr-8">
-            <DialogTitle className="text-xl font-bold text-slate-800">Assessment Results</DialogTitle>
+        <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4">
+          <div className="mb-2.5 sm:mb-3 pr-8">
+            <DialogTitle className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white">Assessment Results</DialogTitle>
             <DialogDescription className="sr-only">
               Your latest diagnostic score, proficiency profile, and attempt history.
             </DialogDescription>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60 overflow-x-auto no-scrollbar">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${
                   activeTab === tab.key
-                    ? 'bg-white text-sky-600 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-800'
+                    ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
                 }`}
               >
                 {tab.icon}
@@ -450,7 +450,7 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="px-6 py-5">
+        <div className="px-4 sm:px-6 py-4 sm:py-5">
           <AnimatePresence mode="wait">
             {activeTab === 'latest' && (
               <motion.div
