@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { CheckCircle2, RotateCw, Sparkles, Star, Zap, GraduationCap, Camera } from 'lucide-react';
-import ProfilePictureUploader from './ProfilePictureUploader';
 import type { ProfileData } from './SettingsPage';
 
 interface StudentIDCardProps {
@@ -87,6 +86,81 @@ const CuteMiniQRSVG: React.FC = () => (
     </svg>
   </div>
 );
+
+interface PhotoCellProps {
+  photoURL?: string;
+  displayName?: string;
+  uid?: string;
+  onPhotoUploaded?: (photoURL: string) => void;
+}
+
+/** Renders the portrait photo area on the ID card front.
+ *  Clicking opens a file picker; the raw data-URL is passed to onPhotoUploaded
+ *  so the parent (SettingsPage) can handle the actual upload/crop flow.
+ */
+const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPhotoUploaded }) => {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const initials = (displayName || 'S').trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      // FileReader.result is `string | ArrayBuffer | null`; string path chosen by readAsDataURL.
+      // `instanceof ArrayBuffer` eliminates the non-string branches without a runtime typeof check.
+      const result = reader.result;
+      if (result !== null && !(result instanceof ArrayBuffer)) {
+        onPhotoUploaded?.(result);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  return (
+    <div
+      className="relative shrink-0 flex flex-col items-center justify-start z-10"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="relative group/photo">
+        <div className="p-1 rounded-2xl bg-gradient-to-tr from-purple-400 to-pink-400 shadow-md">
+          <button
+            type="button"
+            className="block w-[82px] h-[98px] sm:w-[90px] sm:h-[106px] rounded-xl overflow-hidden bg-white dark:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+            aria-label="Change profile photo"
+            onClick={() => inputRef.current?.click()}
+          >
+            {photoURL ? (
+              <img
+                src={photoURL}
+                alt={`${displayName ?? 'Student'} profile`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="flex items-center justify-center w-full h-full text-xl font-black text-purple-600 dark:text-purple-300 select-none">
+                {initials}
+              </span>
+            )}
+          </button>
+        </div>
+        {/* Photo Edit Badge */}
+        <span className="absolute -bottom-1 inset-x-0 mx-auto w-max px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-purple-600/90 text-white backdrop-blur-xs shadow-xs flex items-center gap-0.5 tracking-wider cursor-pointer" onClick={() => inputRef.current?.click()}>
+          <Camera size={9} />
+          <span>PHOTO</span>
+        </span>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        aria-label="Choose profile photo"
+        onChange={handleChange}
+      />
+    </div>
+  );
+};
 
 export const StudentIDCard: React.FC<StudentIDCardProps> = ({
   profileData,
@@ -211,28 +285,12 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
               </div>
 
               {/* Left Column: Portrait Photo with Cute Frame */}
-              <div
-                className="relative shrink-0 flex flex-col items-center justify-start z-10"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="relative group/photo">
-                  <div className="p-1 rounded-2xl bg-gradient-to-tr from-purple-400 to-pink-400 shadow-md">
-                    <ProfilePictureUploader
-                      avatarOnly
-                      uid={profileData.uid}
-                      photoURL={profileData.photo}
-                      displayName={studentName}
-                      className="w-[82px] h-[98px] sm:w-[90px] sm:h-[106px] rounded-xl object-cover bg-white dark:bg-slate-800"
-                      onUploaded={onPhotoUploaded}
-                    />
-                  </div>
-                  {/* Photo Edit Badge */}
-                  <span className="absolute -bottom-1 inset-x-0 mx-auto w-max px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-purple-600/90 text-white backdrop-blur-xs shadow-xs flex items-center gap-0.5 tracking-wider">
-                    <Camera size={9} />
-                    <span>PHOTO</span>
-                  </span>
-                </div>
-              </div>
+              <PhotoCell
+                photoURL={profileData.photo}
+                displayName={studentName}
+                uid={profileData.uid}
+                onPhotoUploaded={onPhotoUploaded}
+              />
 
               {/* Right Column: Genuine Student Info */}
               <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5 z-10">
