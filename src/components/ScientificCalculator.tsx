@@ -799,7 +799,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   const modal = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 pointer-events-auto">
+        <div className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex items-center justify-center p-2.5 sm:p-4 pointer-events-auto">
           {/* Backdrop on all viewports */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -816,7 +816,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="relative z-10 w-[calc(100vw-2rem)] max-w-[340px] max-h-[90vh] flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-purple-200/80 dark:border-purple-900/60 bg-white dark:bg-slate-900"
+            className="relative z-10 my-auto w-[calc(100vw-1.5rem)] max-w-[340px] max-h-[90dvh] flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-purple-200/80 dark:border-purple-900/60 bg-white dark:bg-slate-900"
             onClick={() => setIsFocused(true)}
           >
             {/* Header bar */}
@@ -857,7 +857,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
             {/* Body – collapsible & scrollable if screen is small */}
             {!isMinimized && (
-              <div className="overflow-y-auto max-h-[calc(90vh-50px)]">
+              <div className="overflow-y-auto max-h-[calc(90dvh-50px)]">
                 {calculator}
               </div>
             )}

@@ -202,29 +202,29 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 relative z-10">
-            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-white/25 shadow-inner">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-3 relative z-10">
+            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-2.5 sm:p-4 border border-white/25 shadow-inner">
               <div className="flex items-center gap-1 sm:gap-1.5 mb-1">
-                <Crown size={15} className="text-amber-300 shrink-0" />
+                <Crown size={14} className="text-amber-300 shrink-0" />
                 <span className="text-[10px] sm:text-xs font-bold text-white/90 truncate">Level</span>
               </div>
-              <p className="text-lg sm:text-2xl font-black font-display text-white tabular-nums">{userLevel}</p>
+              <p className="text-base sm:text-2xl font-black font-display text-white tabular-nums">{userLevel}</p>
             </div>
 
-            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-white/25 shadow-inner">
+            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-2.5 sm:p-4 border border-white/25 shadow-inner">
               <div className="flex items-center gap-1 sm:gap-1.5 mb-1">
-                <Star size={15} className="text-[#6ED1CF] shrink-0" />
+                <Star size={14} className="text-[#6ED1CF] shrink-0" />
                 <span className="text-[10px] sm:text-xs font-bold text-white/90 truncate">Total XP</span>
               </div>
-              <p className="text-lg sm:text-2xl font-black font-display text-white tabular-nums">{totalXP.toLocaleString()}</p>
+              <p className="text-base sm:text-2xl font-black font-display text-white tabular-nums">{totalXP.toLocaleString()}</p>
             </div>
 
-            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-white/25 shadow-inner">
+            <div className="bg-white/15 backdrop-blur-md rounded-2xl p-2.5 sm:p-4 border border-white/25 shadow-inner">
               <div className="flex items-center gap-1 sm:gap-1.5 mb-1">
-                <Flame size={15} className="text-[#FF8B8B] shrink-0" />
+                <Flame size={14} className="text-[#FF8B8B] shrink-0" />
                 <span className="text-[10px] sm:text-xs font-bold text-white/90 truncate">Daily Goal</span>
               </div>
-              <p className="text-base sm:text-2xl font-black font-display text-white truncate">Active</p>
+              <p className="text-sm sm:text-2xl font-black font-display text-white truncate">Active</p>
             </div>
           </div>
 
@@ -256,15 +256,15 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
           ) : (
             <>
               {/* Filter Tabs */}
-              <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2.5">
                 <h3 className="text-base font-display font-black text-slate-900 dark:text-white">
                   Achievement Badges
                 </h3>
-                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-full xs:w-auto overflow-x-auto no-scrollbar">
                   <button
                     type="button"
                     onClick={() => setActiveFilter('all')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`flex-1 xs:flex-initial px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                       activeFilter === 'all'
                         ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -275,7 +275,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveFilter('unlocked')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`flex-1 xs:flex-initial px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                       activeFilter === 'unlocked'
                         ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -286,7 +286,7 @@ const RewardsModal: React.FC<RewardsModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveFilter('in_progress')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`flex-1 xs:flex-initial px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                       activeFilter === 'in_progress'
                         ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
