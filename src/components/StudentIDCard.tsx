@@ -327,9 +327,9 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
               </div>
             </div>
 
-            {/* Center: Cute Mascot Squircle Emblem with Circular Text Orbit */}
+            {/* Center: Circular Avatar Head with Circular Text Orbit */}
             <div className="relative z-10 my-auto flex flex-col items-center text-center">
-              {/* Circular Text Orbit with Mascot Squircle Logo in Center */}
+              {/* Circular Text Orbit with Avatar Head in Center */}
               <div className="relative w-24 h-24 sm:w-26 sm:h-26 flex items-center justify-center">
                 {/* SVG Circular Text Ring */}
                 <svg
@@ -342,22 +342,22 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
                       d="M 60, 60 m -47, 0 a 47,47 0 1,1 94,0 a 47,47 0 1,1 -94,0"
                     />
                   </defs>
-                  <text className="text-[7px] sm:text-[7.5px] font-mono font-black uppercase tracking-[0.22em] fill-purple-300/80">
+                  <text className="text-[7px] sm:text-[7.5px] font-mono font-black uppercase tracking-[0.22em] fill-purple-300/90">
                     <textPath href="#badgeCirclePath" startOffset="0%">
                       ✦ MATHPULSE AI ✦ OFFICIAL STUDENT PASS ✦
                     </textPath>
                   </text>
                 </svg>
 
-                {/* Glowing Squircle Aura Halo (not circular clipped!) */}
-                <div className="absolute w-15 h-15 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-purple-500 via-pink-500 to-cyan-400 blur-md opacity-70 animate-pulse" />
+                {/* Glowing Circular Aura Halo */}
+                <div className="absolute w-15 h-15 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-purple-500 via-pink-500 to-cyan-400 blur-md opacity-75 animate-pulse" />
 
-                {/* Logo Squircle Badge (Rounded-Square geometry matching the actual logo) */}
-                <div className="relative w-15 h-15 sm:w-16 sm:h-16 rounded-2xl bg-slate-900/95 border-2 border-white/80 p-1.5 shadow-xl flex items-center justify-center">
+                {/* Avatar Head Badge (Smooth circular frame) */}
+                <div className="relative w-15 h-15 sm:w-16 sm:h-16 rounded-full bg-slate-900/95 border-2 border-white/90 p-0.5 shadow-xl flex items-center justify-center overflow-hidden">
                   <img
-                    src="/mathpulse_final_logo.png"
-                    alt="MathPulse AI Logo"
-                    className="w-full h-full object-contain rounded-xl drop-shadow-md"
+                    src={profileData.photo || '/mathpulse_final_logo.png'}
+                    alt="Student Avatar"
+                    className="w-full h-full object-cover rounded-full drop-shadow-md bg-purple-900/30"
                   />
                 </div>
               </div>
