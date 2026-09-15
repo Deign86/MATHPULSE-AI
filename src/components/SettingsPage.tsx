@@ -408,9 +408,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   {/* Avatar Head with Glow */}
                   <div className="relative w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-purple-500 via-pink-400 to-amber-300 shadow-lg border-2 border-white dark:border-slate-900">
                     <img
-                      src={accountData.photo || '/mathpulse_final_logo.png'}
-                      alt="My Avatar"
-                      className="w-full h-full object-cover rounded-full bg-purple-100 dark:bg-purple-950"
+                      src="/avatar/avatar_head_base.png"
+                      alt="MathPulse AI Avatar"
+                      className="w-full h-full object-contain rounded-full bg-purple-100 dark:bg-purple-950"
                     />
                     <span className="absolute -top-1 -right-1 text-xs animate-pulse">✨</span>
                   </div>
@@ -471,7 +471,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
             {/* Dropdown Menu Options */}
             {isTabDropdownOpen && (
-              <div className="absolute top-full mt-2 left-0 right-0 z-50 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-slate-200/90 dark:border-slate-800 shadow-2xl p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute top-full mt-2 left-0 right-0 z-50 rounded-2xl bg-white/97 dark:bg-slate-900/97 backdrop-blur-md border-2 border-slate-200/90 dark:border-slate-800 shadow-2xl p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
                   const isSelected = activeTab === tab.id;
@@ -483,22 +483,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         setActiveTab(tab.id);
                         setIsTabDropdownOpen(false);
                       }}
-                      className={`w-full p-2.5 rounded-xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer ${
+                      className={`w-full p-2.5 rounded-xl flex items-center justify-between gap-3 text-left transition-all duration-200 cursor-pointer ${
                         isSelected
-                          ? `${tab.activeClass} shadow-xs`
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200'
+                          ? `${tab.badgeClass} bg-opacity-100 border-2 shadow-sm`
+                          : 'hover:bg-slate-100/80 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-200 border-2 border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <Icon size={16} className={isSelected ? 'text-white' : 'text-slate-500 dark:text-slate-400'} />
+                        {/* Colored icon badge per tab */}
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all ${
+                          isSelected
+                            ? `${tab.badgeClass} scale-110 shadow-sm`
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                        }`}>
+                          <Icon size={15} />
+                        </div>
                         <div className="min-w-0">
-                          <span className="block text-xs font-bold truncate">{tab.label}</span>
-                          <span className={`block text-[10px] truncate ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                          <span className={`block text-xs font-bold truncate ${isSelected ? '' : 'text-slate-800 dark:text-slate-100'}`}>{tab.label}</span>
+                          <span className={`block text-[10px] truncate ${isSelected ? 'opacity-75' : 'text-slate-400 dark:text-slate-500'}`}>
                             {tab.desc}
                           </span>
                         </div>
                       </div>
-                      {isSelected && <Check size={16} className="shrink-0 text-white" />}
+                      {/* Active indicator */}
+                      {isSelected && (
+                        <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${tab.badgeClass} shadow-xs`}>
+                          <Check size={9} />
+                          Active
+                        </span>
+                      )}
                     </button>
                   );
                 })}
