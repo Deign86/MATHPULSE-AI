@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
-import { ArrowRight, Zap, Brain } from 'lucide-react';
+import { ArrowRight, Zap, Brain, CheckCircle, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Skeleton } from './ui/skeleton';
 import type { AvatarLayers } from './CompositeAvatar';
@@ -33,6 +33,38 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [heroBannerSummary, setHeroBannerSummary] = useState<HeroBannerModalSummary | null>(null);
 
+  const dismissStorageKey = studentId
+    ? `mathpulse:dismissed_assessment_complete_tooltip_${studentId}`
+    : 'mathpulse:dismissed_assessment_complete_tooltip';
+
+  const [isAssessmentCompleteDismissed, setIsAssessmentCompleteDismissed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(dismissStorageKey) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDismissAssessmentComplete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsAssessmentCompleteDismissed(true);
+    try {
+      localStorage.setItem(dismissStorageKey, 'true');
+    } catch {
+      // Ignore localStorage errors safely
+    }
+  };
+
+  const handleNavigateGrades = () => {
+    setIsAssessmentCompleteDismissed(true);
+    try {
+      localStorage.setItem(dismissStorageKey, 'true');
+    } catch {
+      // Ignore localStorage errors safely
+    }
+    window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }));
+  };
+
   // Subscribe to hero banner modal summary when modal is open
   useEffect(() => {
     if (!showResultsModal || !studentId) return;
@@ -51,6 +83,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       setHeroBannerSummary(null);
     }
   }, [showResultsModal]);
+
   // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -64,10 +97,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0.15 : 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="relative w-full mt-0 rounded-2xl md:rounded-[2rem] p-5 md:p-6 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg"
+      className="relative w-full mt-0 rounded-3xl md:rounded-[2rem] p-4 min-[360px]:p-5 sm:p-6 md:p-7 lg:p-8 bg-gradient-to-br from-white via-sky-50/50 to-white border border-slate-200/80 card-elevated-lg shadow-sm overflow-visible"
     >
       {/* Background elements wrapped in overflow-hidden */}
-      <div className="absolute inset-0 overflow-hidden rounded-2xl md:rounded-[2rem] pointer-events-none">
+      <div className="absolute inset-0 overflow-hidden rounded-3xl md:rounded-[2rem] pointer-events-none">
         {/* Gradient accent glow */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-400/50 to-transparent" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
@@ -77,37 +110,47 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         <div className="absolute inset-0 bg-dot-pattern opacity-40" />
       </div>
 
-      <div className="relative z-10 flex flex-col md:flex-row min-h-[140px] lg:min-h-[160px] items-start md:items-center justify-between gap-4 md:gap-6 pb-0">
-        <div className="flex-1 w-full md:w-auto min-w-0 pr-0 md:pr-40 lg:pr-[280px] pb-2 md:pb-0 py-1">
-          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 mb-3 md:mb-2">
-            <div className="px-3 md:px-4 py-1.5 rounded-full bg-sky-100 border border-sky-200">
-              <span className="text-xs md:text-sm font-body font-bold text-sky-700">Level {userLevel}</span>
+      {/* Unified Banner Content across Mobile, Tablet, and Desktop */}
+      <div className="relative z-10 min-h-[140px] sm:min-h-[150px] lg:min-h-[165px] flex items-center justify-between gap-4 pb-0">
+        <div className="flex-1 max-w-[185px] min-[360px]:max-w-[210px] sm:max-w-md lg:max-w-xl pr-2 sm:pr-4 lg:pr-8 py-1">
+          {/* Top Badges */}
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-2">
+            <div className="px-2.5 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-sky-100 border border-sky-200">
+              <span className="text-xs sm:text-sm font-body font-bold text-sky-700">Level {userLevel}</span>
             </div>
-            <div className="px-3 md:px-4 py-1.5 rounded-full bg-rose-50 border border-rose-200">
-              <Zap size={14} className="inline -mt-0.5 text-rose-500 mr-1" />
-              <span className="text-xs md:text-sm font-body font-bold text-rose-700">Active</span>
+            <div className="px-2.5 sm:px-4 py-0.5 sm:py-1.5 rounded-full bg-rose-50 border border-rose-200 flex items-center gap-1">
+              <Zap size={13} className="text-rose-500" />
+              <span className="text-xs sm:text-sm font-body font-bold text-rose-700">Active</span>
             </div>
           </div>
 
-          <h1 className="text-2xl md:text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1.5 tracking-tight leading-[1.1]">
+          {/* Heading */}
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-black text-[#0a1628] mb-1.5 tracking-tight leading-[1.15]">
             {getGreeting()}, {userName}!
           </h1>
-          <p className="text-slate-500 mb-2 md:mb-1 text-sm md:text-sm font-body font-bold pr-20 sm:pr-24 md:pr-0">Today is a great day to move one step forward in math mastery.</p>
-          <p className="text-xs md:text-xs text-slate-400 font-body mb-5 md:mb-4 pr-20 sm:pr-24 md:pr-0">Focus on your next recommended lesson and keep your momentum.</p>
 
+          {/* Subtitle */}
+          <p className="text-slate-500 mb-2 sm:mb-2.5 text-xs sm:text-sm font-body font-bold leading-snug">
+            Today is a great day to move one step forward in math mastery.
+          </p>
+          <p className="hidden sm:block text-xs text-slate-400 font-body mb-3">
+            Focus on your next recommended lesson and keep your momentum.
+          </p>
+
+          {/* Continue Learning Action Button — Toned Down Sophisticated Indigo */}
           <motion.button
             onClick={onContinueLearning}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="mt-2 md:mt-2 bg-gradient-to-r from-purple-600 to-[#9956DE] text-white px-5 py-3 md:py-2 rounded-xl font-body font-bold text-base md:text-sm shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all flex justify-center md:justify-start items-center gap-2 group w-auto md:w-auto min-h-[44px]"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="mt-2.5 sm:mt-3 bg-gradient-to-r from-indigo-700 to-[#5d5195] hover:from-indigo-600 hover:to-[#524687] text-white px-3.5 min-[360px]:px-5 sm:px-6 py-2 sm:py-2.5 rounded-full font-body font-bold text-xs sm:text-sm shadow-md shadow-indigo-950/20 border border-white/20 transition-all flex items-center gap-2 group w-fit min-h-[38px] sm:min-h-[44px] cursor-pointer active:scale-95"
           >
-            Continue Learning
-            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            <span>Continue Learning</span>
+            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform stroke-[2.5]" />
           </motion.button>
         </div>
       </div>
 
-      {/* Avatar Container: Anchored to the exact bottom of the banner, clipped directly at the banner's baseline */}
+      {/* Speech Bubble Tooltips */}
       {showAssessmentTooltip && (
         <motion.button
           type="button"
@@ -116,50 +159,66 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           animate={{ opacity: 1, scale: 1, x: 0 }}
           transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
           onClick={onOpenAssessment}
-          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-amber-500"
+          className="absolute right-[68px] min-[360px]:right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-amber-500"
         >
-          <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-amber-300 relative transition-all group-hover:bg-amber-50 group-hover:border-amber-400 group-hover:-translate-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-amber-500">
-                <Brain size={16} />
+          <div className="bg-white px-2.5 sm:px-4 py-1.5 sm:py-3 rounded-2xl rounded-br-sm border-2 border-amber-300 relative transition-all group-hover:bg-amber-50 group-hover:border-amber-400 group-hover:-translate-y-0.5">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-amber-500 shrink-0">
+                <Brain size={14} className="sm:w-4 sm:h-4" />
               </span>
-              <p className="text-xs lg:text-sm font-bold text-amber-900 leading-tight">
-                Don't forget to take the<br />Initial Assessment!
+              <p className="text-[10px] sm:text-xs lg:text-sm font-bold text-amber-900 leading-tight">
+                Don't forget to take the<br className="hidden sm:inline" /> Initial Assessment!
               </p>
             </div>
-            {/* Speech bubble tail pointing right-down towards avatar */}
-            <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-amber-300 border-b-amber-300 rotate-45 group-hover:bg-amber-50 group-hover:border-r-amber-400 group-hover:border-b-amber-400 transition-colors" />
+            <div className="absolute -right-1.5 sm:-right-2 bottom-0 w-3 h-3 sm:w-4 sm:h-4 bg-white border-2 border-transparent border-r-amber-300 border-b-amber-300 rotate-45 group-hover:bg-amber-50 group-hover:border-r-amber-400 group-hover:border-b-amber-400 transition-colors" />
           </div>
         </motion.button>
       )}
 
-      {/* Success Tooltip showing Assessment is Completed — click to open results */}
-      {assessmentCompleted && !showAssessmentTooltip && (
-        <motion.button
-          type="button"
-          aria-label="View assessment results and history"
+      {/* Closeable & Non-Persistent Assessment Complete Speech Bubble */}
+      {assessmentCompleted && !showAssessmentTooltip && !isAssessmentCompleteDismissed && (
+        <motion.div
           initial={{ opacity: 0, scale: 0.9, x: 10 }}
           animate={{ opacity: 1, scale: 1, x: 0 }}
+          exit={{ opacity: 0, scale: 0.9 }}
           transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
-          onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }))}
-          className="absolute hidden md:block right-[150px] lg:right-[250px] bottom-16 lg:bottom-20 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-teal-500"
+          className="absolute right-[68px] min-[360px]:right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 drop-shadow-lg group text-left"
         >
-          <div className="bg-white px-4 py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all group-hover:bg-teal-50 group-hover:border-teal-400 group-hover:-translate-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-teal-100 rounded-full flex items-center justify-center shrink-0">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-teal-600">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
+          <div
+            onClick={handleNavigateGrades}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleNavigateGrades(); }}
+            className="bg-white pl-3.5 sm:pl-4 pr-8 sm:pr-9 py-2 sm:py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all group-hover:bg-teal-50 group-hover:border-teal-400 group-hover:-translate-y-0.5 cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-teal-100 rounded-full flex items-center justify-center shrink-0">
+                <CheckCircle size={13} className="text-teal-600" />
               </div>
-              <p className="text-xs lg:text-sm font-bold text-teal-900 leading-tight">
-                Assessment Complete!<br />
-                <span className="text-[10px] lg:text-[11px] font-normal text-teal-700">View results &amp; history</span>
-              </p>
+              <div>
+                <p className="text-[11px] sm:text-xs lg:text-sm font-bold text-teal-900 leading-tight">
+                  Assessment Complete!
+                </p>
+                <p className="text-[9px] sm:text-[10px] lg:text-[11px] font-normal text-teal-700">
+                  View results &amp; history
+                </p>
+              </div>
             </div>
-            {/* Speech bubble tail pointing right-down towards avatar */}
-            <div className="absolute -right-2 bottom-0 w-4 h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 group-hover:bg-teal-50 group-hover:border-r-teal-400 group-hover:border-b-teal-400 transition-colors" />
+
+            {/* Close Button to Dismiss and Prevent Covering Content */}
+            <button
+              type="button"
+              aria-label="Dismiss assessment complete notification"
+              title="Close"
+              onClick={handleDismissAssessmentComplete}
+              className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-teal-100/60 transition-colors z-40"
+            >
+              <X size={13} />
+            </button>
+
+            <div className="absolute -right-1.5 sm:-right-2 bottom-0 w-3 h-3 sm:w-4 sm:h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 group-hover:bg-teal-50 group-hover:border-r-teal-400 group-hover:border-b-teal-400 transition-colors" />
           </div>
-        </motion.button>
+        </motion.div>
       )}
 
       {showResultsModal && studentId && (
@@ -171,13 +230,14 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
         />
       )}
 
+      {/* Uncropped Headroom Avatar Container across Mobile, Tablet, and Desktop (Legs cropped at bottom border only) */}
       <div
-        className="absolute right-0 bottom-0 lg:right-10 w-[110px] sm:w-[140px] md:w-[150px] lg:w-[270px] pointer-events-none z-20"
+        className="absolute right-0 sm:right-2 md:right-4 lg:right-8 bottom-0 w-[105px] min-[360px]:w-[130px] sm:w-[160px] md:w-[188px] lg:w-[245px] xl:w-[265px] pointer-events-none z-20"
         style={{ clipPath: 'inset(-100% -50% 0 -50%)' }}
       >
-        <div className="relative w-full aspect-[4/5] translate-y-[10%] md:translate-y-[21%] lg:translate-y-[19%] drop-shadow-2xl">
-          <Suspense fallback={<Skeleton className="w-full aspect-[4/5] scale-[1.15] md:scale-[1.25] lg:scale-[1.3] origin-bottom" aria-label="Loading avatar" />}>
-            <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.35] md:scale-[1.25] lg:scale-[1.3] origin-bottom" />
+        <div className="relative w-full aspect-[4/5] translate-y-[17%] sm:translate-y-[18%] md:translate-y-[16%] lg:translate-y-[15%] drop-shadow-2xl">
+          <Suspense fallback={<Skeleton className="w-full aspect-[4/5] scale-[1.05] min-[360px]:scale-[1.18] lg:scale-[1.22] origin-bottom" aria-label="Loading avatar" />}>
+            <DashboardAvatar layers={avatarLayers} className="w-full h-full scale-[1.05] min-[360px]:scale-[1.18] lg:scale-[1.22] origin-bottom" />
           </Suspense>
         </div>
       </div>
