@@ -161,53 +161,53 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 40 }}
         transition={{ duration: reduceMotion ? 0 : 0.25, ease: 'easeOut' }}
-        className="pointer-events-auto mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-80 bg-[#f7f9fc] rounded-3xl shadow-2xl border border-[#dde3eb] flex flex-col overflow-hidden origin-bottom-right select-none"
+        className="pointer-events-auto mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-80 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 flex flex-col overflow-hidden origin-bottom-right select-none"
         role="dialog"
         aria-label="AI tutor chat"
       >
         {/* Chat Header - Fixed */}
-        <div className="bg-sky-600 p-4 flex items-center justify-between flex-shrink-0">
+        <div className="bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#1FA7E1] p-3.5 sm:p-4 flex items-center justify-between flex-shrink-0 text-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-inner">
               <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-9 h-9 object-contain drop-shadow-md" />
             </div>
             <div>
-              <h3 className="text-white font-bold text-sm">L.O.L.I.</h3>
-              <p className="text-sky-100 text-[10px] leading-tight">Logical Operations &<br/>Learning Intelligence</p>
+              <h3 className="text-white font-display font-black text-sm tracking-tight leading-tight">L.O.L.I. AI Tutor</h3>
+              <p className="text-white/85 text-[10px] font-medium leading-tight whitespace-nowrap">Senior High Math Assistant</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={handleFullScreenClick}
               type="button"
               aria-label="Open fullscreen"
-              className="p-2.5 hover:bg-white/20 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center text-white"
               title="Open fullscreen"
             >
-              <Maximize2 size={16} className="text-white" />
+              <Maximize2 size={15} className="text-white" />
             </button>
             <button
               type="button"
               aria-label="Minimize AI tutor launcher"
               onClick={handleMinimizeLauncher}
-              className="p-2.5 hover:bg-white/20 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center text-white"
               title="Minimize"
             >
-              <Minus size={16} className="text-white" />
+              <Minus size={15} className="text-white" />
             </button>
             <button
               type="button"
               aria-label="Close chat"
               onClick={() => setIsOpen(false)}
-              className="p-2.5 hover:bg-white/20 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center text-white"
             >
-              <X size={16} className="text-white" />
+              <X size={15} className="text-white" />
             </button>
           </div>
         </div>
 
         {/* Messages Area - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#edf1f7] max-h-[60vh] sm:max-h-[350px]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-950/60 max-h-[60vh] sm:max-h-[350px]">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -216,8 +216,8 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
                   message.sender === 'user'
-                    ? 'bg-sky-600 text-white'
-                    : 'bg-white text-[#0a1628] shadow-sm border border-[#dde3eb]'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs border border-slate-200/80 dark:border-slate-700'
                 }`}
               >
                 {message.sender === 'user' ? (
@@ -228,7 +228,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
                   </Suspense>
                 )}
                 <p className={`text-[10px] mt-1 ${
-                  message.sender === 'user' ? 'text-sky-200' : 'text-slate-500'
+                  message.sender === 'user' ? 'text-purple-200' : 'text-slate-400'
                 }`}>
                   {safeTimestamp(message.timestamp)}
                 </p>
@@ -238,11 +238,11 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
           
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-white text-[#0a1628] shadow-sm border border-[#dde3eb] rounded-2xl px-4 py-2.5 max-w-[75%]">
+              <div className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-xs border border-slate-200/80 dark:border-slate-700 rounded-2xl px-4 py-2.5 max-w-[75%]">
                 <div className="flex gap-1" aria-hidden="true">
-                  <div className={`w-2 h-2 bg-sky-400 rounded-full ${reduceMotion ? '' : 'animate-bounce'}`}></div>
-                  <div className={`w-2 h-2 bg-sky-400 rounded-full ${reduceMotion ? '' : 'animate-bounce [animation-delay:150ms]'}`}></div>
-                  <div className={`w-2 h-2 bg-sky-400 rounded-full ${reduceMotion ? '' : 'animate-bounce [animation-delay:300ms]'}`}></div>
+                  <div className={`w-2 h-2 bg-purple-500 rounded-full ${reduceMotion ? '' : 'animate-bounce'}`}></div>
+                  <div className={`w-2 h-2 bg-purple-500 rounded-full ${reduceMotion ? '' : 'animate-bounce [animation-delay:150ms]'}`}></div>
+                  <div className={`w-2 h-2 bg-purple-500 rounded-full ${reduceMotion ? '' : 'animate-bounce [animation-delay:300ms]'}`}></div>
                 </div>
               </div>
             </div>
@@ -251,7 +251,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         </div>
 
         {/* Input Area - Fixed */}
-        <div className="p-3 sm:p-4 border-t border-[#dde3eb] bg-white flex-shrink-0">
+        <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0">
           <div className="flex gap-2">
             <input
               id="ai-tutor-input"
@@ -262,13 +262,13 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               onChange={(e) => setCurrentMessage(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
               placeholder="Ask me anything..."
-              className="flex-1 px-4 py-2.5 rounded-xl border border-[#dde3eb] focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm bg-[#f7f9fc] min-h-[44px]"
+              className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 min-h-[44px]"
             />
             <button
               type="button"
               aria-label="Send message"
               onClick={handleSendMessage}
-              className="p-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className="p-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[44px] min-h-[44px] flex items-center justify-center shadow-xs"
               disabled={!currentMessage.trim() || isLoading}
             >
               <Send size={18} />
@@ -333,7 +333,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-white cursor-pointer relative transition-all duration-200 border-2 ${
                 isOpen
                   ? 'bg-gradient-to-br from-rose-500 to-rose-600 border-white/60 shadow-xl shadow-slate-900/20'
-                  : 'bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 border-white/80 shadow-xl shadow-sky-950/20 hover:shadow-2xl hover:shadow-sky-950/25'
+                  : 'bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] border-white/80 shadow-xl shadow-purple-950/20 hover:shadow-2xl hover:shadow-purple-950/25'
               }`}
               aria-label={isOpen ? 'Close AI tutor chat' : 'Open AI tutor chat'}
               style={{ willChange: 'transform' }}
@@ -349,7 +349,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
                     className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition-transform duration-200 group-hover:scale-105"
                   />
                   {/* Subtle AI label badge */}
-                  <span className="absolute -bottom-1.5 px-2 py-0.5 rounded-full bg-white text-sky-600 text-[10px] font-black tracking-wider shadow-sm border border-sky-100 uppercase pointer-events-none select-none">
+                  <span className="absolute -bottom-1.5 px-2 py-0.5 rounded-full bg-white text-purple-700 text-[10px] font-black tracking-wider shadow-xs border border-purple-100 uppercase pointer-events-none select-none">
                     AI
                   </span>
                 </>

@@ -97,10 +97,10 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
-      className={`group text-left p-4 border-b border-[#dde3eb] cursor-pointer transition-colors hover:bg-[#edf1f7]/50 ${
+      className={`group text-left p-4 border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-colors hover:bg-purple-50/50 dark:hover:bg-slate-800/60 ${
         notification.isRead
           ? ''
-          : 'bg-sky-50/40'
+          : 'bg-purple-50/40 dark:bg-purple-950/20'
       }`}
     >
       <div className="flex gap-3">
@@ -109,13 +109,13 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h4 className="text-sm font-bold text-[#0a1628] line-clamp-1 font-body">{notification.title}</h4>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1 font-body">{notification.title}</h4>
             {!notification.isRead && (
-              <span className="w-2 h-2 rounded-full bg-sky-600 flex-shrink-0 mt-1.5" />
+              <span className="w-2 h-2 rounded-full bg-purple-600 flex-shrink-0 mt-1" />
             )}
           </div>
-          <p className="text-xs text-[#5a6578] mb-2 line-clamp-2 font-body">{notification.message}</p>
-          <p className="text-xs text-slate-500 tabular-nums">{timeAgo}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5 line-clamp-2 font-body leading-relaxed">{notification.message}</p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">{timeAgo}</p>
         </div>
         <button
           onClick={(e) => {
