@@ -408,7 +408,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   {/* Avatar Head with Glow */}
                   <div className="relative w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-purple-500 via-pink-400 to-amber-300 shadow-lg border-2 border-white dark:border-slate-900">
                     <img
-                      src="/avatar/avatar_head_base.png"
+                      src="/avatar/avatar_icon.png"
                       alt="MathPulse AI Avatar"
                       className="w-full h-full object-contain rounded-full bg-purple-100 dark:bg-purple-950"
                     />
