@@ -355,9 +355,9 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
                 {/* Avatar Head Badge (Smooth circular frame) */}
                 <div className="relative w-15 h-15 sm:w-16 sm:h-16 rounded-full bg-slate-900/95 border-2 border-white/90 p-0.5 shadow-xl flex items-center justify-center overflow-hidden">
                   <img
-                    src={profileData.photo || '/mathpulse_final_logo.png'}
-                    alt="Student Avatar"
-                    className="w-full h-full object-cover rounded-full drop-shadow-md bg-purple-900/30"
+                    src="/avatar/avatar_head_base.png"
+                    alt="MathPulse AI Avatar"
+                    className="w-full h-full object-contain drop-shadow-md"
                   />
                 </div>
               </div>

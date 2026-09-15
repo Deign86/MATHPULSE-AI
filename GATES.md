@@ -23,3 +23,10 @@ Audit and fix all student-side pop-up modals, dialogs, and overlays to guarantee
 
 - [x] gate7: Automated quality checks pass cleanly (Oxlint anti-slop, TypeScript typecheck, Vitest unit test suite, and Vite production build)
   EVIDENCE: Oxlint 0 errors, tsc --noEmit 0 errors, Vitest 31/31 files 210/210 tests passed, and vite build built in 54.74s.
+
+- [x] gate8: Avatar head (LOLI `/avatar/avatar_head_base.png`) replaces user photo in StudentIDCard back and SettingsPage "Dress me up" hover
+  EVIDENCE: `StudentIDCard.tsx` line 357 changed to `src="/avatar/avatar_head_base.png"` with `object-contain`; `SettingsPage.tsx` line 411 changed to same asset. tsc --noEmit exits 0.
+
+- [x] gate9: Mobile/tablet dropdown items in SettingsPage use per-tab color palette with colored icon badge and "Active" pill indicator
+  EVIDENCE: `SettingsPage.tsx` dropdown items now render each tab using `tab.badgeClass` for background/border, a colored icon badge (`w-8 h-8 rounded-lg`), and a `<Check> Active` pill badge on the selected item. tsc --noEmit exits 0.
+
