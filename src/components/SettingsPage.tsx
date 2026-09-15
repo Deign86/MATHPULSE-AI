@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   User,
   Shield,
@@ -21,6 +21,8 @@ import {
   Smartphone,
   Info,
   ArrowLeft,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -133,6 +135,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [isAvatarHovered, setIsAvatarHovered] = useState(false);
+  const [isTabDropdownOpen, setIsTabDropdownOpen] = useState(false);
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close tab dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target;
+      if (target instanceof Node && tabDropdownRef.current && !tabDropdownRef.current.contains(target)) {
+        setIsTabDropdownOpen(false);
+      }
+    };
+    if (isTabDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isTabDropdownOpen]);
 
   // Re-auth modal for email change
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -352,10 +372,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       )}
 
-      {/* ── 1. Main Profile & Settings Layout (Student ID on Left, File Folder on Right) ── */}
-      <div className="flex flex-col md:flex-row items-start gap-5 lg:gap-8">
-        {/* ── Left Column: Interactive Student ID Card & Quick Actions ── */}
-        <div className="w-full md:w-[320px] lg:w-[360px] xl:w-[390px] shrink-0 flex flex-col items-center gap-4 md:sticky md:top-4">
+      {/* ── 1. Main Profile & Settings Layout (Student ID on Left on Desktop; Stacked on Mobile/Tablet) ── */}
+      <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
+        {/* ── Left/Top Column: Interactive Student ID Card & Quick Actions ── */}
+        <div className="w-full lg:w-[360px] xl:w-[390px] shrink-0 flex flex-col items-center gap-4 lg:sticky lg:top-4">
           <StudentIDCard
             profileData={accountData}
             userLevel={userLevel}
@@ -423,8 +443,71 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
         {/* ── Right Column: Colorful File Folder Settings Hub ── */}
         <div className="flex-1 w-full min-w-0 flex flex-col">
-          {/* File Folder Divider Tabs at the top */}
-          <div className="flex items-end gap-1.5 sm:gap-2 overflow-x-auto pb-0 pt-1 px-1 scrollbar-hide select-none">
+          {/* Mobile & Tablet Tab Dropdown Button (< lg) */}
+          <div className="lg:hidden w-full mb-3 relative" ref={tabDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsTabDropdownOpen((prev) => !prev)}
+              className={`w-full p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 ${currentTab.folderBorder} shadow-sm hover:shadow-md flex items-center justify-between gap-3 transition-all cursor-pointer`}
+              aria-expanded={isTabDropdownOpen}
+              aria-label="Select settings section"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`w-8 h-8 rounded-xl ${currentTab.badgeClass} flex items-center justify-center shrink-0`}>
+                  <currentTab.icon size={16} />
+                </div>
+                <div className="text-left min-w-0">
+                  <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">Settings Section</span>
+                  <span className="block text-sm font-display font-black text-slate-900 dark:text-white truncate">{currentTab.label}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`hidden xs:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${currentTab.badgeClass}`}>
+                  Sheet {tabs.findIndex((t) => t.id === activeTab) + 1} of {tabs.length}
+                </span>
+                <ChevronDown size={18} className={`text-slate-500 dark:text-slate-400 transition-transform duration-200 ${isTabDropdownOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </button>
+
+            {/* Dropdown Menu Options */}
+            {isTabDropdownOpen && (
+              <div className="absolute top-full mt-2 left-0 right-0 z-50 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-2 border-slate-200/90 dark:border-slate-800 shadow-2xl p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isSelected = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        setIsTabDropdownOpen(false);
+                      }}
+                      className={`w-full p-2.5 rounded-xl flex items-center justify-between gap-3 text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? `${tab.activeClass} shadow-xs`
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon size={16} className={isSelected ? 'text-white' : 'text-slate-500 dark:text-slate-400'} />
+                        <div className="min-w-0">
+                          <span className="block text-xs font-bold truncate">{tab.label}</span>
+                          <span className={`block text-[10px] truncate ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                            {tab.desc}
+                          </span>
+                        </div>
+                      </div>
+                      {isSelected && <Check size={16} className="shrink-0 text-white" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop File Folder Divider Tabs (lg+) */}
+          <div className="hidden lg:flex items-end gap-1.5 sm:gap-2 overflow-x-auto pb-0 pt-1 px-1 scrollbar-hide select-none">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -450,7 +533,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
 
           {/* Folder Jacket Body Container with Notebook Grid & Paperclip */}
-          <div className={`relative ${activeTab === 'profile' ? 'rounded-2xl sm:rounded-tl-none' : 'rounded-2xl'} rounded-b-2xl bg-white dark:bg-slate-900 border-2 ${currentTab.folderBorder} shadow-xl p-4 sm:p-6 lg:p-7 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]`}>
+          <div className={`relative ${activeTab === 'profile' ? 'rounded-2xl lg:rounded-tl-none' : 'rounded-2xl'} rounded-b-2xl bg-white dark:bg-slate-900 border-2 ${currentTab.folderBorder} shadow-xl p-4 sm:p-6 lg:p-7 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]`}>
             {/* Top spine / folder rim highlight with matching tab gradient */}
             <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${currentTab.spineGradient} opacity-90 rounded-t-sm`} />
 
