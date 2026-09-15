@@ -236,14 +236,14 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
               </div>
 
               {/* 3 Metric Cards: 3 columns on mobile, 3 columns on desktop */}
-              <div className="sm:col-span-3 grid grid-cols-3 gap-2 sm:gap-4 items-stretch">
+              <div className="sm:col-span-3 grid grid-cols-3 gap-1.5 sm:gap-4 items-stretch">
                 {/* Average Pace Card */}
-                <div className="rounded-2xl p-3 sm:p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 shadow-xs flex flex-col justify-between">
+                <div className="rounded-2xl p-2.5 sm:p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 shadow-xs flex flex-col justify-between">
                   <div className="flex items-center gap-1 sm:gap-1.5 text-slate-500 dark:text-slate-400 mb-1">
                     <Clock className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
                     <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider truncate">Avg Pace</span>
                   </div>
-                  <div className="text-lg sm:text-2xl font-display font-black text-slate-800 dark:text-white">
+                  <div className="text-base sm:text-2xl font-display font-black text-slate-800 dark:text-white">
                     {avgTime}s
                   </div>
                   <p className="text-[9px] sm:text-[11px] text-slate-400 font-medium truncate">
@@ -252,12 +252,12 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                 </div>
 
                 {/* Total Duration Card */}
-                <div className="rounded-2xl p-3 sm:p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 shadow-xs flex flex-col justify-between">
+                <div className="rounded-2xl p-2.5 sm:p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 shadow-xs flex flex-col justify-between">
                   <div className="flex items-center gap-1 sm:gap-1.5 text-slate-500 dark:text-slate-400 mb-1">
                     <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                     <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider truncate">Duration</span>
                   </div>
-                  <div className="text-lg sm:text-2xl font-display font-black text-slate-800 dark:text-white">
+                  <div className="text-base sm:text-2xl font-display font-black text-slate-800 dark:text-white">
                     {Math.floor(totalTime / 60)}m {totalTime % 60}s
                   </div>
                   <p className="text-[9px] sm:text-[11px] text-slate-400 font-medium truncate">
@@ -266,13 +266,13 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                 </div>
 
                 {/* Risk Level Card */}
-                <div className="rounded-2xl p-3 sm:p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 shadow-xs flex flex-col justify-between">
+                <div className="rounded-2xl p-2.5 sm:p-4 bg-white dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 shadow-xs flex flex-col justify-between">
                   <div className="flex items-center gap-1 sm:gap-1.5 text-slate-500 dark:text-slate-400 mb-1">
                     <AlertTriangle className="w-3.5 h-3.5 text-[#FF8B8B] shrink-0" />
                     <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider truncate">Risk Level</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-lg sm:text-2xl font-display font-black ${
+                    <span className={`text-base sm:text-2xl font-display font-black ${
                       riskProfile.overall_risk === 'high' || riskProfile.overall_risk === 'critical' 
                         ? 'text-[#FF8B8B]' 
                         : riskProfile.overall_risk === 'moderate' 
@@ -291,11 +291,11 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
 
             {/* 2. Progressive Disclosure Segmented Tabs */}
             <div className="flex items-center justify-between border-b border-slate-200/70 dark:border-slate-800 pb-1">
-              <div className="flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/60 w-full sm:w-auto">
+              <div className="flex items-center gap-1 p-1 bg-slate-100/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200/50 dark:border-slate-700/60 w-full sm:w-auto overflow-x-auto no-scrollbar">
                 <button
                   type="button"
                   onClick={() => setActiveTab('insights')}
-                  className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                     activeTab === 'insights'
                       ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -308,7 +308,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                 <button
                   type="button"
                   onClick={() => setActiveTab('domains')}
-                  className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                     activeTab === 'domains'
                       ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -321,7 +321,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                 <button
                   type="button"
                   onClick={() => setActiveTab('questions')}
-                  className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2.5 sm:px-4 py-1.5 rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                     activeTab === 'questions'
                       ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -711,14 +711,14 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
+            className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-sm overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200"
             onClick={onClose}
           >
             <motion.div
               initial={{ opacity: 0, y: 14, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 14, scale: 0.98 }}
-              className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-5xl max-h-[90dvh] overflow-y-auto border border-slate-100 dark:border-slate-800 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700"
+              className="relative my-auto bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-5xl max-h-[90dvh] overflow-y-auto border border-slate-100 dark:border-slate-800 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700"
               onClick={e => e.stopPropagation()}
             >
               {content}

@@ -101,7 +101,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
   const day7 = weekRewards[6];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8">
+    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-6 py-8 sm:py-10">
       {/* Backdrop */}
       <AnimatePresence>
         {isOpen && (
@@ -109,7 +109,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
             onClick={onClose}
           />
         )}
@@ -120,25 +120,26 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative w-full max-w-[420px] bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] shadow-2xl flex flex-col items-center p-5 overflow-visible"
+        className="relative my-auto w-full max-w-[420px] bg-[#f7f9fc] dark:bg-slate-900 rounded-3xl border border-[#dde3eb] dark:border-slate-800 shadow-2xl flex flex-col items-center p-4 sm:p-5 pt-8 sm:pt-9 overflow-visible"
       >
         {/* Header Ribbon Decoration */}
-        <div className="absolute -top-6 w-[85%] h-12 bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] rounded-xl shadow-lg flex items-center justify-center z-20">
+        <div className="absolute -top-5 sm:-top-6 w-[85%] h-11 sm:h-12 bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] rounded-xl shadow-lg flex items-center justify-center z-20">
           <div className="absolute -left-2.5 -z-10 w-5 h-8 bg-[#633299] rounded-l-full rotate-12 top-1.5"></div>
           <div className="absolute -right-2.5 -z-10 w-5 h-8 bg-[#10709b] rounded-r-full -rotate-12 top-1.5"></div>
-          <h2 className="text-white font-black text-lg tracking-wide uppercase drop-shadow-sm font-display">Daily Rewards</h2>
+          <h2 className="text-white font-black text-base sm:text-lg tracking-wide uppercase drop-shadow-sm font-display">Daily Rewards</h2>
         </div>
 
         <button
           onClick={onClose}
-          className="absolute -right-3 -top-3 w-8 h-8 bg-white hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 rounded-full flex items-center justify-center z-30 shadow-md transition-transform hover:scale-105 active:scale-95"
+          aria-label="Close daily rewards"
+          className="absolute -right-2 sm:-right-3 -top-2 sm:-top-3 w-8 h-8 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white rounded-full flex items-center justify-center z-30 shadow-md transition-transform hover:scale-105 active:scale-95 cursor-pointer"
         >
           <X size={16} strokeWidth={3} />
         </button>
 
-        <div className="mt-6 mb-2 text-center w-full">
-          <h3 className="text-xl font-bold text-slate-800 font-display mt-2">Welcome Back!</h3>
-          <p className="text-slate-500 font-medium text-xs mt-0.5">Claim your daily reward for today.</p>
+        <div className="mt-4 sm:mt-5 mb-2 text-center w-full">
+          <h3 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white font-display mt-1">Welcome Back!</h3>
+          <p className="text-slate-500 dark:text-slate-400 font-medium text-xs mt-0.5">Claim your daily reward for today.</p>
         </div>
 
         {/* Rewards Grid */}
@@ -153,9 +154,9 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
               <div
                 key={reward.id}
                 className={`relative rounded-xl flex flex-col overflow-hidden border-[1.5px] transition-all ${
-                  today && !claimed ? 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.25)] scale-105 z-10 bg-amber-50' :
-                  claimed ? 'border-[#dde3eb] bg-slate-200/50' :
-                  'border-[#dde3eb] bg-white'
+                  today && !claimed ? 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.25)] scale-105 z-10 bg-amber-50 dark:bg-amber-950/30' :
+                  claimed ? 'border-[#dde3eb] dark:border-slate-800 bg-slate-200/50 dark:bg-slate-800/40' :
+                  'border-[#dde3eb] dark:border-slate-700/80 bg-white dark:bg-slate-800/80'
                 }`}
               >
                 {/* Day Header */}
@@ -197,8 +198,8 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                   )}
 
                   {locked && (
-                    <div className="absolute top-1 right-1 bg-slate-200 rounded-full p-0.5 z-10">
-                      <Lock size={8} className="text-slate-400" />
+                    <div className="absolute top-1 right-1 bg-slate-200 dark:bg-slate-700 rounded-full p-0.5 z-10">
+                      <Lock size={8} className="text-slate-400 dark:text-slate-300" />
                     </div>
                   )}
 
@@ -215,7 +216,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                       <span className="text-lg">{recordGet(rewardIcons, reward.icon) ?? recordGet(typeIcons, reward.type)}</span>
                     </div>
 
-                    <div className={`font-black text-xs leading-none mt-0.5 text-center ${today ? 'text-amber-600' : claimed ? 'text-slate-500' : 'text-slate-600'}`}>
+                    <div className={`font-black text-xs leading-none mt-0.5 text-center ${today ? 'text-amber-600 dark:text-amber-400' : claimed ? 'text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
                       {reward.label}
                     </div>
                   </div>
@@ -227,9 +228,9 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
           {/* Day 7 (Full Width) */}
           {day7 && (
             <div className={`col-span-3 relative rounded-xl flex flex-col overflow-hidden border-[1.5px] transition-all mt-1 ${
-                isToday(6) && !isClaimed(6) ? 'border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-[1.02] z-10 bg-amber-50' :
-                isClaimed(6) ? 'border-[#dde3eb] bg-slate-200/50' :
-                'border-[#dde3eb] bg-white'
+                isToday(6) && !isClaimed(6) ? 'border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-[1.02] z-10 bg-amber-50 dark:bg-amber-950/30' :
+                isClaimed(6) ? 'border-[#dde3eb] dark:border-slate-800 bg-slate-200/50 dark:bg-slate-800/40' :
+                'border-[#dde3eb] dark:border-slate-700/80 bg-white dark:bg-slate-800/80'
               }`}
             >
               <div className={`py-1 text-center font-black text-[10px] uppercase tracking-widest ${
@@ -246,7 +247,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                 </span>
               </div>
 
-              <div className="flex items-center justify-center gap-5 p-3 relative">
+              <div className="flex items-center justify-center gap-3 sm:gap-5 p-2.5 sm:p-3 relative">
                 {/* Claimed Stamp Overlay for Day 7 */}
                 {isClaimed(6) && (
                   <motion.div
@@ -268,27 +269,27 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                   </motion.div>
                 )}
 
-                <div className={`flex items-center justify-center gap-5 w-full transition-all ${isClaimed(6) ? 'opacity-30 grayscale' : ''}`}>
+                <div className={`flex items-center justify-center gap-3 sm:gap-5 w-full transition-all ${isClaimed(6) ? 'opacity-30 grayscale' : ''}`}>
                   <div className="flex flex-col items-center">
                     <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-0.5"
+                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-0.5"
                       style={{
                         backgroundColor: day7.color + '20',
                         borderColor: day7.color + '40',
                       }}
                     >
-                      <span className="text-2xl">{recordGet(rewardIcons, day7.icon) ?? recordGet(typeIcons, day7.type)}</span>
+                      <span className="text-xl sm:text-2xl">{recordGet(rewardIcons, day7.icon) ?? recordGet(typeIcons, day7.type)}</span>
                     </div>
-                    <span className={`font-black text-sm ${isToday(6) ? 'text-amber-600' : 'text-slate-600'}`}>{day7.label}</span>
+                    <span className={`font-black text-xs sm:text-sm ${isToday(6) ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'}`}>{day7.label}</span>
                   </div>
 
                   {/* Avatar reward image for epic/legendary */}
                   {day7.rarity === 'epic' && (
-                    <div className="relative mt-1">
-                      <div className="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center border-2 border-purple-200 shadow-sm">
-                        <Gift className="w-8 h-8 text-purple-500 drop-shadow-md" />
+                    <div className="relative mt-1 shrink-0">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-50 dark:bg-purple-950/40 rounded-xl flex items-center justify-center border-2 border-purple-200 dark:border-purple-800 shadow-sm">
+                        <Gift className="w-7 h-7 sm:w-8 sm:h-8 text-purple-500 drop-shadow-md" />
                       </div>
-                      <div className="absolute -right-5 -bottom-4 w-14 h-14 bg-white rounded-xl p-1 border-2 border-amber-300 shadow-lg transform rotate-[-5deg]">
+                      <div className="absolute -right-3 sm:-right-5 -bottom-3 sm:-bottom-4 w-12 h-12 sm:w-14 sm:h-14 bg-white dark:bg-slate-800 rounded-xl p-1 border-2 border-amber-300 shadow-lg transform rotate-[-5deg]">
                         <img src="/avatar/crown_thumbnail.png" alt="Crown" className="w-full h-full object-contain drop-shadow-md" />
                       </div>
                     </div>
@@ -300,7 +301,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
         </div>
 
         {/* Countdown */}
-        <div className="mb-3 flex items-center gap-2 text-xs text-slate-400">
+        <div className="mb-3 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
           <Timer size={14} />
           <span className="font-mono font-medium">{timeUntilReset}</span>
           <span>until next reset</span>
@@ -312,9 +313,9 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
           whileTap={{ scale: 0.95 }}
           onClick={handleClaim}
           disabled={!canClaim || isClaiming || localClaiming}
-          className={`w-[85%] py-3 rounded-full font-black text-base tracking-wide uppercase shadow-lg transition-all mt-2 ${
+          className={`w-[90%] sm:w-[85%] py-3 rounded-full font-black text-sm sm:text-base tracking-wide uppercase shadow-lg transition-all mt-1 cursor-pointer ${
             !canClaim || isClaiming || localClaiming
-              ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-300 dark:border-slate-700'
               : 'bg-gradient-to-r from-[#FFB356] to-[#FF8C00] text-white hover:from-[#FFA500] hover:to-[#FF7F00] border-b-4 border-[#e67e00]'
           }`}
         >

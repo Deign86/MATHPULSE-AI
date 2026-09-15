@@ -161,7 +161,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 40 }}
         transition={{ duration: reduceMotion ? 0 : 0.25, ease: 'easeOut' }}
-        className="pointer-events-auto mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-80 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 flex flex-col overflow-hidden origin-bottom-right select-none"
+        className="pointer-events-auto mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-80 max-h-[80dvh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 flex flex-col overflow-hidden origin-bottom-right select-none"
         role="dialog"
         aria-label="AI tutor chat"
       >
@@ -207,7 +207,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         </div>
 
         {/* Messages Area - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-950/60 max-h-[60vh] sm:max-h-[350px]">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3 bg-slate-50 dark:bg-slate-950/60 max-h-[50dvh] sm:max-h-[350px]">
           {messages.map((message) => (
             <div
               key={message.id}

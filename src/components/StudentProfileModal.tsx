@@ -60,14 +60,14 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
         />
 
         {/* Modal */}
@@ -75,46 +75,46 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-white/80 dark:border-slate-800 w-full max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col"
+          className="relative my-auto bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-white/80 dark:border-slate-800 w-full max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col"
         >
           {/* Header with vibrant purple/indigo gradient */}
-          <div className="bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 p-6 sm:p-8 text-white relative overflow-hidden shrink-0">
+          <div className="bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 p-5 sm:p-8 text-white relative overflow-hidden shrink-0">
             <button
               onClick={onClose}
               aria-label="Close profile modal"
-              className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/30 text-white rounded-xl transition-colors z-10 cursor-pointer shadow-xs"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-black/20 hover:bg-black/30 text-white rounded-xl transition-colors z-10 cursor-pointer shadow-xs"
             >
               <X size={18} />
             </button>
 
             <div className="relative z-10">
-              <div className="flex items-center gap-5">
+              <div className="flex flex-col xs:flex-row items-center xs:items-start text-center xs:text-left gap-4 sm:gap-5">
                 {/* Avatar with clean image renderer (fixes raw URL string bug) */}
                 <div className="relative shrink-0">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center overflow-hidden border-2 border-white/40 shadow-lg">
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center overflow-hidden border-2 border-white/40 shadow-lg">
                     {renderModalAvatar(student.avatar)}
                   </div>
                   {student.isOnline && (
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
                   )}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-2xl sm:text-3xl font-display font-black text-white mb-1 truncate">
+                  <h2 className="text-xl sm:text-3xl font-display font-black text-white mb-1 truncate">
                     {student.name}
                   </h2>
-                  <p className="text-purple-100 text-xs sm:text-sm font-medium mb-3 truncate">
+                  <p className="text-purple-100 text-xs sm:text-sm font-medium mb-2.5 truncate">
                     {student.section}
                   </p>
 
-                  <div className="flex items-center gap-3">
-                    <div className="bg-white/15 backdrop-blur-md rounded-xl px-3.5 py-1.5 border border-white/25">
-                      <p className="text-[10px] uppercase font-bold tracking-wider text-purple-200">Level</p>
-                      <p className="text-base sm:text-lg font-black text-white tabular-nums">{student.level}</p>
+                  <div className="flex items-center justify-center xs:justify-start gap-2.5 sm:gap-3">
+                    <div className="bg-white/15 backdrop-blur-md rounded-xl px-3 py-1 sm:px-3.5 sm:py-1.5 border border-white/25">
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-purple-200">Level</p>
+                      <p className="text-sm sm:text-lg font-black text-white tabular-nums">{student.level}</p>
                     </div>
-                    <div className="bg-white/15 backdrop-blur-md rounded-xl px-3.5 py-1.5 border border-white/25">
-                      <p className="text-[10px] uppercase font-bold tracking-wider text-purple-200">Total XP</p>
-                      <p className="text-base sm:text-lg font-black text-white tabular-nums">{student.totalXP.toLocaleString()} XP</p>
+                    <div className="bg-white/15 backdrop-blur-md rounded-xl px-3 py-1 sm:px-3.5 sm:py-1.5 border border-white/25">
+                      <p className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-purple-200">Total XP</p>
+                      <p className="text-sm sm:text-lg font-black text-white tabular-nums">{student.totalXP.toLocaleString()} XP</p>
                     </div>
                   </div>
                 </div>
@@ -127,7 +127,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
           </div>
 
           {/* Content */}
-          <div className="p-6 overflow-y-auto flex-1 max-h-[calc(90vh-280px)] space-y-6">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 max-h-[calc(90dvh-240px)] space-y-5 sm:space-y-6">
             {/* Stats Grid */}
             <div>
               <h3 className="font-display font-bold text-base sm:text-lg text-slate-900 dark:text-white mb-3">

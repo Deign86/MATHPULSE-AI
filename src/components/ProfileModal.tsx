@@ -145,24 +145,25 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', duration: 0.5 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90dvh] overflow-hidden border border-[#dde3eb]">
+            <div className="relative my-auto bg-[#f7f9fc] dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90dvh] overflow-hidden border border-[#dde3eb] dark:border-slate-800">
               {/* Header */}
-              <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-6 relative overflow-hidden">
+              <div className="bg-gradient-to-r from-sky-600 to-sky-500 p-4 sm:p-6 relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24"></div>
                 <div className="absolute bottom-0 left-0 w-36 h-36 bg-white/5 rounded-full -ml-18 -mb-18"></div>
                 
                 <div className="relative z-10 flex items-start justify-between">
                   <div className="flex-1">
-                    <h2 className="text-xl font-display font-bold text-white mb-1">Profile Settings</h2>
-                    <p className="text-white/90 text-sm font-body">Manage your account information</p>
+                    <h2 className="text-lg sm:text-xl font-display font-bold text-white mb-1">Profile Settings</h2>
+                    <p className="text-white/90 text-xs sm:text-sm font-body">Manage your account information</p>
                   </div>
                   <button
                     onClick={onClose}
-                    className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all"
+                    aria-label="Close profile modal"
+                    className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all cursor-pointer"
                   >
                     <X size={20} />
                   </button>
@@ -170,7 +171,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
               </div>
 
               {/* Content */}
-              <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6 scrollbar-thin scrollbar-thumb-[#d1cec6] scrollbar-track-[#edf1f7]">
+              <div className="overflow-y-auto max-h-[calc(90dvh-160px)] sm:max-h-[calc(90dvh-200px)] p-4 sm:p-6 scrollbar-thin scrollbar-thumb-[#d1cec6] dark:scrollbar-thumb-slate-700 scrollbar-track-[#edf1f7] dark:scrollbar-track-slate-800">
                 {/* Profile Photo Section */}
                 <div className="mb-8 space-y-4">
                   <ProfilePictureUploader

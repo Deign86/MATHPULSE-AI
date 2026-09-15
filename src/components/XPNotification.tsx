@@ -27,11 +27,11 @@ const XPNotification: React.FC<XPNotificationProps> = ({ xp, message, show, onCo
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.9 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed top-8 left-1/2 -translate-x-1/2 z-[300]"
+          className="fixed top-4 sm:top-8 left-1/2 -translate-x-1/2 z-[300] max-w-[calc(100vw-2rem)] w-auto px-2 pointer-events-none"
           style={{ willChange: 'transform, opacity' }}
         >
-          <div className="bg-gradient-to-r from-rose-400 via-orange-500 to-rose-500 text-white px-6 py-4 rounded-2xl shadow-2xl border-2 border-rose-300 flex items-center gap-3">
-            <div className="relative">
+          <div className="bg-gradient-to-r from-rose-400 via-orange-500 to-rose-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl shadow-2xl border-2 border-rose-300 flex items-center gap-3 max-w-full pointer-events-auto">
+            <div className="relative shrink-0">
               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
                 <Star size={20} className="text-white" fill="currentColor" />
               </div>
@@ -45,9 +45,9 @@ const XPNotification: React.FC<XPNotificationProps> = ({ xp, message, show, onCo
                 <Sparkles size={16} className="text-rose-200" />
               </motion.div>
             </div>
-            <div>
-              <p className="text-sm font-bold">{message}</p>
-              <p className="text-2xl font-black">+{xp} XP</p>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-bold truncate max-w-[200px] sm:max-w-xs">{message}</p>
+              <p className="text-xl sm:text-2xl font-black tabular-nums">+{xp} XP</p>
             </div>
           </div>
         </motion.div>
