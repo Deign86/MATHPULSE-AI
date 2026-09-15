@@ -22,6 +22,13 @@ import {
   RefreshCw,
   Flame,
   FileText,
+  Info,
+  ChevronDown,
+  Clock,
+  Play,
+  Lightbulb,
+  ChevronRight,
+  Award,
 } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -134,10 +141,24 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [quarterFilter, setQuarterFilter] = useState<'all' | CurriculumQuarter>('all');
   const [competencyFilter, setCompetencyFilter] = useState('all');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [showCurriculumInfo, setShowCurriculumInfo] = useState(false);
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
   const [selectedTeacherModule, setSelectedTeacherModule] = useState<TeacherUploadedModule | null>(null);
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
+  const [practiceAnswers, setPracticeAnswers] = useState<Record<number, string>>({});
+  const [revealedExplanations, setRevealedExplanations] = useState<Record<number, boolean>>({});
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+
+  // Hide floating AI chatbot while in dedicated module step study guide
+  useEffect(() => {
+    if (activeStepIndex !== null) {
+      setIsInQuizMode?.(true);
+      return () => {
+        setIsInQuizMode?.(false);
+      };
+    }
+  }, [activeStepIndex, setIsInQuizMode]);
 
   // Subscribe to user progress for module card progress bars
   useEffect(() => {
@@ -224,6 +245,23 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     
     return () => unsubscribe();
   }, [activeTab]);
+
+  const filteredTeacherModules = useMemo(() => {
+    const queryStr = searchQuery.trim().toLowerCase();
+    return teacherModules.filter((mod) => {
+      const matchesSearch = !queryStr ||
+        mod.title.toLowerCase().includes(queryStr) ||
+        mod.subject.toLowerCase().includes(queryStr) ||
+        (mod.summary && mod.summary.toLowerCase().includes(queryStr)) ||
+        (mod.competencyTags && mod.competencyTags.some((tag) => tag.toLowerCase().includes(queryStr)));
+      const matchesSubject = subjectFilter === 'all' ||
+        mod.subject.toLowerCase().replace(/\s+/g, '-').includes(subjectFilter.toLowerCase()) ||
+        mod.subject.toLowerCase().includes(subjectFilter.toLowerCase());
+      const matchesQuarter = quarterFilter === 'all' ||
+        mod.quarter?.toUpperCase() === quarterFilter.toUpperCase();
+      return matchesSearch && matchesSubject && matchesQuarter;
+    });
+  }, [teacherModules, searchQuery, subjectFilter, quarterFilter]);
 
 
   // Daily Rewards (new weekly shuffle system)
@@ -472,6 +510,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     return Array.from(unique);
   }, [modulePool]);
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (subjectFilter !== 'all') count += 1;
+    if (quarterFilter !== 'all') count += 1;
+    if (competencyFilter !== 'all') count += 1;
+    return count;
+  }, [subjectFilter, quarterFilter, competencyFilter]);
+
   const clearFilters = () => {
     setSubjectFilter('all');
     setQuarterFilter('all');
@@ -539,125 +585,23 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   }
 
   if (selectedTeacherModule) {
-    return (
-      <div className="h-full overflow-y-auto px-4 sm:px-6 xl:px-10 pb-8 scrollbar-hide scroll-smooth relative">
-        <button
-          onClick={() => setSelectedTeacherModule(null)}
-          className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
-        >
-          <ArrowRight className="rotate-180" size={16} />
-          Back to Modules
-        </button>
-        <div className="bg-white rounded-2xl border border-[#F08386]/30 p-6 md:p-8">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="px-2 py-1 rounded-md bg-[#F08386]/12 border border-[#F08386]/30 text-[#F08386] text-xs font-bold">
-              Teacher Upload
-            </span>
-            {selectedTeacherModule.quarter && (
-              <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-xs">
-                {selectedTeacherModule.quarter}
-              </span>
-            )}
-          </div>
-          <h1 className="text-2xl md:text-3xl font-display font-black text-slate-900 mb-2">
-            {selectedTeacherModule.title}
-          </h1>
-          <p className="text-sm text-slate-600 mb-6">
-            {selectedTeacherModule.subject} · {selectedTeacherModule.gradeLevel}
-          </p>
-          {selectedTeacherModule.summary && (
-            <p className="text-slate-700 text-base leading-relaxed mb-6">
-              {selectedTeacherModule.summary}
-            </p>
-          )}
-          {selectedTeacherModule.learningObjectives?.length > 0 && (
-            <div className="mb-6">
-              <h2 className="text-lg font-bold text-slate-900 mb-2">Learning Objectives</h2>
-              <ul className="list-disc list-inside space-y-1 text-slate-700">
-                {selectedTeacherModule.learningObjectives.map((obj, i) => (
-                  <li key={i}>{obj}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {selectedTeacherModule.sections?.length > 0 && (
-            <div className="mb-6">
-              <h2 className="text-lg font-bold text-slate-900 mb-3">Sections</h2>
-              <div className="space-y-3">
-                {selectedTeacherModule.sections.map((section, i) => {
-                  // Detect step type from metadata or parse from content for legacy data
-                  const detectedType = section.stepType
-                    || (section.content.includes('video lesson') ? 'video_lesson'
-                      : section.content.includes('practice') ? 'practice'
-                      : section.content.includes('assessment') ? 'assessment'
-                      : section.content.includes('chat') ? 'chat_session'
-                      : section.content.includes('review') ? 'review' : undefined);
-                  const isInteractive = !!detectedType;
-                  const StepIcon = detectedType === 'video_lesson' ? Video
-                    : detectedType === 'practice' ? PenTool
-                    : detectedType === 'assessment' ? CheckCircle2
-                    : detectedType === 'chat_session' ? MessageCircle
-                    : detectedType === 'review' ? RefreshCw : null;
+    const totalDuration = selectedTeacherModule.sections?.reduce((acc, s) => acc + (s.durationMinutes || 10), 0) || 30;
+    const completedCount = selectedTeacherModule.sections?.filter((s) => s.isCompleted).length || 0;
+    const totalSections = selectedTeacherModule.sections?.length || 0;
+    const progressPct = totalSections > 0 ? Math.round((completedCount / totalSections) * 100) : 0;
+    const nextUnfinishedStep = selectedTeacherModule.sections?.findIndex((s) => !s.isCompleted);
+    const resumeIndex = nextUnfinishedStep !== -1 && nextUnfinishedStep !== undefined ? nextUnfinishedStep : 0;
+    const ctaText = completedCount === 0 ? 'Start Interactive Module' : completedCount === totalSections ? 'Review Module from Step 1' : `Resume at Step ${resumeIndex + 1}`;
 
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      disabled={!isInteractive}
-                      onClick={() => {
-                        if (!isInteractive) return;
-                        setActiveStepIndex(i);
-                      }}
-                      className={`w-full text-left border rounded-xl p-4 transition-all ${
-                        isInteractive
-                          ? 'border-slate-200 hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5 cursor-pointer group'
-                          : 'border-slate-200'
-                      } ${section.isCompleted ? 'bg-emerald-50/50 border-emerald-200' : ''}`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-bold text-slate-800 mb-1 flex items-center gap-2">
-                            {StepIcon && <StepIcon size={14} className="text-indigo-500 shrink-0" />}
-                            {section.title}
-                            {section.isCompleted && <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />}
-                          </h3>
-                          <p className="text-sm text-slate-600 leading-relaxed">{section.content}</p>
-                        </div>
-                        {isInteractive && (
-                          <ArrowRight size={16} className="text-slate-400 group-hover:text-indigo-500 shrink-0 transition-colors" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {selectedTeacherModule.practice?.length > 0 && (
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 mb-3">Practice Questions</h2>
-              <div className="space-y-3">
-                {selectedTeacherModule.practice.map((q, i) => (
-                  <div key={i} className="border border-slate-200 rounded-xl p-4">
-                    <p className="text-sm font-bold text-slate-800 mb-2">{q.question}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                      {q.options.map((opt, j) => (
-                        <div key={j} className="text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
-                          {opt.label}. {opt.text}
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-emerald-700 font-semibold">Answer: {q.answer}</p>
-                    <p className="text-xs text-slate-500 mt-1">{q.explanation}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {activeStepIndex !== null && selectedTeacherModule.sections[activeStepIndex] && (
+    // When a step is active, show the dedicated step page (not a modal overlay)
+    if (activeStepIndex !== null && selectedTeacherModule.sections[activeStepIndex]) {
+      const hasNext = activeStepIndex < selectedTeacherModule.sections.length - 1;
+      const hasPrev = activeStepIndex > 0;
+      return (
+        <AnimatePresence mode="wait">
           <ModuleStepGuide
+            key={selectedTeacherModule.moduleId || selectedTeacherModule.title}
+            moduleId={selectedTeacherModule.moduleId || selectedTeacherModule.title}
             section={selectedTeacherModule.sections[activeStepIndex]}
             sectionIndex={activeStepIndex}
             totalSections={selectedTeacherModule.sections.length}
@@ -665,15 +609,466 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             studentName={studentProfile?.name || 'Student'}
             practice={selectedTeacherModule.practice}
             onClose={() => setActiveStepIndex(null)}
+            onNext={hasNext ? () => setActiveStepIndex(activeStepIndex + 1) : undefined}
+            onPrev={hasPrev ? () => setActiveStepIndex(activeStepIndex - 1) : undefined}
           />
-        )}
+        </AnimatePresence>
+      );
+    }
+
+    return (
+      <div className="h-full overflow-y-auto px-4 sm:px-8 xl:px-12 pt-3 pb-16 scrollbar-hide scroll-smooth relative font-sans">
+        {/* Navigation & Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedTeacherModule(null);
+              setPracticeAnswers({});
+              setRevealedExplanations({});
+            }}
+            className="group inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-300 dark:hover:border-rose-800/60 shadow-2xs transition-all cursor-pointer hover:shadow-xs whitespace-nowrap shrink-0"
+          >
+            <ArrowRight className="rotate-180 transition-transform group-hover:-translate-x-1 shrink-0" size={16} />
+            <span className="whitespace-nowrap">Back to Modules</span>
+          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-rose-500/10 to-purple-500/10 dark:from-rose-500/20 dark:to-purple-500/20 text-rose-600 dark:text-rose-300 text-[11px] sm:text-xs font-black border border-rose-200/80 dark:border-rose-800/60 shadow-2xs whitespace-nowrap shrink-0">
+              <GraduationCap size={13} className="text-rose-500 shrink-0" />
+              <span className="whitespace-nowrap">Teacher-Curated Intervention</span>
+            </span>
+            {selectedTeacherModule.quarter && (
+              <span className="px-3 py-1 rounded-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px] sm:text-xs font-bold border border-slate-200/80 dark:border-slate-700 shadow-2xs whitespace-nowrap shrink-0">
+                {selectedTeacherModule.quarter}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Hero Card - High-Impact AAA Design */}
+        <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 text-white p-6 sm:p-8 md:p-10 shadow-xl mb-8 relative overflow-hidden border border-white/10">
+          {/* Ambient Glows & Grid Mesh */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-rose-500/25 via-purple-500/20 to-transparent rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-gradient-to-tr from-sky-500/20 via-indigo-500/20 to-transparent rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none opacity-40" />
+
+          {/* Floating animated decorative math symbols */}
+          <motion.div
+            animate={{ y: [-4, 4, -4], rotate: [-4, 4, -4] }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute top-6 right-8 hidden lg:flex w-24 h-24 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md items-center justify-center pointer-events-none text-white/20 text-4xl font-display font-black select-none shadow-2xl"
+          >
+            ∫dx
+          </motion.div>
+          <motion.div
+            animate={{ y: [5, -5, 5], rotate: [5, -5, 5] }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+            className="absolute bottom-8 right-32 hidden xl:flex w-16 h-16 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md items-center justify-center pointer-events-none text-amber-300/30 text-2xl font-display font-bold select-none"
+          >
+            ∑
+          </motion.div>
+
+          <div className="relative z-10 max-w-4xl">
+            {/* Meta Tags Row */}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="px-2.5 py-0.5 rounded-lg bg-rose-500/25 border border-rose-400/40 text-rose-200 text-xs font-black uppercase tracking-wider whitespace-nowrap shrink-0">
+                {selectedTeacherModule.subject}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-lg bg-white/10 border border-white/15 text-slate-200 text-xs font-bold whitespace-nowrap shrink-0">
+                {selectedTeacherModule.gradeLevel.startsWith('Grade') ? selectedTeacherModule.gradeLevel : `Grade ${selectedTeacherModule.gradeLevel}`}
+              </span>
+              {selectedTeacherModule.strandOrTrack && (
+                <span className="px-2.5 py-0.5 rounded-lg bg-white/10 border border-white/15 text-slate-200 text-xs font-bold whitespace-nowrap shrink-0">
+                  {selectedTeacherModule.strandOrTrack}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold whitespace-nowrap shrink-0">
+                <CheckCircle2 size={12} className="shrink-0" />
+                <span className="whitespace-nowrap">SHS STEM Verified</span>
+              </span>
+            </div>
+
+            {/* Title */}
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-black text-white tracking-tight leading-tight mb-4">
+              {selectedTeacherModule.title}
+            </h1>
+
+            {/* Summary */}
+            {selectedTeacherModule.summary && (
+              <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-medium max-w-3xl">
+                {selectedTeacherModule.summary}
+              </p>
+            )}
+
+            {/* Primary Action Button + Progress Banner */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveStepIndex(resumeIndex)}
+                className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 hover:from-rose-600 hover:via-purple-700 hover:to-indigo-700 text-white font-bold text-sm sm:text-base shadow-lg hover:shadow-rose-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer group whitespace-nowrap shrink-0"
+              >
+                <Play size={18} className="fill-white group-hover:translate-x-0.5 transition-transform shrink-0" />
+                <span className="whitespace-nowrap">{ctaText}</span>
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform shrink-0" />
+              </button>
+
+              {/* Linear Progress Card */}
+              <div className="flex-1 max-w-md bg-black/30 backdrop-blur-md rounded-2xl p-3 border border-white/10 flex flex-col justify-center">
+                <div className="flex items-center justify-between text-xs font-bold mb-1.5 whitespace-nowrap">
+                  <span className="text-slate-300 flex items-center gap-1.5 whitespace-nowrap">
+                    <Award size={14} className="text-amber-400 shrink-0" />
+                    <span className="whitespace-nowrap">Module Progress</span>
+                  </span>
+                  <span className="text-white font-black whitespace-nowrap">{progressPct}%</span>
+                </div>
+                <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden shadow-inner">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progressPct}%` }}
+                    transition={{ duration: 0.8, ease: 'easeOut' }}
+                    className="h-full rounded-full bg-gradient-to-r from-rose-400 via-purple-400 to-indigo-400"
+                  />
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1 font-medium whitespace-nowrap">
+                  {completedCount} of {totalSections} steps finished
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bento Stat Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-8">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-rose-300 dark:hover:border-rose-700/60 transition-all group min-w-0">
+            <div className="flex items-center justify-between gap-1 mb-2">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap truncate">Lesson Steps</span>
+              <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                <Layers size={16} />
+              </div>
+            </div>
+            <div className="text-2xl font-display font-black text-slate-900 dark:text-white whitespace-nowrap">
+              {totalSections}
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium whitespace-nowrap truncate">
+              {completedCount} completed
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-purple-300 dark:hover:border-purple-700/60 transition-all group min-w-0">
+            <div className="flex items-center justify-between gap-1 mb-2">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap truncate">Estimated Time</span>
+              <div className="w-8 h-8 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                <Clock size={16} />
+              </div>
+            </div>
+            <div className="text-2xl font-display font-black text-slate-900 dark:text-white whitespace-nowrap">
+              {totalDuration} mins
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium whitespace-nowrap truncate">
+              Self-paced with AI
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-amber-300 dark:hover:border-amber-700/60 transition-all group min-w-0">
+            <div className="flex items-center justify-between gap-1 mb-2">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap truncate">Self-Check</span>
+              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                <Target size={16} />
+              </div>
+            </div>
+            <div className="text-2xl font-display font-black text-slate-900 dark:text-white whitespace-nowrap">
+              {selectedTeacherModule.practice?.length || 0} items
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium whitespace-nowrap truncate">
+              Interactive practice
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-emerald-300 dark:hover:border-emerald-700/60 transition-all group min-w-0">
+            <div className="flex items-center justify-between gap-1 mb-2">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap truncate">Curriculum</span>
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                <Sparkles size={16} />
+              </div>
+            </div>
+            <div className="text-2xl font-display font-black text-slate-900 dark:text-white whitespace-nowrap">
+              SHS STEM
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium whitespace-nowrap truncate">
+              Teacher intervention
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Layout */}
+        <div className="space-y-8">
+          {/* Learning Objectives */}
+          {selectedTeacherModule.learningObjectives && selectedTeacherModule.learningObjectives.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <Target size={18} />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-display font-black text-slate-900 dark:text-white">
+                    Learning Objectives & Competencies
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Key competencies to master in this module</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {selectedTeacherModule.learningObjectives.map((obj, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3.5 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100/80 dark:border-emerald-900/30 hover:border-emerald-300 dark:hover:border-emerald-800 transition-colors">
+                    <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                    <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium leading-relaxed">{obj}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Interactive Sections Timeline */}
+          {selectedTeacherModule.sections && selectedTeacherModule.sections.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <Layers size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white leading-tight">
+                      Interactive Study Roadmap ({totalSections})
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Guided step-by-step learning with side-by-side video and AI tutoring
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    {completedCount}/{totalSections} Steps Done
+                  </span>
+                </div>
+              </div>
+
+              {/* Connected Vertical Timeline */}
+              <div className="relative space-y-4 before:absolute before:inset-0 before:left-5 sm:before:left-6 before:w-0.5 before:bg-gradient-to-b before:from-purple-500 before:via-indigo-400 before:to-slate-200 dark:before:to-slate-800 before:-z-0">
+                {selectedTeacherModule.sections.map((section, i) => {
+                  const detectedType = section.stepType
+                    || (section.content.includes('video lesson') ? 'video_lesson'
+                      : section.content.includes('practice') ? 'practice'
+                      : section.content.includes('assessment') ? 'assessment'
+                      : section.content.includes('chat') ? 'chat_session'
+                      : section.content.includes('review') ? 'review' : undefined);
+                  const StepIcon = detectedType === 'video_lesson' ? Video
+                    : detectedType === 'practice' ? PenTool
+                    : detectedType === 'assessment' ? CheckCircle2
+                    : detectedType === 'chat_session' ? MessageCircle
+                    : detectedType === 'review' ? RefreshCw : Layers;
+
+                  const typeLabel = detectedType === 'video_lesson' ? 'Video Lesson'
+                    : detectedType === 'practice' ? 'Guided Practice'
+                    : detectedType === 'assessment' ? 'Assessment'
+                    : detectedType === 'chat_session' ? 'AI Tutor Chat'
+                    : detectedType === 'review' ? 'Topic Review' : 'Lesson Step';
+
+                  const isCurrent = i === resumeIndex && !section.isCompleted;
+
+                  return (
+                    <div key={i} className="relative z-10 pl-12 sm:pl-14">
+                      {/* Timeline Node Badge */}
+                      <div className={`absolute left-0 top-4 w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-display font-black text-sm shadow-sm transition-transform duration-200 shrink-0 ${
+                        section.isCompleted
+                          ? 'bg-emerald-500 text-white ring-4 ring-emerald-100 dark:ring-emerald-950'
+                          : isCurrent
+                          ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white ring-4 ring-purple-100 dark:ring-purple-950 scale-105 shadow-md'
+                          : 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                      }`}>
+                        {section.isCompleted ? <CheckCircle2 size={20} /> : String(i + 1).padStart(2, '0')}
+                      </div>
+
+                      {/* Step Card */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveStepIndex(i)}
+                        className={`w-full text-left rounded-2xl p-5 sm:p-6 transition-all border cursor-pointer group bg-white dark:bg-slate-800/60 shadow-2xs hover:shadow-md hover:-translate-y-0.5 ${
+                          isCurrent
+                            ? 'border-purple-300 dark:border-purple-600 ring-2 ring-purple-100 dark:ring-purple-950/50'
+                            : section.isCompleted
+                            ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/20 dark:bg-emerald-950/10'
+                            : 'border-slate-200/80 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-600'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                                <StepIcon size={13} className="text-purple-500 shrink-0" />
+                                <span>{typeLabel}</span>
+                              </span>
+                              {section.durationMinutes && (
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 whitespace-nowrap shrink-0">
+                                  <Clock size={12} className="shrink-0" />
+                                  <span>{section.durationMinutes} mins</span>
+                                </span>
+                              )}
+                              {isCurrent && (
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 whitespace-nowrap shrink-0">
+                                  Current Step
+                                </span>
+                              )}
+                            </div>
+
+                            <h3 className="text-base sm:text-lg font-display font-bold text-slate-900 dark:text-white mb-1.5 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                              {section.title}
+                            </h3>
+                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                              {section.content}
+                            </p>
+                          </div>
+
+                          <div className="shrink-0 self-start sm:self-center">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-2xs group-hover:shadow-sm group-hover:scale-105 transition-all whitespace-nowrap shrink-0">
+                              <span className="whitespace-nowrap">{section.isCompleted ? 'Review Step' : 'Launch Step'}</span>
+                              <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform shrink-0" />
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Self-Check Practice Items (Interactive) */}
+          {selectedTeacherModule.practice && selectedTeacherModule.practice.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                    <Target size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white leading-tight">
+                      Interactive Self-Check Practice ({selectedTeacherModule.practice.length})
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Test your understanding with instant evaluation before your teacher quiz
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 self-start sm:self-auto whitespace-nowrap shrink-0">
+                  {Object.keys(practiceAnswers).length} of {selectedTeacherModule.practice.length} Attempted
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {selectedTeacherModule.practice.map((q, i) => {
+                  const selectedAns = practiceAnswers[i];
+                  const isAnswered = !!selectedAns;
+                  const isCorrect = selectedAns === q.answer;
+                  const isExplanationOpen = revealedExplanations[i] ?? isAnswered;
+
+                  return (
+                    <div
+                      key={i}
+                      className={`rounded-2xl p-5 sm:p-6 border transition-all ${
+                        isAnswered
+                          ? isCorrect
+                            ? 'border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/20 dark:bg-emerald-950/20'
+                            : 'border-rose-200 dark:border-rose-800/80 bg-rose-50/20 dark:bg-rose-950/20'
+                          : 'border-slate-200/80 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 mb-4">
+                        <span className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-black text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                          Q{i + 1}
+                        </span>
+                        <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-relaxed">
+                          {q.question}
+                        </p>
+                      </div>
+
+                      {/* Interactive Option Pills */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4 pl-0 sm:pl-10">
+                        {q.options.map((opt, j) => {
+                          const isOptionSelected = selectedAns === opt.label;
+                          const isThisCorrect = opt.label === q.answer;
+                          let optionStyle = 'bg-white dark:bg-slate-800 border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-purple-300 dark:hover:border-purple-600 hover:bg-purple-50/30';
+
+                          if (isAnswered) {
+                            if (isThisCorrect) {
+                              optionStyle = 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 font-bold';
+                            } else if (isOptionSelected && !isThisCorrect) {
+                              optionStyle = 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200 font-bold';
+                            } else {
+                              optionStyle = 'bg-slate-50 dark:bg-slate-900 border-slate-200/50 dark:border-slate-800 text-slate-400 opacity-60';
+                            }
+                          }
+
+                          return (
+                            <button
+                              key={j}
+                              type="button"
+                              onClick={() => {
+                                setPracticeAnswers((prev) => ({ ...prev, [i]: opt.label }));
+                                setRevealedExplanations((prev) => ({ ...prev, [i]: true }));
+                              }}
+                              className={`w-full text-left rounded-xl p-3.5 text-xs sm:text-sm font-medium border flex items-center justify-between transition-all cursor-pointer shadow-2xs ${optionStyle}`}
+                            >
+                              <span className="flex items-center gap-2.5 min-w-0">
+                                <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700 text-[11px] font-black flex items-center justify-center shrink-0">
+                                  {opt.label}
+                                </span>
+                                <span className="break-words leading-snug">{opt.text}</span>
+                              </span>
+                              {isAnswered && isThisCorrect && (
+                                <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 ml-2" />
+                              )}
+                              {isAnswered && isOptionSelected && !isThisCorrect && (
+                                <X size={16} className="text-rose-600 dark:text-rose-400 shrink-0 ml-2" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Explanation toggle & card */}
+                      {q.explanation && (
+                        <div className="pl-0 sm:pl-10">
+                          <button
+                            type="button"
+                            onClick={() => setRevealedExplanations((prev) => ({ ...prev, [i]: !isExplanationOpen }))}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline cursor-pointer mb-2 whitespace-nowrap"
+                          >
+                            <Lightbulb size={13} className="shrink-0" />
+                            <span className="whitespace-nowrap">{isExplanationOpen ? 'Hide Explanation' : 'View Teacher Explanation'}</span>
+                            <ChevronDown size={13} className={`shrink-0 transition-transform duration-200 ${isExplanationOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                          {isExplanationOpen && (
+                            <div className="p-3.5 rounded-xl bg-purple-50/50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                              <span className="font-bold text-purple-700 dark:text-purple-300">Teacher's Note:</span> {q.explanation}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div 
-      className="h-full overflow-y-auto px-4 sm:px-6 xl:px-10 pb-8 scrollbar-hide scroll-smooth relative"
+      className="h-full overflow-y-auto pt-3.5 px-5 sm:pt-4 sm:px-8 md:pt-2.5 md:px-8 lg:pt-0 lg:px-8 xl:px-12 pb-8 scrollbar-hide scroll-smooth relative"
       onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 100)}
     >
       <DailyCheckInModal
@@ -689,17 +1084,208 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         timeUntilReset={timeUntilReset}
       />
 
+      {/* DepEd Curriculum Info Modal */}
+      <AnimatePresence>
+        {showCurriculumInfo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100"
+            >
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
+                    <BookOpen size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-lg text-slate-900 leading-tight">
+                      Curriculum Modules
+                    </h3>
+                    <p className="text-xs text-slate-500">DepEd Strengthened SHS</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCurriculumInfo(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                  aria-label="Close curriculum info"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-sm text-slate-600 leading-relaxed">
+                <p>
+                  MathPulse AI loads modules directly from DepEd Strengthened Senior High School curriculum guides with AI-powered RAG lesson generation.
+                </p>
+                <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200/80 space-y-2">
+                  <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">Available Now</div>
+                  <ul className="text-xs space-y-1 text-slate-700 list-disc list-inside">
+                    <li>General Mathematics</li>
+                    <li>Business Mathematics</li>
+                    <li>Statistics & Probability</li>
+                  </ul>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Pre-Calculus and Basic Calculus modules are coming soon once teaching module PDFs are sourced.
+                </p>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCurriculumInfo(false)}
+                  className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-colors shadow-sm"
+                >
+                  Got It
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Filter Drawer / Sheet */}
+      <AnimatePresence>
+        {showFilterDrawer && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-lg p-6 shadow-2xl border border-slate-100 max-h-[85vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+                <div className="flex items-center gap-2">
+                  <Filter size={18} className="text-sky-600" />
+                  <h3 className="font-display font-bold text-lg text-slate-900">
+                    Filter Modules
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFilterDrawer(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                  aria-label="Close filter drawer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+                {/* Subject Selector */}
+                <div>
+                  <label htmlFor="mobile-filter-subject" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Subject
+                  </label>
+                  <select
+                    id="mobile-filter-subject"
+                    value={subjectFilter}
+                    onChange={(e) => setSubjectFilter(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:border-sky-400 focus:outline-none shadow-sm"
+                  >
+                    <option value="all">All Subjects</option>
+                    {curriculumSubjects.map((subjectId) => (
+                      <option key={subjectId} value={subjectId}>
+                        {CURRICULUM_SUBJECT_META[subjectId].label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Quarter Selector */}
+                <div>
+                  <span className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Quarter
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {QUARTER_FILTERS.map((quarter) => {
+                      const isSelected = quarterFilter === quarter;
+                      return (
+                        <button
+                          key={quarter}
+                          type="button"
+                          onClick={() => setQuarterFilter(quarter)}
+                          className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
+                            isSelected
+                              ? 'bg-sky-50 border-sky-400 text-sky-700 ring-1 ring-sky-400'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {quarter === 'all' ? 'All Quarters' : quarter}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Competency Group */}
+                <div>
+                  <label htmlFor="mobile-filter-competency" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Competency Group
+                  </label>
+                  <select
+                    id="mobile-filter-competency"
+                    value={competencyFilter}
+                    onChange={(e) => setCompetencyFilter(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:border-sky-400 focus:outline-none shadow-sm"
+                  >
+                    <option value="all">All Competencies</option>
+                    {availableCompetencyGroups.map((group) => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Reset All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFilterDrawer(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-colors shadow-sm"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Hero Section */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 md:py-6 gap-4 md:gap-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-3 md:py-6 gap-2 md:gap-6">
         <div className="flex-1 max-w-3xl">
-          <h1 className="text-[28px] md:text-[44px] font-display font-black text-[#202124] tracking-tight leading-[1.1] mb-3 md:mb-4">
-            Curriculum Modules
-          </h1>
-          <p className="text-[#3c4043] text-[13px] md:text-[17px] leading-relaxed md:leading-[1.7] md:pr-10">
+          <div className="flex items-center justify-between gap-3 mb-1.5 md:mb-3">
+            <h1 className="text-[24px] sm:text-[28px] md:text-[44px] font-display font-black text-[#202124] tracking-tight leading-[1.1]">
+              Curriculum Modules
+            </h1>
+            {/* Mobile About / Info button */}
+            <button
+              type="button"
+              onClick={() => setShowCurriculumInfo(true)}
+              className="inline-flex lg:hidden items-center gap-1.5 px-3 py-1.5 rounded-full border border-sky-200 bg-sky-50 text-xs font-bold text-sky-800 hover:bg-sky-100 transition-colors shadow-sm shrink-0"
+              title="About DepEd Curriculum"
+            >
+              <Info size={14} className="text-sky-600" />
+              <span>About</span>
+            </button>
+          </div>
+          <p className="hidden lg:block text-[#3c4043] text-[13px] md:text-[17px] leading-relaxed md:leading-[1.7] md:pr-10">
             MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Available now for Grade 11: General Mathematics, Business Mathematics, Statistics & Probability, and Finite Mathematics — every module fully unlocked.
           </p>
-          <div className="mt-4 flex items-center gap-3">
-            <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-bold text-sky-900">
+          <div className="mt-2 md:mt-4 flex items-center gap-2 md:gap-3">
+            <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-bold text-sky-900">
               {curriculumContextLabel}
             </div>
           </div>
@@ -715,7 +1301,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       </div>
 
       {/* ── Sticky filter + tab bar ── */}
-      <div className={`sticky top-0 z-30 -mx-4 px-4 sm:-mx-6 sm:px-6 xl:-mx-10 xl:px-10 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
+      <div className={`sticky top-0 z-30 -mx-5 px-5 sm:-mx-8 sm:px-8 xl:-mx-12 xl:px-12 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
         {/* Search + filters row */}
         <div className="flex flex-col lg:flex-row items-center gap-3 w-full">
           <div className="relative flex-1 w-full">
@@ -766,7 +1352,66 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             )}
           </div>
 
-          <div className="flex flex-row overflow-x-auto no-scrollbar items-center gap-2 w-full lg:w-auto shrink-0 -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 sm:pb-0">
+          {/* Mobile Filters: Single Quarter Dropdown Pill + Filters Drawer Trigger */}
+          <div className="flex lg:hidden items-center gap-2 w-full pb-1">
+            {/* Single Quarter Pill Dropdown */}
+            <div className="relative inline-block shrink-0">
+              <select
+                id="mobile-quarter-select"
+                value={quarterFilter}
+                // SAFETY: trusted internal value already conforms to the asserted type.
+                onChange={(e) => setQuarterFilter(e.target.value as 'all' | CurriculumQuarter)}
+                className={`appearance-none pl-3.5 pr-8 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-400 ${
+                  quarterFilter !== 'all'
+                    ? 'bg-sky-50 text-sky-800 border-sky-300 ring-1 ring-sky-300'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+                aria-label="Select Quarter"
+              >
+                {QUARTER_FILTERS.map((quarter) => (
+                  <option key={quarter} value={quarter}>
+                    {quarter === 'all' ? 'All Quarters' : quarter}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+
+            {/* Filter Drawer Button */}
+            <button
+              type="button"
+              onClick={() => setShowFilterDrawer(true)}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 border transition-all shadow-sm ${
+                activeFilterCount > 0
+                  ? 'bg-sky-50 text-sky-800 border-sky-300 ring-1 ring-sky-300'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Filter size={13} />
+              <span>Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-sky-600 text-white text-[10px] flex items-center justify-center font-black">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* Reset Filters Button */}
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors shrink-0 ml-auto"
+                title="Reset all filters"
+                aria-label="Reset all filters"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Desktop Filters: Preserved inline dropdowns */}
+          <div className="hidden lg:flex flex-row overflow-x-auto no-scrollbar items-center gap-2 shrink-0">
             <select
               value={subjectFilter}
               onChange={(e) => setSubjectFilter(e.target.value)}
@@ -831,21 +1476,26 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                   key={tab.id}
                   // SAFETY: trusted internal value already conforms to the asserted type.
                   onClick={() => setActiveTab(tab.id as ModulesTab)}
-                  className={`relative flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
-                    isActive ? 'shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                  className={`relative flex items-center justify-center gap-1.5 rounded-full text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
+                    isActive
+                      ? 'px-3.5 sm:px-4 py-1.5 shadow-sm'
+                      : 'px-2.5 sm:px-4 py-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                   }`}
+                  title={tab.label}
+                  aria-label={tab.label}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="modulesTabBackground"
                       className="absolute inset-0 bg-white rounded-full shadow-[0_2px_15px_-3px_rgba(0,0,0,0.1)] border border-slate-100"
                       transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-      />
-
+                    />
                   )}
-                  <span className={`relative z-10 flex items-center gap-1.5 ${isActive ? tab.color : ''}`}>
-                    <tab.icon size={15} strokeWidth={isActive ? 2.5 : 2} />
-                    {tab.label}
+                  <span className={`relative z-10 flex items-center gap-1.5 whitespace-nowrap shrink-0 ${isActive ? tab.color : ''}`}>
+                    <tab.icon size={15} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+                    <span className={`${isActive ? 'inline' : 'hidden sm:inline'} whitespace-nowrap`}>
+                      {tab.label}
+                    </span>
                   </span>
                 </button>
               );
@@ -853,37 +1503,37 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           </div>
 
           {/* Section heading — changes with active tab */}
-          <div className="flex items-center gap-2 ml-1">
+          <div className="flex items-center gap-2 ml-1 min-w-0">
             {activeTab === 'modules' && (
               <>
-                <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500">
-                  <Layers size={15} strokeWidth={2.5} />
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
+                  <Layers size={15} strokeWidth={2.5} className="shrink-0" />
                 </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">DepEd Strengthened SHS Modules</span>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap truncate">DepEd Strengthened SHS Modules</span>
               </>
             )}
             {activeTab === 'recommended' && (
               <>
-                <div className="w-7 h-7 rounded-lg bg-[#75D06A]/10 flex items-center justify-center">
-                  <Sparkles size={15} className="text-[#75D06A]" />
+                <div className="w-7 h-7 rounded-lg bg-[#75D06A]/10 flex items-center justify-center shrink-0">
+                  <Sparkles size={15} className="text-[#75D06A] shrink-0" />
                 </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Suggested Next</span>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap truncate">Suggested Next</span>
               </>
             )}
             {activeTab === 'practice' && (
               <>
-                <div className="w-7 h-7 rounded-lg bg-[#FFB356]/10 flex items-center justify-center">
-                  <Target size={15} className="text-[#FFB356]" />
+                <div className="w-7 h-7 rounded-lg bg-[#FFB356]/10 flex items-center justify-center shrink-0">
+                  <Target size={15} className="text-[#FFB356] shrink-0" />
                 </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Practice Center</span>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap truncate">Practice Center</span>
               </>
             )}
             {activeTab === 'teacher_uploaded' && (
               <>
-                <div className="w-7 h-7 rounded-lg bg-[#F08386]/15 border border-[#F08386]/30 flex items-center justify-center text-[#F08386]">
-                  <BookUser size={15} strokeWidth={2.5} />
+                <div className="w-7 h-7 rounded-lg bg-[#F08386]/15 border border-[#F08386]/30 flex items-center justify-center text-[#F08386] shrink-0">
+                  <BookUser size={15} strokeWidth={2.5} className="shrink-0" />
                 </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap">Teacher Uploaded Modules</span>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap truncate">Teacher Uploaded Modules</span>
               </>
             )}
 
@@ -891,15 +1541,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         </div>
       </div>
 
-      {/* Mobile Mascot - rendered below the sticky filter bar */}
-      <div className="flex lg:hidden items-center justify-center w-full mt-2 mb-2">
-        <ModulesMascot 
-          // SAFETY: trusted internal value already conforms to the asserted type.
-          assessmentDismissed={(userProfile as StudentProfile)?.assessmentDismissed}
-          // SAFETY: trusted internal value already conforms to the asserted type.
-          initialAssessmentCompleted={(userProfile as StudentProfile)?.initialAssessmentCompleted}
-        />
-      </div>
 
       <div className="pt-4">
         {normalizedRiskTopics.length > 0 && (
@@ -1005,51 +1646,146 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               atRiskTopics={normalizedRiskTopics}
             />
           ) : activeTab === 'teacher_uploaded' ? (
-            teacherModulesLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 animate-pulse">
-                    <div className="h-4 bg-slate-200 rounded w-3/4 mb-4" />
-                    <div className="h-3 bg-slate-100 rounded w-1/2 mb-3" />
-                    <div className="h-3 bg-slate-100 rounded w-5/6" />
+            <div className="space-y-6">
+              {/* Teacher Materials Hero Banner */}
+              <div className="rounded-3xl bg-gradient-to-r from-[#F08386]/12 via-[#9956DE]/10 to-transparent border border-[#F08386]/25 dark:border-[#F08386]/20 p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#F08386] to-[#D96B43] flex items-center justify-center text-white shadow-md shadow-rose-500/20 shrink-0">
+                    <BookUser size={24} />
                   </div>
-                ))}
-              </div>
-            ) : teacherModules.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-16 h-16 bg-[#F08386]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <BookUser size={32} className="text-[#F08386]" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-2">No Teacher-Uploaded Modules Yet</h3>
-                <p className="text-slate-500 text-sm">Your teachers haven't uploaded any custom modules yet.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 mt-6">
-                {teacherModules.map((mod) => (
-                  <div
-                    key={mod.moduleId}
-                    className="bg-white rounded-2xl border border-[#F08386]/30 p-6 hover:border-[#F08386]/60 hover:shadow-md transition-all cursor-pointer"
-                    onClick={() => setSelectedTeacherModule(mod)}
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="px-2 py-1 rounded-md bg-[#F08386]/12 border border-[#F08386]/30 text-[#F08386] text-xs font-bold">
-                        Teacher Upload
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base sm:text-xl font-display font-black text-slate-900 dark:text-white tracking-tight">
+                        Teacher-Assigned Modules & Interventions
+                      </h2>
+                      <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[10px] font-black border border-rose-200 dark:border-rose-800/40">
+                        <Sparkles size={11} /> Custom Learning
                       </span>
-                      {mod.quarter && (
-                        <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-xs">
-                          {mod.quarter}
-                        </span>
-                      )}
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2">{mod.title}</h3>
-                    <p className="text-sm text-slate-600 mb-3">{mod.subject} · {mod.gradeLevel}</p>
-                    {mod.summary && (
-                      <p className="text-xs text-slate-500 line-clamp-3">{mod.summary}</p>
-                    )}
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
+                      Tailored lesson units, remedial study guides, and alternative learning materials uploaded directly by your teachers.
+                    </p>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end shrink-0">
+                  <span className="px-3.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold shadow-xs whitespace-nowrap shrink-0">
+                    {filteredTeacherModules.length} {filteredTeacherModules.length === 1 ? 'Module' : 'Modules'} Available
+                  </span>
+                </div>
               </div>
-            )
+
+              {teacherModulesLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 mt-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 animate-pulse space-y-4">
+                      <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded-lg w-1/3" />
+                      <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-lg w-3/4" />
+                      <div className="h-4 bg-slate-100 dark:bg-slate-800/60 rounded w-1/2" />
+                      <div className="h-12 bg-slate-100 dark:bg-slate-800/60 rounded-xl" />
+                    </div>
+                  ))}
+                </div>
+              ) : teacherModules.length === 0 ? (
+                <div className="text-center py-16 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs max-w-2xl mx-auto my-6">
+                  <div className="w-16 h-16 bg-rose-50 dark:bg-rose-950/50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-rose-100 dark:border-rose-900/30">
+                    <BookUser size={32} className="text-rose-500" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-display font-black text-slate-800 dark:text-white mb-2">
+                    No Teacher-Uploaded Modules Yet
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
+                    Your teachers haven't uploaded any custom modules for your section yet. As soon as your teacher creates an intervention or supplemental PDF, it will appear right here.
+                  </p>
+                </div>
+              ) : filteredTeacherModules.length === 0 ? (
+                <div className="text-center py-14 px-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs max-w-xl mx-auto my-6">
+                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+                    <Search size={22} />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
+                    No matching teacher modules
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs mb-4">
+                    Try adjusting your search query or subject filters to find what you're looking for.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSubjectFilter('all');
+                      setQuarterFilter('all');
+                    }}
+                    className="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 mt-4">
+                  {filteredTeacherModules.map((mod) => (
+                    <div
+                      key={mod.moduleId}
+                      onClick={() => setSelectedTeacherModule(mod)}
+                      className="group relative cursor-pointer select-none transition-all duration-300 hover:-translate-y-1"
+                    >
+                      {/* FOLDER TAB */}
+                      <div className="absolute top-0 left-3 md:left-4 h-5 md:h-6 w-24 md:w-28 rounded-t-xl bg-gradient-to-r from-[#D96B43] to-[#E25C60] text-white font-black text-[9px] md:text-[10px] uppercase tracking-wider flex items-center justify-center shadow-xs border-t border-x border-white/20 whitespace-nowrap shrink-0">
+                        {mod.quarter || 'MODULE'}
+                      </div>
+
+                      {/* FOLDER BODY */}
+                      <div className="relative mt-4 md:mt-5 p-4 md:p-6 rounded-2xl md:rounded-[1.4rem] bg-gradient-to-br from-[#E25C60] via-[#D96B43] to-[#C94D3B] text-white shadow-[0_12px_28px_-8px_rgba(217,107,67,0.35)] hover:shadow-[0_18px_36px_-6px_rgba(217,107,67,0.45)] transition-all overflow-hidden flex flex-col justify-between min-h-[220px]">
+                        {/* SPINE / TOP HIGHLIGHT */}
+                        <div className="absolute top-0 left-0 right-0 h-1.5 mix-blend-overlay bg-white/40" />
+
+                        {/* BACKGROUND CIRCLES */}
+                        <div className="absolute -bottom-8 right-[-20%] w-48 h-48 bg-white opacity-10 rounded-full transition-transform duration-500 group-hover:scale-110 pointer-events-none" />
+                        <div className="absolute bottom-4 right-12 w-32 h-32 bg-white opacity-10 rounded-full transition-transform duration-500 group-hover:scale-110 delay-75 pointer-events-none" />
+
+                        <div className="relative z-10 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="rounded-full border border-white/30 bg-black/20 backdrop-blur-md px-2.5 py-0.5 text-[9px] md:text-[10px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] whitespace-nowrap shrink-0 truncate max-w-[130px]">
+                                {mod.subject}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-white text-[9px] font-black border border-white/20 flex items-center gap-1 whitespace-nowrap shrink-0">
+                                <GraduationCap size={10} className="shrink-0" />
+                                <span className="whitespace-nowrap">Teacher Upload</span>
+                              </span>
+                            </div>
+
+                            <h3 className="text-base md:text-lg font-display font-black leading-snug text-white drop-shadow-xs line-clamp-2 mb-1.5">
+                              {mod.title}
+                            </h3>
+
+                            <p className="text-white/85 text-xs font-medium line-clamp-2 leading-relaxed mb-3 pr-2">
+                              {mod.summary || `Specialized teacher intervention for ${mod.gradeLevel.startsWith('Grade') ? mod.gradeLevel : `Grade ${mod.gradeLevel}`}.`}
+                            </p>
+                          </div>
+
+                          <div className="pt-3 border-t border-white/15 flex items-center justify-between gap-2 mt-auto">
+                            <div className="flex items-center gap-1.5 text-white/90 text-[10px] md:text-[11px] font-bold shrink-0">
+                              <span className="px-2 py-0.5 rounded-md bg-white/20 backdrop-blur-xs whitespace-nowrap shrink-0">
+                                {mod.sections?.length || 0} sections
+                              </span>
+                              {mod.practice?.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-md bg-white/20 backdrop-blur-xs whitespace-nowrap shrink-0">
+                                  {mod.practice.length} items
+                                </span>
+                              )}
+                            </div>
+                            <span className="flex items-center gap-1 text-[11px] md:text-xs font-black text-white bg-white/25 hover:bg-white/35 px-3 py-1.5 rounded-xl backdrop-blur-xs transition-all border border-white/30 shadow-xs whitespace-nowrap shrink-0">
+                              <span className="whitespace-nowrap">Open</span>
+                              <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5 shrink-0" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : activeTab === 'modules' ? (
             <ModulesLibraryView
               modules={modulesWithProgress}
@@ -1281,7 +2017,7 @@ const ModulesLibraryView: React.FC<{
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {modules.map((module, index) => {
               const isRecommended = weakTopics.some(wt => 
                 (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
@@ -1349,7 +2085,7 @@ const RecommendedModulesView: React.FC<{
             <div className="w-10 h-10 rounded-[14px] bg-[#FF8B8B]/10 flex items-center justify-center text-[20px] shadow-inner"><Flame size={20} className="text-orange-500" /></div>
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Continue This Module</h2>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {inProgress.slice(0, 4).map((module, index) => {
               const isRecommended = weakTopics.some(wt => 
                 (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
@@ -1380,7 +2116,7 @@ const RecommendedModulesView: React.FC<{
             You are all caught up. Practice more quizzes to unlock additional recommendations.
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {suggested.map((module, index) => {
               const isRecommended = weakTopics.some(wt => 
                 (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||

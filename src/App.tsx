@@ -17,7 +17,7 @@ import { deactivateCurrentSessionToken } from './services/pushNotificationServic
 import PushNotificationsManager from './components/PushNotificationsManager';
 import InstallPwaButton from './components/InstallPwaButton.tsx';
 import OnlineOfflineBanner from './components/OnlineOfflineBanner.tsx';
-import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, Calculator, Crown, Flame, Menu, Swords, Target, Trophy, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
@@ -26,6 +26,7 @@ import { db } from './lib/firebase';
 import { saveAssessmentResult } from './services/gradesService';
 import { buildHeroBannerModalSummary, saveHeroBannerModalSummary } from './services/heroBannerSummaryService';
 import { useCapacitorBackButton } from './hooks/useCapacitorBackButton';
+import MobileBottomNav from './components/MobileBottomNav';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -38,6 +39,9 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard.tsx'));
 const Sidebar = lazy(() => import('./components/Sidebar.tsx'));
 const HeroBanner = lazy(() => import('./components/HeroBanner.tsx'));
 const RightSidebar = lazy(() => import('./components/RightSidebar.tsx'));
+const LeaderboardPreviewCard = lazy(() =>
+  import('./components/RightSidebar.tsx').then((m) => ({ default: m.LeaderboardPreviewCard })),
+);
 const XPNotification = lazy(() => import('./components/XPNotification.tsx'));
 const NotificationBell = lazy(() => import('@/features/notifications').then(m => ({ default: m.NotificationBell })));
 
@@ -1103,7 +1107,7 @@ const App = () => {
     <ChatProvider>
       <div className="flex h-dvh w-full bg-[#f8faff] overflow-hidden">
         {/* Desktop Sidebar */}
-        <div className="hidden lg:block">
+        <div className="hidden lg:block h-full shrink-0 relative z-20">
           <Suspense fallback={sidebarShellFallback}>
             <Sidebar 
               activeTab={activeTab} 
@@ -1113,7 +1117,6 @@ const App = () => {
               onLogout={() => setActiveModal('logout_confirm')}
               sidebarCollapsed={isSidebarCollapsed}
               setSidebarCollapsed={setIsSidebarCollapsed}
-              forceCollapsed={activeTab === 'Quiz Battle'}
             />
           </Suspense>
         </div>
@@ -1150,97 +1153,90 @@ const App = () => {
         )}
 
         {/* Main Content */}
-        <div className="flex-1 min-h-0 flex flex-col min-w-0 bg-[#f7f9fc] relative z-10 shadow-[rgba(124,58,237,0.05)_0px_0px_30px_inset]">
-          <div className="absolute inset-0 bg-math-pattern opacity-30 pointer-events-none mix-blend-multiply z-0" />
+        <div className={`flex-1 min-h-0 flex flex-col min-w-0 ${activeTab === 'Quiz Battle' ? 'bg-[#0B0F19]' : 'bg-gradient-to-br from-[#f8faff] via-[#f1f5fd] to-[#f5f0fc] dark:from-[#050d18] dark:via-[#0c1527] dark:to-[#120e24] shadow-[rgba(124,58,237,0.04)_0px_0px_30px_inset]'} relative z-10 overflow-hidden`}>
+          {/* Ambient glowing gradient orbs */}
+          {activeTab !== 'Quiz Battle' && (
+            <>
+              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-purple-200/30 via-indigo-100/20 to-transparent rounded-full blur-3xl pointer-events-none -translate-y-1/3 translate-x-1/4" />
+              <div className="absolute bottom-0 left-0 w-[450px] h-[450px] bg-gradient-to-tr from-sky-200/25 via-purple-100/15 to-transparent rounded-full blur-3xl pointer-events-none translate-y-1/3 -translate-x-1/4" />
+              <div className="absolute inset-0 bg-math-pattern opacity-10 mix-blend-overlay pointer-events-none z-0" />
+            </>
+          )}
           
-          {/* Header — compact with inline gamification stats */}
-          <header className="bg-white/90 backdrop-blur-md border-b border-[#dde3eb] px-3 sm:px-6 py-2 sm:py-3 flex flex-row items-center justify-between gap-2 sm:gap-3 sticky top-0 z-30 shadow-sm">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <InstallPwaButton />
-              <button
-                className="lg:hidden p-2 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-                onClick={() => setIsMobileSidebarOpen(true)}
-                aria-label="Open navigation"
-              >
-                <Menu size={20} />
-              </button>
-              <div className="min-w-0">
-                <h1 className="text-base sm:text-xl font-display font-bold text-[#0a1628] leading-tight truncate">
-                  {activeTab === 'Grades' ? 'Assessment' : activeTab === 'Leaderboard' ? 'Leadership Board' : activeTab}
-                </h1>
-                <p className="hidden sm:block text-xs text-[#5a6578] font-body truncate">Welcome back, {profileData.name.split(' ')[0]}!</p>
-              </div>
-              {/* Inline gamification badges — always visible */}
-              <div className="hidden md:flex items-center gap-2 ml-2">
-                <button
-                  onClick={() => setActiveModal('rewards')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 rounded-lg transition-colors cursor-pointer group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-                  title="View Rewards & Progress"
-                  aria-label="View Rewards and Level Progress"
-                >
-                  <Crown className="h-3.5 w-3.5 text-rose-500" aria-hidden="true" />
-                  <span className="text-xs font-display font-bold text-rose-700">Lv {userLevel}</span>
-                </button>
-                <button
-                  onClick={() => setActiveModal('rewards')}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 hover:bg-violet-100 border border-violet-200/60 rounded-lg transition-colors cursor-pointer w-[180px] xl:w-[200px] justify-between focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-                  title={`${progressXPInLevel}/${xpToNextLevel} XP to next level`}
-                  aria-label={`View XP: ${currentXP} XP earned`}
-                >
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Zap className="h-3.5 w-3.5 text-violet-500" aria-hidden="true" />
-                    <span className="text-xs font-display font-bold text-violet-700 whitespace-nowrap">{currentXP} XP</span>
-                  </div>
-                  <div className="h-1.5 flex-1 min-w-0 bg-violet-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-violet-500 rounded-full transition-all e-w" style={xpFillStyle} />
-                  </div>
-                </button>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200/60 rounded-lg">
-                  <Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden="true" />
-                  <span className="text-xs font-display font-bold text-orange-700">Daily Rewards</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <OnlineOfflineBanner />
 
-              {/* Calculator toggle */}
-              <button
-                onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
-                className="p-3 rounded-xl bg-[#edf1f7] hover:bg-[#dde3eb] text-[#5a6578] hover:text-primary transition-all group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-                title="Scientific Calculator (Alt+K)"
-                aria-label="Scientific Calculator (Alt+K)"
-              >
-                <Calculator size={20} className="group-hover:scale-110 transition-transform" />
-              </button>
-              <Suspense fallback={compactControlFallback}>
-                <NotificationBell />
-              </Suspense>
-              
-              <button 
-                onClick={() => setActiveModal('profile')}
-                className="flex items-center gap-2.5 h-11 shrink-0 bg-[#edf1f7] hover:bg-[#dde3eb] p-1.5 pr-3 rounded-lg cursor-pointer transition-all group focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none"
-                aria-label={`Profile: ${profileData.name}`}
-              >
-                <UserAvatar
-                  src={profileData.photo}
-                  name={profileData.name}
-                  className="w-8 h-8 rounded-lg"
-                />
-                <div className="hidden sm:block text-left min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[#0a1628] leading-none group-hover:text-primary transition-colors font-body truncate">
-                    {firstName}
-                  </p>
-                </div>
-              </button>
+          {/* Invisible Universal Student Header Bar — Clean & Floating (Consumes space on top of all pages without a visible box/border) */}
+          <header className={`w-full px-5 sm:px-8 xl:px-12 pt-3.5 sm:pt-4 lg:pt-4.5 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
+            <div className="flex items-center justify-between gap-2">
+              {/* Upper Left: Level Badge & XP Counter (XP hidden on narrow mobile <= 350px, shown on 360px+ and tablet/desktop) */}
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('rewards')}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-b from-rose-50 to-rose-100/90 border border-rose-200/80 shadow-[0_2px_0_#fecdd3,0_3px_8px_rgba(244,63,94,0.08)] active:translate-y-[1px] active:shadow-none hover:bg-rose-50 transition-all shrink-0 cursor-pointer"
+                  title="Level Progress"
+                  aria-label={`Level ${userLevel}`}
+                >
+                  <Crown className="w-3.5 h-3.5 text-rose-500 drop-shadow-sm" />
+                  <span className="text-xs font-display font-black text-rose-700 dark:text-rose-400">Lv {userLevel}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('rewards')}
+                  className="hidden min-[360px]:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gradient-to-b from-violet-50 to-violet-100/90 border border-violet-200/80 shadow-[0_2px_0_#ddd6fe,0_3px_8px_rgba(139,92,246,0.1)] active:translate-y-[1px] active:shadow-none hover:bg-violet-50 transition-all shrink-0 cursor-pointer"
+                  title={`${progressXPInLevel}/${xpToNextLevel} XP`}
+                  aria-label={`XP: ${currentXP}`}
+                >
+                  <Zap className="w-3.5 h-3.5 text-violet-500 shrink-0 drop-shadow-sm" />
+                  <span className="text-xs font-display font-black text-violet-700 dark:text-violet-300 tabular-nums shrink-0">{currentXP} XP</span>
+                  <div className="w-14 sm:w-20 h-2 bg-violet-200/60 dark:bg-violet-950/60 rounded-full overflow-hidden shadow-inner shrink-0">
+                    <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all" style={xpFillStyle} />
+                  </div>
+                </button>
+              </div>
+
+              {/* Upper Right: Calculator, Notification Bell (All), Profile Avatar (Tablet & Desktop: md: and up) */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <InstallPwaButton />
+
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:shadow-[0_6px_20px_rgba(14,165,233,0.18)] hover:border-sky-200/80 text-slate-700 hover:text-sky-500 transition-all flex items-center justify-center cursor-pointer active:scale-95"
+                  title="Scientific Calculator"
+                  aria-label="Scientific Calculator"
+                >
+                  <Calculator size={16} className="stroke-[2.2]" />
+                </button>
+
+                <Suspense fallback={compactControlFallback}>
+                  <div className="scale-90 origin-center">
+                    <NotificationBell />
+                  </div>
+                </Suspense>
+
+                {/* Profile button on top right: hidden on mobile (< md) because it's on bottom right of the navbar; shown on tablet & desktop (md:) */}
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('profile')}
+                  className="hidden md:flex w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] items-center justify-center hover:ring-2 hover:ring-purple-400 transition-all active:scale-95 cursor-pointer"
+                  aria-label={`Profile: ${profileData.name}`}
+                >
+                  <UserAvatar
+                    src={profileData.photo}
+                    name={profileData.name}
+                    className="w-full h-full rounded-none"
+                  />
+                </button>
+              </div>
             </div>
           </header>
-
-          <OnlineOfflineBanner />
 
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' ? 'overflow-hidden p-0' : 'p-3 lg:p-4 overflow-y-auto pb-24 sm:pb-28'}`}
+            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : activeTab === 'Leaderboard' ? 'overflow-y-auto lg:overflow-hidden p-0 pb-28 sm:pb-32 lg:pb-0' : activeTab === 'Quiz Battle' ? 'overflow-y-auto p-0 pb-28 sm:pb-32 lg:pb-8 h-full' : 'pt-1 sm:pt-2 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -1249,12 +1245,13 @@ const App = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className={activeTab === 'AI Chat' || activeTab === 'Modules' ? 'h-full min-h-0' : ''}
+                className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' || activeTab === 'Leaderboard' || activeTab === 'Quiz Battle' ? 'h-full min-h-0' : ''}
               >
                 {activeTab === 'Dashboard' ? (
-                  <div className="px-4 sm:px-6 xl:px-10 py-6 sm:py-8">
-                    <div className="grid grid-cols-12 gap-6 sm:gap-8 lg:gap-10">
-                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-10 lg:gap-14 pt-0">
+                  <div className="px-5 sm:px-8 xl:px-12 py-1.5 sm:py-2.5 lg:py-3 flex flex-col gap-3 sm:gap-4 lg:gap-4.5">
+                    <div className="grid grid-cols-12 gap-4 sm:gap-6 lg:gap-10">
+                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-4 sm:gap-5 md:gap-6 lg:gap-8 pt-0">
+
                         <Suspense fallback={dashboardPanelFallback}>
                           <HeroBanner
                             userName={firstName}
@@ -1267,6 +1264,111 @@ const App = () => {
                             assessmentCompleted={hasCompletedDiagnostic === true}
                           />
                         </Suspense>
+
+                        {/* Daily Goals, XP, and Streak Slabs:
+                            - Mobile (< md): Daily Goals full row, XP & Streak 2-column row below
+                            - Tablet (md to xl): All 3 in a single row [ Daily Goals (6 cols) | Current XP (3 cols) | Streak (3 cols) ]
+                            - Desktop (xl:): Hidden here and placed into RightSidebar, moving Start Learning upwards
+                        */}
+                        <div className="xl:hidden grid grid-cols-2 md:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
+                          {/* Daily Goals / Assessment Slab (Complete Emerald Green Bento Card) */}
+                          <div
+                            onClick={() => {
+                              if (!hasCompletedDiagnostic && hasCompletedDiagnostic !== null) {
+                                handleOpenInitialAssessment();
+                              } else {
+                                handleStudentNavigation('Modules');
+                              }
+                            }}
+                            className="col-span-2 md:col-span-6 flex flex-col justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 text-white shadow-[0_8px_20px_-4px_rgba(16,185,129,0.35)] border border-emerald-400/40 relative overflow-hidden group cursor-pointer hover:shadow-[0_12px_28px_-4px_rgba(16,185,129,0.45)] hover:-translate-y-0.5 transition-all"
+                          >
+                            {/* Ambient glow highlight */}
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.25),transparent_45%),radial-gradient(circle_at_85%_84%,rgba(16,185,129,0.3),transparent_40%)] pointer-events-none" />
+
+                            {/* Header Row: Target Emblem + Title + Arrow */}
+                            <div className="flex items-center justify-between gap-2.5 relative z-10">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-10 h-10 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 shadow-inner flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                  <Target className="w-5 h-5 text-white stroke-[2.4] drop-shadow-sm" />
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-100 drop-shadow-sm leading-none">
+                                    Target Tracker
+                                  </span>
+                                  <h3 className="text-sm sm:text-base font-display font-black text-white leading-tight drop-shadow-sm mt-0.5 truncate">
+                                    Daily Goals
+                                  </h3>
+                                </div>
+                              </div>
+
+                              <div
+                                className="w-8 h-8 rounded-full bg-white/20 group-hover:bg-white text-white group-hover:text-emerald-700 backdrop-blur-md border border-white/40 shadow-sm flex items-center justify-center transition-all shrink-0 group-hover:translate-x-0.5"
+                                aria-hidden="true"
+                              >
+                                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                              </div>
+                            </div>
+
+                            {/* Full-width descriptive subtitle (no truncation!) */}
+                            <p className="text-xs sm:text-[13px] text-white/90 font-medium leading-snug mt-3 relative z-10">
+                              {hasCompletedDiagnostic ? 'Maintain your daily practice pace' : 'Complete Initial Diagnostic Assessment'}
+                            </p>
+
+                            {/* Progress Section: Single-line badge and full width bar */}
+                            <div className="mt-3.5 pt-2.5 border-t border-white/15 relative z-10">
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <span className="text-[11px] font-bold text-emerald-100">
+                                  Lesson Progress
+                                </span>
+                                <span className="text-[11px] font-bold text-white bg-black/20 backdrop-blur-md px-2.5 py-0.5 rounded-full tabular-nums border border-white/20 whitespace-nowrap">
+                                  2 of 5 Lessons
+                                </span>
+                              </div>
+                              <div className="h-2 w-full bg-black/25 rounded-full overflow-hidden shadow-inner">
+                                <div className="h-full bg-white rounded-full w-[40%] shadow-[0_0_8px_rgba(255,255,255,0.7)] transition-all duration-500" />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Current XP Slab — Rewards & Achievements styling (Vibrant violet-to-cyan gradient with frosted glass keycap) */}
+                          <button
+                            type="button"
+                            onClick={() => setActiveModal('rewards')}
+                            className="col-span-1 md:col-span-3 flex items-center gap-3 p-4 sm:p-4.5 rounded-2xl relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] border border-white/25 shadow-[0_8px_20px_-4px_rgba(114,116,237,0.35)] text-left hover:shadow-[0_12px_28px_-4px_rgba(114,116,237,0.45)] hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer group"
+                          >
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(251,150,187,0.28),transparent_42%),radial-gradient(circle_at_85%_84%,rgba(31,167,225,0.24),transparent_40%)] pointer-events-none" />
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 shadow-inner flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform relative z-10">
+                              <Trophy className="w-5 h-5 text-white stroke-[2.2] drop-shadow-sm" />
+                            </div>
+                            <div className="min-w-0 flex-1 relative z-10">
+                              <span className="block text-[10px] sm:text-[11px] font-bold text-white/90 uppercase tracking-wider leading-none drop-shadow-sm">
+                                Current XP
+                              </span>
+                              <span className="block text-lg sm:text-xl font-display font-black text-white tabular-nums leading-tight mt-1.5 drop-shadow-sm">
+                                {currentXP}
+                              </span>
+                            </div>
+                          </button>
+
+                          {/* Streak Slab — Warm Apricot-Orange Tinted Card with pure white flame icon (no black outline) */}
+                          <button
+                            type="button"
+                            onClick={() => setActiveModal('rewards')}
+                            className="col-span-1 md:col-span-3 flex items-center gap-3 p-4 sm:p-4.5 rounded-2xl backdrop-blur-xl bg-gradient-to-br from-amber-50/80 via-orange-50/35 to-white dark:from-amber-950/25 dark:via-slate-900/70 dark:to-slate-900/70 border border-orange-200/70 dark:border-orange-800/40 shadow-sm hover:border-orange-300 hover:shadow-md transition-all active:scale-[0.98] text-left cursor-pointer group"
+                          >
+                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-b from-amber-400 to-orange-400 border-t border-white/50 shadow-[0_2.5px_0_rgba(234,88,12,0.4),0_4px_10px_rgba(251,146,60,0.22)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                              <Flame className="w-5 h-5 text-white fill-white drop-shadow-sm" strokeWidth={1.8} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <span className="block text-[10px] sm:text-[11px] font-bold text-orange-600/80 dark:text-orange-400 uppercase tracking-wider leading-none">
+                                Streak
+                              </span>
+                              <span className="block text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1.5">
+                                7 Days
+                              </span>
+                            </div>
+                          </button>
+                        </div>
 
                         {dashboardShellDeferredReady && hasCompletedDiagnostic && normalizedAtRiskTopics.length > 0 && (
                           <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm dark:border-amber-400/40 dark:bg-amber-400/10">
@@ -1322,7 +1424,7 @@ const App = () => {
 
                         {profileReady && dashboardShellDeferredReady && (
                           <Suspense fallback={dashboardWidgetFallback}>
-                            <div className="pb-4">
+                            <div className="mt-2 sm:mt-3.5 md:mt-5 pb-4">
                               <LearningPath
                                 modules={curriculumRuntimeModules}
                                 onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)}
@@ -1336,13 +1438,24 @@ const App = () => {
                         {profileReady && dashboardShellDeferredReady && (
                           <Suspense fallback={dashboardWidgetFallback}>
                             <div className="pb-4">
-                              <CompetencyRadarChart />
+                              <div className="grid grid-cols-1 md:grid-cols-12 xl:grid-cols-1 gap-4 sm:gap-6 items-start">
+                                <div className="col-span-1 md:col-span-7 xl:col-span-1">
+                                  <CompetencyRadarChart />
+                                </div>
+                                <div className="col-span-1 md:col-span-5 xl:hidden">
+                                  <LeaderboardPreviewCard
+                                    currentUserId={userProfile?.uid || ''}
+                                    userPhoto={profileData.photo}
+                                    onOpenLeaderboard={() => setActiveTab('Leaderboard')}
+                                  />
+                                </div>
+                              </div>
                             </div>
                           </Suspense>
                         )}
                       </div>
 
-                      <div className="col-span-12 xl:col-span-3 pt-2">
+                      <div className="hidden xl:block xl:col-span-3 pt-0">
                         {dashboardShellDeferredReady ? (
                           <Suspense fallback={dashboardPanelFallback}>
                             <RightSidebar 
@@ -1357,6 +1470,8 @@ const App = () => {
                               xpToNextLevel={xpToNextLevel}
                               overallXP={currentXP}
                               userName={firstName}
+                              hasCompletedDiagnostic={hasCompletedDiagnostic}
+                              onOpenAssessment={handleOpenInitialAssessment}
                             />
                           </Suspense>
                         ) : (
@@ -1379,7 +1494,10 @@ const App = () => {
                   </Suspense>
                 ) : activeTab === 'Leaderboard' ? (
                   <Suspense fallback={tabLoadingFallback}>
-                    <LeaderboardPage currentUserPhoto={profileData.photo} />
+                    <LeaderboardPage
+                      currentUserPhoto={profileData.photo}
+                      onNavigate={handleStudentNavigation}
+                    />
                   </Suspense>
                 ) : activeTab === 'Quiz Battle' ? (
                   <Suspense fallback={tabLoadingFallback}>
@@ -1421,7 +1539,7 @@ const App = () => {
           {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page and quiz mode */}
           {(activeTab !== 'AI Chat' && !isInQuizMode) && (
             <Suspense fallback={null}>
-              <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-50" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)', marginRight: 'env(safe-area-inset-right, 0px)' }}>
+              <div className="hidden lg:block fixed bottom-8 right-8 z-30">
                 <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
               </div>
             </Suspense>
@@ -1558,6 +1676,17 @@ const App = () => {
                 }}
               />
             </Suspense>
+          )}
+
+          {/* Mobile Bottom Navigation Bar (Hidden during full-screen assessment) */}
+          {!showAssessmentPage && (
+            <MobileBottomNav
+              activeTab={activeTab}
+              onSelectTab={handleStudentNavigation}
+              onOpenProfile={() => setActiveModal('profile')}
+              profilePhoto={profileData.photo}
+              profileName={profileData.name}
+            />
           )}
         </div>
       </div>

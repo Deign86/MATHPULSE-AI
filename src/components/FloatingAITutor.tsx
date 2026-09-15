@@ -279,16 +279,16 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
       )}
       </AnimatePresence>
 
-      {/* Floating Button - Optimized with WAAPI-backed animations */}
+      {/* Floating Button - Refined Dimensional with Hover-Only Minimize */}
       <div className="pointer-events-auto relative self-end">
         {isMinimized ? (
           <motion.button
             type="button"
             onClick={handleRestoreLauncher}
-            whileHover={{ scale: 1.08 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-slate-900/90 text-white shadow-lg ring-1 ring-white/20 backdrop-blur-sm flex items-center justify-center"
+            className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-gradient-to-br from-sky-500 to-sky-600 text-white shadow-md shadow-slate-900/10 border border-white/20 flex items-center justify-center cursor-pointer"
             aria-label="Restore AI tutor launcher"
             title="Show AI tutor"
             style={{ willChange: 'transform' }}
@@ -297,26 +297,28 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
           </motion.button>
         ) : (
           <div className="relative group">
-            {/* Tooltip */}
+            {/* Tooltip on Hover */}
             {!isOpen && (
-              <div className="hidden sm:block absolute right-full mr-4 top-1/2 -translate-y-1/2 px-4 py-2 bg-slate-800 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap shadow-xl z-50">
+              <div className="hidden sm:block absolute right-full mr-3.5 top-1/2 -translate-y-1/2 px-3.5 py-1.5 bg-slate-900/90 backdrop-blur-sm text-white text-xs font-semibold rounded-xl border border-white/10 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-50">
                 Hello! I'm L.O.L.I., how may I help you?
-                <div className="absolute top-1/2 -translate-y-1/2 -right-1 w-3 h-3 bg-slate-800 rotate-45" />
+                <div className="absolute top-1/2 -translate-y-1/2 -right-1 w-2.5 h-2.5 bg-slate-900/90 rotate-45 border-r border-t border-white/10" />
               </div>
             )}
 
+            {/* Hover-Only Minimize Button */}
             {!isOpen && (
               <button
                 type="button"
                 aria-label="Minimize AI tutor launcher"
                 title="Minimize"
                 onClick={handleMinimizeLauncher}
-                className="absolute -top-2 -left-2 z-10 h-7 w-7 rounded-full bg-white text-slate-700 border border-slate-200 shadow-md hover:bg-slate-100 transition-colors flex items-center justify-center"
+                className="absolute -top-1.5 -left-1.5 z-20 h-6 w-6 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 transition-all duration-150 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto scale-90 group-hover:scale-100"
               >
-                <Minus size={14} />
+                <Minus size={12} className="stroke-[2.5]" />
               </button>
             )}
 
+            {/* Dimensional Button Body - Noticeable & Clean */}
             <motion.button
               ref={fabRef}
               type="button"
@@ -325,16 +327,40 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               dragConstraints={constraintsRef}
               dragElastic={0.2}
               dragMomentum={false}
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.94 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="w-13 h-13 sm:w-16 sm:h-16 bg-sky-600 rounded-2xl shadow-2xl flex items-center justify-center text-white hover:shadow-sky-300/50 transition-all p-2"
+              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-white cursor-pointer relative transition-all duration-200 border-2 ${
+                isOpen
+                  ? 'bg-gradient-to-br from-rose-500 to-rose-600 border-white/60 shadow-xl shadow-slate-900/20'
+                  : 'bg-gradient-to-br from-sky-400 via-sky-500 to-sky-600 border-white/80 shadow-xl shadow-sky-950/20 hover:shadow-2xl hover:shadow-sky-950/25'
+              }`}
               aria-label={isOpen ? 'Close AI tutor chat' : 'Open AI tutor chat'}
               style={{ willChange: 'transform' }}
             >
-              {isOpen ? <X size={26} /> : <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-lg" />}
+              {/* Icon / Avatar content */}
+              {isOpen ? (
+                <X size={26} className="text-white drop-shadow-xs stroke-[2.4]" />
+              ) : (
+                <>
+                  <img
+                    src="/avatar/avatar_icon.png"
+                    alt="AI Tutor"
+                    className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition-transform duration-200 group-hover:scale-105"
+                  />
+                  {/* Subtle AI label badge */}
+                  <span className="absolute -bottom-1.5 px-2 py-0.5 rounded-full bg-white text-sky-600 text-[10px] font-black tracking-wider shadow-sm border border-sky-100 uppercase pointer-events-none select-none">
+                    AI
+                  </span>
+                </>
+              )}
+
+              {/* Nudge / Radar Ping indicator */}
               {!isOpen && pendingNudge && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full border-2 border-white animate-pulse" />
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 z-20">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-400 border-2 border-white shadow-xs" />
+                </span>
               )}
             </motion.button>
           </div>
