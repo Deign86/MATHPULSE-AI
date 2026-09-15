@@ -133,3 +133,37 @@
   CHECK: python -c "import sys; sys.path.insert(0, 'backend'); from rag.vectorstore_loader import get_vectorstore_components, reset_vectorstore_singleton; reset_vectorstore_singleton(); _, _, emb = get_vectorstore_components(model_name='BAAI/bge-base-en-v1.5'); print('dim=' + str(emb.get_sentence_embedding_dimension()))"
   EXPECT: /dim=384/
   EVIDENCE: dim=384, collection dimension read from chroma.sqlite3, self-healing query retry active in curriculum_rag.py.
+
+- [x] GATE 22: Student Side UI Polish, Dedicated Settings Page & Perfectly Responsive Overlays:
+  - Create dedicated, feature-rich Student Profile & Settings Page (`SettingsPage.tsx`) mapped to `/settings` and `'Settings'` tab, replacing plain modals with high-polish bento cards for profile details, academic records, learning preferences, notification controls, account security with re-auth, and data export/cache management.
+  - Audit and fix all student overlay popups:
+    - Rewards & Achievements modal (`RewardsModal.tsx`): fix progress bar width bug, add dark mode support, and implement filter tabs (All, Unlocked, In Progress).
+    - Scientific Calculator (`ScientificCalculator.tsx`): responsive docked/centered mobile layout without coordinate drag clipping, theme tokens harmonized with purple/cyan brand palette, and dark mode support.
+    - Floating AI Chatbot (`FloatingAITutor.tsx`): harmonize header gradient to brand colors, remove awkward `<br/>` line break, and ensure dark mode support.
+  - Perfect responsive collapse across all breakpoints (desktop, laptop, tablet, mobile) with non-breaking 1-line text elements.
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: /built in/
+  EVIDENCE: Passed with 0 errors across all checks. oxlint passed with 0 errors across 390 files; tsc --noEmit passed with 0 errors; Vite production build built in 44.82s with exit code 0 (SettingsPage-B3z_8x0m.js, RewardsModal-B9h12f_H.js, ScientificCalculator-Cg31N_yQ.js, FloatingAITutor-B0kK7b-a.js). Browser subagent verified /settings live: user banner with avatar, DepEd status badges, 5 responsive tabs (Profile & Academic, Learning & Display, Notifications, Security & Login, Data & Storage) switching with zero errors, and clean layout across breakpoints (settings_page_verified_1789386043280.png).
+
+- [x] GATE 23: Interactive Student ID Card, Colorful File Folder Settings & Centered Calculator:
+  - Cute and creative MathPulse AI Student ID card on the left with interactive 3D flip:
+    - Punch-out metallic lanyard clip slot at top center.
+    - 100% genuine student data (real student name, DepEd LRN, Grade & Section, School, real Level & Total XP, student UID). Zero fake or fabricated stats (no fake "Rank #7", no fake NFC).
+    - Front: MathPulse vector mascot badge with sparkles, portrait photo frame with integrated uploader, learner details, dynamic cursive handwritten signature, deterministic SVG barcode, and cute mini QR code with center pulse-heart.
+    - Back: Glowing MathPulse mascot emblem with radial aura ring, inspirational motto ("Every problem has a solution. Keep pulsing! 💜"), verified learner pass badge, and genuine Level & Total XP stat cards.
+  - Vibrant and playful File Folder Settings hub on the right:
+    - Realistic file folder jacket with colored tab dividers, binder paperclip graphic, top spine gradient, and notebook dot-grid paper background.
+    - 5 student-friendly, colorful folder sheets:
+      1. Student Details (Lavender/Purple): Name, Email, Phone, Gender, DepEd LRN, Grade Level, Section/Strand, School.
+      2. Display & Theme (Sky Blue/Cyan): Theme mode toggle, animations, daily XP goals, practice level, study time.
+      3. Alerts & Reminders (Amber/Coral): Push alerts, streak protector, 1v1 Quiz Battle invites, study notifications.
+      4. Login & Password (Mint/Emerald): Password update, Student ID confirmation, account security tips.
+      5. My Data & Files (Rose/Berry): Learning summary export, cache cleaner, diagnostic test retake, logout.
+  - Interactive "Open Avatar Studio" button hover effect:
+    - Pops out cute mascot avatar head with speech bubble ("Dress me up! 🎨") and sparkles above/beside the button on hover.
+  - Centered Scientific Calculator:
+    - Perfectly centered horizontally and vertically on viewport (`fixed inset-0 z-[100] flex items-center justify-center`) with dark dimmed backdrop overlay.
+  - Full responsiveness across mobile (ID stacked on top, folder below), tablet, and desktop (ID left, folder right).
+  CHECK: npm run lint:anti-slop && npm run typecheck && npm run build
+  EXPECT: /built in/
+  EVIDENCE: Passed with 0 errors across all checks. oxlint passed with 0 errors across all files; tsc --noEmit passed with 0 errors; Vite production build completed with exit code 0 (`built in 2m`, SettingsPage-BdSmxDNj.js, ScientificCalculator-DXz6nn4N.js). Browser subagent verified live on http://localhost:5173/settings: cute Student ID card with lanyard punch-hole and genuine data (student_id_front_1789443512447.png), 3D card flip showing glowing mascot emblem and real Level 2 / 135 XP stats (student_id_back_1789443554901.png), colorful file folder tab navigation with vibrant spine gradients and paperclip graphic across all 5 sheets (folder_tab_display_theme_1789443826155.png, alerts_reminders_tab_active_success_1789444410056.png, login_password_tab_active_success_1789444466231.png, my_data_files_tab_active_success_1789444516584.png), peeking avatar head hover effect on Open Avatar Studio button, and Scientific Calculator modal centered on screen with backdrop (scientific_calculator_modal_opened_1789445041438.png).

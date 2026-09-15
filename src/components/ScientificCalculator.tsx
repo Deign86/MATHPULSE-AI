@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, GripHorizontal, ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { apiService } from '../services/apiService';
@@ -332,21 +333,6 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
   const expressionRef = useRef<HTMLDivElement>(null);
   const calcWrapperRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-
-  // Position for the floating calculator — always center on open
-  const [calcPos, setCalcPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  useEffect(() => {
-    if (isOpen) {
-      const calcW = 300;
-      const calcH = 480;
-      setCalcPos({
-        x: Math.round((window.innerWidth - calcW) / 2),
-        y: Math.max(20, Math.round((window.innerHeight - calcH) / 2)),
-      });
-    }
-  }, [isOpen]);
 
   // Persist minimized state
   useEffect(() => {
@@ -611,71 +597,45 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
   /* ── Button style helper ─────────────────────────────────── */
   const getButtonClasses = (variant: BtnVariant, label: string): string => {
-    const base = 'flex items-center justify-center rounded-2xl font-bold transition-all duration-150 active:scale-95 select-none cursor-pointer touch-manipulation relative overflow-hidden';
-    const sizeNum = 'min-h-[44px] text-[13px]';
-    const sizeFunc = 'min-h-[44px] text-[11px]';
+    const base = 'flex items-center justify-center rounded-xl font-bold transition-all duration-150 active:scale-95 select-none cursor-pointer touch-manipulation relative overflow-hidden';
+    const sizeNum = 'min-h-[42px] text-[13px]';
+    const sizeFunc = 'min-h-[42px] text-[11px]';
 
     switch (variant) {
       case 'number':
-        return `${base} ${sizeNum} bg-white hover:bg-[#edf1f7] text-[#0a1628] border border-[#dde3eb] shadow-sm`;
+        return `${base} ${sizeNum} bg-white dark:bg-slate-800 hover:bg-[#edf1f7] dark:hover:bg-slate-700 text-[#0a1628] dark:text-white border border-[#dde3eb] dark:border-slate-700 shadow-xs`;
       case 'op':
-        return `${base} ${sizeNum} bg-[#edf1f7] hover:bg-[#dde3eb] text-[#7274ED] border border-[#dde3eb] shadow-sm font-bold`;
+        return `${base} ${sizeNum} bg-[#edf1f7] dark:bg-slate-800/90 hover:bg-[#dde3eb] dark:hover:bg-slate-700 text-[#7274ED] dark:text-indigo-300 border border-[#dde3eb] dark:border-slate-700 shadow-xs font-bold`;
       case 'func':
         return `${base} ${sizeFunc} bg-[#9956DE] hover:bg-[#8A4DCA] text-white shadow-md shadow-[#9956DE]/20`;
       case 'del':
-        return `${base} ${sizeNum} ${label === 'AC' ? 'bg-[#FF8B8B] hover:bg-[#FF7373]' : 'bg-[#FB96BB] hover:bg-[#FA7DA9]'} text-[#8A1A1A] shadow-md shadow-red-900/10 font-bold border-none`;
+        return `${base} ${sizeNum} ${label === 'AC' ? 'bg-[#FF8B8B] hover:bg-[#FF7373]' : 'bg-[#FB96BB] hover:bg-[#FA7DA9]'} text-white shadow-md shadow-rose-900/10 font-bold border-none`;
       case 'equals':
         return `${base} ${sizeNum} bg-[#1FA7E1] hover:bg-[#1C96CB] text-white shadow-lg shadow-[#1FA7E1]/30 font-bold text-[13px]`;
       case 'shift':
-        return `${base} ${sizeFunc} bg-white hover:bg-[#edf1f7] text-[#9956DE] border border-[#dde3eb] shadow-sm font-bold uppercase tracking-wider text-[9px]`;
+        return `${base} ${sizeFunc} bg-white dark:bg-slate-800 hover:bg-[#edf1f7] dark:hover:bg-slate-700 text-[#9956DE] dark:text-purple-400 border border-[#dde3eb] dark:border-slate-700 shadow-xs font-bold uppercase tracking-wider text-[9px]`;
       case 'mode':
-        return `${base} ${sizeFunc} bg-white hover:bg-[#edf1f7] text-[#1FA7E1] border border-[#dde3eb] shadow-sm font-bold`;
+        return `${base} ${sizeFunc} bg-white dark:bg-slate-800 hover:bg-[#edf1f7] dark:hover:bg-slate-700 text-[#1FA7E1] dark:text-sky-400 border border-[#dde3eb] dark:border-slate-700 shadow-xs font-bold`;
       default:
-        return `${base} ${sizeNum} bg-slate-100 text-[#0a1628] border border-slate-200`;
+        return `${base} ${sizeNum} bg-slate-100 dark:bg-slate-800 text-[#0a1628] dark:text-white border border-slate-200 dark:border-slate-700`;
     }
   };
 
   /* ── Render ──────────────────────────────────────────────── */
-
-  /** Custom drag handler for the title bar */
-  const handleDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const origX = calcPos.x;
-    const origY = calcPos.y;
-
-    const onMove = (ev: MouseEvent) => {
-      const newX = origX + (ev.clientX - startX);
-      const newY = origY + (ev.clientY - startY);
-      setCalcPos({ x: newX, y: newY });
-    };
-    const onUp = (ev: MouseEvent) => {
-      isDragging.current = false;
-      const final = { x: origX + (ev.clientX - startX), y: origY + (ev.clientY - startY) };
-      setCalcPos(final);
-      try { localStorage.setItem('mathpulse_calc_position', JSON.stringify(final)); } catch { /* noop */ }
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }, [calcPos]);
 
   if (!isOpen) return null;
 
   const calculator = (
     <div className="flex flex-col w-full select-none">
       {/* ── Display ────────────────────────────────────────── */}
-      <div className="bg-white rounded-t-2xl p-2.5 border border-slate-200 border-b-0">
+      <div className="bg-white dark:bg-slate-900 rounded-t-2xl p-3 border border-slate-200 dark:border-slate-800 border-b-0">
         {/* Mode badges */}
         <div className="flex items-center gap-2 mb-2">
           <span className={`
             text-[10px] font-bold px-2 py-0.5 rounded-full
             ${angleMode === 'DEG' 
-              ? 'bg-rose-500/20 text-rose-400 border border-sky-500/30' 
-              : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}
+              ? 'bg-rose-500/20 text-rose-500 dark:text-rose-400 border border-sky-500/30' 
+              : 'bg-rose-500/20 text-rose-500 dark:text-rose-400 border border-rose-500/30'}
           `}>
             {angleMode}
           </span>
@@ -690,7 +650,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
             </span>
           )}
           {sympyVerifying && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30 animate-pulse">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 animate-pulse">
               Verifying…
             </span>
           )}
@@ -699,7 +659,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         {/* Expression line (top) */}
         <div
           ref={expressionRef}
-          className="text-right text-slate-500 text-[12px] font-mono h-[18px] overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide"
+          className="text-right text-slate-500 dark:text-slate-400 text-[12px] font-mono h-[18px] overflow-x-auto overflow-y-hidden whitespace-nowrap scrollbar-hide"
         >
           {prevExpression || '\u00A0'}
         </div>
@@ -707,7 +667,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         {/* Result line (bottom) */}
         <div className={`
           text-right font-mono font-bold text-[24px] leading-tight h-8 overflow-hidden whitespace-nowrap
-          ${isError ? 'text-red-400' : 'text-[#0a1628]'}
+          ${isError ? 'text-rose-500' : 'text-slate-900 dark:text-white'}
         `}>
           {expression || result}
         </div>
@@ -719,20 +679,20 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mt-2 pt-2 border-t border-slate-300"
+              className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800"
             >
               <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                <span className="text-[10px] text-rose-400 font-semibold uppercase tracking-wider">SymPy Verified</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">SymPy Verified</span>
               </div>
-              <p className="text-xs text-slate-500 font-mono">{sympyResult.result}</p>
+              <p className="text-xs text-slate-700 dark:text-slate-300 font-mono">{sympyResult.result}</p>
               {sympyResult.latex && (
-                <p className="text-[10px] text-[#5a6578] font-mono mt-0.5">LaTeX: {sympyResult.latex}</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">LaTeX: {sympyResult.latex}</p>
               )}
               {sympyResult.steps.length > 1 && (
                 <div className="mt-1 space-y-0.5">
                   {sympyResult.steps.slice(1).map((step, i) => (
-                    <p key={i} className="text-[10px] text-[#5a6578]">{step}</p>
+                    <p key={i} className="text-[10px] text-slate-500 dark:text-slate-400">{step}</p>
                   ))}
                 </div>
               )}
@@ -746,8 +706,8 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         onClick={verifySympyExpression}
         disabled={sympyVerifying}
         className="
-          w-full py-1.5 bg-slate-50 border-x border-slate-200
-          text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-slate-100
+          w-full py-1.5 bg-slate-50 dark:bg-slate-800/80 border-x border-slate-200 dark:border-slate-800
+          text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/30
           transition-colors disabled:opacity-50 disabled:cursor-not-allowed
           flex items-center justify-center gap-1.5
         "
@@ -759,7 +719,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
       </button>
 
       {/* ── Button grid ────────────────────────────────────── */}
-      <div className="bg-white rounded-b-2xl p-2.5 border border-slate-200 border-t-0 space-y-0.5">
+      <div className="bg-white dark:bg-slate-900 rounded-b-2xl p-2.5 border border-slate-200 dark:border-slate-800 border-t-0 space-y-1">
         {rows.map((row, ri) => (
           <div key={ri} className="grid grid-cols-5 gap-0.5">
             {row.map((btn, bi) => {
@@ -806,24 +766,24 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
       {/* ── Keyboard shortcuts panel ──────────────────────── */}
       {showShortcuts && (
-        <div className="bg-slate-50 border-t border-slate-200 text-xs text-slate-500 p-3 rounded-b-2xl">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+S</span><span>sin(</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+Shift+S</span><span>sin⁻¹(</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+C</span><span>cos(</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+Shift+C</span><span>cos⁻¹(</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+T</span><span>tan(</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+Shift+T</span><span>tan⁻¹(</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+L</span><span>log(</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+N</span><span>ln(</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+R</span><span>√(</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+P</span><span>π</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+E</span><span>e</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+2</span><span>²</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+3</span><span>³</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+^</span><span>^</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+A</span><span>Ans</span></div>
-            <div className="flex justify-between"><span className="text-[#5a6578]">Alt+D</span><span>DEG/RAD</span></div>
+        <div className="bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 p-3 rounded-b-2xl">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[11px]">
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+S</span><span>sin(</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+Shift+S</span><span>sin⁻¹(</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+C</span><span>cos(</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+Shift+C</span><span>cos⁻¹(</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+T</span><span>tan(</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+Shift+T</span><span>tan⁻¹(</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+L</span><span>log(</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+N</span><span>ln(</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+R</span><span>√(</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+P</span><span>π</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+E</span><span>e</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+2</span><span>²</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+3</span><span>³</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+^</span><span>^</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+A</span><span>Ans</span></div>
+            <div className="flex justify-between"><span className="text-purple-600 dark:text-purple-400 font-bold">Alt+D</span><span>DEG/RAD</span></div>
           </div>
         </div>
       )}
@@ -836,61 +796,85 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   }
 
   /* ── Floating modal mode ─────────────────────────────────── */
-  return (
+  const modal = (
     <AnimatePresence>
       {isOpen && (
-          <div
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 pointer-events-auto">
+          {/* Backdrop on all viewports */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-950/45 backdrop-blur-xs"
+            onClick={onClose}
+          />
+
+          {/* Calculator Dialog Container - Centered Vertically & Horizontally */}
+          <motion.div
             ref={calcWrapperRef}
-            className="fixed z-50 e-left-top w-[300px]"
-            // SAFETY: trusted internal value already conforms to the asserted type.
-            style={{ ['--top' as any]: `${calcPos.y}px`, ['--left' as any]: `${calcPos.x}px` }}
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="relative z-10 w-[calc(100vw-2rem)] max-w-[340px] max-h-[90vh] flex flex-col shadow-2xl rounded-2xl overflow-hidden border border-purple-200/80 dark:border-purple-900/60 bg-white dark:bg-slate-900"
             onClick={() => setIsFocused(true)}
           >
-            {/* Header bar – draggable */}
+            {/* Header bar */}
             <div
-              className="bg-gradient-to-r from-sky-600 to-sky-500 rounded-t-2xl px-2.5 py-1.5 flex items-center justify-between cursor-move"
-              onMouseDown={handleDragStart}
+              className="bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] px-3.5 py-2.5 flex items-center justify-between shadow-xs text-white shrink-0 select-none"
             >
               <div className="flex items-center gap-2">
-                <GripHorizontal size={12} className="text-white/50" />
-                <h3 className="text-white font-bold text-[12px]">Scientific Calculator</h3>
+                <GripHorizontal size={14} className="text-white/70" />
+                <h3 className="text-white font-bold text-xs tracking-tight">Scientific Calculator</h3>
               </div>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setShowShortcuts(s => !s)}
-                  className="p-1 rounded-lg hover:bg-slate-200/70 transition-colors"
+                  type="button"
+                  onClick={() => setShowShortcuts((s) => !s)}
+                  className="p-1 rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
                   title="Keyboard shortcuts"
                 >
-                  <Keyboard size={12} className="text-white" />
+                  <Keyboard size={13} className="text-white" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => setIsMinimized(!isMinimized)}
-                  className="p-1 rounded-lg hover:bg-slate-200/70 transition-colors"
+                  className="p-1 rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
+                  title={isMinimized ? 'Expand calculator' : 'Minimize calculator'}
                 >
-                  {isMinimized ? <ChevronUp size={12} className="text-white" /> : <ChevronDown size={12} className="text-white" />}
+                  {isMinimized ? <ChevronUp size={13} className="text-white" /> : <ChevronDown size={13} className="text-white" />}
                 </button>
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="p-1 rounded-lg hover:bg-slate-200/70 transition-colors"
+                  className="p-1 rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
+                  title="Close calculator"
                 >
-                  <X size={12} className="text-white" />
+                  <X size={13} className="text-white" />
                 </button>
               </div>
             </div>
 
-            {/* Body – collapsible */}
-            {!isMinimized && calculator}
+            {/* Body – collapsible & scrollable if screen is small */}
+            {!isMinimized && (
+              <div className="overflow-y-auto max-h-[calc(90vh-50px)]">
+                {calculator}
+              </div>
+            )}
 
             {/* Minimized preview */}
             {isMinimized && (
-              <div className="bg-slate-50 rounded-b-2xl p-3 border border-slate-200 border-t-0">
-                <p className="text-right text-[#0a1628] font-mono font-bold text-lg">{result}</p>
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-b-2xl p-3 border border-slate-200 dark:border-slate-800 border-t-0">
+                <p className="text-right text-[#0a1628] dark:text-white font-mono font-bold text-lg">{result}</p>
               </div>
             )}
-          </div>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal;
 };
 
 export default ScientificCalculator;
