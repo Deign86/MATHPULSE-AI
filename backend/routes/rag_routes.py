@@ -205,20 +205,89 @@ def _fetch_youtube_videos(
         return []
 
 
-def _ensure_7_sections(lesson_data: dict, lesson_title: str) -> dict:
+def _build_grounded_defaults(lesson_title: str, chunks: Optional[List[Dict[str, Any]]] = None) -> dict:
+    chunk_texts = [str(c.get("content") or "").strip() for c in (chunks or []) if str(c.get("content") or "").strip()]
+
+    if chunk_texts:
+        primary = chunk_texts[0]
+        intro_context = f"This lesson explores {lesson_title} grounded in the DepEd Senior High School curriculum. {primary[:220]}..."
+
+        bullet_points = []
+        for c in chunk_texts[:4]:
+            lines = [l.strip() for l in c.split("\n") if len(l.strip()) > 20]
+            if lines:
+                bullet_points.append(lines[0][:180])
+
+        if bullet_points:
+            concepts_body = f"Key definitions and operational principles for {lesson_title}:\n\n" + "\n\n".join(f"• {bp}" for bp in bullet_points)
+        else:
+            concepts_body = f"Fundamental concepts for {lesson_title}:\n\n{primary[:350]}"
+
+        callout_text = "Define variables explicitly and verify constraints when formulating mathematical and financial relations."
+    else:
+        intro_context = f"Welcome to the lesson on {lesson_title}. This topic builds foundational mathematical understanding."
+        concepts_body = (
+            f"The following key concepts are essential for mastering {lesson_title}:\n\n"
+            f"• Clearly identify the unknown quantities and assign meaningful variables.\n"
+            f"• Translate verbal transactions and scenarios into mathematical equations.\n"
+            f"• Apply systematic algebraic operations to evaluate and interpret models."
+        )
+        callout_text = "Always define variables and check domain constraints before solving mathematical models."
+
+    return {
+        "introduction": {"type": "introduction", "title": "Introduction", "content": intro_context},
+        "key_concepts": {
+            "type": "key_concepts",
+            "title": "Key Concepts",
+            "content": concepts_body,
+            "callouts": [{"type": "important", "text": callout_text}],
+        },
+        "video": {"type": "video", "title": "Video Lesson", "content": "Watch the video explanation below to understand the concepts visually.", "videoId": "", "videoTitle": "", "videoChannel": "", "embedUrl": "", "thumbnailUrl": ""},
+        "worked_examples": {
+            "type": "worked_examples",
+            "title": "Worked Examples",
+            "examples": [{
+                "problem": f"Sample problem applying {lesson_title}",
+                "steps": [
+                    "Step 1: Identify given parameters and represent unknown quantities with variables.",
+                    "Step 2: Construct the governing equation or algebraic model.",
+                    "Step 3: Solve algebraically step-by-step for the required unknown.",
+                    "Step 4: Check that the result satisfies all problem constraints and state the conclusion.",
+                ],
+                "answer": "Follow structured algebraic steps to evaluate and verify results.",
+            }],
+        },
+        "important_notes": {
+            "type": "important_notes",
+            "title": "Important Notes",
+            "bulletPoints": [
+                f"Verify units and constraints carefully throughout calculations for {lesson_title}.",
+                "Check for extraneous roots or invalid values outside the practical domain.",
+                "Practice regular word-problem translations to build mathematical fluency.",
+            ],
+        },
+        "try_it_yourself": {
+            "type": "try_it_yourself",
+            "title": "Try It Yourself",
+            "practiceProblems": [{
+                "question": f"Formulate and solve a real-world scenario applying {lesson_title}.",
+                "solution": "Set up variables, formulate the equation, solve for the unknown, and interpret the outcome in context.",
+            }],
+        },
+        "summary": {
+            "type": "summary",
+            "title": "Summary",
+            "content": f"In this lesson on {lesson_title}, you explored foundational definitions, worked through algebraic models, and reviewed practical interpretations. Proceed to the practice quiz to solidify your mastery.",
+        },
+    }
+
+
+def _ensure_7_sections(lesson_data: dict, lesson_title: str, chunks: Optional[List[Dict[str, Any]]] = None) -> dict:
     sections = lesson_data.get("sections", [])
     section_types = {s.get("type") for s in sections}
     required = ["introduction", "key_concepts", "video", "worked_examples", "important_notes", "try_it_yourself", "summary"]
 
-    default_content = {
-        "introduction": {"type": "introduction", "title": "Introduction", "content": f"Welcome to the lesson on {lesson_title}. This topic builds foundational skills for your mathematics journey."},
-        "key_concepts": {"type": "key_concepts", "title": "Key Concepts", "content": f"The following key concepts are essential for mastering {lesson_title}:", "callouts": [{"type": "important", "text": "Review the curriculum PDF for detailed explanations of each concept."}]},
-        "video": {"type": "video", "title": "Video Lesson", "content": "Watch the video explanation below to understand the concepts visually.", "videoId": "", "videoTitle": "", "videoChannel": "", "embedUrl": "", "thumbnailUrl": ""},
-        "worked_examples": {"type": "worked_examples", "title": "Worked Examples", "examples": [{"problem": f"Sample problem for {lesson_title}", "steps": ["Step 1: Identify the given information.", "Step 2: Apply the appropriate formula or method.", "Step 3: Solve step-by-step.", "Step 4: Verify your answer."], "answer": "Solution will vary based on specific problem parameters."}]},
-        "important_notes": {"type": "important_notes", "title": "Important Notes", "bulletPoints": [f"Always read problems carefully before solving {lesson_title} questions.", "Check your units and ensure consistency throughout calculations.", "Practice regularly to build fluency with these concepts."]},
-        "try_it_yourself": {"type": "try_it_yourself", "title": "Try It Yourself", "practiceProblems": [{"question": f"Practice applying {lesson_title} concepts. Solve a similar problem from your textbook or worksheets.", "solution": "Compare your solution with the worked examples above. If stuck, re-read the key concepts section or ask your teacher for guidance."}]},
-        "summary": {"type": "summary", "title": "Summary", "content": f"In this lesson on {lesson_title}, you explored key concepts, worked through examples, and practiced problem-solving techniques. Continue reviewing these materials and seek additional practice to strengthen your understanding."},
-    }
+    default_content = _build_grounded_defaults(lesson_title, chunks=chunks)
 
     def _is_section_blank(section: dict, s_type: str) -> bool:
         """Check if a section has effectively no content."""
@@ -345,7 +414,7 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
         raw_explanation = await _generate_text(
             prompt,
             task_type="rag_lesson",
-            max_new_tokens=1800,
+            max_new_tokens=4096,
             enable_thinking=True,
         )
     except Exception as exc:
@@ -362,7 +431,7 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
     # ── Step 4: Parse & validate response ────────────────────────────────────
     try:
         parsed_lesson = _strip_thinking_and_parse(raw_explanation)
-        parsed_lesson = _ensure_7_sections(parsed_lesson, payload.lessonTitle or payload.topic)
+        parsed_lesson = _ensure_7_sections(parsed_lesson, payload.lessonTitle or payload.topic, chunks=chunks)
     except Exception as exc:
         logger.error(f"RAG parse error: {type(exc).__name__}: {exc}")
         raise HTTPException(

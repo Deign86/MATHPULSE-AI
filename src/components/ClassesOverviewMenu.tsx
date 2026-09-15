@@ -87,19 +87,19 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
 
   return (
     <div className="h-full overflow-y-auto w-full block">
-      <div className="max-w-[1400px] mx-auto p-3 sm:p-[24px] xl:p-[32px] space-y-3 sm:space-y-[24px]">
+      <div className="max-w-[1400px] mx-auto p-3 sm:p-[24px] xl:p-[32px] space-y-3 sm:space-y-[24px] pb-28 sm:pb-8">
 
         {/* Global Search Bar - Redesigned for content area */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1 max-w-xl">
-            <div className="flex items-center bg-white/80 px-4 py-2.5 rounded-[16px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white backdrop-blur-[12px] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
-              <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
+            <div className="flex items-center bg-white/80 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-[16px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white backdrop-blur-[12px] group focus-within:ring-2 focus-within:ring-[#a855f7]/20 transition-all">
+              <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#a855f7] transition-colors" />
               <input
                 type="text"
                 placeholder="Global search for a student across all classes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none focus:outline-none ml-3 text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
+                className="bg-transparent border-none focus:outline-none ml-2.5 sm:ml-3 text-xs sm:text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
               />
             </div>
           </div>
@@ -107,100 +107,109 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
 
         {/* Global Stats & Alerts Row (Vibrant Palette) */}
         {isCompetency ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-[16px]">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {/* Card 1 (Total Students / Amethyst) */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col justify-between h-full group text-white">
-              <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-              <div className="flex items-start justify-between relative z-10 mb-4">
-                <span className="text-[13px] font-medium text-white/90">Total Students Evaluated</span>
-                <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-                  <Users className="w-4 h-4 text-white" />
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col justify-between group text-white">
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
+              <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
+                <span className="text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">
+                  <span className="sm:hidden">Total</span>
+                  <span className="hidden sm:inline">Total Students</span>
+                </span>
+                <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
+                  <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                 </div>
               </div>
-              <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{totalStudents}</div>
-              <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                <span className="text-[12px] font-medium text-white/90">Active across all classes</span>
+              <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{totalStudents}</div>
+              <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5 mt-auto">
+                <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">Active across classes</span>
               </div>
             </div>
 
             {/* Card 2 (Global Average / Blue) */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between h-full group text-white">
-              <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-              <div className="flex items-start justify-between relative z-10 mb-4">
-                <span className="text-[13px] font-medium text-white/90">Global Avg Competency</span>
-                <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-                  <Target className="w-4 h-4 text-white" />
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between group text-white">
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
+              <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
+                <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">
+                  <span className="sm:hidden">Avg Comp.</span>
+                  <span className="hidden sm:inline">Avg Competency</span>
+                </span>
+                <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
+                  <Target className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                 </div>
               </div>
-              <div className="text-[32px] font-bold relative z-10 leading-none mb-6">{avgPerformance}%</div>
-              <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                <span className="text-[12px] font-medium text-white/90">Across {classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
+              <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{avgPerformance}%</div>
+              <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5 mt-auto">
+                <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">{classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
               </div>
             </div>
 
             {/* Card 3 (Most Common Weakness / Orange) */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between h-full group text-white">
-              <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-              <div className="flex items-start justify-between relative z-10 mb-4">
-                <span className="text-[13px] font-medium text-white/90">Universal Weakness</span>
-                <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-                  <Target className="w-4 h-4 text-white" />
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between group text-white">
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
+              <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
+                <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">
+                  <span className="sm:hidden">Weakness</span>
+                  <span className="hidden sm:inline">Universal Weakness</span>
+                </span>
+                <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
+                  <Target className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                 </div>
               </div>
-              <div className="text-[20px] font-bold relative z-10 leading-tight mb-2 truncate">Foundational Skills</div>
-              <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3 mt-auto">
-                <span className="text-[12px] font-medium text-white/90">Identified in {classes.length} classes</span>
+              <div className="font-display text-[13px] sm:text-base lg:text-[18px] font-bold relative z-10 leading-tight mb-1 sm:mb-2 truncate">Foundations</div>
+              <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5 mt-auto">
+                <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">{classes.length} classes</span>
               </div>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-[16px]">
-            {/* Global Stats Cards */}
-            <div className="lg:col-span-8 grid grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-[16px]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-[16px]">
+            {/* Global Stats Cards (3 columns across all screen sizes) */}
+            <div className="lg:col-span-8 grid grid-cols-3 gap-2 sm:gap-[16px]">
 
               {/* Card 1 (Total Students / Green) */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-[14px] sm:rounded-[16px] p-[14px] sm:p-[20px] shadow-[0_4px_12px_rgba(16,185,129,0.2)] flex flex-col justify-between h-full group text-white">
-                <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-                <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
-                  <span className="text-[11px] sm:text-[13px] font-medium text-white/90">Total Students</span>
-                  <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-                    <Users className="w-4 h-4 text-white" />
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col justify-between h-full group text-white">
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
+                <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
+                  <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">Total Students</span>
+                  <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
+                    <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                   </div>
                 </div>
-                <div className="text-[24px] sm:text-[32px] font-bold relative z-10 leading-none mb-3 sm:mb-6">{totalStudents}</div>
-                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                  <span className="text-[12px] font-medium text-white/90">Across {classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
+                <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{totalStudents}</div>
+                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5">
+                  <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">Across {classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
                 </div>
               </div>
 
               {/* Card 2 (Global Average / Blue) */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[14px] sm:rounded-[16px] p-[14px] sm:p-[20px] shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between h-full group text-white">
-                <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-                <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
-                  <span className="text-[11px] sm:text-[13px] font-medium text-white/90">Class average</span>
-                  <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-                    <Target className="w-4 h-4 text-white" />
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between h-full group text-white">
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
+                <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
+                  <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">Class avg</span>
+                  <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
+                    <Target className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                   </div>
                 </div>
-                <div className="text-[24px] sm:text-[32px] font-bold relative z-10 leading-none mb-3 sm:mb-6">{avgPerformance}%</div>
-                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                  <span className="text-[12px] font-medium text-white/90">Across {classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
+                <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{avgPerformance}%</div>
+                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5">
+                  <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">Across {classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
                 </div>
               </div>
 
               {/* Card 3 (Total At-Risk / Orange) */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[14px] sm:rounded-[16px] p-[14px] sm:p-[20px] shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between h-full group text-white">
-                <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-                <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
-                  <span className="text-[11px] sm:text-[13px] font-medium text-white/90">At risk</span>
-                  <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-                    <AlertCircle className="w-4 h-4 text-white" />
+              <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between h-full group text-white">
+                <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
+                <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
+                  <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">At risk</span>
+                  <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
+                    <AlertCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                   </div>
                 </div>
-                <div className="text-[24px] sm:text-[32px] font-bold relative z-10 leading-none mb-3 sm:mb-6">{totalAtRisk}</div>
-                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-3">
-                  <span className="text-[12px] font-medium text-white/90">Requires attention</span>
-                  <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-[4px] backdrop-blur-sm">
+                <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{totalAtRisk}</div>
+                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5">
+                  <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">Attention</span>
+                  <span className="font-body text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded backdrop-blur-sm tabular-nums shrink-0">
                     {totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%
                   </span>
                 </div>
@@ -208,22 +217,22 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
             </div>
 
             {/* AI Action Items (Purple Theme) */}
-            <div className="lg:col-span-4 relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col text-white">
+            <div className="lg:col-span-4 relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-[16px] p-3 sm:p-5 shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col text-white">
               <div className="absolute -right-12 -top-12 w-40 h-40 bg-white/10 rounded-full"></div>
 
-              <div className="flex justify-between items-center mb-4 relative z-10 border-b border-white/20 pb-3">
-                <h3 className="text-[14px] font-semibold text-white flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+              <div className="flex justify-between items-center mb-2.5 sm:mb-4 relative z-10 border-b border-white/20 pb-2 sm:pb-3">
+                <h3 className="font-display text-xs sm:text-[14px] font-bold text-white flex items-center gap-1.5 sm:gap-2">
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
                   AI Action Items
                 </h3>
-                <span className="text-[10px] font-bold text-[#9333ea] bg-white px-2 py-0.5 rounded-[4px]">{aiActionItems.length} Pending</span>
+                <span className="font-body text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider text-[#a855f7] bg-white px-2 py-0.5 rounded-[4px]">{aiActionItems.length} Pending</span>
               </div>
 
-              <div className="space-y-[8px] flex-1 overflow-y-auto no-scrollbar relative z-10">
+              <div className="space-y-[6px] sm:space-y-[8px] flex-1 overflow-y-auto no-scrollbar relative z-10">
                 {aiActionItems.map((item, i) => (
-                  <div key={i} className="bg-white/10 hover:bg-white/20 rounded-[8px] p-3 text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-3 items-start">
+                  <div key={i} className="bg-white/10 hover:bg-white/20 rounded-[8px] p-2.5 sm:p-3 text-[11px] sm:text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-2.5 items-start">
                     <div className="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
-                      <item.icon className="w-4 h-4" />
+                      <item.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
                     <div className="leading-snug text-white/90">{item.text}</div>
                   </div>

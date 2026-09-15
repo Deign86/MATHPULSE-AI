@@ -339,101 +339,103 @@ const TopicMasteryView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="w-full p-[24px] xl:p-[32px] space-y-[24px]"
+      className="w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 pb-28 sm:pb-8"
     >
-      {/* 4 Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px]">
-        {/* Total Topics */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col justify-between h-full group text-white">
-          <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-          <div className="flex items-start justify-between relative z-10 mb-4">
-            <span className="text-[13px] font-medium text-white/90">Total Topics Tracked</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <BarChart3 size={16} className="text-white" />
-            </div>
-          </div>
-          <div className="text-[32px] font-bold relative z-10 leading-none">{summary.totalTopicsTracked}</div>
+      {/* Search & Filters Row */}
+      <div className="flex flex-col md:flex-row gap-2.5 sm:gap-4">
+        <div className="flex items-center bg-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full md:w-64">
+          <Search size={15} className="text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
+          <input
+            type="text"
+            placeholder="Search topics..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-transparent border-none focus:outline-none ml-2 text-xs sm:text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
+          />
         </div>
-
-        {/* Mastered */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(16,185,129,0.2)] flex flex-col justify-between h-full group text-white">
-          <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-          <div className="flex items-start justify-between relative z-10 mb-4">
-            <span className="text-[13px] font-medium text-white/90">Mastered by Class</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <CheckCircle size={16} className="text-white" />
-            </div>
-          </div>
-          <div className="text-[32px] font-bold relative z-10 leading-none">{summary.masteredCount}</div>
-        </div>
-
-        {/* Needs Work */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#f43f5e] to-[#e11d48] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(244,63,94,0.2)] flex flex-col justify-between h-full group text-white">
-          <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-          <div className="flex items-start justify-between relative z-10 mb-4">
-            <span className="text-[13px] font-medium text-white/90">Needs Work</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <AlertTriangle size={16} className="text-white" />
-            </div>
-          </div>
-          <div className="text-[32px] font-bold relative z-10 leading-none">{summary.needsAttentionCount}</div>
-        </div>
-
-        {/* Excluded */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#64748b] to-[#475569] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(100,116,139,0.2)] flex flex-col justify-between h-full group text-white">
-          <div className="absolute -right-12 -bottom-12 w-40 h-40 bg-white/10 rounded-full"></div>
-          <div className="flex items-start justify-between relative z-10 mb-4">
-            <span className="text-[13px] font-medium text-white/90">Excluded Topics</span>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-              <EyeOff size={16} className="text-white" />
-            </div>
-          </div>
-          <div className="text-[32px] font-bold relative z-10 leading-none">{summary.excludedCount}</div>
-        </div>
-      </div>
-
-      {/* Topic Data Container */}
-      <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white">
-
-        {/* Filters Row */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex items-center bg-white px-4 py-2.5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full md:w-64">
-            <Search size={16} className="text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
-            <input
-              type="text"
-              placeholder="Search topics..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
-            />
-          </div>
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full md:w-auto md:flex md:items-center">
           <div className="relative w-full md:w-48">
             <select
               value={subjectFilter}
               onChange={(e) => setSubjectFilter(e.target.value)}
-              className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[12px] pl-4 pr-10 py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer"
+              className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] font-medium rounded-[12px] pl-3 pr-8 sm:pl-4 sm:pr-10 py-2 sm:py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer truncate"
             >
               <option value="all">All Subjects</option>
               {gradeScopedSubjectIds.map((subjectId) => (
                 <option key={subjectId} value={subjectId}>{subjectNameById[subjectId] || subjectId}</option>
               ))}
             </select>
-            <ChevronDown size={16} className="text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown size={14} className="text-[#64748b] absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
           <div className="relative w-full md:w-48">
             <select
               value={gradeFilter}
               onChange={(e) => setGradeFilter(e.target.value)}
-              className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[12px] pl-4 pr-10 py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer"
+              className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] font-medium rounded-[12px] pl-3 pr-8 sm:pl-4 sm:pr-10 py-2 sm:py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer truncate"
             >
               <option value="all">All Grades</option>
               {GRADE_LEVELS.map((grade) => (
                 <option key={grade} value={grade}>{grade}</option>
               ))}
             </select>
-            <ChevronDown size={16} className="text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown size={14} className="text-[#64748b] absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
         </div>
+      </div>
+
+      {/* 4 Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        {/* Total Topics */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(168,85,247,0.2)] flex flex-col justify-between h-full group text-white">
+          <div className="absolute -right-8 -bottom-8 sm:-right-12 sm:-bottom-12 w-28 sm:w-40 h-28 sm:h-40 bg-white/10 rounded-full"></div>
+          <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
+            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Total Topics Tracked</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
+              <BarChart3 size={13} className="text-white sm:w-4 sm:h-4" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl lg:text-[32px] font-bold relative z-10 leading-none">{summary.totalTopicsTracked}</div>
+        </div>
+
+        {/* Mastered */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(16,185,129,0.2)] flex flex-col justify-between h-full group text-white">
+          <div className="absolute -right-8 -bottom-8 sm:-right-12 sm:-bottom-12 w-28 sm:w-40 h-28 sm:h-40 bg-white/10 rounded-full"></div>
+          <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
+            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Mastered by Class</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
+              <CheckCircle size={13} className="text-white sm:w-4 sm:h-4" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl lg:text-[32px] font-bold relative z-10 leading-none">{summary.masteredCount}</div>
+        </div>
+
+        {/* Needs Work */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#f43f5e] to-[#e11d48] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(244,63,94,0.2)] flex flex-col justify-between h-full group text-white">
+          <div className="absolute -right-8 -bottom-8 sm:-right-12 sm:-bottom-12 w-28 sm:w-40 h-28 sm:h-40 bg-white/10 rounded-full"></div>
+          <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
+            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Needs Work</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
+              <AlertTriangle size={13} className="text-white sm:w-4 sm:h-4" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl lg:text-[32px] font-bold relative z-10 leading-none">{summary.needsAttentionCount}</div>
+        </div>
+
+        {/* Excluded */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#64748b] to-[#475569] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(100,116,139,0.2)] flex flex-col justify-between h-full group text-white">
+          <div className="absolute -right-8 -bottom-8 sm:-right-12 sm:-bottom-12 w-28 sm:w-40 h-28 sm:h-40 bg-white/10 rounded-full"></div>
+          <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
+            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Excluded Topics</span>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
+              <EyeOff size={13} className="text-white sm:w-4 sm:h-4" />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl lg:text-[32px] font-bold relative z-10 leading-none">{summary.excludedCount}</div>
+        </div>
+      </div>
+
+      {/* Topic Data Container */}
+      <div className="bg-white/80 backdrop-blur-[12px] rounded-[16px] sm:rounded-[24px] p-2.5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white">
 
         {/* Bulk Actions Bar */}
         <AnimatePresence>
@@ -467,18 +469,24 @@ const TopicMasteryView: React.FC<{
           )}
         </AnimatePresence>
 
+        {/* Mobile scroll hint */}
+        <div className="md:hidden flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mb-1.5 px-1">
+          <span>Swipe horizontally to view all columns</span>
+          <span className="text-slate-300">→</span>
+        </div>
+
         {/* Data Grid */}
-        <div className="bg-white rounded-[16px] border border-[#f1f5f9] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
-          <div className="overflow-x-auto">
+        <div className="bg-white rounded-xl sm:rounded-[16px] border border-[#f1f5f9] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+          <div className="overflow-x-auto touch-pan-x overscroll-x-contain">
             <div className="min-w-[800px]">
               {/* Header Row */}
-              <div className="bg-[#9956DE] grid grid-cols-12 gap-4 p-4 border-b border-[#8b5cf6] items-center text-[11px] font-bold text-white tracking-wider uppercase shadow-md relative z-10 h-12">
+              <div className="bg-[#9956DE] grid grid-cols-12 gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-[#8b5cf6] items-center text-[10px] sm:text-[11px] font-bold text-white tracking-wider uppercase shadow-xs relative z-10 min-h-[38px] sm:h-11">
                 <div className="col-span-1 flex justify-center">
                   <input
                     type="checkbox"
                     checked={selectedTopics.size === filteredTopics.length && filteredTopics.length > 0}
                     onChange={toggleSelectAll}
-                    className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-4 h-4 border-white/30 bg-white/10 cursor-pointer"
+                    className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3.5 h-3.5 sm:w-4 sm:h-4 border-white/30 bg-white/10 cursor-pointer"
                   />
                 </div>
                 <div 
@@ -512,15 +520,15 @@ const TopicMasteryView: React.FC<{
               {/* Body Rows */}
               <div className="flex flex-col">
                 {filteredTopics.length === 0 ? (
-                  <div className="p-16 text-center border-b border-[#f1f5f9]">
+                  <div className="py-8 sm:py-12 px-4 text-center border-b border-[#f1f5f9]">
                     {topics.length === 0 ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <BarChart3 size={32} className="text-[#cbd5e1]" />
-                        <p className="text-[13px] font-semibold text-[#64748b]">No topic data available yet</p>
-                        <p className="text-[11px] text-[#94a3b8]">Import student quiz data to see class topic mastery analytics.</p>
+                      <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+                        <BarChart3 size={24} className="text-[#cbd5e1] sm:w-7 sm:h-7" />
+                        <p className="text-xs sm:text-[13px] font-semibold text-[#64748b]">No topic data available yet</p>
+                        <p className="text-[10px] sm:text-[11px] text-[#94a3b8]">Import student quiz data to see class topic mastery analytics.</p>
                       </div>
                     ) : (
-                      <span className="text-[13px] text-[#64748b]">No topics match the current filters.</span>
+                      <span className="text-xs sm:text-[13px] text-[#64748b]">No topics match the current filters.</span>
                     )}
                   </div>
                 ) : (
@@ -541,7 +549,7 @@ const TopicMasteryView: React.FC<{
                     return (
                       <div
                         key={topic.topicName}
-                        className={`grid grid-cols-12 gap-4 p-4 border-b border-[#f1f5f9] items-center hover:bg-slate-50/80 transition-colors group ${rowBg} ${topic.isExcluded ? 'line-through decoration-slate-400' : ''}`}
+                        className={`grid grid-cols-12 gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 border-b border-[#f1f5f9] items-center hover:bg-slate-50/80 transition-colors group ${rowBg} ${topic.isExcluded ? 'line-through decoration-slate-400' : ''}`}
                       >
                         <div className="col-span-1 flex justify-center">
                           <input
@@ -553,18 +561,18 @@ const TopicMasteryView: React.FC<{
                               else next.add(topic.topicName);
                               setSelectedTopics(next);
                             }}
-                            className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-4 h-4 border-gray-300 cursor-pointer"
+                            className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3.5 h-3.5 sm:w-4 sm:h-4 border-gray-300 cursor-pointer"
                           />
                         </div>
                         <div className="col-span-3 flex flex-col sm:flex-row sm:items-center gap-1.5 pr-2 min-w-0">
-                          <span className="font-semibold text-[#1e293b] text-[13px] truncate">{topic.topicName}</span>
+                          <span className="font-semibold text-[#1e293b] text-xs sm:text-[13px] truncate">{topic.topicName}</span>
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${subjectInfo.color}`}>
                             {subjectInfo.label}
                           </span>
                         </div>
-                        <div className="col-span-2 text-[#475569] text-[13px] truncate pr-2">{topic.unit}</div>
+                        <div className="col-span-2 text-[#475569] text-xs sm:text-[13px] truncate pr-2">{topic.unit}</div>
                         <div className="col-span-2">
-                          <span className="font-bold text-[#1e293b] text-[14px]">{topic.classAverage}%</span>
+                          <span className="font-bold text-[#1e293b] text-xs sm:text-[14px]">{topic.classAverage}%</span>
                         </div>
                         <div className="col-span-2 pr-4">
                           <div className="flex justify-between items-center text-[11px] mb-1">

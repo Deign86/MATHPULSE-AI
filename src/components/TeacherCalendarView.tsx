@@ -388,45 +388,45 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col px-[24px] xl:px-[32px] py-[24px] xl:py-[32px] overflow-hidden">
+    <div className="w-full h-full flex flex-col px-3 sm:px-6 xl:px-8 py-3.5 sm:py-6 xl:py-8 overflow-hidden">
       {/* Layout Grid */}
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0 w-full max-w-[1400px] mx-auto">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0 w-full max-w-[1400px] mx-auto">
         
         {/* Main Calendar Area */}
         <div className={`flex flex-col flex-1 min-w-0 transition-all duration-500 ${showSidebar ? 'lg:w-[65%] xl:w-[70%]' : 'lg:w-full'}`}>
-          <div className="bg-white/90 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-full">
+          <div className="bg-white/90 backdrop-blur-[12px] rounded-[18px] sm:rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-full">
             
             {/* Solid Calendar Header */}
-            <div className="p-6 border-b border-[#a855f7] bg-[#a855f7] shrink-0 flex justify-between items-center rounded-t-[24px] relative overflow-hidden group">
+            <div className="p-3.5 sm:p-6 border-b border-[#a855f7] bg-[#a855f7] shrink-0 flex flex-wrap sm:flex-nowrap gap-3 justify-between items-center rounded-t-[18px] sm:rounded-t-[24px] relative overflow-hidden group">
               {/* Subtle background decoration resembling the provided screenshot */}
               <div className="absolute -bottom-24 -right-12 w-64 h-64 bg-white/10 rounded-full"></div>
               <div className="absolute -top-20 left-1/4 w-40 h-40 bg-white/5 rounded-full"></div>
               
-              <div className="flex items-center gap-5 relative z-10">
+              <div className="flex items-center gap-2 sm:gap-5 relative z-10">
                 <button
                   onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
                   aria-label="Previous month"
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
-                <h2 className="text-[22px] font-bold text-white w-44 text-center tracking-tight">{monthLabel(month)}</h2>
+                <h2 className="text-base sm:text-[22px] font-bold text-white min-w-[120px] sm:w-44 text-center tracking-tight">{monthLabel(month)}</h2>
                 <button
                   onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
                   aria-label="Next month"
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
               
-              <div className="flex items-center gap-3 relative z-10">
-                <span className="text-[13px] font-bold text-[#6d28d9] bg-white px-4 py-1.5 rounded-full shadow-sm">
+              <div className="flex items-center gap-2 sm:gap-3 relative z-10">
+                <span className="text-xs sm:text-[13px] font-bold text-[#6d28d9] bg-white px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-sm">
                   {monthEvents.length} events
                 </span>
                 <button 
                   onClick={() => setShowSidebar(!showSidebar)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm hover:shadow-md border ${
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all shadow-sm hover:shadow-md border ${
                     showSidebar ? 'text-[#6d28d9] bg-white border-white' : 'text-white bg-white/20 border-white/30 backdrop-blur-md'
                   }`}
                   title={showSidebar ? "Hide Sidebar" : "Show Sidebar"}

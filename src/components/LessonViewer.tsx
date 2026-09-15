@@ -747,32 +747,37 @@ function SectionRenderer({
           )}
           {section.callouts && section.callouts.length > 0 && (
             <div className="space-y-3">
-              {section.callouts.map((callout, i) => (
-                <div
-                  key={i}
-                  className={`rounded-xl border-2 px-5 py-4 flex items-start gap-3.5 shadow-sm ${
-                    callout.type === 'important'
-                      ? 'bg-rose-50 border-rose-300'
-                      : callout.type === 'tip'
-                      ? 'bg-emerald-50 border-emerald-300'
-                      : 'bg-amber-50 border-amber-300'
-                  }`}
-                >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${
-                    callout.type === 'important' ? 'bg-rose-500' : callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
-                  }`}>
-                    {callout.type === 'important' ? <AlertTriangle size={16} className="text-white" /> : callout.type === 'tip' ? <Sparkles size={16} className="text-white" /> : <Pin size={16} className="text-white" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
-                      callout.type === 'important' ? 'text-rose-600' : callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
+              {section.callouts.map((callout, i) => {
+                const calloutText = callout.text?.includes('Review the curriculum PDF for detailed explanations of each concept')
+                  ? 'Define variables explicitly and verify constraints when formulating mathematical and financial relations.'
+                  : callout.text;
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-xl border-2 px-5 py-4 flex items-start gap-3.5 shadow-sm ${
+                      callout.type === 'important'
+                        ? 'bg-rose-50 border-rose-300'
+                        : callout.type === 'tip'
+                        ? 'bg-emerald-50 border-emerald-300'
+                        : 'bg-amber-50 border-amber-300'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${
+                      callout.type === 'important' ? 'bg-rose-500' : callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
                     }`}>
-                      {callout.type === 'important' ? 'Important Rule' : callout.type === 'tip' ? 'Pro Tip' : 'Key Note'}
-                    </p>
-                    <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{callout.text}</p>
+                      {callout.type === 'important' ? <AlertTriangle size={16} className="text-white" /> : callout.type === 'tip' ? <Sparkles size={16} className="text-white" /> : <Pin size={16} className="text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
+                        callout.type === 'important' ? 'text-rose-600' : callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
+                      }`}>
+                        {callout.type === 'important' ? 'Important Rule' : callout.type === 'tip' ? 'Pro Tip' : 'Key Note'}
+                      </p>
+                      <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{calloutText}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

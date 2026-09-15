@@ -217,7 +217,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
                         }`}
                       >
                         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
-                          selectedStudents.has(s.uid) ? 'bg-[#9956DE] border-[#9956DE]' : 'border-[#cbd5e1]'
+                          selectedStudents.has(s.uid) ? 'bg-[#a855f7] border-[#a855f7]' : 'border-[#cbd5e1]'
                         }`}>
                           {selectedStudents.has(s.uid) && <Check size={12} className="text-white" />}
                         </div>
@@ -250,7 +250,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
                   <Button
                     onClick={handleCreateClass}
                     disabled={creating || !section.trim()}
-                    className="bg-[#9956DE] hover:bg-[#7c3aed] text-white"
+                    className="bg-[#a855f7] hover:bg-[#9333ea] text-white"
                   >
                     {creating ? 'Creating...' : 'Create Class'}
                   </Button>
@@ -262,7 +262,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
                 <Button
                   onClick={handleCreateClass}
                   disabled={creating}
-                  className="bg-[#9956DE] hover:bg-[#7c3aed] text-white"
+                  className="bg-[#a855f7] hover:bg-[#9333ea] text-white"
                 >
                   <Plus size={16} className="mr-1" />
                   {creating ? 'Creating...' : `Create with ${selectedStudents.size} Student${selectedStudents.size !== 1 ? 's' : ''}`}
