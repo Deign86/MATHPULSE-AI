@@ -34,30 +34,72 @@ export interface CreateStudentAccountModalProps {
   onCreated?: (result: CreateStudentFromRosterResult & { rosterId: string }) => void;
 }
 
-const PASSWORD_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+const UPPERCASE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const LOWERCASE_CHARS = 'abcdefghjkmnpqrstuvwxyz';
+const DIGIT_CHARS = '23456789';
+const SPECIAL_CHARS = '!@#$%&*';
+const ALL_PASSWORD_CHARS = UPPERCASE_CHARS + LOWERCASE_CHARS + DIGIT_CHARS + SPECIAL_CHARS;
 const DEFAULT_EMAIL_DOMAIN = 'school.mathpulse.local';
 
-function generateTemporaryPassword(length = 10): string {
+export type PasswordValidationResult =
+  | { readonly valid: true }
+  | { readonly valid: false; readonly reason: string };
+
+export function validatePasswordRequirements(password: string): PasswordValidationResult {
+  if (password.length < 8) {
+    return { valid: false, reason: 'Temporary password must be at least 8 characters long.' };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, reason: 'Temporary password must include at least one uppercase letter.' };
+  }
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, reason: 'Temporary password must include at least one lowercase letter.' };
+  }
+  if (!/\d/.test(password)) {
+    return { valid: false, reason: 'Temporary password must include at least one number.' };
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return { valid: false, reason: 'Temporary password must include at least one special character (!@#$%&*).' };
+  }
+  return { valid: true };
+}
+
+export function generateTemporaryPassword(length = 12): string {
+  const targetLength = Math.max(12, length);
   const cryptoRef =
     globalThis !== undefined && globalThis.crypto !== undefined
       ? globalThis.crypto
       : undefined;
 
-  if (cryptoRef && (cryptoRef.getRandomValues instanceof Function)) {
-    const buffer = new Uint32Array(length);
-    cryptoRef.getRandomValues(buffer);
-    let output = '';
-    for (let index = 0; index < length; index += 1) {
-      output += PASSWORD_ALPHABET[buffer[index] % PASSWORD_ALPHABET.length];
+  const getRandomIndex = (max: number): number => {
+    if (cryptoRef && (cryptoRef.getRandomValues instanceof Function)) {
+      const buffer = new Uint32Array(1);
+      cryptoRef.getRandomValues(buffer);
+      return buffer[0] % max;
     }
-    return output;
+    return Math.floor(Math.random() * max);
+  };
+
+  const guaranteedCategoryChars = [
+    UPPERCASE_CHARS[getRandomIndex(UPPERCASE_CHARS.length)],
+    LOWERCASE_CHARS[getRandomIndex(LOWERCASE_CHARS.length)],
+    DIGIT_CHARS[getRandomIndex(DIGIT_CHARS.length)],
+    SPECIAL_CHARS[getRandomIndex(SPECIAL_CHARS.length)],
+  ];
+
+  const generatedChars = [...guaranteedCategoryChars];
+  for (let index = guaranteedCategoryChars.length; index < targetLength; index += 1) {
+    generatedChars.push(ALL_PASSWORD_CHARS[getRandomIndex(ALL_PASSWORD_CHARS.length)]);
   }
 
-  let fallback = '';
-  for (let index = 0; index < length; index += 1) {
-    fallback += PASSWORD_ALPHABET[Math.floor(Math.random() * PASSWORD_ALPHABET.length)];
+  for (let index = generatedChars.length - 1; index > 0; index -= 1) {
+    const swapTarget = getRandomIndex(index + 1);
+    const temporaryChar = generatedChars[index];
+    generatedChars[index] = generatedChars[swapTarget];
+    generatedChars[swapTarget] = temporaryChar;
   }
-  return fallback;
+
+  return generatedChars.join('');
 }
 
 function buildAutoEmail(seed: CreateStudentAccountSeed | null): string {
@@ -138,8 +180,9 @@ export const CreateStudentAccountModal: React.FC<CreateStudentAccountModalProps>
       setSubmitError('Enter a valid email address before creating the account.');
       return;
     }
-    if (!temporaryPassword || temporaryPassword.length < 8) {
-      setSubmitError('Temporary password must be at least 8 characters.');
+    const passwordValidation = validatePasswordRequirements(temporaryPassword);
+    if (!passwordValidation.valid) {
+      setSubmitError(passwordValidation.reason || 'Temporary password does not meet requirements.');
       return;
     }
     if (!adviserTeacherId) {
@@ -290,7 +333,7 @@ export const CreateStudentAccountModal: React.FC<CreateStudentAccountModalProps>
                       </button>
                     </div>
                     <span className="text-[11px] text-[#64748b] mt-1 block">
-                      The student should change this on first sign-in. Share it once — it will not be persisted.
+                      Requires at least 8 characters with uppercase, lowercase, numbers, and special characters (!@#$%&*). Share it once — it will not be persisted.
                     </span>
                   </div>
 
