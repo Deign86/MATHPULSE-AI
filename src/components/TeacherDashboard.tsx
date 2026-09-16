@@ -1112,15 +1112,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       }
       setInsightLoading(true);
       try {
-        const studentData = students.map((s) => ({
-          name: s.name,
-          engagementScore: s.engagementScore,
-          avgQuizScore: s.avgScore,
-          attendance: s.attendance,
-          riskLevel: s.riskLevel,
+        const studentData = students.map((student) => ({
+          name: student.name || 'Student',
+          engagementScore: Number.isFinite(student.engagementScore) ? student.engagementScore : 0,
+          avgQuizScore: Number.isFinite(student.avgScore) ? student.avgScore : 0,
+          attendance: Number.isFinite(student.attendance) ? student.attendance : 0,
+          riskLevel: student.riskLevel || 'low',
         }));
-        const response = await apiService.getDailyInsight({ students: studentData });
-        setDailyInsight(response.insight);
+        const { data, fromFallback } = await apiService.getDailyInsightSafe({ students: studentData });
+        if (fromFallback) {
+          const highRiskCount = students.filter((s) => s.riskLevel === 'high').length;
+          setDailyInsight(
+            highRiskCount > 0
+              ? `${highRiskCount} students are at high risk of falling behind. Review their progress in the analytics view.`
+              : data.insight,
+          );
+        } else {
+          setDailyInsight(data.insight);
+        }
       } catch {
         setDailyInsight(`${students.filter((s) => s.riskLevel === 'high').length} students are at high risk of falling behind. Review their progress in the analytics view.`);
       } finally {

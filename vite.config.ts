@@ -2,6 +2,8 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { Socket } from 'node:net';
 
 
 /**
@@ -104,7 +106,22 @@ const pwaSwConfigPlugin = (): Plugin => {
   };
 };
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const rawTarget = (env.VITE_API_URL || process.env.VITE_API_URL || '').trim();
+  const backendTarget = rawTarget || 'https://deign86-mathpulse-api-v3test.hf.space';
+
+  const configureProxy = (proxy: { on: (event: string, handler: (err: Error, req: IncomingMessage, res: ServerResponse | Socket) => void) => void }) => {
+    proxy.on('error', (err: Error, _req: IncomingMessage, res: ServerResponse | Socket) => {
+      console.warn(`[vite proxy error] ${err.message}`);
+      if ('writeHead' in res && !res.headersSent) {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Backend service unavailable', message: err.message }));
+      }
+    });
+  };
+
+  return {
   plugins: [react(), tailwindcss(), fcmConfigPlugin(), pwaSwConfigPlugin()],
   optimizeDeps: {
     include: [
@@ -196,12 +213,16 @@ export default defineConfig({
     open: false,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://127.0.0.1:8000',
+        target: backendTarget,
         changeOrigin: true,
+        secure: false,
+        configure: configureProxy,
       },
       '/health': {
-        target: process.env.VITE_API_URL || 'http://127.0.0.1:8000',
+        target: backendTarget,
         changeOrigin: true,
+        secure: false,
+        configure: configureProxy,
       },
     },
     warmup: {
@@ -228,4 +249,5 @@ export default defineConfig({
     },
     cacheDir: 'node_modules/.vite',
   },
+};
 });
