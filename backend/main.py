@@ -5212,10 +5212,16 @@ def _auth_user_not_found(error: Exception) -> bool:
 
 
 def _generate_temporary_password(length: int = 12) -> str:
-    alphabet = string.ascii_letters + string.digits
+    special_characters = "!@#$%&*"
+    alphabet = string.ascii_letters + string.digits + special_characters
     while True:
-        candidate = "".join(secrets.choice(alphabet) for _ in range(max(10, length)))
-        if any(ch.islower() for ch in candidate) and any(ch.isupper() for ch in candidate) and any(ch.isdigit() for ch in candidate):
+        candidate = "".join(secrets.choice(alphabet) for _ in range(max(12, length)))
+        if (
+            any(ch.islower() for ch in candidate)
+            and any(ch.isupper() for ch in candidate)
+            and any(ch.isdigit() for ch in candidate)
+            and any(ch in special_characters for ch in candidate)
+        ):
             return candidate
 
 
@@ -7045,8 +7051,17 @@ async def create_student_account_for_teacher(
         raise HTTPException(status_code=400, detail="A valid email address is required")
 
     temporary_password = (payload.temporary_password or "").strip()
-    if len(temporary_password) < 8:
-        raise HTTPException(status_code=400, detail="Temporary password must be at least 8 characters")
+    if (
+        len(temporary_password) < 8
+        or not re.search(r"[A-Z]", temporary_password)
+        or not re.search(r"[a-z]", temporary_password)
+        or not re.search(r"\d", temporary_password)
+        or not re.search(r"[^A-Za-z0-9]", temporary_password)
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Temporary password must be at least 8 characters and include uppercase, lowercase, a number, and a special character.",
+        )
 
     grade = (payload.grade or "").strip()
     section = (payload.section or "").strip()
@@ -7093,6 +7108,26 @@ async def create_student_account_for_teacher(
                 raise HTTPException(
                     status_code=409,
                     detail="An account with this email already exists.",
+                )
+            if (
+                "password_does_not_meet_requirements" in error_text
+                or "password requirements" in error_text
+                or "weak password" in error_text
+                or "password must" in error_text
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Password does not meet authentication policy requirements. Ensure it includes uppercase, lowercase, numbers, and special characters.",
+                )
+            if (
+                "invalid_email" in error_text
+                or "invalid email" in error_text
+                or "improperly formatted" in error_text
+                or "malformed email" in error_text
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="The email address is improperly formatted or not accepted.",
                 )
             logger.error("Auth user creation failed for %s: %s", email, create_auth_error)
             raise HTTPException(status_code=500, detail="Failed to create authentication account.")
