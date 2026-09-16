@@ -1209,6 +1209,13 @@ const IMPORTED_OVERVIEW_RETRY_OPTS: RetryFetchOptions = {
   baseBackoffMs: 500,
 };
 
+/** Daily teacher insight retry profile: fast fail with 1 retry to avoid stalling dashboard load or spamming errors. */
+const DAILY_INSIGHT_RETRY_OPTS: RetryFetchOptions = {
+  maxRetries: 1,
+  timeoutMs: 10_000,
+  baseBackoffMs: 500,
+};
+
 // ─── Warmup / Health Ping ────────────────────────────────────
 
 let _warmupPromise: Promise<boolean> | null = null;
@@ -1828,7 +1835,7 @@ export const apiService = {
     return apiFetch<DailyInsightResponse>(
       '/api/analytics/daily-insight',
       { method: 'POST', body: JSON.stringify(request), signal: options?.signal },
-      AI_RETRY_OPTS,
+      DAILY_INSIGHT_RETRY_OPTS,
     );
   },
 

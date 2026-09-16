@@ -2250,11 +2250,11 @@ class LearningPathResponse(BaseModel):
 
 
 class StudentInsightData(BaseModel):
-    name: str
-    engagementScore: float
-    avgQuizScore: float
-    attendance: float
-    riskLevel: str
+    name: str = "Student"
+    engagementScore: float = 0.0
+    avgQuizScore: float = 0.0
+    attendance: float = 0.0
+    riskLevel: str = "low"
 
 
 class DailyInsightRequest(BaseModel):
@@ -3867,8 +3867,8 @@ async def daily_insight(request: DailyInsightRequest, response: Response):
         avg_engagement = sum(s.engagementScore for s in students) / total
         avg_quiz = sum(s.avgQuizScore for s in students) / total
         avg_attendance = sum(s.attendance for s in students) / total
-        high_risk = sum(1 for s in students if s.riskLevel == "High")
-        medium_risk = sum(1 for s in students if s.riskLevel == "Medium")
+        high_risk = sum(1 for s in students if s.riskLevel.lower() == "high")
+        medium_risk = sum(1 for s in students if s.riskLevel.lower() == "medium")
 
         prompt = f"""Analyze this classroom data and provide actionable insights for a math teacher:
 

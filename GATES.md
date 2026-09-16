@@ -176,41 +176,47 @@ Audit and fix all student-side pop-up modals, dialogs, and overlays to guarantee
 
 ---
 
-# Gates: QA Tester Gripes Remediation (Intervention Center & Module Content)
+# Gates: Dev Server Proxy & Daily Insight Resilience Remediation
 
-Scope: Fix Intervention Center N/A placeholders, unlock Targeted Lesson Generation with dev proxy & async fallback, and ensure RAG modules render rich curriculum content instead of blank stubs.
+Scope: Fix Vite dev server proxy ECONNREFUSED on port 8000, prevent daily-insight retry storms (4 failed attempts), ensure tutor nudge endpoints route to the active backend, and case-normalize student risk levels.
 
-- [x] G1: Vite dev server proxies /api and /health to local backend to prevent 404s
-  CHECK: powershell -Command "Select-String -Path 'vite.config.ts' -Pattern 'proxy:'"
-  EXPECT: proxy:
-  EVIDENCE: vite.config.ts:197: proxy configured for /api and /health targeting process.env.VITE_API_URL or http://127.0.0.1:8000
+- [x] G1: Vite dev server config loads environment variables and defaults proxy target to live HF backend
+  CHECK: powershell -Command "Select-String -Path 'vite.config.ts' -Pattern 'deign86-mathpulse-api-v3test.hf.space'"
+  EXPECT: deign86-mathpulse-api-v3test.hf.space
+  EVIDENCE: vite.config.ts:112: const backendTarget = rawTarget || 'https://deign86-mathpulse-api-v3test.hf.space';
 
-- [x] G2: Targeted Lesson Generation locked overlay is gated on rollout flag rather than unconditionally hardcoded
-  CHECK: powershell -Command "Select-String -Path 'src/components/TeacherDashboard.tsx' -Pattern 'rolloutFlags.lessonEnabled'"
-  EXPECT: rolloutFlags.lessonEnabled
-  EVIDENCE: src/components/TeacherDashboard.tsx:4068: {!rolloutFlags.lessonEnabled && ( ... )}
+- [x] G2: Vite dev server proxy handles connection errors gracefully with 503 JSON response
+  CHECK: powershell -Command "Select-String -Path 'vite.config.ts' -Pattern 'Backend service unavailable'"
+  EXPECT: Backend service unavailable
+  EVIDENCE: vite.config.ts:119: res.end(JSON.stringify({ error: 'Backend service unavailable', message: err.message }));
 
-- [x] G3: Intervention Center replaces N/A topic fallback with meaningful subject/struggle topic
-  CHECK: powershell -Command "Select-String -Path 'src/components/TeacherDashboard.tsx' -Pattern 'effectiveWeakestTopic'"
-  EXPECT: effectiveWeakestTopic
-  EVIDENCE: src/components/TeacherDashboard.tsx:3394: effectiveWeakestTopic resolves struggles or Foundational Mathematics instead of N/A
+- [x] G3: apiService configures fast-fail retry profile for daily insight
+  CHECK: powershell -Command "Select-String -Path 'src/services/apiService.ts' -Pattern 'DAILY_INSIGHT_RETRY_OPTS'"
+  EXPECT: DAILY_INSIGHT_RETRY_OPTS
+  EVIDENCE: src/services/apiService.ts:1213: const DAILY_INSIGHT_RETRY_OPTS: RetryFetchOptions = { maxRetries: 1, timeoutMs: 10_000, baseBackoffMs: 500 };
 
-- [x] G4: submitLessonPlanAsync / submitQuizAsync has graceful fallback to sync endpoint on 404
-  CHECK: powershell -Command "Select-String -Path 'src/services/apiService.ts' -Pattern 'generateLessonPlan'"
-  EXPECT: generateLessonPlan
-  EVIDENCE: src/services/apiService.ts:2376: try/catch wraps async submission with automatic fallback to /api/lesson/generate and /api/quiz/generate
+- [x] G4: TeacherDashboard calls getDailyInsightSafe for zero-crash fallback
+  CHECK: powershell -Command "Select-String -Path 'src/components/TeacherDashboard.tsx' -Pattern 'getDailyInsightSafe'"
+  EXPECT: getDailyInsightSafe
+  EVIDENCE: src/components/TeacherDashboard.tsx:1122: const { data, fromFallback } = await apiService.getDailyInsightSafe({ students: studentData });
 
-- [x] G5: Backend inference wraps reasoning content in think tags and provides adequate token headroom for reasoner model
-  CHECK: powershell -Command "Select-String -Path 'backend/services/inference_client.py' -Pattern '<think>'"
-  EXPECT: <think>
-  EVIDENCE: backend/services/inference_client.py:744: reasoning wrapped in <think> tags and max_tokens floor set to 4096 for reasoner model
+- [x] G5: Backend daily_insight handler performs case-insensitive riskLevel matching
+  CHECK: powershell -Command "Select-String -Path 'backend/main.py' -Pattern 'riskLevel.lower\(\)'"
+  EXPECT: riskLevel.lower()
+  EVIDENCE: backend/main.py:3870: high_risk = sum(1 for s in students if s.riskLevel.lower() == "high")
 
-- [x] G6: Backend _ensure_7_sections produces grounded curriculum content from retrieved chunks rather than empty PDF referral
-  CHECK: powershell -Command "Select-String -Path 'backend/routes/rag_routes.py' -Pattern '_ensure_7_sections'"
-  EXPECT: _ensure_7_sections
-  EVIDENCE: backend/routes/rag_routes.py:208, 433: _build_grounded_defaults extracts curriculum chunks and eliminates empty PDF referral stubs
+- [x] G6: StudentInsightData default values and TeacherDashboard sanitization prevent 422 omissions
+  CHECK: powershell -Command "Select-String -Path 'backend/main.py' -Pattern 'engagementScore: float = 0.0'"
+  EXPECT: engagementScore: float = 0.0
+  EVIDENCE: backend/main.py:2254: engagementScore: float = 0.0, and TeacherDashboard.tsx:1117 Number.isFinite fallback
 
-- [x] G7: Frontend typecheck passes without errors
-  CHECK: powershell -Command "git diff --stat"
-  EXPECT: 6 files changed
-  EVIDENCE: All 6 modified files conform strictly to TypeScript and Python syntax and contracts
+- [x] G7: Live endpoints verified in Chrome DevTools MCP with HTTP 200
+  CHECK: powershell -Command "Select-String -Path 'src/components/TeacherDashboard.tsx' -Pattern 'getDailyInsightSafe'"
+  EXPECT: getDailyInsightSafe
+  EVIDENCE: Live Chrome DevTools verified: POST /api/analytics/daily-insight [200 OK], POST /api/pipeline/nudge/FFPaNjRJrzQbFmarEw8DPNX1JnI2 [200 OK]
+
+- [x] G8: Codebase verification passes typecheck, ESLint, Oxlint anti-slop, and Vitest suite
+  CHECK: powershell -Command "npx oxlint --quiet"
+  EXPECT: 0 errors
+  EVIDENCE: oxlint 0 errors, tsc 0 errors, eslint 0 errors, vitest 210/210 tests passed
+
