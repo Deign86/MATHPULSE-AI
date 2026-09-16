@@ -1,0 +1,109 @@
+﻿name: Build and Release Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag (e.g. v1.2.0-android)'
+        required: true
+        default: 'v1.2.0-android'
+      release_title:
+        description: 'Release title'
+        required: true
+        default: 'MathPulse AI v1.2.0 - Android Release'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    name: Build & Publish Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build production web bundle
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || vars.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space' }}
+          VITE_APP_VERSION: ${{ inputs.version }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY || 'AIzaSyBtKDbf3CoNSJHMX2W-Bfru8qEX2mKm03Y' }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || vars.VITE_FIREBASE_AUTH_DOMAIN || 'mathpulse-ai-2026.firebaseapp.com' }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || vars.VITE_FIREBASE_PROJECT_ID || 'mathpulse-ai-2026' }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || vars.VITE_FIREBASE_STORAGE_BUCKET || 'mathpulse-ai-2026.firebasestorage.app' }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || vars.VITE_FIREBASE_MESSAGING_SENDER_ID || '441656461' }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID || vars.VITE_FIREBASE_APP_ID || '1:441656461:web:68f877c7bdde7065ec2ec4' }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL || vars.VITE_FIREBASE_DATABASE_URL || 'https://mathpulse-ai-2026-default-rtdb.firebaseio.com' }}
+        run: npm run build
+
+      - name: Sync Capacitor Android assets
+        run: npx cap sync android
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x android/gradlew
+
+      - name: Build Android Debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Build Android Release APK
+        working-directory: android
+        run: ./gradlew assembleRelease
+
+      - name: Stage APK artifacts
+        run: |
+          mkdir -p release-artifacts
+          cp android/app/build/outputs/apk/debug/app-debug.apk "release-artifacts/MathPulse-AI-${{ inputs.version }}-debug.apk"
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-artifacts/MathPulse-AI-${{ inputs.version }}-release-unsigned.apk"
+
+      - name: Upload APKs to Workflow Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks-${{ inputs.version }}
+          path: release-artifacts/*
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ inputs.version }}" release-artifacts/* \
+            --title "${{ inputs.release_title }}" \
+            --notes "### MathPulse AI ${{ inputs.version }} - Official Android Release
+
+          This release packages the latest MathPulse AI updates from the \`main\` branch.
+
+          #### What's New:
+          - **Dev Proxy & Backend Resilience**: Fixed Vite dev proxy loopback fallback, resolved daily insight 422 omissions, and added graceful error handling.
+          - **Teacher Portal Redesign**: Nunito typography, unified purple palette (#a855f7), interactive affordances, and responsive layout improvements.
+          - **Student ID Card & Settings Overhaul**: Upgraded Student ID card, redesigned Settings page with colored tab badges and responsive dialogs.
+          - **Modal Responsiveness**: Full desktop-to-mobile responsiveness audit and fixes across all student modals.
+          - **AI Mascot & Tutor**: Updated LOLI AI character graphics and enhanced proactive tutor nudge integration.
+
+          #### Included APK Artifacts:
+          - \`MathPulse-AI-${{ inputs.version }}-debug.apk\`: Ready-to-install debug-signed APK.
+          - \`MathPulse-AI-${{ inputs.version }}-release-unsigned.apk\`: Production unsigned APK for release signing.
+          "
