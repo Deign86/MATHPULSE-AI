@@ -1239,7 +1239,7 @@ const App = () => {
                 {/* Profile button on top right: hidden on mobile (< md) because it's on bottom right of the navbar; shown on tablet & desktop (md:) */}
                 <button
                   type="button"
-                  onClick={() => handleStudentNavigation('Settings')}
+                  onClick={() => handleStudentNavigation('Profile')}
                   className="hidden md:flex w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] items-center justify-center hover:ring-2 hover:ring-purple-400 transition-all active:scale-95 cursor-pointer"
                   aria-label={`Profile: ${profileData.name}`}
                 >

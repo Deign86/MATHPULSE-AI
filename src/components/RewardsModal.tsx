@@ -105,30 +105,30 @@ export const RewardsModal: React.FC<RewardsModalProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl border border-purple-200/60 dark:border-purple-900/40 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 rounded-[28px] sm:rounded-[32px] w-[calc(100%-1rem)] max-w-[360px] sm:max-w-md overflow-hidden shadow-2xl border border-purple-200/60 dark:border-purple-900/40 flex flex-col max-h-[92dvh] sm:max-h-[90vh]">
         {/* Header Banner */}
-        <div className="relative bg-gradient-to-br from-purple-600 via-indigo-600 to-sky-600 p-6 text-white overflow-hidden shrink-0">
+        <div className="relative bg-gradient-to-br from-purple-600 via-indigo-600 to-sky-600 p-4 sm:p-6 text-white overflow-hidden shrink-0">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.25),transparent_65%)]" />
           <div className="pointer-events-none absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
 
-          <div className="flex items-center justify-between relative z-10 mb-4">
+          <div className="flex items-center justify-between relative z-10 mb-3 sm:mb-4">
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-white/20 backdrop-blur-md text-amber-300">
-                <Trophy size={18} />
+              <span className="p-1.5 sm:p-2 rounded-xl bg-white/20 backdrop-blur-md text-amber-300">
+                <Trophy size={16} />
               </span>
               <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/75">Quick Overview</span>
-                <h2 className="text-xl font-black font-display text-white leading-tight">Daily Rewards & Goals</h2>
+                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/75">Quick Overview</span>
+                <h2 className="text-base sm:text-xl font-black font-display text-white leading-tight">Daily Rewards & Goals</h2>
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/90 hover:text-white"
+              className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/90 hover:text-white cursor-pointer"
               aria-label="Close rewards summary"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
 

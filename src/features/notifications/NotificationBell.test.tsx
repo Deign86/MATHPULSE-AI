@@ -83,4 +83,18 @@ describe('NotificationBell', () => {
     // Panel should close
     expect(screen.queryByTestId('panel')).not.toBeInTheDocument();
   });
+
+  it('closes panel when clicking the bell button again', () => {
+    unreadCountValue = 3;
+    render(<NotificationBell />);
+
+    const bellBtn = screen.getByRole('button', { name: /notifications/i });
+    // Click 1: open
+    fireEvent.click(bellBtn);
+    expect(screen.getByTestId('panel')).toBeInTheDocument();
+
+    // Click 2: close
+    fireEvent.click(bellBtn);
+    expect(screen.queryByTestId('panel')).not.toBeInTheDocument();
+  });
 });
