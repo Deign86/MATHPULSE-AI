@@ -31,12 +31,12 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const getIcon = () => {
     switch (icon) {
       case 'logout':
-        return <LogOut size={32} />;
+        return <LogOut className="w-6 h-6 sm:w-7 sm:h-7" />;
       case 'delete':
-        return <Trash2 size={32} />;
+        return <Trash2 className="w-6 h-6 sm:w-7 sm:h-7" />;
       case 'warning':
       default:
-        return <AlertTriangle size={32} />;
+        return <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7" />;
     }
   };
 
@@ -44,24 +44,24 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     switch (type) {
       case 'danger':
         return {
-          iconBg: 'bg-red-100',
-          iconColor: 'text-red-600',
-          buttonBg: 'bg-red-600 hover:bg-red-700',
+          iconBg: 'bg-rose-100 dark:bg-rose-950/50',
+          iconColor: 'text-rose-600 dark:text-rose-400',
+          buttonBg: 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800',
           buttonText: 'text-white'
         };
       case 'warning':
         return {
-          iconBg: 'bg-rose-100',
-          iconColor: 'text-rose-600',
-          buttonBg: 'bg-rose-600 hover:bg-rose-700',
+          iconBg: 'bg-amber-100 dark:bg-amber-950/50',
+          iconColor: 'text-amber-600 dark:text-amber-400',
+          buttonBg: 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800',
           buttonText: 'text-white'
         };
       case 'info':
       default:
         return {
-          iconBg: 'bg-sky-100',
-          iconColor: 'text-sky-600',
-          buttonBg: 'bg-sky-600 hover:bg-sky-700',
+          iconBg: 'bg-sky-100 dark:bg-sky-950/50',
+          iconColor: 'text-sky-600 dark:text-sky-400',
+          buttonBg: 'bg-sky-600 hover:bg-sky-700 active:bg-sky-800',
           buttonText: 'text-white'
         };
     }
@@ -92,58 +92,56 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           >
             {/* Modal */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 320 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative my-auto bg-[#f7f9fc] dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full max-h-[90dvh] overflow-y-auto border border-[#dde3eb] dark:border-slate-800"
+              className="relative my-auto bg-white dark:bg-slate-900 rounded-[28px] sm:rounded-3xl shadow-2xl w-[calc(100%-1rem)] max-w-[340px] sm:max-w-md max-h-[90dvh] overflow-y-auto border border-slate-200/80 dark:border-slate-800"
             >
               {/* Close Button */}
               <button
                 onClick={onClose}
                 aria-label="Close dialog"
-                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 text-slate-500 hover:text-[#0a1628] dark:text-slate-400 dark:hover:text-white hover:bg-[#dde3eb] dark:hover:bg-slate-800 rounded-xl transition-colors z-10 cursor-pointer"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors z-10 cursor-pointer"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
 
               {/* Content */}
-              <div className="p-5 sm:p-8 text-center">
+              <div className="p-5 sm:p-7 text-center">
                 {/* Icon */}
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ delay: 0.1, type: 'spring', damping: 15 }}
-                  className={`w-16 h-16 sm:w-20 sm:h-20 ${colors.iconBg} rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 ${colors.iconColor}`}
+                  transition={{ delay: 0.08, type: 'spring', damping: 15 }}
+                  className={`w-14 h-14 sm:w-16 sm:h-16 ${colors.iconBg} rounded-2xl flex items-center justify-center mx-auto mb-3.5 sm:mb-4 ${colors.iconColor} shadow-inner`}
                 >
                   {getIcon()}
                 </motion.div>
 
                 {/* Title */}
-                <h2 className="text-xl sm:text-2xl font-display font-bold text-[#0a1628] dark:text-white mb-2 sm:mb-3">
+                <h2 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white mb-1.5 sm:mb-2 tracking-tight">
                   {title}
                 </h2>
 
                 {/* Message */}
-                <p className="text-sm sm:text-base text-[#5a6578] dark:text-slate-300 mb-6 sm:mb-8 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mb-5 sm:mb-6 leading-relaxed">
                   {message}
                 </p>
 
                 {/* Buttons */}
-                <div className="flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3">
+                <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                   <Button
                     onClick={onClose}
                     variant="outline"
-                    size="lg"
-                    className="flex-1 h-11 sm:h-12 rounded-xl border-[#dde3eb] dark:border-slate-700 hover:border-[#d1cec6] hover:bg-[#edf1f7] dark:hover:bg-slate-800 dark:text-slate-200 font-bold"
+                    className="flex-1 h-10 sm:h-11 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer"
                   >
                     {cancelText}
                   </Button>
                   <Button
                     onClick={handleConfirm}
-                    size="lg"
-                    className={`flex-1 h-11 sm:h-12 rounded-xl font-bold ${colors.buttonBg} ${colors.buttonText} transition-colors shadow-lg`}
+                    className={`flex-1 h-10 sm:h-11 rounded-xl font-black text-xs sm:text-sm ${colors.buttonBg} ${colors.buttonText} shadow-md active:scale-95 transition-all cursor-pointer`}
                   >
                     {confirmText}
                   </Button>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X, Cpu, Database, School, User } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X, Cpu, Database, School } from 'lucide-react';
 import { motion } from 'motion/react';
 import LogoutActionButton from './LogoutActionButton';
 import { cn } from './ui/utils';
@@ -125,7 +125,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         {
           label: 'Identity',
           items: [
-            { icon: User, label: 'Profile', displayLabel: 'My Profile' },
             { icon: Shirt, label: 'Avatar Studio', displayLabel: 'Avatar Studio' },
           ],
         },
