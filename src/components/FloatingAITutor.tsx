@@ -161,27 +161,27 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 40 }}
         transition={{ duration: reduceMotion ? 0 : 0.25, ease: 'easeOut' }}
-        className="pointer-events-auto mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-80 max-h-[80dvh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 flex flex-col overflow-hidden origin-bottom-right select-none"
+        className="pointer-events-auto mb-4 w-[calc(100vw-2rem)] max-w-sm sm:w-[380px] max-h-[80dvh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 flex flex-col overflow-hidden origin-bottom-right select-none"
         role="dialog"
         aria-label="AI tutor chat"
       >
         {/* Chat Header - Fixed */}
-        <div className="bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#1FA7E1] p-3.5 sm:p-4 flex items-center justify-between flex-shrink-0 text-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-inner">
+        <div className="bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#1FA7E1] px-4 py-3 sm:px-4 sm:py-3.5 flex items-center justify-between flex-shrink-0 text-white gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-inner shrink-0">
               <img src="/avatar/avatar_icon.png" alt="AI Tutor" className="w-9 h-9 object-contain drop-shadow-md" />
             </div>
-            <div>
-              <h3 className="text-white font-display font-black text-sm tracking-tight leading-tight">L.O.L.I. AI Tutor</h3>
-              <p className="text-white/85 text-[10px] font-medium leading-tight whitespace-nowrap">Senior High Math Assistant</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-white font-display font-black text-sm tracking-tight leading-tight truncate">L.O.L.I. AI Tutor</h3>
+              <p className="text-white/85 text-[10px] font-medium leading-tight truncate">Senior High Math Assistant</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={handleFullScreenClick}
               type="button"
               aria-label="Open fullscreen"
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center text-white"
+              className="p-1.5 hover:bg-white/20 active:bg-white/30 rounded-lg transition-colors h-8 w-8 flex items-center justify-center text-white"
               title="Open fullscreen"
             >
               <Maximize2 size={15} className="text-white" />
@@ -190,7 +190,7 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               type="button"
               aria-label="Minimize AI tutor launcher"
               onClick={handleMinimizeLauncher}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center text-white"
+              className="p-1.5 hover:bg-white/20 active:bg-white/30 rounded-lg transition-colors h-8 w-8 flex items-center justify-center text-white"
               title="Minimize"
             >
               <Minus size={15} className="text-white" />
@@ -199,7 +199,8 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
               type="button"
               aria-label="Close chat"
               onClick={() => setIsOpen(false)}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center text-white"
+              className="p-1.5 hover:bg-white/20 active:bg-white/30 rounded-lg transition-colors h-8 w-8 flex items-center justify-center text-white"
+              title="Close"
             >
               <X size={15} className="text-white" />
             </button>

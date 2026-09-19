@@ -26,6 +26,16 @@ import {
   VolumeX,
   Star,
   Flag,
+  Flame,
+  Shield,
+  Zap,
+  Award,
+  Medal,
+  BookOpen,
+  Compass,
+  CheckCircle2,
+  XCircle,
+  TrendingUp,
 } from 'lucide-react';
 import { WarpBackground } from './ui/warp-background';
 import { memberOf } from '../utils/memberOf';
@@ -2655,141 +2665,183 @@ const QuizBattlePage: React.FC = () => {
                   </motion.div>
 
                   {/* Setup Form Glass Panel */}
-                  <div className="rounded-[24px] border border-white/40 bg-white/85 dark:border-white/10 dark:bg-black/80 backdrop-blur-xl p-5 sm:p-7 shadow-xl">
+                  <div className="rounded-[28px] border border-white/50 bg-white/90 dark:border-white/10 dark:bg-slate-900/90 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl">
                     {/* Two Column Layout */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
 
                       {/* Left Column: Core Settings */}
-                      <div className="space-y-4">
-                        <div className="space-y-1.5 group">
+                      <div className="space-y-6">
+                        {/* Category Selection */}
+                        <div className="space-y-2 group">
                           <label className={cn(
-                            "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
-                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
-                          )}>Category</label>
+                            "text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ml-1",
+                            setupConfig.mode === 'online' ? "text-purple-600 dark:text-purple-400" : "text-sky-600 dark:text-sky-400"
+                          )}>
+                            <BookOpen size={14} />
+                            Subject Domain & Category
+                          </label>
                           <Select
                             value={setupConfig.subjectId}
                             onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, subjectId: value }))}
                           >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
-                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                            <SelectTrigger className={cn('rounded-2xl h-12 border-slate-200 bg-white text-slate-800 font-bold dark:bg-slate-800/80 dark:text-white dark:border-slate-700 transition-all shadow-sm',
+                              setupConfig.mode === 'online' ? "focus:border-purple-500 focus:ring-purple-500/20" : "focus:border-sky-500 focus:ring-sky-500/20",
                               errorFor('subjectId') && 'border-rose-400')}>
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                            <SelectContent className="rounded-2xl backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 border-slate-200 dark:border-slate-800">
                               {gradeScopedSubjects.map((entry) => (
-                                <SelectItem key={entry.id} value={entry.id} className="rounded-lg">{entry.title}</SelectItem>
+                                <SelectItem key={entry.id} value={entry.id} className="rounded-xl font-medium">{entry.title}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                          {errorFor('subjectId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('subjectId')}</p>}
+                          {errorFor('subjectId') && <p className="text-xs text-rose-500 ml-1 font-bold">{errorFor('subjectId')}</p>}
                         </div>
 
-                        <div className="space-y-1.5 group">
+                        {/* Strand / Topic Group */}
+                        <div className="space-y-2 group">
                           <label className={cn(
-                            "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
-                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
-                          )}>Strand / Topic Group</label>
+                            "text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ml-1",
+                            setupConfig.mode === 'online' ? "text-purple-600 dark:text-purple-400" : "text-sky-600 dark:text-sky-400"
+                          )}>
+                            <Compass size={14} />
+                            Curriculum Strand / Topic
+                          </label>
                           <Select
                             value={setupConfig.topicId}
                             onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, topicId: value }))}
                           >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
-                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
+                            <SelectTrigger className={cn('rounded-2xl h-12 border-slate-200 bg-white text-slate-800 font-bold dark:bg-slate-800/80 dark:text-white dark:border-slate-700 transition-all shadow-sm',
+                              setupConfig.mode === 'online' ? "focus:border-purple-500 focus:ring-purple-500/20" : "focus:border-sky-500 focus:ring-sky-500/20",
                               errorFor('topicId') && 'border-rose-400')}>
                               <SelectValue placeholder="Select topic group" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
+                            <SelectContent className="rounded-2xl backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 border-slate-200 dark:border-slate-800">
                               {moduleOptions.map((entry) => (
-                                <SelectItem key={entry.value} value={entry.value} className="rounded-lg">{entry.label}</SelectItem>
+                                <SelectItem key={entry.value} value={entry.value} className="rounded-xl font-medium">{entry.label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                          {errorFor('topicId') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('topicId')}</p>}
+                          {errorFor('topicId') && <p className="text-xs text-rose-500 ml-1 font-bold">{errorFor('topicId')}</p>}
                         </div>
 
-                        <div className="space-y-1.5 group">
+                        {/* Gamified Difficulty Selector */}
+                        <div className="space-y-2.5">
                           <label className={cn(
-                            "text-[11px] font-black uppercase tracking-[0.12em] ml-1",
-                            setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
+                            "text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ml-1",
+                            setupConfig.mode === 'online' ? "text-purple-600 dark:text-purple-400" : "text-sky-600 dark:text-sky-400"
                           )}>
-                            {setupConfig.mode === 'online' ? 'Difficulty' : 'Bot Difficulty'}
+                            <Swords size={14} />
+                            {setupConfig.mode === 'online' ? 'Combat Difficulty' : 'Bot AI Difficulty'}
                           </label>
-                          <Select
-                            value={setupConfig.mode === 'bot'
-                              ? (setupConfig.adaptiveBot ? 'adaptive' : setupConfig.botDifficulty)
-                              : setupConfig.difficulty}
-                            onValueChange={(value) =>
-                              setSetupConfig((previous) =>
-                                previous.mode === 'bot'
-                                  ? {
-                                    ...previous,
-                                    botDifficulty: memberOf(QUIZ_BATTLE_DIFFICULTIES, value, previous.botDifficulty),
-                                    adaptiveBot: value === 'adaptive',
-                                  }
-                                  : { ...previous, difficulty: memberOf(['easy', 'medium', 'hard'] as const, value, previous.difficulty) },
-                              )
-                            }
-                          >
-                            <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
-                              setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50")}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                              <SelectItem value="easy" className="rounded-lg">Easy</SelectItem>
-                              <SelectItem value="medium" className="rounded-lg">Medium</SelectItem>
-                              <SelectItem value="hard" className="rounded-lg">Hard</SelectItem>
-                              {setupConfig.mode === 'bot' && <SelectItem value="adaptive" className="rounded-lg">Adaptive</SelectItem>}
-                            </SelectContent>
-                          </Select>
+                          <div className={cn("grid gap-2.5", setupConfig.mode === 'bot' ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}>
+                            {[
+                              { id: 'easy', label: 'Easy', desc: 'Warmup', icon: Shield, color: 'emerald', border: 'border-emerald-500/40', bg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+                              { id: 'medium', label: 'Medium', desc: 'Balanced', icon: Swords, color: 'amber', border: 'border-amber-500/40', bg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+                              { id: 'hard', label: 'Hard', desc: 'Inferno', icon: Flame, color: 'rose', border: 'border-rose-500/40', bg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400' },
+                              ...(setupConfig.mode === 'bot' ? [
+                                { id: 'adaptive', label: 'Adaptive', desc: 'Smart AI', icon: Zap, color: 'purple', border: 'border-purple-500/40', bg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' }
+                              ] : []),
+                            ].map((tier) => {
+                              const isSelected = setupConfig.mode === 'bot'
+                                ? (tier.id === 'adaptive' ? setupConfig.adaptiveBot : (!setupConfig.adaptiveBot && setupConfig.botDifficulty === tier.id))
+                                : setupConfig.difficulty === tier.id;
+                              const Icon = tier.icon;
+                              return (
+                                <button
+                                  key={tier.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSetupConfig((previous) =>
+                                      previous.mode === 'bot'
+                                        ? {
+                                          ...previous,
+                                          botDifficulty: memberOf(QUIZ_BATTLE_DIFFICULTIES, tier.id, previous.botDifficulty),
+                                          adaptiveBot: tier.id === 'adaptive',
+                                        }
+                                        : { ...previous, difficulty: memberOf(['easy', 'medium', 'hard'] as const, tier.id, previous.difficulty) }
+                                    );
+                                  }}
+                                  className={cn(
+                                    'p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer group',
+                                    isSelected
+                                      ? cn(tier.bg, tier.border, 'ring-2 ring-offset-1 shadow-md scale-[1.02] font-black',
+                                        tier.color === 'emerald' ? 'ring-emerald-400' : tier.color === 'amber' ? 'ring-amber-400' : tier.color === 'rose' ? 'ring-rose-400' : 'ring-purple-400')
+                                      : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                                  )}
+                                >
+                                  <Icon size={20} className={cn('transition-transform group-hover:scale-110', isSelected && 'scale-110')} />
+                                  <span className="text-xs font-black leading-tight mt-0.5">{tier.label}</span>
+                                  <span className="text-[10px] font-semibold opacity-75 leading-none">{tier.desc}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1.5 group">
-                            <label className={cn(
-                              "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1",
-                              setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
-                            )}>Questions</label>
-                            <Select
-                              value={String(setupConfig.rounds)}
-                              onValueChange={(value) => setSetupConfig((previous) => ({ ...previous, rounds: Number(value) }))}
-                            >
-                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
-                                setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
-                                errorFor('rounds') && 'border-rose-400')}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                                {[3, 5, 7, 10, 12, 15].map((entry) => (
-                                  <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {errorFor('rounds') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('rounds')}</p>}
+                        {/* Interactive Questions Count Pills */}
+                        <div className="space-y-2">
+                          <label className={cn(
+                            "text-xs font-black uppercase tracking-wider flex items-center justify-between ml-1",
+                            setupConfig.mode === 'online' ? "text-purple-600 dark:text-purple-400" : "text-sky-600 dark:text-sky-400"
+                          )}>
+                            <span className="flex items-center gap-1.5"><Target size={14} /> Total Duel Questions</span>
+                            <span className="font-mono text-xs text-slate-500">{setupConfig.rounds} Rounds</span>
+                          </label>
+                          <div className="grid grid-cols-6 gap-2">
+                            {[3, 5, 7, 10, 12, 15].map((count) => (
+                              <button
+                                key={count}
+                                type="button"
+                                onClick={() => setSetupConfig((prev) => ({ ...prev, rounds: count }))}
+                                className={cn(
+                                  'h-11 rounded-xl font-display font-black text-xs transition-all border cursor-pointer',
+                                  setupConfig.rounds === count
+                                    ? setupConfig.mode === 'online'
+                                      ? 'bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-500/25'
+                                      : 'bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/25'
+                                    : 'bg-white dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                )}
+                              >
+                                {count}
+                              </button>
+                            ))}
                           </div>
+                        </div>
 
-                          <div className="space-y-1.5 group">
-                            <label className={cn(
-                              "text-[10px] sm:text-[11px] font-black uppercase tracking-[0.12em] ml-1 line-clamp-1",
-                              setupConfig.mode === 'online' ? "text-[#8A3FD3] dark:text-[#a35ceb]" : "text-[#1FA7E1] dark:text-[#4bc1f2]"
-                            )}>Time / Q</label>
-                            <Select
-                              value={String(setupConfig.timePerQuestionSec)}
-                              onValueChange={(value) =>
-                                setSetupConfig((previous) => ({ ...previous, timePerQuestionSec: Number(value) }))
-                              }
-                            >
-                              <SelectTrigger className={cn('rounded-xl h-11 border-white/20 bg-white text-slate-800 dark:bg-black/50 dark:text-white dark:border-white/10 transition-colors shadow-inner',
-                                setupConfig.mode === 'online' ? "hover:border-[#8A3FD3]/50" : "hover:border-[#1FA7E1]/50",
-                                errorFor('timePerQuestionSec') && 'border-rose-400')}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl backdrop-blur-xl bg-white/90 dark:bg-[#1a1f2e]/90">
-                                {[15, 20, 30, 45, 60, 90].map((entry) => (
-                                  <SelectItem key={entry} value={String(entry)} className="rounded-lg">{entry} sec</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {errorFor('timePerQuestionSec') && <p className="text-xs text-destructive dark:text-rose-300 ml-1">{errorFor('timePerQuestionSec')}</p>}
+                        {/* Interactive Time Per Question Pills */}
+                        <div className="space-y-2">
+                          <label className={cn(
+                            "text-xs font-black uppercase tracking-wider flex items-center justify-between ml-1",
+                            setupConfig.mode === 'online' ? "text-purple-600 dark:text-purple-400" : "text-sky-600 dark:text-sky-400"
+                          )}>
+                            <span className="flex items-center gap-1.5"><Clock3 size={14} /> Time Limit Per Question</span>
+                            <span className="font-mono text-xs text-slate-500">{setupConfig.timePerQuestionSec}s</span>
+                          </label>
+                          <div className="grid grid-cols-5 gap-2">
+                            {[
+                              { sec: 15, label: '15s Blitz' },
+                              { sec: 20, label: '20s Fast' },
+                              { sec: 30, label: '30s Normal' },
+                              { sec: 45, label: '45s Deep' },
+                              { sec: 60, label: '60s Relaxed' },
+                            ].map((timer) => (
+                              <button
+                                key={timer.sec}
+                                type="button"
+                                onClick={() => setSetupConfig((prev) => ({ ...prev, timePerQuestionSec: timer.sec }))}
+                                className={cn(
+                                  'h-11 rounded-xl font-bold text-[11px] sm:text-xs transition-all border cursor-pointer flex flex-col items-center justify-center leading-tight',
+                                  setupConfig.timePerQuestionSec === timer.sec
+                                    ? setupConfig.mode === 'online'
+                                      ? 'bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-500/25'
+                                      : 'bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/25'
+                                    : 'bg-white dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                )}
+                              >
+                                <span className="font-black">{timer.sec}s</span>
+                              </button>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -2798,25 +2850,26 @@ const QuizBattlePage: React.FC = () => {
                       <div className="flex flex-col justify-between space-y-6">
                         <div className="space-y-5">
                           {setupConfig.mode === 'online' && (
-                            <div className="space-y-3 rounded-2xl border border-[#8A3FD3]/20 bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 p-4">
+                            <div className="space-y-3.5 rounded-3xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/50 dark:bg-purple-950/20 p-5 shadow-sm">
                               <div className="space-y-2">
-                                <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">Online Match Type</label>
+                                <label className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-purple-300 ml-1 flex items-center gap-1.5">
+                                  <Users size={14} /> Online Matchmaking Mode
+                                </label>
                                 <div className="grid grid-cols-2 gap-3">
                                   {[
                                     // SAFETY: trusted internal value already conforms to the asserted type.
-                                    { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue' },
+                                    { value: 'public_matchmaking' as QuizBattleQueueType, label: 'Public Queue', desc: 'Find live student opponent' },
                                     // SAFETY: trusted internal value already conforms to the asserted type.
-                                    { value: 'private_room' as QuizBattleQueueType, label: 'Private Room' },
+                                    { value: 'private_room' as QuizBattleQueueType, label: 'Private Room', desc: 'Duel with room code' },
                                   ].map((entry) => (
-                                    <Button
+                                    <button
                                       key={entry.value}
                                       type="button"
-                                      variant={setupConfig.queueType === entry.value ? 'default' : 'outline'}
                                       className={cn(
-                                        "rounded-xl h-11 transition-all border-none font-bold text-xs",
+                                        "p-3 rounded-2xl text-left transition-all border cursor-pointer",
                                         setupConfig.queueType === entry.value
-                                          ? "bg-[#8A3FD3] hover:bg-[#7b35c0] text-white shadow-md shadow-[#8A3FD3]/30"
-                                          : "bg-white/50 hover:bg-white/80 dark:bg-black/30 dark:hover:bg-black/50 text-[#8A3FD3] dark:text-[#d3a8ff]"
+                                          ? "bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-500/25"
+                                          : "bg-white dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-white/90"
                                       )}
                                       onClick={() =>
                                         setSetupConfig((previous) => ({
@@ -2825,8 +2878,9 @@ const QuizBattlePage: React.FC = () => {
                                         }))
                                       }
                                     >
-                                      {entry.label}
-                                    </Button>
+                                      <p className="font-black text-xs">{entry.label}</p>
+                                      <p className={cn("text-[10px] mt-0.5", setupConfig.queueType === entry.value ? "text-purple-100" : "text-slate-400")}>{entry.desc}</p>
+                                    </button>
                                   ))}
                                 </div>
                               </div>
@@ -2837,7 +2891,7 @@ const QuizBattlePage: React.FC = () => {
                                   animate={{ opacity: 1, height: 'auto' }}
                                   className="pt-2 space-y-2"
                                 >
-                                  <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#8A3FD3] dark:text-[#a35ceb] ml-1">
+                                  <label className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-purple-300 ml-1">
                                     Room Code (optional)
                                   </label>
                                   <Input
@@ -2845,79 +2899,70 @@ const QuizBattlePage: React.FC = () => {
                                     onChange={(event) =>
                                       setPrivateRoomCodeInput(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))
                                     }
-                                    placeholder="Leave blank to create a room"
-                                    className="rounded-xl h-12 text-center text-lg uppercase font-bold tracking-[0.25em] border-[#8A3FD3]/30 bg-white/80 dark:bg-black/50 dark:border-[#8A3FD3]/20 focus-visible:ring-[#8A3FD3]/50 shadow-inner"
+                                    placeholder="Leave blank to host new room"
+                                    className="rounded-2xl h-12 text-center text-lg uppercase font-mono font-black tracking-[0.25em] border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800/90 shadow-inner"
                                     maxLength={6}
                                   />
-                                  <div className="rounded-xl border border-[#8A3FD3]/30 bg-[#8A3FD3]/10 px-3 py-3 text-[12px] font-semibold text-[#6620a2] leading-snug dark:border-[#8A3FD3]/30 dark:bg-[#8A3FD3]/10 dark:text-[#d3a8ff]">
-                                    Enter a room code to join an existing battle, or leave it blank to create a new room and share your code.
-                                  </div>
+                                  <p className="text-[11px] font-medium text-purple-600 dark:text-purple-300/80 leading-snug px-1">
+                                    Enter 6-digit code to join an existing game, or start a match to get a code you can share.
+                                  </p>
                                 </motion.div>
                               )}
                             </div>
                           )}
 
-                          <label className={cn("flex flex-col sm:flex-row sm:items-center justify-between rounded-[16px] border bg-white/50 p-4 transition-colors cursor-pointer shadow-sm dark:bg-black/50 group",
-                            setupConfig.mode === 'online' ? "border-[#8A3FD3]/20 hover:bg-[#8A3FD3]/5 dark:border-[#8A3FD3]/20 dark:hover:bg-[#8A3FD3]/10" : "border-[#1FA7E1]/20 hover:bg-[#1FA7E1]/5 dark:border-[#1FA7E1]/20 dark:hover:bg-[#1FA7E1]/10"
-                          )}>
-                            <div className="flex items-center gap-3">
-                              <div className={cn("h-11 w-11 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform",
-                                setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3] dark:text-[#c48bfc]" : "bg-[#1FA7E1]/10 text-[#1FA7E1] dark:text-[#7ad8ff]"
-                              )}>
-                                {battleSoundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 opacity-60" />}
+                          {/* Sound FX Toggle & Volume */}
+                          <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-800/40 p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center",
+                                  setupConfig.mode === 'online' ? "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-300" : "bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-300"
+                                )}>
+                                  {battleSoundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} className="opacity-50" />}
+                                </div>
+                                <div>
+                                  <p className="text-xs font-black text-slate-800 dark:text-slate-200">Battle Audio & SFX</p>
+                                  <p className="text-[11px] text-slate-400 font-medium">Tick sounds, buzzers, and victory fanfare.</p>
+                                </div>
                               </div>
-                              <div className="mb-3 sm:mb-0">
-                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Battle Sounds</p>
-                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Cues for countdowns and results.</p>
-                              </div>
+                              <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
                             </div>
-                            <Switch checked={battleSoundEnabled} onCheckedChange={setBattleSoundEnabled} />
-                          </label>
 
-                          <motion.div
-                            initial={false}
-                            animate={{
-                              opacity: battleSoundEnabled ? 1 : 0.45,
-                              y: battleSoundEnabled ? 0 : -2,
-                            }}
-                            className={cn(
-                              'rounded-[16px] border bg-white/40 p-4 shadow-sm dark:bg-black/40',
-                              setupConfig.mode === 'online'
-                                ? 'border-[#8A3FD3]/20 dark:border-[#8A3FD3]/20'
-                                : 'border-[#1FA7E1]/20 dark:border-[#1FA7E1]/20'
+                            {battleSoundEnabled && (
+                              <div className="pt-2 flex items-center gap-3">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Volume</span>
+                                <input
+                                  type="range"
+                                  min={0}
+                                  max={100}
+                                  step={1}
+                                  value={Math.round(battleSoundVolume * 100)}
+                                  onChange={(event) => {
+                                    const next = clampNumber(Number(event.target.value) / 100, 0, 1);
+                                    setBattleSoundVolume(next);
+                                  }}
+                                  onMouseUp={() => playBattleTone('tick')}
+                                  onTouchEnd={() => playBattleTone('tick')}
+                                  className="h-2 flex-1 cursor-pointer accent-purple-600 rounded-lg"
+                                  aria-label="Battle sound volume"
+                                />
+                                <span className="text-xs font-mono font-bold text-slate-500 tabular-nums w-8 text-right">
+                                  {Math.round(battleSoundVolume * 100)}%
+                                </span>
+                              </div>
                             )}
-                          >
-                            <div className="mb-2 flex items-center justify-between">
-                              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-700 dark:text-slate-200">SFX Volume</p>
-                              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{Math.round(battleSoundVolume * 100)}%</p>
-                            </div>
-                            <input
-                              type="range"
-                              min={0}
-                              max={100}
-                              step={1}
-                              value={Math.round(battleSoundVolume * 100)}
-                              disabled={!battleSoundEnabled}
-                              onChange={(event) => {
-                                const next = clampNumber(Number(event.target.value) / 100, 0, 1);
-                                setBattleSoundVolume(next);
-                              }}
-                              onMouseUp={() => playBattleTone('tick')}
-                              onTouchEnd={() => playBattleTone('tick')}
-                              className="h-2 w-full cursor-pointer accent-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
-                              aria-label="Battle sound effects volume"
-                            />
-                          </motion.div>
+                          </div>
                         </div>
 
-                        {/* Action Bar (Pinned to Bottom of Column) */}
-                        <div className="flex flex-col gap-3">
+                        {/* Action Bar */}
+                        <div className="flex flex-col gap-3 pt-4">
                           <div aria-live="polite" className="min-h-[24px] text-sm font-medium">
                             {launchState.status === 'queued' && (
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className={cn("inline-flex items-center gap-1 text-[13px] font-bold px-3 py-1.5 rounded-lg",
-                                  setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
+                                <span className={cn("inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl",
+                                  setupConfig.mode === 'online' ? "text-purple-700 bg-purple-100 dark:bg-purple-900/40 dark:text-purple-300" : "text-sky-700 bg-sky-100 dark:bg-sky-900/40 dark:text-sky-300"
                                 )}>
+                                  <Loader2 size={13} className="animate-spin" />
                                   {launchState.message}
                                 </span>
                                 {setupConfig.mode === 'online' && setupConfig.queueType === 'private_room' && activeRoom?.roomCode && (
@@ -2925,35 +2970,31 @@ const QuizBattlePage: React.FC = () => {
                                     type="button"
                                     variant="outline"
                                     className={cn(
-                                      'h-8 rounded-full border-emerald-500/50 bg-emerald-50 px-4 text-xs font-black uppercase tracking-[0.16em] text-emerald-900 shadow-sm hover:bg-emerald-100 hover:scale-105 transition-all dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20',
-                                      copiedRoomCode === activeRoom.roomCode && 'scale-105 bg-emerald-200 dark:bg-emerald-500/30'
+                                      'h-8 rounded-full border-emerald-500/50 bg-emerald-50 px-4 text-xs font-black uppercase tracking-wider text-emerald-900 shadow-sm hover:bg-emerald-100',
+                                      copiedRoomCode === activeRoom.roomCode && 'bg-emerald-200'
                                     )}
                                     onClick={() => void handleCopyRoomCode(activeRoom.roomCode)}
-                                    aria-label={`Copy room code ${activeRoom.roomCode}`}
                                   >
-                                    {copiedRoomCode === activeRoom.roomCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                                    {activeRoom.roomCode}
+                                    {copiedRoomCode === activeRoom.roomCode ? <Check size={14} /> : <Copy size={14} />}
+                                    Code: {activeRoom.roomCode}
                                   </Button>
                                 )}
                                 {(queueActive || privateRoomBusy) && queueWaitSeconds > 0 && (
-                                  <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold animate-pulse",
-                                    setupConfig.mode === 'online' ? "bg-[#8A3FD3]/10 text-[#8A3FD3]" : "bg-[#1FA7E1]/10 text-[#1FA7E1]"
-                                  )}>
-                                    Waiting {formatWaitClock(queueWaitSeconds)}
+                                  <span className="text-xs font-mono font-bold text-slate-500 animate-pulse">
+                                    ⏱ {formatWaitClock(queueWaitSeconds)}
                                   </span>
                                 )}
                               </div>
                             )}
                             {launchState.status === 'error' && (
-                              <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-500/20">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/30 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900">
+                                <XCircle size={14} />
                                 {launchState.message}
                               </span>
                             )}
                             {launchState.status === 'validating' && (
-                              <span className={cn("inline-flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg",
-                                setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
-                              )}>
-                                <Loader2 className="h-4 w-4 animate-spin" /> Validating...
+                              <span className="inline-flex items-center gap-2 text-xs font-bold text-purple-600 dark:text-purple-400">
+                                <Loader2 size={14} className="animate-spin" /> Generating combat questions...
                               </span>
                             )}
                           </div>
@@ -2965,7 +3006,7 @@ const QuizBattlePage: React.FC = () => {
                                 variant="outline"
                                 onClick={handleCancelOnlineSession}
                                 disabled={launchState.status === 'validating'}
-                                className="rounded-xl h-14 flex-1 sm:flex-none border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 font-bold px-6"
+                                className="rounded-2xl h-14 border-slate-300 font-bold px-6 cursor-pointer"
                               >
                                 {activeRoom ? 'Cancel room' : 'Leave queue'}
                               </Button>
@@ -2975,18 +3016,26 @@ const QuizBattlePage: React.FC = () => {
                               onClick={submitSetup}
                               disabled={launchState.status === 'validating' || queueActive || privateRoomBusy}
                               className={cn(
-                                "rounded-xl h-14 flex-1 px-8 font-black uppercase tracking-wide text-sm shadow-xl hover:scale-[1.02] active:scale-95 transition-all text-white border-0",
+                                "rounded-2xl h-14 flex-1 px-8 font-black uppercase tracking-wider text-sm shadow-xl hover:scale-[1.01] active:scale-95 transition-all text-white border-0 flex items-center justify-center gap-2.5 cursor-pointer",
                                 setupConfig.mode === 'online'
-                                  ? "bg-[#8A3FD3] hover:bg-[#7b35c0] shadow-[#8A3FD3]/40"
-                                  : "bg-[#1FA7E1] hover:bg-[#1a95c9] shadow-[#1FA7E1]/40"
+                                  ? "bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25"
+                                  : "bg-gradient-to-r from-sky-500 via-cyan-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 shadow-sky-500/25"
                               )}
                             >
                               {launchState.status === 'validating' ? (
-                                <span className="inline-flex items-center gap-2"><Loader2 className="h-5 w-5 animate-spin" /> Starting...</span>
+                                <>
+                                  <Loader2 size={18} className="animate-spin" />
+                                  <span>Entering Arena...</span>
+                                </>
                               ) : (
-                                setupConfig.mode === 'online' && setupConfig.queueType === 'private_room'
-                                  ? (privateRoomCodeInput.trim() ? 'Join Room' : 'Create Room')
-                                  : 'Start Battle'
+                                <>
+                                  <Swords size={18} />
+                                  <span>
+                                    {setupConfig.mode === 'online' && setupConfig.queueType === 'private_room'
+                                      ? (privateRoomCodeInput.trim() ? 'Join Battle Room' : 'Host Battle Room')
+                                      : 'Enter Battle Arena'}
+                                  </span>
+                                </>
                               )}
                             </Button>
                           </div>
@@ -3160,121 +3209,212 @@ const QuizBattlePage: React.FC = () => {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
-                  className="space-y-4"
+                  className="space-y-6"
                 >
                   {/* History Banner */}
                   <motion.div
-                    className="relative overflow-hidden rounded-[24px] mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl"
-                    whileHover={{ scale: 1.01 }}
+                    className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-6 sm:p-8 text-white shadow-2xl"
+                    whileHover={{ scale: 1.005 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   >
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent" />
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.25),transparent_60%)]" />
+                    <div className="pointer-events-none absolute -bottom-10 -right-10 h-52 w-52 rounded-full bg-white/10 blur-2xl" />
 
-                    {/* Animated Background Elements */}
-                    <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl animate-orb-pulse" />
-                    <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-teal-500/20 blur-2xl animate-orb-pulse-delayed" />
-
-                    <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-5">
-                        <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 transition-all backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(16,185,129,0.15)] shrink-0">
-                          <ChevronRight className="h-6 w-6 rotate-180 text-emerald-300" />
+                    <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                      <div className="flex items-center gap-4 sm:gap-5">
+                        <Button
+                          variant="ghost"
+                          onClick={() => setActiveTab("hub")}
+                          className="h-12 w-12 p-0 rounded-2xl bg-white/15 hover:bg-white/25 hover:scale-105 transition-all text-white backdrop-blur-md border border-white/20 shrink-0"
+                          aria-label="Back to Hub"
+                        >
+                          <ChevronRight className="h-6 w-6 rotate-180" />
                         </Button>
                         <div>
-                          <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md">
-                            <div className="bg-emerald-500/20 p-2 rounded-2xl shadow-inner border border-emerald-500/30">
-                              <div className="relative w-8 h-8 flex items-center justify-center">
-                                <div className="absolute w-5 h-6 bg-emerald-500/30 border border-emerald-400/50 rounded-sm -rotate-12 translate-x-1 shadow-sm" />
-                                <div className="absolute w-5 h-6 bg-teal-400/50 border border-teal-300/60 rounded-sm rotate-6 -translate-x-1 shadow-md backdrop-blur-sm" />
-                                <div className="absolute w-5 h-6 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-sm shadow-[0_0_15px_rgba(52,211,153,0.8)] z-10 flex flex-col items-center justify-center gap-[3px]">
-                                  <div className="w-2.5 h-[2px] bg-white/90 rounded-full" />
-                                  <div className="w-3 h-[2px] bg-white/90 rounded-full" />
-                                  <div className="w-2 h-[2px] bg-white/90 rounded-full" />
-                                </div>
-                              </div>
-                            </div>
-                            Matches History
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-[11px] font-black uppercase tracking-widest text-emerald-200">
+                              Combat Archive
+                            </span>
+                          </div>
+                          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black font-display tracking-tight text-white mt-1">
+                            Battle Chronicles & Logs
                           </h2>
-                          <p className="text-[12px] font-black text-white/60 mt-2 tracking-[0.1em] uppercase">
-                            Review your past duels and track your progress.
+                          <p className="text-xs sm:text-sm font-medium text-emerald-100/80 mt-0.5">
+                            Relive your math showdowns, analyze round scores, and track your victory record.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Quick History Stats */}
+                      <div className="flex items-center gap-2.5 bg-black/20 backdrop-blur-md rounded-2xl p-2.5 sm:p-3 border border-white/15 shrink-0">
+                        <div className="px-3 py-1 text-center">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-emerald-200">Total Duels</p>
+                          <p className="text-lg font-black text-white tabular-nums">{statsData?.matchesPlayed ?? filteredHistory.length}</p>
+                        </div>
+                        <div className="h-8 w-px bg-white/20" />
+                        <div className="px-3 py-1 text-center">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-emerald-200">Victories</p>
+                          <p className="text-lg font-black text-amber-300 tabular-nums">{statsData?.wins ?? 0}</p>
+                        </div>
+                        <div className="h-8 w-px bg-white/20" />
+                        <div className="px-3 py-1 text-center">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-emerald-200">Win Rate</p>
+                          <p className="text-lg font-black text-cyan-300 tabular-nums">
+                            {statsData?.matchesPlayed ? Math.round(((statsData.wins || 0) / statsData.matchesPlayed) * 100) : 0}%
                           </p>
                         </div>
                       </div>
                     </div>
                   </motion.div>
 
-                  <div className="relative isolate w-full">
-                    <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-blue-500/20 rounded-full blur-[120px] pointer-events-none -z-10" />
-                    <div className="absolute bottom-[-10%] left-[-5%] w-[350px] h-[350px] bg-teal-500/20 rounded-full blur-[120px] pointer-events-none -z-10" />
-
-                    <div className="rounded-[24px] bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl p-6 sm:p-8">
-                      <div className="mb-6">
-                        <h3 className="text-xl font-black text-white tracking-wide leading-none drop-shadow-md">Match History</h3>
-                        <p className="text-sm font-semibold text-white/60 mt-2">Your recent student battles only.</p>
+                  {/* Main History Panel */}
+                  <div className="rounded-[28px] bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-xl backdrop-blur-xl p-6 sm:p-8">
+                    {/* Filter Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <div>
+                        <h3 className="text-lg font-black font-display text-slate-900 dark:text-white flex items-center gap-2">
+                          <History size={18} className="text-emerald-500" />
+                          Duel History Records
+                        </h3>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                          Verified match results stored on your student dossier.
+                        </p>
                       </div>
 
-                      <div className="flex gap-2 mb-6">
+                      <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/80">
                         {[
-                          { value: 'all', label: 'All' },
-                          { value: 'online', label: 'Online' },
-                          { value: 'bot', label: 'Bot' },
-                        ].map((entry) => (
-                          <Button
-                            key={entry.value}
-                            type="button"
-                            variant="outline"
-                            // SAFETY: trusted internal value already conforms to the asserted type.
-                            onClick={() => setHistoryFilterMode(entry.value as 'all' | QuizBattleMode)}
-                            className={cn(
-                              "rounded-full h-9 px-5 border transition-all font-bold tracking-wide",
-                              historyFilterMode === entry.value
-                                ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                                : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
-                            )}
-                          >
-                            {entry.label}
-                          </Button>
-                        ))}
+                          { value: 'all', label: 'All Battles', icon: Swords },
+                          { value: 'online', label: '1v1 Online', icon: Users },
+                          { value: 'bot', label: 'AI Practice', icon: Bot },
+                        ].map((entry) => {
+                          const Icon = entry.icon;
+                          const isCurrent = historyFilterMode === entry.value;
+                          return (
+                            <button
+                              key={entry.value}
+                              type="button"
+                              // SAFETY: trusted internal value already conforms to the asserted type.
+                              onClick={() => setHistoryFilterMode(entry.value as 'all' | QuizBattleMode)}
+                              className={cn(
+                                "h-9 px-3.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer",
+                                isCurrent
+                                  ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20"
+                                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50"
+                              )}
+                            >
+                              <Icon size={14} />
+                              <span>{entry.label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
+                    </div>
 
-                      <div className="space-y-4">
-                        {statsLoading ? (
-                          <div className="space-y-3">
-                            <Skeleton className="h-[76px] w-full rounded-2xl bg-white/5 border border-white/10" />
-                            <Skeleton className="h-[76px] w-full rounded-2xl bg-white/5 border border-white/10" />
+                    {/* Matches List */}
+                    <div className="space-y-3">
+                      {statsLoading ? (
+                        <div className="space-y-3">
+                          <Skeleton className="h-20 w-full rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                          <Skeleton className="h-20 w-full rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                          <Skeleton className="h-20 w-full rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                        </div>
+                      ) : filteredHistory.length === 0 ? (
+                        <div className="text-center py-16 px-4 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700">
+                          <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center mb-3">
+                            <Swords size={28} />
                           </div>
-                        ) : filteredHistory.length === 0 ? (
-                          <p className="text-sm text-white/50 py-4">No matches in this filter yet.</p>
-                        ) : (
-                          filteredHistory.map((entry) => {
-                            const isWin = entry.outcome === 'win';
-                            const isLoss = entry.outcome === 'loss';
+                          <h4 className="text-base font-black text-slate-800 dark:text-slate-200 font-display">No Duel Logs in This Filter</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                            Jump into the arena to duel live peers or test your skills against our AI bot!
+                          </p>
+                          <Button
+                            type="button"
+                            onClick={() => setActiveTab('setup')}
+                            className="mt-4 h-10 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                          >
+                            Launch a Duel Now
+                          </Button>
+                        </div>
+                      ) : (
+                        filteredHistory.map((entry) => {
+                          const isWin = entry.outcome === 'win';
+                          const isLoss = entry.outcome === 'loss';
 
-                            return (
-                              <div key={entry.matchId} className="relative overflow-hidden rounded-[20px] bg-white/5 border border-white/10 p-5 flex items-center justify-between shadow-lg transition-all hover:bg-white/10 hover:shadow-xl">
-                                <div className={cn(
-                                  "absolute inset-y-0 left-0 w-3/4 pointer-events-none z-0",
-                                  isWin ? "bg-gradient-to-r from-emerald-500/50 via-emerald-500/10 to-transparent" : isLoss ? "bg-gradient-to-r from-rose-500/50 via-rose-500/10 to-transparent" : "bg-gradient-to-r from-amber-500/50 via-amber-500/10 to-transparent"
-                                )} />
+                          return (
+                            <motion.div
+                              key={entry.matchId}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className={cn(
+                                "relative overflow-hidden rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border transition-all shadow-sm hover:shadow-md",
+                                isWin
+                                  ? "bg-gradient-to-r from-emerald-50/90 via-teal-50/40 to-white dark:from-emerald-950/30 dark:via-teal-950/10 dark:to-slate-900 border-emerald-300/80 dark:border-emerald-800/60"
+                                  : isLoss
+                                    ? "bg-gradient-to-r from-rose-50/90 via-pink-50/40 to-white dark:from-rose-950/30 dark:via-pink-950/10 dark:to-slate-900 border-rose-300/80 dark:border-rose-800/60"
+                                    : "bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-white dark:from-amber-950/30 dark:via-orange-950/10 dark:to-slate-900 border-amber-300/80 dark:border-amber-800/60"
+                              )}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div
+                                  className={cn(
+                                    "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner",
+                                    isWin
+                                      ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                                      : isLoss
+                                        ? "bg-rose-500 text-white shadow-rose-500/20"
+                                        : "bg-amber-500 text-white shadow-amber-500/20"
+                                  )}
+                                >
+                                  {isWin ? <Trophy size={22} /> : isLoss ? <Shield size={22} /> : <Award size={22} />}
+                                </div>
 
-                                <div className="relative z-10 pl-2">
-                                  <p className="text-base sm:text-lg font-black text-white drop-shadow-md">vs {entry.opponentName}</p>
-                                  <p className="text-[13px] font-bold text-white/60 tabular-nums mt-0.5">
-                                    {entry.scoreFor}-{entry.scoreAgainst} <span className="mx-1">•</span> {entry.accuracy.toFixed(0)}% <span className="mx-1">•</span> +{entry.xpEarned} XP
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-base font-black text-slate-900 dark:text-white font-display">
+                                      vs {entry.opponentName}
+                                    </h4>
+                                    <span
+                                      className={cn(
+                                        "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                        entry.mode === 'online'
+                                          ? "bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300"
+                                          : "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300"
+                                      )}
+                                    >
+                                      {entry.mode === 'online' ? '1v1 Online' : 'Bot AI'}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 flex items-center gap-2">
+                                    <span className="font-bold text-slate-700 dark:text-slate-300">
+                                      Score: {entry.scoreFor} - {entry.scoreAgainst}
+                                    </span>
+                                    <span>•</span>
+                                    <span>Accuracy: {entry.accuracy.toFixed(0)}%</span>
                                   </p>
                                 </div>
-                                <div className="relative z-10">
-                                  <span className={cn(
-                                    'text-sm font-black uppercase tracking-[0.1em] rounded-full px-4 py-1.5 border shadow-sm',
-                                    isWin ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.15)]' : isLoss ? 'text-rose-300 border-rose-500/30 bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.15)]' : 'text-amber-300 border-amber-500/30 bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-                                  )}>
-                                    {formatOutcomeChip(entry.outcome)}
-                                  </span>
-                                </div>
                               </div>
-                            );
-                          })
-                        )}
-                      </div>
+
+                              <div className="flex items-center gap-3 self-end sm:self-center">
+                                <span className="text-xs font-black px-3 py-1 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 tabular-nums">
+                                  +{entry.xpEarned} XP
+                                </span>
+                                <span
+                                  className={cn(
+                                    'text-xs font-black uppercase tracking-wider rounded-xl px-4 py-1.5 shadow-xs',
+                                    isWin
+                                      ? 'bg-emerald-600 text-white shadow-emerald-500/20'
+                                      : isLoss
+                                        ? 'bg-rose-600 text-white shadow-rose-500/20'
+                                        : 'bg-amber-500 text-white shadow-amber-500/20'
+                                  )}
+                                >
+                                  {formatOutcomeChip(entry.outcome)}
+                                </span>
+                              </div>
+                            </motion.div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -3286,91 +3426,208 @@ const QuizBattlePage: React.FC = () => {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
-                  className="space-y-4"
+                  className="space-y-6"
                 >
                   {/* Stats Banner */}
                   <motion.div
-                    className="relative overflow-hidden rounded-[24px] mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl"
-                    whileHover={{ scale: 1.01 }}
+                    className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-600 p-6 sm:p-8 text-white shadow-2xl"
+                    whileHover={{ scale: 1.005 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   >
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent" />
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.25),transparent_60%)]" />
+                    <div className="pointer-events-none absolute -bottom-10 -right-10 h-52 w-52 rounded-full bg-white/10 blur-2xl" />
 
-                    {/* Animated Background Elements */}
-                    <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl animate-orb-pulse" />
-                    <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-purple-500/20 blur-2xl animate-orb-pulse-delayed" />
-
-                    <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-5">
-                        <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 transition-all backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(99,102,241,0.15)] shrink-0">
-                          <ChevronRight className="h-6 w-6 rotate-180 text-indigo-300" />
+                    <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                      <div className="flex items-center gap-4 sm:gap-5">
+                        <Button
+                          variant="ghost"
+                          onClick={() => setActiveTab("hub")}
+                          className="h-12 w-12 p-0 rounded-2xl bg-white/15 hover:bg-white/25 hover:scale-105 transition-all text-white backdrop-blur-md border border-white/20 shrink-0"
+                          aria-label="Back to Hub"
+                        >
+                          <ChevronRight className="h-6 w-6 rotate-180" />
                         </Button>
                         <div>
-                          <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md">
-                            <div className="bg-indigo-500/20 p-2 rounded-2xl shadow-inner border border-indigo-500/30 animate-icon-bob">
-                              <div className="relative w-8 h-8 flex items-end justify-center gap-1 pb-1">
-                                <div className="w-1.5 h-3 bg-indigo-300 rounded-t-[2px] shadow-[0_0_8px_rgba(165,180,252,0.8)]" />
-                                <div className="w-1.5 h-6 bg-purple-400 rounded-t-[2px] shadow-[0_0_12px_rgba(192,132,252,0.9)]" />
-                                <div className="w-1.5 h-4 bg-indigo-400 rounded-t-[2px] shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
-                              </div>
-                            </div>
-                            My Statistics
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-0.5 rounded-full bg-purple-400/20 border border-purple-300/30 text-[11px] font-black uppercase tracking-widest text-purple-200 flex items-center gap-1">
+                              <Zap size={13} />
+                              Gladiator Dossier
+                            </span>
+                          </div>
+                          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black font-display tracking-tight text-white mt-1">
+                            Battle Performance & Stats
                           </h2>
-                          <p className="text-[12px] font-black text-white/60 mt-2 tracking-[0.1em] uppercase">
-                            Analyzing your battlefield performance.
+                          <p className="text-xs sm:text-sm font-medium text-purple-100/80 mt-0.5">
+                            Real-time analytics on your response reflexes, accuracy rating, and duel victories.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Combat Rating Badge */}
+                      <div className="flex items-center gap-4 bg-black/25 backdrop-blur-md rounded-2xl p-3 border border-white/15 shrink-0">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-md flex items-center justify-center">
+                          <div className="w-full h-full bg-slate-900 rounded-[10px] flex items-center justify-center">
+                            <Trophy size={20} className="text-amber-400" />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-wider text-purple-200">Combat Rating</p>
+                          <p className="text-xl font-black text-white tabular-nums">
+                            {Math.round(((statsData?.wins || 0) * 120) + ((statsData?.currentStreak || 0) * 45) + ((statsData?.averageAccuracy || 0) * 8))} PTS
                           </p>
                         </div>
                       </div>
                     </div>
                   </motion.div>
 
-                  <div className="relative isolate w-full">
-                    <div className="absolute top-[0%] left-[10%] w-[350px] h-[350px] bg-indigo-500/30 rounded-full blur-[120px] pointer-events-none -z-10" />
-                    <div className="absolute bottom-[0%] right-[10%] w-[300px] h-[300px] bg-purple-500/30 rounded-full blur-[120px] pointer-events-none -z-10" />
-
-                    <div className="rounded-[24px] bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl p-6 sm:p-8">
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
-                        {[
-                          {
-                            label: 'WINS',
-                            value: statsData?.wins ?? 0,
-                            icon: Trophy,
-                            textColor: 'text-rose-400',
-                            gradient: 'radial-gradient(circle at 10% 90%, rgba(244,63,94,0.35) 0%, transparent 70%)'
-                          },
-                          {
-                            label: 'CURRENT STREAK',
-                            value: statsData?.currentStreak ?? 0,
-                            icon: Sparkles,
-                            textColor: 'text-purple-400',
-                            gradient: 'radial-gradient(circle at 10% 90%, rgba(168,85,247,0.35) 0%, transparent 70%)'
-                          },
-                          {
-                            label: 'AVG ACCURACY',
-                            value: `${(statsData?.averageAccuracy || 0).toFixed(1)}%`,
-                            icon: Target,
-                            textColor: 'text-blue-400',
-                            gradient: 'radial-gradient(circle at 10% 90%, rgba(59,130,246,0.35) 0%, transparent 70%)'
-                          },
-                          {
-                            label: 'AVG RESPONSE',
-                            value: formatResponseTime(statsData?.averageResponseMs || 0),
-                            icon: Clock3,
-                            textColor: 'text-teal-400',
-                            gradient: 'radial-gradient(circle at 10% 90%, rgba(20,184,166,0.35) 0%, transparent 70%)'
-                          },
-                        ].map((entry) => (
-                          <div key={entry.label} className="relative overflow-hidden rounded-[20px] bg-white/5 border border-white/10 shadow-lg min-h-[160px] flex flex-col justify-between p-6 transition-transform hover:scale-105">
-                            <div className="absolute inset-0 pointer-events-none z-0 mix-blend-screen" style={{ background: entry.gradient }} />
-                            <div className="relative z-10">
-                              <p className={cn("text-[11px] font-black uppercase tracking-[0.15em] mb-3", entry.textColor)}>{entry.label}</p>
-                              <p className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-md">{entry.value}</p>
-                            </div>
-                            <div className="relative z-10 mt-6 flex justify-start">
-                              <entry.icon className={cn("h-5 w-5 drop-shadow-md", entry.textColor)} />
-                            </div>
+                  {/* Main Stats Grid */}
+                  <div className="space-y-6">
+                    {/* 4 Hero Metric Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+                      {/* Wins Card */}
+                      <motion.div
+                        whileHover={{ y: -4 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative overflow-hidden rounded-[26px] p-6 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white dark:to-slate-900 border border-emerald-300/70 dark:border-emerald-800/60 shadow-lg flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                            Total Victories
+                          </span>
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/25">
+                            <Trophy size={18} />
                           </div>
-                        ))}
+                        </div>
+                        <div>
+                          <p className="text-4xl sm:text-5xl font-black font-display text-slate-900 dark:text-white tabular-nums tracking-tight">
+                            {statsData?.wins ?? 0}
+                          </p>
+                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                            <TrendingUp size={13} /> {statsData?.matchesPlayed ? Math.round(((statsData.wins || 0) / statsData.matchesPlayed) * 100) : 0}% Win Ratio
+                          </p>
+                        </div>
+                      </motion.div>
+
+                      {/* Current Streak Card */}
+                      <motion.div
+                        whileHover={{ y: -4 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative overflow-hidden rounded-[26px] p-6 bg-gradient-to-br from-rose-500/10 via-orange-500/5 to-white dark:to-slate-900 border border-rose-300/70 dark:border-rose-800/60 shadow-lg flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-black uppercase tracking-wider text-rose-700 dark:text-rose-400">
+                            Combat Streak
+                          </span>
+                          <div className="w-10 h-10 rounded-2xl bg-rose-500 text-white flex items-center justify-center shadow-md shadow-rose-500/25">
+                            <Flame size={18} />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-4xl sm:text-5xl font-black font-display text-slate-900 dark:text-white tabular-nums tracking-tight">
+                            {statsData?.currentStreak ?? 0}
+                          </p>
+                          <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1">
+                            <Sparkles size={13} /> Best Streak: {Math.max(statsData?.currentStreak || 0, statsData?.wins || 0)} Wins
+                          </p>
+                        </div>
+                      </motion.div>
+
+                      {/* Accuracy Card */}
+                      <motion.div
+                        whileHover={{ y: -4 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative overflow-hidden rounded-[26px] p-6 bg-gradient-to-br from-sky-500/10 via-blue-500/5 to-white dark:to-slate-900 border border-sky-300/70 dark:border-sky-800/60 shadow-lg flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-black uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                            Average Accuracy
+                          </span>
+                          <div className="w-10 h-10 rounded-2xl bg-sky-500 text-white flex items-center justify-center shadow-md shadow-sky-500/25">
+                            <Target size={18} />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-4xl sm:text-5xl font-black font-display text-slate-900 dark:text-white tabular-nums tracking-tight">
+                            {(statsData?.averageAccuracy || 0).toFixed(1)}%
+                          </p>
+                          <p className="text-xs font-bold text-sky-600 dark:text-sky-400 mt-1 flex items-center gap-1">
+                            <ShieldCheck size={13} /> High Precision Tier
+                          </p>
+                        </div>
+                      </motion.div>
+
+                      {/* Response Time Card */}
+                      <motion.div
+                        whileHover={{ y: -4 }}
+                        transition={{ duration: 0.2 }}
+                        className="relative overflow-hidden rounded-[26px] p-6 bg-gradient-to-br from-purple-500/10 via-indigo-500/5 to-white dark:to-slate-900 border border-purple-300/70 dark:border-purple-800/60 shadow-lg flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-purple-400">
+                            Avg Response Time
+                          </span>
+                          <div className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-500/25">
+                            <Zap size={18} />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-4xl sm:text-5xl font-black font-display text-slate-900 dark:text-white tabular-nums tracking-tight">
+                            {formatResponseTime(statsData?.averageResponseMs || 0)}
+                          </p>
+                          <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mt-1 flex items-center gap-1">
+                            <Clock3 size={13} /> Blitz Reaction Speed
+                          </p>
+                        </div>
+                      </motion.div>
+                    </div>
+
+                    {/* Combat Performance Breakdown Section */}
+                    <div className="rounded-[28px] bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xl">
+                      <h3 className="text-lg font-black font-display text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <Award size={20} className="text-purple-600 dark:text-purple-400" />
+                        Combat Proficiency Breakdown
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                              Duel Win Consistency
+                            </span>
+                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+                              {statsData?.matchesPlayed ? Math.round(((statsData.wins || 0) / statsData.matchesPlayed) * 100) : 0}%
+                            </span>
+                          </div>
+                          <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5">
+                            <div
+                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                              style={{ width: `${statsData?.matchesPlayed ? Math.min(100, Math.round(((statsData.wins || 0) / statsData.matchesPlayed) * 100)) : 0}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">
+                            Based on all completed student battles recorded on your profile.
+                          </p>
+                        </div>
+
+                        <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                              Math Solution Precision
+                            </span>
+                            <span className="text-sm font-black text-sky-600 dark:text-sky-400 tabular-nums">
+                              {(statsData?.averageAccuracy || 0).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5">
+                            <div
+                              className="h-full bg-gradient-to-r from-sky-500 to-blue-500 rounded-full transition-all duration-500"
+                              style={{ width: `${Math.min(100, Math.round(statsData?.averageAccuracy || 0))}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">
+                            Correct answer accuracy across easy, medium, and hard difficulty rounds.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3383,96 +3640,232 @@ const QuizBattlePage: React.FC = () => {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
-                  className="space-y-4"
+                  className="space-y-6"
                 >
                   {/* Leaderboard Banner */}
                   <motion.div
-                    className="relative overflow-hidden rounded-[24px] mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl"
-                    whileHover={{ scale: 1.01 }}
+                    className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-amber-500 via-orange-500 to-rose-600 p-6 sm:p-8 text-white shadow-2xl"
+                    whileHover={{ scale: 1.005 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   >
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent" />
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.25),transparent_60%)]" />
+                    <div className="pointer-events-none absolute -bottom-10 -right-10 h-52 w-52 rounded-full bg-white/10 blur-2xl" />
 
-                    {/* Animated Background Elements */}
-                    <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-500/20 blur-3xl animate-orb-pulse" />
-                    <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-orange-500/20 blur-2xl animate-orb-pulse-delayed" />
-
-                    <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-5">
-                        <Button variant="ghost" onClick={() => setActiveTab("hub")} className="h-12 w-12 p-0 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 transition-all backdrop-blur-md border border-white/10 shadow-[0_0_15px_rgba(245,158,11,0.15)] shrink-0">
-                          <ChevronRight className="h-6 w-6 rotate-180 text-amber-300" />
+                    <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                      <div className="flex items-center gap-4 sm:gap-5">
+                        <Button
+                          variant="ghost"
+                          onClick={() => setActiveTab("hub")}
+                          className="h-12 w-12 p-0 rounded-2xl bg-white/15 hover:bg-white/25 hover:scale-105 transition-all text-white backdrop-blur-md border border-white/20 shrink-0"
+                          aria-label="Back to Hub"
+                        >
+                          <ChevronRight className="h-6 w-6 rotate-180" />
                         </Button>
                         <div>
-                          <h2 className="flex items-center gap-3 text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-md">
-                            <motion.div
-                              animate={{ scale: [1, 1.1, 1] }}
-                              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                              className="bg-amber-500/20 p-2 rounded-2xl shadow-inner border border-amber-500/30"
-                            >
-                              <Crown className="h-8 w-8 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
-                            </motion.div>
-                            Hall of Fame
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-0.5 rounded-full bg-white/20 border border-white/30 text-[11px] font-black uppercase tracking-widest text-amber-100 flex items-center gap-1">
+                              <Crown size={13} className="text-amber-200" />
+                              Arena Ladder
+                            </span>
+                          </div>
+                          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black font-display tracking-tight text-white mt-1">
+                            Hall of Arena Champions
                           </h2>
-                          <p className="text-[12px] font-black text-white/60 mt-2 tracking-[0.1em] uppercase">
-                            The top-ranked minds across the globe.
+                          <p className="text-xs sm:text-sm font-medium text-amber-100/90 mt-0.5">
+                            Top STEM math warriors ranked by battle points and win percentages.
                           </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 bg-black/20 backdrop-blur-md rounded-2xl p-3 border border-white/15 shrink-0">
+                        <Medal size={28} className="text-amber-300" />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-wider text-amber-200">Active Season</p>
+                          <p className="text-base font-black text-white">Season 1 Ladder</p>
                         </div>
                       </div>
                     </div>
                   </motion.div>
 
-                  <div className="relative isolate w-full">
-                    <div className="absolute top-[20%] left-[20%] w-[400px] h-[400px] bg-orange-500/20 rounded-full blur-[120px] pointer-events-none -z-10" />
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[350px] h-[350px] bg-pink-500/20 rounded-full blur-[120px] pointer-events-none -z-10" />
-
-                    <div className="rounded-[24px] bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl p-6 sm:p-8">
-                      <div className="mb-8 flex items-start gap-3">
-                        <Crown className="h-8 w-8 text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)] shrink-0" />
-                        <div>
-                          <h3 className="text-xl font-black text-white tracking-wide leading-none drop-shadow-md">Hall of Fame</h3>
-                          <p className="text-sm font-semibold text-white/60 mt-2">Student-only ranking using trusted backend aggregates.</p>
+                  {/* Main Leaderboard Panel */}
+                  <div className="rounded-[28px] bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-xl backdrop-blur-xl p-6 sm:p-8">
+                    {leaderboardLoading ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-4 pb-6">
+                          <Skeleton className="h-44 rounded-3xl bg-slate-100 dark:bg-slate-800" />
+                          <Skeleton className="h-52 rounded-3xl bg-slate-100 dark:bg-slate-800" />
+                          <Skeleton className="h-44 rounded-3xl bg-slate-100 dark:bg-slate-800" />
                         </div>
+                        <Skeleton className="h-16 w-full rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                        <Skeleton className="h-16 w-full rounded-2xl bg-slate-100 dark:bg-slate-800" />
                       </div>
-
-                      {leaderboardLoading ? (
-                        <div className="space-y-4">
-                          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5 border border-white/10" />
-                          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5 border border-white/10" />
-                          <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5 border border-white/10" />
+                    ) : leaderboardRows.length === 0 ? (
+                      <div className="text-center py-16 px-4 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700">
+                        <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center mb-3">
+                          <Crown size={32} />
                         </div>
-                      ) : leaderboardRows.length === 0 ? (
-                        <p className="text-sm text-white/50">No leaderboard entries yet. Finish a battle to place on the board.</p>
-                      ) : (
-                        <div className="space-y-6">
-                          <div className="space-y-3">
-                            {leaderboardRows.map((entry) => (
+                        <h4 className="text-lg font-black text-slate-900 dark:text-white font-display">No Contenders Yet</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                          Be the very first student to finish a battle and claim the #1 Grand Champion crown!
+                        </p>
+                        <Button
+                          type="button"
+                          onClick={() => setActiveTab('setup')}
+                          className="mt-4 h-10 px-5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs"
+                        >
+                          Claim #1 Rank
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-8">
+                        {/* 3D Combat Podium (Top 3) */}
+                        {leaderboardRows.length >= 1 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-3 items-end pt-4 pb-2">
+                            {/* #2 Rank (Left Podium) */}
+                            {leaderboardRows[1] ? (
+                              <motion.div
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="order-2 sm:order-1 rounded-3xl p-5 bg-gradient-to-b from-slate-100 to-slate-200/80 dark:from-slate-800 dark:to-slate-800/50 border border-slate-300 dark:border-slate-700 text-center shadow-md flex flex-col items-center justify-between min-h-[220px]"
+                              >
+                                <div className="flex flex-col items-center">
+                                  <div className="w-12 h-12 rounded-2xl bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-black text-lg shadow-inner mb-2">
+                                    <Medal size={22} className="text-slate-500 dark:text-slate-300" />
+                                  </div>
+                                  <span className="px-3 py-0.5 rounded-full bg-slate-300/80 dark:bg-slate-700 text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                                    #2 Challenger
+                                  </span>
+                                  <h4 className="text-base font-black text-slate-900 dark:text-white font-display mt-2 truncate max-w-[150px]">
+                                    {leaderboardRows[1].displayName}
+                                    {leaderboardRows[1].isSelf && ' (You)'}
+                                  </h4>
+                                  <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                                    {leaderboardRows[1].winRate.toFixed(0)}% Win Rate
+                                  </p>
+                                </div>
+                                <div className="mt-4 pt-3 border-t border-slate-300/60 dark:border-slate-700 w-full">
+                                  <p className="text-lg font-black text-slate-800 dark:text-slate-100 tabular-nums">
+                                    {leaderboardRows[1].scoreLabel}
+                                  </p>
+                                </div>
+                              </motion.div>
+                            ) : <div className="order-2 sm:order-1 hidden sm:block" />}
+
+                            {/* #1 Rank (Center Golden Elevated Podium) */}
+                            {leaderboardRows[0] && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="order-1 sm:order-2 rounded-3xl p-6 bg-gradient-to-b from-amber-100/90 via-amber-50 to-white dark:from-amber-950/40 dark:via-slate-800 dark:to-slate-800/80 border-2 border-amber-400 dark:border-amber-500/60 text-center shadow-xl shadow-amber-500/10 flex flex-col items-center justify-between min-h-[260px] relative overflow-hidden"
+                              >
+                                <div className="pointer-events-none absolute -top-8 -right-8 w-24 h-24 bg-amber-400/20 rounded-full blur-xl" />
+                                <div className="flex flex-col items-center relative z-10">
+                                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/30 mb-2">
+                                    <Crown size={32} className="text-slate-950 drop-shadow-sm" />
+                                  </div>
+                                  <span className="px-3.5 py-1 rounded-full bg-amber-400 text-slate-950 text-[11px] font-black uppercase tracking-widest shadow-sm">
+                                    👑 Grand Champion
+                                  </span>
+                                  <h4 className="text-lg font-black text-slate-900 dark:text-white font-display mt-2 truncate max-w-[170px]">
+                                    {leaderboardRows[0].displayName}
+                                    {leaderboardRows[0].isSelf && ' (You)'}
+                                  </h4>
+                                  <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-0.5">
+                                    {leaderboardRows[0].winRate.toFixed(0)}% Win Rate • {leaderboardRows[0].bestStreak} Streak
+                                  </p>
+                                </div>
+                                <div className="mt-4 pt-3 border-t border-amber-200 dark:border-amber-800/60 w-full relative z-10">
+                                  <p className="text-2xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
+                                    {leaderboardRows[0].scoreLabel}
+                                  </p>
+                                </div>
+                              </motion.div>
+                            )}
+
+                            {/* #3 Rank (Right Podium) */}
+                            {leaderboardRows[2] ? (
+                              <motion.div
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="order-3 rounded-3xl p-5 bg-gradient-to-b from-orange-100/60 to-orange-200/50 dark:from-orange-950/20 dark:to-slate-800/50 border border-orange-300/80 dark:border-orange-900/60 text-center shadow-md flex flex-col items-center justify-between min-h-[200px]"
+                              >
+                                <div className="flex flex-col items-center">
+                                  <div className="w-12 h-12 rounded-2xl bg-orange-300/80 dark:bg-orange-900/60 text-orange-800 dark:text-orange-200 flex items-center justify-center font-black text-lg shadow-inner mb-2">
+                                    <Award size={22} className="text-orange-700 dark:text-orange-300" />
+                                  </div>
+                                  <span className="px-3 py-0.5 rounded-full bg-orange-200/80 dark:bg-orange-900/60 text-[10px] font-black uppercase tracking-wider text-orange-800 dark:text-orange-300">
+                                    #3 Contender
+                                  </span>
+                                  <h4 className="text-base font-black text-slate-900 dark:text-white font-display mt-2 truncate max-w-[150px]">
+                                    {leaderboardRows[2].displayName}
+                                    {leaderboardRows[2].isSelf && ' (You)'}
+                                  </h4>
+                                  <p className="text-[11px] font-bold text-slate-500 mt-0.5">
+                                    {leaderboardRows[2].winRate.toFixed(0)}% Win Rate
+                                  </p>
+                                </div>
+                                <div className="mt-4 pt-3 border-t border-orange-200/80 dark:border-slate-700 w-full">
+                                  <p className="text-lg font-black text-slate-800 dark:text-slate-100 tabular-nums">
+                                    {leaderboardRows[2].scoreLabel}
+                                  </p>
+                                </div>
+                              </motion.div>
+                            ) : <div className="order-3 hidden sm:block" />}
+                          </div>
+                        )}
+
+                        {/* Ladder List (Rank 4+) */}
+                        {leaderboardRows.length > 3 && (
+                          <div className="space-y-3 pt-2">
+                            <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
+                              Arena Duelist Tier (Rank 4+)
+                            </h4>
+                            {leaderboardRows.slice(3).map((entry) => (
                               <div
                                 key={entry.userId}
                                 className={cn(
-                                  'relative overflow-hidden rounded-[20px] p-5 flex items-center justify-between shadow-lg transition-all hover:scale-[1.01] group',
+                                  'relative overflow-hidden rounded-2xl p-4 sm:p-5 flex items-center justify-between border transition-all shadow-sm',
                                   entry.isSelf
-                                    ? 'bg-amber-500/10 border border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.15)]'
-                                    : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                                    ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600 shadow-md ring-2 ring-amber-400/40'
+                                    : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-800'
                                 )}
                               >
-                                {entry.isSelf && <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 to-transparent pointer-events-none -z-10" />}
-                                <div className="relative z-10 flex flex-col gap-1.5">
-                                  <h4 className={cn("text-lg sm:text-xl font-black drop-shadow-md", entry.isSelf ? "text-amber-400" : "text-white")}>
-                                    #{entry.rank} {entry.displayName}{entry.isSelf ? ' (You)' : ''}
-                                  </h4>
-                                  <p className="text-[13px] font-bold text-white/60">
-                                    Win rate {entry.winRate.toFixed(1)}% <span className="mx-1">•</span> Best streak {entry.bestStreak}
-                                  </p>
+                                <div className="flex items-center gap-3.5">
+                                  <div
+                                    className={cn(
+                                      'w-9 h-9 rounded-xl font-display font-black text-xs flex items-center justify-center shrink-0',
+                                      entry.isSelf
+                                        ? 'bg-amber-500 text-slate-950 shadow-sm'
+                                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                    )}
+                                  >
+                                    #{entry.rank}
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-display flex items-center gap-2">
+                                      {entry.displayName}
+                                      {entry.isSelf && (
+                                        <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 text-[10px] font-black uppercase">
+                                          You
+                                        </span>
+                                      )}
+                                    </h4>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                      Win Rate: {entry.winRate.toFixed(1)}% <span className="mx-1">•</span> Best Streak: {entry.bestStreak}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="relative z-10 text-xl sm:text-2xl font-black text-white tabular-nums drop-shadow-md">
+                                <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white tabular-nums">
                                   {entry.scoreLabel}
                                 </div>
                               </div>
                             ))}
                           </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               </TabsContent>

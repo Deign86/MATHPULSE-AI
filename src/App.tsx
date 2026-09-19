@@ -65,6 +65,8 @@ const ProfileModal = lazy(() => import('./components/ProfileModal.tsx'));
 const ConfirmModal = lazy(() => import('./components/ConfirmModal.tsx'));
 const SettingsModal = lazy(() => import('./components/SettingsModal.tsx'));
 const SettingsPage = lazy(() => import('./components/SettingsPage.tsx'));
+const ProfilePage = lazy(() => import('./components/ProfilePage.tsx'));
+const RewardsPage = lazy(() => import('./components/RewardsPage.tsx'));
 const ScientificCalculator = lazy(() => import('./components/ScientificCalculator.tsx'));
 const InitialAssessmentModal = lazy(() => import('./components/assessment/InitialAssessmentModal.tsx'));
 const AssessmentPage = lazy(() => import('./pages/AssessmentPage.tsx'));
@@ -99,6 +101,8 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const avatarUnsavedRef = useRef(false);
   const [pendingAvatarNav, setPendingAvatarNav] = useState<string | null>(null);
+  const profileUnsavedRef = useRef(false);
+  const [pendingProfileNav, setPendingProfileNav] = useState<string | null>(null);
   const constraintsRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
@@ -193,6 +197,8 @@ const App = () => {
     'Leaderboard': '/leaderboard',
     'Grades': '/grades',
     'Avatar Studio': '/avatar',
+    'Profile': '/profile',
+    'Rewards': '/rewards',
     'Settings': '/settings',
   };
 
@@ -205,6 +211,8 @@ const App = () => {
     '/leaderboard': 'Leaderboard',
     '/grades': 'Grades',
     '/avatar': 'Avatar Studio',
+    '/profile': 'Profile',
+    '/rewards': 'Rewards',
     '/settings': 'Settings',
   };
 
@@ -225,15 +233,16 @@ const App = () => {
   }, []);
 
   const handleStudentNavigation = (tab: string, moduleId?: string) => {
-    // Guard: check if Avatar Studio has unsaved changes
+    // Guard: check if Avatar Studio or Profile has unsaved changes
     if (activeTab === 'Avatar Studio' && avatarUnsavedRef.current && tab !== 'Avatar Studio') { setPendingAvatarNav(tab); return; }
+    if (activeTab === 'Profile' && profileUnsavedRef.current && tab !== 'Profile') { setPendingProfileNav(tab); return; }
     if (moduleId) {
       setTargetModuleId(moduleId);
     } else if (tab === 'Modules' && activeTab !== 'Modules') {
       setTargetModuleId(null);
     }
 
-    if (tab === 'Settings' && activeTab !== 'Settings') {
+    if ((tab === 'Settings' || tab === 'Profile' || tab === 'Rewards') && activeTab !== tab) {
       setPreviousTab(activeTab);
     }
 
@@ -1127,6 +1136,7 @@ const App = () => {
               onLogout={() => setActiveModal('logout_confirm')}
               sidebarCollapsed={isSidebarCollapsed}
               setSidebarCollapsed={setIsSidebarCollapsed}
+              forceCollapsed={activeTab === 'Quiz Battle'}
             />
           </Suspense>
         </div>
@@ -1175,10 +1185,10 @@ const App = () => {
           
           <OnlineOfflineBanner />
 
-          {/* Invisible Universal Student Header Bar — Clean & Floating (Consumes space on top of all pages without a visible box/border) */}
+          {/* Invisible Universal Student Header Bar — Clean & Floating */}
           <header className={`w-full px-5 sm:px-8 xl:px-12 pt-3.5 sm:pt-4 lg:pt-4.5 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
-            <div className="flex items-center justify-between gap-2">
-              {/* Upper Left: Level Badge & XP Counter (XP hidden on narrow mobile <= 350px, shown on 360px+ and tablet/desktop) */}
+            <div className="max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full flex items-center justify-between gap-2">
+              {/* Upper Left: Level Badge & XP Counter */}
               <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <button
                   type="button"
@@ -1258,7 +1268,7 @@ const App = () => {
                 className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' || activeTab === 'Leaderboard' || activeTab === 'Quiz Battle' ? 'h-full min-h-0' : ''}
               >
                 {activeTab === 'Dashboard' ? (
-                  <div className="px-5 sm:px-8 xl:px-12 py-1.5 sm:py-2.5 lg:py-3 flex flex-col gap-3 sm:gap-4 lg:gap-4.5">
+                  <div className="px-5 sm:px-8 xl:px-12 py-1.5 sm:py-2.5 lg:py-3 flex flex-col gap-3 sm:gap-4 lg:gap-4.5 max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full">
                     <div className="grid grid-cols-12 gap-4 sm:gap-6 lg:gap-10">
                       <div className="col-span-12 xl:col-span-9 flex flex-col gap-4 sm:gap-5 md:gap-6 lg:gap-8 pt-0">
 
@@ -1537,6 +1547,27 @@ const App = () => {
                       onCancelNavigation={() => setPendingAvatarNav(null)}
                     />
                   </Suspense>
+                ) : activeTab === 'Profile' ? (
+                  <Suspense fallback={tabLoadingFallback}>
+                    <ProfilePage
+                      profileData={profileData}
+                      userLevel={userLevel}
+                      userXP={currentXP}
+                      onSaveProfile={handleSaveProfile}
+                      onNavigateToAvatarShop={() => handleStudentNavigation('Avatar Studio')}
+                      onNavigateToSettings={() => handleStudentNavigation('Settings')}
+                      onBack={() => handleStudentNavigation(previousTab || 'Dashboard')}
+                      previousTabName={previousTab || 'Dashboard'}
+                      unsavedChangesRef={profileUnsavedRef}
+                      pendingNavigation={pendingProfileNav}
+                      onConfirmLeave={() => {
+                        const nav = pendingProfileNav;
+                        setPendingProfileNav(null);
+                        if (nav) setTimeout(() => handleStudentNavigation(nav), 0);
+                      }}
+                      onCancelNavigation={() => setPendingProfileNav(null)}
+                    />
+                  </Suspense>
                 ) : activeTab === 'Settings' ? (
                   <Suspense fallback={tabLoadingFallback}>
                     <SettingsPage
@@ -1552,8 +1583,20 @@ const App = () => {
                       onResetData={handleResetTestingData}
                       onLogout={() => setActiveModal('logout_confirm')}
                       onNavigateToAvatarShop={() => handleStudentNavigation('Avatar Studio')}
+                      onNavigateToProfile={() => handleStudentNavigation('Profile')}
                       onBack={() => handleStudentNavigation(previousTab || 'Dashboard')}
                       previousTabName={previousTab || 'Dashboard'}
+                    />
+                  </Suspense>
+                ) : activeTab === 'Rewards' ? (
+                  <Suspense fallback={tabLoadingFallback}>
+                    <RewardsPage
+                      userId={userProfile?.uid || ''}
+                      userLevel={userLevel}
+                      currentXP={progressXPInLevel}
+                      totalXP={totalXP}
+                      xpToNextLevel={xpToNextLevel}
+                      onBack={() => handleStudentNavigation(previousTab || 'Dashboard')}
                     />
                   </Suspense>
                 ) : (
@@ -1597,6 +1640,10 @@ const App = () => {
                 xpToNextLevel={xpToNextLevel}
                 totalXP={totalXP}
                 userId={userProfile?.uid || ''}
+                onViewAllRewards={() => {
+                  setActiveModal(null);
+                  handleStudentNavigation('Rewards');
+                }}
               />
             </Suspense>
           )}
@@ -1712,7 +1759,9 @@ const App = () => {
             <MobileBottomNav
               activeTab={activeTab}
               onSelectTab={handleStudentNavigation}
-              onOpenProfile={() => handleStudentNavigation('Settings')}
+              onOpenProfile={() => handleStudentNavigation('Profile')}
+              onOpenSettings={() => handleStudentNavigation('Settings')}
+              onLogout={() => setActiveModal('logout_confirm')}
               profilePhoto={profileData.photo}
               profileName={profileData.name}
             />
