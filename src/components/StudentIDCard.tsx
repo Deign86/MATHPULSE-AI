@@ -127,9 +127,12 @@ const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPhotoUpl
         <div className="p-1 rounded-2xl bg-gradient-to-tr from-purple-400 to-pink-400 shadow-md">
           <button
             type="button"
-            className="block w-[82px] h-[98px] sm:w-[90px] sm:h-[106px] rounded-xl overflow-hidden bg-white dark:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+            className="block w-[82px] h-[98px] sm:w-[90px] sm:h-[106px] rounded-xl overflow-hidden bg-white dark:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 cursor-pointer"
             aria-label="Change profile photo"
-            onClick={() => inputRef.current?.click()}
+            onClick={(e) => {
+              e.stopPropagation();
+              inputRef.current?.click();
+            }}
           >
             {photoURL ? (
               <img
@@ -145,7 +148,13 @@ const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPhotoUpl
           </button>
         </div>
         {/* Photo Edit Badge */}
-        <span className="absolute -bottom-1 inset-x-0 mx-auto w-max px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-purple-600/90 text-white backdrop-blur-xs shadow-xs flex items-center gap-0.5 tracking-wider cursor-pointer" onClick={() => inputRef.current?.click()}>
+        <span
+          className="absolute -bottom-1 inset-x-0 mx-auto w-max px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-purple-600/90 text-white backdrop-blur-xs shadow-xs flex items-center gap-0.5 tracking-wider cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            inputRef.current?.click();
+          }}
+        >
           <Camera size={9} />
           <span>PHOTO</span>
         </span>
@@ -156,6 +165,7 @@ const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPhotoUpl
         accept="image/*"
         className="sr-only"
         aria-label="Choose profile photo"
+        onClick={(e) => e.stopPropagation()}
         onChange={handleChange}
       />
     </div>
@@ -226,7 +236,7 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
           {/* ════════════════════════════════════════════════════════════════
               FRONT OF STUDENT ID CARD (Cute & Playful MathPulse Pass)
              ════════════════════════════════════════════════════════════════ */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-[22px] overflow-hidden bg-white dark:bg-slate-900 border border-purple-100/80 dark:border-purple-900/40 shadow-inner flex flex-col justify-between">
+          <div className={`absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-[22px] overflow-hidden bg-white dark:bg-slate-900 border border-purple-100/80 dark:border-purple-900/40 shadow-inner flex flex-col justify-between transition-opacity duration-300 ${isFlipped ? 'pointer-events-none select-none opacity-0 invisible' : 'pointer-events-auto opacity-100 visible'}`}>
             {/* Playful Top Header with MathPulse Mascot Vector */}
             <div className="relative bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 text-white px-3.5 py-2 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2">
@@ -352,7 +362,7 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
               BACK OF STUDENT ID CARD (Cute Mascot Emblem & Learning Stats)
              ════════════════════════════════════════════════════════════════ */}
           <div
-            className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-[22px] overflow-hidden bg-gradient-to-br from-[#150A26] via-[#210F3D] to-[#0A1224] text-white p-3.5 sm:p-4 flex flex-col justify-between border border-purple-500/40 shadow-2xl relative"
+            className={`absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-[22px] overflow-hidden bg-gradient-to-br from-[#150A26] via-[#210F3D] to-[#0A1224] text-white p-3.5 sm:p-4 flex flex-col justify-between border border-purple-500/40 shadow-2xl relative transition-opacity duration-300 ${!isFlipped ? 'pointer-events-none select-none opacity-0 invisible' : 'pointer-events-auto opacity-100 visible'}`}
           >
             {/* Subtle Math Elements & Shapes in Background */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-10 dark:opacity-8">
