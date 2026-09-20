@@ -7,7 +7,7 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck, User, LogOut
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck, User, LogOut, ArrowUpRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -2365,34 +2365,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   <ChevronRight size={14} className="opacity-70" />
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMobileMenu(null);
-                    setActiveView('notifications');
-                  }}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
-                    activeView === 'notifications'
-                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
-                      : 'text-slate-700 hover:bg-violet-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                      activeView === 'notifications' ? 'bg-white/20' : 'bg-rose-100 text-rose-600'
-                    }`}>
-                      <Bell size={16} aria-hidden="true" />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span>Notifications</span>
-                      {teacherUnreadCount > 0 && (
-                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
-                      )}
-                    </div>
-                  </div>
-                  <ChevronRight size={14} className="opacity-70" />
-                </button>
-
                 <div className="h-[1px] bg-slate-100 my-0.5" />
 
                 <button
@@ -2497,7 +2469,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               aria-expanded={openMobileMenu === 'profile'}
               aria-haspopup="true"
               className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
-                openMobileMenu === 'profile' || activeView === 'notifications'
+                openMobileMenu === 'profile'
                   ? 'text-violet-600 font-bold bg-violet-50'
                   : 'text-slate-500 font-medium hover:text-slate-900'
               }`}
@@ -2716,6 +2688,64 @@ const ToolsPlaceholderView: React.FC<{
   </motion.div>
 );
 
+// Creative Radial Score Ring with smooth SVG gradient
+const RadialScoreRing: React.FC<{ 
+  value: number; 
+  size?: number; 
+  strokeWidth?: number; 
+  colorClass?: string;
+  trackClass?: string;
+  textColorClass?: string;
+  fontSizeClass?: string;
+}> = ({
+  value,
+  size = 64,
+  strokeWidth = 5,
+  colorClass = 'text-white',
+  trackClass = 'text-white/20',
+  textColorClass = 'text-white font-black',
+  fontSizeClass
+}) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(Math.max(value, 0), 100);
+  const strokeDashoffset = circumference - (clamped / 100) * circumference;
+  const textClass = fontSizeClass || (size < 46 ? 'text-[10px]' : size < 58 ? 'text-[12px]' : 'text-[14px]');
+
+  return (
+    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          className={trackClass}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className={`${colorClass} transition-all duration-1000 ease-out`}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center justify-center text-center">
+        <span className={`${textClass} font-black tabular-nums leading-none ${textColorClass}`}>
+          {clamped}%
+        </span>
+      </div>
+    </div>
+  );
+};
+
 // Dashboard View
 const DashboardView: React.FC<{
   classes: ClassView[];
@@ -2747,113 +2777,276 @@ const DashboardView: React.FC<{
       {!isInsightDismissed && dailyInsight && (
         <div
           onClick={onOpenInsightModal}
-          className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[14px_16px] sm:p-[18px_20px] flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer hover:shadow-md transition-shadow group"
+          className="bg-white/85 dark:bg-slate-800/90 backdrop-blur-[12px] rounded-2xl sm:rounded-[18px] border border-white/80 dark:border-slate-700/80 p-3 sm:p-4.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-4 shadow-xs hover:shadow-md transition-all group cursor-pointer"
         >
-          <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full sm:w-auto">
-            <div className="relative flex-shrink-0 mt-0.5 sm:mt-0">
-              <div className="absolute -inset-[5px] rounded-full border-2 border-[#d8b4fe] opacity-50 animate-pulse" />
-              <div className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-full bg-[#f3e8ff] border-2 border-[#d8b4fe] flex items-center justify-center text-[#a855f7] text-xl relative overflow-hidden group-hover:scale-[1.05] transition-transform">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 w-full sm:w-auto flex-1">
+            <div className="relative shrink-0">
+              <div className="absolute -inset-1 rounded-full border border-[#d8b4fe] opacity-50 animate-pulse" />
+              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#f3e8ff] border-2 border-[#d8b4fe] flex items-center justify-center text-[#a855f7] relative overflow-hidden group-hover:scale-105 transition-transform">
                 <img src="/avatar/avatar_icon.png" alt="AI Mascot" className="w-[85%] h-[85%] object-contain" />
               </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[13.5px] font-semibold text-[#1e1b4b] flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                <Sparkles size={14} className="text-[#a855f7]" />
-                MathPulse AI insight
-                <span className="bg-[#fee2e2] text-[#b91c1c] text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#fca5a5]">Attention needed</span>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs sm:text-[13.5px] font-bold text-[#1e1b4b] dark:text-white flex items-center gap-1.5 truncate">
+                <Sparkles size={13} className="text-[#a855f7] shrink-0" />
+                <span className="truncate">MathPulse AI Insight</span>
+                <span className="bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-800 shrink-0">Action</span>
               </div>
-              <div className="text-[12px] sm:text-[12.5px] text-[#475569] leading-[1.55]">
-                Some students may be at risk of falling behind. Click to view detailed analysis.
-              </div>
+              <p className="text-[11px] sm:text-xs text-[#475569] dark:text-slate-400 mt-0.5 line-clamp-1 sm:line-clamp-2">
+                Students may be at risk of falling behind. Tap to view detailed analysis.
+              </p>
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
-            <button onClick={(e) => { e.stopPropagation(); onDismissInsight(); }} className="px-3 sm:px-[15px] py-1.5 sm:py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors active:scale-95">Dismiss</button>
-            <button onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }} className="px-3 sm:px-[15px] py-1.5 sm:py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#a855f7] bg-[#a855f7] text-white shadow-[0_2px_8px_rgba(168,85,247,0.13)] hover:bg-[#9333ea] transition-colors active:scale-95">Review students</button>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              onClick={(e) => { e.stopPropagation(); onDismissInsight(); }}
+              className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors active:scale-95 cursor-pointer"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }}
+              className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold border border-violet-500 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs shadow-purple-500/20 hover:brightness-105 transition-all active:scale-95 cursor-pointer"
+            >
+              Review
+            </button>
           </div>
         </div>
       )}
 
-      {/* Stat Cards — Clean Frosted Pastel Bento Grid */}
+      {/* ------------------------------------------------------------------ */}
+      {/* STAT CARDS (4 Unified Cards in 2x2 Mobile / 4x1 Desktop Bento Grid)*/}
+      {/* Styled with student-side vibrant gradients and frosted glass badges*/}
+      {/* ------------------------------------------------------------------ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1 — Total Students */}
-        <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between cursor-default select-none group hover:border-emerald-200 transition-colors">
-          <div className="flex justify-between items-start mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Students</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/50 shadow-sm">
-              <Users size={16} />
+        {/* CARD 1: Total Students (System Pastel Green #75D06A via #52B847 to #36962C) */}
+        <div 
+          onClick={onViewAllClasses}
+          className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-4.5 bg-gradient-to-br from-[#75D06A] via-[#52B847] to-[#36962C] shadow-[0_8px_24px_-6px_rgba(82,184,71,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(82,184,71,0.48)] hover:-translate-y-1 sm:hover:-translate-y-1.5 border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[140px] xs:min-h-[150px] sm:min-h-[165px] group cursor-pointer select-none"
+        >
+          {/* Subtle Ambient Glow */}
+          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 group-hover:bg-white/15 transition-all duration-500 ease-out" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+
+          {/* CARD HEADER */}
+          <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
+            <div className="flex items-center gap-1.5 text-white/95 min-w-0">
+              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
+                Total Students
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
+              Active
+            </span>
+          </div>
+
+          {/* CARD BODY */}
+          <div className="relative z-10 my-auto py-1 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-1 drop-shadow-xs">
+                {totalStudents}
+              </div>
+              <p className="text-white/90 text-[11px] sm:text-xs font-medium leading-snug drop-shadow-xs truncate">
+                Enrolled Roster
+              </p>
+            </div>
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
           </div>
-          <div className="font-display text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight tabular-nums mb-2">
-            {totalStudents}
-          </div>
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex justify-between items-center text-[11px] font-medium text-slate-500">
-            <span>Enrolled Roster</span>
-            <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-md text-[10px] tabular-nums">Active</span>
+
+          {/* CARD FOOTER */}
+          <div className="relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 flex items-center justify-between text-[9px] sm:text-[11px] gap-1">
+            <span className="text-white/85 font-medium truncate">Enrolled Roster</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-md text-white font-black border border-white/25 whitespace-nowrap text-[8.5px] sm:text-[10px]">
+              Active
+            </span>
           </div>
         </div>
 
-        {/* Card 2 — Class Average */}
-        <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between cursor-default select-none group hover:border-sky-200 transition-colors">
-          <div className="flex justify-between items-start mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Class Average</span>
-            <div className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-100 dark:border-sky-900/50 shadow-sm">
-              <Target size={16} />
+        {/* CARD 2: Class Average (System Amethyst #9956DE & Slate Blue #7274ED) */}
+        <div 
+          onClick={onViewAllClasses}
+          className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-4.5 bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.48)] hover:-translate-y-1 sm:hover:-translate-y-1.5 border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[140px] xs:min-h-[150px] sm:min-h-[165px] group cursor-pointer select-none"
+        >
+          {/* Subtle Ambient Glow */}
+          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 group-hover:bg-white/15 transition-all duration-500 ease-out" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+
+          {/* CARD HEADER */}
+          <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
+            <div className="flex items-center gap-1.5 text-white/95 min-w-0">
+              <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
+                Class Average
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
+              {avgPerformance >= 75 ? 'Passing' : avgPerformance > 0 ? 'Needs Boost' : 'Pending'}
+            </span>
+          </div>
+
+          {/* CARD BODY */}
+          <div className="relative z-10 my-auto py-1 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-1 drop-shadow-xs">
+                {avgPerformance}%
+              </div>
+              <p className="text-white/90 text-[11px] sm:text-xs font-medium leading-snug drop-shadow-xs truncate">
+                Cohort Score
+              </p>
+            </div>
+            <div className="shrink-0">
+              <RadialScoreRing 
+                value={avgPerformance} 
+                size={44} 
+                strokeWidth={4.5} 
+                colorClass="text-white" 
+                trackClass="text-white/20" 
+                textColorClass="text-white font-black"
+                fontSizeClass="text-[10.5px]"
+              />
             </div>
           </div>
-          <div className="font-display text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight tabular-nums mb-2">
-            {avgPerformance}%
-          </div>
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex justify-between items-center text-[11px] font-medium text-slate-500">
-            <span>Cohort Score</span>
-            <span className="bg-sky-50 text-sky-700 font-bold px-2 py-0.5 rounded-md text-[10px] tabular-nums">+2.5%</span>
+
+          {/* CARD FOOTER */}
+          <div className="relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 flex items-center justify-between text-[9px] sm:text-[11px] gap-1">
+            <span className="text-white/85 font-medium truncate">Cohort Score</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-md text-white font-black border border-white/25 whitespace-nowrap text-[8.5px] sm:text-[10px]">
+              +2.5%
+            </span>
           </div>
         </div>
 
-        {/* Card 3 — Engagement Rate */}
-        <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between cursor-default select-none group hover:border-violet-200 transition-colors">
-          <div className="flex justify-between items-start mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Engagement</span>
-            <div className="w-8 h-8 rounded-xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 flex items-center justify-center border border-violet-100 dark:border-violet-900/50 shadow-sm">
-              <Activity size={16} />
+        {/* CARD 3: Engagement (Vibrant Cyan / Sky Blue #38BDF8 via #0284C7 to #0369A1) */}
+        <div 
+          onClick={() => {
+            const el = document.getElementById('teacher-classes-section');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-4.5 bg-gradient-to-br from-[#38BDF8] via-[#0284C7] to-[#0369A1] shadow-[0_8px_24px_-6px_rgba(2,132,199,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(2,132,199,0.48)] hover:-translate-y-1 sm:hover:-translate-y-1.5 border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[140px] xs:min-h-[150px] sm:min-h-[165px] group cursor-pointer select-none"
+        >
+          {/* Subtle Ambient Glow */}
+          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 group-hover:bg-white/15 transition-all duration-500 ease-out" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+
+          {/* CARD HEADER */}
+          <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
+            <div className="flex items-center gap-1.5 text-white/95 min-w-0">
+              <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
+                Engagement
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
+              Active
+            </span>
+          </div>
+
+          {/* CARD BODY */}
+          <div className="relative z-10 my-auto py-1 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-1 drop-shadow-xs">
+                {engagementRate}%
+              </div>
+              <p className="text-white/90 text-[11px] sm:text-xs font-medium leading-snug drop-shadow-xs truncate">
+                Participation
+              </p>
+            </div>
+            <div className="shrink-0">
+              <RadialScoreRing 
+                value={engagementRate} 
+                size={44} 
+                strokeWidth={4.5} 
+                colorClass="text-white" 
+                trackClass="text-white/20" 
+                textColorClass="text-white font-black"
+                fontSizeClass="text-[10.5px]"
+              />
             </div>
           </div>
-          <div className="font-display text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight tabular-nums mb-2">
-            {engagementRate}%
-          </div>
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex justify-between items-center text-[11px] font-medium text-slate-500">
-            <span>Participation</span>
-            <span className="bg-violet-50 text-violet-700 font-bold px-2 py-0.5 rounded-md text-[10px] tabular-nums">{Math.round((engagementRate / 100) * totalStudents)} active</span>
+
+          {/* CARD FOOTER */}
+          <div className="relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 flex items-center justify-between text-[9px] sm:text-[11px] gap-1">
+            <span className="text-white/85 font-medium truncate">Participation</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-md text-white font-black border border-white/25 whitespace-nowrap text-[8.5px] sm:text-[10px]">
+              {Math.round((engagementRate / 100) * totalStudents)} active
+            </span>
           </div>
         </div>
 
-        {/* Card 4 — At Risk */}
-        <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-white/10 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between cursor-default select-none group hover:border-rose-200 transition-colors">
-          <div className="flex justify-between items-start mb-3">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Needs Attention</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center border border-rose-100 dark:border-rose-900/50 shadow-sm">
-              <AlertCircle size={16} />
+        {/* CARD 4: Needs Attention (System Texas Rose #FFB356 via #F29424 to #D97706) */}
+        <div 
+          onClick={onViewAllClasses}
+          className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-4.5 bg-gradient-to-br from-[#FFB356] via-[#F29424] to-[#D97706] shadow-[0_8px_24px_-6px_rgba(242,148,36,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(242,148,36,0.48)] hover:-translate-y-1 sm:hover:-translate-y-1.5 border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[140px] xs:min-h-[150px] sm:min-h-[165px] group cursor-pointer select-none"
+        >
+          {/* Subtle Ambient Glow */}
+          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 group-hover:bg-white/15 transition-all duration-500 ease-out" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+
+          {/* CARD HEADER */}
+          <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
+            <div className="flex items-center gap-1.5 text-white/95 min-w-0">
+              <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
+                Needs Attention
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
+              {totalAtRisk > 0 ? 'Priority' : 'Clear'}
+            </span>
+          </div>
+
+          {/* CARD BODY */}
+          <div className="relative z-10 my-auto py-1 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-1 drop-shadow-xs">
+                {totalAtRisk}
+              </div>
+              <p className="text-white/90 text-[11px] sm:text-xs font-medium leading-snug drop-shadow-xs truncate">
+                At-Risk Students
+              </p>
+            </div>
+            <div className="shrink-0">
+              <RadialScoreRing 
+                value={riskPercentage} 
+                size={44} 
+                strokeWidth={4.5} 
+                colorClass="text-white" 
+                trackClass="text-white/20" 
+                textColorClass="text-white font-black"
+                fontSizeClass="text-[10.5px]"
+              />
             </div>
           </div>
-          <div className="font-display text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight tabular-nums mb-2">
-            {totalAtRisk}
-          </div>
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-2 flex justify-between items-center text-[11px] font-medium text-slate-500">
-            <span>At-Risk Students</span>
-            <span className="bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-md text-[10px] tabular-nums">{riskPercentage}%</span>
+
+          {/* CARD FOOTER */}
+          <div className="relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 flex items-center justify-between text-[9px] sm:text-[11px] gap-1">
+            <span className="text-white/85 font-medium truncate">At-Risk Students</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-md text-white font-black border border-white/25 whitespace-nowrap text-[8.5px] sm:text-[10px]">
+              {riskPercentage}%
+            </span>
           </div>
         </div>
       </div>
 
       {/* Classes Container */}
-      <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-white/10 p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+      <div id="teacher-classes-section" className="relative overflow-hidden bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-white/10 p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        {/* Subtle Top Gradient Accent Strip */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#9956DE] via-[#38BDF8] to-[#75D06A] pointer-events-none" />
+
         <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="font-display text-base sm:text-lg font-bold text-slate-900 dark:text-white">My Classes</h2>
-            <p className="font-body text-xs text-slate-500 mt-0.5">Select any class to manage rosters and student analytics</p>
+          <div className="flex items-center gap-2.5">
+            <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-[#9956DE] to-[#7274ED] shrink-0" />
+            <div>
+              <h2 className="font-display text-base sm:text-lg font-bold text-slate-900 dark:text-white">My Classes</h2>
+              <p className="font-body text-xs text-slate-500 mt-0.5 hidden sm:block">Select any class to manage rosters and student analytics</p>
+            </div>
           </div>
-          <button onClick={onViewAllClasses} className="font-body text-xs text-violet-600 hover:text-violet-700 font-bold cursor-pointer hover:underline">
-            View all ({classes.length})
+          <button onClick={onViewAllClasses} className="font-body text-xs text-violet-600 hover:text-indigo-600 font-extrabold cursor-pointer hover:underline flex items-center gap-1 shrink-0">
+            <span>View all ({classes.length})</span>
+            <ChevronRight size={14} />
           </button>
         </div>
 
@@ -2868,25 +3061,64 @@ const DashboardView: React.FC<{
               )}
             </div>
           )}
-          {classes.map((classItem) => {
+          {classes.map((classItem, idx) => {
+            const classGradients = [
+              {
+                iconBg: 'from-[#9956DE] via-[#8643C8] to-[#7274ED]',
+                accentBar: 'from-[#9956DE] to-[#7274ED]',
+                cardBorder: 'hover:border-purple-300 dark:hover:border-purple-500',
+                cardGlow: 'hover:shadow-[0_8px_24px_-6px_rgba(153,86,222,0.18)]',
+                cardBg: 'bg-gradient-to-r from-purple-50/40 via-white to-white dark:from-purple-950/20 dark:via-slate-800/90 dark:to-slate-800/90',
+                iconShadow: 'shadow-purple-500/25',
+              },
+              {
+                iconBg: 'from-[#38BDF8] via-[#0284C7] to-[#0369A1]',
+                accentBar: 'from-[#38BDF8] to-[#0284C7]',
+                cardBorder: 'hover:border-sky-300 dark:hover:border-sky-500',
+                cardGlow: 'hover:shadow-[0_8px_24px_-6px_rgba(2,132,199,0.18)]',
+                cardBg: 'bg-gradient-to-r from-sky-50/40 via-white to-white dark:from-sky-950/20 dark:via-slate-800/90 dark:to-slate-800/90',
+                iconShadow: 'shadow-sky-500/25',
+              },
+              {
+                iconBg: 'from-[#FFB356] via-[#F29424] to-[#D97706]',
+                accentBar: 'from-[#FFB356] to-[#D97706]',
+                cardBorder: 'hover:border-amber-300 dark:hover:border-amber-500',
+                cardGlow: 'hover:shadow-[0_8px_24px_-6px_rgba(242,148,36,0.18)]',
+                cardBg: 'bg-gradient-to-r from-amber-50/40 via-white to-white dark:from-amber-950/20 dark:via-slate-800/90 dark:to-slate-800/90',
+                iconShadow: 'shadow-amber-500/25',
+              },
+              {
+                iconBg: 'from-[#75D06A] via-[#52B847] to-[#36962C]',
+                accentBar: 'from-[#75D06A] to-[#36962C]',
+                cardBorder: 'hover:border-emerald-300 dark:hover:border-emerald-500',
+                cardGlow: 'hover:shadow-[0_8px_24px_-6px_rgba(82,184,71,0.18)]',
+                cardBg: 'bg-gradient-to-r from-emerald-50/40 via-white to-white dark:from-emerald-950/20 dark:via-slate-800/90 dark:to-slate-800/90',
+                iconShadow: 'shadow-emerald-500/25',
+              },
+            ];
+            const gradient = classGradients[idx % classGradients.length];
+
             return (
               <div
                 key={classItem.id}
                 onClick={() => onViewClass(classItem)}
-                className="bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-3.5 sm:p-4 shadow-sm hover:shadow-md hover:border-violet-300 dark:hover:border-violet-500 hover:-translate-y-0.5 active:scale-[0.99] transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group"
+                className={`relative overflow-hidden ${gradient.cardBg} border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-3 sm:p-4 shadow-xs hover:shadow-md ${gradient.cardGlow} ${gradient.cardBorder} hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-center justify-between gap-2.5 sm:gap-4 group`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0 border border-violet-100 group-hover:scale-105 transition-transform">
-                    <BookOpen size={18} />
+                {/* Left Accent Gradient Bar */}
+                <div className={`absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b ${gradient.accentBar} opacity-80 group-hover:opacity-100 group-hover:w-2 transition-all`} />
+
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 pl-1">
+                  <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br ${gradient.iconBg} text-white flex items-center justify-center shrink-0 shadow-md ${gradient.iconShadow} group-hover:scale-105 transition-transform`}>
+                    <BookOpen size={17} className="drop-shadow-xs" />
                   </div>
-                  <div className="min-w-0">
-                    <div className="font-body text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 transition-colors truncate">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-display text-[13.5px] sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors truncate">
                       {classItem.name}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-500">
-                      <span className="font-medium text-slate-600 dark:text-slate-300">{classItem.classification || 'Senior High'}</span>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                      <span className="font-medium text-slate-600 dark:text-slate-300 truncate max-w-[90px] xs:max-w-none">{classItem.classification || 'Senior High'}</span>
                       <span>•</span>
-                      <span className="tabular-nums font-semibold">{classItem.studentCount} students</span>
+                      <span className="tabular-nums font-semibold shrink-0">{classItem.studentCount} students</span>
                       {classItem.schedule && (
                         <>
                           <span className="hidden sm:inline">•</span>
@@ -2897,20 +3129,21 @@ const DashboardView: React.FC<{
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shrink-0 ${
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`hidden xs:inline-flex text-[9.5px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shrink-0 shadow-2xs ${
                     classItem.riskLevel === 'high'
-                      ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                      ? 'bg-gradient-to-r from-rose-50 to-red-50 dark:from-rose-950/50 dark:to-red-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                       : classItem.riskLevel === 'medium'
-                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                      : 'bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                   }`}>
                     {classItem.riskLevel === 'high' ? 'High Risk' : classItem.riskLevel === 'medium' ? 'Attention' : 'On Track'}
                   </span>
 
-                  <span className="px-3 py-1.5 rounded-xl bg-violet-50 group-hover:bg-violet-600 text-violet-700 group-hover:text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm shrink-0">
-                    <span>Manage Class</span>
-                    <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                  <span className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 via-[#8643C8] to-[#7274ED] group-hover:from-violet-700 group-hover:to-indigo-700 text-white font-bold text-xs shadow-sm shadow-purple-500/20 group-hover:shadow-md transition-all flex items-center gap-1 shrink-0 group-hover:scale-[1.02] active:scale-[0.98]">
+                    <span className="hidden sm:inline">Manage Class</span>
+                    <span className="sm:hidden">Manage</span>
+                    <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </div>
               </div>
@@ -3736,7 +3969,7 @@ const AnalyticsView: React.FC<{
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h2 className="font-display text-[15px] sm:text-base font-bold text-[#1e293b] text-balance">Students <span className="font-display text-[#64748b] text-[13px] font-bold tabular-nums">({visibleStudents.length})</span></h2>
-                  <p className="font-body text-[11px] text-[#64748b] mt-0.5">Click any student to view diagnosis & intervention</p>
+                  <p className="font-body text-[11px] text-[#64748b] mt-0.5 hidden sm:block">Click any student to view diagnosis & intervention</p>
                 </div>
                 <button
                   onClick={() => onAddStudents?.()}
@@ -3865,7 +4098,7 @@ const AnalyticsView: React.FC<{
                       <TrendingUp className="w-4 h-4 text-emerald-500" />
                       Top Performers
                     </h3>
-                    <p className="font-body text-[11px] text-[#64748b] mt-0.5">Click student to view intervention profile</p>
+                    <p className="font-body text-[11px] text-[#64748b] mt-0.5 hidden sm:block">Click student to view intervention profile</p>
                   </div>
                 </div>
                 <div className="space-y-[8px]">
@@ -3894,7 +4127,7 @@ const AnalyticsView: React.FC<{
                       <AlertTriangle className="w-4 h-4 text-rose-500" />
                       Needs Attention
                     </h3>
-                    <p className="font-body text-[11px] text-[#64748b] mt-0.5">Click student to launch targeted support</p>
+                    <p className="font-body text-[11px] text-[#64748b] mt-0.5 hidden sm:block">Click student to launch targeted support</p>
                   </div>
                 </div>
                 <div className="space-y-[8px]">
@@ -4507,35 +4740,38 @@ const InterventionView: React.FC<{
               <button
                 type="button"
                 onClick={() => setInterventionTab('overview')}
-                className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   interventionTab === 'overview'
                     ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                 }`}
               >
-                Overview & Diagnosis
+                <span className="sm:hidden">Overview</span>
+                <span className="hidden sm:inline">Overview & Diagnosis</span>
               </button>
               <button
                 type="button"
                 onClick={() => setInterventionTab('path')}
-                className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   interventionTab === 'path'
                     ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                 }`}
               >
-                Learning Path
+                <span className="sm:hidden">Path</span>
+                <span className="hidden sm:inline">Learning Path</span>
               </button>
               <button
                 type="button"
                 onClick={() => setInterventionTab('lesson')}
-                className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   interventionTab === 'lesson'
                     ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                 }`}
               >
-                AI Lesson Plan
+                <span className="sm:hidden">Lesson</span>
+                <span className="hidden sm:inline">AI Lesson Plan</span>
               </button>
             </div>
           </div>
