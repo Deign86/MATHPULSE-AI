@@ -409,7 +409,11 @@ const getAudioContext = () => {
   return globalAudioContext;
 };
 
-const QuizBattlePage: React.FC = () => {
+interface QuizBattlePageProps {
+  setIsInQuizMode?: (value: boolean) => void;
+}
+
+const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
   const { userProfile, userRole } = useAuth();
   // SAFETY: trusted internal value already conforms to the asserted type.
   const studentProfile = userProfile as StudentProfile | null;
@@ -447,6 +451,16 @@ const QuizBattlePage: React.FC = () => {
   const hallOfFamePodiumRef = useRef<HTMLDivElement>(null);
 
   const [activeMatch, setActiveMatch] = useState<QuizBattleLiveMatchState | null>(null);
+
+  useEffect(() => {
+    const isLiveMatch = Boolean(
+      activeMatch && (activeMatch.status === 'in_progress' || activeMatch.status === 'ready')
+    );
+    setIsInQuizMode?.(isLiveMatch);
+    return () => {
+      setIsInQuizMode?.(false);
+    };
+  }, [activeMatch?.status, setIsInQuizMode]);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
   const [answerSubmitting, setAnswerSubmitting] = useState(false);
   const [roundSecondsLeft, setRoundSecondsLeft] = useState(0);

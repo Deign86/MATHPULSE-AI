@@ -113,5 +113,25 @@
   EXPECT: /0 errors/
   EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (Finished in 2.4s on 397 files with 111 rules, 0 errors), blank callout filtering verified
 
+- [x] gate-28: TryItYourselfEngine responsive layout across mobile, tablet, and desktop viewports with non-overflowing stats bar and touch-friendly controls
+  CHECK: npm run typecheck
+  EXPECT: /tsc --noEmit/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors), TryItYourselfEngine responsive header, compact stats bar (hearts/keys/streak/XP), question card, and action footer verified visually in browser (screenshot desktop_quiz_interface_1789901114716.png)
+
+- [x] gate-29: LessonViewer horizontal reading canvas widened to eliminate dead side margins on widescreen displays
+  CHECK: npm run typecheck
+  EXPECT: /tsc --noEmit/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors), max-width expanded to max-w-[96rem] across header, main, and footer, reading canvas fills widescreen space without dead margins (screenshot desktop_lesson_viewer_1789901024813.png)
+
+- [x] gate-30: LessonViewer left-side notebook tabs spine restored on tablet/desktop (md:+) while retaining mobile horizontal tab rail (< md)
+  CHECK: npm run typecheck
+  EXPECT: /tsc --noEmit/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors), left-side notebook spine tabs verified on desktop (1280x800) and automatic mobile horizontal tab rail verified on 390x844 (screenshot mobile_lesson_viewer_1789901252880.png)
+
+- [x] gate-31: MobileBottomNav hidden during active quiz/battle interfaces and restored when match/quiz is completed
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors), MobileBottomNav verified hidden during active quiz mode in TryItYourselfEngine and restored upon exit (recorded in quiz_and_notebook_tabs_verification_1789900906887.webp)
+
 
 

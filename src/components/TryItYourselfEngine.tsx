@@ -18,7 +18,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { createPortal } from 'react-dom';
 import {
-  X, Check, ArrowRight, Trophy, Zap, HelpCircle, Lock,
+  X, Check, ArrowRight, ArrowLeft, Trophy, Zap, HelpCircle, Lock,
   ChevronLeft, ChevronRight, BookOpen, Sparkles, Volume2, VolumeX,
   Maximize, Minimize, Star, Award, Target, Flame, RefreshCw,
   AlertTriangle, Lightbulb, Calculator, Menu,
@@ -804,85 +804,115 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
 
       <div className="fixed inset-0 z-40 h-dvh w-full flex flex-col bg-slate-50 overflow-hidden">
         {/* ─── Sticky Header ─────────────────────────────────────────────── */}
-        <header className={`relative shrink-0 flex flex-col items-center justify-start px-4 pt-4 sm:pt-6 pb-6 z-40 shadow-md overflow-hidden ${theme.gradient} rounded-b-[32px] sm:rounded-b-[40px] min-h-[110px] sm:min-h-[130px]`}>
+        <header className={`relative shrink-0 flex flex-col items-center justify-start px-3 sm:px-6 pt-3 sm:pt-4 pb-3 sm:pb-4 z-40 shadow-sm overflow-hidden ${theme.gradient} rounded-b-2xl sm:rounded-b-3xl min-h-[72px] sm:min-h-[100px]`}>
           <div className="absolute inset-0 z-0 pointer-events-none">
             <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-2xl" />
             <div className="absolute bottom-0 right-0 w-80 h-80 bg-white opacity-10 rounded-full translate-x-1/3 translate-y-1/3 blur-3xl" />
             {TopicIcons.map((Icon, i) => (
               <div key={i} className="absolute text-white/10" style={{ top: `${10 + (i * 15)}%`, left: `${10 + (i * 25) % 80}%`, transform: `rotate(${i * 45}deg) scale(${1 + (i % 3) * 0.2})` }}>
-                <Icon size={48 + (i % 2) * 32} />
+                <Icon size={40 + (i % 2) * 24} />
               </div>
             ))}
           </div>
 
-          <div className="w-full max-w-7xl flex items-start justify-between relative z-10 mb-4 sm:mb-6">
-            <div className="flex-1 pointer-events-none" />
-            <div className="relative flex items-center justify-center bg-purple-900/40 backdrop-blur-md px-6 sm:px-8 py-3 rounded-full border border-white/10 gap-3 sm:gap-4 shadow-inner">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-yellow-400 shrink-0 shadow-[0_0_10px_rgba(250,204,21,0.6)]" />
-              <div className="flex flex-col items-start justify-center">
-                <span className="text-[10px] sm:text-[11px] font-black text-purple-200 uppercase tracking-widest leading-none mb-1">Try It Yourself!</span>
-                <span className="font-bold text-white tracking-wide text-base sm:text-lg leading-none truncate max-w-[200px] sm:max-w-[300px]">{lessonTitle}</span>
+          <div className="w-full max-w-5xl flex items-center justify-between relative z-10 mb-2 sm:mb-3 gap-2">
+            <div className="flex-1 min-w-0 flex items-center gap-2 sm:gap-2.5">
+              <button
+                onClick={() => setShowLeaveConfirm(true)}
+                aria-label="Exit quiz"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-purple-900/30 text-white flex items-center justify-center hover:bg-purple-900/50 transition-colors shadow-2xs border border-white/10 shrink-0 cursor-pointer"
+              >
+                <ArrowLeft size={16} />
+              </button>
+              <div className="min-w-0 flex flex-col">
+                <span className="text-[9px] sm:text-[10px] font-black text-purple-200 uppercase tracking-widest leading-none truncate">
+                  Try It Yourself
+                </span>
+                <span className="font-bold text-white tracking-wide text-xs sm:text-base leading-tight truncate max-w-[140px] xs:max-w-[220px] sm:max-w-[380px] md:max-w-md">
+                  {lessonTitle}
+                </span>
               </div>
             </div>
-            <div className="flex-1 flex justify-end gap-2 sm:gap-3 relative pointer-events-auto">
-              <button onClick={() => setIsAudioEnabled(!isAudioEnabled)} aria-label={isAudioEnabled ? "Mute sound" : "Unmute sound"} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
-                {isAudioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <button
+                onClick={() => setIsAudioEnabled(!isAudioEnabled)}
+                aria-label={isAudioEnabled ? "Mute sound" : "Unmute sound"}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-purple-900/30 text-white flex items-center justify-center hover:bg-purple-900/50 transition-colors shadow-2xs border border-white/10 cursor-pointer"
+              >
+                {isAudioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
               </button>
-              <button onClick={toggleFullscreen} aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} className="hidden sm:flex w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
-                {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+              <button
+                onClick={toggleFullscreen}
+                aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                className="hidden sm:flex w-9 h-9 rounded-full bg-purple-900/30 text-white items-center justify-center hover:bg-purple-900/50 transition-colors shadow-2xs border border-white/10 cursor-pointer"
+              >
+                {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
               </button>
-              <button onClick={() => setShowLeaveConfirm(true)} aria-label="Exit quiz" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
-                <Menu size={20} />
+              <button
+                onClick={() => setShowLeaveConfirm(true)}
+                aria-label="Menu"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-purple-900/30 text-white flex items-center justify-center hover:bg-purple-900/50 transition-colors shadow-2xs border border-white/10 cursor-pointer"
+              >
+                <Menu size={16} />
               </button>
             </div>
           </div>
 
           {/* Progress dots */}
-          <div className="w-full max-w-[50rem] flex items-center justify-center px-4 z-10">
-            <div className="w-full flex items-center gap-2 sm:gap-3">
-              {phaseQuestions.map((q, i) => (
-                <div key={q.id} className={`h-1.5 sm:h-2 rounded-full flex-1 transition-all ${questionStates[q.id]?.resolved ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-white/20'}`} />
+          <div className="w-full max-w-5xl flex items-center justify-center px-1 sm:px-2 z-10">
+            <div className="w-full flex items-center gap-1 sm:gap-2">
+              {phaseQuestions.map((q) => (
+                <div
+                  key={q.id}
+                  className={`h-1.5 rounded-full flex-1 transition-all ${
+                    questionStates[q.id]?.resolved
+                      ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]'
+                      : 'bg-white/25'
+                  }`}
+                />
               ))}
             </div>
           </div>
         </header>
 
         {/* ─── Stats Bar ─────────────────────────────────────────────────── */}
-        <div className="w-full max-w-[54rem] mx-auto shrink-0 flex items-center justify-between px-4 sm:px-6 py-2 sm:py-3 z-40 relative mt-4">
-          <div className="flex items-center justify-center gap-3 sm:gap-5 flex-1">
+        <div className="w-full max-w-3xl mx-auto shrink-0 flex items-center justify-center px-2 sm:px-6 py-1.5 sm:py-2.5 z-40 relative mt-2 sm:mt-3">
+          <div className="flex items-center justify-center gap-1.5 sm:gap-3 flex-wrap">
             {/* Hearts */}
-            <div className="flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-rose-500 font-extrabold text-sm sm:text-base tabular-nums">
-              <img src="/icons/quiz_heart.png" alt="Hearts" className="w-5 h-5 object-contain" />
-              {heartsCount}
+            <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 rounded-full bg-white shadow-xs border border-slate-200/80 text-rose-500 font-black text-xs sm:text-sm tabular-nums">
+              <img src="/icons/quiz_heart.png" alt="Hearts" className="w-4 h-4 object-contain" />
+              <span>{heartsCount}</span>
             </div>
             {/* Keys */}
-            <div className="flex items-center gap-2 sm:gap-3 px-8 sm:px-10 py-2 rounded-full bg-white shadow-md border border-slate-200/60 text-yellow-500 font-extrabold text-sm sm:text-base tabular-nums">
-              <img src="/icons/quiz_key.png" alt="Keys" className="w-5 h-5 object-contain" />
-              {keysCount}
+            <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1 rounded-full bg-white shadow-xs border border-slate-200/80 text-yellow-500 font-black text-xs sm:text-sm tabular-nums">
+              <img src="/icons/quiz_key.png" alt="Keys" className="w-4 h-4 object-contain" />
+              <span>{keysCount}</span>
             </div>
-            {/* Streak/Points */}
-            <div className="flex items-center gap-3 sm:gap-4 px-3 py-1.5 pl-5 sm:pl-6 rounded-full bg-white shadow-md border border-slate-200/60">
-              <div className="flex items-center gap-1.5 text-orange-500 font-extrabold text-sm sm:text-base tabular-nums">
-                <img src="/icons/quiz_streak.png" alt="Streak" className="w-5 h-5 object-contain" /> {streak}
-              </div>
-              <div className="bg-emerald-100 text-emerald-800 px-4 py-1.5 rounded-full font-bold text-sm sm:text-base shadow-inner border border-emerald-200/50 tabular-nums">
-                + {totalXP} XP
-              </div>
+            {/* Streak */}
+            <div className="flex items-center gap-1.5 px-3 sm:px-4 py-1 rounded-full bg-white shadow-xs border border-slate-200/80 text-orange-500 font-black text-xs sm:text-sm tabular-nums">
+              <img src="/icons/quiz_streak.png" alt="Streak" className="w-4 h-4 object-contain" />
+              <span>{streak}</span>
+            </div>
+            {/* XP */}
+            <div className="flex items-center gap-1 px-3 sm:px-4 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-black text-xs sm:text-sm tabular-nums shadow-xs">
+              <Zap size={13} className="text-emerald-500" />
+              <span>+{totalXP} XP</span>
             </div>
           </div>
         </div>
 
         {/* ─── Scrollable Content ────────────────────────────────────────── */}
-        <main className="flex-1 overflow-y-auto w-full px-4 sm:px-6 pt-0 pb-6 flex flex-col items-center relative z-10">
+        <main className="flex-1 overflow-y-auto w-full px-3 sm:px-6 pt-1 pb-6 flex flex-col items-center relative z-10">
           <motion.div
             key={currentQuestion.id}
             initial={{ opacity: 0, x: 20 }}
             animate={shakeCard ? { x: [-10, 10, -10, 10, 0], scale: [1, 1.01, 1], opacity: 1 } : { opacity: 1, x: 0 }}
-            className="w-full max-w-3xl flex flex-col mt-2"
+            className="w-full max-w-3xl flex flex-col mt-1 sm:mt-2"
           >
             {/* Question Card */}
-            <div className="bg-white rounded-3xl shadow-lg border-t-[6px] border-purple-500 p-6 sm:p-8 text-center flex flex-col items-center mb-6 w-full relative overflow-hidden">
-              <h2 className="text-xl sm:text-2xl font-extrabold text-[#0a1628] leading-tight w-full text-balance">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border-t-4 sm:border-t-[5px] border-purple-500 p-4 sm:p-7 text-center flex flex-col items-center mb-3 sm:mb-5 w-full relative overflow-hidden border border-slate-200/60">
+              <h2 className="text-base sm:text-xl md:text-2xl font-extrabold text-[#0a1628] leading-snug w-full text-balance">
                 <MathText>{currentQuestion.question}</MathText>
               </h2>
               {/* Fill-in-blank inline input */}
@@ -894,11 +924,11 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                   onChange={e => setTextInput(e.target.value)}
                   placeholder="Type your answer..."
                   disabled={qs?.resolved || isSubmitting}
-                  className="mt-4 w-full max-w-xs mx-auto px-4 py-3 border-b-4 border-[#7C3AED] text-center text-lg font-bold outline-none bg-transparent focus:border-[#75D06A] transition-colors"
+                  className="mt-4 w-full max-w-xs mx-auto px-4 py-2.5 border-b-4 border-[#7C3AED] text-center text-base sm:text-lg font-bold outline-none bg-transparent focus:border-[#75D06A] transition-colors"
                 />
               )}
               {currentQuestion.type === 'fill-in-blank' && qs?.resolved && (
-                <div className="mt-4 px-4 py-3 bg-emerald-50 border-2 border-emerald-300 rounded-xl text-emerald-700 font-bold text-lg">
+                <div className="mt-4 px-4 py-2.5 bg-emerald-50 border-2 border-emerald-300 rounded-xl text-emerald-700 font-bold text-base sm:text-lg">
                   {currentQuestion.correctAnswer}
                 </div>
               )}
@@ -907,7 +937,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
             {/* Options Grid */}
             <div className="w-full flex flex-col items-center">
               {(currentQuestion.type === 'multiple-choice' || currentQuestion.type === 'true-false') && (
-                <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5">
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   {(currentQuestion.type === 'true-false' ? [{ id: 'tf-true', text: 'True' }, { id: 'tf-false', text: 'False' }] : shuffledOptions).map((opt) => {
                     const optionText = opt.text;
                     const isFailed = qs?.failedOptions.includes(optionText);
@@ -915,9 +945,9 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                     const isAnsweredCorrect = qs?.resolved && qs.resolution === 'correct';
                     const isCorrectOption = optionText === currentQuestion.correctAnswer;
 
-                    let bgColor = 'bg-white hover:bg-slate-50 border-transparent text-slate-700 hover:border-slate-200';
+                    let bgColor = 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-800 hover:border-purple-300';
                     if (isRevealed || isAnsweredCorrect) {
-                      if (isCorrectOption) bgColor = 'bg-emerald-50 border-emerald-400 text-emerald-800 shadow-[0_0_15px_rgba(16,185,129,0.2)] scale-[1.02] z-10';
+                      if (isCorrectOption) bgColor = 'bg-emerald-50 border-emerald-500 text-emerald-800 shadow-[0_0_15px_rgba(16,185,129,0.2)] scale-[1.01] z-10';
                       else if (isFailed) bgColor = 'bg-rose-50 border-rose-400 text-rose-800 opacity-60';
                       else bgColor = 'bg-slate-50 border-slate-200 text-slate-400 opacity-60';
                     } else if (isFailed) {
@@ -935,11 +965,11 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                           setSelectedOption(opt.id);
                           handleAnswer(optionText);
                         }}
-                        className={`p-4 sm:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-base sm:text-lg text-left transition-all motion-reduce:transition-none flex items-center justify-between ${bgColor} ${qs?.resolved ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'}`}
+                        className={`p-3.5 sm:p-4.5 rounded-xl sm:rounded-2xl shadow-xs border-2 font-bold text-sm sm:text-base text-left transition-all motion-reduce:transition-none flex items-center justify-between gap-2 min-h-[50px] ${bgColor} ${qs?.resolved ? 'cursor-default' : 'hover:shadow-sm active:scale-[0.98]'}`}
                       >
-                        <span className="truncate pr-4"><MathText>{optionText}</MathText></span>
-                        {(isRevealed || isAnsweredCorrect) && isCorrectOption && <Check size={24} className="text-emerald-500 shrink-0" />}
-                        {isFailed && <X size={24} className="text-rose-500 shrink-0" />}
+                        <span className="truncate pr-2"><MathText>{optionText}</MathText></span>
+                        {(isRevealed || isAnsweredCorrect) && isCorrectOption && <Check size={20} className="text-emerald-500 shrink-0" />}
+                        {isFailed && <X size={20} className="text-rose-500 shrink-0" />}
                       </button>
                     );
                   })}
@@ -948,15 +978,15 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
 
               {/* Hint Panel */}
               {showHintPanel && currentQuestion.hints && (qs?.hintsUsed ?? 0) > 0 && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full mt-6 max-w-3xl">
-                  <div className="border-2 rounded-2xl p-5 bg-amber-50 border-amber-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Lightbulb size={18} className="text-amber-500" />
-                      <span className="font-bold text-amber-700 text-sm tabular-nums">Hints ({qs?.hintsUsed}/{hintsAvailable})</span>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full mt-4 sm:mt-6 max-w-3xl">
+                  <div className="border-2 rounded-2xl p-4 sm:p-5 bg-amber-50 border-amber-200">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                      <Lightbulb size={17} className="text-amber-500" />
+                      <span className="font-bold text-amber-700 text-xs sm:text-sm tabular-nums">Hints ({qs?.hintsUsed}/{hintsAvailable})</span>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       {currentQuestion.hints.slice(0, qs?.hintsUsed ?? 0).map((hint, i) => (
-                        <p key={i} className="text-sm text-amber-800 leading-relaxed">
+                        <p key={i} className="text-xs sm:text-sm text-amber-800 leading-relaxed">
                           <span className="font-bold text-amber-600 tabular-nums">{i + 1}.</span> {hint}
                         </p>
                       ))}
@@ -967,12 +997,12 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
 
               {/* Explain Panel */}
               {showExplainPanel && qs?.resolved && currentQuestion.explanation && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full mt-6 max-w-3xl">
-                  <div className="border-2 rounded-2xl p-5 flex items-start gap-4 bg-sky-50 border-sky-200">
-                    <img src="/mascot/modules_avatar.png" className="w-10 h-10 shrink-0" alt="AI Explain" />
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full mt-4 sm:mt-6 max-w-3xl">
+                  <div className="border-2 rounded-2xl p-4 sm:p-5 flex items-start gap-3 sm:gap-4 bg-sky-50 border-sky-200">
+                    <img src="/mascot/modules_avatar.png" className="w-8 h-8 sm:w-10 sm:h-10 shrink-0" alt="AI Explain" />
                     <div>
-                      <p className="font-extrabold text-lg mb-1 text-sky-700">Explanation</p>
-                      <p className="text-base leading-relaxed text-sky-800">{currentQuestion.explanation}</p>
+                      <p className="font-extrabold text-base sm:text-lg mb-1 text-sky-700">Explanation</p>
+                      <p className="text-xs sm:text-sm md:text-base leading-relaxed text-sky-800">{currentQuestion.explanation}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -982,7 +1012,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
         </main>
 
         {/* ─── Sticky Footer ─────────────────────────────────────────────── */}
-        <footer className={`shrink-0 relative z-40 flex flex-col items-center justify-center p-4 sm:p-6 ${theme.gradient} rounded-t-[32px] sm:rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.15)]`}>
+        <footer className={`shrink-0 relative z-40 flex flex-col items-center justify-center p-2.5 sm:p-4 ${theme.gradient} rounded-t-2xl sm:rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)]`}>
           <div className="absolute inset-0 z-0 pointer-events-none opacity-20">
             {TopicIcons.slice(0, 3).map((Icon, i) => (
               <div key={i} className="absolute text-white" style={{ top: `${20 + (i * 20)}%`, left: `${20 + (i * 30)}%`, transform: `rotate(${i * 30}deg) scale(1.5)` }}>
@@ -991,25 +1021,25 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
             ))}
           </div>
 
-          <div className="relative z-10 flex flex-col gap-3">
+          <div className="relative z-10 flex flex-col gap-2 w-full max-w-xl">
             {(() => {
               // After resolved: show Explain + Next Question
               if (qs?.resolved) {
                 if (showExplainPanel) {
                   return (
-                    <button onClick={advanceQueue} aria-label="Next question" className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-lg px-8 py-4 rounded-full flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all motion-reduce:transition-none w-full">
-                      Next Question <ArrowRight size={24} />
+                    <button onClick={advanceQueue} aria-label="Next question" className="bg-orange-500 hover:bg-orange-600 text-white font-black text-sm sm:text-base px-6 sm:px-8 py-2.5 sm:py-3.5 rounded-full flex items-center justify-center gap-2 shadow-lg hover:scale-[1.01] active:scale-[0.98] transition-all motion-reduce:transition-none w-full cursor-pointer">
+                      Next Question <ArrowRight size={20} />
                     </button>
                   );
                 }
                 return (
-                  <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-                    <button onClick={() => { if (!explainLocked) setShowExplainPanel(true); }} disabled={explainLocked} aria-label="Explain question" className="bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200">
-                      <img src="/mascot/modules_avatar.png" className="w-5 h-5 drop-shadow-sm" alt="Explain" />
+                  <div className="flex items-center justify-center gap-2 sm:gap-3 w-full">
+                    <button onClick={() => { if (!explainLocked) setShowExplainPanel(true); }} disabled={explainLocked} aria-label="Explain question" className="bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-4 sm:px-6 py-2.5 sm:py-3 rounded-full flex items-center gap-2 shadow-md transition-transform motion-reduce:transition-none hover:scale-102 active:scale-[0.98] border border-slate-200 text-xs sm:text-sm cursor-pointer">
+                      <img src="/mascot/modules_avatar.png" className="w-4 h-4 drop-shadow-sm" alt="Explain" />
                       Explain
                     </button>
-                    <button onClick={advanceQueue} aria-label="Next question" className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-lg px-8 py-3 sm:py-3.5 rounded-full flex items-center justify-center gap-2 shadow-xl transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98]">
-                      Next Question <ArrowRight size={20} />
+                    <button onClick={advanceQueue} aria-label="Next question" className="bg-orange-500 hover:bg-orange-600 text-white font-black text-sm sm:text-base px-6 sm:px-8 py-2.5 sm:py-3 rounded-full flex items-center justify-center gap-2 shadow-lg transition-transform motion-reduce:transition-none hover:scale-102 active:scale-[0.98] flex-1 max-w-xs cursor-pointer">
+                      Next Question <ArrowRight size={18} />
                     </button>
                   </div>
                 );
@@ -1017,37 +1047,37 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
 
               // Normal state: Hint, Reveal, Explain (locked), Calculator, Submit (for fill-in-blank)
               return (
-                <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-                  <button onClick={handleHint} disabled={keysCount <= 0 || hintsRemaining <= 0} aria-label="Use hint" className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200">
-                    <img src="/icons/quiz_key.png" alt="Hint" className="w-5 h-5 object-contain" />
+                <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2.5">
+                  <button onClick={handleHint} disabled={keysCount <= 0 || hintsRemaining <= 0} aria-label="Use hint" className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full flex items-center gap-1.5 shadow-md transition-transform motion-reduce:transition-none hover:scale-102 active:scale-[0.98] border border-slate-200 text-xs sm:text-sm cursor-pointer">
+                    <img src="/icons/quiz_key.png" alt="Hint" className="w-4 h-4 object-contain" />
                     Hint
                   </button>
                   <div className="relative group">
-                    <button onClick={handleReveal} disabled={revealDisabled} aria-label="Reveal answer" className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200">
-                      <HelpCircle size={18} className="text-purple-500" />
+                    <button onClick={handleReveal} disabled={revealDisabled} aria-label="Reveal answer" className="bg-white hover:bg-slate-50 disabled:opacity-70 disabled:cursor-not-allowed text-slate-700 font-bold px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full flex items-center gap-1.5 shadow-md transition-transform motion-reduce:transition-none hover:scale-102 active:scale-[0.98] border border-slate-200 text-xs sm:text-sm cursor-pointer">
+                      <HelpCircle size={15} className="text-purple-500" />
                       Reveal
                     </button>
                     {revealDisabled && revealThreshold !== null && (
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-medium">
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[10px] sm:text-[11px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-medium">
                         Reveal locked. Give it another try!
                       </div>
                     )}
                   </div>
                   <div className="relative group">
-                    <button disabled aria-label="Explain question (locked)" className="bg-white disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-6 sm:px-8 py-3 sm:py-3.5 rounded-full flex items-center gap-2 shadow-lg border border-slate-200">
-                      <Lock size={16} className="text-slate-400" />
+                    <button disabled aria-label="Explain question (locked)" className="bg-white disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full flex items-center gap-1.5 shadow-md border border-slate-200 text-xs sm:text-sm">
+                      <Lock size={14} className="text-slate-400" />
                       Explain
                     </button>
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[11px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-medium">
-                      Unlocks after you complete or reveal this question
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-800 text-white text-[10px] sm:text-[11px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none font-medium">
+                      Unlocks after question is resolved
                     </div>
                   </div>
-                  <button onClick={() => setShowCalculator(prev => !prev)} aria-label="Toggle calculator" className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-lg transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200 ${showCalculator ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-white hover:bg-slate-50 text-slate-700'}`}>
-                    <Calculator size={20} />
+                  <button onClick={() => setShowCalculator(prev => !prev)} aria-label="Toggle calculator" className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shadow-md transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98] border border-slate-200 cursor-pointer ${showCalculator ? 'bg-purple-100 text-purple-600 border-purple-300' : 'bg-white hover:bg-slate-50 text-slate-700'}`}>
+                    <Calculator size={16} />
                   </button>
                   {currentQuestion.type === 'fill-in-blank' && (
-                    <button onClick={() => handleAnswer()} disabled={!textInput.trim() || isSubmitting} aria-label="Submit answer" className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-lg px-8 py-3 sm:py-3.5 rounded-full flex items-center justify-center gap-2 shadow-xl transition-transform motion-reduce:transition-none hover:scale-105 active:scale-[0.98]">
-                      Submit <ArrowRight size={20} />
+                    <button onClick={() => handleAnswer()} disabled={!textInput.trim() || isSubmitting} aria-label="Submit answer" className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold text-xs sm:text-sm px-5 sm:px-7 py-2 sm:py-2.5 rounded-full flex items-center justify-center gap-1.5 shadow-lg transition-transform motion-reduce:transition-none hover:scale-102 active:scale-[0.98] cursor-pointer">
+                      Submit <ArrowRight size={16} />
                     </button>
                   )}
                 </div>

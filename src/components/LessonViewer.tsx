@@ -1353,7 +1353,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 overflow-hidden font-sans">
       {/* Unified Slim Responsive Top Bar */}
       <header className="flex-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 px-3 sm:px-6 py-2 relative z-40">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+        <div className="max-w-[96rem] mx-auto w-full flex items-center justify-between gap-2 sm:gap-4">
           {/* Left: Back Button + Lesson Title */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
@@ -1434,14 +1434,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         </div>
       </header>
 
-      {/* Main Reading Container with Integrated Segmented Pill Rail */}
-      <main className="flex-1 min-h-0 flex flex-col items-center px-2 sm:px-4 md:px-6 py-2 sm:py-3 overflow-hidden">
-        <div className="w-full max-w-4xl h-full flex flex-col min-h-0">
+      {/* Main Reading Container with Integrated Left Spine Tabs & Expanded Canvas */}
+      <main className="flex-1 min-h-0 flex flex-col items-center px-2 sm:px-4 md:px-6 py-2 sm:py-3 overflow-hidden w-full">
+        <div className="w-full max-w-[96rem] h-full flex flex-col md:flex-row min-h-0 gap-0 md:gap-3">
           
-          {/* Responsive Segmented Section Tabs */}
+          {/* Mobile: Horizontal Segmented Pill Rail (< md) */}
           <div
             ref={tabsContainerRef}
-            className="flex-none flex items-center gap-1 sm:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1 mb-2 px-0.5"
+            className="flex md:hidden flex-none items-center gap-1 sm:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1 mb-2 px-0.5"
           >
             {SECTION_TABS.map((tab, idx) => {
               const active = idx === currentSection;
@@ -1469,8 +1469,49 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             })}
           </div>
 
+          {/* Tablet & Desktop: Left-Side Notebook Spine Tabs (md:+) */}
+          <aside aria-label="Lesson sections" className="hidden md:flex flex-col gap-1.5 shrink-0 w-44 lg:w-52 py-1 overflow-y-auto [scrollbar-width:none]">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 py-1 flex items-center justify-between">
+              <span>Sections</span>
+              <span className="text-[9px] font-mono">{currentSection + 1}/{totalSections}</span>
+            </div>
+            {SECTION_TABS.map((tab, idx) => {
+              const active = idx === currentSection;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.type}
+                  onClick={() => {
+                    setDirection(idx > currentSection ? 1 : -1);
+                    setCurrentSection(idx);
+                  }}
+                  aria-label={`Go to ${tab.label} section`}
+                  className={cn(
+                    'group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-left cursor-pointer select-none',
+                    active
+                      ? `${tab.tabBg} text-white shadow-sm font-black ring-1 ring-white/20`
+                      : 'bg-white/70 dark:bg-slate-900/70 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 border border-slate-200/70 dark:border-white/10 hover:border-slate-300'
+                  )}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={cn(
+                      "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors shadow-2xs",
+                      active ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:text-slate-700"
+                    )}>
+                      <Icon size={12} />
+                    </div>
+                    <span className="truncate">{tab.label}</span>
+                  </div>
+                  {idx < currentSection && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </aside>
+
           {/* Flattened Reading Canvas Card */}
-          <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm flex flex-col overflow-hidden relative">
+          <div className="flex-1 min-w-0 min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm flex flex-col overflow-hidden relative">
             
             {/* Top Section Accent Strip */}
             <div className={cn("h-1 w-full shrink-0 transition-colors duration-300", currentTab.tabBg)} />
@@ -1544,7 +1585,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
       {/* Docked Slim Navigation Footer */}
       <footer className="flex-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-white/10 px-3 sm:px-6 py-2 relative z-40">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+        <div className="max-w-[96rem] mx-auto w-full flex items-center justify-between gap-3">
           <Button
             onClick={handlePrevious}
             disabled={currentSection === 0}
