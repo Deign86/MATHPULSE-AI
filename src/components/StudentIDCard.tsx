@@ -230,13 +230,13 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
         aria-label="Cute MathPulse Student Pass. Click to flip."
       >
         <div
-          className="relative w-full h-full transition-transform duration-700 ease-out [transform-style:preserve-3d] rounded-3xl p-[2.5px] bg-gradient-to-tr from-purple-500 via-pink-400 to-cyan-400 shadow-xl group-hover:shadow-purple-500/25 group-hover:scale-[1.01] transition-all"
+          className="relative w-full h-full [transition:transform_0.7s_cubic-bezier(0.4,0,0.2,1),box-shadow_0.3s_ease] [transform-style:preserve-3d] rounded-3xl p-[2.5px] bg-gradient-to-tr from-purple-500 via-pink-400 to-cyan-400 shadow-xl group-hover:shadow-purple-500/25"
           style={{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         >
           {/* ════════════════════════════════════════════════════════════════
               FRONT OF STUDENT ID CARD (Cute & Playful MathPulse Pass)
              ════════════════════════════════════════════════════════════════ */}
-          <div className={`absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-[22px] overflow-hidden bg-white dark:bg-slate-900 border border-purple-100/80 dark:border-purple-900/40 shadow-inner flex flex-col justify-between transition-opacity duration-300 ${isFlipped ? 'pointer-events-none select-none opacity-0 invisible' : 'pointer-events-auto opacity-100 visible'}`}>
+          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-[22px] overflow-hidden bg-white dark:bg-slate-900 border border-purple-100/80 dark:border-purple-900/40 shadow-inner flex flex-col justify-between">
             {/* Playful Top Header with MathPulse Mascot Vector */}
             <div className="relative bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 text-white px-3.5 py-2 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2">
@@ -362,7 +362,7 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
               BACK OF STUDENT ID CARD (Cute Mascot Emblem & Learning Stats)
              ════════════════════════════════════════════════════════════════ */}
           <div
-            className={`absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-[22px] overflow-hidden bg-gradient-to-br from-[#150A26] via-[#210F3D] to-[#0A1224] text-white p-3.5 sm:p-4 flex flex-col justify-between border border-purple-500/40 shadow-2xl relative transition-opacity duration-300 ${!isFlipped ? 'pointer-events-none select-none opacity-0 invisible' : 'pointer-events-auto opacity-100 visible'}`}
+            className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-[22px] overflow-hidden bg-gradient-to-br from-[#150A26] via-[#210F3D] to-[#0A1224] text-white p-3.5 sm:p-4 flex flex-col justify-between border border-purple-500/40 shadow-2xl"
           >
             {/* Subtle Math Elements & Shapes in Background */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-10 dark:opacity-8">

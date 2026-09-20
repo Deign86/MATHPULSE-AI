@@ -430,115 +430,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         </div>
       </div>
 
-      {/* ─── TABLET VIEW (md: to lg:): Includes Profile Expandable Button ─── */}
+      {/* ─── TABLET VIEW (md: to lg:): 7 primary nav items, no Profile button ─── */}
       <div className="hidden md:block relative">
-        {/* Backdrop for tablet popup */}
-        {openMenu === 'profile' && (
-          <button
-            type="button"
-            aria-label="Close menu"
-            className="fixed inset-0 z-30 bg-black/10 backdrop-blur-[0.5px]"
-            onClick={() => setOpenMenu(null)}
-          />
-        )}
-
-        {/* Tablet PROFILE Expansion Popup */}
-        <AnimatePresence>
-          {openMenu === 'profile' && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.95 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute bottom-[calc(100%+12px)] right-4 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-purple-200 dark:border-purple-800/80 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-56"
-            >
-              {/* Profile header chip */}
-              <div className="px-3 py-2 flex items-center gap-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50">
-                {profilePhoto ? (
-                  <img
-                    src={profilePhoto}
-                    alt={profileName || 'Profile'}
-                    className="w-8 h-8 rounded-full object-cover border border-purple-300 dark:border-purple-700 shrink-0"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-purple-200 dark:bg-purple-900 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
-                    <User size={16} />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-display font-black text-slate-800 dark:text-white truncate">
-                    {profileName || 'Student'}
-                  </p>
-                  <p className="text-[10px] text-purple-600 dark:text-purple-400 font-medium leading-none mt-0.5">
-                    MathPulse Learner
-                  </p>
-                </div>
-              </div>
-
-              {/* Option 1: My Profile */}
-              <button
-                type="button"
-                onClick={() => handleSelectTabAndClose('Profile')}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
-                  activeTab === 'Profile'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Profile' ? 'bg-white/20' : 'bg-purple-100 dark:bg-purple-900/50 text-purple-600'}`}>
-                    <User size={16} aria-hidden="true" />
-                  </div>
-                  <span>My Profile</span>
-                </div>
-                <ChevronRight size={14} className="opacity-70" />
-              </button>
-
-              {/* Option 2: Settings */}
-              <button
-                type="button"
-                onClick={() => handleSelectTabAndClose('Settings')}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
-                  activeTab === 'Settings'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Settings' ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
-                    <Settings size={16} aria-hidden="true" />
-                  </div>
-                  <span>Settings</span>
-                </div>
-                <ChevronRight size={14} className="opacity-70" />
-              </button>
-
-              <div className="h-px bg-slate-200/80 dark:bg-slate-800 my-0.5" />
-
-              {/* Option 3: Sign Out */}
-              <button
-                type="button"
-                onClick={() => {
-                  setOpenMenu(null);
-                  onLogout?.();
-                }}
-                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all active:scale-95"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                    <LogOut size={16} aria-hidden="true" />
-                  </div>
-                  <span>Sign Out</span>
-                </div>
-                <ChevronRight size={14} className="opacity-70" />
-              </button>
-
-              {/* Triangle pointer */}
-              <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white dark:bg-slate-900 border-r border-b border-purple-200 dark:border-purple-800/80 rotate-45" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <div className="flex items-center justify-around max-w-2xl mx-auto gap-1">
           {/* 1. Dashboard */}
           <button
@@ -645,33 +538,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <span className="text-[11px] mt-1 font-display">Avatar Studio</span>
           </button>
 
-          {/* 8. Profile (Expandable: My Profile, Settings, Sign Out) */}
-          <button
-            type="button"
-            onClick={() => setOpenMenu(prev => prev === 'profile' ? null : 'profile')}
-            aria-label={`Profile options for ${profileName || 'User'}`}
-            aria-expanded={openMenu === 'profile'}
-            aria-haspopup="true"
-            aria-current={isProfileActive ? 'page' : undefined}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
-              isProfileActive || openMenu === 'profile'
-                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            {profilePhoto ? (
-              <img
-                src={profilePhoto}
-                alt={profileName || 'Profile'}
-                className={`w-5 h-5 rounded-full object-cover border ${
-                  isProfileActive ? 'border-purple-600 ring-1 ring-purple-400' : 'border-purple-200 dark:border-purple-800'
-                }`}
-              />
-            ) : (
-              <User size={20} className={isProfileActive ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
-            )}
-            <span className="text-[11px] mt-1 font-display">Profile</span>
-          </button>
         </div>
       </div>
     </nav>
