@@ -93,4 +93,25 @@
   CHECK: npm run typecheck && npm run lint:anti-slop
   EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors), Oxlint 0 errors, verified in browser at 820x1000
 
+- [x] gate-24: Unified slim top header in LessonViewer consolidating title, progress, and DepEd grounding into a single responsive row
+  CHECK: npm run typecheck
+  EXPECT: /tsc --noEmit/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors), single-row header verified in browser across mobile (390x844), tablet (820x1000), and desktop (1280x800)
+
+- [x] gate-25: Section navigation restructured into a responsive segmented pill rail with auto-scrolling on mobile and no protruding left layout shifts
+  CHECK: npm run typecheck
+  EXPECT: /tsc --noEmit/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors), segmented horizontal pill rail verified with smooth scrolling and active tab centering
+
+- [x] gate-26: Reading canvas flattened to eliminate 4x nested card layers, removing fake red margin line and clashing striped lines
+  CHECK: npm run typecheck
+  EXPECT: /tsc --noEmit/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors), 4-layer nesting removed, clean card surface with colored top accent bar providing >80% viewport content density
+
+- [x] gate-27: SectionRenderer callout banners (Important Rule, Pro Tip, Examples) compressed into high-density scannable alert strips
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (Finished in 2.4s on 397 files with 111 rules, 0 errors), blank callout filtering verified
+
+
 

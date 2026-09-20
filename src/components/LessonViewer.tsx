@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import {
   ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb,
@@ -631,98 +631,109 @@ function SectionRenderer({
   switch (section.type) {
     case 'introduction': {
       const { welcome, objectives } = parseIntroContent(section.content || '');
-      // Count total sections for the "Heads Up" banner
-      const totalSectionCount = 7; // standard RAG lesson always has 7 sections
+      const totalSectionCount = 7;
 
       return (
-        <div className="space-y-5">
-          {/* Welcome paragraph — large hook card with math pattern bg */}
+        <div className="space-y-4">
+          {/* Welcome paragraph — clean overview card */}
           {welcome ? (
-            <div className="lesson-welcome-card rounded-2xl border-2 border-[#1a85a4]/30 bg-gradient-to-br from-[#e8f7fc] to-[#f0fbff] px-6 py-5 shadow-md">
-              {/* Decorative label */}
-              <p className="lesson-section-heading text-[#1a85a4] text-[0.7rem] uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
-                <span className="inline-block w-4 h-0.5 bg-[#1a85a4] rounded-full" />
-                Welcome to the Lesson
+            <div className="rounded-xl border border-[#1a85a4]/30 bg-gradient-to-br from-sky-50/80 via-white to-sky-50/40 p-3.5 sm:p-4 shadow-2xs">
+              <p className="font-display text-[#1a85a4] text-[10px] font-black uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <span className="inline-block w-3 h-0.5 bg-[#1a85a4] rounded-full" />
+                Lesson Overview
               </p>
-              <p className="font-body text-slate-700 text-[1.05rem] leading-[1.85] font-medium">
+              <p className="font-body text-slate-700 text-xs sm:text-sm leading-relaxed font-medium">
                 {inlineFormat(autoHighlightTerms(welcome))}
               </p>
             </div>
           ) : !section.content?.trim() ? (
-            <p className="text-slate-400 text-sm italic">Introduction content is being prepared. Please proceed to the next section or try refreshing the lesson.</p>
+            <p className="text-slate-400 text-xs italic">Introduction content is being prepared.</p>
           ) : (
-            <div className="lesson-welcome-card rounded-2xl border-2 border-[#1a85a4]/30 bg-gradient-to-br from-[#e8f7fc] to-[#f0fbff] px-6 py-5 shadow-md">
+            <div className="rounded-xl border border-[#1a85a4]/30 bg-gradient-to-br from-sky-50/80 via-white to-sky-50/40 p-3.5 sm:p-4 shadow-2xs">
               {formatContent(section.content)}
             </div>
           )}
 
-          {/* Callouts — "Heads Up" style banners */}
-          {section.callouts && section.callouts.length > 0 && section.callouts.map((callout, i) => (
-            <div
-              key={i}
-              className={`lesson-callout-headsup flex items-start gap-3.5 ${
-                callout.type === 'tip'
-                  ? '!bg-gradient-to-r !from-emerald-50 !to-teal-50 !border-emerald-400'
-                  : ''
-              }`}
-            >
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${
-                callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
-              }`}>
-                <Lightbulb size={16} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
-                  callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
-                }`}>
-                  {callout.type === 'tip' ? <><Sparkles aria-hidden="true" size={12} /> Tip</> : callout.type === 'important' ? <><AlertTriangle aria-hidden="true" size={12} /> Heads Up</> : <><Pin aria-hidden="true" size={12} /> Note</>}
-                </p>
-                <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{callout.text}</p>
-              </div>
+          {/* Callouts — Compact alert strips */}
+          {section.callouts && section.callouts.length > 0 && (
+            <div className="space-y-2">
+              {section.callouts.map((callout, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "rounded-xl border px-3.5 py-2.5 flex items-start gap-2.5 shadow-2xs transition-colors",
+                    callout.type === 'tip'
+                      ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                      : 'bg-amber-50/80 border-amber-200 text-amber-950'
+                  )}
+                >
+                  <div className={cn(
+                    "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 text-white shadow-2xs",
+                    callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
+                  )}>
+                    {callout.type === 'tip' ? <Sparkles size={13} /> : <Lightbulb size={13} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      "text-[9px] font-black uppercase tracking-wider mb-0.5 font-display",
+                      callout.type === 'tip' ? 'text-emerald-700' : 'text-amber-700'
+                    )}>
+                      {callout.type === 'tip' ? 'Tip' : callout.type === 'important' ? 'Heads Up' : 'Note'}
+                    </p>
+                    <p className="font-body text-xs text-slate-700 leading-relaxed font-medium">{callout.text}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
 
-          {/* Auto "Heads Up" banner if no callouts */}
+          {/* Auto Heads Up banner if no callouts */}
           {(!section.callouts || section.callouts.length === 0) && (
-            <div className="lesson-callout-headsup flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
-                <Lightbulb size={16} className="text-white" />
+            <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 flex items-start gap-2.5 shadow-2xs">
+              <div className="w-6 h-6 rounded-lg bg-amber-500 flex items-center justify-center shrink-0 mt-0.5 text-white shadow-2xs">
+                <Lightbulb size={13} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 text-amber-600">
-                  <><AlertTriangle aria-hidden="true" size={12} /> Heads Up</>
+                <p className="text-[9px] font-black uppercase tracking-wider mb-0.5 text-amber-700 font-display">
+                  Heads Up
                 </p>
-                <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">
-                  This lesson has {totalSectionCount} sections and takes about 20 minutes to complete. Grab a pen — you might want to take notes along the way!
+                <p className="font-body text-xs text-slate-700 leading-relaxed font-medium">
+                  This lesson has {totalSectionCount} sections. Grab paper and pen for notes and worked examples along the way!
                 </p>
               </div>
             </div>
           )}
 
-          {/* "What you'll learn" objectives */}
+          {/* "What you'll learn" objectives — responsive 2-column on sm+ */}
           {objectives.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle size={20} className="text-violet-500" />
-                <h3 className="lesson-section-heading text-[1.05rem] text-balance" style={{ color: '#7c3aed' }}>What you'll learn</h3>
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle size={15} className="text-violet-600" />
+                <h3 className="font-display font-black text-xs sm:text-sm text-violet-700 uppercase tracking-wide">What you'll learn</h3>
               </div>
-              <div className="space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {objectives.map((obj, i) => {
                   const color = OBJECTIVE_COLORS[i % OBJECTIVE_COLORS.length];
                   return (
                     <div
                       key={i}
-                      className={`rounded-xl border-2 px-4 py-3.5 flex items-start gap-3.5 ${color.bg} ${color.border} shadow-sm`}
+                      className={cn(
+                        "rounded-xl border px-3 py-2.5 flex items-start gap-2.5 shadow-2xs transition-all",
+                        color.bg, color.border
+                      )}
                     >
-                      <span className={`mt-0.5 min-w-[1.75rem] h-7 rounded-full ${color.num} text-white text-[0.7rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm tabular-nums`}>
+                      <span className={cn(
+                        "mt-0.5 w-5 h-5 rounded-full text-white text-[10px] font-black flex items-center justify-center shrink-0 tabular-nums shadow-2xs",
+                        color.num
+                      )}>
                         {i + 1}
                       </span>
-                      <div>
-                        <p className={`font-body text-[0.95rem] font-semibold leading-snug ${color.text}`}>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("font-body text-xs font-semibold leading-snug", color.text)}>
                           {inlineFormat(autoHighlightTerms(obj.text))}
                         </p>
                         {obj.example && (
-                          <p className={`text-xs mt-1 ${color.ex} font-mono font-semibold`}>
+                          <p className={cn("text-[11px] mt-0.5 font-mono font-medium truncate", color.ex)}>
                             {obj.example}
                           </p>
                         )}
@@ -739,45 +750,50 @@ function SectionRenderer({
 
     case 'key_concepts':
       return (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {section.content?.trim() ? (
-            <div className="mb-4">{formatContent(section.content)}</div>
+            <div className="space-y-2">{formatContent(section.content)}</div>
           ) : (
-            <p className="text-slate-400 text-sm italic mb-4">Key concepts are being compiled. Review the curriculum sources below for reference material.</p>
+            <p className="text-slate-400 text-xs italic mb-2">Key concepts are being compiled.</p>
           )}
-          {section.callouts && section.callouts.length > 0 && (
-            <div className="space-y-3">
-              {section.callouts.map((callout, i) => {
-                const calloutText = callout.text?.includes('Review the curriculum PDF for detailed explanations of each concept')
-                  ? 'Define variables explicitly and verify constraints when formulating mathematical and financial relations.'
-                  : callout.text;
-                return (
-                  <div
-                    key={i}
-                    className={`rounded-xl border-2 px-5 py-4 flex items-start gap-3.5 shadow-sm ${
-                      callout.type === 'important'
-                        ? 'bg-rose-50 border-rose-300'
-                        : callout.type === 'tip'
-                        ? 'bg-emerald-50 border-emerald-300'
-                        : 'bg-amber-50 border-amber-300'
-                    }`}
-                  >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${
-                      callout.type === 'important' ? 'bg-rose-500' : callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
-                    }`}>
-                      {callout.type === 'important' ? <AlertTriangle size={16} className="text-white" /> : callout.type === 'tip' ? <Sparkles size={16} className="text-white" /> : <Pin size={16} className="text-white" />}
+          {section.callouts && section.callouts.filter((c) => Boolean(c.text?.trim())).length > 0 && (
+            <div className="space-y-2 pt-1">
+              {section.callouts
+                .filter((callout) => Boolean(callout.text?.trim()))
+                .map((callout, i) => {
+                  const calloutText = callout.text?.includes('Review the curriculum PDF for detailed explanations of each concept')
+                    ? 'Define variables explicitly and verify constraints when formulating mathematical and financial relations.'
+                    : callout.text;
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "rounded-xl border px-3.5 py-2.5 flex items-start gap-2.5 shadow-2xs transition-colors",
+                        callout.type === 'important'
+                          ? 'bg-rose-50/80 border-rose-200'
+                          : callout.type === 'tip'
+                          ? 'bg-emerald-50/80 border-emerald-200'
+                          : 'bg-amber-50/80 border-amber-200'
+                      )}
+                    >
+                      <div className={cn(
+                        "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 text-white shadow-2xs",
+                        callout.type === 'important' ? 'bg-rose-500' : callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
+                      )}>
+                        {callout.type === 'important' ? <AlertTriangle size={13} /> : callout.type === 'tip' ? <Sparkles size={13} /> : <Pin size={13} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-[9px] font-black uppercase tracking-wider mb-0.5 font-display",
+                          callout.type === 'important' ? 'text-rose-700' : callout.type === 'tip' ? 'text-emerald-700' : 'text-amber-700'
+                        )}>
+                          {callout.type === 'important' ? 'Important Rule' : callout.type === 'tip' ? 'Pro Tip' : 'Key Note'}
+                        </p>
+                        <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{calloutText}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
-                        callout.type === 'important' ? 'text-rose-600' : callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
-                      }`}>
-                        {callout.type === 'important' ? 'Important Rule' : callout.type === 'tip' ? 'Pro Tip' : 'Key Note'}
-                      </p>
-                      <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{calloutText}</p>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </div>
@@ -785,11 +801,11 @@ function SectionRenderer({
 
     case 'video':
       return (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {section.content?.trim() ? (
-            <p className="text-slate-600 text-sm">{section.content}</p>
+            <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">{section.content}</p>
           ) : (
-            <p className="text-slate-400 text-sm italic">Video explanation loading...</p>
+            <p className="text-slate-400 text-xs italic">Video explanation loading...</p>
           )}
           <VideoLessonSection
             videos={section.videos || []}
@@ -800,42 +816,42 @@ function SectionRenderer({
 
     case 'worked_examples':
       return (
-        <div className="space-y-5">
+        <div className="space-y-3.5">
           {section.examples && section.examples.length > 0 ? (
             section.examples.map((example, i) => (
               <div
                 key={i}
-                className="bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50 rounded-2xl p-5 border-2 border-rose-200 shadow-md"
+                className="bg-white rounded-xl p-3.5 sm:p-4 border border-rose-200/80 shadow-2xs space-y-2.5"
               >
                 {/* Problem header */}
-                <div className="flex items-start gap-3.5 mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                    <Calculator size={18} className="text-white" />
+                <div className="flex items-start gap-2.5">
+                  <div className="w-7 h-7 bg-rose-500 rounded-lg flex items-center justify-center shrink-0 shadow-2xs text-white">
+                    <Calculator size={15} />
                   </div>
-                  <div>
-                    <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] text-rose-400 mb-1 tabular-nums">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-rose-500 font-display">
                       Example {i + 1}
                     </p>
-                    <p className="font-body font-bold text-slate-800 text-[1rem] leading-snug">{example.problem}</p>
+                    <p className="font-body font-bold text-slate-800 text-xs sm:text-sm leading-snug">{example.problem}</p>
                   </div>
                 </div>
 
                 {/* Solution steps */}
                 {example.steps.length > 0 && (
-                  <div className="ml-14 space-y-2.5 mb-3">
-                    <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] text-slate-400 mb-1.5">Solution</p>
+                  <div className="pl-3 sm:pl-4 border-l-2 border-rose-200 space-y-1.5 ml-3.5">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 font-display">Solution</p>
                     {example.steps.map((step, si) => {
                       const isFormulaStep = MATH_RE.test(step) && step.length < 100 && !/[a-z]{6,}/.test(step);
                       return isFormulaStep ? (
-                        <div key={si} className="lesson-formula-box">
+                        <div key={si} className="lesson-formula-box my-1">
                           {step}
                         </div>
                       ) : (
-                        <div key={si} className="flex items-start gap-3">
-                          <span className="mt-0.5 min-w-[1.5rem] h-[1.5rem] rounded-full bg-white border-2 border-rose-300 text-rose-500 text-[0.65rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm tabular-nums">
+                        <div key={si} className="flex items-start gap-2">
+                          <span className="mt-0.5 w-4 h-4 rounded-full bg-rose-100 text-rose-700 text-[9px] font-black flex items-center justify-center shrink-0 tabular-nums">
                             {si + 1}
                           </span>
-                          <p className="font-body text-slate-700 text-[0.95rem] leading-[1.75]">{inlineFormat(step)}</p>
+                          <p className="font-body text-slate-700 text-xs sm:text-sm leading-relaxed">{inlineFormat(step)}</p>
                         </div>
                       );
                     })}
@@ -844,24 +860,24 @@ function SectionRenderer({
 
                 {/* Answer box */}
                 {example.answer && (
-                  <div className="ml-14 flex items-center gap-3 mt-3 pt-3 border-t-2 border-rose-200">
-                    <div className="px-3.5 py-1.5 bg-gradient-to-r from-rose-500 to-orange-500 rounded-lg text-white text-[0.65rem] font-black uppercase tracking-widest flex-shrink-0 shadow-sm">
+                  <div className="flex items-center gap-2 pt-2 border-t border-rose-100 ml-3.5">
+                    <span className="px-2 py-0.5 bg-rose-600 rounded-md text-white text-[9px] font-black uppercase tracking-wider shrink-0 shadow-2xs">
                       Answer
-                    </div>
-                    <p className="font-body text-slate-800 text-[0.95rem] font-bold">{example.answer}</p>
+                    </span>
+                    <p className="font-body text-slate-800 text-xs sm:text-sm font-bold">{example.answer}</p>
                   </div>
                 )}
               </div>
             ))
           ) : (
-            <p className="text-slate-400 text-sm italic">No worked examples available for this lesson.</p>
+            <p className="text-slate-400 text-xs italic">No worked examples available for this lesson.</p>
           )}
         </div>
       );
 
     case 'important_notes':
       return (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {section.bulletPoints && section.bulletPoints.length > 0 ? (
             section.bulletPoints.map((point, i) => {
               const calloutMatch = point.match(/^(Note|Important|Remember|Warning|Tip|Key|Formula|Rule)\s*:/i);
@@ -870,82 +886,77 @@ function SectionRenderer({
                 const body = point.slice(calloutMatch[0].length).trim();
                 const isWarning = /note|important|warning|remember/i.test(label);
                 return (
-                  <div key={i} className={`rounded-xl px-5 py-4 border-l-4 flex items-start gap-3.5 shadow-sm ${isWarning ? 'bg-rose-50 border-rose-400' : 'bg-amber-50 border-amber-400'}`}>
-                    <Lightbulb size={18} className={`mt-0.5 flex-shrink-0 ${isWarning ? 'text-rose-500' : 'text-amber-500'}`} />
+                  <div key={i} className={cn(
+                    "rounded-xl px-3.5 py-2.5 border-l-3 flex items-start gap-2.5 shadow-2xs",
+                    isWarning ? 'bg-rose-50/70 border-rose-400' : 'bg-amber-50/70 border-amber-400'
+                  )}>
+                    <Lightbulb size={15} className={cn("mt-0.5 shrink-0", isWarning ? 'text-rose-500' : 'text-amber-500')} />
                     <div>
-                      <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${isWarning ? 'text-rose-500' : 'text-amber-600'}`}>{label}</p>
-                      <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{inlineFormat(autoHighlightTerms(body))}</p>
+                      <p className={cn("text-[9px] font-black uppercase tracking-wider mb-0.5 font-display", isWarning ? 'text-rose-600' : 'text-amber-600')}>{label}</p>
+                      <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{inlineFormat(autoHighlightTerms(body))}</p>
                     </div>
                   </div>
                 );
               }
               return (
-                <div key={i} className="flex items-start gap-3.5 p-4 rounded-xl bg-slate-50 border-2 border-slate-200 hover:border-[#1a85a4]/40 hover:bg-[#f0fbff] transition-colors">
-                  <div className="mt-0.5 w-6 h-6 rounded-full bg-[#1a85a4] flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <span className="text-white text-[0.65rem] font-black">{i + 1}</span>
+                <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-purple-300 transition-colors">
+                  <div className="mt-0.5 w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <span className="text-[9px] font-black">{i + 1}</span>
                   </div>
-                  <p className="font-body text-slate-700 text-[0.95rem] leading-[1.75] font-medium">{inlineFormat(autoHighlightTerms(point))}</p>
+                  <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{inlineFormat(autoHighlightTerms(point))}</p>
                 </div>
               );
             })
           ) : (
-            <p className="text-slate-400 text-sm italic">No notes available for this lesson.</p>
+            <p className="text-slate-400 text-xs italic">No notes available for this lesson.</p>
           )}
         </div>
       );
 
     case 'try_it_yourself':
       return (
-        <div className="space-y-5">
+        <div className="space-y-4 max-w-lg mx-auto py-2">
           {/* Hero icon + heading */}
-          <div className="flex flex-col items-center text-center gap-3 py-4">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg" style={{ background: '#9956DE' }}>
-              <CheckCircle size={32} className="text-white" />
+          <div className="flex flex-col items-center text-center gap-1.5 py-2">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm bg-purple-600 text-white">
+              <CheckCircle size={20} />
             </div>
-            <h3 className="text-xl font-black" style={{ color: '#9956DE' }}>Try It Yourself</h3>
-            <p className="text-slate-500 text-sm max-w-xs leading-relaxed">
-              Now it's your turn! Try applying what you've learned. You can practice with the exercises at the end of this module.
-            </p>
-          </div>
-
-          {/* Tip callout */}
-          <div className="flex items-start gap-2 rounded-xl px-4 py-3 border" style={{ background: '#f5eeff', borderColor: '#d4aaff' }}>
-            <Lightbulb size={16} className="mt-0.5 shrink-0" style={{ color: '#9956DE' }} />
-            <p className="text-sm" style={{ color: '#7a3db8' }}>
-              <span className="font-bold">Tip:</span> Complete the practice quizzes after this lesson to reinforce your learning!
+            <h3 className="text-base sm:text-lg font-black text-purple-700 font-display">Try It Yourself</h3>
+            <p className="text-slate-500 text-xs max-w-xs leading-relaxed">
+              Apply what you've learned through practice questions to reinforce your mastery.
             </p>
           </div>
 
           {/* Practice Quiz CTA card */}
           {practiceQuiz && (
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-2xs">
               {practiceQuizCompleted ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <CheckCircle size={20} className="text-emerald-600" />
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 shrink-0">
+                    <CheckCircle size={18} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-emerald-700">
+                    <p className="text-xs sm:text-sm font-bold text-emerald-700">
                       Quiz Complete
                       {isNum(practiceQuizScore) && (
                         <span className="ml-2 text-emerald-600">{practiceQuizScore}%</span>
                       )}
                     </p>
-                    <p className="text-xs text-emerald-600/80">Great job! You can now complete this lesson.</p>
+                    <p className="text-[11px] text-emerald-600/80">Great job! You can now complete this lesson.</p>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: '#9956DE' }}>Practice Quiz</p>
-                    <p className="font-bold text-slate-800 text-sm">{practiceQuiz.title}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-[9px] font-black uppercase tracking-wider mb-0.5 text-purple-600">Practice Quiz</p>
+                    <p className="font-bold text-slate-800 text-xs sm:text-sm">{practiceQuiz.title}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
                       {practiceQuiz.questions} questions · {practiceQuiz.duration}
                     </p>
                   </div>
                   <button
                     onClick={onStartPractice}
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#1a85a4] text-white text-sm font-black hover:bg-[#126b84] transition-colors shadow-md uppercase tracking-wide"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-black hover:bg-purple-700 transition-colors shadow-sm uppercase tracking-wide cursor-pointer"
                   >
                     Start Practice
                   </button>
@@ -955,24 +966,23 @@ function SectionRenderer({
           )}
 
           {/* Try It Yourself Quiz CTA - only show if no separate practice quiz */}
-          {!practiceQuiz && (<button
-            onClick={onStartTryItQuiz}
-            className="w-full flex items-center justify-between gap-4 text-white rounded-2xl px-6 py-4 shadow-lg transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] group"
-            style={{ background: '#9956DE' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#8744cc')}
-            onMouseLeave={e => (e.currentTarget.style.background = '#9956DE')}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                <PlayCircle size={22} className="text-white" />
+          {!practiceQuiz && (
+            <button
+              onClick={onStartTryItQuiz}
+              className="w-full flex items-center justify-between gap-3 text-white rounded-xl px-4 py-3 shadow-md transition-all hover:bg-purple-700 active:scale-[0.99] group bg-purple-600 cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                  <PlayCircle size={18} className="text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="font-black text-xs sm:text-sm uppercase tracking-wide">Start Practice Quiz</p>
+                  <p className="text-white/80 text-[11px]">10 questions · AI-generated</p>
+                </div>
               </div>
-              <div className="text-left">
-                <p className="font-black text-sm uppercase tracking-wide">Start Practice Quiz</p>
-                <p className="text-white/80 text-xs mt-0.5">10 questions · AI-generated</p>
-              </div>
-            </div>
-            <ArrowRight size={20} className="text-white/80 group-hover:translate-x-1 transition-transform" />
-          </button>)}
+              <ArrowRight size={16} className="text-white/80 group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
         </div>
       );
 
@@ -1105,6 +1115,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const [tryItQuestions, setTryItQuestions] = useState<Question[] | null>(null);
   const [tryItLoading, setTryItLoading] = useState(false);
   const [tryItSessionId] = useState(() => `tiy-${Date.now()}`);
+
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [currentSection]);
 
   // Hide floating AI tutor during Try It Yourself quiz
   useEffect(() => {
@@ -1327,325 +1346,258 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   );
   const currentTab = SECTION_TABS[currentSection] || SECTION_TABS[0];
   const CurrentTabIcon = currentTab.icon;
+  // SAFETY: lesson objects from curriculum metadata dynamically carry the optional subject name.
+  const lessonSubject = (lesson as { subject?: string }).subject || 'Mathematics';
 
   const content = (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 overflow-hidden font-sans">
-      <header className="flex-none bg-transparent px-3 sm:px-6 pt-2 sm:pt-3 md:pt-4 pb-2 sm:pb-3 sm:py-4 relative z-40">
-        <div className="max-w-[90rem] mx-auto flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+      {/* Unified Slim Responsive Top Bar */}
+      <header className="flex-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 px-3 sm:px-6 py-2 relative z-40">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+          {/* Left: Back Button + Lesson Title */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <button
               onClick={onBack}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors flex-shrink-0 shadow-sm"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 transition-colors shrink-0 cursor-pointer shadow-2xs active:scale-95"
               aria-label="Go back"
             >
               <ArrowLeft size={16} />
             </button>
-            <div className="min-w-0 flex flex-col justify-center flex-1">
-              {/* Badges row — hidden on mobile, visible sm+ */}
-              <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">
-                <BookOpen size={10} />
-                <span>NOTEBOOK</span>
-                {activeModel && (
-                  <span className="text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono">
-                    {activeModel.split('/').pop()}
-                  </span>
-                )}
-                {retrievalBand === 'high' && (
-                  <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-emerald-200">
-                    DepEd Source
-                  </span>
-                )}
-              </div>
-              {/* Mobile: compact single-line label */}
-              <div className="flex sm:hidden items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
-                <BookOpen size={9} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider leading-none">
+                <BookOpen size={10} className="text-purple-500 shrink-0" />
                 <span>Notebook</span>
-                {retrievalBand === 'high' && (
-                  <span className="text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded text-[8px] font-semibold border border-emerald-200 leading-none">
-                    DepEd
-                  </span>
-                )}
+                <span>•</span>
+                <span className="truncate">{lessonSubject}</span>
               </div>
-              <h1 className="font-bold text-slate-800 text-xs sm:text-sm truncate text-balance">{lesson.title}</h1>
+              <h1 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm truncate mt-0.5" title={lesson.title}>
+                {lesson.title}
+              </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-            <div className="text-right hidden sm:block">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progress</p>
-              <p className="text-sm font-bold text-slate-800 tabular-nums">
+          {/* Right: DepEd Grounding Evidence Pill + Progress */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* DepEd Evidence Trigger */}
+            <button
+              type="button"
+              onClick={() => setShowEvidenceModal(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold border transition-all cursor-pointer shadow-2xs active:scale-95",
+                confidenceBadgeConfig.badge
+              )}
+              title="Inspect DepEd curriculum grounding and evidence"
+            >
+              <span className={cn('w-1.5 h-1.5 rounded-full animate-pulse', confidenceBadgeConfig.dot)} />
+              <ShieldCheck size={12} className="shrink-0" />
+              <span className="hidden sm:inline">DepEd Aligned</span>
+              {retrievalConfidence > 0 && (
+                <span className="opacity-80 font-mono text-[9px] tabular-nums">
+                  {Math.round(retrievalConfidence * 100)}%
+                </span>
+              )}
+              {sources && sources.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300 text-[9px] font-black tabular-nums">
+                  {sources.length}
+                </span>
+              )}
+            </button>
+
+            {/* Source PDF Link (sm+) */}
+            {depedPdfUrl && (
+              <a
+                href={depedPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold text-sky-700 bg-sky-50 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 transition-colors shadow-2xs"
+                title="Open official DepEd source PDF in new tab"
+              >
+                <ExternalLink size={11} />
+                <span>PDF</span>
+              </a>
+            )}
+
+            {/* Slim Progress Meter */}
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-white/10">
+              <div className="w-10 sm:w-16 md:w-20 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-emerald-500 rounded-full"
+                  animate={{ width: `${((currentSection + 1) / totalSections) * 100}%` }}
+                  transition={{ duration: 0.25 }}
+                />
+              </div>
+              <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 tabular-nums">
                 {Math.round(((currentSection + 1) / totalSections) * 100)}%
-              </p>
-            </div>
-            <div className="w-12 sm:w-24 md:w-32 h-1.5 sm:h-2 bg-slate-200 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-[#7ec16d] rounded-full"
-                animate={{ width: `${((currentSection + 1) / totalSections) * 100}%` }}
-                transition={{ duration: 0.25 }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* DepEd Curriculum Grounding Bar */}
-        <div className="max-w-[90rem] mx-auto mt-2 sm:mt-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-white/95 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 shadow-xs transition-all">
-            {/* Left side: Grounding Badge & Source Info */}
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
-              <div
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors',
-                  confidenceBadgeConfig.badge
-                )}
-              >
-                <span className={cn('w-2 h-2 rounded-full animate-pulse', confidenceBadgeConfig.dot)} />
-                <ShieldCheck size={13} className="shrink-0" />
-                <span>{confidenceBadgeConfig.label}</span>
-                {retrievalConfidence > 0 && (
-                  <span className="opacity-80 font-mono text-[10px] tabular-nums">
-                    ({Math.round(retrievalConfidence * 100)}%)
-                  </span>
-                )}
-              </div>
-
-              <div
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-600 bg-slate-100/80 border border-slate-200/70 max-w-[280px] sm:max-w-md truncate"
-                title={primarySourceLabel}
-              >
-                <FileText size={13} className="text-slate-500 shrink-0" />
-                <span className="truncate font-mono">{primarySourceLabel}</span>
-              </div>
-            </div>
-
-            {/* Right side: Action Buttons */}
-            <div className="flex items-center gap-2 shrink-0">
-              {depedPdfUrl ? (
-                <a
-                  href={depedPdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200/80 transition-colors shadow-2xs"
-                  title="Open official DepEd source PDF in new tab"
-                >
-                  <ExternalLink size={12} className="shrink-0" />
-                  <span>View DepEd Source PDF</span>
-                </a>
-              ) : null}
-
-              <button
-                type="button"
-                onClick={() => setShowEvidenceModal(true)}
-                aria-label="Inspect evidence"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs"
-                title="Inspect retrieved DepEd text chunks, similarity scores, and metadata"
-              >
-                <FileSearch size={12} className="shrink-0" />
-                <span>Inspect Evidence</span>
-                {sources && sources.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black tabular-nums">
-                    {sources.length}
-                  </span>
-                )}
-              </button>
+              </span>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 overflow-hidden px-2 sm:px-5 pb-2 relative flex justify-center min-h-0">
-        <div className="w-full max-w-[90rem] h-full relative flex md:pl-16 pt-10 sm:pt-10 md:pt-0">
-
-          {/* Tabs - Stick out on left */}
-          <div className="hidden md:flex absolute left-0 top-8 bottom-8 w-20 flex-col justify-between z-0 py-2">
+      {/* Main Reading Container with Integrated Segmented Pill Rail */}
+      <main className="flex-1 min-h-0 flex flex-col items-center px-2 sm:px-4 md:px-6 py-2 sm:py-3 overflow-hidden">
+        <div className="w-full max-w-4xl h-full flex flex-col min-h-0">
+          
+          {/* Responsive Segmented Section Tabs */}
+          <div
+            ref={tabsContainerRef}
+            className="flex-none flex items-center gap-1 sm:gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-1 mb-2 px-0.5"
+          >
             {SECTION_TABS.map((tab, idx) => {
               const active = idx === currentSection;
               const Icon = tab.icon;
-
               return (
                 <button
                   key={tab.type}
+                  ref={active ? activeTabRef : undefined}
                   onClick={() => {
                     setDirection(idx > currentSection ? 1 : -1);
                     setCurrentSection(idx);
                   }}
-                  className={cn(
-                    'group relative flex items-center justify-start pl-4 rounded-l-[1.5rem] transition-all duration-300 shadow-sm border-r-0 flex-shrink-0',
-                    tab.tabBg,
-                    active
-                      ? 'w-24 h-20 -translate-x-4 shadow-xl z-20 brightness-105'
-                      : 'w-16 h-16 hover:w-24 hover:h-20 hover:-translate-x-4 hover:brightness-110 opacity-90 hover:opacity-100 z-10'
-                  )}
                   aria-label={`Go to ${tab.label} section`}
+                  className={cn(
+                    'flex items-center gap-1 sm:gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 cursor-pointer select-none active:scale-95',
+                    active
+                      ? `${tab.tabBg} text-white shadow-sm font-black`
+                      : 'bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 border border-slate-200/60 dark:border-white/10'
+                  )}
                 >
-                  <div className={cn("transition-all duration-300 rounded-xl", active ? "bg-white/30 p-2.5" : "bg-white/20 p-2 group-hover:bg-white/30 group-hover:p-2.5")}>
-                    <Icon size={active ? 24 : 20} className="text-white transition-transform duration-300 group-hover:scale-110" />
-                  </div>
-
-                  {/* Tooltip */}
-                  <div className="absolute right-full mr-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-slate-700/50">
-                    <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 border-r border-t border-slate-700/50"></div>
-                    {tab.label}
-                  </div>
+                  <Icon size={13} className={active ? 'text-white' : 'text-slate-400 dark:text-slate-500'} />
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Mobile Folder Tabs - OUTSIDE colored section */}
-          <div className="md:hidden absolute left-0 right-0 top-0 z-30 bg-slate-100/95 backdrop-blur-sm">
-            <div className="flex gap-0.8 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1">
-              {SECTION_TABS.map((tab, idx) => {
-                const active = idx === currentSection;
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.type}
-                    onClick={() => {
-                      setDirection(idx > currentSection ? 1 : -1);
-                      setCurrentSection(idx);
-                    }}
-                    aria-label={`Go to ${tab.label} section`}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-2 rounded-t-lg transition-all duration-200 shrink-0 text-[11px] font-bold touch-manipulation min-h-[2.5rem]',
-                      active
-                        ? `${tab.tabBg} text-white shadow-md`
-                        : 'bg-slate-200/80 text-slate-500'
-                    )}
-                  >
-                    <Icon size={14} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
+          {/* Flattened Reading Canvas Card */}
+          <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-white/10 shadow-sm flex flex-col overflow-hidden relative">
+            
+            {/* Top Section Accent Strip */}
+            <div className={cn("h-1 w-full shrink-0 transition-colors duration-300", currentTab.tabBg)} />
+
+            {/* Section Header Bar */}
+            <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-100 dark:border-white/5 flex items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-950/20 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 shadow-2xs", currentTab.tabBg)}>
+                  <CurrentTabIcon size={14} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate font-display">
+                    {currentSectionData.title}
+                  </h2>
+                </div>
+              </div>
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider shrink-0">
+                {currentSection + 1} of {totalSections}
+              </span>
             </div>
+
+            {/* Scrollable Content Body */}
+            <div className="relative z-10 flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 md:px-8 py-3.5 sm:py-5" key={currentSection}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentSection}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="space-y-4 max-w-3xl mx-auto pb-6"
+                >
+                  <SectionRenderer
+                    section={currentSectionData}
+                    sectionIndex={currentSection}
+                    onShowSolution={(idx) =>
+                      setExpandedProblem(expandedProblem === idx ? null : idx)
+                    }
+                    expandedIndex={expandedProblem}
+                    lesson={lesson}
+                    practiceQuiz={practiceQuiz}
+                    practiceQuizCompleted={practiceQuizCompleted}
+                    practiceQuizScore={practiceQuizScore}
+                    onStartPractice={onStartPractice}
+                    lessonSpecificTopic={lessonSpecificTopic}
+                    onStartTryItQuiz={() => setShowTryItPage(true)}
+                  />
+
+                  {sources.length > 0 && (userProfile?.role === 'admin' || userProfile?.role === 'teacher') && (
+                    <details className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 px-3 py-2 text-xs text-slate-500 shadow-2xs">
+                      <summary className="cursor-pointer font-semibold text-slate-600 hover:text-slate-800">
+                        {sources.length} source{sources.length > 1 ? 's' : ''} used
+                      </summary>
+                      <div className="mt-2 space-y-1 pl-2 font-mono text-[11px]">
+                        {sources.slice(0, 3).map((src, i) => (
+                          <p key={i} className="truncate">
+                            {src.source_file} p.{src.page} ({Math.round((src.score || 0) * 100)}%)
+                          </p>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
           </div>
 
-          {/* Main Notebook Container */}
-          <div className={cn("flex-1 min-w-0 rounded-none sm:rounded-lg shadow-2xl flex flex-col overflow-visible relative z-10 transition-colors duration-500", currentTab.tabBg)}>
-            {/* Header inside notebook */}
-            <div className="px-3 sm:px-6 py-2 sm:py-3.5 flex items-center gap-2 sm:gap-4 text-white">
-              <div className="bg-white/20 p-1 sm:p-2 rounded-lg sm:rounded-xl shrink-0">
-                <CurrentTabIcon size={16} className="text-white" />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <h2 className="lesson-section-heading text-sm sm:text-xl md:text-2xl truncate text-balance" title={currentSectionData.title}>
-                  {currentSectionData.title}
-                </h2>
-                <p className="text-white/90 text-[10px] sm:text-xs font-medium truncate mt-0.5 font-body" title={lesson.title}>
-                  {lesson.title}
-                </p>
-              </div>
-            </div>
-
-            {/* Inner Paper Area */}
-            <div className="flex-1 min-h-0 bg-[#fdfdfd] rounded-lg sm:rounded-[1.5rem] m-1 mt-0 relative overflow-hidden shadow-inner flex flex-col">
-              {/* Notebook lines background */}
-              <div
-                className="absolute inset-0 pointer-events-none opacity-30"
-                style={{
-                  backgroundImage: 'linear-gradient(transparent 95%, #cbd5e1 95%)',
-                  backgroundSize: '100% 40px',
-                  backgroundPosition: '0 0'
-                }}
-              />
-              {/* Red margin line */}
-              <div className="absolute top-0 bottom-0 left-8 sm:left-12 md:left-16 w-[2px] bg-rose-300/60 pointer-events-none z-0" />
-
-              {/* Scrollable Content */}
-              <div className="relative z-10 flex-1 min-h-0 overflow-y-auto px-3 sm:px-5 md:pl-20 md:pr-10 py-2 sm:py-6" key={currentSection}>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentSection}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-4 sm:space-y-6"
-                  >
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-[1.5rem] p-4 sm:p-6 md:p-8 shadow-sm border border-slate-100/50 font-body">
-                      <SectionRenderer
-                        section={currentSectionData}
-                        sectionIndex={currentSection}
-                        onShowSolution={(idx) =>
-                          setExpandedProblem(expandedProblem === idx ? null : idx)
-                        }
-                        expandedIndex={expandedProblem}
-                        lesson={lesson}
-                        practiceQuiz={practiceQuiz}
-                        practiceQuizCompleted={practiceQuizCompleted}
-                        practiceQuizScore={practiceQuizScore}
-                        onStartPractice={onStartPractice}
-                        lessonSpecificTopic={lessonSpecificTopic}
-                        onStartTryItQuiz={() => setShowTryItPage(true)}
-                      />
-                    </div>
-
-                    {sources.length > 0 && (userProfile?.role === 'admin' || userProfile?.role === 'teacher') && (
-                      <details className="rounded-xl border border-slate-200 bg-white/90 backdrop-blur-sm px-4 py-3 text-xs text-slate-500 shadow-sm">
-                        <summary className="cursor-pointer font-semibold text-slate-600 hover:text-slate-800">
-                          {sources.length} source{sources.length > 1 ? 's' : ''} used
-                        </summary>
-                        <div className="mt-2 space-y-1 pl-2">
-                          {sources.slice(0, 3).map((src, i) => (
-                            <p key={i} className="font-mono truncate">
-                              {src.source_file} p.{src.page} ({Math.round((src.score || 0) * 100)}%)
-                            </p>
-                          ))}
-                        </div>
-                      </details>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
 
-      <footer className="bg-slate-50 border-t border-slate-100 px-3 sm:px-6 flex-shrink-0 relative z-50 w-full flex justify-center items-center py-1.5 sm:py-3">
-        <div className="w-full max-w-[90rem] flex flex-col items-center">
-          <div className="flex items-center justify-center gap-4 sm:gap-8 w-full md:ml-16">
-            <Button
-              onClick={handlePrevious}
-              disabled={currentSection === 0}
-              variant="outline"
-              aria-label="Previous section"
-              className="px-4 sm:px-5 py-2 sm:py-2 rounded-full font-bold text-xs sm:text-sm bg-white border-slate-200 text-slate-600 shadow-sm disabled:opacity-40 hover:bg-slate-50 transition-colors flex items-center gap-1 sm:gap-2 min-w-[2.5rem] min-h-[2.5rem] touch-manipulation"
-            >
-              <ArrowLeft size={14} />
-              <span className="hidden sm:inline">Previous</span>
-            </Button>
+      {/* Docked Slim Navigation Footer */}
+      <footer className="flex-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-white/10 px-3 sm:px-6 py-2 relative z-40">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+          <Button
+            onClick={handlePrevious}
+            disabled={currentSection === 0}
+            variant="outline"
+            aria-label="Previous section"
+            className="px-3.5 sm:px-5 h-9 rounded-xl font-bold text-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs disabled:opacity-40 hover:bg-slate-50 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+          >
+            <ArrowLeft size={13} />
+            <span className="hidden sm:inline">Previous</span>
+          </Button>
 
-            <p className="text-xs sm:text-sm text-slate-500 font-bold tabular-nums">
-              {currentSection + 1} / {totalSections}
-            </p>
-
-            <Button
-              onClick={handleNext}
-              disabled={currentSection === totalSections - 1 && isPracticeRequired}
-              aria-label={currentSection === totalSections - 1 ? "Complete lesson" : "Next section"}
-              className="px-5 sm:px-7 py-2 sm:py-2 rounded-full font-bold text-xs sm:text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center gap-1 sm:gap-2 min-w-[2.5rem] min-h-[2.5rem] touch-manipulation"
-            >
-              {currentSection === totalSections - 1 ? (
-                <>
-                  <span className="hidden sm:inline">Complete</span>
-                  <CheckCircle size={14} />
-                </>
-              ) : (
-                <>
-                  <span className="hidden sm:inline">Next</span>
-                  <ArrowRight size={14} />
-                </>
-              )}
-            </Button>
+          <div className="flex items-center gap-1.5">
+            {SECTION_TABS.map((tab, idx) => (
+              <span
+                key={tab.type}
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full transition-all",
+                  idx === currentSection
+                    ? cn("w-4 sm:w-5", tab.tabBg)
+                    : idx < currentSection
+                    ? "bg-slate-400 dark:bg-slate-600"
+                    : "bg-slate-200 dark:bg-slate-800"
+                )}
+              />
+            ))}
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono font-bold ml-1">
+              {currentSection + 1}/{totalSections}
+            </span>
           </div>
-          {currentSection === totalSections - 1 && isPracticeRequired && (
-            <p className="text-center text-[10px] sm:text-xs font-semibold text-amber-600 mt-2 sm:mt-3 md:ml-16">
-              {!tryItQuizCompleted
-                ? 'Complete the Try It Yourself quiz first to unlock lesson completion.'
-                : 'Complete the practice quiz first to unlock lesson completion.'}
-            </p>
-          )}
+
+          <Button
+            onClick={handleNext}
+            disabled={currentSection === totalSections - 1 && isPracticeRequired}
+            aria-label={currentSection === totalSections - 1 ? "Complete lesson" : "Next section"}
+            className={cn(
+              "px-4 sm:px-6 h-9 rounded-xl font-bold text-xs text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95",
+              currentSection === totalSections - 1
+                ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
+                : "bg-purple-600 hover:bg-purple-500 shadow-purple-500/20"
+            )}
+          >
+            {currentSection === totalSections - 1 ? (
+              <>
+                <span>Complete</span>
+                <CheckCircle size={13} />
+              </>
+            ) : (
+              <>
+                <span>Next</span>
+                <ArrowRight size={13} />
+              </>
+            )}
+          </Button>
         </div>
       </footer>
 
