@@ -41,3 +41,23 @@ Scope: Modernize and declutter the Teacher side across desktop, tablet, and mobi
   CHECK: npm run typecheck && npx oxlint --quiet
   EXPECT: /passed|Found 0 errors|exit code 0/
   EVIDENCE: Both tsc and oxlint passed with exit code 0 and 0 errors.
+
+- [x] G9: Replace hamburger menu with student-aligned upward popup cards on mobile bottom nav
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; mobile bottom navigation replaced with 5 contextual triggers with animated upward floating popup cards and triangle pointers.
+
+- [x] G10: Grouped popups use teacher terminology ("My Classes" instead of roster, Teaching, AI & Tools, Insights, Profile)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; labels are "My Classes", "Teaching", "AI & Tools", "Insights", and "Profile".
+
+- [x] G11: Center elevated hero button for AI & Tools with popup containing Quiz Maker, Question Bank, and Data Import
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; center hero button elevated with AI avatar icon and opens AI Quiz Maker, Question Bank, and Data Import.
+
+- [x] G12: Typecheck, linter, and tests pass with 0 errors
+  CHECK: npm run typecheck && npx oxlint --quiet
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: tsc exit code 0, oxlint passed with 0 errors, and all 32 test files (212 tests) passed.

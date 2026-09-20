@@ -7,7 +7,7 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck, User, LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -633,7 +633,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [pendingRemoveStudent, setPendingRemoveStudent] = useState<StudentView | null>(null);
@@ -677,12 +676,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     sectionDraft: string;
   }>>(new Map());
 
+  // Expandable popup state for mobile bottom navigation (student-aligned)
+  const [openMobileMenu, setOpenMobileMenu] = useState<'teaching' | 'insights' | 'tools' | 'profile' | null>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
+
   // Track mobile viewport (< 1024px = below lg breakpoint)
   useEffect(() => {
     const checkViewport = () => setIsMobileViewport(window.innerWidth < 1024);
     checkViewport();
     window.addEventListener('resize', checkViewport);
     return () => window.removeEventListener('resize', checkViewport);
+  }, []);
+
+  // Close open popup on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileNavRef.current && event.target instanceof Node && !mobileNavRef.current.contains(event.target)) {
+        setOpenMobileMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Fetch classrooms and students from Firebase
@@ -1448,8 +1462,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       setIsMobileViewport(nextIsMobile);
       if (nextIsMobile) {
         setSidebarCollapsed(false);
-      } else {
-        setMobileNavOpen(false);
       }
     };
 
@@ -1460,7 +1472,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
   useEffect(() => {
     if (!isMobileViewport) return;
-    setMobileNavOpen(false);
+    setOpenMobileMenu(null);
   }, [activeView, isMobileViewport]);
 
   const availableClasses = useMemo(() => {
@@ -1521,25 +1533,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
   return (
     <div className="relative flex h-dvh w-full bg-background overflow-hidden">
-      {isMobileViewport && mobileNavOpen && (
-        <button
-          aria-label="Close navigation"
-          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-[2px]"
-          onClick={() => setMobileNavOpen(false)}
-        />
-      )}
 
-      {/* Collapsible Sidebar */}
+      {/* Collapsible Sidebar (Desktop lg+) */}
       <motion.aside
         initial={false}
         animate={{
-          width: isMobileViewport ? 280 : sidebarCollapsed && !sidebarHovered ? 80 : 280,
-          x: isMobileViewport ? (mobileNavOpen ? 0 : 320) : 0,
+          width: sidebarCollapsed && !sidebarHovered ? 80 : 280,
         }}
         transition={{ type: 'spring', stiffness: 360, damping: 34 }}
-        onMouseEnter={() => !isMobileViewport && sidebarCollapsed && setSidebarHovered(true)}
+        onMouseEnter={() => sidebarCollapsed && setSidebarHovered(true)}
         onMouseLeave={() => setSidebarHovered(false)}
-        className="fixed top-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] right-0 z-40 bg-[#f7f9fc] rounded-none rounded-l-3xl lg:rounded-3xl border border-[#dde3eb] flex flex-col shadow-2xl lg:shadow-sm lg:static lg:right-auto lg:top-auto lg:bottom-auto lg:z-auto p-5 overflow-y-auto pb-6"
+        className="hidden lg:flex static bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] flex-col shadow-sm p-5 overflow-y-auto pb-6 shrink-0"
       >
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : 'justify-between'}`}>
@@ -1553,7 +1557,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               </div>
             )}
           </div>
-          {!isMobileViewport && (!sidebarCollapsed || sidebarHovered) && (
+          {(!sidebarCollapsed || sidebarHovered) && (
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -1563,15 +1567,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             >
               {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
             </motion.button>
-          )}
-          {isMobileViewport && (
-            <button
-              onClick={() => setMobileNavOpen(false)}
-              className="p-2 hover:bg-[#dde3eb] rounded-lg transition-colors text-[#5a6578]"
-              aria-label="Close navigation"
-            >
-              <X size={20} />
-            </button>
           )}
         </div>
 
@@ -2084,77 +2079,441 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
       </div>
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Mobile Bottom Navigation Bar (Student-Aligned Grouped Popups) */}
       {isMobileViewport && (
         <nav
+          ref={mobileNavRef}
           aria-label="Bottom Navigation"
-          className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden touch-manipulation"
+          className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden touch-manipulation"
         >
-          <div className="grid grid-cols-5 items-center justify-around max-w-lg mx-auto">
-            {/* Dashboard */}
+          {/* Backdrop for open popup */}
+          {openMobileMenu !== null && (
             <button
               type="button"
-              onClick={handleBackToDashboard}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 min-h-[44px] ${activeView === 'dashboard'
-                  ? 'text-violet-600 font-bold'
-                  : 'text-slate-500 hover:text-slate-900'
-                }`}
+              aria-label="Close menu"
+              className="fixed inset-0 z-30 bg-black/10 backdrop-blur-[0.5px]"
+              onClick={() => setOpenMobileMenu(null)}
+            />
+          )}
+
+          {/* 1. TEACHING Popup (My Classes + Calendar) */}
+          <AnimatePresence>
+            {openMobileMenu === 'teaching' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute bottom-[calc(100%+12px)] left-6 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+              >
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
+                  Teaching
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSidebarNav('analytics');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'analytics' || activeView === 'intervention'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'analytics' || activeView === 'intervention' ? 'bg-white/20' : 'bg-violet-100 text-violet-600'
+                    }`}>
+                      <BookOpen size={16} aria-hidden="true" />
+                    </div>
+                    <span>My Classes</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('calendar');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'calendar'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'calendar' ? 'bg-white/20' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      <Calendar size={16} aria-hidden="true" />
+                    </div>
+                    <span>Schedule & Calendar</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                {/* Triangle pointer */}
+                <div className="absolute -bottom-2 left-10 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 2. CENTER HERO: AI & TOOLS Popup (AI Quiz Maker + Question Bank + Data Import) */}
+          <AnimatePresence>
+            {openMobileMenu === 'tools' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+              >
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
+                  AI & Tools
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('quiz_maker');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'quiz_maker'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'quiz_maker' ? 'bg-white/20' : 'bg-violet-100 text-violet-600'
+                    }`}>
+                      <ClipboardCheck size={16} aria-hidden="true" />
+                    </div>
+                    <span>AI Quiz Maker</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('question_bank');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'question_bank'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'question_bank' ? 'bg-white/20' : 'bg-indigo-100 text-indigo-600'
+                    }`}>
+                      <Database size={16} aria-hidden="true" />
+                    </div>
+                    <span>Question Bank</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('import');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'import'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'import' ? 'bg-white/20' : 'bg-emerald-100 text-emerald-600'
+                    }`}>
+                      <FileSpreadsheet size={16} aria-hidden="true" />
+                    </div>
+                    <span>Data Import</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                {/* Triangle pointer */}
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 3. INSIGHTS Popup (Topic Mastery + Competency Matrix) */}
+          <AnimatePresence>
+            {openMobileMenu === 'insights' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute bottom-[calc(100%+12px)] right-16 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+              >
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
+                  Insights
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSidebarNav('topic_mastery');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'topic_mastery'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'topic_mastery' ? 'bg-white/20' : 'bg-purple-100 text-purple-600'
+                    }`}>
+                      <Target size={16} aria-hidden="true" />
+                    </div>
+                    <span>Topic Mastery</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSidebarNav('competency');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'competency'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'competency' ? 'bg-white/20' : 'bg-amber-100 text-amber-600'
+                    }`}>
+                      <Users size={16} aria-hidden="true" />
+                    </div>
+                    <span>Competency Matrix</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                {/* Triangle pointer */}
+                <div className="absolute -bottom-2 right-12 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 4. PROFILE & ACCOUNT Popup (Profile + Settings + Notifications + Logout) */}
+          <AnimatePresence>
+            {openMobileMenu === 'profile' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute bottom-[calc(100%+12px)] right-3 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+              >
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
+                  Account
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMobileMenu(null);
+                    if (onOpenProfile) onOpenProfile();
+                  }}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+                      <User size={16} aria-hidden="true" />
+                    </div>
+                    <span>Teacher Profile</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMobileMenu(null);
+                    if (onOpenSettings) onOpenSettings();
+                  }}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                      <Settings size={16} aria-hidden="true" />
+                    </div>
+                    <span>Settings</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMobileMenu(null);
+                    setActiveView('notifications');
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'notifications'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'notifications' ? 'bg-white/20' : 'bg-rose-100 text-rose-600'
+                    }`}>
+                      <Bell size={16} aria-hidden="true" />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span>Notifications</span>
+                      {teacherUnreadCount > 0 && (
+                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <div className="h-[1px] bg-slate-100 my-0.5" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMobileMenu(null);
+                    setShowLogoutConfirm(true);
+                  }}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-rose-600 hover:bg-rose-50 transition-all active:scale-95"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+                      <LogOut size={16} aria-hidden="true" />
+                    </div>
+                    <span>Log Out</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                {/* Triangle pointer */}
+                <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 5 Primary Mobile Bottom Bar Buttons */}
+          <div className="flex items-center justify-around max-w-md mx-auto relative z-30">
+            {/* 1. Dashboard */}
+            <button
+              type="button"
+              onClick={() => {
+                setOpenMobileMenu(null);
+                handleBackToDashboard();
+              }}
+              aria-label="Dashboard"
+              aria-current={activeView === 'dashboard' ? 'page' : undefined}
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                activeView === 'dashboard'
+                  ? 'text-violet-600 font-bold bg-violet-50'
+                  : 'text-slate-500 font-medium hover:text-slate-900'
+              }`}
             >
-              <LayoutDashboard size={20} strokeWidth={activeView === 'dashboard' ? 2.4 : 1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight">Dashboard</span>
+              <LayoutDashboard size={20} className={activeView === 'dashboard' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Dashboard</span>
             </button>
 
-            {/* Classes */}
+            {/* 2. Teaching (Expandable: My Classes & Calendar) */}
             <button
               type="button"
-              onClick={() => handleSidebarNav('analytics')}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 min-h-[44px] ${activeView === 'analytics' || activeView === 'intervention'
-                  ? 'text-violet-600 font-bold'
-                  : 'text-slate-500 hover:text-slate-900'
-                }`}
+              onClick={() => setOpenMobileMenu(prev => prev === 'teaching' ? null : 'teaching')}
+              aria-label="Teaching Options: My Classes and Calendar"
+              aria-expanded={openMobileMenu === 'teaching'}
+              aria-haspopup="true"
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                activeView === 'analytics' || activeView === 'intervention' || activeView === 'calendar' || openMobileMenu === 'teaching'
+                  ? 'text-violet-600 font-bold bg-violet-50'
+                  : 'text-slate-500 font-medium hover:text-slate-900'
+              }`}
             >
-              <BookOpen size={20} strokeWidth={activeView === 'analytics' || activeView === 'intervention' ? 2.4 : 1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight">Classes</span>
+              <BookOpen size={20} className={activeView === 'analytics' || activeView === 'intervention' || activeView === 'calendar' || openMobileMenu === 'teaching' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Teaching</span>
             </button>
 
-            {/* Mastery */}
+            {/* 3. AI & Tools (Center Hero Button - Elevated Avatar Icon) */}
             <button
               type="button"
-              onClick={() => handleSidebarNav('topic_mastery')}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 min-h-[44px] ${activeView === 'topic_mastery' || activeView === 'competency'
-                  ? 'text-violet-600 font-bold'
-                  : 'text-slate-500 hover:text-slate-900'
-                }`}
+              onClick={() => setOpenMobileMenu(prev => prev === 'tools' ? null : 'tools')}
+              aria-label="AI and Tools Options: Quiz Maker, Question Bank, Data Import"
+              aria-expanded={openMobileMenu === 'tools'}
+              aria-haspopup="true"
+              className="relative -top-3 flex items-center justify-center w-14 h-14 sm:w-15 sm:h-15 p-1 rounded-2xl transition-all focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none active:scale-[0.94] bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-xl shadow-purple-500/40 ring-2 ring-purple-300 shrink-0"
             >
-              <Target size={20} strokeWidth={activeView === 'topic_mastery' || activeView === 'competency' ? 2.4 : 1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight">Mastery</span>
+              <img
+                src="/avatar/avatar_icon.png"
+                alt="AI Tools"
+                className="w-12 h-12 sm:w-13 sm:h-13 object-contain drop-shadow-xl select-none pointer-events-none"
+              />
             </button>
 
-            {/* AI Quiz Maker */}
+            {/* 4. Insights (Expandable: Topic Mastery & Competency Matrix) */}
             <button
               type="button"
-              onClick={() => setActiveView('quiz_maker')}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 min-h-[44px] ${activeView === 'quiz_maker' || activeView === 'question_bank'
-                  ? 'text-violet-600 font-bold'
-                  : 'text-slate-500 hover:text-slate-900'
-                }`}
+              onClick={() => setOpenMobileMenu(prev => prev === 'insights' ? null : 'insights')}
+              aria-label="Insights Options: Topic Mastery and Competency Matrix"
+              aria-expanded={openMobileMenu === 'insights'}
+              aria-haspopup="true"
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                activeView === 'topic_mastery' || activeView === 'competency' || openMobileMenu === 'insights'
+                  ? 'text-violet-600 font-bold bg-violet-50'
+                  : 'text-slate-500 font-medium hover:text-slate-900'
+              }`}
             >
-              <ClipboardCheck size={20} strokeWidth={activeView === 'quiz_maker' || activeView === 'question_bank' ? 2.4 : 1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight">Quiz Maker</span>
+              <Target size={20} className={activeView === 'topic_mastery' || activeView === 'competency' || openMobileMenu === 'insights' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Insights</span>
             </button>
 
-            {/* Menu Drawer */}
+            {/* 5. Profile / Account (Teacher Photo or User Icon) */}
             <button
               type="button"
-              onClick={() => setMobileNavOpen(prev => !prev)}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 min-h-[44px] ${mobileNavOpen
-                  ? 'text-violet-600 font-bold'
-                  : 'text-slate-500 hover:text-slate-900'
-                }`}
-              aria-label="Toggle navigation menu"
+              onClick={() => setOpenMobileMenu(prev => prev === 'profile' ? null : 'profile')}
+              aria-label={`Teacher Profile: ${teacherName}`}
+              aria-expanded={openMobileMenu === 'profile'}
+              aria-haspopup="true"
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                openMobileMenu === 'profile' || activeView === 'notifications'
+                  ? 'text-violet-600 font-bold bg-violet-50'
+                  : 'text-slate-500 font-medium hover:text-slate-900'
+              }`}
             >
-              <Menu size={20} strokeWidth={1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight">Menu</span>
+              {userProfile?.photo ? (
+                <img
+                  src={userProfile.photo}
+                  alt={teacherName}
+                  className={`w-5 h-5 rounded-full object-cover border ${
+                    openMobileMenu === 'profile' ? 'border-violet-600 ring-1 ring-violet-400' : 'border-slate-200'
+                  }`}
+                />
+              ) : (
+                <User size={20} className={openMobileMenu === 'profile' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              )}
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Profile</span>
             </button>
           </div>
         </nav>
