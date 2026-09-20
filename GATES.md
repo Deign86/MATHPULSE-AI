@@ -133,5 +133,26 @@
   EXPECT: /0 errors/
   EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors), MobileBottomNav verified hidden during active quiz mode in TryItYourselfEngine and restored upon exit (recorded in quiz_and_notebook_tabs_verification_1789900906887.webp)
 
+- [x] gate-32: LessonViewer container clearance and spacing ensuring header bar and notebook container do not stick or overlap across viewports
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors), vertical clearance verified across desktop (1280x800), tablet (820x1000), and mobile (390x844) in browser subagent recordings (desktop_notebook_view_1789905753819.png, tablet_notebook_view_1789905786118.png, mobile_notebook_view_1789905818576.png)
 
+- [x] gate-33: Engaging module content layout with intelligent objective extraction, DepEd competency badge, target goals grid, and visual roadmap strip
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors), engaging module content layout with intelligent objective extraction, DepEd competency badge, target goals grid, and visual roadmap strip verified visually in browser
+- [x] gate-34: Restored TryItYourselfEngine full-screen portal modal overlay eliminating sidebar squeeze on desktop viewports
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors), TryItYourselfEngine restored from 7a6ba09~1 and mounted via ReactDOM.createPortal directly to root, rendering completely full screen (no desktop sidebar squeeze), verified visually in browser (screenshot desktop_quiz_portal_1789907815299.png)
 
+- [x] gate-35: Mobile single tab on top left of container with dropdown navigation for unlocked module parts
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors), mobile horizontal 7-tab scroll replaced with single top-left tab ('Part 1: Intro') with down chevron and interactive dropdown menu listing unlocked parts, verified visually in browser (screenshots mobile_dropdown_menu_1789907115009.png and mobile_part2_view_closed_dropdown_1789907283035.png)
+
+- [x] gate-36: Polished mobile single-tab seamless attachment to container edge, comfortable breathing margins, removed messy lined paper, and structured concept cards with bolded key terms
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors), single mobile tab seamlessly integrated with container edge with 0 gap, container padding increased for floating breathing room, lined paper and red margin removed for clean reading canvas, concept paragraphs wrapped in structured cards with bolded definition terms, verified visually in browser (screenshots mobile_part2_key_concepts_1789909355386.png, desktop_part2_key_concepts_1789909387151.png, and part2_key_concepts_1789909707981.png)
