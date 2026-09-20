@@ -1073,25 +1073,25 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05 }}
-        className={`border border-[#e2e8f0] rounded-[20px] overflow-hidden bg-white shadow-sm hover:shadow-md ${hoverBorder} transition-all duration-300`}
+        className={`border border-[#e2e8f0] rounded-xl sm:rounded-[20px] overflow-hidden bg-white shadow-xs sm:shadow-sm hover:shadow-md ${hoverBorder} transition-all duration-300`}
       >
         {/* Header row — always visible */}
         <div
-          className="p-6 flex justify-between items-start cursor-pointer hover:bg-slate-50/50 transition-colors"
+          className="p-3.5 sm:p-5 md:p-6 flex justify-between items-start cursor-pointer hover:bg-slate-50/50 transition-colors gap-2"
           onClick={() => setExpandedQuestion(isExpanded ? null : index)}
         >
-          <div className="space-y-3 flex-1">
-            <div className="flex items-center gap-2.5 flex-wrap mb-1">
+          <div className="space-y-2 sm:space-y-3 flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 flex-wrap mb-1">
               {/* Q-number badge */}
-              <span className={`w-8 h-8 rounded-lg bg-gradient-to-br ${bloom.card} text-white flex items-center justify-center font-bold text-[13px] shadow-sm`}>
+              <span className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br ${bloom.card} text-white flex items-center justify-center font-bold text-xs sm:text-[13px] shadow-xs shrink-0`}>
                 Q{index + 1}
               </span>
               {/* Bloom badge */}
-              <span className={`px-2.5 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wider shadow-sm ${bloom.badge}`}>
+              <span className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-xs ${bloom.badge}`}>
                 {q.bloomLevel}
               </span>
               {/* Difficulty badge */}
-              <span className={`px-2.5 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wider shadow-sm ${
+              <span className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shadow-xs ${
                 q.difficulty === 'easy' ? 'border-emerald-200 text-emerald-700 bg-emerald-50'
                 : q.difficulty === 'hard' ? 'border-rose-200 text-rose-700 bg-rose-50'
                 : 'border-amber-200 text-amber-700 bg-amber-50'
@@ -1099,20 +1099,20 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 {q.difficulty}
               </span>
               {/* Points */}
-              <span className="text-[12px] font-bold text-[#64748b] bg-slate-100 px-2 py-1 rounded-md">{q.points} pts</span>
+              <span className="text-[11px] sm:text-[12px] font-bold text-[#64748b] bg-slate-100 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md">{q.points} pts</span>
               {/* Topic */}
               {q.topic && (
-                <span className="text-[12px] font-semibold text-[#64748b] px-2 py-1 hidden sm:inline-block border-l border-slate-200">{q.topic}</span>
+                <span className="text-[11px] sm:text-[12px] font-semibold text-[#64748b] px-2 py-0.5 sm:py-1 hidden sm:inline-block border-l border-slate-200 truncate max-w-[200px]">{q.topic}</span>
               )}
             </div>
-            <p className="text-[16px] font-bold text-[#1e293b] pr-4 leading-relaxed">{q.question}</p>
+            <p className="text-xs sm:text-sm md:text-[15px] font-bold text-[#1e293b] pr-2 sm:pr-4 leading-snug sm:leading-relaxed break-words">{q.question}</p>
           </div>
-          <div className="flex flex-col items-end justify-between h-full gap-4 shrink-0 mt-1">
-            <span className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest hidden sm:block border shadow-sm ${bloom.badge}`}>
+          <div className="flex flex-col items-end justify-between h-full gap-2 sm:gap-4 shrink-0 mt-0.5 sm:mt-1">
+            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest hidden sm:block border shadow-xs ${bloom.badge}`}>
               {q.bloomLevel}
             </span>
-            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-200 mt-2">
-              {isExpanded ? <ChevronUp size={16} className="text-[#64748b] transition-transform duration-300" /> : <ChevronDown size={16} className="text-[#64748b]" />}
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-200 mt-1">
+              {isExpanded ? <ChevronUp size={14} className="text-[#64748b] transition-transform duration-300" /> : <ChevronDown size={14} className="text-[#64748b]" />}
             </div>
           </div>
         </div>
@@ -1126,27 +1126,27 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="p-6 pt-0 bg-white">
-                <div className="h-px w-full bg-gradient-to-r from-transparent via-[#e2e8f0] to-transparent mb-6" />
+              <div className="p-3.5 sm:p-5 md:p-6 pt-0 bg-white">
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-[#e2e8f0] to-transparent mb-3.5 sm:mb-6" />
 
                 {/* Options */}
                 {q.options && (
-                  <div className="mb-6">
-                    <p className="text-[13px] font-bold text-[#64748b] mb-3 uppercase tracking-wider">Options:</p>
-                    <div className="space-y-3">
+                  <div className="mb-4 sm:mb-6">
+                    <p className="text-[11px] sm:text-[13px] font-bold text-[#64748b] mb-2 sm:mb-3 uppercase tracking-wider">Options:</p>
+                    <div className="space-y-2 sm:space-y-3">
                       {q.options.map((opt, oi) => {
                         const isCorrect = showAnswer && opt.includes(q.correctAnswer);
                         return (
-                          <div key={oi} className={`rounded-[12px] p-4 text-[14px] font-medium transition-all cursor-pointer relative overflow-hidden ${
+                          <div key={oi} className={`rounded-lg sm:rounded-[12px] p-2.5 sm:p-4 text-xs sm:text-[14px] font-medium transition-all cursor-pointer relative overflow-hidden ${
                             isCorrect
-                              ? 'bg-gradient-to-r from-emerald-50 to-emerald-100/30 border-2 border-emerald-400 text-emerald-800 font-bold shadow-sm'
+                              ? 'bg-gradient-to-r from-emerald-50 to-emerald-100/30 border-2 border-emerald-400 text-emerald-800 font-bold shadow-xs'
                               : 'bg-white border border-[#e2e8f0] text-[#475569] hover:border-[#a855f7] hover:shadow-[0_2px_8px_rgba(168,85,247,0.1)]'
                           }`}>
                             {isCorrect && <div className="absolute left-0 top-0 w-1 h-full bg-emerald-500" />}
                             <span className={isCorrect ? 'pl-2' : ''}>{opt}</span>
                             {isCorrect && (
-                              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm absolute right-4 top-1/2 -translate-y-1/2">
-                                <Check size={13} />
+                              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs absolute right-3 sm:right-4 top-1/2 -translate-y-1/2">
+                                <Check size={12} />
                               </div>
                             )}
                           </div>
@@ -1158,26 +1158,26 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
                 {/* Answer + Explanation side by side */}
                 {showAnswer && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-                    <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-[16px] p-5 shadow-sm">
-                      <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <CheckCircle2 size={14} /> Correct Answer
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4 mb-3.5 sm:mb-5">
+                    <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-xl sm:rounded-[16px] p-3 sm:p-5 shadow-xs">
+                      <p className="text-[10px] sm:text-[11px] font-bold text-emerald-700 uppercase tracking-wider mb-1 sm:mb-2 flex items-center gap-1.5">
+                        <CheckCircle2 size={13} /> Correct Answer
                       </p>
-                      <p className="text-[16px] font-bold text-[#1e293b]">{q.correctAnswer}</p>
+                      <p className="text-sm sm:text-[16px] font-bold text-[#1e293b]">{q.correctAnswer}</p>
                     </div>
-                    <div className="bg-purple-50/80 border border-purple-200/60 rounded-[16px] p-5 shadow-sm">
-                      <p className="text-[11px] font-bold text-purple-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                        <Sparkles size={14} /> AI Explanation
+                    <div className="bg-purple-50/80 border border-purple-200/60 rounded-xl sm:rounded-[16px] p-3 sm:p-5 shadow-xs">
+                      <p className="text-[10px] sm:text-[11px] font-bold text-purple-700 uppercase tracking-wider mb-1 sm:mb-2 flex items-center gap-1.5">
+                        <Sparkles size={13} /> AI Explanation
                       </p>
-                      <p className="text-[13px] text-[#475569] leading-relaxed font-medium">{q.explanation}</p>
+                      <p className="text-xs sm:text-[13px] text-[#475569] leading-relaxed font-medium">{q.explanation}</p>
                     </div>
                   </div>
                 )}
 
                 {/* Footer metadata */}
-                <div className="flex gap-6 text-[12px] font-medium text-[#64748b] mt-5 pt-4 border-t border-slate-100">
-                  <span className="flex items-center gap-1.5"><FileText size={14} /> <strong className="text-[#1e293b]">Type:</strong> {recordGet(QUESTION_TYPE_LABELS, q.questionType)?.label || q.questionType}</span>
-                  <span className="flex items-center gap-1.5"><Brain size={14} /> <strong className="text-[#1e293b]">Bloom:</strong> {q.bloomLevel}</span>
+                <div className="flex flex-wrap gap-3 sm:gap-6 text-[11px] sm:text-[12px] font-medium text-[#64748b] mt-3 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-100">
+                  <span className="flex items-center gap-1.5"><FileText size={13} /> <strong className="text-[#1e293b]">Type:</strong> {recordGet(QUESTION_TYPE_LABELS, q.questionType)?.label || q.questionType}</span>
+                  <span className="flex items-center gap-1.5"><Brain size={13} /> <strong className="text-[#1e293b]">Bloom:</strong> {q.bloomLevel}</span>
                 </div>
               </div>
             </motion.div>
@@ -1189,48 +1189,48 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
   const content = (
     <div className="w-full h-full flex flex-col overflow-y-auto bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
-      <div className="w-full px-[24px] xl:px-[32px] pt-[12px] pb-4">
+      <div className="w-full px-3.5 sm:px-6 xl:px-8 pt-2.5 sm:pt-3 pb-2 sm:pb-4">
         {/* ─── TAB TOGGLES ─── */}
-        <div className="flex items-center gap-1 bg-white/50 backdrop-blur-md p-1.5 rounded-full border border-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-max">
+        <div className="flex items-center gap-1 bg-white/50 backdrop-blur-md p-1 sm:p-1.5 rounded-full border border-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-full sm:w-max">
           <button
             onClick={() => setActiveTab('create')}
-            className={`px-6 py-2 rounded-full text-[13px] font-bold flex items-center gap-2 transition-all duration-300 ease-out ${
+            className={`flex-1 sm:flex-initial justify-center px-3.5 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-[13px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 ease-out ${
               activeTab === 'create'
                 ? 'bg-white text-[#a855f7] shadow-[0_2px_8px_rgba(168,85,247,0.15)] scale-100'
                 : 'bg-transparent text-[#64748b] hover:text-[#1e293b] hover:bg-white/60 scale-95 hover:scale-100'
             }`}
           >
-            <Wand2 size={16} /> Create Quiz
+            <Wand2 size={15} /> Create Quiz
           </button>
           <button
             onClick={() => setActiveTab('bank')}
-            className={`px-6 py-2 rounded-full text-[13px] font-bold flex items-center gap-2 transition-all duration-300 ease-out ${
+            className={`flex-1 sm:flex-initial justify-center px-3.5 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-[13px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 ease-out ${
               activeTab === 'bank'
                 ? 'bg-white text-[#a855f7] shadow-[0_2px_8px_rgba(168,85,247,0.15)] scale-100'
                 : 'bg-transparent text-[#64748b] hover:text-[#1e293b] hover:bg-white/60 scale-95 hover:scale-100'
             }`}
           >
-            <Library size={16} /> Quiz Bank
+            <Library size={15} /> Quiz Bank
           </button>
         </div>
       </div>
 
       {/* ─── MAIN CONTENT ─── */}
-      <div className="w-full px-[24px] xl:px-[32px] pb-[32px] flex-1">
+      <div className="w-full px-3.5 sm:px-6 xl:px-8 pb-8 flex-1">
 
           {/* ─── QUIZ BANK TAB ─── */}
           {activeTab === 'bank' && (
-            <div className="w-full space-y-[24px]">
+            <div className="w-full space-y-4 sm:space-y-6">
               {/* Bank Filters */}
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 border-b border-[#e2e8f0] mb-6" style={{scrollbarWidth:'none'}}>
+              <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 border-b border-[#e2e8f0] mb-4 sm:mb-6" style={{scrollbarWidth:'none'}}>
                 {(['all', 'draft', 'published', 'assigned', 'completed'] as const).map((f) => (
                   <button
                     key={f}
                     onClick={() => setBankFilter(f)}
-                    className={`px-5 py-2 text-[13px] font-bold rounded-full whitespace-nowrap transition-all duration-300 mb-4 capitalize ${
+                    className={`px-3.5 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-[13px] font-bold rounded-full whitespace-nowrap transition-all duration-300 mb-1 capitalize ${
                       bankFilter === f
                         ? 'bg-purple-50 text-[#9333ea] border border-purple-200 shadow-[0_2px_8px_rgba(168,85,247,0.15)] hover:scale-105'
-                        : 'bg-white/80 text-[#64748b] border border-white hover:border-[#e2e8f0] hover:bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5'
+                        : 'bg-white/80 text-[#64748b] border border-white hover:border-[#e2e8f0] hover:bg-white shadow-xs hover:shadow-sm hover:-translate-y-0.5'
                     }`}
                   >
                     {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -1246,12 +1246,12 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 </div>
               ) : filteredBankQuizzes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-500">
-                  <Library size={40} className="mb-3" />
-                  <p className="font-medium">No quizzes found</p>
+                  <Library size={36} className="mb-3" />
+                  <p className="font-medium text-sm sm:text-base">No quizzes found</p>
                   <p className="text-xs mt-1">Generate your first quiz in the Create tab</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   {filteredBankQuizzes.map((q) => (
                     <motion.div
                       key={q.id}
@@ -1266,64 +1266,64 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                           handleViewBankQuiz(q);
                         }
                       }}
-                      className={`relative bg-white/80 backdrop-blur-md rounded-[20px] p-6 shadow-sm border flex flex-col group hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a855f7] ${
+                      className={`relative bg-white/80 backdrop-blur-md rounded-xl sm:rounded-[20px] p-3.5 sm:p-5 md:p-6 shadow-xs sm:shadow-sm border flex flex-col group hover:-translate-y-0.5 transition-all duration-300 cursor-pointer overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a855f7] ${
                         q.status === 'assigned' || q.status === 'published'
                           ? 'border-white hover:border-purple-100 hover:shadow-[0_8px_24px_rgba(168,85,247,0.1)]'
                           : 'border-white hover:border-slate-200 hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)]'
                       }`}
                     >
                       {/* Left accent bar */}
-                      <div className={`absolute top-0 left-0 w-[6px] h-full transition-colors duration-300 ${
+                      <div className={`absolute top-0 left-0 w-1 sm:w-1.5 h-full transition-colors duration-300 ${
                         q.status === 'assigned' || q.status === 'published'
                           ? 'bg-purple-300 group-hover:bg-[#a855f7]'
                           : 'bg-slate-200 group-hover:bg-slate-400'
                       }`} />
 
                       {/* Header */}
-                      <div className="flex justify-between items-start mb-4 gap-4 pl-3">
-                        <h3 className={`font-bold text-[15px] text-[#1e293b] leading-tight transition-colors ${
+                      <div className="flex justify-between items-start mb-2.5 sm:mb-4 gap-2 sm:gap-4 pl-2 sm:pl-3">
+                        <h3 className={`font-bold text-xs sm:text-[15px] text-[#1e293b] leading-snug transition-colors ${
                           q.status === 'assigned' || q.status === 'published'
                             ? 'group-hover:text-[#9333ea]'
                             : 'group-hover:text-slate-700'
                         }`}>{q.title}</h3>
-                        <span className={`px-2.5 py-1 rounded-[6px] text-[10px] font-bold uppercase tracking-wider shrink-0 shadow-sm ${STATUS_COLORS[q.status]}`}>
+                        <span className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[6px] text-[9px] sm:text-[10px] font-bold uppercase tracking-wider shrink-0 shadow-xs ${STATUS_COLORS[q.status]}`}>
                           {q.status}
                         </span>
                       </div>
 
                       {/* Topic tags */}
-                      <div className="flex flex-wrap gap-2 mb-5 pl-3">
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-5 pl-2 sm:pl-3">
                         {q.metadata.topicsCovered.slice(0, 3).map((t) => (
-                          <span key={t} className="px-2.5 py-1 bg-[#f8fafc] text-slate-600 text-[11px] font-medium rounded-md border border-slate-200 group-hover:border-slate-300 transition-colors">{t}</span>
+                          <span key={t} className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-[#f8fafc] text-slate-600 text-[10px] sm:text-[11px] font-medium rounded-md border border-slate-200 group-hover:border-slate-300 transition-colors">{t}</span>
                         ))}
                       </div>
 
                       {/* Stats row */}
-                      <div className="flex items-center gap-5 text-[13px] text-[#64748b] font-medium mb-6 pl-3">
-                        <span className="flex items-center gap-1.5"><HelpCircle size={14} /> {q.questions.length} questions</span>
-                        <span className="flex items-center gap-1.5"><Award size={14} /> {q.totalPoints} pts</span>
-                        <span className="flex items-center gap-1.5"><Users size={14} /> {q.gradeLevel}</span>
+                      <div className="flex items-center gap-3 sm:gap-5 text-xs sm:text-[13px] text-[#64748b] font-medium mb-3 sm:mb-6 pl-2 sm:pl-3">
+                        <span className="flex items-center gap-1 sm:gap-1.5"><HelpCircle size={13} /> {q.questions.length} questions</span>
+                        <span className="flex items-center gap-1 sm:gap-1.5"><Award size={13} /> {q.totalPoints} pts</span>
+                        <span className="flex items-center gap-1.5"><Users size={13} /> {q.gradeLevel}</span>
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-4 mt-auto pt-5 border-t border-[#f1f5f9] pl-3">
+                      <div className="flex items-center gap-2 sm:gap-4 mt-auto pt-3 sm:pt-5 border-t border-[#f1f5f9] pl-2 sm:pl-3">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleViewBankQuiz(q); }}
-                          className="flex items-center gap-1.5 text-[13px] font-semibold text-[#64748b] hover:text-[#1e293b] transition-colors bg-slate-50 hover:bg-slate-100 border border-slate-200 px-4 py-2 rounded-full shadow-sm"
+                          className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13px] font-semibold text-[#64748b] hover:text-[#1e293b] transition-colors bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-xs"
                         >
-                          <Eye size={14} /> View
+                          <Eye size={13} /> View
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleOpenAssign(q.id); }}
-                          className="flex items-center gap-1.5 text-[13px] font-bold text-[#a855f7] hover:text-[#9333ea] transition-colors"
+                          className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13px] font-bold text-[#a855f7] hover:text-[#9333ea] transition-colors"
                         >
-                          <Send size={14} /> Assign
+                          <Send size={13} /> Assign
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteBankQuiz(q.id); }}
-                          className="flex items-center gap-1.5 text-[13px] font-semibold text-rose-500 hover:text-rose-700 transition-colors ml-auto opacity-60 group-hover:opacity-100"
+                          className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13px] font-semibold text-rose-500 hover:text-rose-700 transition-colors ml-auto opacity-60 group-hover:opacity-100"
                         >
-                          <Trash2 size={14} /> Delete
+                          <Trash2 size={13} /> Delete
                         </button>
                       </div>
                     </motion.div>
@@ -1338,16 +1338,16 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* Error Banner */}
           {error && (
-            <div className="w-full px-[24px] xl:px-[32px] pt-4">
+            <div className="w-full pt-2 sm:pt-4">
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3"
+                className="bg-red-50 border border-red-200 rounded-xl p-3 sm:p-4 flex items-start gap-2.5 sm:gap-3"
               >
                 <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-red-800 font-medium">Error</p>
-                  <p className="text-sm text-red-600">{error}</p>
+                <div className="text-xs sm:text-sm">
+                  <p className="text-red-800 font-medium">Error</p>
+                  <p className="text-red-600">{error}</p>
                 </div>
                 <button onClick={() => setError('')} aria-label="Dismiss error" className="ml-auto p-1 rounded-lg">
                   <X size={14} className="text-red-400" />
@@ -1358,38 +1358,38 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* Generating Banner */}
           {generating && (
-            <div className="flex-1 flex flex-col items-center justify-center p-[24px] xl:p-[32px]">
-              <div className="bg-white p-8 rounded-[16px] shadow-sm border border-[#e2e8f0] w-full max-w-3xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[16px] font-bold text-[#1e293b] flex items-center gap-3">
-                    <Loader2 size={20} className="animate-spin text-[#a855f7]" />
+            <div className="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 md:p-8">
+              <div className="bg-white p-4 sm:p-8 rounded-xl sm:rounded-[16px] shadow-sm border border-[#e2e8f0] w-full max-w-3xl">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h3 className="text-sm sm:text-[16px] font-bold text-[#1e293b] flex items-center gap-2 sm:gap-3">
+                    <Loader2 size={18} className="animate-spin text-[#a855f7]" />
                     Generating Quiz in Background
                   </h3>
-                  <span className="text-[14px] font-extrabold text-[#9333ea]">{generationProgress}%</span>
+                  <span className="text-xs sm:text-[14px] font-extrabold text-[#9333ea]">{generationProgress}%</span>
                 </div>
-                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mb-6">
+                <div className="w-full bg-slate-100 h-2 sm:h-2.5 rounded-full overflow-hidden mb-4 sm:mb-6">
                   <motion.div
                     animate={{ width: `${generationProgress}%` }}
                     transition={{ duration: 0.35, ease: 'easeOut' }}
                     className="bg-gradient-to-r from-sky-400 via-indigo-500 to-purple-500 h-full rounded-full"
                   />
                 </div>
-                <div className="text-[13px] text-[#64748b]">
+                <div className="text-xs sm:text-[13px] text-[#64748b]">
                   <p className="font-medium text-[#475569] mb-1">Stage: <span className="font-bold text-[#1e293b] capitalize">{generationStage.replace(/_/g, ' ')}</span></p>
                   <p>{generationMessage}</p>
-                  {activeTaskId && <p className="text-[11px] mt-3 opacity-60 font-mono">Task ID: {activeTaskId}</p>}
+                  {activeTaskId && <p className="text-[10px] sm:text-[11px] mt-2 sm:mt-3 opacity-60 font-mono">Task ID: {activeTaskId}</p>}
                 </div>
               </div>
-              <p className="mt-8 text-[14px] font-medium text-[#64748b] flex items-center gap-2 animate-pulse">
-                <Loader2 size={16} className="animate-spin" /> Generating quiz... Please wait.
+              <p className="mt-6 sm:mt-8 text-xs sm:text-[14px] font-medium text-[#64748b] flex items-center gap-2 animate-pulse">
+                <Loader2 size={15} className="animate-spin" /> Generating quiz... Please wait.
               </p>
             </div>
           )}
 
           {/* WIZARD STEPPER */}
           {!generating && step !== 'results' && (
-            <div className="w-full px-3 sm:px-[24px] xl:px-[32px] mb-4 sm:mb-8">
-              <div className="flex items-center justify-between bg-white/80 backdrop-blur-[12px] rounded-2xl border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] p-1.5 overflow-x-auto no-scrollbar gap-1">
+            <div className="w-full mb-3 sm:mb-6">
+              <div className="flex items-center justify-between bg-white/80 backdrop-blur-[12px] rounded-xl sm:rounded-2xl border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] p-1 sm:p-1.5 overflow-x-auto no-scrollbar gap-1">
                 {[
                   { id: 'setup', label: 'Setup' },
                   { id: 'topics', label: 'Topics' },
@@ -1403,7 +1403,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   return (
                     <div
                       key={s.id}
-                      className={`flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-3 px-2 sm:px-4 rounded-xl transition-all duration-500 ${
+                      className={`flex items-center justify-center gap-1 sm:gap-2 py-1.5 sm:py-2.5 px-2 sm:px-4 rounded-lg sm:rounded-xl transition-all duration-500 ${
                         isCurrent
                           ? 'flex-1 min-w-0 bg-purple-50/80 shadow-[0_1px_3px_rgba(168,85,247,0.1)]'
                           : isCompleted
@@ -1412,18 +1412,18 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       }`}
                     >
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] sm:text-[12px] font-bold shrink-0 ${
+                        className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[12px] font-bold shrink-0 ${
                           isCurrent
-                            ? 'bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-white shadow-md'
+                            ? 'bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-white shadow-xs'
                             : isCompleted
-                            ? 'bg-emerald-500 text-white shadow-sm'
+                            ? 'bg-emerald-500 text-white shadow-xs'
                             : 'bg-slate-100 text-[#64748b]'
                         }`}
                       >
-                        {isCompleted ? <Check size={13} strokeWidth={3} /> : idx + 1}
+                        {isCompleted ? <Check size={12} strokeWidth={3} /> : idx + 1}
                       </div>
                       <span
-                        className={`text-xs sm:text-[13px] font-bold whitespace-nowrap ${
+                        className={`text-[11px] sm:text-[13px] font-bold whitespace-nowrap ${
                           isCurrent
                             ? 'text-[#9333ea] inline'
                             : isCompleted
@@ -1442,7 +1442,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* ─── STEP: SETUP ─── */}
           {step === 'setup' && !generating && (
-            <div className="w-full px-3.5 sm:px-6 xl:px-8 flex-1 space-y-3.5 sm:space-y-6 pb-20 sm:pb-8">
+            <div className="w-full flex-1 space-y-3 sm:space-y-5 pb-16 sm:pb-8">
 
               {/* Collapsible Info Banner */}
               <div className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 backdrop-blur-sm border border-purple-100/60 rounded-[14px] overflow-hidden shadow-xs transition-all duration-200">
@@ -1538,54 +1538,69 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* In-Card Next Action Bar */}
+                <div className="px-3.5 py-3 sm:px-5 sm:py-3.5 bg-slate-50/60 border-t border-[#f1f5f9] flex items-center justify-between gap-2">
+                  <span className="text-[11px] sm:text-xs text-[#64748b] font-medium hidden xs:inline">
+                    Configured: {selectedGrade} • {numQuestions} questions
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setStep('topics')}
+                    className="w-full xs:w-auto ml-auto bg-gradient-to-r from-violet-600 via-[#8643C8] to-[#7274ED] hover:from-violet-700 hover:to-indigo-700 text-white text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-5 py-2.5 shadow-md shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Next: Select Topics</span>
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           {/* ─── STEP: TOPICS ─── */}
           {step === 'topics' && !generating && (
-            <div className="w-full px-3.5 sm:px-6 xl:px-8 flex-1 space-y-4 sm:space-y-6 pb-20 sm:pb-8">
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-2">
+            <div className="w-full flex-1 space-y-3 sm:space-y-5 pb-16 sm:pb-8">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-1 sm:mb-2">
                 <div>
-                  <h2 className="text-lg sm:text-[20px] font-bold text-[#1e293b] mb-0.5 sm:mb-1">Select topics</h2>
-                  <p className="text-xs sm:text-[13px] text-[#64748b]">Choose up to {MAX_TOPICS_LIMIT} topics across all strands</p>
+                  <h2 className="text-base sm:text-[20px] font-bold text-[#1e293b] mb-0.5 sm:mb-1">Select topics</h2>
+                  <p className="text-[11px] sm:text-[13px] text-[#64748b]">Choose up to {MAX_TOPICS_LIMIT} topics across all strands</p>
                 </div>
-                <div className="bg-purple-50 border border-purple-100 px-3 py-1 sm:py-1.5 rounded-full flex items-center gap-2 shadow-xs shrink-0 whitespace-nowrap self-start sm:self-auto">
-                  <div className="w-2 h-2 rounded-full bg-[#a855f7] animate-pulse shrink-0" />
-                  <span className="text-[11px] sm:text-[12px] font-bold text-[#a855f7] whitespace-nowrap">
+                <div className="bg-purple-50 border border-purple-100 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full flex items-center gap-1.5 sm:gap-2 shadow-xs shrink-0 whitespace-nowrap self-start sm:self-auto">
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#a855f7] animate-pulse shrink-0" />
+                  <span className="text-[10px] sm:text-[12px] font-bold text-[#a855f7] whitespace-nowrap">
                     {selectedTopics.filter(t => !excludeTopics.includes(t)).length} of {MAX_TOPICS_LIMIT} selected
                   </span>
                 </div>
               </div>
 
               {topicsLoading ? (
-                <div className="flex items-center justify-center py-10 text-sm text-[#5a6578]">
-                  <Loader2 size={24} className="animate-spin text-[#9b51e0] mr-2" /> Loading topics...
+                <div className="flex items-center justify-center py-10 text-xs sm:text-sm text-[#5a6578]">
+                  <Loader2 size={20} className="animate-spin text-[#9b51e0] mr-2" /> Loading topics...
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2.5 sm:space-y-3">
                   {Object.entries(mergedAvailableTopics).map(([category, subtopics]) => {
                     const selectedCount = subtopics.filter(t => selectedTopics.includes(t) && !excludeTopics.includes(t)).length;
                     const isOpen = expandedSection === category;
                     
                     return (
-                      <div key={category} className="border border-[#dde3eb] rounded-xl bg-white overflow-hidden shadow-sm">
+                      <div key={category} className="border border-[#dde3eb] rounded-xl bg-white overflow-hidden shadow-xs">
                         <button
                           onClick={() => setExpandedSection(isOpen ? null : category)}
-                          className="w-full flex items-center justify-between p-3.5 sm:p-4 hover:bg-[#f7f9fc] transition-colors gap-2"
+                          className="w-full flex items-center justify-between p-2.5 sm:p-4 hover:bg-[#f7f9fc] transition-colors gap-2"
                         >
-                          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                            <div className="w-1 h-6 bg-[#9b51e0] rounded-full shrink-0"></div>
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                            <div className="w-1 h-5 sm:h-6 bg-[#9b51e0] rounded-full shrink-0"></div>
                             <div className="text-left min-w-0 flex-1">
                               <p className="font-bold text-[#0a1628] text-xs sm:text-sm truncate">{category}</p>
-                              <p className="text-[11px] sm:text-xs text-slate-500">{subtopics.length} topics</p>
+                              <p className="text-[10px] sm:text-xs text-slate-500">{subtopics.length} topics</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                            <span className="bg-purple-100 text-[#9b51e0] px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold whitespace-nowrap shrink-0">
+                          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                            <span className="bg-purple-100 text-[#9b51e0] px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap shrink-0">
                               {selectedCount} selected
                             </span>
-                            {isOpen ? <ChevronUp size={18} className="text-slate-400 shrink-0" /> : <ChevronDown size={18} className="text-slate-400 shrink-0" />}
+                            {isOpen ? <ChevronUp size={16} className="text-slate-400 shrink-0" /> : <ChevronDown size={16} className="text-slate-400 shrink-0" />}
                           </div>
                         </button>
                         
@@ -1608,8 +1623,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                                   if (idx % 3 === 2) tag = 'Advanced';
 
                                   return (
-                                    <div key={topic} className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 hover:bg-[#f7f9fc] transition-colors gap-2">
-                                      <label className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0">
+                                    <div key={topic} className="flex items-center justify-between px-2.5 sm:px-4 py-1.5 sm:py-2.5 hover:bg-[#f7f9fc] transition-colors gap-2">
+                                      <label className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-1 min-w-0">
                                         <div className={`w-4 h-4 sm:w-4.5 sm:h-4.5 rounded flex items-center justify-center shrink-0 transition-colors ${effectiveSelected ? 'bg-[#9b51e0] border-[#9b51e0]' : 'border-2 border-[#dde3eb] bg-white'}`}>
                                           {effectiveSelected && <Check size={11} className="text-white" />}
                                         </div>
@@ -1621,7 +1636,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                                         />
                                         <span className={`text-xs sm:text-sm font-medium sm:font-semibold leading-tight break-words ${effectiveSelected ? 'text-[#0a1628]' : 'text-[#5a6578]'}`}>{topic}</span>
                                       </label>
-                                      <span className={`border px-2 sm:px-2.5 py-0.5 rounded-full text-[9px] sm:text-[10px] uppercase font-bold tracking-wider shrink-0 whitespace-nowrap ${tag === 'Advanced' ? 'bg-white text-slate-400 border-[#dde3eb]' : 'bg-purple-50 text-[#9b51e0] border-purple-100'}`}>
+                                      <span className={`border px-1.5 sm:px-2.5 py-0.5 rounded-full text-[8.5px] sm:text-[10px] uppercase font-bold tracking-wider shrink-0 whitespace-nowrap ${tag === 'Advanced' ? 'bg-white text-slate-400 border-[#dde3eb]' : 'bg-purple-50 text-[#9b51e0] border-purple-100'}`}>
                                         {tag}
                                       </span>
                                     </div>
@@ -1636,43 +1651,74 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   })}
                 </div>
               )}
+
+              {/* Bottom In-Page Navigation Buttons */}
+              <div className="pt-3 flex items-center justify-between gap-2 border-t border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setStep('setup')}
+                  className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-xl sm:rounded-full px-4 py-2 sm:py-2.5 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft size={15} /> Back
+                </button>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {selectedTopics.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedTopics([]); setExcludeTopics([]); }}
+                      className="text-xs sm:text-[13px] font-semibold text-[#a855f7] hover:underline px-2 py-1 cursor-pointer"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setStep('style')}
+                    disabled={selectedTopics.filter(t => !excludeTopics.includes(t)).length === 0}
+                    className="bg-gradient-to-r from-violet-600 via-[#8643C8] to-[#7274ED] hover:from-violet-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-5 py-2 sm:py-2.5 shadow-md shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Next: Question Style</span>
+                    <ChevronRight size={15} />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
           {/* ─── STEP: STYLE ─── */}
           {step === 'style' && !generating && (
-            <div className="w-full px-[24px] xl:px-[32px] flex-1 space-y-[24px] pb-8">
+            <div className="w-full flex-1 space-y-3 sm:space-y-5 pb-16 sm:pb-8">
               {/* Question Types */}
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[20px] border border-[#e2e8f0] shadow-sm overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
-                <div className="p-5 border-b border-[#f1f5f9] bg-white/50">
-                  <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Question Types</h3>
+              <div className="bg-white/80 backdrop-blur-[12px] rounded-xl sm:rounded-[20px] border border-[#e2e8f0] shadow-xs sm:shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="px-3.5 py-2.5 sm:px-5 sm:py-3.5 border-b border-[#f1f5f9] bg-white/50">
+                  <h3 className="text-[10.5px] sm:text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Question Types</h3>
                 </div>
-                <div className="p-4 grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
                   {(typedEntries(QUESTION_TYPE_LABELS)).map(([type, info]) => {
                     const isSelected = selectedTypes.includes(type);
                     return (
                       <button
                         key={type}
                         onClick={() => toggleType(type)}
-                        className={`border-2 rounded-[16px] p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 ${
+                        className={`border-2 rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 relative overflow-hidden group hover:-translate-y-0.5 ${
                           isSelected
                             ? 'border-[#a855f7] bg-gradient-to-b from-purple-50/80 to-white/80 shadow-[0_4px_12px_rgba(168,85,247,0.12)]'
-                            : 'border-slate-100 bg-slate-50/50 shadow-sm hover:shadow-md hover:border-purple-200'
+                            : 'border-slate-100 bg-slate-50/50 shadow-xs hover:shadow-sm hover:border-purple-200'
                         }`}
                       >
                         {isSelected && (
-                          <div className="absolute top-2 right-2 w-5 h-5 bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-full flex items-center justify-center shadow-md">
-                            <Check size={11} className="text-white" />
+                          <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-4 h-4 sm:w-5 sm:h-5 bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-full flex items-center justify-center shadow-xs">
+                            <Check size={10} className="text-white" />
                           </div>
                         )}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300 ${
+                        <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center mb-1.5 sm:mb-3 group-hover:scale-105 transition-transform duration-300 ${
                           isSelected
-                            ? 'bg-white border border-purple-200 shadow-md'
-                            : 'bg-white border border-slate-200 shadow-sm group-hover:shadow-md'
+                            ? 'bg-white border border-purple-200 shadow-xs'
+                            : 'bg-white border border-slate-200 shadow-xs group-hover:shadow-sm'
                         }`}>
                           <span className={isSelected ? 'text-[#a855f7]' : 'text-slate-500'}>{info.icon}</span>
                         </div>
-                        <span className={`font-bold text-[12px] leading-tight ${
+                        <span className={`font-bold text-[11px] sm:text-[12px] leading-tight ${
                           isSelected ? 'text-[#9333ea]' : 'text-slate-700'
                         }`}>{info.label}</span>
                       </button>
@@ -1682,21 +1728,21 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               </div>
 
               {/* Bloom's Taxonomy */}
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[20px] border border-[#e2e8f0] shadow-sm overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
-                <div className="p-5 border-b border-[#f1f5f9] bg-white/50">
-                  <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Bloom's Taxonomy Levels</h3>
+              <div className="bg-white/80 backdrop-blur-[12px] rounded-xl sm:rounded-[20px] border border-[#e2e8f0] shadow-xs sm:shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="px-3.5 py-2.5 sm:px-5 sm:py-3.5 border-b border-[#f1f5f9] bg-white/50">
+                  <h3 className="text-[10.5px] sm:text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Bloom's Taxonomy Levels</h3>
                 </div>
-                <div className="p-6 flex flex-wrap gap-4">
+                <div className="p-3 sm:p-6 flex flex-wrap gap-2 sm:gap-4">
                   {(typedEntries(BLOOM_LABELS)).map(([level, info]) => {
                     const isSelected = selectedBlooms.includes(level);
                     return (
                       <button
                         key={level}
                         onClick={() => toggleBloom(level)}
-                        className={`px-6 py-2.5 rounded-full border-2 font-bold text-[13px] transition-all duration-200 hover:-translate-y-0.5 capitalize ${
+                        className={`px-3.5 sm:px-6 py-1.5 sm:py-2.5 rounded-full border-2 font-bold text-xs sm:text-[13px] transition-all duration-200 hover:-translate-y-0.5 capitalize ${
                           isSelected
                             ? 'border-[#a855f7] text-[#9333ea] bg-purple-50/80 shadow-[0_2px_8px_rgba(168,85,247,0.15)]'
-                            : 'border-slate-200 text-[#64748b] bg-white shadow-sm hover:border-slate-300 hover:bg-slate-50'
+                            : 'border-slate-200 text-[#64748b] bg-white shadow-xs hover:border-slate-300 hover:bg-slate-50'
                         }`}
                       >
                         {level}
@@ -1707,56 +1753,75 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               </div>
 
               {/* Difficulty Distribution */}
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[20px] border border-[#e2e8f0] shadow-sm overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.04)] transition-shadow duration-300">
-                <div className="p-5 border-b border-[#f1f5f9] bg-white/50">
-                  <h3 className="text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Difficulty Distribution</h3>
+              <div className="bg-white/80 backdrop-blur-[12px] rounded-xl sm:rounded-[20px] border border-[#e2e8f0] shadow-xs sm:shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300">
+                <div className="px-3.5 py-2.5 sm:px-5 sm:py-3.5 border-b border-[#f1f5f9] bg-white/50">
+                  <h3 className="text-[10.5px] sm:text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Difficulty Distribution</h3>
                 </div>
-                <div className="p-8 space-y-8">
+                <div className="p-3.5 sm:p-8 space-y-3 sm:space-y-6">
                   {(typedEntries(difficultyDist)).map(([level, pct]) => {
                     const colorMap = { easy: 'bg-emerald-400', medium: 'bg-amber-400', hard: 'bg-rose-400' };
                     const hoverColorMap = { easy: 'text-emerald-600', medium: 'text-amber-500', hard: 'text-rose-500' };
                     const borderMap = { easy: 'group-hover:border-emerald-200', medium: 'group-hover:border-amber-200', hard: 'group-hover:border-rose-200' };
                     return (
-                      <div key={level} className="flex items-center gap-6 group">
-                        <span className={`w-16 text-[13px] font-bold text-[#475569] capitalize group-hover:${hoverColorMap[level]} transition-colors`}>{level}</span>
-                        <div className="flex-1 bg-slate-100 h-3 rounded-full overflow-hidden shadow-inner">
+                      <div key={level} className="flex items-center gap-2 sm:gap-6 group">
+                        <span className={`w-14 sm:w-16 text-xs sm:text-[13px] font-bold text-[#475569] capitalize group-hover:${hoverColorMap[level]} transition-colors`}>{level}</span>
+                        <div className="flex-1 bg-slate-100 h-2.5 sm:h-3 rounded-full overflow-hidden shadow-inner">
                           <motion.div animate={{ width: `${pct}%` }} className={`h-full rounded-full transition-all duration-500 ease-out ${colorMap[level]}`} />
                         </div>
-                        <div className={`flex items-center bg-white border border-[#e2e8f0] rounded-xl shadow-sm overflow-hidden p-0.5 w-28 h-10 transition-colors ${borderMap[level]}`}>
-                          <button onClick={() => adjustDifficulty(level, -5)} className={`w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Minus className="w-3.5 h-3.5" /></button>
-                          <input type="text" value={`${pct}%`} readOnly className="flex-1 text-center font-bold text-[14px] text-[#1e293b] border-none outline-none focus:ring-0 w-full p-0 pointer-events-none" />
-                          <button onClick={() => adjustDifficulty(level, 5)} className={`w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Plus className="w-3.5 h-3.5" /></button>
+                        <div className={`flex items-center bg-white border border-[#e2e8f0] rounded-xl shadow-xs overflow-hidden p-0.5 w-24 sm:w-28 h-8 sm:h-10 transition-colors ${borderMap[level]}`}>
+                          <button onClick={() => adjustDifficulty(level, -5)} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
+                          <input type="text" value={`${pct}%`} readOnly className="flex-1 text-center font-bold text-xs sm:text-[14px] text-[#1e293b] border-none outline-none focus:ring-0 w-full p-0 pointer-events-none" />
+                          <button onClick={() => adjustDifficulty(level, 5)} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
+
+              {/* Bottom In-Page Navigation Buttons */}
+              <div className="pt-3 flex items-center justify-between gap-2 border-t border-slate-200/80">
+                <button
+                  type="button"
+                  onClick={() => setStep('topics')}
+                  className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-xl sm:rounded-full px-4 py-2 sm:py-2.5 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft size={15} /> Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep('preview')}
+                  className="bg-gradient-to-r from-violet-600 via-[#8643C8] to-[#7274ED] hover:from-violet-700 hover:to-indigo-700 text-white text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-5 py-2 sm:py-2.5 shadow-md shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Next: Preview</span>
+                  <ChevronRight size={15} />
+                </button>
+              </div>
             </div>
           )}
 
           {/* ─── STEP: PREVIEW ─── */}
           {step === 'preview' && !generating && !quizResult && (
-            <div className="w-full px-3 sm:px-[24px] xl:px-[32px] flex-1 space-y-4 sm:space-y-[24px] pb-8">
-              <div className="bg-white/80 backdrop-blur-md rounded-2xl sm:rounded-[20px] border border-[#e2e8f0] shadow-sm overflow-hidden p-3.5 sm:p-6 md:p-8">
-                <h3 className="text-[11px] sm:text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-3.5 sm:mb-6 flex items-center gap-2">
+            <div className="w-full flex-1 space-y-3 sm:space-y-5 pb-16 sm:pb-8">
+              <div className="bg-white/80 backdrop-blur-md rounded-xl sm:rounded-[20px] border border-[#e2e8f0] shadow-xs sm:shadow-sm overflow-hidden p-3 sm:p-6 md:p-8">
+                <h3 className="text-[10.5px] sm:text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-2.5 sm:mb-6 flex items-center gap-1.5 sm:gap-2">
                   <BarChart3 size={15} className="text-[#a855f7]" /> Quiz Summary
                 </h3>
-                <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 mb-3 sm:mb-6">
                   {[
                     { label: 'Questions', value: numQuestions },
                     { label: 'Topics', value: selectedTopics.filter(t => !excludeTopics.includes(t)).length },
                     { label: 'Level', value: selectedGrade.replace('Grade ', 'Gr. ') },
                   ].map(card => (
-                    <div key={card.label} className="relative overflow-hidden bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 md:p-6 text-center border border-purple-100/50 shadow-xs sm:shadow-sm flex flex-col items-center justify-center group hover:-translate-y-0.5 transition-transform">
-                      <div className="absolute -right-3 -top-3 sm:-right-4 sm:-top-4 w-10 sm:w-16 h-10 sm:h-16 bg-purple-200/30 rounded-full group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
-                      <span className="text-xl sm:text-2xl md:text-[32px] font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#a855f7] to-[#9333ea] leading-tight mb-0.5 sm:mb-1 relative z-10">{card.value}</span>
-                      <span className="text-[10px] sm:text-xs md:text-[13px] font-bold text-[#64748b] relative z-10 truncate max-w-full">{card.label}</span>
+                    <div key={card.label} className="relative overflow-hidden bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl sm:rounded-[16px] p-2 sm:p-4 md:p-6 text-center border border-purple-100/50 shadow-xs flex flex-col items-center justify-center group hover:-translate-y-0.5 transition-transform">
+                      <div className="absolute -right-2.5 -top-2.5 sm:-right-4 sm:-top-4 w-8 sm:w-16 h-8 sm:h-16 bg-purple-200/30 rounded-full group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+                      <span className="text-lg sm:text-2xl md:text-[32px] font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#a855f7] to-[#9333ea] leading-tight mb-0.5 sm:mb-1 relative z-10">{card.value}</span>
+                      <span className="text-[9.5px] sm:text-xs md:text-[13px] font-bold text-[#64748b] relative z-10 truncate max-w-full">{card.label}</span>
                     </div>
                   ))}
                 </div>
-                <div className="bg-slate-50/80 rounded-xl sm:rounded-[14px] p-3 sm:p-5 border border-slate-200/60 text-[#475569] text-xs sm:text-[14px] leading-relaxed flex gap-2.5 sm:gap-4 items-start shadow-inner">
-                  <Info size={16} className="text-[#94a3b8] shrink-0 mt-0.5" />
+                <div className="bg-slate-50/80 rounded-lg sm:rounded-[14px] p-2.5 sm:p-5 border border-slate-200/60 text-[#475569] text-xs sm:text-[14px] leading-relaxed flex gap-2 sm:gap-4 items-start shadow-inner">
+                  <Info size={15} className="text-[#94a3b8] shrink-0 mt-0.5" />
                   <p>
                     {selectedTypes.map(t => QUESTION_TYPE_LABELS[t]?.label).join(' and ')} questions across{' '}
                     <span className="font-bold text-[#1e293b]">{selectedTopics.filter(t => !excludeTopics.includes(t)).length} topics</span>{' '}
@@ -1766,82 +1831,101 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                     <span className="font-semibold text-rose-500">Hard {difficultyDist.hard}%</span>.
                   </p>
                 </div>
+
+                {/* Bottom In-Page Navigation Buttons */}
+                <div className="mt-3 sm:mt-4 pt-3 flex items-center justify-between gap-2 border-t border-slate-200/80">
+                  <button
+                    type="button"
+                    onClick={() => setStep('style')}
+                    className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-xl sm:rounded-full px-4 py-2 sm:py-2.5 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ChevronLeft size={15} /> Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="bg-gradient-to-r from-violet-600 via-[#8643C8] to-[#7274ED] hover:from-violet-700 hover:to-indigo-700 text-white text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-5 py-2 sm:py-2.5 shadow-md shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles size={15} />
+                    <span>Generate Quiz</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           {/* ─── STEP: RESULTS ─── */}
           {step === 'results' && quizResult && (
-            <div className="w-full px-[24px] xl:px-[32px] space-y-[24px] pb-8">
+            <div className="w-full space-y-3 sm:space-y-6 pb-16 sm:pb-8">
               {/* Summary Card */}
-              <div className="bg-white/80 backdrop-blur-md rounded-[20px] border border-[#e2e8f0] shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold font-display text-[#0a1628]">Quiz Generated</h3>
-                  <div className="flex items-center gap-2">
+              <div className="bg-white/80 backdrop-blur-md rounded-xl sm:rounded-[20px] border border-[#e2e8f0] shadow-xs sm:shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-3 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4">
+                  <h3 className="text-base sm:text-lg font-bold font-display text-[#0a1628] leading-tight">Quiz Generated</h3>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <button
                       onClick={handleCopyQuiz}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#dde3eb] rounded-lg text-xs font-medium text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
+                      className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white border border-[#dde3eb] rounded-lg text-[11px] sm:text-xs font-medium text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
                     >
-                      {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                      {copied ? <Check size={13} className="text-green-500" /> : <Copy size={13} />}
                       {copied ? 'Copied!' : 'Copy All'}
                     </button>
                     <button
                       onClick={handleExportJSON}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#dde3eb] rounded-lg text-xs font-medium text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
+                      className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 bg-white border border-[#dde3eb] rounded-lg text-[11px] sm:text-xs font-medium text-[#5a6578] hover:bg-[#edf1f7] transition-colors"
                     >
-                      <Download size={14} />
+                      <Download size={13} />
                       Export JSON
                     </button>
                   </div>
                 </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 md:gap-6">
                 {/* Questions */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-white shadow-[0_8px_16px_rgba(168,85,247,0.25)] rounded-[20px] p-6 text-center flex flex-col items-center justify-center group hover:-translate-y-1 transition-transform">
-                  <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500" />
-                  <FileText size={22} className="text-white/80 mb-2 relative z-10" />
-                  <span className="text-[32px] font-extrabold leading-none mb-1 relative z-10 drop-shadow-sm">{quizResult.questions.length}</span>
-                  <span className="text-[12px] font-bold text-white/90 uppercase tracking-widest relative z-10">Questions</span>
+                <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-white shadow-[0_4px_12px_rgba(168,85,247,0.2)] rounded-xl sm:rounded-[20px] p-2.5 sm:p-5 md:p-6 text-center flex flex-col items-center justify-center group hover:-translate-y-0.5 transition-transform min-h-[76px] sm:min-h-[110px]">
+                  <div className="absolute -right-3 -top-3 sm:-right-4 sm:-top-4 w-12 sm:w-20 h-12 sm:h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-white/80 mb-0.5 sm:mb-1.5 relative z-10" />
+                  <span className="text-lg sm:text-2xl md:text-[32px] font-extrabold leading-none mb-0.5 sm:mb-1 relative z-10 drop-shadow-sm">{quizResult.questions.length}</span>
+                  <span className="text-[9px] sm:text-[11px] md:text-[12px] font-bold text-white/90 uppercase tracking-wider relative z-10">Questions</span>
                 </div>
                 {/* Total Points */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-[#f43f5e] to-[#e11d48] text-white shadow-[0_8px_16px_rgba(244,63,94,0.25)] rounded-[20px] p-6 text-center flex flex-col items-center justify-center group hover:-translate-y-1 transition-transform">
-                  <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500" />
-                  <Target size={22} className="text-white/80 mb-2 relative z-10" />
-                  <span className="text-[32px] font-extrabold leading-none mb-1 relative z-10 drop-shadow-sm">{quizResult.totalPoints}</span>
-                  <span className="text-[12px] font-bold text-white/90 uppercase tracking-widest relative z-10">Total Points</span>
+                <div className="relative overflow-hidden bg-gradient-to-br from-[#f43f5e] to-[#e11d48] text-white shadow-[0_4px_12px_rgba(244,63,94,0.2)] rounded-xl sm:rounded-[20px] p-2.5 sm:p-5 md:p-6 text-center flex flex-col items-center justify-center group hover:-translate-y-0.5 transition-transform min-h-[76px] sm:min-h-[110px]">
+                  <div className="absolute -right-3 -top-3 sm:-right-4 sm:-top-4 w-12 sm:w-20 h-12 sm:h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+                  <Target className="w-4 h-4 sm:w-5 sm:h-5 text-white/80 mb-0.5 sm:mb-1.5 relative z-10" />
+                  <span className="text-lg sm:text-2xl md:text-[32px] font-extrabold leading-none mb-0.5 sm:mb-1 relative z-10 drop-shadow-sm">{quizResult.totalPoints}</span>
+                  <span className="text-[9px] sm:text-[11px] md:text-[12px] font-bold text-white/90 uppercase tracking-wider relative z-10">Total Points</span>
                 </div>
                 {/* Topics */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-[#f59e0b] to-[#d97706] text-white shadow-[0_8px_16px_rgba(245,158,11,0.25)] rounded-[20px] p-6 text-center flex flex-col items-center justify-center group hover:-translate-y-1 transition-transform">
-                  <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500" />
-                  <BookOpen size={22} className="text-white/80 mb-2 relative z-10" />
-                  <span className="text-[32px] font-extrabold leading-none mb-1 relative z-10 drop-shadow-sm">{Object.keys(quizResult.metadata.topicsCovered).length}</span>
-                  <span className="text-[12px] font-bold text-white/90 uppercase tracking-widest relative z-10">Topics</span>
+                <div className="relative overflow-hidden bg-gradient-to-br from-[#f59e0b] to-[#d97706] text-white shadow-[0_4px_12px_rgba(245,158,11,0.2)] rounded-xl sm:rounded-[20px] p-2.5 sm:p-5 md:p-6 text-center flex flex-col items-center justify-center group hover:-translate-y-0.5 transition-transform min-h-[76px] sm:min-h-[110px]">
+                  <div className="absolute -right-3 -top-3 sm:-right-4 sm:-top-4 w-12 sm:w-20 h-12 sm:h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+                  <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-white/80 mb-0.5 sm:mb-1.5 relative z-10" />
+                  <span className="text-lg sm:text-2xl md:text-[32px] font-extrabold leading-none mb-0.5 sm:mb-1 relative z-10 drop-shadow-sm">{Object.keys(quizResult.metadata.topicsCovered).length}</span>
+                  <span className="text-[9px] sm:text-[11px] md:text-[12px] font-bold text-white/90 uppercase tracking-wider relative z-10">Topics</span>
                 </div>
                 {/* Bloom Levels */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] text-white shadow-[0_8px_16px_rgba(16,185,129,0.25)] rounded-[20px] p-6 text-center flex flex-col items-center justify-center group hover:-translate-y-1 transition-transform">
-                  <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500" />
-                  <Layers size={22} className="text-white/80 mb-2 relative z-10" />
-                  <span className="text-[32px] font-extrabold leading-none mb-1 relative z-10 drop-shadow-sm">{Object.keys(quizResult.metadata.bloomTaxonomyDistribution).length}</span>
-                  <span className="text-[12px] font-bold text-white/90 uppercase tracking-widest relative z-10">Bloom Levels</span>
+                <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] text-white shadow-[0_4px_12px_rgba(16,185,129,0.2)] rounded-xl sm:rounded-[20px] p-2.5 sm:p-5 md:p-6 text-center flex flex-col items-center justify-center group hover:-translate-y-0.5 transition-transform min-h-[76px] sm:min-h-[110px]">
+                  <div className="absolute -right-3 -top-3 sm:-right-4 sm:-top-4 w-12 sm:w-20 h-12 sm:h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+                  <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-white/80 mb-0.5 sm:mb-1.5 relative z-10" />
+                  <span className="text-lg sm:text-2xl md:text-[32px] font-extrabold leading-none mb-0.5 sm:mb-1 relative z-10 drop-shadow-sm">{Object.keys(quizResult.metadata.bloomTaxonomyDistribution).length}</span>
+                  <span className="text-[9px] sm:text-[11px] md:text-[12px] font-bold text-white/90 uppercase tracking-wider relative z-10">Bloom Levels</span>
                 </div>
               </div>
 
                 {(quizResult.metadata.usedImportedTopics || (quizResult.metadata.topicProvenance || []).length > 0) && (
-                  <div className="mt-4 bg-white rounded-lg p-3 border border-[#dde3eb]">
-                    <p className="text-xs font-semibold text-[#5a6578] mb-2">Imported Topic Provenance</p>
-                    <p className="text-xs text-[#5a6578] mb-2">
+                  <div className="mt-3 sm:mt-4 bg-white rounded-lg p-2.5 sm:p-3 border border-[#dde3eb]">
+                    <p className="text-xs font-semibold text-[#5a6578] mb-1 sm:mb-2">Imported Topic Provenance</p>
+                    <p className="text-[11px] sm:text-xs text-[#5a6578] mb-2">
                       Imported topics used: {quizResult.metadata.usedImportedTopics ? 'Yes' : 'No'}
                       {' • '}Materials: {quizResult.metadata.importedMaterialsCount ?? 0}
                       {' • '}Topics: {quizResult.metadata.importedTopicCount ?? 0}
                     </p>
                     {(quizResult.metadata.topicProvenance || []).slice(0, 5).map((item, index) => (
-                      <div key={`${item.topicId || item.title || 'topic'}_${index}`} className="text-xs text-[#5a6578]">
+                      <div key={`${item.topicId || item.title || 'topic'}_${index}`} className="text-[11px] sm:text-xs text-[#5a6578]">
                         {item.title || 'Untitled topic'}
                         {item.sourceFile ? ` • ${item.sourceFile}` : ''}
                       </div>
                     ))}
                     {(quizProvenanceSources.length > 0 || quizProvenanceMaterials.length > 0) && (
-                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="mt-2.5 sm:mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                         <label className="text-xs text-[#5a6578] flex flex-col gap-1">
                           <span className="font-semibold">Filter by Source File</span>
                           <select
@@ -1870,43 +1954,43 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                         </label>
                       </div>
                     )}
-                    <p className="text-[11px] text-[#5a6578] mt-2">
+                    <p className="text-[10px] sm:text-[11px] text-[#5a6578] mt-2">
                       Showing {filteredQuizQuestions.length} of {quizResult.questions.length} questions after provenance filters.
                     </p>
                   </div>
                 )}
 
               {/* Breakdown Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 mb-10">
-                <div className="bg-white border border-[#e2e8f0] rounded-[16px] p-6 shadow-sm border-t-[4px] border-t-[#10b981] hover:shadow-md transition-shadow">
-                  <h4 className="text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-5 flex items-center gap-2"><BarChart3 size={14} /> Difficulty</h4>
-                  <div className="space-y-3 text-[14px] font-medium text-[#475569]">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 mt-4 sm:mt-8 mb-4 sm:mb-8">
+                <div className="bg-white border border-[#e2e8f0] rounded-xl sm:rounded-[16px] p-3 sm:p-6 shadow-xs sm:shadow-sm border-t-[3px] sm:border-t-[4px] border-t-[#10b981] hover:shadow-md transition-shadow">
+                  <h4 className="text-[11px] sm:text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-3 sm:mb-5 flex items-center gap-1.5 sm:gap-2"><BarChart3 size={14} /> Difficulty</h4>
+                  <div className="space-y-2 sm:space-y-3 text-xs sm:text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.difficultyBreakdown).map(([d, c]) => (
-                      <div key={d} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
+                      <div key={d} className="flex justify-between items-center bg-slate-50 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg">
                         <span className={`font-bold capitalize ${recordGet(DIFFICULTY_COLORS, d) ?? 'text-[#475569]'}`}>{d}</span>
-                        <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
+                        <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-xs sm:shadow-sm border border-slate-100 text-xs sm:text-sm">{c}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="bg-white border border-[#e2e8f0] rounded-[16px] p-6 shadow-sm border-t-[4px] border-t-[#a855f7] hover:shadow-md transition-shadow">
-                  <h4 className="text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-5 flex items-center gap-2"><Brain size={14} /> Bloom's Taxonomy</h4>
-                  <div className="space-y-3 text-[14px] font-medium text-[#475569]">
+                <div className="bg-white border border-[#e2e8f0] rounded-xl sm:rounded-[16px] p-3 sm:p-6 shadow-xs sm:shadow-sm border-t-[3px] sm:border-t-[4px] border-t-[#a855f7] hover:shadow-md transition-shadow">
+                  <h4 className="text-[11px] sm:text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-3 sm:mb-5 flex items-center gap-1.5 sm:gap-2"><Brain size={14} /> Bloom's Taxonomy</h4>
+                  <div className="space-y-2 sm:space-y-3 text-xs sm:text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.bloomTaxonomyDistribution).map(([b, c]) => (
-                      <div key={b} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
+                      <div key={b} className="flex justify-between items-center bg-slate-50 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg">
                         <span className="text-[#1e293b] font-semibold capitalize">{b}</span>
-                        <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
+                        <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-xs sm:shadow-sm border border-slate-100 text-xs sm:text-sm">{c}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="bg-white border border-[#e2e8f0] rounded-[16px] p-6 shadow-sm border-t-[4px] border-t-[#0ea5e9] hover:shadow-md transition-shadow">
-                  <h4 className="text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-5 flex items-center gap-2"><Layers size={14} /> Question Types</h4>
-                  <div className="space-y-3 text-[14px] font-medium text-[#475569]">
+                <div className="bg-white border border-[#e2e8f0] rounded-xl sm:rounded-[16px] p-3 sm:p-6 shadow-xs sm:shadow-sm border-t-[3px] sm:border-t-[4px] border-t-[#0ea5e9] hover:shadow-md transition-shadow">
+                  <h4 className="text-[11px] sm:text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-3 sm:mb-5 flex items-center gap-1.5 sm:gap-2"><Layers size={14} /> Question Types</h4>
+                  <div className="space-y-2 sm:space-y-3 text-xs sm:text-[14px] font-medium text-[#475569]">
                     {Object.entries(quizResult.metadata.questionTypeBreakdown).map(([t, c]) => (
-                      <div key={t} className="flex justify-between items-center bg-slate-50 px-3 py-2 rounded-lg">
+                      <div key={t} className="flex justify-between items-center bg-slate-50 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg">
                         <span className="text-[#1e293b] font-semibold">{recordGet(QUESTION_TYPE_LABELS, t)?.label || t}</span>
-                        <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-sm border border-slate-100">{c}</span>
+                        <span className="font-bold text-[#1e293b] bg-white px-2 py-0.5 rounded shadow-xs sm:shadow-sm border border-slate-100 text-xs sm:text-sm">{c}</span>
                       </div>
                     ))}
                   </div>
@@ -1914,19 +1998,19 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               </div>
 
               {/* Insight + Recommended Actions Box */}
-              <div className="bg-gradient-to-r from-purple-50 to-indigo-50/50 border border-purple-100 rounded-[16px] p-6 mb-10 flex items-start gap-4 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1.5 h-full bg-[#a855f7]" />
-                <div className="bg-white p-2 rounded-full shadow-sm shrink-0">
-                  <Info size={18} className="text-[#9333ea]" />
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50/50 border border-purple-100 rounded-xl sm:rounded-[16px] p-3 sm:p-6 mb-4 sm:mb-8 flex items-start gap-3 sm:gap-4 shadow-xs relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 sm:w-1.5 h-full bg-[#a855f7]" />
+                <div className="bg-white p-1.5 sm:p-2 rounded-full shadow-xs shrink-0">
+                  <Info size={16} className="text-[#9333ea]" />
                 </div>
                 <div>
-                  <p className="text-[14px] font-bold text-[#9333ea] mb-3">
+                  <p className="text-xs sm:text-[14px] font-bold text-[#9333ea] mb-2 sm:mb-3">
                     {quizResult.metadata.supplementalPurpose || 'This quiz is designed to supplement classroom instruction, not replace teacher-led learning.'}
                   </p>
                   {quizResult.metadata.recommendedTeacherActions && quizResult.metadata.recommendedTeacherActions.length > 0 && (
                     <>
-                      <p className="text-[13px] font-bold text-[#1e293b] mb-2">Recommended Actions:</p>
-                      <ul className="list-disc pl-5 text-[13px] font-medium text-[#475569] space-y-1.5">
+                      <p className="text-[11px] sm:text-[13px] font-bold text-[#1e293b] mb-1.5 sm:mb-2">Recommended Actions:</p>
+                      <ul className="list-disc pl-4 sm:pl-5 text-xs sm:text-[13px] font-medium text-[#475569] space-y-1 sm:space-y-1.5">
                         {quizResult.metadata.recommendedTeacherActions.map((action, i) => (
                           <li key={i}>{action}</li>
                         ))}
@@ -1938,17 +2022,95 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               </div>
 
               {/* Questions */}
-              <div className="space-y-6">
-                <h3 className="text-[18px] font-bold text-[#1e293b] flex items-center gap-2">
-                  <ListChecks size={20} className="text-[#a855f7]" /> Review Questions
+              <div className="space-y-3 sm:space-y-6">
+                <h3 className="text-base sm:text-[18px] font-bold text-[#1e293b] flex items-center gap-2">
+                  <ListChecks size={18} className="text-[#a855f7]" /> Review Questions
                 </h3>
-                <div className="space-y-4">
+                <div className="space-y-2.5 sm:space-y-4">
                   {filteredQuizQuestions.length > 0 ? (
                     filteredQuizQuestions.map((q, i) => renderQuestionCard(q, i, true))
                   ) : (
-                    <div className="border border-[#dde3eb] rounded-xl p-4 bg-white text-sm text-[#5a6578]">
+                    <div className="border border-[#dde3eb] rounded-xl p-3 sm:p-4 bg-white text-xs sm:text-sm text-[#5a6578]">
                       No questions match the selected provenance filters. Clear one or both filters to view all questions.
                     </div>
+                  )}
+                </div>
+
+                {/* In-Page Results Completion Action Bar */}
+                <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200">
+                  {viewingBankQuizId ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { setActiveTab('bank'); setViewingBankQuizId(null); }}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-xl sm:rounded-full px-4 sm:px-5 py-2 sm:py-2.5 shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+                      >
+                        Back to Quiz Bank
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAssign(viewingBankQuizId)}
+                          className="bg-white border border-[#a855f7] text-[#9333ea] hover:bg-purple-50 text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-4 sm:px-6 py-2 sm:py-2.5 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Send size={14} /> Assign
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleBack}
+                          className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-5 sm:px-8 py-2 sm:py-2.5 shadow-md shadow-purple-500/20 transition-transform hover:scale-[1.02] cursor-pointer"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { setStep('setup'); setQuizResult(null); setPreviewResult(null); setSavedQuizId(null); setViewingBankQuizId(null); }}
+                        className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-xl sm:rounded-full px-4 sm:px-5 py-2 sm:py-2.5 shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+                      >
+                        Create Another
+                      </button>
+                      <div className="flex items-center gap-2">
+                        {!savedQuizId ? (
+                          <button
+                            type="button"
+                            onClick={handleSaveToLibrary}
+                            disabled={saving}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl sm:rounded-full font-bold shadow-md shadow-emerald-500/25 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 text-xs sm:text-[13px] cursor-pointer"
+                          >
+                            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save to Library
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handlePublish}
+                              disabled={publishing}
+                              className="bg-white border border-[#a855f7] text-[#9333ea] hover:bg-purple-50 text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-3.5 sm:px-6 py-2 sm:py-2.5 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1.5 cursor-pointer"
+                            >
+                              {publishing ? <Loader2 size={14} className="animate-spin" /> : <TrendingUp size={14} />} Publish
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAssign()}
+                              className="bg-gradient-to-r from-violet-600 via-[#8643C8] to-[#7274ED] hover:from-violet-700 hover:to-indigo-700 text-white text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-3.5 sm:px-6 py-2 sm:py-2.5 shadow-md shadow-purple-500/20 transition-transform hover:scale-[1.02] flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Send size={14} /> Assign to Class
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleBack}
+                          className="bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-4 sm:px-8 py-2 sm:py-2.5 shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -1956,97 +2118,6 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
           )}
           </>)}
       </div>
-
-      {/* EDGE-TO-EDGE STICKY ACTION BAR */}
-      {activeTab === 'create' && (
-        <div className="sticky bottom-0 mt-auto w-full bg-white/90 backdrop-blur-[12px] border-t border-[#e2e8f0] z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-          <div className="w-full px-3.5 sm:px-6 xl:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2">
-            <div>
-              {step === 'topics' && !generating && (
-                <button onClick={() => { setSelectedTopics([]); setExcludeTopics([]); }} className="text-xs sm:text-[13px] font-semibold text-[#a855f7] hover:underline px-1 py-1">
-                  Clear all
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              {step === 'setup' && !generating && (
-                <button onClick={() => setStep('topics')} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
-                  Next: Topics <ChevronRight size={14} />
-                </button>
-              )}
-              {step === 'topics' && !generating && (
-                <>
-                  <button onClick={() => setStep('setup')} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3 sm:px-4 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
-                    <ChevronLeft size={14} /> Back
-                  </button>
-                  <button onClick={() => setStep('style')} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
-                    Next: Question Style <ChevronRight size={14} />
-                  </button>
-                </>
-              )}
-              {step === 'style' && !generating && (
-                <>
-                  <button onClick={() => setStep('topics')} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3 sm:px-4 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
-                    <ChevronLeft size={14} /> Back
-                  </button>
-                  <button onClick={() => setStep('preview')} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
-                    Next: Preview <ChevronRight size={14} />
-                  </button>
-                </>
-              )}
-              {step === 'preview' && !generating && !quizResult && (
-                <>
-                  <button onClick={() => setStep('style')} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3 sm:px-4 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
-                    <ChevronLeft size={14} /> Back
-                  </button>
-                  <button onClick={handleGenerate} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-bold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-all hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
-                    <Check size={14} /> Generate Quiz
-                  </button>
-                </>
-              )}
-              {generating && (
-                <div className="flex items-center gap-2 text-slate-500 font-medium text-xs sm:text-sm">
-                  <Loader2 size={14} className="animate-spin" /> Generating quiz...
-                </div>
-              )}
-              {step === 'results' && (
-                viewingBankQuizId ? (
-                  <>
-                    <button onClick={() => { setActiveTab('bank'); setViewingBankQuizId(null); }} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02]">
-                      Back to Quiz Bank
-                    </button>
-                    <button onClick={() => handleOpenAssign(viewingBankQuizId)} className="bg-white border border-[#a855f7] text-[#9333ea] hover:bg-purple-50 text-xs sm:text-[13px] font-bold rounded-full px-4 sm:px-6 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02] flex items-center gap-1 sm:gap-1.5">
-                      <Send size={14} /> Assign
-                    </button>
-                    <button onClick={handleBack} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-xs sm:text-[13px] font-bold rounded-full px-5 sm:px-8 py-1.5 sm:py-2 shadow-[0_2px_8px_rgba(168,85,247,0.25)] transition-transform hover:scale-[1.02]">Done</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => { setStep('setup'); setQuizResult(null); setPreviewResult(null); setSavedQuizId(null); setViewingBankQuizId(null); }} className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2 shadow-xs transition-transform hover:scale-[1.02]">
-                      Create Another
-                    </button>
-                    {!savedQuizId ? (
-                      <button onClick={handleSaveToLibrary} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full font-bold shadow-md shadow-emerald-500/25 hover:-translate-y-0.5 transition-all flex items-center gap-1.5 text-xs sm:text-[13px]">
-                        {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save to Library
-                      </button>
-                    ) : (
-                      <>
-                        <button onClick={handlePublish} disabled={publishing} className="bg-white border border-[#a855f7] text-[#9333ea] hover:bg-purple-50 text-[14px] font-bold rounded-full px-8 py-2.5 shadow-sm transition-transform hover:scale-[1.02] flex items-center gap-2">
-                          {publishing ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />} Publish
-                        </button>
-                        <button onClick={() => handleOpenAssign()} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[14px] font-bold rounded-full px-8 py-2.5 shadow-[0_4px_12px_rgba(168,85,247,0.3)] transition-transform hover:scale-[1.02] flex items-center gap-2">
-                          <Send size={16} /> Assign to Class
-                        </button>
-                      </>
-                    )}
-                    <button onClick={handleBack} className="bg-[#a855f7] hover:bg-[#9333ea] text-white text-[14px] font-bold rounded-full px-10 py-2.5 shadow-[0_4px_12px_rgba(168,85,247,0.3)] transition-transform hover:scale-[1.02]">Done</button>
-                  </>
-                )
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       
       <BloomsTaxonomyModal isOpen={showBloomsModal} onClose={() => setShowBloomsModal(false)} />
