@@ -48,3 +48,49 @@
 - [x] gate-12: Redundant "My Profile" item removed from desktop sidebar; top-right profile navigation maintained
   CHECK: npm run typecheck
   EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors)
+
+- [x] gate-13: Hero Mascot avatar in Quiz Battle features continuous up-and-down floating movement animation
+  CHECK: npm run typecheck
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors)
+
+- [x] gate-14: Hall of Fame redesigned with banner-free direct split layout (podiums on left, Standings card on right), rotating purple cosmic sunburst rays, responsive universal header bar, and full mobile clearance
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EVIDENCE: TypeScript 0 errors, Oxlint Anti-Slop 0 errors, browser subagent verified at 1280x800 and 390x844 with 0 clipping and smooth mascot floating
+
+- [x] gate-15: Hall of Fame updated to use native Quiz Battle background directly; My Stats overhauled with competitive Game UI layout (esports identity card, bento combat slabs, battle distribution, AI tactical coach, collectible combat badges)
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EVIDENCE: TypeScript 0 errors, Oxlint Anti-Slop 0 errors, browser subagent verified at 1280x800 and 390x844 with 0 clipping and smooth mascot floating
+
+- [x] gate-16: Match History overhauled with creative esports game UI (recent form beads, outcome-accented cards, round-by-round beads, rematch action, filter pills) and copy simplified across Quiz Battle to student-friendly terminology
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EVIDENCE: TypeScript 0 errors, Oxlint Anti-Slop 0 errors, browser subagent visual verification completed at 1280x800 desktop and 390x844 mobile across Hub, Match History, and My Stats
+
+- [x] gate-17: Hub tab layout restructured into full-width stacked order: Hero Banner -> Battle Modes -> Hall of Fame | My Stats (side-by-side) -> Match History (full width)
+  CHECK: npm run typecheck
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors)
+
+- [x] gate-18: Spacing and padding optimized for mobile and across all breakpoints, matching dashboard padding conventions
+  CHECK: npm run typecheck
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors)
+
+- [x] gate-19: Hero animated avatar positioned slightly lower into the card to prevent excessive top headroom
+  CHECK: npm run typecheck
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors)
+
+- [x] gate-20: My Stats tab compressed into high-density esports HUD layout with minimal vertical scrolling
+  CHECK: npm run typecheck
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors)
+
+- [x] gate-21: Hall of Fame sticky top-3 placement pills appear seamlessly at the header when podium is scrolled past
+  CHECK: npm run typecheck
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors)
+
+- [x] gate-22: Match settings setup tab redesigned for both VS Player and VS Bot modes with interactive Versus battle card and mobile-optimized controls
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors)
+
+- [x] gate-23: Profile dropdown on tablet/desktop viewports in top-right header with My Profile, Settings, and Sign Out
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck | > tsc --noEmit (0 errors), Oxlint 0 errors, verified in browser at 820x1000
+
+
