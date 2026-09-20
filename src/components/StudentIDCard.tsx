@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { CheckCircle2, RotateCw, Sparkles, Star, Zap, GraduationCap, Camera } from 'lucide-react';
+import { motion } from 'motion/react';
 import type { ProfileData } from './SettingsPage';
 
 interface StudentIDCardProps {
@@ -229,14 +230,29 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
         }}
         aria-label="Cute MathPulse Student Pass. Click to flip."
       >
-        <div
-          className="relative w-full h-full [transition:transform_0.7s_cubic-bezier(0.4,0,0.2,1),box-shadow_0.3s_ease] [transform-style:preserve-3d] rounded-3xl p-[2.5px] bg-gradient-to-tr from-purple-500 via-pink-400 to-cyan-400 shadow-xl group-hover:shadow-purple-500/25"
-          style={{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+        <motion.div
+          className="relative w-full h-full rounded-3xl p-[2.5px] bg-gradient-to-tr from-purple-500 via-pink-400 to-cyan-400 shadow-xl group-hover:shadow-purple-500/25 select-none"
+          animate={{ rotateY: isFlipped ? 180 : 0 }}
+          transition={{ duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          style={{
+            transformStyle: 'preserve-3d',
+            WebkitTransformStyle: 'preserve-3d',
+          }}
         >
           {/* ════════════════════════════════════════════════════════════════
               FRONT OF STUDENT ID CARD (Cute & Playful MathPulse Pass)
              ════════════════════════════════════════════════════════════════ */}
-          <div className="absolute inset-0 w-full h-full [backface-visibility:hidden] rounded-[22px] overflow-hidden bg-white dark:bg-slate-900 border border-purple-100/80 dark:border-purple-900/40 shadow-inner flex flex-col justify-between">
+          <div
+            className="absolute inset-0 w-full h-full rounded-[22px] overflow-hidden bg-white dark:bg-slate-900 border border-purple-100/80 dark:border-purple-900/40 shadow-inner flex flex-col justify-between"
+            style={{
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              transform: 'rotateY(0deg)',
+              WebkitTransform: 'rotateY(0deg)',
+            }}
+          >
             {/* Playful Top Header with MathPulse Mascot Vector */}
             <div className="relative bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 text-white px-3.5 py-2 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2">
@@ -362,7 +378,13 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
               BACK OF STUDENT ID CARD (Cute Mascot Emblem & Learning Stats)
              ════════════════════════════════════════════════════════════════ */}
           <div
-            className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-[22px] overflow-hidden bg-gradient-to-br from-[#150A26] via-[#210F3D] to-[#0A1224] text-white p-3.5 sm:p-4 flex flex-col justify-between border border-purple-500/40 shadow-2xl"
+            className="absolute inset-0 w-full h-full rounded-[22px] overflow-hidden bg-gradient-to-br from-[#150A26] via-[#210F3D] to-[#0A1224] text-white p-3.5 sm:p-4 flex flex-col justify-between border border-purple-500/40 shadow-2xl"
+            style={{
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+              WebkitTransform: 'rotateY(180deg)',
+            }}
           >
             {/* Subtle Math Elements & Shapes in Background */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-10 dark:opacity-8">
@@ -466,7 +488,7 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Interactive Helper Pill Below Card */}
@@ -474,10 +496,10 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
         <button
           type="button"
           onClick={() => setIsFlipped(!isFlipped)}
-          className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] font-bold bg-white/90 dark:bg-slate-800/90 hover:bg-purple-50 dark:hover:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/60 shadow-xs transition-all active:scale-95 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold bg-white/95 dark:bg-slate-800/95 hover:bg-purple-50 dark:hover:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/60 shadow-xs hover:shadow-sm transition-all active:scale-95 cursor-pointer"
         >
-          <RotateCw size={12} className={`transition-transform duration-500 ${isFlipped ? 'rotate-180' : ''}`} />
-          <span>{isFlipped ? 'Tap to view front' : 'Tap to flip card 🔄'}</span>
+          <RotateCw size={13} className={`transition-transform duration-700 ${isFlipped ? 'rotate-180' : ''}`} />
+          <span>{isFlipped ? 'Flip back to front' : 'Tap to flip card (3D) 🔄'}</span>
         </button>
       </div>
     </div>
