@@ -61,3 +61,8 @@ Scope: Modernize and declutter the Teacher side across desktop, tablet, and mobi
   CHECK: npm run typecheck && npx oxlint --quiet
   EXPECT: /passed|Found 0 errors|exit code 0/
   EVIDENCE: tsc exit code 0, oxlint passed with 0 errors, and all 32 test files (212 tests) passed.
+
+- [x] G13: Replace student chatbot avatar on center hero button with teacher AI Tools iconography (Wand2 + Sparkles)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; center hero button upgraded with Wand2 and pulsing Sparkles plus "AI Tools" label, eliminating chatbot confusion.

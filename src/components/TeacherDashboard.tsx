@@ -2456,20 +2456,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               <span className="text-[10px] mt-1 leading-none truncate font-display">Teaching</span>
             </button>
 
-            {/* 3. AI & Tools (Center Hero Button - Elevated Avatar Icon) */}
+            {/* 3. AI & Tools (Center Hero Button - Dedicated AI Tools Iconography) */}
             <button
               type="button"
               onClick={() => setOpenMobileMenu(prev => prev === 'tools' ? null : 'tools')}
-              aria-label="AI and Tools Options: Quiz Maker, Question Bank, Data Import"
+              aria-label="AI Tools: Quiz Maker, Question Bank, Data Import"
               aria-expanded={openMobileMenu === 'tools'}
               aria-haspopup="true"
-              className="relative -top-3 flex items-center justify-center w-14 h-14 sm:w-15 sm:h-15 p-1 rounded-2xl transition-all focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none active:scale-[0.94] bg-gradient-to-tr from-violet-600 to-indigo-600 text-white shadow-xl shadow-purple-500/40 ring-2 ring-purple-300 shrink-0"
+              className="relative -top-3 flex flex-col items-center justify-center w-14 h-14 sm:w-15 sm:h-15 rounded-2xl transition-all focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none active:scale-[0.94] bg-gradient-to-tr from-violet-600 via-indigo-600 to-purple-600 text-white shadow-xl shadow-purple-500/40 ring-2 ring-purple-300 shrink-0"
             >
-              <img
-                src="/avatar/avatar_icon.png"
-                alt="AI Tools"
-                className="w-12 h-12 sm:w-13 sm:h-13 object-contain drop-shadow-xl select-none pointer-events-none"
-              />
+              <div className="relative flex items-center justify-center">
+                <Wand2 size={24} className="stroke-[2.2] text-white drop-shadow-md" aria-hidden="true" />
+                <Sparkles size={12} className="absolute -top-1 -right-1 text-amber-300 animate-pulse" aria-hidden="true" />
+              </div>
+              <span className="text-[9px] font-extrabold tracking-tight text-white/95 mt-0.5 leading-none">AI Tools</span>
             </button>
 
             {/* 4. Insights (Expandable: Topic Mastery & Competency Matrix) */}
