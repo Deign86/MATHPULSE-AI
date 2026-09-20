@@ -789,10 +789,10 @@ playSound('complete');
      const isExcellent = percentage >= 80;
      const isGood = percentage >= 50 && percentage < 80;
      const isNeedsWork = percentage < 50;
-     const modalRoot = document.getElementById('modal-root');
+      const modalRoot = typeof document !== 'undefined' ? (document.getElementById('modal-root') || document.body) : null;
 
-const resultModal = (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+      const resultModal = (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <style>{quizAnimations}</style>
           {isExcellent && <CSSConfetti />}
           {isGood && <DrawSparks viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />}
@@ -892,16 +892,18 @@ const resultModal = (
        </div>
      );
 
-     return createPortal(resultModal, modalRoot!);
+     return modalRoot ? createPortal(resultModal, modalRoot) : resultModal;
    }
 
-return (
+  const modalRootTarget = typeof document !== 'undefined' ? (document.getElementById('modal-root') || document.body) : null;
+
+  const quizContent = (
       <>
         <style>{quizAnimations}</style>
 
-{/* Calculator via portal to escape z-index context */}
-        {showCalculator && createPortal(
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="fixed right-6 top-1/2 -translate-y-1/2 z-50 w-64">
+        {/* Calculator via portal to escape z-index context */}
+        {showCalculator && modalRootTarget && createPortal(
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="fixed right-6 top-1/2 -translate-y-1/2 z-[120] w-64">
             <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
               <div className="flex items-center justify-between mb-2 px-1">
                 <h4 className="text-xs font-bold text-[#0a1628] flex items-center gap-2">
@@ -913,12 +915,12 @@ return (
               <ScientificCalculator isOpen={true} onClose={() => setShowCalculator(false)} inline />
             </div>
           </motion.div>,
-          document.getElementById('modal-root')!
+          modalRootTarget
         )}
 
         {/* No Lives Modal */}
-        {showNoLivesModal && createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
+        {showNoLivesModal && modalRootTarget && createPortal(
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -960,7 +962,7 @@ return (
               </div>
             </motion.div>
           </div>,
-          document.getElementById('modal-root')!
+          modalRootTarget
         )}
 
 
@@ -1003,7 +1005,7 @@ return (
         )}
       </AnimatePresence>
 
-      <div className="fixed inset-0 z-40 h-dvh w-full flex flex-col bg-slate-50 overflow-hidden">
+      <div className="fixed inset-0 z-[100] h-dvh w-full flex flex-col bg-slate-50 overflow-hidden">
         {/* Sticky Header */}
         <header className="relative shrink-0 flex flex-col items-center justify-start px-4 pt-4 sm:pt-6 pb-6 z-40 shadow-md overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-400 rounded-b-[32px] sm:rounded-b-[40px] min-h-[110px] sm:min-h-[130px]">
           <div className="absolute inset-0 z-0 pointer-events-none">
@@ -1294,7 +1296,7 @@ return (
 
       {/* Leave Quiz Confirmation */}
       {showLeaveConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-2xl p-6 w-full max-w-[320px] shadow-2xl border border-slate-200 flex flex-col items-center gap-4">
             
             <h3 className="text-lg font-bold text-slate-900 text-center text-balance">Leave this quiz?</h3>
@@ -1308,6 +1310,8 @@ return (
       )}
     </>
   );
+
+  return modalRootTarget ? createPortal(quizContent, modalRootTarget) : quizContent;
 };
 
 // Helper functions to generate content per subject

@@ -324,7 +324,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     };
     setReturningToLesson(currentLesson);
     setSelectedLesson({ type: 'quiz', quiz: practiceQuiz });
-  }, []);
+    setIsInQuizMode?.(true);
+  }, [setIsInQuizMode]);
 
   const handleComplete = useCallback((score?: number, totalXP?: number, goToNext?: boolean) => {
     const current = selectedLessonRef.current;
@@ -370,6 +371,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       } else if (currentIdx === module.lessons.length - 1 && module.quizzes.length > 0) {
         // If it was the last lesson, move to the first quiz
         setSelectedLesson({ type: 'quiz', quiz: module.quizzes[0] });
+        setIsInQuizMode?.(true);
       } else {
         // Nothing left to go to
         setSelectedLesson(null);
@@ -377,7 +379,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     } else {
       setSelectedLesson(null);
     }
-  }, [subjectId, module.id, module.lessons.length, module.quizzes.length]);
+  }, [subjectId, module.id, module.lessons, module.quizzes, setIsInQuizMode]);
 
   const handleProgressUpdate = useCallback((percent: number) => {
     if (!userProfile?.uid || !selectedLessonRef.current || selectedLessonRef.current.type !== 'lesson') return;
