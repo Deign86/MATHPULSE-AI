@@ -1572,7 +1572,7 @@ const App = () => {
                   </Suspense>
                 ) : activeTab === 'Quiz Battle' ? (
                   <Suspense fallback={tabLoadingFallback}>
-                    <QuizBattlePage />
+                    <QuizBattlePage setIsInQuizMode={setIsInQuizMode} />
                   </Suspense>
                 ) : activeTab === 'AI Chat' ? (
                   <Suspense fallback={tabLoadingFallback}>
@@ -1805,8 +1805,8 @@ const App = () => {
             </Suspense>
           )}
 
-          {/* Mobile Bottom Navigation Bar (Hidden during full-screen assessment) */}
-          {!showAssessmentPage && (
+          {/* Mobile Bottom Navigation Bar (Hidden during full-screen assessment and active quizzes) */}
+          {(!showAssessmentPage && !isInQuizMode) && (
             <MobileBottomNav
               activeTab={activeTab}
               onSelectTab={handleStudentNavigation}
