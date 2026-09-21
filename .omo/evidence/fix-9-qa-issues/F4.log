@@ -1,0 +1,91 @@
+F4 SCOPE FIDELITY AUDIT
+Date: 2026-09-21
+Mode: READ-ONLY verification. No source files were edited, restored, or committed.
+
+VERDICT: FAIL
+
+Blocking finding:
+- The requested `git diff HEAD~15` includes `backend/datasets/vectorstore/chroma.sqlite3`.
+- This path is outside the F4 allowlist and is a RAG/vectorstore artifact, which violates the Must-NOT-have rule against RAG/model/routing drift.
+- Baseline object (`HEAD~15`): `692b4188727cfd0e5bac441c4be48c986fc0e35e`
+- HEAD object: `692b4188727cfd0e5bac441c4be48c986fc0e35e`
+- Worktree object: `1b7ac7afdc95698df4da2f6d61ebc3966f4470ae`
+- The drift is pre-existing working-tree state, but it is included by the exact `git diff HEAD~15` requested for this audit. It was not changed by this review.
+
+## Required history and diff commands
+
+Command: `git log --oneline -15`
+Output:
+```text
+a70a5a6 feat(id): scannable qr card without fake barcode
+17a7911 test(id): record scannable qr card QA
+5d1a480 feat(grades): csv-pdf export toggle
+389bdf8 fix(sidebar): tween width transition with reduced-motion
+b519061 fix(lesson): gate grounding evidence behind staff view
+4cde86c feat(id): qr payload contract and qrcode dep
+a7d7a4f test(lesson): record grounding evidence
+98b66fd feat(grades): lazy pdf export util with autotable
+c131203 test(grades): record lazy pdf export QA evidence
+83bbf2c fix(notifications): mark-all-read covers legacy docs with chunked race-safe rollback
+0ca6ecd fix(teacher): derive class counts live and drop stale ratchet
+47de7b8 fix(notifications): panel above battle layer and portal-aware outside-click
+391b12a test(battle): record profile refresh QA evidence
+54e0686 chore: remove unrelated notification changes from battle commit
+cdd032e fix(notifications): mark-all-read covers legacy docs with chunked race-safe rollback
+```
+
+Command: `git diff HEAD~15 --stat`
+Observed summary: `38 files changed, 1806 insertions(+), 222 deletions(-)`.
+The stat includes the blocking binary path:
+```text
+backend/datasets/vectorstore/chroma.sqlite3 | Bin 83345408 -> 83345408 bytes
+```
+
+## Scope and dependency checks
+
+Command: allowlist check over `git diff HEAD~15 --name-only`
+Output:
+```text
+UNEXPECTED_NON_ALLOWLIST_PATHS
+backend/datasets/vectorstore/chroma.sqlite3
+```
+Result: FAIL.
+
+Command: `git diff --unified=0 HEAD~15 -- package.json | grep -E '^\\+.*":'`
+Output:
+```text
++    "jspdf-autotable": "5.0.8",
++    "qrcode.react": "4.2.0",
+```
+Result: PASS — exactly the two requested dependency additions.
+
+## Must-NOT-have grep checks
+
+Command: forbidden path grep over `git diff HEAD~15 --name-only`
+Pattern covered: backend paths, Firestore/storage rules, auth, schema/migration, model/routing/inference paths.
+Output:
+```text
+16:backend/datasets/vectorstore/chroma.sqlite3
+```
+Result: FAIL — same blocking vectorstore drift.
+
+Command: forbidden source-content grep over TypeScript/TSX/MJS/JSON diff
+Pattern covered: SQL/schema migration, rules, auth initialization/sign-in, inference/model routing, DeepSeek/RAG, Chroma, notification snapshot migration.
+Output: `GREP_CLEAN`
+Result: PASS.
+
+Command: App/Settings layout path grep
+Output: `GREP_CLEAN: App.tsx and SettingsPage.tsx absent`
+Result: PASS.
+
+Command: rules/auth/schema path grep
+Output: `GREP_CLEAN: rules/auth/schema paths absent`
+Result: PASS.
+
+Command: `git diff --check HEAD~15`
+Output: `DIFF_CHECK_PASS`
+Result: PASS.
+
+## Final decision
+
+FAIL. The requested range is not scope-faithful because the diff includes a changed Chroma vectorstore binary. Dependency additions and all text-based Must-NOT-have checks are otherwise clean. No cleanup, restore, source edit, or commit was performed.
