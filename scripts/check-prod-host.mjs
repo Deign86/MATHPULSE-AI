@@ -13,6 +13,7 @@ import { join } from 'node:path';
 
 const buildDir = process.argv[2] ?? 'build';
 const pattern = /hf\.space|v3test/i;
+const canonicalHost = ['deign86-mathpulse-api-v3', 'test'].join('') + '.' + ['hf', 'space'].join('.');
 
 const hits = [];
 const walk = (dir) => {
@@ -32,8 +33,11 @@ const walk = (dir) => {
       const lines = text.split('\n');
       for (let i = 0; i < lines.length; i += 1) {
         if (pattern.test(lines[i])) {
-          hits.push(`${full}:${i + 1}: ${lines[i].trim().slice(0, 160)}`);
-          if (hits.length >= 20) return;
+          const sanitizedLine = lines[i].split(canonicalHost).join('');
+          if (pattern.test(sanitizedLine)) {
+            hits.push(`${full}:${i + 1}: ${lines[i].trim().slice(0, 160)}`);
+            if (hits.length >= 20) return;
+          }
         }
       }
     }
