@@ -1,0 +1,35 @@
+TASK: G6b #173 live dropdown count
+DATE: 2026-09-21
+
+RESULT: PASS_WITH_BROWSER_LIMITATION
+
+RED:
+- PASS: focused spec failed before the implementation with 3/3 failures: countResolvedStudentsForClass and mergeClassViews were not functions.
+
+GREEN:
+- PASS: `npm run test -- --run src/components/__tests__/TeacherDashboardClassCounts.test.ts --reporter=verbose`
+- PASS: 1 test file and 3 tests passed.
+- PASS: stale classroom count 0 was ignored; 12 resolved members produced 12.
+- PASS: one removed resolved member produced 11.
+- PASS: merged count changed from stale 12 to latest 11; no Math.max ratchet remained.
+- PASS: `npm run typecheck` completed with exit code 0.
+- PASS: `npm run lint:anti-slop` completed with exit code 0; only the existing package module-type warning was emitted.
+
+ANALYTICS:
+- PASS: `TeacherDashboard.tsx` retains the `student_summaries` listener and refetch path.
+- PASS: `backend/services/class_analytics_engine.py` remains unchanged and computes `student_count = len(student_summaries)`.
+
+MANUAL_QA:
+- PASS (fallback): Vitest regression proof covers the dropdown count source and 12-to-11 decrement.
+- FAIL (browser): Playwright MCP could not attach because its browser profile was already in use by another session.
+- FAIL (browser): the available Chrome DevTools session was a student session; after logout, the local app stayed on the loading shell with no network requests, so the teacher dropdown and live reassignment could not be exercised safely.
+- NOT CREATED: `.omo/evidence/fix-9-qa-issues/task-6.png`; no screenshot is claimed for an unexecuted teacher scenario.
+
+ADVERSARIAL:
+- PASS stale_state: stale classroom value 0 and stale merged value 12 are both covered by the focused assertions.
+- PASS dirty_worktree: pre-edit status showed unrelated existing changes; no service/backend target diff was present before this task.
+- PASS misleading_success_output: RED was captured before GREEN, and browser QA is explicitly marked unavailable rather than reported as live success.
+
+CLEANUP:
+- PASS: no QA server, PID, or port was started by this task.
+- PASS: existing `http://127.0.0.1:5173` was reused for the attempted browser check; no process was created or left running.
