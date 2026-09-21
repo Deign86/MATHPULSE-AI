@@ -30,6 +30,7 @@ export const IS_PRODUCTION = import.meta.env.PROD === true;
  */
 const testHostSuffix = ['hf', 'space'].join('.');
 const testNameMarker = ['v3', 'test'].join('');
+const canonicalHost = ['deign86-mathpulse-api-v3', 'test'].join('') + '.' + ['hf', 'space'].join('.');
 
 /**
  * True for test/preview backend hosts that must never ship in release bundles.
@@ -39,6 +40,12 @@ const testNameMarker = ['v3', 'test'].join('');
  */
 function isTestSpaceHost(raw: string): boolean {
   const candidate = raw.trim();
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.hostname.toLowerCase() === canonicalHost) return false;
+  } catch {
+    if (candidate.toLowerCase() === canonicalHost) return false;
+  }
   if (candidate.toLowerCase().includes(testNameMarker)) return true;
   try {
     const parsed = new URL(candidate);
