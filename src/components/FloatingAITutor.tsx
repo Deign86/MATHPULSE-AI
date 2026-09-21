@@ -115,7 +115,11 @@ const FloatingAITutor: React.FC<FloatingAITutorProps> = ({ constraintsRef, onFul
   useEffect(() => {
     if (isOpen && pendingNudge && currentUser?.uid) {
       nudgeConsumedRef.current = pendingNudge.id;
-      consumeNudge(currentUser.uid, pendingNudge.id).catch(() => {});
+      // Issue #159: nudge consume is best-effort — the nudge is already
+      // cleared locally above, so a failed write only means it may reappear.
+      consumeNudge(currentUser.uid, pendingNudge.id).catch((err) => {
+        console.debug('[FloatingAITutor] nudge consume failed (non-blocking):', err);
+      });
       setPendingNudge(null);
     }
   }, [isOpen, pendingNudge]);

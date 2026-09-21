@@ -537,7 +537,12 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       .then((res) => {
         setLearningPath({ status: 'ready', context: res.curriculumContext });
       })
-      .catch(() => setLearningPath(IDLE_LEARNING_PATH));
+      .catch((err) => {
+        // Issue #159: visible fallback already handled — the panel renders the
+        // idle state below. Warn so RAG outages stay visible in telemetry.
+        console.warn('[ModulesPage] learning-path context failed, showing idle:', err);
+        setLearningPath(IDLE_LEARNING_PATH);
+      });
   }, [activeTab, normalizedRiskTopics]);
 
   const handleQuizComplete = (score: number, xpEarned: number) => {

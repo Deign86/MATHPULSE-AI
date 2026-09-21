@@ -25,6 +25,7 @@ const normalizeKeyPart = <T>(value: T): string => {
   try {
     return JSON.stringify(value);
   } catch {
+    // Circular/unserializable value — fall back to its string coercion.
     return String(value);
   }
 };
