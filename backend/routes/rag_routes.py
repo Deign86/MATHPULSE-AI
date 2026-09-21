@@ -131,11 +131,15 @@ class RagLessonRequest(BaseModel):
     def _coerce_quarter(cls, value: Any) -> Any:
         # Grade-11-only: lessons may carry quarter as "Q1" string; RAG needs int 1-4.
         if isinstance(value, int) and not isinstance(value, bool):
-            return value
-        match = re.search(r"[1-4]", str(value or ""))
-        if match:
-            return int(match.group(0))
-        raise ValueError("quarter must be 1-4 (accepts 'Q1'-style strings)")
+            coerced = value
+        else:
+            match = re.fullmatch(r"\s*(?:Q(?:uarter)?\s*)?([1-4])\s*", str(value or ""), re.IGNORECASE)
+            if not match:
+                raise ValueError("quarter must be 1-4 (accepts 'Q1'-style strings)")
+            coerced = int(match.group(1))
+        if not 1 <= coerced <= 4:
+            raise ValueError("quarter must be 1-4 (accepts 'Q1'-style strings)")
+        return coerced
 
 
 class RagProblemRequest(BaseModel):
