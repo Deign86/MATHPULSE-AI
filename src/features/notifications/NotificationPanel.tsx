@@ -11,11 +11,13 @@ import { NOTIFICATION_PAGE_SIZE, paginateNotifications } from './types';
 
 interface NotificationPanelProps {
   onClose: () => void;
+  panelRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose }) => {
+export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose, panelRef: externalPanelRef }) => {
   const { notifications, unreadCount, isLoading, markAllAsRead } = useNotifications();
-  const panelRef = useRef<HTMLDivElement>(null);
+  const localPanelRef = useRef<HTMLDivElement>(null);
+  const panelRef = externalPanelRef ?? localPanelRef;
   const [visibleCount, setVisibleCount] = useState(NOTIFICATION_PAGE_SIZE);
   const visibleNotifications = paginateNotifications(notifications, visibleCount);
   const hasMore = visibleCount < notifications.length;
@@ -36,14 +38,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
     <>
       {/* Mobile Backdrop to click outside easily on small screens */}
       <div
-        className="fixed inset-0 bg-black/30 backdrop-blur-xs sm:hidden z-40"
+        className="fixed inset-0 bg-black/30 backdrop-blur-xs sm:hidden z-[240]"
         onClick={onClose}
         aria-hidden="true"
       />
 
       <div
         ref={panelRef}
-        className="fixed right-4 sm:right-6 top-16 sm:top-20 w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 max-h-[85vh] sm:max-h-[32rem] overflow-hidden z-50 flex flex-col"
+        className="fixed right-4 sm:right-6 top-16 sm:top-20 w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 max-h-[85vh] sm:max-h-[32rem] overflow-hidden z-[250] flex flex-col"
       >
         {/* Header */}
         <div className="p-4 border-b border-purple-200/40 dark:border-purple-900/30 flex items-center justify-between bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#1FA7E1] text-white shrink-0">

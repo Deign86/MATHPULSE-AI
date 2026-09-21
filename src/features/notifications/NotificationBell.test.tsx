@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { createPortal } from 'react-dom';
 import React from 'react';
 import * as notificationContextNs from './NotificationContext';
 import * as notificationPanelNs from './NotificationPanel';
@@ -17,12 +18,14 @@ vi.spyOn(notificationContextNs, 'useNotifications').mockImplementation(
 // Panel seam: rendered-but-inert stub isolates bell toggle behavior.
 // SAFETY: the stub preserves the onClose prop contract consumed by the bell.
 vi.spyOn(notificationPanelNs, 'NotificationPanel').mockImplementation(
-  (({ onClose }: { onClose: () => void }) => (
-    <div data-testid="panel">
-      Panel Content
-      <button onClick={onClose}>Close</button>
-    </div>
-  )) as typeof notificationPanelNs.NotificationPanel,
+  (({ onClose, panelRef }: { onClose: () => void; panelRef?: React.RefObject<HTMLDivElement | null> }) =>
+    createPortal(
+      <div ref={panelRef} data-testid="panel">
+        Panel Content
+        <button onClick={onClose}>Close</button>
+      </div>,
+      document.body,
+    )) as typeof notificationPanelNs.NotificationPanel,
 );
 
 import { NotificationBell } from './NotificationBell';
@@ -66,6 +69,18 @@ describe('NotificationBell', () => {
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }));
 
     // Panel should be visible
+    expect(screen.getByTestId('panel')).toBeInTheDocument();
+  });
+
+  it('keeps a portaled panel open when mousedown occurs inside it', () => {
+    unreadCountValue = 3;
+    render(<NotificationBell />);
+
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }));
+    const panel = screen.getByTestId('panel');
+
+    fireEvent.mouseDown(panel);
+
     expect(screen.getByTestId('panel')).toBeInTheDocument();
   });
 
