@@ -103,8 +103,18 @@ async function applyRiskResponse(
     functions.logger.info(`[RISK_RESPONSE] ${studentId}: student doc updated`, updatePayload);
   }
 
-  // Teacher notifications for intervene / critical / at_risk
+  // Teacher notifications for intervene / critical / at_risk.
+  // Recipient-scoped (issue #156): verify the teacherId resolves to a
+  // teacher/admin profile before sending. Fail closed — a missing,
+  // student, or unknown recipient never receives another student's data.
   if (teacherId && (newStatus === "intervene" || newStatus === "critical" || newStatus === "at_risk")) {
+    const teacherSnap = await db.collection("users").doc(teacherId).get();
+    const teacherRole = teacherSnap.exists ? teacherSnap.data()?.role : undefined;
+    if (teacherRole !== "teacher" && teacherRole !== "admin") {
+      functions.logger.warn(
+        `[RISK_RESPONSE] ${studentId}: teacher notification suppressed — recipient ${teacherId} is not teacher/admin`
+      );
+    } else {
     const titles = {
       intervene: "Student Intervention Needed",
       critical: "Urgent: Student Critical",
@@ -125,10 +135,12 @@ async function applyRiskResponse(
         studentId,
         wri: wri ?? undefined,
         riskStatus: newStatus,
+        recipientRole: "teacher",
       });
       functions.logger.info(`[RISK_RESPONSE] ${studentId}: teacher notification sent → ${newStatus}`);
     } catch (err: any) {
       functions.logger.error(`[RISK_RESPONSE] ${studentId}: failed to send teacher notification`, { error: err.message });
+    }
     }
   }
 

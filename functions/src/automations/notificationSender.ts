@@ -18,6 +18,7 @@ export interface NotificationPayload {
   studentId?: string;
   wri?: number;
   riskStatus?: string;
+  recipientRole?: "student" | "teacher" | "admin";
 }
 
 /**
@@ -37,6 +38,7 @@ export async function createNotification(
     actionUrl: payload.link || null,
     isRead: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    recipientRole: payload.recipientRole ?? (payload.type === "risk_alert" ? "teacher" : "student"),
   };
   if (payload.studentId) notificationRecord.studentId = payload.studentId;
   if (payload.wri !== undefined) notificationRecord.wri = payload.wri;
@@ -83,6 +85,7 @@ export async function sendBatchNotifications(
       actionUrl: notif.link || null,
       isRead: false,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      recipientRole: notif.recipientRole ?? (notif.type === "risk_alert" ? "teacher" : "student"),
     };
     if (notif.studentId) notificationRecord.studentId = notif.studentId;
     if (notif.wri !== undefined) notificationRecord.wri = notif.wri;

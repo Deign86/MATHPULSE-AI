@@ -100,7 +100,10 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
     if (video) {
       if (isTouchDevice) {
         video.loop = true;
-        video.play().catch(() => {});
+        // Issue #159, justified silent catch: muted autoplay rejections are a
+        // routine browser signal (autoplay policy), not an error — the poster
+        // frame stays visible and no user action is needed.
+        video.play().catch(() => { /* autoplay blocked; poster frame remains */ });
       } else {
         video.pause();
         video.currentTime = targetTimeRef.current;
