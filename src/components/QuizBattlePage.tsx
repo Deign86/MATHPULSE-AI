@@ -26,6 +26,7 @@ import {
   VolumeX,
   Star,
   Flag,
+  TriangleAlert,
 } from 'lucide-react';
 import { WarpBackground } from './ui/warp-background';
 import { memberOf } from '../utils/memberOf';
@@ -49,9 +50,13 @@ import {
   disconnectQuizBattlePresence,
   getQuizBattleMatchState,
   getQuizBattlePrivateRoomState,
+  isStaleRoundError,
   getStudentBattleLeaderboard,
   getStudentBattleHistory,
   getStudentBattleStats,
+  recordBattleWidgetError,
+  takeBattleWidgetErrors,
+  type BattleWidgetError,
   joinQuizBattlePrivateRoom,
   joinQuizBattleQueue,
   leaveQuizBattlePrivateRoom,
@@ -396,6 +401,20 @@ const QuizBattlePage: React.FC = () => {
   const [setupConfig, setSetupConfig] = useState<QuizBattleSetupConfig>(createDefaultQuizBattleSetup);
   const [setupErrors, setSetupErrors] = useState<QuizBattleSetupError[]>([]);
   const [launchState, setLaunchState] = useState<LaunchState>({ status: 'idle' });
+  // Issue #159 item 1: bot start can hang ~15s on cold backend — staged
+  // progress text plus a cancel flag checked between awaits.
+  const [startStage, setStartStage] = useState<string | null>(null);
+  const startCancelledRef = useRef(false);
+  useEffect(() => {
+    if (launchState.status !== 'validating') {
+      setStartStage(null);
+    }
+  }, [launchState]);
+  const handleCancelBotStart = useCallback(() => {
+    startCancelledRef.current = true;
+    setLaunchState({ status: 'idle' });
+    setStartStage(null);
+  }, []);
   const [queueActive, setQueueActive] = useState(false);
   const [activeRoom, setActiveRoom] = useState<QuizBattlePrivateRoomState | null>(null);
   const [privateRoomCodeInput, setPrivateRoomCodeInput] = useState('');
@@ -417,6 +436,28 @@ const QuizBattlePage: React.FC = () => {
 
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsData, setStatsData] = useState<StudentBattleStats | null>(null);
+  // Issue #159 item 5: widget loads fail soft in the service; surfaced here
+  // as visible error cards (with retry) instead of silent fallback data.
+  const [widgetErrors, setWidgetErrors] = useState<BattleWidgetError[]>([]);
+  const [insightsAttempt, setInsightsAttempt] = useState(0);
+  const [leaderboardAttempt, setLeaderboardAttempt] = useState(0);
+  const drainWidgetErrors = useCallback(() => {
+    const fresh = takeBattleWidgetErrors();
+    if (fresh.length === 0) return;
+    setWidgetErrors((previous) => {
+      const known = new Set(previous.map((entry) => entry.widget));
+      return [...previous, ...fresh.filter((entry) => !known.has(entry.widget))];
+    });
+  }, []);
+  const retryWidgets = useCallback((widgets: BattleWidgetError['widget'][]) => {
+    setWidgetErrors((previous) => previous.filter((entry) => !widgets.includes(entry.widget)));
+    if (widgets.includes('stats') || widgets.includes('history')) {
+      setInsightsAttempt((attempt) => attempt + 1);
+    }
+    if (widgets.includes('leaderboard')) {
+      setLeaderboardAttempt((attempt) => attempt + 1);
+    }
+  }, []);
   const [historyData, setHistoryData] = useState<QuizBattleMatchSummary[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState<QuizBattleLeaderboardEntry[]>([]);
@@ -444,6 +485,7 @@ const QuizBattlePage: React.FC = () => {
   const countdownSoundRef = useRef<number | null>(null);
   const autoSubmitRoundRef = useRef<number | null>(null);
   const autoSubmitRetryAtMsRef = useRef(0);
+  const submitInFlightRoundRef = useRef<number | null>(null);
   const celebratedMatchIdRef = useRef<string>('');
   const reduceMotion = useReducedMotion();
   const botReadyStartFailuresRef = useRef(0);
@@ -554,7 +596,10 @@ const QuizBattlePage: React.FC = () => {
       if (!context) return;
 
       if (context.state === 'suspended') {
-        void context.resume().catch(() => { });
+        // Issue #159, justified silent catch: AudioContext.resume() rejects
+        // routinely under autoplay policy until a user gesture; battle tones
+        // are decorative and the match works muted.
+        void context.resume().catch(() => { /* autoplay-blocked; tones stay muted */ });
       }
 
       const presets = {
@@ -647,12 +692,23 @@ const QuizBattlePage: React.FC = () => {
       return null;
     }
 
-    const [stats, history] = await Promise.all([
+    // Issue #159: settled individually so one widget's failure still shows the
+    // other's data, with the failure recorded for the visible error card.
+    const [statsResult, historyResult] = await Promise.allSettled([
       getStudentBattleStats(studentProfile.uid),
       getStudentBattleHistory(studentProfile.uid, { mode: historyFilterMode, limitCount: 8 }),
     ]);
+    if (statsResult.status === 'rejected') {
+      recordBattleWidgetError('stats', statsResult.reason instanceof Error ? statsResult.reason : new Error('Unknown error'));
+    }
+    if (historyResult.status === 'rejected') {
+      recordBattleWidgetError('history', historyResult.reason instanceof Error ? historyResult.reason : new Error('Unknown error'));
+    }
 
-    return { stats, history };
+    return {
+      stats: statsResult.status === 'fulfilled' ? statsResult.value : null,
+      history: historyResult.status === 'fulfilled' ? historyResult.value : [],
+    };
   }, [historyFilterMode, studentProfile?.uid]);
 
   useEffect(() => {
@@ -694,6 +750,7 @@ const QuizBattlePage: React.FC = () => {
 
     const load = async () => {
       const result = await refreshBattleInsights();
+      drainWidgetErrors();
 
       if (!isMounted) return;
       if (result) {
@@ -708,7 +765,7 @@ const QuizBattlePage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [refreshBattleInsights, studentProfile?.uid]);
+  }, [refreshBattleInsights, studentProfile?.uid, insightsAttempt, drainWidgetErrors]);
 
   const filteredHistory = useMemo(() => {
     if (historyFilterMode === 'all') return historyData;
@@ -750,11 +807,20 @@ const QuizBattlePage: React.FC = () => {
     setLeaderboardLoading(true);
 
     const loadLeaderboard = async () => {
-      const leaderboard = await getStudentBattleLeaderboard(20);
+      try {
+        const leaderboard = await getStudentBattleLeaderboard(20);
+        drainWidgetErrors();
 
-      if (!isMounted) return;
-      setLeaderboardData(leaderboard);
-      setLeaderboardLoading(false);
+        if (!isMounted) return;
+        setLeaderboardData(leaderboard);
+      } catch (err) {
+        recordBattleWidgetError('leaderboard', err instanceof Error ? err : new Error('Unknown error'));
+        drainWidgetErrors();
+      } finally {
+        if (isMounted) {
+          setLeaderboardLoading(false);
+        }
+      }
     };
 
     void loadLeaderboard();
@@ -762,7 +828,7 @@ const QuizBattlePage: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [activeTab]);
+  }, [activeTab, leaderboardAttempt, drainWidgetErrors]);
 
   const syncQuizBattleSession = useCallback(async () => {
     if (!studentProfile?.uid) {
@@ -1274,8 +1340,10 @@ const QuizBattlePage: React.FC = () => {
             ticks: 160,
           });
         })
-        .catch(() => {
-          // Non-blocking celebratory effect.
+        .catch((err) => {
+          // Issue #159: confetti is a celebratory effect only — the result
+          // screen renders regardless. Logged so CDN failures stay visible.
+          console.debug('[QuizBattle] confetti skipped:', err);
         });
     }
   }, [activeMatch?.matchId, activeMatch?.status, activeMatch?.outcome, playBattleTone, reduceMotion]);
@@ -1412,6 +1480,41 @@ const QuizBattlePage: React.FC = () => {
         return;
       }
 
+      if (forcedSelection === null) {
+        try {
+          const latest = await getQuizBattleMatchState(activeMatch.matchId);
+          setActiveMatch(latest);
+          setSelectedOptionIndex(null);
+          setRoundLocked(false);
+          if (latest.status === 'completed') {
+            setQueueActive(false);
+            setActiveRoom(null);
+            setQueueTimeoutDeadlineAtMs(null);
+            void refreshBattleInsights();
+            setLaunchState({
+              status: 'queued',
+              message: 'Match finished. Results synchronized.',
+            });
+            return;
+          }
+          setLaunchState({
+            status: 'queued',
+            message: 'Round timed out. Synced to the latest battle state.',
+          });
+        } catch {
+          setLaunchState({
+            status: 'error',
+            message: 'Round timed out. Reconnecting to the latest battle state...',
+          });
+        }
+        return;
+      }
+
+      if (submitInFlightRoundRef.current === activeMatch.currentRound) {
+        return;
+      }
+      submitInFlightRoundRef.current = activeMatch.currentRound;
+
       setAnswerSubmitting(true);
       const submissionWatchdog = window.setTimeout(() => {
         setAnswerSubmitting(false);
@@ -1428,8 +1531,11 @@ const QuizBattlePage: React.FC = () => {
               setQueueTimeoutDeadlineAtMs(null);
             }
           })
-          .catch(() => {
-            // keep the action retryable for the learner.
+          .catch((err) => {
+            // Issue #159: background sync poll — failure keeps the current
+            // state with the manual action still retryable; surfaced via the
+            // next poll or explicit user action, logged for telemetry.
+            console.debug('[QuizBattle] background match sync failed:', err);
           });
       }, 12000);
 
@@ -1446,6 +1552,7 @@ const QuizBattlePage: React.FC = () => {
           roundNumber: activeMatch.currentRound,
           selectedOptionIndex: forcedSelection,
           responseMs: elapsedMs,
+          roundId: activeMatch.currentQuestion?.roundId || undefined,
         });
 
         autoSubmitRoundRef.current = null;
@@ -1489,11 +1596,7 @@ const QuizBattlePage: React.FC = () => {
         // SAFETY: trusted internal value already conforms to the asserted type.
         const known = error as { message?: string };
         const message = known?.message || 'Unable to submit answer right now. Please try again.';
-        const shouldSyncLatestMatch =
-          forcedSelection === null ||
-          message.includes('Round timer elapsed') ||
-          message.includes('Expected round') ||
-          message.includes('Match is not currently active');
+        const shouldSyncLatestMatch = forcedSelection === null || isStaleRoundError(message);
 
         if (shouldSyncLatestMatch) {
           try {
@@ -1535,15 +1638,18 @@ const QuizBattlePage: React.FC = () => {
 
         if (forcedSelection === null) {
           autoSubmitRetryAtMsRef.current = Date.now() + 3000;
+        } else {
+          setRoundLocked(false);
         }
 
         setLaunchState({
           status: 'error',
-          message,
+          message: forcedSelection === null ? message : `${message} Tap an option to retry.`,
         });
       } finally {
         window.clearTimeout(submissionWatchdog);
         setAnswerSubmitting(false);
+        submitInFlightRoundRef.current = null;
       }
     },
     [activeMatch, designPauseActive, refreshBattleInsights, roundLocked, roundSecondsLeft],
@@ -1706,6 +1812,8 @@ const QuizBattlePage: React.FC = () => {
 
   const submitSetup = async () => {
     setLaunchState({ status: 'validating' });
+    setStartStage('Validating setup...');
+    startCancelledRef.current = false;
 
     const validationErrors = validateQuizBattleSetup(setupConfig);
     if (validationErrors.length > 0) {
@@ -1785,8 +1893,19 @@ const QuizBattlePage: React.FC = () => {
         return;
       }
 
+      setStartStage('Creating bot match...');
       const botMatch = await createQuizBattleBotMatch(setupConfig);
+      if (startCancelledRef.current) {
+        setStartStage(null);
+        return;
+      }
+      setStartStage('Starting round 1...');
       const liveMatch = await startQuizBattleMatch(botMatch.matchId);
+      if (startCancelledRef.current) {
+        setStartStage(null);
+        return;
+      }
+      setStartStage(null);
       setQueueActive(false);
       setActiveRoom(null);
       setActiveMatch(liveMatch);
@@ -1823,6 +1942,32 @@ const QuizBattlePage: React.FC = () => {
   };
 
   const historyWinRate = statsData?.winRate ?? 0;
+  const widgetErrorCard = (widgets: BattleWidgetError['widget'][]) => {
+    const visible = widgetErrors.filter((entry) => widgets.includes(entry.widget));
+    if (visible.length === 0) return null;
+    const names = visible.map((entry) => entry.widget).join(' + ');
+    return (
+      <div
+        role="alert"
+        data-testid={`widget-error-card-${widgets.join('-')}`}
+        className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3"
+      >
+        <TriangleAlert className="h-5 w-5 shrink-0 text-amber-400" />
+        <p className="min-w-0 flex-1 text-[13px] font-semibold text-amber-200">
+          Couldn&apos;t refresh {names} — showing last known data.
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => retryWidgets(widgets)}
+          className="h-8 rounded-full border-amber-500/50 px-4 text-xs font-bold text-amber-200 hover:bg-amber-500/20"
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  };
   const privateRoomBusy = Boolean(
     setupConfig.mode === 'online' &&
     activeRoom &&
@@ -2124,9 +2269,13 @@ const QuizBattlePage: React.FC = () => {
                   onOptionSelect={(idx) => {
                     if (!!lastRoundResult && lastRoundResult.roundNumber === activeMatch.currentRound) return;
                     if (answerSubmitting || roundLocked) return;
-                    getAudioContext()?.resume().catch(() => { });
+                    if (submitInFlightRoundRef.current === activeMatch.currentRound) return;
+                    // Issue #159, justified silent catch: same autoplay-policy
+                    // rationale as the resume above; lock tone is decorative.
+                    getAudioContext()?.resume().catch(() => { /* tones stay muted */ });
                     playBattleTone('lock');
                     setSelectedOptionIndex(idx);
+                    setRoundLocked(true);
                     void submitRoundAnswer(idx);
                   }}
                   floatingMomentum={floatingMomentum}
@@ -2356,6 +2505,7 @@ const QuizBattlePage: React.FC = () => {
                     <div className="space-y-3 lg:space-y-4 flex flex-col h-full justify-between">
 
                       {/* Hall of Fame Widget — Modern Champions Card */}
+                      {widgetErrorCard(['leaderboard'])}
                       <div
                         onClick={() => setActiveTab('leaderboard')}
                         className="relative w-full bg-gradient-to-br from-[#7C3AED]/35 via-[#6366F1]/25 to-[#3b3a82]/50 backdrop-blur-xl border border-white/20 hover:border-purple-300/60 rounded-3xl overflow-hidden p-5 shadow-[0_10px_30px_rgba(124,58,237,0.25)] hover:shadow-[0_14px_40px_rgba(124,58,237,0.4)] cursor-pointer group transition-all duration-300 mb-4 active:scale-[0.99]"
@@ -2413,6 +2563,7 @@ const QuizBattlePage: React.FC = () => {
                       </div>
 
                       {/* My Stats Widget */}
+                      {widgetErrorCard(['stats'])}
                       <div className="relative w-full bg-slate-900/60 backdrop-blur-xl border border-white/15 rounded-3xl overflow-hidden flex flex-col shadow-xl mb-4">
                         {/* Header */}
                         <div className="flex flex-row items-center justify-between px-5 pt-4.5 pb-2.5 relative z-10">
@@ -2503,6 +2654,7 @@ const QuizBattlePage: React.FC = () => {
                           <p className="text-[11px] text-white/60 leading-relaxed">
                             Your recent student battles only.
                           </p>
+                          {widgetErrorCard(['stats', 'history'])}
                           {statsLoading ? (
                             <div className="space-y-2">
                               <Skeleton className="h-10 w-full rounded-xl bg-white/10" />
@@ -2953,12 +3105,22 @@ const QuizBattlePage: React.FC = () => {
                               <span className={cn("inline-flex items-center gap-2 font-bold px-3 py-1.5 rounded-lg",
                                 setupConfig.mode === 'online' ? "text-[#8A3FD3] bg-[#8A3FD3]/10" : "text-[#1FA7E1] bg-[#1FA7E1]/10"
                               )}>
-                                <Loader2 className="h-4 w-4 animate-spin" /> Validating...
+                                <Loader2 className="h-4 w-4 animate-spin" /> {startStage ?? 'Validating...'}
                               </span>
                             )}
                           </div>
 
                           <div className="flex items-center gap-3">
+                            {launchState.status === 'validating' && setupConfig.mode === 'bot' && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleCancelBotStart}
+                                className="rounded-xl h-14 flex-1 sm:flex-none border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 font-bold px-6"
+                              >
+                                Cancel
+                              </Button>
+                            )}
                             {canCancelOnlineSession && (
                               <Button
                                 type="button"
@@ -3162,6 +3324,7 @@ const QuizBattlePage: React.FC = () => {
                   exit={{ opacity: 0, y: -12 }}
                   className="space-y-4"
                 >
+                  {widgetErrorCard(['history'])}
                   {/* History Banner */}
                   <motion.div
                     className="relative overflow-hidden rounded-[24px] mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl"
@@ -3288,6 +3451,7 @@ const QuizBattlePage: React.FC = () => {
                   exit={{ opacity: 0, y: -12 }}
                   className="space-y-4"
                 >
+                  {widgetErrorCard(['stats'])}
                   {/* Stats Banner */}
                   <motion.div
                     className="relative overflow-hidden rounded-[24px] mb-6 bg-white/5 border border-white/10 shadow-2xl backdrop-blur-3xl"
@@ -3434,6 +3598,7 @@ const QuizBattlePage: React.FC = () => {
                         </div>
                       </div>
 
+                      {widgetErrorCard(['leaderboard'])}
                       {leaderboardLoading ? (
                         <div className="space-y-4">
                           <Skeleton className="h-[80px] w-full rounded-2xl bg-white/5 border border-white/10" />
