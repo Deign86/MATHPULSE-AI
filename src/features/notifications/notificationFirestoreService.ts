@@ -42,7 +42,9 @@ function requireAuth(): string | null {
  * removed once scripts/backfill-notification-read-flag.ts has run in production.
  */
 const LEGACY_READ_FIELD = 'read';
-const MARK_ALL_READ_BATCH_SIZE = 450;
+/** Migration kill switch: flip to false (and drop LEGACY_READ_FIELD) once the
+ *  backfill script has run and no `read`-only document remains in production. */
+const HAS_LEGACY_READ_FIELD = true;
 
 /** Type predicate: a stored Firestore field decoded as a boolean flag. */
 function isBooleanFlag(value: unknown): value is boolean {
@@ -143,17 +145,21 @@ export const markAllAsRead = async (userId: string): Promise<void> => {
   if (!requireAuth()) throw new Error('Cannot mark all as read — not authenticated');
   try {
     const itemsRef = collection(db, 'notifications', userId, 'items');
-    const snapshot = await getDocs(itemsRef);
-    const unreadDocs = snapshot.docs.filter((docSnap) => !readNotificationFlag(docSnap.data()));
-
-    for (let offset = 0; offset < unreadDocs.length; offset += MARK_ALL_READ_BATCH_SIZE) {
-      const batch = writeBatch(db);
-      const batchDocs = unreadDocs.slice(offset, offset + MARK_ALL_READ_BATCH_SIZE);
-      for (const docSnap of batchDocs) {
-        batch.update(docSnap.ref, { isRead: true });
-      }
-      await batch.commit();
+    const queries = [query(itemsRef, where('isRead', '==', false))];
+    if (HAS_LEGACY_READ_FIELD) {
+      queries.push(query(itemsRef, where(LEGACY_READ_FIELD, '==', false)));
     }
+    const snapshots = await Promise.all(queries.map((pending) => getDocs(pending)));
+    const seen = new Set<string>();
+    const batch = writeBatch(db);
+    let count = 0;
+    for (const docSnap of snapshots.flatMap((snapshot) => snapshot.docs)) {
+      if (seen.has(docSnap.id)) continue;
+      seen.add(docSnap.id);
+      batch.update(docSnap.ref, { isRead: true });
+      count += 1;
+    }
+    if (count > 0) await batch.commit();
   } catch (error) {
     console.error('[notificationFirestoreService] Error marking all as read:', error);
     throw error;
