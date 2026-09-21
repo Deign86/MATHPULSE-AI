@@ -1,0 +1,24 @@
+TASK: G2a #166 lazy PDF export utility
+DATE: 2026-09-21
+
+RESULT: PASS
+
+PASS: red-first Vitest run failed at the missing ./pdfExport module before implementation.
+PASS: focused Vitest suite — 1 file, 3 tests passed; multi-page footer numbering, empty-state single page, and lazy import source check.
+PASS: typecheck — npm run typecheck completed with no output/errors after the concurrent studentIdVerification files appeared.
+PASS: anti-slop — npm run lint:anti-slop passed; only the repository's existing Node module-type warning was printed.
+PASS: production build — npm run build completed; Vite built in 23.12s; production-host and demo-credential checks passed.
+PASS: lazy bundle check — entry index-Ba4QCpaq.js contains no jspdf; deferred asset jspdf.es.min-HPsO-mL0.js exists.
+PASS: dependency/license — jspdf-autotable 5.0.8 is exact-pinned, npm peer range accepts jspdf 4.2.1, and npm metadata reports MIT.
+PASS: manual node export fixture — PDF_FIXTURE_PASS bytes=122110 pages=4.
+PASS: empty-row behavior — focused Vitest confirms one page, empty-state text, and no throw.
+PASS: scope — GradesPage.tsx and its CSV handler were not changed.
+
+ADVERSARIAL:
+PASS: stale_state — GitNexus had no indexed repository; `npx gitnexus analyze` failed in analyzer manifest JSON parsing, so no stale graph result was trusted. Source, typecheck, tests, and build were rerun from current disk state.
+PASS: dirty_worktree — baseline already contained unrelated tracked/untracked changes on main; those files were preserved and not staged. A concurrent untracked studentIdVerification pair appeared during verification and was left untouched.
+PASS: hung_commands — focused Vitest, typecheck, build, and Node fixture all returned within their 120s/600s command ceilings; the lazy import resolved during the fixture. No server or child process was left running.
+N/A: prompt_injection — no untrusted prompt or remote document content is consumed by the utility.
+PASS: misleading_success_output — manual success required nonzero PDF bytes and at least two parsed /Type /Page tokens; the first shell-escaped footer probe was not counted as QA success, while footer numbering is asserted by Vitest.
+
+NOTE: Initial `npm install --save-exact jspdf-autotable@5.0.8` hit the pre-existing Firebase 11/12 peer conflict; the same install succeeded with `--legacy-peer-deps` without changing existing dependency versions.
