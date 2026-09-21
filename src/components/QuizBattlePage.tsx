@@ -68,6 +68,7 @@ import {
   requestQuizBattleRematch,
   resumeQuizBattleSession,
   sendQuizBattleHeartbeat,
+  shouldRefetchExpiredBotMatch,
   startQuizBattleMatch,
   submitQuizBattleAnswer,
   QuizBattleSetupError,
@@ -1039,13 +1040,16 @@ const QuizBattlePage: React.FC = () => {
       activeMatch?.mode === 'online' &&
       (activeMatch.status === 'ready' || activeMatch.status === 'in_progress');
     const isBotMatchPreparing = activeMatch?.mode === 'bot' && activeMatch.status === 'ready';
+    const isBotMatchActive =
+      activeMatch?.mode === 'bot' &&
+      (activeMatch.status === 'ready' || activeMatch.status === 'in_progress');
     const isRoomWaiting = Boolean(activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready'));
 
     if (!isBotMatchPreparing) {
       botReadyStartFailuresRef.current = 0;
     }
 
-    if (!queueActive && !isRoomWaiting && !isOnlineMatchActive && !isBotMatchPreparing) {
+    if (!queueActive && !isRoomWaiting && !isOnlineMatchActive && !isBotMatchPreparing && !isBotMatchActive) {
       return;
     }
 
@@ -1070,9 +1074,28 @@ const QuizBattlePage: React.FC = () => {
           return;
         }
 
+        if (
+          activeMatch?.mode === 'bot' &&
+          shouldRefetchExpiredBotMatch({
+            mode: activeMatch.mode,
+            status: activeMatch.status,
+            roundDeadlineAtMs: activeMatch.roundDeadlineAtMs,
+          })
+        ) {
+          const latest = await getQuizBattleMatchState(activeMatch.matchId);
+          if (cancelled) return;
+          setActiveMatch(latest);
+          if (latest.status === 'completed') {
+            setQueueActive(false);
+            setActiveRoom(null);
+            setQueueTimeoutDeadlineAtMs(null);
+          }
+          setConnectionState('connected');
+          return;
+        }
+
         if (activeMatch?.mode === 'online') {
-          if (activeMatch.status === 'ready') {
-            const started = await startQuizBattleMatch(activeMatch.matchId);
+          if (activeMatch.status === 'ready') {            const started = await startQuizBattleMatch(activeMatch.matchId);
             if (cancelled) return;
             setActiveMatch(started);
             setConnectionState('connected');
