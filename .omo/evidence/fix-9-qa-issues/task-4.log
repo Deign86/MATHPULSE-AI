@@ -1,0 +1,15 @@
+
+ RUN  v4.1.5 C:/Users/APG/Downloads/MATHPULSE-AI
+
+ G�� src/components/__tests__/ModuleDetailView.test.tsx > G1b #171 lesson completion subject fallback > persists fallback subject progress and updates the journey after readback 1627ms
+ G�� src/components/__tests__/ModuleDetailView.test.tsx > G1b #171 lesson completion subject fallback > logs persistence failure while XP and navigation still proceed 1378ms
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  19:14:44
+   Duration  13.93s (transform 5.92s, setup 1.65s, import 8.15s, tests 3.01s, environment 901ms)
+
+
+ PASS: Firestore mock path persisted fallback completion through completeLesson with gen-math, emitted console.warn, and updated Study Journey readback.
+PASS: forced persist throw emitted console.error while XP callback and Back to Modules navigation proceeded.
+PASS: adversarial malformed_input covered by missing subjectId fixture; stale_state covered by progress listener readback; dirty_worktree recorded separately; misleading_success_output rejected by forced-failure assertions.
