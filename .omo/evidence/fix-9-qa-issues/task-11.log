@@ -1,0 +1,60 @@
+TASK: G5 #170 Sidebar tween retry
+DATE: 2026-09-21
+SCOPE: src/components/Sidebar.tsx and src/components/Sidebar.test.tsx only; no App/Settings layout change; no browser, dev server, watch mode, or separate window.
+
+PASS: red targeted spec
+COMMAND: npm run test -- --run src/components/Sidebar.test.tsx --reporter=verbose
+EXPECTED RED: exit 1 against the committed spring baseline.
+OUTPUT: Test Files 1 failed (1); Tests 2 failed (2). The first assertion received an empty will-change value instead of width; the reduced-motion assertion reported getSidebarWidthTransition is not a function. Failure was isolated to the requested motion contract.
+
+PASS: green targeted spec
+COMMAND: npm run test -- --run src/components/Sidebar.test.tsx --reporter=verbose
+OUTPUT: Test Files 1 passed (1); Tests 2 passed (2). The width-only tween and reduced-motion duration assertions passed.
+
+PASS: source contract
+COMMAND: targeted source probe for Sidebar.tsx
+OUTPUT: SIDEBAR_SOURCE_CONTRACT_OK. The aside transition is tween/easeInOut with duration 0.2 or 0, style willChange is width, the old sidebar spring is absent, and layoutId="sidebar-active-indicator" remains.
+
+PASS: typecheck
+COMMAND: npm run typecheck
+OUTPUT: tsc --noEmit; G170_TYPECHECK_PASS.
+
+PASS: anti-slop
+COMMAND: npm run lint:anti-slop
+OUTPUT: oxlint --quiet; G170_ANTISLOP_PASS. Only the pre-existing MODULE_TYPELESS_PACKAGE_JSON warning was emitted.
+
+PASS: layout scope
+COMMAND: diff probe for src/App.tsx and src/components/SettingsPage.tsx
+OUTPUT: G170_LAYOUT_SCOPE_OK; neither file has a worktree diff.
+
+PASS: no spawned PID/window/server
+OUTPUT: This retry did not open a separate window or start a server/watch command. Stale Vite processes from the cancelled worker were terminated (PIDs 14044, 5096, 15732, 15024, 29128, 18568). Final process probe: NO_VITE_SERVER_PROCESS. Harness-managed Playwright/Chrome MCP processes were not modified.
+
+NOTE: lsp_diagnostics was invoked for Sidebar.tsx and Sidebar.test.tsx, but the TypeScript LSP is not installed and installation was previously declined. The compiler and anti-slop checks above are the available static checks.
+
+RESULT: PASS
+
+RETRY VERIFICATION: 2026-09-21 21:44
+PASS: fresh targeted RTL spec
+COMMAND: npm run test -- --run src/components/Sidebar.test.tsx --reporter=verbose
+OUTPUT: Test Files 1 passed (1); Tests 2 passed (2); Duration 2.50s.
+
+PASS: fresh typecheck
+COMMAND: npm run typecheck
+OUTPUT: tsc --noEmit; G170_TYPECHECK_PASS.
+
+PASS: fresh anti-slop
+COMMAND: npm run lint:anti-slop
+OUTPUT: oxlint --quiet; G170_ANTISLOP_PASS. Only the pre-existing MODULE_TYPELESS_PACKAGE_JSON warning was emitted.
+
+PASS: fresh source contract
+COMMAND: targeted source and prop-assertion probe for Sidebar.tsx and Sidebar.test.tsx
+OUTPUT: SIDEBAR_SOURCE_CONTRACT_OK. Tween/easeInOut, 0.2/0 reduced-motion duration, width-only will-change, preserved layoutId, and both prop assertions are present.
+
+PASS: fresh LSP diagnostics attempt
+OUTPUT: TypeScript LSP is not installed and installation was previously declined; npm typecheck is the available static proof.
+
+PASS: no spawned PID/window/server
+OUTPUT: No browser, separate window, dev server, build, or watch command was started for this retry.
+
+RESULT: PASS
