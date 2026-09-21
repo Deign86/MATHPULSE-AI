@@ -37,6 +37,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
   // Ref to always access current notifications state — avoids stale closure in revert
   const notificationsRef = useRef<Notification[]>([]);
+  const markAllAsReadInFlightRef = useRef(false);
 
   // Fire daily check-in reminder (students only)
   useDailyCheckInReminder(userProfile?.role === 'student' ? userId : null);
@@ -76,7 +77,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   );
 
   const markAllAsRead = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || markAllAsReadInFlightRef.current) return;
+    markAllAsReadInFlightRef.current = true;
     const prev = notificationsRef.current;
     console.log('[markAllAsRead] prev count:', prev.filter(n => !n.isRead).length, 'notifications:', prev.length);
     setNotifications((curr) => curr.map((n) => (n.isRead ? n : { ...n, isRead: true })));
@@ -86,7 +88,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       console.log('[markAllAsRead] Firestore update succeeded');
     } catch (err) {
       console.error('[markAllAsRead] Firestore update failed:', err);
-      setNotifications(prev);
+      const previousById = new Map(prev.map((notification) => [notification.id, notification]));
+      setNotifications((curr) => curr.map((notification) => {
+        const previous = previousById.get(notification.id);
+        if (!previous || previous.isRead === notification.isRead) return notification;
+        return { ...notification, isRead: previous.isRead };
+      }));
+    } finally {
+      markAllAsReadInFlightRef.current = false;
     }
   }, [userId]);
 
