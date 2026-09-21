@@ -600,6 +600,14 @@ service cloud.firestore {
       allow read: if resource.data.teacherUid == request.auth.uid || isAdmin();
       allow write: if isAdmin();
     }
+
+    // ── Class Activity Feed (teacher dashboard live stream via subscribeToActivityFeed) ──
+    // Backend writes via Firebase Admin SDK (bypasses rules); teachers/admins read the feed
+    match /activities/{activityId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
     // ── Platform Config (admin-managed subject availability) ──
     match /platformConfig/{docId} {
       allow read: if isSignedIn();
