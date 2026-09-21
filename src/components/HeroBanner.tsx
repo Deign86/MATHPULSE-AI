@@ -55,14 +55,8 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
     }
   };
 
-  const handleNavigateGrades = () => {
-    setIsAssessmentCompleteDismissed(true);
-    try {
-      localStorage.setItem(dismissStorageKey, 'true');
-    } catch {
-      // Ignore localStorage errors safely
-    }
-    window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Grades' } }));
+  const handleOpenResultsModal = () => {
+    setShowResultsModal(true);
   };
 
   // Subscribe to hero banner modal summary when modal is open
@@ -185,10 +179,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           className="absolute right-[68px] min-[360px]:right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 drop-shadow-lg group text-left"
         >
           <div
-            onClick={handleNavigateGrades}
+            onClick={handleOpenResultsModal}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleNavigateGrades(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleOpenResultsModal(); }}
             className="bg-white pl-3.5 sm:pl-4 pr-8 sm:pr-9 py-2 sm:py-3 rounded-2xl rounded-br-sm border-2 border-teal-300 relative transition-all group-hover:bg-teal-50 group-hover:border-teal-400 group-hover:-translate-y-0.5 cursor-pointer"
           >
             <div className="flex items-center gap-1.5 sm:gap-2">

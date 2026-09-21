@@ -161,12 +161,12 @@ describe('notificationFirestoreService', () => {
   describe('getUserNotifications', () => {
     it('returns notifications ordered by createdAt desc', async () => {
       const mockDocs = [
-        { id: 'notif-1', data: () => ({ userId: 'user-123', type: 'daily_checkin', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(2000, 0, 1) }) },
-        { id: 'notif-2', data: () => ({ userId: 'user-123', type: 'streak_reminder', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(1000, 0, 1) }) },
+        { id: 'notif-1', data: () => ({ userId: 'test-user-id', type: 'daily_checkin', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(2000, 0, 1) }) },
+        { id: 'notif-2', data: () => ({ userId: 'test-user-id', type: 'streak_reminder', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(1000, 0, 1) }) },
       ];
       vi.mocked(getDocs).mockResolvedValue(snapshotWith({ docs: mockDocs }));
 
-      const result = await getUserNotifications('user-123', 2);
+      const result = await getUserNotifications('test-user-id', 2);
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe('notif-1'); // Newest first
@@ -174,10 +174,17 @@ describe('notificationFirestoreService', () => {
       expect(getDocs).toHaveBeenCalled();
     });
 
+    it('returns empty array when the requested inbox is not the signed-in user', async () => {
+      const result = await getUserNotifications('someone-else');
+
+      expect(result).toEqual([]);
+      expect(getDocs).not.toHaveBeenCalled();
+    });
+
     it('returns empty array on error', async () => {
       vi.mocked(getDocs).mockRejectedValue(new Error('Query failed'));
 
-      const result = await getUserNotifications('user-123');
+      const result = await getUserNotifications('test-user-id');
 
       expect(result).toEqual([]);
     });
