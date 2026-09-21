@@ -395,7 +395,7 @@ const getAudioContext = () => {
 };
 
 const QuizBattlePage: React.FC = () => {
-  const { userProfile, userRole } = useAuth();
+  const { userProfile, userRole, refreshProfile } = useAuth();
   // SAFETY: trusted internal value already conforms to the asserted type.
   const studentProfile = userProfile as StudentProfile | null;
   const [activeTab, setActiveTab] = useState<BattlePageTab>('hub');
@@ -494,7 +494,14 @@ const QuizBattlePage: React.FC = () => {
   const previousScoreRef = useRef<{ matchId: string; scoreFor: number; scoreAgainst: number } | null>(null);
   const scorePulseTimeoutRef = useRef<number | null>(null);
   const popupShownForRoundRef = useRef<number>(-1);
+  const isMountedRef = useRef(true);
   const isDesignPauseAvailable = import.meta.env.DEV;
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const gradeScopedSubjects = useMemo(() => {
     const allowedSubjectIds = getActiveSubjectIdsForGrade(studentProfile?.grade);
@@ -711,6 +718,20 @@ const QuizBattlePage: React.FC = () => {
       history: historyResult.status === 'fulfilled' ? historyResult.value : [],
     };
   }, [historyFilterMode, studentProfile?.uid]);
+
+  const refreshCompletedMatchProfile = useCallback(async () => {
+    await refreshBattleInsights();
+    if (!isMountedRef.current) return;
+
+    try {
+      await refreshProfile();
+    } catch (error) {
+      console.warn(
+        '[QuizBattle] profile refresh after completion failed:',
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }, [refreshBattleInsights, refreshProfile]);
 
   useEffect(() => {
     if (gradeScopedSubjects.length === 0) return;
@@ -1488,14 +1509,14 @@ const QuizBattlePage: React.FC = () => {
         if (pendingMatchUpdate.status === 'completed') {
           setQueueActive(false);
           setActiveRoom(null);
-          void refreshBattleInsights();
+          void refreshCompletedMatchProfile();
           popupShownForRoundRef.current = -1;
         }
       }, 1500);
 
       return () => window.clearTimeout(timeout);
     }
-  }, [lastRoundResult, pendingMatchUpdate, playBattleTone, refreshBattleInsights]);
+  }, [lastRoundResult, pendingMatchUpdate, playBattleTone, refreshCompletedMatchProfile]);
 
   const submitRoundAnswer = useCallback(
     async (forcedSelection: number | null) => {
@@ -1523,7 +1544,7 @@ const QuizBattlePage: React.FC = () => {
             setQueueActive(false);
             setActiveRoom(null);
             setQueueTimeoutDeadlineAtMs(null);
-            void refreshBattleInsights();
+            void refreshCompletedMatchProfile();
             setLaunchState({
               status: 'queued',
               message: 'Match finished. Results synchronized.',
@@ -1617,7 +1638,7 @@ const QuizBattlePage: React.FC = () => {
           setQueueActive(false);
           setActiveRoom(null);
           setQueueTimeoutDeadlineAtMs(null);
-          void refreshBattleInsights();
+          void refreshCompletedMatchProfile();
           setLaunchState({
             status: 'queued',
             message: response.completion
@@ -1651,7 +1672,7 @@ const QuizBattlePage: React.FC = () => {
               setQueueActive(false);
               setActiveRoom(null);
               setQueueTimeoutDeadlineAtMs(null);
-              void refreshBattleInsights();
+              void refreshCompletedMatchProfile();
               setLaunchState({
                 status: 'queued',
                 message: 'Match finished. Results synchronized.',
@@ -1685,7 +1706,7 @@ const QuizBattlePage: React.FC = () => {
         submitInFlightRoundRef.current = null;
       }
     },
-    [activeMatch, designPauseActive, refreshBattleInsights, roundLocked, roundSecondsLeft],
+    [activeMatch, designPauseActive, refreshCompletedMatchProfile, roundLocked, roundSecondsLeft],
   );
 
   useEffect(() => {
