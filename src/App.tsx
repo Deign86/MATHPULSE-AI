@@ -25,6 +25,8 @@ import { deleteDoc, doc, getDoc, getDocFromServer, updateDoc, serverTimestamp } 
 import { db } from './lib/firebase';
 import { saveAssessmentResult } from './services/gradesService';
 import { buildHeroBannerModalSummary, saveHeroBannerModalSummary } from './services/heroBannerSummaryService';
+import { selectDisplayXP } from './utils/display';
+import { TabErrorBoundary } from './components/TabErrorBoundary.tsx';
 import { useCapacitorBackButton } from './hooks/useCapacitorBackButton';
 import MobileBottomNav from './components/MobileBottomNav';
 
@@ -68,7 +70,10 @@ const SettingsPage = lazy(() => import('./components/SettingsPage.tsx'));
 const ScientificCalculator = lazy(() => import('./components/ScientificCalculator.tsx'));
 const InitialAssessmentModal = lazy(() => import('./components/assessment/InitialAssessmentModal.tsx'));
 const AssessmentPage = lazy(() => import('./pages/AssessmentPage.tsx'));
+const AssessmentHub = lazy(() => import('./components/assessment/AssessmentHub.tsx'));
+const AssessmentResultsModal = lazy(() => import('./components/assessment/AssessmentResultsModal.tsx'));
 const DiagnosticBreakdown = lazy(() => import('./components/assessment/DiagnosticBreakdown.tsx'));
+const RequireRole = lazy(() => import('./components/RequireRole.tsx').then((m) => ({ default: m.RequireRole })));
 
 type ActiveAppModal = null | 'rewards' | 'profile' | 'settings' | 'calculator' | 'logout_confirm' | 'diagnostic_breakdown';
 
@@ -144,6 +149,9 @@ const App = () => {
     sumRequiredForCurrentLevel += Math.floor(100 * Math.pow(1.5, i - 1));
   }
   const progressXPInLevel = Math.max(0, totalXP - sumRequiredForCurrentLevel);
+  // Single source of truth for displayed XP (issue #158): lifetime totalXP,
+  // so the header counter and XP slab always match the leaderboard YOU row.
+  const displayXP = selectDisplayXP(totalXP, currentXP);
   // SAFETY: React.CSSProperties omits CSS custom properties; the XP fill width is asserted at the style boundary.
   const xpFillStyle = { '--w': `${Math.max(0, Math.min(100, (progressXPInLevel / xpToNextLevel) * 100))}%` } as React.CSSProperties;
   // (Streak derived from Daily Reward system via RightSidebar)
@@ -269,6 +277,7 @@ const App = () => {
   const [initialAssessmentCompleted, setInitialAssessmentCompleted] = useState(false);
   const [diagnosticCheckVersion, setDiagnosticCheckVersion] = useState(0);
   const [showAssessmentPage, setShowAssessmentPage] = useState(false);
+  const [showAssessmentResults, setShowAssessmentResults] = useState(false);
   const [assessmentTestId, setAssessmentTestId] = useState<string>('');
   const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([]);
   const [atRiskSubjects, setAtRiskSubjects] = useState<string[]>(studentProfile?.atRiskSubjects || []);
@@ -429,6 +438,23 @@ const App = () => {
   const handleOpenInitialAssessment = () => {
     setShowDiagnosticModal(true);
   };
+
+  const assessmentDeepLinkOpenedRef = useRef(false);
+  useEffect(() => {
+    if (activeTab !== 'Assessment') {
+      assessmentDeepLinkOpenedRef.current = false;
+      return;
+    }
+    if (assessmentDeepLinkOpenedRef.current) return;
+    if (showAssessmentPage || activeModal !== null) return;
+    if (hasCompletedDiagnostic === false && !showDiagnosticModal) {
+      assessmentDeepLinkOpenedRef.current = true;
+      setShowDiagnosticModal(true);
+    } else if (hasCompletedDiagnostic === true && !showDiagnosticModal && !showAssessmentResults) {
+      assessmentDeepLinkOpenedRef.current = true;
+      setShowAssessmentResults(true);
+    }
+  }, [activeTab, hasCompletedDiagnostic, showAssessmentPage, showDiagnosticModal, showAssessmentResults, activeModal]);
 
   useEffect(() => {
     const handler = () => setShowDiagnosticModal(true);
@@ -850,8 +876,16 @@ const App = () => {
     // This guarantees checkDiagnostic sees them gone even if the async
     // reset is slow or the Firestore cache hasn't propagated yet.
     if (userRole === 'student') {
-      await deleteDoc(doc(db, 'diagnosticResults', userProfile.uid)).catch(() => undefined);
-      await deleteDoc(doc(db, 'competencyProfiles', userProfile.uid)).catch(() => undefined);
+      // Issue #159: best-effort pre-delete — resetTestingDataForRole below is
+      // the authoritative reset; failures here only mean it does the work.
+      await deleteDoc(doc(db, 'diagnosticResults', userProfile.uid)).catch((err) => {
+        console.debug('[App] pre-delete diagnosticResults failed (non-blocking):', err);
+        return undefined;
+      });
+      await deleteDoc(doc(db, 'competencyProfiles', userProfile.uid)).catch((err) => {
+        console.debug('[App] pre-delete competencyProfiles failed (non-blocking):', err);
+        return undefined;
+      });
     }
 
     const { resetTestingDataForRole } = await import('./services/testResetService.ts');
@@ -1030,6 +1064,7 @@ const App = () => {
   if (userRole === 'teacher') {
     authenticatedContent = (
       <NotificationProvider>
+      <RequireRole allowed={['teacher']} userRole={userRole} loading={loading} onGoToLogin={handleLogout}>
       <>
         <Suspense fallback={<AppLoadingScreen message="Loading teacher dashboard..." />}>
           <TeacherDashboard 
@@ -1064,13 +1099,15 @@ const App = () => {
              />
            </Suspense>
          )}
-         <Toaster position="top-right" richColors closeButton />
-       </>
+          <Toaster position="top-right" richColors closeButton />
+        </>
+      </RequireRole>
       </NotificationProvider>
     );
   } else if (userRole === 'admin') {
     authenticatedContent = (
       <NotificationProvider>
+      <RequireRole allowed={['admin']} userRole={userRole} loading={loading} onGoToLogin={handleLogout}>
       <>
         <Suspense fallback={<AppLoadingScreen message="Loading admin dashboard..." />}>
           <AdminDashboard 
@@ -1105,8 +1142,9 @@ const App = () => {
             />
           </Suspense>
         )}
-         <Toaster position="top-right" richColors closeButton />
-       </>
+          <Toaster position="top-right" richColors closeButton />
+        </>
+      </RequireRole>
       </NotificationProvider>
     );
   } else {
@@ -1196,10 +1234,10 @@ const App = () => {
                   onClick={() => setActiveModal('rewards')}
                   className="hidden min-[360px]:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gradient-to-b from-violet-50 to-violet-100/90 border border-violet-200/80 shadow-[0_2px_0_#ddd6fe,0_3px_8px_rgba(139,92,246,0.1)] active:translate-y-[1px] active:shadow-none hover:bg-violet-50 transition-all shrink-0 cursor-pointer"
                   title={`${progressXPInLevel}/${xpToNextLevel} XP`}
-                  aria-label={`XP: ${currentXP}`}
+                  aria-label={`XP: ${displayXP}`}
                 >
                   <Zap className="w-3.5 h-3.5 text-violet-500 shrink-0 drop-shadow-sm" />
-                  <span className="text-xs font-display font-black text-violet-700 dark:text-violet-300 tabular-nums shrink-0">{currentXP} XP</span>
+                  <span className="text-xs font-display font-black text-violet-700 dark:text-violet-300 tabular-nums shrink-0">{displayXP} XP</span>
                   <div className="w-14 sm:w-20 h-2 bg-violet-200/60 dark:bg-violet-950/60 rounded-full overflow-hidden shadow-inner shrink-0">
                     <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all" style={xpFillStyle} />
                   </div>
@@ -1257,6 +1295,12 @@ const App = () => {
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                 className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' || activeTab === 'Leaderboard' || activeTab === 'Quiz Battle' ? 'h-full min-h-0' : ''}
               >
+                {/* Per-route boundary (issue #159 item 5): a crash in one tab
+                    shows a retry card instead of the app-wide fallback. */}
+                <TabErrorBoundary
+                  routeName={activeTab}
+                  onHome={() => handleStudentNavigation('Dashboard')}
+                >
                 {activeTab === 'Dashboard' ? (
                   <div className="px-5 sm:px-8 xl:px-12 py-1.5 sm:py-2.5 lg:py-3 flex flex-col gap-3 sm:gap-4 lg:gap-4.5">
                     <div className="grid grid-cols-12 gap-4 sm:gap-6 lg:gap-10">
@@ -1355,7 +1399,7 @@ const App = () => {
                                 Current XP
                               </span>
                               <span className="block text-lg sm:text-xl font-display font-black text-white tabular-nums leading-tight mt-1.5 drop-shadow-sm">
-                                {currentXP}
+                                {displayXP}
                               </span>
                             </div>
                           </button>
@@ -1556,11 +1600,21 @@ const App = () => {
                       previousTabName={previousTab || 'Dashboard'}
                     />
                   </Suspense>
+                ) : activeTab === 'Assessment' ? (
+                  <Suspense fallback={tabLoadingFallback}>
+                    <AssessmentHub
+                      status={hasCompletedDiagnostic === null ? 'loading' : hasCompletedDiagnostic ? 'assessed' : 'unassessed'}
+                      onStartAssessment={handleOpenInitialAssessment}
+                      onViewResults={() => setShowAssessmentResults(true)}
+                      onViewBreakdown={() => setActiveModal('diagnostic_breakdown')}
+                    />
+                  </Suspense>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-[#a8a5b3] font-medium font-body">
                     {activeTab} Content Coming Soon
                   </div>
                 )}
+                </TabErrorBoundary>
               </motion.div>
             </AnimatePresence>
           </main>
@@ -1689,6 +1743,17 @@ const App = () => {
                   setShowAssessmentPage(false);
                   setActiveTab('Dashboard');
                 }}
+              />
+            </Suspense>
+          )}
+
+          {/* Assessment results & history (deep-link landing for assessed students) */}
+          {showAssessmentResults && userProfile?.uid && (
+            <Suspense fallback={null}>
+              <AssessmentResultsModal
+                isOpen={showAssessmentResults}
+                onClose={() => setShowAssessmentResults(false)}
+                studentId={userProfile.uid}
               />
             </Suspense>
           )}

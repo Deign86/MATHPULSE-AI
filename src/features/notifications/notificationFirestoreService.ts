@@ -23,6 +23,7 @@ import {
 import { startOfDay, endOfDay } from 'date-fns';
 import { auth, db } from '@/lib/firebase';
 import type { Notification, NotificationPayload } from './types';
+import { defaultRecipientRole } from './types';
 
 /** Auth guard: skip Firestore call silently if user is not authenticated.
  *  Prevents "Missing or insufficient permissions" errors from Firestore
@@ -78,6 +79,7 @@ const mapNotificationDoc = (docSnap: { id: string; data: () => DocumentData }): 
     createdAt,
     metadata: data.metadata,
     actionUrl: data.actionUrl as string | undefined,
+    recipientRole: data.recipientRole as Notification['recipientRole'],
   };
 };
 
@@ -93,6 +95,7 @@ export const createNotification = async (payload: NotificationPayload): Promise<
       message: payload.message,
       isRead: false,
       createdAt: serverTimestamp(),
+      recipientRole: payload.recipientRole ?? defaultRecipientRole(payload.type),
     };
     if (payload.metadata) notificationData.metadata = payload.metadata;
     if (payload.actionUrl) notificationData.actionUrl = payload.actionUrl;
@@ -109,6 +112,9 @@ export const getUserNotifications = async (
   userId: string,
   limitCount: number = 50
 ): Promise<Notification[]> => {
+  if (requireAuth() !== userId) {
+    return [];
+  }
   try {
     const notificationsQuery = query(
       collection(db, 'notifications', userId, 'items'),

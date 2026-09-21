@@ -4,6 +4,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Notification } from './types';
+import { dedupeNotifications, filterNotificationsForRole, selectUnreadCount } from './types';
 import {
   subscribeToNotifications,
   markAsRead as firestoreMarkAsRead,
@@ -49,12 +50,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
     setIsLoading(true);
     const unsubscribe = subscribeToNotifications(userId, (newNotifications) => {
-      setNotifications(newNotifications);
+      setNotifications(dedupeNotifications(filterNotificationsForRole(newNotifications, userProfile?.role)));
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [userId]);
+  }, [userId, userProfile?.role]);
 
   // Keep ref in sync with current notifications state
   useEffect(() => {
@@ -62,7 +63,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   }, [notifications]);
 
   const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.isRead).length,
+    () => selectUnreadCount(notifications),
     [notifications]
   );
 
