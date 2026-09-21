@@ -54,7 +54,7 @@ Scope: Keep the Inspect Evidence trigger and embedded evidence modal staff-only 
 - [x] G1a-6: Adversarial checks cover prompt_injection (N/A: no untrusted text), stale_state, dirty_worktree, and misleading_success_output
   EVIDENCE: Dispositions recorded in `.omo/evidence/fix-9-qa-issues/task-3.log`; live API 502 and unavailable teacher LessonViewer route were retained instead of being reported as passes.
 
-- [ ] G1a-7: Task artifacts exist and the final commit has the requested subject
+- [x] G1a-7: Task artifacts exist and the final commit has the requested subject
   CHECK: node -e "const fs=require('fs'); for (const f of ['.omo/evidence/fix-9-qa-issues/task-3.log','.omo/evidence/fix-9-qa-issues/task-3.png']) { if (!fs.existsSync(f)) throw new Error('missing '+f); } console.log('TASK_3_ARTIFACTS_OK')" && git log -1 --pretty=%s
   EXPECT: /TASK_3_ARTIFACTS_OK[\s\S]*fix\(lesson\): gate grounding evidence behind staff view/
-  EVIDENCE: pending
+  EVIDENCE: `TASK_3_ARTIFACTS_OK`; final implementation commit uses `fix(lesson): gate grounding evidence behind staff view`.

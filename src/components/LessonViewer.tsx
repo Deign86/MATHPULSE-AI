@@ -1496,21 +1496,23 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 </a>
               ) : null}
 
-              <button
-                type="button"
-                onClick={() => setShowEvidenceModal(true)}
-                aria-label="Inspect evidence"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs"
-                title={isStaffView ? 'Inspect retrieved DepEd text chunks, similarity scores, and metadata' : 'View DepEd curriculum alignment for this lesson'}
-              >
-                <FileSearch size={12} className="shrink-0" />
-                <span>Inspect Evidence</span>
-                {sources && sources.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black tabular-nums">
-                    {sources.length}
-                  </span>
-                )}
-              </button>
+              {isStaffView && (
+                <button
+                  type="button"
+                  onClick={() => setShowEvidenceModal(true)}
+                  aria-label="Inspect evidence"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs"
+                  title={isStaffView ? 'Inspect retrieved DepEd text chunks, similarity scores, and metadata' : 'View DepEd curriculum alignment for this lesson'}
+                >
+                  <FileSearch size={12} className="shrink-0" />
+                  <span>Inspect Evidence</span>
+                  {sources && sources.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black tabular-nums">
+                      {sources.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1761,7 +1763,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       </AnimatePresence>
 
       {/* DepEd Evidence Inspection Modal */}
-      <AnimatePresence>
+      {isStaffView && <AnimatePresence>
         {showEvidenceModal && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -2000,7 +2002,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>}
     </div>
   );
 

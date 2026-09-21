@@ -111,43 +111,23 @@ describe('Issue #164: Curriculum Grounding Evidence role gating', () => {
     activeProfile = null;
   });
 
-  it('student evidence modal hides all RAG telemetry and shows assurance copy', () => {
+  it('student sees neither the evidence trigger nor the evidence modal', () => {
     setRole('student');
     renderLessonViewer();
+
+    expect(screen.queryByLabelText('Inspect evidence')).toBeNull();
+    expect(screen.queryByText('Curriculum Grounding Evidence')).toBeNull();
 
     const page = document.body.textContent || '';
     expect(page).not.toContain('deepseek-reasoner');
     expect(page).not.toContain('SHS_GM_Q1_LE2.md');
-
-    const modal = openEvidenceModal();
-    const text = modal.textContent || '';
-    for (const banned of [
-      'deepseek',
-      '.md',
-      'Similarity',
-      'Chunk #',
-      'Active Model',
-      'Retrieval Score',
-      'Retrieved Chunks',
-      'general_mathematics',
-      'concept',
-      'Raw vector store chunk excerpt',
-      '81.2%',
-      '82.3%',
-      'DepEd RAG Grounding',
-      'Flagged for Review',
-    ]) {
-      expect(text).not.toContain(banned);
-    }
-    expect(text).toContain('Verified DepEd Senior High School STEM Curriculum');
-    expect(text).toContain('GM11-BF-1');
-    expect(text).toContain('Open official textbook lesson');
   });
 
   it('staff evidence modal retains full RAG telemetry', () => {
     setRole('teacher');
     renderLessonViewer();
 
+    expect(screen.getByLabelText('Inspect evidence')).toBeVisible();
     const page = document.body.textContent || '';
     expect(page).toContain('deepseek-reasoner');
 
@@ -160,15 +140,13 @@ describe('Issue #164: Curriculum Grounding Evidence role gating', () => {
     expect(text).toContain('DepEd RAG Grounding');
   });
 
-  it('role switch re-renders evidence modal without reload', () => {
-    setRole('student');
+  it('student cannot mount a stale evidence modal after staff opens it', () => {
+    setRole('teacher');
     const view = renderLessonViewer();
-    let modal = openEvidenceModal();
-    expect((modal.textContent || '')).toContain(
-      'Verified DepEd Senior High School STEM Curriculum',
-    );
+    openEvidenceModal();
+    expect(screen.getByText('Chunk #1')).toBeInTheDocument();
 
-    setRole('admin');
+    setRole('student');
     view.rerender(
       <AuthContext.Provider value={buildTestAuthContext(activeProfile)}>
         <LessonViewer
@@ -180,12 +158,7 @@ describe('Issue #164: Curriculum Grounding Evidence role gating', () => {
         />
       </AuthContext.Provider>
     );
-    const heading = screen.getByText('Curriculum Grounding Evidence');
-    // SAFETY: getByText throws when absent and the heading always renders inside the .max-w-3xl modal.
-    modal = heading.closest('.max-w-3xl') as HTMLElement;
-    const text = modal.textContent || '';
-    expect(text).toContain('Chunk #1');
-    expect(text).toContain('deepseek-reasoner');
-    expect(text).not.toContain('Verified DepEd Senior High School STEM Curriculum');
+    expect(screen.queryByLabelText('Inspect evidence')).toBeNull();
+    expect(screen.queryByText('Curriculum Grounding Evidence')).toBeNull();
   });
 });
