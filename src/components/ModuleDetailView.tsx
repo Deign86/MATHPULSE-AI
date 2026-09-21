@@ -19,6 +19,16 @@ import { generatePracticeSession } from '../services/practiceService';
 import { useModuleProgress } from '../hooks/useModuleProgress';
 import { Loader2 } from 'lucide-react';
 
+const MODULE_SUBJECT_FALLBACKS = {
+  gm: 'gen-math',
+  bm: 'business-math',
+  stat: 'stats-prob',
+  sp: 'stats-prob',
+  fm: 'finite-math',
+} as const;
+
+const DEFAULT_SUBJECT_ID = 'gen-math';
+
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
 }
@@ -104,13 +114,25 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return Number.isFinite(candidate) && candidate > 0 ? candidate : 1;
   }, [module.id]);
 
-  const subjectId = useMemo(() => {
+  const subjectIdResolution = useMemo(() => {
     // SAFETY: trusted internal value already conforms to the asserted type.
     const curriculumSubjectId = (module as Module & { subjectId?: string }).subjectId;
-    if (curriculumSubjectId) return curriculumSubjectId;
+    if (curriculumSubjectId) return { id: curriculumSubjectId, source: 'module' as const };
     const parent = subjects.find((s) => s.modules.some((m) => m.id === module.id));
-    return parent?.id ?? null;
+    if (parent?.id) return { id: parent.id, source: 'parent' as const };
+
+    const normalizedModuleId = module.id.trim().toLowerCase();
+    const fallbackSubjectId = Object.entries(MODULE_SUBJECT_FALLBACKS).find(([prefix]) =>
+      normalizedModuleId.startsWith(`${prefix}-`),
+    )?.[1];
+
+    return {
+      id: fallbackSubjectId ?? DEFAULT_SUBJECT_ID,
+      source: 'fallback' as const,
+    };
   }, [module.id]);
+
+  const { id: subjectId, source: subjectIdSource } = subjectIdResolution;
 
   // Palette (requested) used for per-module accents where the curriculum data isn't differentiated.
   const MODULE_PALETTE = ['#1FA7E1', '#9956DE', '#75D06A', '#FFB356', '#7274ED', '#FF8B8B', '#6ED1CF', '#FB96BB'];
@@ -336,7 +358,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     onEarnXPRef.current?.(xpAmount, `Completed "${currentLesson.title}"`);
 
     // Persist progress for Competency Matrix (Concept Grasp)
-    if (userProfile?.uid && subjectId) {
+    if (userProfile?.uid) {
+      if (subjectIdSource === 'fallback') {
+        console.warn('[LessonComplete] Using fallback subject id', {
+          moduleId: module.id,
+          subjectId,
+        });
+      }
       void (async () => {
         try {
           await markStudyMaterialsComplete(currentLesson.id);
@@ -377,7 +405,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     } else {
       setSelectedLesson(null);
     }
-  }, [subjectId, module.id, module.lessons.length, module.quizzes.length]);
+  }, [subjectId, subjectIdSource, module.id, module.lessons.length, module.quizzes.length]);
 
   const handleProgressUpdate = useCallback((percent: number) => {
     if (!userProfile?.uid || !selectedLessonRef.current || selectedLessonRef.current.type !== 'lesson') return;
