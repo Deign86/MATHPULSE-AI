@@ -1,0 +1,35 @@
+G2b #166 CSV/PDF export toggle QA
+Date: 2026-09-21
+
+CONSTRAINTS
+- Chrome DevTools MCP only for browser QA.
+- No Playwright MCP, Playwright script, dev server, build, watch process, or separate browser window was used.
+- Existing attached browser tab was reused.
+
+RED_GREEN
+- RED: temporarily removed only the production ToggleGroup from GradesPage.tsx; focused Vitest failed 3 tests and passed 2, with failures on the missing Export format group/CSV/PDF radio controls.
+- GREEN: restored the ToggleGroup; focused Vitest passed 1 file and 5 tests.
+  VITEST_PASS: npm run test -- --run src/components/GradesPage.test.tsx --reporter=verbose
+
+STATIC
+- TYPECHECK_PASS: npm run typecheck
+- ANTISLOP_PASS: npm run lint:anti-slop (only the pre-existing MODULE_TYPELESS_PACKAGE_JSON warning)
+- DIFF_CHECK_PASS: git diff --check passed after removing two pre-existing touched-line trailing spaces.
+- LSP_DISPOSITION: lsp_diagnostics was attempted for GradesPage.tsx and GradesPage.test.tsx; the configured TypeScript server is not installed and installation was previously declined.
+
+CHROME_DEVTOOLS_QA
+- list_pages: one attached tab was present and reused.
+- navigate_page: navigated the attached tab to https://mathpulse-ai-2026.web.app/grades.
+- take_snapshot: Grades & Assessment and Export Report rendered in the deployed page.
+- take_screenshot: .omo/evidence/fix-9-qa-issues/task-8.png
+- evaluate_script assertion: {"url":"https://mathpulse-ai-2026.web.app/grades","hasGradesHeading":true,"hasExportButton":true,"hasExportToggle":false}
+- CHROME_DEVTOOLS_ASSERT: the deployed page is stable enough to prove the route and legacy export button, but it predates the local G2b toggle.
+- FALLBACK_REASON: the requested local source cannot be browser-tested without starting a server, which is forbidden by the task; the focused RTL/file proof covers the un-deployed toggle.
+- NO_PLAYWRIGHT: confirmed; no Playwright browser tool or script was used.
+- NO_SERVER: confirmed; no server/build/watch process was started.
+
+FILE_PROOF
+- FILE_EXISTS_PASS: screenshot exists at .omo/evidence/fix-9-qa-issues/task-8.png.
+- G2B_FILE_PROOF_PASS: GradesPage.test.tsx covers toggle rendering, legacy CSV bytes, CSV/PDF filenames, PDF utility row shaping, empty CSV message, and failure toast; GradesPage.tsx routes the selected format through the existing CSV shaping/PDF utility.
+
+RESULT: PASS_WITH_FALLBACK
