@@ -15,6 +15,8 @@ from services.llm_json import extract_json_object
 
 from services.inference_client import (
     InferenceRequest,
+    InferenceAuthError,
+    InferenceConnectionError,
     create_default_client,
     is_sequential_model,
     get_model_for_task,
@@ -420,6 +422,26 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             task_type="rag_lesson",
             max_new_tokens=4096,
             enable_thinking=True,
+        )
+    except InferenceAuthError as exc:
+        logger.error(f"RAG inference auth error: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "inference_auth_failed",
+                "message": f"AI model call failed: {exc}",
+                "type": type(exc).__name__,
+            },
+        )
+    except InferenceConnectionError as exc:
+        logger.error(f"RAG inference connection error: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "inference_connection_failed",
+                "message": f"AI model call failed: {exc}",
+                "type": type(exc).__name__,
+            },
         )
     except Exception as exc:
         logger.error(f"RAG inference error: {type(exc).__name__}: {exc}")
