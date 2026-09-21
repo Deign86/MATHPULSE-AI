@@ -92,7 +92,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 w-full max-w-4xl px-4">
         {activeMatch.currentQuestion?.choices.map((choice: string, idx: number) => {
           const isSelected = selectedOptionIndex === idx;
-          const isSubmitting = answerSubmitting || roundLocked;
+          const isSubmitting = answerSubmitting || roundLocked || roundSecondsLeft <= 0;
           const isRoundOver = !!lastRoundResult && lastRoundResult.roundNumber === activeMatch.currentRound;
           const isCorrectOption = isRoundOver && lastRoundResult.correctOptionIndex === idx;
           
@@ -129,7 +129,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
             <motion.button
               whileTap={{ y: 8, scale: 0.98 }}
               whileHover={!isRoundOver && !isSubmitting ? { scale: 1.02 } : {}}
-              disabled={isSubmitting || roundLocked || designPauseActive}
+              disabled={isSubmitting || roundLocked || designPauseActive || roundSecondsLeft <= 0}
               key={idx}
               onClick={() => onOptionSelect(idx)}
               className={cn(

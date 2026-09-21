@@ -1479,8 +1479,18 @@ const QuizBattlePage: React.FC = () => {
       if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || designPauseActive) {
         return;
       }
+      if (
+        forcedSelection !== null &&
+        (roundSecondsLeft <= 0 ||
+          (activeMatch.roundDeadlineAtMs !== undefined &&
+            activeMatch.roundDeadlineAtMs !== null &&
+            Date.now() >= activeMatch.roundDeadlineAtMs))
+      ) {
+        return;
+      }
 
       if (forcedSelection === null) {
+        setRoundLocked(true);
         try {
           const latest = await getQuizBattleMatchState(activeMatch.matchId);
           setActiveMatch(latest);
@@ -2270,6 +2280,14 @@ const QuizBattlePage: React.FC = () => {
                     if (!!lastRoundResult && lastRoundResult.roundNumber === activeMatch.currentRound) return;
                     if (answerSubmitting || roundLocked) return;
                     if (submitInFlightRoundRef.current === activeMatch.currentRound) return;
+                    if (
+                      roundSecondsLeft <= 0 ||
+                      (activeMatch.roundDeadlineAtMs !== undefined &&
+                        activeMatch.roundDeadlineAtMs !== null &&
+                        Date.now() >= activeMatch.roundDeadlineAtMs)
+                    ) {
+                      return;
+                    }
                     // Issue #159, justified silent catch: same autoplay-policy
                     // rationale as the resume above; lock tone is decorative.
                     getAudioContext()?.resume().catch(() => { /* tones stay muted */ });

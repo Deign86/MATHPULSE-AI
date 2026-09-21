@@ -144,6 +144,37 @@ export const shouldPostTimeoutSubmit = (selectedOptionIndex: number | null): boo
 export const isStaleRoundError = (message: string): boolean =>
   /Expected round \d+, received \d+|Round timer elapsed|Match is not currently active/i.test(message);
 
+export interface IsRoundExpiredOrLockedParams {
+  roundSecondsLeft?: number | null;
+  roundDeadlineAtMs?: number | null;
+  roundLocked?: boolean | null;
+  answerSubmitting?: boolean | null;
+  now?: number;
+}
+
+export const isRoundExpiredOrLocked = ({
+  roundSecondsLeft,
+  roundDeadlineAtMs,
+  roundLocked,
+  answerSubmitting,
+  now = Date.now(),
+}: IsRoundExpiredOrLockedParams): boolean => {
+  if (Boolean(roundLocked) || Boolean(answerSubmitting)) {
+    return true;
+  }
+  if (roundSecondsLeft !== undefined && roundSecondsLeft !== null && roundSecondsLeft <= 0) {
+    return true;
+  }
+  if (
+    roundDeadlineAtMs !== undefined &&
+    roundDeadlineAtMs !== null &&
+    now >= roundDeadlineAtMs
+  ) {
+    return true;
+  }
+  return false;
+};
+
 export interface RoundScoreBreakdown {
   basePoints: number;
   difficultyMultiplier: number;
