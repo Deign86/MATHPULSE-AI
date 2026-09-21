@@ -10,7 +10,24 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 import yaml
-from openai import OpenAI, APIError, RateLimitError, APITimeoutError
+from openai import OpenAI, APIError, RateLimitError, APITimeoutError, APIConnectionError
+
+
+class InferenceAuthError(Exception):
+    """Raised when the inference provider rejects authentication or permissions (401/403)."""
+
+    def __init__(self, message: str, status_code: Optional[int] = None) -> None:
+        super().__init__(message)
+        self.status_code: Optional[int] = status_code
+
+
+class InferenceConnectionError(Exception):
+    """Raised when network connection to the inference provider fails."""
+
+    def __init__(self, message: str, status_code: Optional[int] = None) -> None:
+        super().__init__(message)
+        self.status_code: Optional[int] = status_code
+
 
 try:
     from dotenv import load_dotenv
@@ -816,6 +833,51 @@ class InferenceClient:
 
             except APIError as e:
                 latency_ms = (time.perf_counter() - start) * 1000
+                status = getattr(e, "status_code", None)
+                if status in (401, 403):
+                    self._bump_metric("requests_error", 1)
+                    log_model_call(
+                        LOGGER,
+                        provider="deepseek",
+                        model=target_model,
+                        endpoint=self.ds_base_url,
+                        latency_ms=latency_ms,
+                        input_tokens=None,
+                        output_tokens=None,
+                        status="error",
+                        error_class="InferenceAuthError",
+                        error_message=str(e)[:200],
+                        task_type=task_type,
+                        request_tag=req.request_tag,
+                        retry_attempt=attempt + 1,
+                        fallback_depth=fallback_depth,
+                        route=route,
+                    )
+                    # Fail fast without retries: authentication/permission errors do not resolve with retries
+                    raise InferenceAuthError(f"DeepSeek auth failed ({status}): {str(e)}", status_code=status) from e
+
+                if isinstance(e, APIConnectionError):
+                    self._bump_metric("requests_error", 1)
+                    log_model_call(
+                        LOGGER,
+                        provider="deepseek",
+                        model=target_model,
+                        endpoint=self.ds_base_url,
+                        latency_ms=latency_ms,
+                        input_tokens=None,
+                        output_tokens=None,
+                        status="error",
+                        error_class="InferenceConnectionError",
+                        error_message=str(e)[:200],
+                        task_type=task_type,
+                        request_tag=req.request_tag,
+                        retry_attempt=attempt + 1,
+                        fallback_depth=fallback_depth,
+                        route=route,
+                    )
+                    # Fail fast without retries: network/transport connection failures fail fast to bubble connection state
+                    raise InferenceConnectionError(f"DeepSeek connection failed: {str(e)}", status_code=status) from e
+
                 if attempt < max_retries - 1:
                     log_model_call(
                         LOGGER,
