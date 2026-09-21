@@ -13,6 +13,7 @@ import { onDisconnect, ref as rtdbRef, serverTimestamp as rtdbServerTimestamp, s
 import { httpsCallable } from 'firebase/functions';
 import { auth, cloudFunctions, db, realtimeDb } from '../lib/firebase';
 import { z } from 'zod';
+import { toDateSafe } from '../utils/timestamp';
 import {
   QuizBattleLifecycleEventType,
   QuizBattleLifecycleState,
@@ -29,6 +30,32 @@ export interface QuizBattleHistoryFilters {
   startDate?: Date;
   endDate?: Date;
   limitCount?: number;
+}
+
+export type BattleWidgetName = 'stats' | 'history' | 'leaderboard';
+
+export interface BattleWidgetError {
+  widget: BattleWidgetName;
+  message: string;
+  at: number;
+}
+
+// Issue #159 item 5: widget loads fail soft (silent fallbacks below), so
+// failures are recorded here for the page to surface as visible error cards.
+// Drained by takeBattleWidgetErrors after each load cycle.
+const widgetErrorLog: BattleWidgetError[] = [];
+
+function recordWidgetError(widget: BattleWidgetName, error: Error): void {
+  console.error(`[QuizBattle] ${widget} widget load failed (showing fallback):`, error);
+  widgetErrorLog.push({ widget, message: error.message || 'Unknown error', at: Date.now() });
+}
+
+// Exported so page-level aggregation (e.g. refreshBattleInsights) can record
+// a widget failure when an underlying load rejects instead of failing soft.
+export const recordBattleWidgetError = recordWidgetError;
+
+export function takeBattleWidgetErrors(): BattleWidgetError[] {
+  return widgetErrorLog.splice(0, widgetErrorLog.length);
 }
 
 export interface QuizBattleSetupError {
@@ -108,7 +135,14 @@ export interface QuizBattleLiveQuestion {
   questionId: string;
   prompt: string;
   choices: string[];
+  roundId?: string;
 }
+
+export const shouldPostTimeoutSubmit = (selectedOptionIndex: number | null): boolean =>
+  selectedOptionIndex !== null;
+
+export const isStaleRoundError = (message: string): boolean =>
+  /Expected round \d+, received \d+|Round timer elapsed|Match is not currently active/i.test(message);
 
 export interface RoundScoreBreakdown {
   basePoints: number;
@@ -665,31 +699,7 @@ const invokeWithTimeout = async <T>(
   }
 };
 
-/** Firestore timestamp-like shapes accepted by parseDateValue. */
-const timestampLikeValue = z.looseObject({
-  toDate: z.instanceof(Function).optional(),
-  seconds: z.number().optional(),
-});
-
-const parseDateValue = <V>(value: V): Date => {
-  if (!value) return new Date();
-  if (value instanceof Date) return value;
-
-  const asNumber = z.number().safeParse(value);
-  if (asNumber.success) return new Date(asNumber.data);
-
-  const asString = z.string().safeParse(value);
-  if (asString.success) {
-    const parsedTime = Date.parse(asString.data);
-    return Number.isNaN(parsedTime) ? new Date() : new Date(parsedTime);
-  }
-
-  const ts = timestampLikeValue.safeParse(value);
-  if (ts.success && ts.data.toDate instanceof Function) return ts.data.toDate();
-  if (ts.success && ts.data.seconds !== undefined) return new Date(ts.data.seconds * 1000);
-
-  return new Date();
-};
+const parseDateValue = <V>(value: V): Date => toDateSafe(value);
 
 export const createDefaultQuizBattleSetup = (): QuizBattleSetupConfig => ({
   mode: 'online',
@@ -782,7 +792,7 @@ export const getStudentBattleStats = async (userId: string): Promise<StudentBatt
 
     return remoteStats;
   } catch (error) {
-    console.error('Error loading battle stats:', error);
+    recordWidgetError('stats', error instanceof Error ? error : new Error('Unknown error'));
 
     if (isDevLocalFallbackEnabled()) {
       const localStats = readLocalStore(userId).stats;
@@ -910,7 +920,7 @@ export const getStudentBattleHistory = async (
 
       return mergeWithLocal(remoteFallback);
     } catch (fallbackError) {
-      console.error('Error loading battle history:', error, fallbackError);
+      recordWidgetError('history', fallbackError instanceof Error ? fallbackError : new Error('Unknown error'));
       return applyFilters(localHistory);
     }
   }
@@ -1240,7 +1250,18 @@ export const submitQuizBattleAnswer = async (payload: {
   selectedOptionIndex: number | null;
   responseMs: number;
   idempotencyKey?: string;
+  roundId?: string;
 }): Promise<QuizBattleSubmitAnswerResponse> => {
+  if (!shouldPostTimeoutSubmit(payload.selectedOptionIndex)) {
+    const match = await getQuizBattleMatchState(payload.matchId);
+    return {
+      success: true,
+      duplicate: true,
+      roundResult: match.roundResults.find((entry) => entry.roundNumber === payload.roundNumber) || null,
+      match,
+    };
+  }
+
   const callable = httpsCallable<
     {
       matchId: string;
@@ -1248,6 +1269,7 @@ export const submitQuizBattleAnswer = async (payload: {
       selectedOptionIndex: number | null;
       responseMs: number;
       idempotencyKey: string;
+      roundId?: string;
     },
     QuizBattleSubmitAnswerResponse
   >(cloudFunctions, 'quizBattleSubmitAnswer');
@@ -1314,7 +1336,7 @@ export const getStudentBattleLeaderboard = async (
       };
     });
   } catch (error) {
-    console.error('Error loading Quiz Battle leaderboard:', error);
+    recordWidgetError('leaderboard', error instanceof Error ? error : new Error('Unknown error'));
     return [];
   }
 };
