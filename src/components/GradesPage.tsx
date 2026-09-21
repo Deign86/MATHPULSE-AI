@@ -25,7 +25,9 @@ import {
   Maximize2,
   X
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from './ui/button';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToGradeSummary, subscribeToAssessments, type GradeSummary, type AssessmentRecord } from '../services/gradesService';
 import { type StudentProfile, type UserProgress } from '../types/models';
@@ -35,6 +37,7 @@ import { useCurriculum } from '../hooks/useCurriculum';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { recordGet } from '../utils/memberOf';
+import { createGradesPdf } from '../utils/pdfExport';
 
 const DiagnosticBreakdown = lazy(() => import('./assessment/DiagnosticBreakdown'));
 
@@ -51,6 +54,8 @@ interface ExamMilestone {
   status: 'completed' | 'in-progress' | 'ready';
   statusLabel: string;
 }
+
+type ExportFormat = 'csv' | 'pdf';
 
 // Creative Radial Score Ring with smooth SVG gradient
 const RadialScoreRing: React.FC<{ 
@@ -125,6 +130,7 @@ const GradesPage = () => {
   const [showBreakdownModal, setShowBreakdownModal] = useState(false);
   const [showFullGraphModal, setShowFullGraphModal] = useState(false);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
 
   // Safely cast userProfile to StudentProfile to access grade
   // SAFETY: trusted internal value already conforms to the asserted type.
@@ -447,7 +453,7 @@ const GradesPage = () => {
     }
   }, [allowedSubjectLabels, filterSubject]);
 
-  const handleExportReport = () => {
+  const handleExportReport = async (format: ExportFormat): Promise<void> => {
     const escapeCsvValue = (value: string | number) => {
       const stringValue = String(value ?? '');
       if (/[",\n]/.test(stringValue)) {
@@ -460,6 +466,19 @@ const GradesPage = () => {
     // SAFETY: trusted internal value already conforms to the asserted type.
     const studentName = (userProfile as StudentProfile | null)?.name || currentUser?.displayName || currentUser?.email || 'Student';
     const exportDate = new Date().toISOString().split('T')[0];
+    const safeStudentName = studentName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'student';
+    const subjectRows = displaySubjectPerformance.map((subject) => ({
+      subject: subject.subject,
+      average: subject.average,
+    }));
+    const quizRows = filteredQuizzes.map((quiz) => ({
+      title: quiz.title,
+      subject: quiz.subject,
+      score: quiz.score,
+      date: quiz.date,
+      type: quiz.type,
+      status: quiz.status,
+    }));
 
     reportRows.push('Grade Report');
     reportRows.push(`Student,${escapeCsvValue(studentName)}`);
@@ -470,7 +489,7 @@ const GradesPage = () => {
 
     reportRows.push('Subject Performance');
     reportRows.push('Subject,Average Score');
-    displaySubjectPerformance.forEach((subject) => {
+    subjectRows.forEach((subject) => {
       reportRows.push([
         escapeCsvValue(subject.subject),
         escapeCsvValue(subject.average)
@@ -481,10 +500,10 @@ const GradesPage = () => {
     reportRows.push('Recent Quizzes');
     reportRows.push('Title,Subject,Score,Date,Type,Status');
 
-    if (filteredQuizzes.length === 0) {
+    if (quizRows.length === 0) {
       reportRows.push('No quiz data available for the selected filters');
     } else {
-      filteredQuizzes.forEach((quiz) => {
+      quizRows.forEach((quiz) => {
         reportRows.push([
           escapeCsvValue(quiz.title),
           escapeCsvValue(quiz.subject),
@@ -496,18 +515,37 @@ const GradesPage = () => {
       });
     }
 
-    const csvContent = reportRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const safeStudentName = studentName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'student';
+    const downloadReport = (blob: Blob, extension: ExportFormat): void => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `grade-report-${safeStudentName}-${exportDate}.${extension}`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    };
 
-    link.href = url;
-    link.setAttribute('download', `grade-report-${safeStudentName}-${exportDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    try {
+      if (format === 'pdf') {
+        const pdfBlob = await createGradesPdf({
+          studentName,
+          exportDate,
+          subjectFilter: filterSubject,
+          typeFilter: filterType,
+          subjectRows,
+          quizRows,
+        });
+        downloadReport(pdfBlob, 'pdf');
+        return;
+      }
+
+      const csvContent = reportRows.join('\n');
+      const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      downloadReport(csvBlob, 'csv');
+    } catch {
+      toast.error('Failed to download grade report. Please try again.');
+    }
   };
 
   const handleStartPractice = (preferredSubject?: string) => {
@@ -549,7 +587,6 @@ const GradesPage = () => {
           </div>
         </div>
 
-        {/* Controls: Quarter Filter & Export CSV */}
         <div className="flex items-center gap-2 w-full md:w-auto">
           <div className="relative flex-1 md:flex-none">
             <select
@@ -567,14 +604,33 @@ const GradesPage = () => {
             <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          <Button 
-            className="flex-1 md:flex-none bg-gradient-to-r from-[#7C3AED] to-[#6366F1] hover:from-[#6D28D9] hover:to-[#4F46E5] text-white font-black rounded-xl h-9.5 px-4 shadow-[0_6px_16px_-4px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 transition-all text-xs flex items-center gap-1.5 cursor-pointer" 
-            onClick={handleExportReport}
-          >
-            <Download className="w-3.5 h-3.5" />
-            Export Report
-          </Button>
-        </div>
+        <ToggleGroup
+          type="single"
+          value={exportFormat}
+          onValueChange={(value) => {
+            if (value === 'csv' || value === 'pdf') {
+              setExportFormat(value);
+            }
+          }}
+          variant="outline"
+          size="sm"
+          aria-label="Export format"
+          className="shrink-0"
+        >
+          <ToggleGroupItem value="csv" aria-label="CSV">CSV</ToggleGroupItem>
+          <ToggleGroupItem value="pdf" aria-label="PDF">PDF</ToggleGroupItem>
+        </ToggleGroup>
+
+        <Button
+          className="flex-1 md:flex-none bg-gradient-to-r from-[#7C3AED] to-[#6366F1] hover:from-[#6D28D9] hover:to-[#4F46E5] text-white font-black rounded-xl h-9.5 px-4 shadow-[0_6px_16px_-4px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 transition-all text-xs flex items-center gap-1.5 cursor-pointer"
+          onClick={() => {
+            void handleExportReport(exportFormat);
+          }}
+        >
+          <Download className="w-3.5 h-3.5" />
+          Export Report
+        </Button>
+      </div>
       </div>
 
       {/* ------------------------------------------------------------------ */}
