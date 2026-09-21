@@ -4,6 +4,7 @@ import {
   isRoundExpiredOrLocked,
   isStaleRoundError,
   shouldPostTimeoutSubmit,
+  shouldRefetchExpiredBotMatch,
 } from '../quizBattleService';
 
 // Issue #154: timeout submits must never post selectedOptionIndex:null,
@@ -93,6 +94,71 @@ describe('quizBattleSubmit client guards', () => {
           roundLocked: false,
           answerSubmitting: false,
           now: 1_700_000_000_000,
+        })
+      ).toBe(false);
+    });
+  });
+
+  describe('shouldRefetchExpiredBotMatch', () => {
+    it('(f1) refetches bot in_progress match past its round deadline', () => {
+      expect(
+        shouldRefetchExpiredBotMatch({
+          mode: 'bot',
+          status: 'in_progress',
+          roundDeadlineAtMs: 1_700_000_000_000,
+          now: 1_700_000_005_000,
+        })
+      ).toBe(true);
+    });
+
+    it('(f2) refetches exactly at the deadline boundary', () => {
+      expect(
+        shouldRefetchExpiredBotMatch({
+          mode: 'bot',
+          status: 'in_progress',
+          roundDeadlineAtMs: 1_700_000_000_000,
+          now: 1_700_000_000_000,
+        })
+      ).toBe(true);
+    });
+
+    it('(f3) skips bot match with a future deadline', () => {
+      expect(
+        shouldRefetchExpiredBotMatch({
+          mode: 'bot',
+          status: 'in_progress',
+          roundDeadlineAtMs: 1_700_000_100_000,
+          now: 1_700_000_000_000,
+        })
+      ).toBe(false);
+    });
+
+    it('(f4) skips online matches even past deadline', () => {
+      expect(
+        shouldRefetchExpiredBotMatch({
+          mode: 'online',
+          status: 'in_progress',
+          roundDeadlineAtMs: 1_700_000_000_000,
+          now: 1_700_000_005_000,
+        })
+      ).toBe(false);
+    });
+
+    it('(f5) skips non-progress matches and missing deadlines', () => {
+      expect(
+        shouldRefetchExpiredBotMatch({
+          mode: 'bot',
+          status: 'ready',
+          roundDeadlineAtMs: 1_700_000_000_000,
+          now: 1_700_000_005_000,
+        })
+      ).toBe(false);
+      expect(
+        shouldRefetchExpiredBotMatch({
+          mode: 'bot',
+          status: 'in_progress',
+          roundDeadlineAtMs: undefined,
+          now: 1_700_000_005_000,
         })
       ).toBe(false);
     });

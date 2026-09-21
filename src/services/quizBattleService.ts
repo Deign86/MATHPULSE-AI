@@ -144,6 +144,28 @@ export const shouldPostTimeoutSubmit = (selectedOptionIndex: number | null): boo
 export const isStaleRoundError = (message: string): boolean =>
   /Expected round \d+, received \d+|Round timer elapsed|Match is not currently active/i.test(message);
 
+export interface ExpiredBotMatchRefetchParams {
+  mode?: string | null;
+  status?: string | null;
+  roundDeadlineAtMs?: number | null;
+  now?: number;
+}
+
+export const shouldRefetchExpiredBotMatch = ({
+  mode,
+  status,
+  roundDeadlineAtMs,
+  now = Date.now(),
+}: ExpiredBotMatchRefetchParams): boolean => {
+  if (mode !== 'bot' || status !== 'in_progress') {
+    return false;
+  }
+  if (roundDeadlineAtMs === undefined || roundDeadlineAtMs === null) {
+    return false;
+  }
+  return now >= roundDeadlineAtMs;
+};
+
 export interface IsRoundExpiredOrLockedParams {
   roundSecondsLeft?: number | null;
   roundDeadlineAtMs?: number | null;
