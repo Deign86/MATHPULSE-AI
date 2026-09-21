@@ -1,0 +1,23 @@
+G4A-169 Task 9 manual QA evidence
+Date: 2026-09-21T20:39:58+08:00
+Scope: QR payload and /verify contract only; no barcode or auth/session change.
+
+QR RENDER + DECODE
+- PASS: `qrcode.react@4.2.0` rendered `QRCodeSVG` with `value=https://mathpulse-ai-2026.web.app/verify/uid-fixture-169?src=id_card`, `level=M`, `marginSize=4`, `size=192`, and title `Verify MathPulse student ID`.
+- PASS: Attached Chrome DevTools page rendered the SVG with `width=192`, `height=192`, `role=img`, and the expected accessibility title.
+- PASS: Browser pixel extraction followed by isolated `jsqr@1.4.0` decoding returned exactly `https://mathpulse-ai-2026.web.app/verify/uid-fixture-169?src=id_card`.
+- PASS: Decoded URL contains only the app host, UID path segment, and `src=id_card`; no name, email, LRN, school, grade, or section fields were present.
+
+VERIFY CONTRACT
+- PASS: `npm run test -- --run src/utils/studentIdVerification.test.ts --reporter=verbose` — 1 file and 4 tests passed.
+- PASS: Valid record resolves to `kind=summary` with the profile summary.
+- PASS: Blank UID resolves to `kind=error, code=invalid_uid`.
+- PASS: Revoked record resolves to `kind=error, code=revoked`; no profile summary is returned.
+
+SCOPE + CLEANUP
+- PASS: `NO_BARCODE_AUTH_DIFF_OK`; StudentIDCard, SettingsPage, App, and auth service have no diff from the pre-existing worktree.
+- OBSERVED: Pre-existing dirty worktree includes unrelated G3/G4/G5/G6 task files, `jspdf-autotable` work, backend vectorstore state, QA artifacts, and run-continuation files; preserved unchanged.
+- PASS: Temporary QR HTML, pixel JSON, and decoder install were confined to `C:/Users/APG/AppData/Local/Temp/opencode/`; no QA server or process was launched by this task.
+- LIMITATION: Playwright MCP Chromium profile was locked by another session; the already-attached Chrome DevTools page performed the render and pixel extraction instead.
+
+RESULT: PASS
