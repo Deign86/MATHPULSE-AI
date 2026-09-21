@@ -78,6 +78,7 @@ const {
   createNotification,
   getUserNotifications,
   markAsRead,
+  markAllAsRead,
   deleteNotification,
   subscribeToNotifications,
   hasCheckedInToday,
@@ -87,8 +88,6 @@ import type { NotificationPayload } from './types';
 describe('notificationFirestoreService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getDocs).mockReset();
-    vi.mocked(getDocs).mockResolvedValue(snapshotWith({ docs: [] }));
   });
 
   describe('createNotification', () => {
@@ -203,6 +202,34 @@ describe('notificationFirestoreService', () => {
       vi.mocked(updateDoc).mockRejectedValueOnce(new Error('Update failed'));
 
       await expect(markAsRead('user-123', 'notif-123')).rejects.toThrow('Update failed');
+    });
+  });
+
+  describe('markAllAsRead', () => {
+    it('marks all unread notifications as read', async () => {
+      const mockIsReadDocs = [
+        { id: 'doc-1', ref: 'ref-1', data: () => ({ isRead: false }) },
+        { id: 'doc-2', ref: 'ref-2', data: () => ({ isRead: false }) },
+      ];
+      const mockLegacyDocs = [
+        { id: 'doc-2', ref: 'ref-2', data: () => ({ read: false }) },
+        { id: 'doc-3', ref: 'ref-3', data: () => ({ read: false }) },
+      ];
+      vi.mocked(getDocs)
+        .mockResolvedValueOnce(snapshotWith({ docs: mockIsReadDocs }))
+        .mockResolvedValueOnce(snapshotWith({ docs: mockLegacyDocs }));
+      const batchUpdate = vi.fn();
+      const batchCommit = vi.fn(async () => undefined);
+      vi.mocked(firestore.writeBatch).mockImplementation(
+        // SAFETY: mock WriteBatch handle; tests track batchUpdate and batchCommit calls.
+        () => mockWriteBatchWith({ update: batchUpdate, commit: batchCommit }),
+      );
+
+      await markAllAsRead('user-123');
+
+      // doc-1, doc-2 (deduped), doc-3 → 3 batched updates, one atomic commit
+      expect(batchUpdate).toHaveBeenCalledTimes(3);
+      expect(batchCommit).toHaveBeenCalledTimes(1);
     });
   });
 
