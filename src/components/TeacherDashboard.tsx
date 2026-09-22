@@ -7,8 +7,8 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck,
-  User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck,
+  User, LogOut, User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon, ArrowUpRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -106,13 +106,13 @@ import { ClassesOverviewMenu, CLASS_COLORS } from './ClassesOverviewMenu';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 import DataImportView from '../features/DataImport/DataImportView';
-import TeacherModuleStatusControl from './TeacherModuleStatusControl';
 import { subscribeToUserCalendarEvents } from '../services/calendarService';
 import type { CalendarEvent } from '../types/models';
 import CreateStudentAccountModal, {
   type CreateStudentAccountSeed,
 } from './CreateStudentAccountModal';
 import { recordGet } from '../utils/memberOf';
+import { TeacherStatCard, RadialScoreRing } from './TeacherStatCard';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -665,7 +665,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [pendingRemoveStudent, setPendingRemoveStudent] = useState<StudentView | null>(null);
@@ -681,6 +680,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [insightModalOpen, setInsightModalOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileCalendar, setShowMobileCalendar] = useState(false);
+  const [topicMasteryTab, setTopicMasteryTab] = useState<'mastery' | 'availability'>('mastery');
 
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
@@ -709,12 +709,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
     sectionDraft: string;
   }>>(new Map());
 
+  // Expandable popup state for mobile bottom navigation (student-aligned)
+  const [openMobileMenu, setOpenMobileMenu] = useState<'teaching' | 'insights' | 'tools' | 'profile' | null>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
+
   // Track mobile viewport (< 1024px = below lg breakpoint)
   useEffect(() => {
     const checkViewport = () => setIsMobileViewport(window.innerWidth < 1024);
     checkViewport();
     window.addEventListener('resize', checkViewport);
     return () => window.removeEventListener('resize', checkViewport);
+  }, []);
+
+  // Close open popup on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileNavRef.current && event.target instanceof Node && !mobileNavRef.current.contains(event.target)) {
+        setOpenMobileMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Fetch classrooms and students from Firebase
@@ -1480,8 +1495,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
       setIsMobileViewport(nextIsMobile);
       if (nextIsMobile) {
         setSidebarCollapsed(false);
-      } else {
-        setMobileNavOpen(false);
       }
     };
 
@@ -1492,7 +1505,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
   useEffect(() => {
     if (!isMobileViewport) return;
-    setMobileNavOpen(false);
+    setOpenMobileMenu(null);
   }, [activeView, isMobileViewport]);
 
   const availableClasses = useMemo(() => {
@@ -1538,25 +1551,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
   return (
     <div className="relative flex h-dvh w-full bg-background overflow-hidden">
-      {isMobileViewport && mobileNavOpen && (
-        <button
-          aria-label="Close navigation"
-          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-[2px]"
-          onClick={() => setMobileNavOpen(false)}
-        />
-      )}
 
-      {/* Collapsible Sidebar */}
+      {/* Collapsible Sidebar (Desktop lg+) */}
       <motion.aside
         initial={false}
         animate={{
-          width: isMobileViewport ? 280 : sidebarCollapsed && !sidebarHovered ? 80 : 280,
-          x: isMobileViewport ? (mobileNavOpen ? 0 : 320) : 0,
+          width: sidebarCollapsed && !sidebarHovered ? 80 : 280,
         }}
         transition={{ type: 'spring', stiffness: 360, damping: 34 }}
-        onMouseEnter={() => !isMobileViewport && sidebarCollapsed && setSidebarHovered(true)}
+        onMouseEnter={() => sidebarCollapsed && setSidebarHovered(true)}
         onMouseLeave={() => setSidebarHovered(false)}
-        className="fixed top-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] right-0 z-40 bg-[#f7f9fc] rounded-none rounded-l-3xl lg:rounded-3xl border border-[#dde3eb] flex flex-col shadow-2xl lg:shadow-sm lg:static lg:right-auto lg:top-auto lg:bottom-auto lg:z-auto p-5 overflow-y-auto pb-6"
+        className="hidden lg:flex static bg-[#f7f9fc] rounded-3xl border border-[#dde3eb] flex-col shadow-sm p-5 overflow-y-auto pb-6 shrink-0"
       >
         {/* Logo & Toggle */}
         <div className={`mb-8 flex items-center ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : 'justify-between'}`}>
@@ -1570,7 +1575,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               </div>
             )}
           </div>
-          {!isMobileViewport && (!sidebarCollapsed || sidebarHovered) && (
+          {(!sidebarCollapsed || sidebarHovered) && (
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -1581,27 +1586,18 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               {sidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
             </motion.button>
           )}
-          {isMobileViewport && (
-            <button
-              onClick={() => setMobileNavOpen(false)}
-              className="p-2 hover:bg-[#dde3eb] rounded-lg transition-colors text-[#5a6578]"
-              aria-label="Close navigation"
-            >
-              <X size={20} />
-            </button>
-          )}
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 space-y-5">
-          {/* Overview Section */}
+          {/* Teaching Section */}
           <div>
             {sidebarCollapsed && !sidebarHovered ? (
               <div className="px-4 mb-2 flex items-center gap-2">
                 <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
               </div>
             ) : (
-              <p className="px-4 mb-2 text-[10px] font-semibold text-[#5a6578] uppercase tracking-widest">Overview</p>
+              <p className="px-4 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Teaching</p>
             )}
             <div className="space-y-1">
               <NavItem
@@ -1613,24 +1609,32 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 forceExpanded={isMobileViewport}
               />
               <NavItem
-                icon={BarChart3}
-                label="Class Analytics"
+                icon={BookOpen}
+                label="My Classes"
                 active={activeView === 'analytics' || activeView === 'intervention'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => handleSidebarNav('analytics')}
                 forceExpanded={isMobileViewport}
               />
+              <NavItem
+                icon={Calendar}
+                label="Schedule & Calendar"
+                active={activeView === 'calendar'}
+                collapsed={sidebarCollapsed && !sidebarHovered}
+                onClick={() => setActiveView('calendar')}
+                forceExpanded={isMobileViewport}
+              />
             </div>
           </div>
 
-          {/* Students Section */}
+          {/* Insights Section */}
           <div>
             {sidebarCollapsed && !sidebarHovered ? (
               <div className="px-4 mb-2 flex items-center gap-2">
                 <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
               </div>
             ) : (
-              <p className="px-4 mb-2 text-[10px] font-semibold text-[#5a6578] uppercase tracking-widest">Students</p>
+              <p className="px-4 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Insights</p>
             )}
             <div className="space-y-1">
               <NavItem
@@ -1643,7 +1647,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               />
               <NavItem
                 icon={Users}
-                label="Competency"
+                label="Competency Matrix"
                 active={activeView === 'competency'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => handleSidebarNav('competency')}
@@ -1652,24 +1656,16 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             </div>
           </div>
 
-          {/* Tools Section */}
+          {/* AI & Tools Section */}
           <div>
             {sidebarCollapsed && !sidebarHovered ? (
               <div className="px-4 mb-2 flex items-center gap-2">
                 <div className="flex-1 h-[1px] bg-[#dde3eb]"></div>
               </div>
             ) : (
-              <p className="px-4 mb-2 text-[10px] font-semibold text-[#5a6578] uppercase tracking-widest">Tools</p>
+              <p className="px-4 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">AI & Tools</p>
             )}
             <div className="space-y-1">
-              <NavItem
-                icon={Database}
-                label="Data Import"
-                active={activeView === 'import'}
-                collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('import')}
-                forceExpanded={isMobileViewport}
-              />
               <NavItem
                 icon={ClipboardCheck}
                 label="AI Quiz Maker"
@@ -1679,7 +1675,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 forceExpanded={isMobileViewport}
               />
               <NavItem
-                icon={BookOpen}
+                icon={Database}
                 label="Question Bank"
                 active={activeView === 'question_bank'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
@@ -1687,11 +1683,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 forceExpanded={isMobileViewport}
               />
               <NavItem
-                icon={Calendar}
-                label="Calendar"
-                active={activeView === 'calendar'}
+                icon={FileSpreadsheet}
+                label="Data Import"
+                active={activeView === 'import'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => setActiveView('calendar')}
+                onClick={() => setActiveView('import')}
                 forceExpanded={isMobileViewport}
               />
             </div>
@@ -1738,17 +1734,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {/* Quick teacher stats */}
                   {activeView === 'dashboard' && (
                     <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#a855f7]/12 border border-[#a855f7]/30 rounded-lg">
-                        <Users size={13} className="text-[#a855f7]" />
-                        <span className="text-xs font-display font-bold text-[#a855f7] tabular-nums">{totalStudents} students</span>
+                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f3e8ff] dark:bg-purple-950/40 border border-[#e9d5ff] dark:border-purple-800/60 rounded-full shadow-2xs">
+                        <Users size={13} className="text-[#9333ea] dark:text-purple-300" />
+                        <span className="text-xs font-display font-bold text-[#9333ea] dark:text-purple-300 tabular-nums">{totalStudents} students</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
-                        <AlertTriangle size={13} className="text-[#F08386]" />
-                        <span className="text-xs font-display font-bold text-[#C65E63] tabular-nums">{totalAtRisk} at risk</span>
+                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#ffe4e6] dark:bg-rose-950/40 border border-[#fecdd3] dark:border-rose-800/60 rounded-full shadow-2xs">
+                        <AlertTriangle size={13} className="text-[#e11d48] dark:text-rose-300" />
+                        <span className="text-xs font-display font-bold text-[#e11d48] dark:text-rose-300 tabular-nums">{totalAtRisk} at risk</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
-                        <TrendingUp size={13} className="text-[#75D06A]" />
-                        <span className="text-xs font-display font-bold text-[#4D9F46] tabular-nums">{avgPerformance}% avg</span>
+                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#dcfce7] dark:bg-emerald-950/40 border border-[#bbf7d0] dark:border-emerald-800/60 rounded-full shadow-2xs">
+                        <TrendingUp size={13} className="text-[#15803d] dark:text-emerald-300" />
+                        <span className="text-xs font-display font-bold text-[#15803d] dark:text-emerald-300 tabular-nums">{avgPerformance}% avg</span>
                       </div>
                     </div>
                   )}
@@ -1774,18 +1770,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       AI Insight
                     </span>
                   </div>
-                  {/* Mobile Calendar Toggle — only visible on mobile when on dashboard */}
-                  {isMobileViewport && activeView === 'dashboard' && (
+                  {/* Schedule & Activity Drawer Toggle — available on dashboard */}
+                  {activeView === 'dashboard' && (
                     <button
-                      onClick={() => setShowMobileCalendar(v => !v)}
-                      className={`relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border transition-colors cursor-pointer active:scale-95 sm:hover:scale-[1.02] ${showMobileCalendar
-                        ? 'bg-[#a855f7] border-[#9333ea] text-white'
-                        : 'bg-white/60 hover:bg-white/80 border-white/50 text-[#64748b] hover:text-[#1e293b]'
-                        }`}
-                      aria-label={showMobileCalendar ? 'Close calendar panel' : 'Open calendar panel'}
-                      title={showMobileCalendar ? 'Close calendar' : 'View calendar'}
+                      onClick={() => setShowMobileCalendar((v) => !v)}
+                      className={`relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-2xl backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shadow-sm ${
+                        showMobileCalendar
+                          ? 'bg-violet-600 border-violet-600 text-white shadow-md'
+                          : 'bg-white/80 hover:bg-white border-slate-200/80 text-slate-600 hover:text-slate-900'
+                      }`}
+                      aria-label={showMobileCalendar ? 'Close schedule and activity panel' : 'Open schedule and activity panel'}
+                      title={showMobileCalendar ? 'Close schedule' : 'Schedule & Activity'}
                     >
                       <Calendar size={16} className="sm:w-[18px] sm:h-[18px]" />
+                      {liveActivity.length > 0 && (
+                        <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
+                      )}
                     </button>
                   )}
                   {/* Notification Bell */}
@@ -1980,6 +1980,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     classSectionId={selectedClassSectionId}
                     onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={onOpenProfile}
+                    activeTab={topicMasteryTab}
+                    onTabChange={setTopicMasteryTab}
+                    teacherId={currentUser?.uid || ''}
                   />
                 )}
                 {activeView === 'competency' && effectiveAnalyticsClass && (
@@ -2013,63 +2016,62 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   />
                 )}
                 {activeView === 'import' && (
-                  <>
-                    <DataImportView
-                      classSectionId={selectedClassSectionId}
-                      className={selectedClass?.name}
-                      classMetadata={selectedClass?.classMetadata}
-                      students={students}
-                      classes={managedClasses.map(c => ({ id: c.id, name: c.name, classSectionId: c.classSectionId }))}
-                      teacherId={currentUser?.uid || ''}
-                      teacherName={teacherName}
-                      onStudentsUpdated={(updated) => setStudents(updated)}
-                      onBackToClasses={() => setActiveView('dashboard')}
-                      onOpenNotifications={() => setActiveView('notifications')}
-                      onOpenProfile={onOpenProfile}
-                      onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                      userPhoto={userProfile?.photo}
-                      onImportedClassRecords={(payload) => {
-                        const uploadedStudents = payload.students.map((item) =>
-                          toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
-                        );
+                  <DataImportView
+                    classSectionId={selectedClassSectionId}
+                    className={selectedClass?.name}
+                    classMetadata={selectedClass?.classMetadata}
+                    students={students}
+                    classes={managedClasses.map(c => ({ id: c.id, name: c.name, classSectionId: c.classSectionId }))}
+                    teacherId={currentUser?.uid || ''}
+                    teacherName={teacherName}
+                    onStudentsUpdated={(updated) => setStudents(updated)}
+                    onBackToClasses={() => setActiveView('dashboard')}
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                    onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                    userPhoto={userProfile?.photo}
+                    onNavigateToModuleAvailability={() => {
+                      setTopicMasteryTab('availability');
+                      setActiveView('topic_mastery');
+                    }}
+                    onImportedClassRecords={(payload) => {
+                      const uploadedStudents = payload.students.map((item) =>
+                        toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
+                      );
 
-                        const resolvedClassMetadata = resolveClassMetadata({
-                          metadata: payload.classMetadata,
-                          classSectionId: payload.classSectionId,
-                          className: payload.className,
-                        });
-                        const classSection = resolvedClassMetadata.classSectionId || 'imported_class';
-                        const resolvedClassName = resolvedClassMetadata.className || 'Imported Class';
-                        const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
-                        const avgScore = uploadedStudents.length > 0
-                          ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
-                          : 0;
+                      const resolvedClassMetadata = resolveClassMetadata({
+                        metadata: payload.classMetadata,
+                        classSectionId: payload.classSectionId,
+                        className: payload.className,
+                      });
+                      const classSection = resolvedClassMetadata.classSectionId || 'imported_class';
+                      const resolvedClassName = resolvedClassMetadata.className || 'Imported Class';
+                      const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
+                      const avgScore = uploadedStudents.length > 0
+                        ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
+                        : 0;
 
-                        const uploadedClass: ClassView = {
-                          id: classSection,
-                          name: resolvedClassName,
+                      const uploadedClass: ClassView = {
+                        id: classSection,
+                        name: resolvedClassName,
+                        classSectionId: classSection,
+                        classMetadata: {
+                          ...resolvedClassMetadata,
                           classSectionId: classSection,
-                          classMetadata: {
-                            ...resolvedClassMetadata,
-                            classSectionId: classSection,
-                            className: resolvedClassName,
-                          },
-                          schedule: 'Mon-Fri',
-                          studentCount: uploadedStudents.length,
-                          avgScore,
-                          atRiskCount,
-                          riskLevel: atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low',
-                        };
+                          className: resolvedClassName,
+                        },
+                        schedule: 'Mon-Fri',
+                        studentCount: uploadedStudents.length,
+                        avgScore,
+                        atRiskCount,
+                        riskLevel: atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low',
+                      };
 
-                        setStudents((prev) => mergeStudentViews(prev, uploadedStudents));
-                        setClasses((prev) => mergeClassViews(prev, [uploadedClass]));
-                      }}
-                      onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
-                    />
-                    <div className="mt-6">
-                      <TeacherModuleStatusControl teacherId={currentUser?.uid || ''} />
-                    </div>
-                  </>
+                      setStudents((prev) => mergeStudentViews(prev, uploadedStudents));
+                      setClasses((prev) => mergeClassViews(prev, [uploadedClass]));
+                    }}
+                    onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
+                  />
                 )}
                 {activeView === 'notifications' && (
                   <TeacherNotificationsView
@@ -2121,97 +2123,423 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           </main>
         </div>
 
-        {/* Desktop: right sidebar always visible alongside main content */}
-        {activeView === 'dashboard' && !isMobileViewport && (
-          <DashboardRightSidebar
-            onViewCalendar={() => setActiveView('calendar')}
-            onOpenProfile={onOpenProfile}
-            userProfile={userProfile}
-            teacherName={teacherName}
-            liveActivity={liveActivity}
-          />
-        )}
       </div>
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Mobile Bottom Navigation Bar (Student-Aligned Grouped Popups) */}
       {isMobileViewport && (
         <nav
+          ref={mobileNavRef}
           aria-label="Bottom Navigation"
-          className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-[#dde3eb] shadow-[0_-2px_12px_rgba(0,0,0,0.06)] px-2 pt-1 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden touch-manipulation"
+          className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden touch-manipulation"
         >
-          <div className="grid grid-cols-5 items-center justify-around max-w-lg mx-auto">
-            {/* Dashboard */}
+          {/* Backdrop for open popup */}
+          {openMobileMenu !== null && (
             <button
               type="button"
-              onClick={handleBackToDashboard}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${activeView === 'dashboard'
-                  ? 'text-[#a855f7] font-bold'
-                  : 'text-[#64748b] hover:text-[#1e293b]'
-                }`}
+              aria-label="Close menu"
+              className="fixed inset-0 z-30 bg-black/10 backdrop-blur-[0.5px]"
+              onClick={() => setOpenMobileMenu(null)}
+            />
+          )}
+
+          {/* 1. TEACHING Popup (My Classes + Calendar) */}
+          <AnimatePresence>
+            {openMobileMenu === 'teaching' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute bottom-[calc(100%+12px)] left-6 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+              >
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
+                  Teaching
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSidebarNav('analytics');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'analytics' || activeView === 'intervention'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'analytics' || activeView === 'intervention' ? 'bg-white/20' : 'bg-violet-100 text-violet-600'
+                    }`}>
+                      <BookOpen size={16} aria-hidden="true" />
+                    </div>
+                    <span>My Classes</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('calendar');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'calendar'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'calendar' ? 'bg-white/20' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      <Calendar size={16} aria-hidden="true" />
+                    </div>
+                    <span>Schedule & Calendar</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                {/* Triangle pointer */}
+                <div className="absolute -bottom-2 left-10 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 2. CENTER HERO: AI & TOOLS Popup (AI Quiz Maker + Question Bank + Data Import) */}
+          <AnimatePresence>
+            {openMobileMenu === 'tools' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+              >
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
+                  AI & Tools
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('quiz_maker');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'quiz_maker'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'quiz_maker' ? 'bg-white/20' : 'bg-violet-100 text-violet-600'
+                    }`}>
+                      <ClipboardCheck size={16} aria-hidden="true" />
+                    </div>
+                    <span>AI Quiz Maker</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('question_bank');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'question_bank'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'question_bank' ? 'bg-white/20' : 'bg-indigo-100 text-indigo-600'
+                    }`}>
+                      <Database size={16} aria-hidden="true" />
+                    </div>
+                    <span>Question Bank</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('import');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'import'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'import' ? 'bg-white/20' : 'bg-emerald-100 text-emerald-600'
+                    }`}>
+                      <FileSpreadsheet size={16} aria-hidden="true" />
+                    </div>
+                    <span>Data Import</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                {/* Triangle pointer */}
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 3. INSIGHTS Popup (Topic Mastery + Competency Matrix) */}
+          <AnimatePresence>
+            {openMobileMenu === 'insights' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute bottom-[calc(100%+12px)] right-16 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+              >
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
+                  Insights
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSidebarNav('topic_mastery');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'topic_mastery'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'topic_mastery' ? 'bg-white/20' : 'bg-purple-100 text-purple-600'
+                    }`}>
+                      <Target size={16} aria-hidden="true" />
+                    </div>
+                    <span>Topic Mastery</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSidebarNav('competency');
+                    setOpenMobileMenu(null);
+                  }}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                    activeView === 'competency'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
+                      : 'text-slate-700 hover:bg-violet-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                      activeView === 'competency' ? 'bg-white/20' : 'bg-amber-100 text-amber-600'
+                    }`}>
+                      <Users size={16} aria-hidden="true" />
+                    </div>
+                    <span>Competency Matrix</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                {/* Triangle pointer */}
+                <div className="absolute -bottom-2 right-12 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 4. PROFILE & ACCOUNT Popup (Profile + Settings + Notifications + Logout) */}
+          <AnimatePresence>
+            {openMobileMenu === 'profile' && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute bottom-[calc(100%+12px)] right-3 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+              >
+                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
+                  Account
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMobileMenu(null);
+                    if (onOpenProfile) onOpenProfile();
+                  }}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+                      <User size={16} aria-hidden="true" />
+                    </div>
+                    <span>Teacher Profile</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMobileMenu(null);
+                    if (onOpenSettings) onOpenSettings();
+                  }}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                      <Settings size={16} aria-hidden="true" />
+                    </div>
+                    <span>Settings</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                <div className="h-[1px] bg-slate-100 my-0.5" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMobileMenu(null);
+                    setShowLogoutConfirm(true);
+                  }}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-rose-600 hover:bg-rose-50 transition-all active:scale-95"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
+                      <LogOut size={16} aria-hidden="true" />
+                    </div>
+                    <span>Log Out</span>
+                  </div>
+                  <ChevronRight size={14} className="opacity-70" />
+                </button>
+
+                {/* Triangle pointer */}
+                <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 5 Primary Mobile Bottom Bar Buttons */}
+          <div className="flex items-center justify-around max-w-md mx-auto relative z-30">
+            {/* 1. Dashboard */}
+            <button
+              type="button"
+              onClick={() => {
+                setOpenMobileMenu(null);
+                handleBackToDashboard();
+              }}
+              aria-label="Dashboard"
+              aria-current={activeView === 'dashboard' ? 'page' : undefined}
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                activeView === 'dashboard'
+                  ? 'text-violet-600 font-bold bg-violet-50'
+                  : 'text-slate-500 font-medium hover:text-slate-900'
+              }`}
             >
-              <LayoutDashboard size={20} strokeWidth={activeView === 'dashboard' ? 2.4 : 1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Dashboard</span>
+              <LayoutDashboard size={20} className={activeView === 'dashboard' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Dashboard</span>
             </button>
 
-            {/* Class Analytics */}
+            {/* 2. Teaching (Expandable: My Classes & Calendar) */}
             <button
               type="button"
-              onClick={() => handleSidebarNav('analytics')}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${activeView === 'analytics' || activeView === 'intervention'
-                  ? 'text-[#a855f7] font-bold'
-                  : 'text-[#64748b] hover:text-[#1e293b]'
-                }`}
+              onClick={() => setOpenMobileMenu(prev => prev === 'teaching' ? null : 'teaching')}
+              aria-label="Teaching Options: My Classes and Calendar"
+              aria-expanded={openMobileMenu === 'teaching'}
+              aria-haspopup="true"
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                activeView === 'analytics' || activeView === 'intervention' || activeView === 'calendar' || openMobileMenu === 'teaching'
+                  ? 'text-violet-600 font-bold bg-violet-50'
+                  : 'text-slate-500 font-medium hover:text-slate-900'
+              }`}
             >
-              <BarChart3 size={20} strokeWidth={activeView === 'analytics' || activeView === 'intervention' ? 2.4 : 1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Analytics</span>
+              <BookOpen size={20} className={activeView === 'analytics' || activeView === 'intervention' || activeView === 'calendar' || openMobileMenu === 'teaching' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Teaching</span>
             </button>
 
-            {/* Students / Topic Mastery */}
+            {/* 3. AI & Tools (Center Hero Button - Dedicated AI Tools Iconography) */}
             <button
               type="button"
-              onClick={() => handleSidebarNav('topic_mastery')}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${activeView === 'topic_mastery' || activeView === 'competency'
-                  ? 'text-[#a855f7] font-bold'
-                  : 'text-[#64748b] hover:text-[#1e293b]'
-                }`}
+              onClick={() => setOpenMobileMenu(prev => prev === 'tools' ? null : 'tools')}
+              aria-label="AI Tools: Quiz Maker, Question Bank, Data Import"
+              aria-expanded={openMobileMenu === 'tools'}
+              aria-haspopup="true"
+              className="relative -top-3 flex flex-col items-center justify-center w-14 h-14 sm:w-15 sm:h-15 rounded-2xl transition-all focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none active:scale-[0.94] bg-gradient-to-tr from-violet-600 via-indigo-600 to-purple-600 text-white shadow-xl shadow-purple-500/40 ring-2 ring-purple-300 shrink-0"
             >
-              <Target size={20} strokeWidth={activeView === 'topic_mastery' || activeView === 'competency' ? 2.4 : 1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Mastery</span>
+              <div className="relative flex items-center justify-center">
+                <Wand2 size={24} className="stroke-[2.2] text-white drop-shadow-md" aria-hidden="true" />
+                <Sparkles size={12} className="absolute -top-1 -right-1 text-amber-300 animate-pulse" aria-hidden="true" />
+              </div>
+              <span className="text-[9px] font-extrabold tracking-tight text-white/95 mt-0.5 leading-none">AI Tools</span>
             </button>
 
-            {/* AI Quiz Maker */}
+            {/* 4. Insights (Expandable: Topic Mastery & Competency Matrix) */}
             <button
               type="button"
-              onClick={() => setActiveView('quiz_maker')}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${activeView === 'quiz_maker' || activeView === 'question_bank'
-                  ? 'text-[#a855f7] font-bold'
-                  : 'text-[#64748b] hover:text-[#1e293b]'
-                }`}
+              onClick={() => setOpenMobileMenu(prev => prev === 'insights' ? null : 'insights')}
+              aria-label="Insights Options: Topic Mastery and Competency Matrix"
+              aria-expanded={openMobileMenu === 'insights'}
+              aria-haspopup="true"
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                activeView === 'topic_mastery' || activeView === 'competency' || openMobileMenu === 'insights'
+                  ? 'text-violet-600 font-bold bg-violet-50'
+                  : 'text-slate-500 font-medium hover:text-slate-900'
+              }`}
             >
-              <ClipboardCheck size={20} strokeWidth={activeView === 'quiz_maker' || activeView === 'question_bank' ? 2.4 : 1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Quiz Maker</span>
+              <Target size={20} className={activeView === 'topic_mastery' || activeView === 'competency' || openMobileMenu === 'insights' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Insights</span>
             </button>
 
-            {/* More / Menu Drawer */}
+            {/* 5. Profile / Account (Teacher Photo or User Icon) */}
             <button
               type="button"
-              onClick={() => setMobileNavOpen(prev => !prev)}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-xl transition-all active:scale-95 ${mobileNavOpen
-                  ? 'text-[#a855f7] font-bold'
-                  : 'text-[#64748b] hover:text-[#1e293b]'
-                }`}
-              aria-label="Toggle navigation menu"
+              onClick={() => setOpenMobileMenu(prev => prev === 'profile' ? null : 'profile')}
+              aria-label={`Teacher Profile: ${teacherName}`}
+              aria-expanded={openMobileMenu === 'profile'}
+              aria-haspopup="true"
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                openMobileMenu === 'profile'
+                  ? 'text-violet-600 font-bold bg-violet-50'
+                  : 'text-slate-500 font-medium hover:text-slate-900'
+              }`}
             >
-              <Menu size={20} strokeWidth={1.8} />
-              <span className="text-[10px] mt-0.5 tracking-tight font-medium">Menu</span>
+              {userProfile?.photo ? (
+                <img
+                  src={userProfile.photo}
+                  alt={teacherName}
+                  className={`w-5 h-5 rounded-full object-cover border ${
+                    openMobileMenu === 'profile' ? 'border-violet-600 ring-1 ring-violet-400' : 'border-slate-200'
+                  }`}
+                />
+              ) : (
+                <User size={20} className={openMobileMenu === 'profile' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              )}
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Profile</span>
             </button>
           </div>
         </nav>
       )}
 
-      {/* Mobile: calendar/profile panel as a fixed right-side drawer */}
+      {/* Universal slide-over drawer for Calendar & Activity (Desktop, Tablet, & Mobile) */}
       <AnimatePresence>
-        {isMobileViewport && activeView === 'dashboard' && showMobileCalendar && (
+        {activeView === 'dashboard' && showMobileCalendar && (
           <>
             {/* Backdrop */}
             <motion.button
@@ -2220,8 +2548,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-[2px]"
-              aria-label="Close calendar panel"
+              className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[2px]"
+              aria-label="Close activity and schedule panel"
               onClick={() => setShowMobileCalendar(false)}
             />
             {/* Drawer panel */}
@@ -2230,8 +2558,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="fixed top-0 right-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] z-40 w-[320px] max-w-[88vw] shadow-2xl bg-white overflow-hidden flex flex-col rounded-l-3xl"
+              transition={{ type: 'spring', stiffness: 340, damping: 34 }}
+              className="fixed top-0 right-0 bottom-0 z-50 w-[340px] max-w-[88vw] shadow-2xl bg-white overflow-hidden flex flex-col rounded-l-3xl border-l border-slate-200"
             >
               <DashboardRightSidebar
                 onViewCalendar={() => { setActiveView('calendar'); setShowMobileCalendar(false); }}
@@ -2365,18 +2693,20 @@ const NavItem: React.FC<{
     onClick={onClick}
     whileHover={{ x: 2 }}
     whileTap={{ scale: 0.98 }}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 border whitespace-nowrap ${collapsed && !forceExpanded ? 'justify-center' : ''
-      } ${active
-        ? 'bg-[#a855f7]/12 border-[#a855f7]/30 shadow-sm text-[#a855f7]'
-        : 'bg-transparent border-transparent text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628]'
-      }`}
+    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 border whitespace-nowrap ${
+      collapsed && !forceExpanded ? 'justify-center' : ''
+    } ${
+      active
+        ? 'bg-violet-50/90 border-violet-200/90 shadow-sm text-violet-700 font-bold'
+        : 'bg-transparent border-transparent text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 font-medium'
+    }`}
   >
     <Icon size={18} strokeWidth={active ? 2.5 : 2} className="flex-shrink-0" />
-    {(!collapsed || forceExpanded) && <span className="font-body font-semibold text-xs">{label}</span>}
+    {(!collapsed || forceExpanded) && <span className="font-body text-xs">{label}</span>}
     {active && !collapsed && (
       <motion.div
         layoutId="sidebar-active-indicator"
-        className="ml-auto w-2 h-2 rounded-full bg-[#a855f7]"
+        className="ml-auto w-2 h-2 rounded-full bg-violet-600"
         transition={{ type: 'spring', duration: 0.4 }}
       />
     )}
@@ -2403,6 +2733,7 @@ const ToolsPlaceholderView: React.FC<{
     </div>
   </motion.div>
 );
+
 
 // Dashboard View
 const DashboardView: React.FC<{
@@ -2435,152 +2766,221 @@ const DashboardView: React.FC<{
       {!isInsightDismissed && dailyInsight && (
         <div
           onClick={onOpenInsightModal}
-          className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-[14px_16px] sm:p-[18px_20px] flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] cursor-pointer hover:shadow-md transition-shadow group"
+          className="bg-white/85 dark:bg-slate-800/90 backdrop-blur-[12px] rounded-2xl sm:rounded-[18px] border border-white/80 dark:border-slate-700/80 p-3 sm:p-4.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-4 shadow-xs hover:shadow-md transition-all group cursor-pointer"
         >
-          <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0 w-full sm:w-auto">
-            <div className="relative flex-shrink-0 mt-0.5 sm:mt-0">
-              <div className="absolute -inset-[5px] rounded-full border-2 border-[#d8b4fe] opacity-50 animate-pulse" />
-              <div className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-full bg-[#f3e8ff] border-2 border-[#d8b4fe] flex items-center justify-center text-[#a855f7] text-xl relative overflow-hidden group-hover:scale-[1.05] transition-transform">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 w-full sm:w-auto flex-1">
+            <div className="relative shrink-0">
+              <div className="absolute -inset-1 rounded-full border border-[#d8b4fe] opacity-50 animate-pulse" />
+              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-[#f3e8ff] border-2 border-[#d8b4fe] flex items-center justify-center text-[#a855f7] relative overflow-hidden group-hover:scale-105 transition-transform">
                 <img src="/avatar/avatar_icon.png" alt="AI Mascot" className="w-[85%] h-[85%] object-contain" />
               </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[13.5px] font-semibold text-[#1e1b4b] flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                <Sparkles size={14} className="text-[#a855f7]" />
-                MathPulse AI insight
-                <span className="bg-[#fee2e2] text-[#b91c1c] text-[10px] font-semibold px-2 py-0.5 rounded-full border border-[#fca5a5]">Attention needed</span>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs sm:text-[13.5px] font-bold text-[#1e1b4b] dark:text-white flex items-center gap-1.5 truncate">
+                <Sparkles size={13} className="text-[#a855f7] shrink-0" />
+                <span className="truncate">MathPulse AI Insight</span>
+                <span className="bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-full border border-rose-200 dark:border-rose-800 shrink-0">Action</span>
               </div>
-              <div className="text-[12px] sm:text-[12.5px] text-[#475569] leading-[1.55]">
-                Some students may be at risk of falling behind. Click to view detailed analysis.
-              </div>
+              <p className="text-[11px] sm:text-xs text-[#475569] dark:text-slate-400 mt-0.5 line-clamp-1 sm:line-clamp-2">
+                Students may be at risk of falling behind. Tap to view detailed analysis.
+              </p>
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
-            <button onClick={(e) => { e.stopPropagation(); onDismissInsight(); }} className="px-3 sm:px-[15px] py-1.5 sm:py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc] transition-colors active:scale-95">Dismiss</button>
-            <button onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }} className="px-3 sm:px-[15px] py-1.5 sm:py-[7px] rounded-[10px] text-xs font-medium cursor-pointer border border-[#a855f7] bg-[#a855f7] text-white shadow-[0_2px_8px_rgba(168,85,247,0.13)] hover:bg-[#9333ea] transition-colors active:scale-95">Review students</button>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              onClick={(e) => { e.stopPropagation(); onDismissInsight(); }}
+              className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors active:scale-95 cursor-pointer"
+            >
+              Dismiss
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onViewAllClasses(); }}
+              className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold border border-violet-500 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs shadow-purple-500/20 hover:brightness-105 transition-all active:scale-95 cursor-pointer"
+            >
+              Review
+            </button>
           </div>
         </div>
       )}
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        {/* Card 1 — Total Students */}
-        <div className="relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(16,185,129,0.13)] rounded-xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px] cursor-default select-none">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 pointer-events-none" />
-          <div className="relative z-10 flex justify-between items-start">
-            <span className="font-body text-[11px] font-semibold opacity-90 leading-tight">Total students</span>
-            <div className="flex bg-white/20 p-1 sm:p-1.5 rounded-lg"><Users size={14} className="sm:w-[15px] sm:h-[15px]" /></div>
-          </div>
-          <div className="relative z-10 font-display text-lg sm:text-[26px] font-extrabold sm:font-black tracking-tight tabular-nums leading-none">{totalStudents}</div>
-          <div className="relative z-10 border-t border-white/30 pt-1 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90 font-body">
-            <span className="truncate pr-1">Added this year</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-bold tabular-nums shrink-0">{totalStudents > 0 ? '+1' : '0'}</span>
-          </div>
-        </div>
+      {/* ------------------------------------------------------------------ */}
+      {/* STAT CARDS (4 Unified Cards in 2x2 Mobile / 4x1 Desktop Bento Grid)*/}
+      {/* Styled with student-side vibrant gradients and frosted glass badges*/}
+      {/* ------------------------------------------------------------------ */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* CARD 1: Total Students */}
+        <TeacherStatCard
+          color="green"
+          title="Total Students"
+          badgeText="Active"
+          icon={Users}
+          value={totalStudents}
+          subtitle="Enrolled Roster"
+          footerLabel="Enrolled Roster"
+          footerBadge="Active"
+          onClick={onViewAllClasses}
+        />
 
-        {/* Card 2 — Class Average */}
-        <div className="relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px] cursor-default select-none">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 pointer-events-none" />
-          <div className="relative z-10 flex justify-between items-start">
-            <span className="font-body text-[11px] font-semibold opacity-90 leading-tight">Class average</span>
-            <div className="flex bg-white/20 p-1 sm:p-1.5 rounded-lg"><Target size={14} className="sm:w-[15px] sm:h-[15px]" /></div>
-          </div>
-          <div className="relative z-10 font-display text-lg sm:text-[26px] font-extrabold sm:font-black tracking-tight tabular-nums leading-none">{avgPerformance}%</div>
-          <div className="relative z-10 border-t border-white/30 pt-1 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90 font-body">
-            <span className="truncate pr-1">Vs. last month</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-bold tabular-nums shrink-0">+2.5%</span>
-          </div>
-        </div>
+        {/* CARD 2: Class Average */}
+        <TeacherStatCard
+          color="purple"
+          title="Class Average"
+          badgeText={avgPerformance >= 75 ? 'Passing' : avgPerformance > 0 ? 'Needs Boost' : 'Pending'}
+          icon={Target}
+          value={`${avgPerformance}%`}
+          subtitle="Cohort Score"
+          scorePercent={avgPerformance}
+          footerLabel="Cohort Score"
+          footerBadge="+2.5%"
+          onClick={onViewAllClasses}
+        />
 
-        {/* Card 3 — Engagement Rate */}
-        <div className="relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px] cursor-default select-none">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 pointer-events-none" />
-          <div className="relative z-10 flex justify-between items-start">
-            <span className="font-body text-[11px] font-semibold opacity-90 leading-tight">Engagement</span>
-            <div className="flex bg-white/20 p-1 sm:p-1.5 rounded-lg"><Activity size={14} className="sm:w-[15px] sm:h-[15px]" /></div>
-          </div>
-          <div className="relative z-10 font-display text-lg sm:text-[26px] font-extrabold sm:font-black tracking-tight tabular-nums leading-none">{engagementRate}%</div>
-          <div className="relative z-10 border-t border-white/30 pt-1 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90 font-body">
-            <span className="truncate pr-1">Active rate</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-bold tabular-nums shrink-0">{Math.round((engagementRate / 100) * totalStudents)}</span>
-          </div>
-        </div>
+        {/* CARD 3: Engagement */}
+        <TeacherStatCard
+          color="cyan"
+          title="Engagement"
+          badgeText="Active"
+          icon={Activity}
+          value={`${engagementRate}%`}
+          subtitle="Participation"
+          scorePercent={engagementRate}
+          footerLabel="Participation"
+          footerBadge={`${Math.round((engagementRate / 100) * totalStudents)} active`}
+          onClick={() => {
+            const el = document.getElementById('teacher-classes-section');
+            el?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
 
-        {/* Card 4 — At Risk */}
-        <div className="relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-xl p-2.5 sm:p-[15px] text-white flex flex-col gap-1 sm:gap-[10px] cursor-default select-none">
-          <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-          <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 pointer-events-none" />
-          <div className="relative z-10 flex justify-between items-start">
-            <span className="font-body text-[11px] font-semibold opacity-90 leading-tight">At risk</span>
-            <div className="flex bg-white/20 p-1 sm:p-1.5 rounded-lg"><AlertCircle size={14} className="sm:w-[15px] sm:h-[15px]" /></div>
-          </div>
-          <div className="relative z-10 font-display text-lg sm:text-[26px] font-extrabold sm:font-black tracking-tight tabular-nums leading-none">{totalAtRisk}</div>
-          <div className="relative z-10 border-t border-white/30 pt-1 sm:pt-2 flex justify-between items-center text-[9px] sm:text-[10px] opacity-90 font-body">
-            <span className="truncate pr-1">Needs attention</span>
-            <span className="bg-black/15 px-1.5 sm:px-[7px] py-[2px] rounded font-bold tabular-nums shrink-0">{riskPercentage}%</span>
-          </div>
-        </div>
+        {/* CARD 4: Needs Attention */}
+        <TeacherStatCard
+          color="amber"
+          title="Needs Attention"
+          badgeText={totalAtRisk > 0 ? 'Priority' : 'Clear'}
+          icon={AlertCircle}
+          value={totalAtRisk}
+          subtitle="At-Risk Students"
+          scorePercent={riskPercentage}
+          footerLabel="At-Risk Students"
+          footerBadge={`${riskPercentage}%`}
+          onClick={onViewAllClasses}
+        />
       </div>
 
       {/* Classes Container */}
-      <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white p-3.5 sm:p-[18px_20px] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-        <div className="flex justify-between items-center mb-[14px]">
-          <div>
-            <h2 className="font-display text-[15px] sm:text-base font-bold text-[#1e293b] text-balance">My classes</h2>
-            <p className="font-body text-[11px] text-[#64748b] mt-0.5">Click any class to view detailed performance & student lists</p>
+      <div id="teacher-classes-section" className="relative overflow-hidden bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-white/10 p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+        {/* Subtle Top Gradient Accent Strip */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#9956DE] via-[#38BDF8] to-[#75D06A] pointer-events-none" />
+
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-[#9956DE] to-[#7274ED] shrink-0" />
+            <div>
+              <h2 className="font-display text-base sm:text-lg font-bold text-slate-900 dark:text-white">My Classes</h2>
+              <p className="font-body text-xs text-slate-500 mt-0.5 hidden sm:block">Select any class to manage rosters and student analytics</p>
+            </div>
           </div>
-          <span onClick={onViewAllClasses} className="font-body text-[12px] text-[#10b981] font-bold cursor-pointer hover:underline">View all</span>
+          <button onClick={onViewAllClasses} className="font-body text-xs text-violet-600 hover:text-indigo-600 font-extrabold cursor-pointer hover:underline flex items-center gap-1 shrink-0">
+            <span>View all ({classes.length})</span>
+            <ChevronRight size={14} />
+          </button>
         </div>
 
-        <div className="space-y-[9px]">
+        <div className="space-y-3">
           {classes.length === 0 && (
-            <div className="text-center py-4">
-              <p className="font-body text-sm text-slate-500 mb-3">No classes imported yet.</p>
+            <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+              <p className="font-body text-sm text-slate-500 mb-3">No classes available yet.</p>
               {onCreateClass && (
-                <button onClick={onCreateClass} className="font-body text-sm text-[#a855f7] font-bold hover:underline">
-                  + Create a class
+                <button onClick={onCreateClass} className="font-body text-sm text-violet-600 font-bold hover:underline">
+                  + Create your first class
                 </button>
               )}
             </div>
           )}
           {classes.map((classItem, idx) => {
-            const colors = [
-              { bg: 'bg-[#f3e8ff]', text: 'text-[#a855f7]', borderHover: 'hover:border-[#d8b4fe]', stripe: 'bg-[#a855f7]' },
-              { bg: 'bg-[#eff6ff]', text: 'text-[#3b82f6]', borderHover: 'hover:border-[#bfdbfe]', stripe: 'bg-[#3b82f6]' },
-              { bg: 'bg-[#f0fdf4]', text: 'text-[#22c55e]', borderHover: 'hover:border-[#bbf7d0]', stripe: 'bg-[#22c55e]' },
-              { bg: 'bg-[#fff7ed]', text: 'text-[#f97316]', borderHover: 'hover:border-[#fed7aa]', stripe: 'bg-[#f97316]' },
-              { bg: 'bg-[#fff1f2]', text: 'text-[#f43f5e]', borderHover: 'hover:border-[#fecdd3]', stripe: 'bg-[#f43f5e]' },
+            const classGradients = [
+              {
+                iconBg: 'from-[#9956DE] via-[#8643C8] to-[#7274ED]',
+                accentBar: 'from-[#9956DE] to-[#7274ED]',
+                cardBorder: 'hover:border-purple-300 dark:hover:border-purple-500',
+                cardGlow: 'hover:shadow-[0_8px_24px_-6px_rgba(153,86,222,0.18)]',
+                cardBg: 'bg-gradient-to-r from-purple-50/40 via-white to-white dark:from-purple-950/20 dark:via-slate-800/90 dark:to-slate-800/90',
+                iconShadow: 'shadow-purple-500/25',
+              },
+              {
+                iconBg: 'from-[#38BDF8] via-[#0284C7] to-[#0369A1]',
+                accentBar: 'from-[#38BDF8] to-[#0284C7]',
+                cardBorder: 'hover:border-sky-300 dark:hover:border-sky-500',
+                cardGlow: 'hover:shadow-[0_8px_24px_-6px_rgba(2,132,199,0.18)]',
+                cardBg: 'bg-gradient-to-r from-sky-50/40 via-white to-white dark:from-sky-950/20 dark:via-slate-800/90 dark:to-slate-800/90',
+                iconShadow: 'shadow-sky-500/25',
+              },
+              {
+                iconBg: 'from-[#FFB356] via-[#F29424] to-[#D97706]',
+                accentBar: 'from-[#FFB356] to-[#D97706]',
+                cardBorder: 'hover:border-amber-300 dark:hover:border-amber-500',
+                cardGlow: 'hover:shadow-[0_8px_24px_-6px_rgba(242,148,36,0.18)]',
+                cardBg: 'bg-gradient-to-r from-amber-50/40 via-white to-white dark:from-amber-950/20 dark:via-slate-800/90 dark:to-slate-800/90',
+                iconShadow: 'shadow-amber-500/25',
+              },
+              {
+                iconBg: 'from-[#75D06A] via-[#52B847] to-[#36962C]',
+                accentBar: 'from-[#75D06A] to-[#36962C]',
+                cardBorder: 'hover:border-emerald-300 dark:hover:border-emerald-500',
+                cardGlow: 'hover:shadow-[0_8px_24px_-6px_rgba(82,184,71,0.18)]',
+                cardBg: 'bg-gradient-to-r from-emerald-50/40 via-white to-white dark:from-emerald-950/20 dark:via-slate-800/90 dark:to-slate-800/90',
+                iconShadow: 'shadow-emerald-500/25',
+              },
             ];
-            const color = colors[idx % colors.length];
+            const gradient = classGradients[idx % classGradients.length];
 
             return (
               <div
                 key={classItem.id}
                 onClick={() => onViewClass(classItem)}
-                className={`relative overflow-hidden flex items-center gap-2.5 sm:gap-3 p-3 sm:p-[12px_13px] pl-3.5 sm:pl-[16px] border border-[#f1f5f9] rounded-[14px] cursor-pointer ${color.borderHover} hover:shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:bg-[#fafbff] active:scale-[0.99] transition-all group`}
+                className={`relative overflow-hidden ${gradient.cardBg} border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-3 sm:p-4 shadow-xs hover:shadow-md ${gradient.cardGlow} ${gradient.cardBorder} hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-center justify-between gap-2.5 sm:gap-4 group`}
               >
-                <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${color.stripe}`} />
-                <div className={`w-[36px] h-[36px] sm:w-[38px] sm:h-[38px] rounded-[10px] flex items-center justify-center flex-shrink-0 text-[17px] ${color.bg} ${color.text} group-hover:scale-110 transition-transform duration-300`}>
-                  <BookOpen size={18} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-body text-[12.5px] font-semibold text-[#1e293b] truncate">{classItem.name}</div>
-                  <div className="font-body text-[11px] text-[#94a3b8] mt-[1px] truncate">
-                    {classItem.classification || 'High School'}
-                    <span className="sm:hidden font-semibold"> • <span className="tabular-nums">{classItem.studentCount}</span> students</span>
+                {/* Left Accent Gradient Bar */}
+                <div className={`absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b ${gradient.accentBar} opacity-80 group-hover:opacity-100 group-hover:w-2 transition-all`} />
+
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 pl-1">
+                  <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br ${gradient.iconBg} text-white flex items-center justify-center shrink-0 shadow-md ${gradient.iconShadow} group-hover:scale-105 transition-transform`}>
+                    <BookOpen size={17} className="drop-shadow-xs" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-display text-[13.5px] sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors truncate">
+                      {classItem.name}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                      <span className="font-medium text-slate-600 dark:text-slate-300 truncate max-w-[90px] xs:max-w-none">{classItem.classification || 'Senior High'}</span>
+                      <span>•</span>
+                      <span className="tabular-nums font-semibold shrink-0">{classItem.studentCount} students</span>
+                      {classItem.schedule && (
+                        <>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="hidden sm:inline">{classItem.schedule}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="hidden sm:block font-body text-[12px] text-[#64748b] min-w-[65px]">{classItem.schedule || 'Mon-Fri'}</div>
-                <div className="hidden sm:block font-body text-[12px] text-[#64748b] min-w-[85px]"><span className="tabular-nums">{classItem.studentCount}</span> students</div>
-                <span className={`text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider px-2 sm:px-[9px] py-0.5 sm:py-[3px] rounded-[6px] shrink-0 ${classItem.riskLevel === 'high' ? 'bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]' : classItem.riskLevel === 'medium' ? 'bg-[#fffbeb] text-[#b45309] border border-[#fcd34d]' : 'bg-[#ecfdf5] text-[#065f46] border border-[#6ee7b7]'}`}>
-                  {classItem.riskLevel === 'high' ? 'High risk' : classItem.riskLevel === 'medium' ? 'Medium risk' : 'On track'}
-                </span>
-                <div className="flex items-center gap-1 text-[11px] font-bold text-[#a855f7] opacity-80 group-hover:opacity-100 transition-opacity ml-1 sm:ml-auto shrink-0">
-                  <span className="hidden md:inline">Open Analytics</span>
-                  <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`hidden xs:inline-flex text-[9.5px] sm:text-[10px] font-extrabold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full shrink-0 shadow-2xs ${
+                    classItem.riskLevel === 'high'
+                      ? 'bg-gradient-to-r from-rose-50 to-red-50 dark:from-rose-950/50 dark:to-red-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                      : classItem.riskLevel === 'medium'
+                      ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                      : 'bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  }`}>
+                    {classItem.riskLevel === 'high' ? 'High Risk' : classItem.riskLevel === 'medium' ? 'Attention' : 'On Track'}
+                  </span>
+
+                  <span className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 via-[#8643C8] to-[#7274ED] group-hover:from-violet-700 group-hover:to-indigo-700 text-white font-bold text-xs shadow-sm shadow-purple-500/20 group-hover:shadow-md transition-all flex items-center gap-1 shrink-0 group-hover:scale-[1.02] active:scale-[0.98]">
+                    <span className="hidden sm:inline">Manage Class</span>
+                    <span className="sm:hidden">Manage</span>
+                    <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+                  </span>
                 </div>
               </div>
             );
@@ -2604,12 +3004,12 @@ const StudentCard = React.memo(({
 }) => {
   const getTheme = () => {
     if (student.riskLevel === 'high') {
-      return { borderLeft: 'border-l-rose-500', bgAvatar: 'bg-rose-50 text-rose-600 border-rose-100/50', badge: 'text-rose-600 bg-rose-50', progress: 'bg-rose-500' };
+      return { borderLeft: 'border-l-rose-500', bgAvatar: 'bg-rose-50 text-rose-600 border-rose-100', badge: 'text-rose-700 bg-rose-50 border border-rose-200', progress: 'bg-rose-500' };
     }
     if (student.riskLevel === 'medium') {
-      return { borderLeft: 'border-l-amber-500', bgAvatar: 'bg-amber-50 text-amber-600 border-amber-100/50', badge: 'text-amber-600 bg-amber-50', progress: 'bg-amber-500' };
+      return { borderLeft: 'border-l-amber-500', bgAvatar: 'bg-amber-50 text-amber-600 border-amber-100', badge: 'text-amber-700 bg-amber-50 border border-amber-200', progress: 'bg-amber-500' };
     }
-    return { borderLeft: 'border-l-emerald-500', bgAvatar: 'bg-emerald-50 text-emerald-600 border-emerald-100/50', badge: 'text-emerald-600 bg-emerald-50', progress: 'bg-emerald-500' };
+    return { borderLeft: 'border-l-emerald-500', bgAvatar: 'bg-emerald-50 text-emerald-600 border-emerald-100', badge: 'text-emerald-700 bg-emerald-50 border border-emerald-200', progress: 'bg-emerald-500' };
   };
 
   const theme = getTheme();
@@ -2620,20 +3020,20 @@ const StudentCard = React.memo(({
     <div
       onClick={() => onViewStudent(student)}
       title="Click to view student diagnostic & intervention plan"
-      className={`p-[12px] bg-white rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] border-l-[4px] ${theme.borderLeft} hover:border-indigo-200 hover:shadow-md hover:bg-slate-50/40 hover:scale-[1.01] transition-all cursor-pointer group flex flex-col justify-between`}
+      className={`p-3.5 bg-white dark:bg-slate-800/80 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-700/80 border-l-4 ${theme.borderLeft} hover:border-violet-300 dark:hover:border-violet-500 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all cursor-pointer group flex flex-col justify-between`}
     >
-      <div className="flex justify-between items-start mb-[10px]">
-        <div className="flex gap-[8px] items-center min-w-0 pr-2">
+      <div className="flex justify-between items-start mb-2.5">
+        <div className="flex gap-2.5 items-center min-w-0 pr-2">
           {student.avatar ? (
-            <img src={student.avatar} alt={student.name} className={`w-8 h-8 rounded-full border ${theme.bgAvatar.split(' ')[2]} object-cover shrink-0`} />
+            <img src={student.avatar} alt={student.name} className={`w-9 h-9 rounded-full border ${theme.bgAvatar.split(' ')[2]} object-cover shrink-0 shadow-sm`} />
           ) : (
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-[11px] shrink-0 border ${theme.bgAvatar}`}>
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 border ${theme.bgAvatar} shadow-sm`}>
               {student.name.substring(0, 2).toUpperCase()}
             </div>
           )}
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
-              <p className="font-body text-[13px] font-bold text-[#1e293b] leading-tight truncate group-hover:text-[#a855f7] transition-colors">{student.name}</p>
+              <p className="font-body text-sm font-bold text-slate-900 dark:text-white leading-tight truncate group-hover:text-violet-600 transition-colors">{student.name}</p>
               {hasActiveAccount && (
                 <span
                   title="Registered student account"
@@ -2641,19 +3041,19 @@ const StudentCard = React.memo(({
                 />
               )}
             </div>
-            <p className="font-body text-[10px] text-[#64748b] flex items-center gap-[4px] mt-0.5 truncate">
-              <Clock className="w-[10px] h-[10px] shrink-0" /> {student.lastActive || 'recently'}
+            <p className="font-body text-[11px] text-slate-500 flex items-center gap-1 mt-0.5 truncate">
+              <Clock className="w-3 h-3 shrink-0 text-slate-400" /> {student.lastActive || 'recently'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className={`font-display font-bold text-[11px] px-[6px] py-[2px] rounded-[14px] tabular-nums ${theme.badge}`}>{student.avgScore}%</span>
-          <ChevronRight size={14} className="text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`font-display font-bold text-[11px] px-2 py-0.5 rounded-full tabular-nums ${theme.badge}`}>{student.avgScore}%</span>
+          <ChevronRight size={15} className="text-slate-300 group-hover:text-violet-600 group-hover:translate-x-0.5 transition-all" />
           {onRemoveStudent && (
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemoveStudent(student); }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 p-1 rounded shrink-0 ml-0.5"
+              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 p-1 rounded-md shrink-0 ml-0.5"
               aria-label={`Remove ${student.name} from class`}
               title="Remove from class"
             >
@@ -2663,8 +3063,8 @@ const StudentCard = React.memo(({
         </div>
       </div>
       {isRosterOnly && (
-        <div className="flex items-center justify-between gap-2 mb-1.5 px-2 py-0.5 rounded-[8px] bg-amber-50 border border-amber-100/80">
-          <span className="text-[9px] font-bold text-amber-700 uppercase tracking-wider">No Account</span>
+        <div className="flex items-center justify-between gap-2 mb-2 px-2.5 py-1 rounded-xl bg-amber-50/80 border border-amber-100">
+          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">No Account</span>
           {onCreateAccount && (
             <button
               type="button"
@@ -2672,7 +3072,7 @@ const StudentCard = React.memo(({
                 event.stopPropagation();
                 onCreateAccount(student);
               }}
-              className="flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-white text-amber-700 border border-amber-200 hover:bg-amber-100 text-[9px] font-bold uppercase tracking-wider transition-colors"
+              className="flex items-center gap-0.5 px-2.5 py-0.5 rounded-full bg-white text-amber-700 border border-amber-200 hover:bg-amber-100 text-[10px] font-bold uppercase tracking-wider transition-colors shadow-xs"
               aria-label={`Create system account for ${student.name}`}
             >
               <span aria-hidden>+</span>
@@ -2681,8 +3081,8 @@ const StudentCard = React.memo(({
           )}
         </div>
       )}
-      <div className="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden mt-auto">
-        <div className={`h-full rounded-full ${theme.progress}`} style={{ width: `${student.avgScore}%` }}></div>
+      <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-auto">
+        <div className={`h-full rounded-full ${theme.progress} transition-all duration-300`} style={{ width: `${student.avgScore}%` }}></div>
       </div>
     </div>
   );
@@ -2742,40 +3142,69 @@ const SectionManagementPanel: React.FC<{
   }, [students]);
 
   return (
-    <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+    <div className="relative rounded-2xl sm:rounded-3xl border border-indigo-200/90 dark:border-indigo-500/30 bg-gradient-to-r from-indigo-50/90 via-purple-50/60 to-white shadow-[0_4px_20px_-4px_rgba(99,102,241,0.18)] hover:shadow-[0_8px_28px_-6px_rgba(99,102,241,0.28)] transition-all duration-300 overflow-hidden">
+      {/* Ambient top specular border gradient */}
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+      {/* Ambient glow blur bubble */}
+      <div className="absolute -right-6 -top-6 w-36 h-36 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-2xl pointer-events-none" />
+
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
-        className="w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-3.5 text-left hover:bg-slate-50/50 transition-colors"
+        className="w-full flex items-center justify-between gap-3 sm:gap-4 p-4 sm:p-5 text-left transition-all group"
         aria-expanded={expanded}
       >
-        <div>
-          <h3 className="text-sm sm:text-[15px] font-semibold text-[#1e293b] text-balance">Section Management</h3>
-          <p className="text-[11.5px] sm:text-[12px] text-[#64748b] mt-0.5">
-            Move students between sections. Showing <span className="tabular-nums font-medium">{students.length}</span> students across <span className="tabular-nums font-medium">{grouped.assigned.length}</span> section
-            {grouped.assigned.length === 1 ? '' : 's'}
-            {grouped.unassigned.length > 0 ? <> · <span className="tabular-nums font-medium">{grouped.unassigned.length}</span> unassigned</> : ''}.
-          </p>
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          {/* Vibrant gradient icon badge with ambient glow */}
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 shadow-[0_4px_14px_rgba(99,102,241,0.38)] flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform">
+            <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+
+          <div className="min-w-0">
+            <h3 className="text-[15px] sm:text-[16px] font-bold text-slate-900 tracking-tight">
+              Section Management
+            </h3>
+            <p className="text-xs sm:text-[13px] text-slate-600 mt-1">
+              Move students between sections. Showing <strong className="text-slate-900 font-semibold tabular-nums">{students.length}</strong> student{students.length === 1 ? '' : 's'} across <strong className="text-slate-900 font-semibold tabular-nums">{grouped.assigned.length}</strong> section{grouped.assigned.length === 1 ? '' : 's'}
+              {grouped.unassigned.length > 0 ? <> · <span className="text-amber-700 font-semibold tabular-nums">{grouped.unassigned.length} unassigned</span></> : ''}.
+            </p>
+          </div>
         </div>
-        <ChevronDown
-          className={`w-4 h-4 text-[#64748b] transition-transform ${expanded ? 'rotate-180' : ''}`}
-        />
+
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="hidden md:inline-flex text-xs font-semibold text-indigo-700 bg-indigo-100/80 hover:bg-indigo-200/80 border border-indigo-200 rounded-xl px-3 py-1.5 transition-colors shadow-xs">
+            {expanded ? 'Hide Sections' : 'Reassign Students'}
+          </span>
+          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl border flex items-center justify-center transition-all ${
+            expanded
+              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+              : 'bg-white/90 text-indigo-600 border-indigo-200/90 shadow-xs group-hover:bg-indigo-50'
+          }`}>
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            />
+          </div>
+        </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-[#f1f5f9] divide-y divide-[#f1f5f9]">
+        <div className="border-t border-indigo-100/90 bg-white/70 backdrop-blur-md divide-y divide-indigo-50">
           {grouped.assigned.length === 0 && grouped.unassigned.length === 0 && (
-            <p className="text-[12px] text-[#64748b] px-4 sm:px-6 py-4">
+            <p className="text-[12px] sm:text-[13px] text-slate-600 px-4 sm:px-6 py-5 text-center">
               No students yet. Add students to this teacher to manage section assignments.
             </p>
           )}
 
           {grouped.assigned.map((bucket) => (
-            <div key={bucket.sectionId} className="px-4 sm:px-6 py-3 sm:py-3.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b] mb-2">
-                {bucket.label}{' '}
-                <span className="text-[10px] font-normal text-[#94a3b8] tabular-nums">({bucket.students.length})</span>
-              </p>
+            <div key={bucket.sectionId} className="px-4 sm:px-6 py-3.5 sm:py-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-indigo-900 bg-indigo-50/90 border border-indigo-100 px-2.5 py-0.5 rounded-lg">
+                  {bucket.label}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 tabular-nums">
+                  {bucket.students.length} student{bucket.students.length === 1 ? '' : 's'}
+                </span>
+              </div>
               <div className="space-y-1.5">
                 {bucket.students.map((student) => (
                   <SectionAssignmentRow
@@ -2792,10 +3221,15 @@ const SectionManagementPanel: React.FC<{
           ))}
 
           {grouped.unassigned.length > 0 && (
-            <div className="px-4 sm:px-6 py-3 sm:py-3.5 bg-amber-50/40">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 mb-2">
-                Unassigned <span className="text-[10px] font-normal text-amber-600/80 tabular-nums">({grouped.unassigned.length})</span>
-              </p>
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-amber-50/50">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/80 border border-amber-200 px-2.5 py-0.5 rounded-lg">
+                  Unassigned
+                </span>
+                <span className="text-[11px] font-medium text-amber-700/90 tabular-nums">
+                  {grouped.unassigned.length} student{grouped.unassigned.length === 1 ? '' : 's'}
+                </span>
+              </div>
               <div className="space-y-1.5">
                 {grouped.unassigned.map((student) => (
                   <SectionAssignmentRow
@@ -3346,46 +3780,58 @@ const AnalyticsView: React.FC<{
 
         </header>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full">
-          <div className="relative overflow-hidden bg-[#0ea5e9] shadow-[0_4px_16px_rgba(14,165,233,0.13)] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 text-white flex flex-col gap-1 sm:gap-2 cursor-default select-none">
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 pointer-events-none" />
-            <div className="relative z-10 flex justify-between items-start">
-              <span className="font-body text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-bold">Class Average</span>
-              <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg flex"><Target size={14} /></div>
-            </div>
-            <div className="relative z-10 font-display text-lg sm:text-2xl font-extrabold sm:font-black tracking-tight tabular-nums leading-none">{Math.round(classAverage)}%</div>
-          </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full">
+          {/* Card 1: Class Average */}
+          <TeacherStatCard
+            color="purple"
+            title="Class Average"
+            badgeText={classAverage >= 75 ? 'Passing' : classAverage > 0 ? 'Needs Boost' : 'Pending'}
+            icon={Target}
+            value={`${Math.round(classAverage)}%`}
+            subtitle="Cohort Score"
+            scorePercent={Math.round(classAverage)}
+            footerLabel="Cohort Score"
+            footerBadge={classAverage >= 75 ? 'Passing' : 'Needs Boost'}
+          />
 
-          <div className="relative overflow-hidden bg-[#10b981] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 text-white flex flex-col gap-1 sm:gap-2 cursor-default select-none">
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 pointer-events-none" />
-            <div className="relative z-10 flex justify-between items-start">
-              <span className="font-body text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-bold">Completion</span>
-              <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg flex"><CheckCircle size={14} /></div>
-            </div>
-            <div className="relative z-10 font-display text-lg sm:text-2xl font-extrabold sm:font-black tracking-tight tabular-nums leading-none">{Math.round(completionRate)}%</div>
-          </div>
+          {/* Card 2: Completion */}
+          <TeacherStatCard
+            color="cyan"
+            title="Completion"
+            badgeText={completionRate >= 75 ? 'On Track' : 'In Progress'}
+            icon={CheckCircle}
+            value={`${Math.round(completionRate)}%`}
+            subtitle="Module Completion"
+            scorePercent={Math.round(completionRate)}
+            footerLabel="Completion"
+            footerBadge={`${Math.round(completionRate)}%`}
+          />
 
-          <div className="relative overflow-hidden bg-[#a855f7] shadow-[0_4px_16px_rgba(168,85,247,0.13)] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 text-white flex flex-col gap-1 sm:gap-2 cursor-default select-none">
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 pointer-events-none" />
-            <div className="relative z-10 flex justify-between items-start">
-              <span className="font-body text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-bold">Participation</span>
-              <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg flex"><Users size={14} /></div>
-            </div>
-            <div className="relative z-10 font-display text-lg sm:text-2xl font-extrabold sm:font-black tracking-tight tabular-nums leading-none">{Math.round(participationRate)}%</div>
-          </div>
+          {/* Card 3: Participation */}
+          <TeacherStatCard
+            color="green"
+            title="Participation"
+            badgeText="Active"
+            icon={Users}
+            value={`${Math.round(participationRate)}%`}
+            subtitle="Active Engagement"
+            scorePercent={Math.round(participationRate)}
+            footerLabel="Participation"
+            footerBadge={`${Math.round((participationRate / 100) * students.length)} active`}
+          />
 
-          <div className="relative overflow-hidden bg-[#f97316] shadow-[0_4px_16px_rgba(249,115,22,0.13)] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 text-white flex flex-col gap-1 sm:gap-2 cursor-default select-none">
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
-            <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 pointer-events-none" />
-            <div className="relative z-10 flex justify-between items-start">
-              <span className="font-body text-[10px] sm:text-[11px] opacity-90 uppercase tracking-wider font-bold">Attention</span>
-              <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg flex"><AlertTriangle size={14} /></div>
-            </div>
-            <div className="relative z-10 font-display text-lg sm:text-2xl font-extrabold sm:font-black tracking-tight tabular-nums leading-none">{attentionStudents.length}</div>
-          </div>
+          {/* Card 4: Needs Attention */}
+          <TeacherStatCard
+            color="rose"
+            title="Needs Attention"
+            badgeText={attentionStudents.length > 0 ? 'Priority' : 'Clear'}
+            icon={AlertTriangle}
+            value={attentionStudents.length}
+            subtitle="At-Risk Students"
+            scorePercent={students.length > 0 ? Math.round((attentionStudents.length / students.length) * 100) : 0}
+            footerLabel="At-Risk Rate"
+            footerBadge={students.length > 0 ? `${Math.round((attentionStudents.length / students.length) * 100)}%` : '0%'}
+          />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-6 h-auto xl:h-[600px]">
@@ -3395,7 +3841,7 @@ const AnalyticsView: React.FC<{
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h2 className="font-display text-[15px] sm:text-base font-bold text-[#1e293b] text-balance">Students <span className="font-display text-[#64748b] text-[13px] font-bold tabular-nums">({visibleStudents.length})</span></h2>
-                  <p className="font-body text-[11px] text-[#64748b] mt-0.5">Click any student to view diagnosis & intervention</p>
+                  <p className="font-body text-[11px] text-[#64748b] mt-0.5 hidden sm:block">Click any student to view diagnosis & intervention</p>
                 </div>
                 <button
                   onClick={() => onAddStudents?.()}
@@ -3524,7 +3970,7 @@ const AnalyticsView: React.FC<{
                       <TrendingUp className="w-4 h-4 text-emerald-500" />
                       Top Performers
                     </h3>
-                    <p className="font-body text-[11px] text-[#64748b] mt-0.5">Click student to view intervention profile</p>
+                    <p className="font-body text-[11px] text-[#64748b] mt-0.5 hidden sm:block">Click student to view intervention profile</p>
                   </div>
                 </div>
                 <div className="space-y-[8px]">
@@ -3553,7 +3999,7 @@ const AnalyticsView: React.FC<{
                       <AlertTriangle className="w-4 h-4 text-rose-500" />
                       Needs Attention
                     </h3>
-                    <p className="font-body text-[11px] text-[#64748b] mt-0.5">Click student to launch targeted support</p>
+                    <p className="font-body text-[11px] text-[#64748b] mt-0.5 hidden sm:block">Click student to launch targeted support</p>
                   </div>
                 </div>
                 <div className="space-y-[8px]">
@@ -3695,6 +4141,7 @@ const InterventionView: React.FC<{
   }, [student.struggles, effectiveWeakestTopic]);
 
   const [interventionPlan, setInterventionPlan] = useState<InterventionPlan | null>(null);
+  const [interventionTab, setInterventionTab] = useState<'overview' | 'path' | 'lesson'>('overview');
   const [interventionLoading, setInterventionLoading] = useState(true);
   const [isPathAssigned, setIsPathAssigned] = useState(false);
   const [selectedStep, setSelectedStep] = useState<import('../services/interventionService').LearningStep | null>(null);
@@ -4153,18 +4600,79 @@ const InterventionView: React.FC<{
       <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-3.5 sm:p-6 xl:p-8 no-scrollbar">
         <div className="max-w-[1000px] mx-auto space-y-4 sm:space-y-6">
 
-          {/* Top Navigation & Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 sm:mb-[8px]">
-            <div>
-              <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#a855f7] hover:text-[#9333ea] transition-colors bg-white/60 hover:bg-white/80 px-[18px] py-2 rounded-full backdrop-blur-[12px] mb-2 sm:mb-[16px] w-max shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
-                <ArrowLeft className="w-4 h-4" />
-                Back to Analytics
+          {/* Top Navigation & Segmented Tabs */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 sm:mb-4">
+            <button onClick={onBack} className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 hover:text-violet-600 transition-colors bg-white/80 hover:bg-white px-4 py-2 rounded-xl backdrop-blur-md shadow-sm border border-slate-200/80 w-max cursor-pointer active:scale-95">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Classes
+            </button>
+
+            {/* Clean Segmented Tabs */}
+            <div className="inline-flex p-1 bg-slate-100/90 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setInterventionTab('overview')}
+                className={`px-2.5 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  interventionTab === 'overview'
+                    ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                }`}
+              >
+                <span className="sm:hidden">Overview</span>
+                <span className="hidden sm:inline">Overview & Diagnosis</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInterventionTab('path')}
+                className={`px-2.5 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  interventionTab === 'path'
+                    ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                }`}
+              >
+                <span className="sm:hidden">Path</span>
+                <span className="hidden sm:inline">Learning Path</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInterventionTab('lesson')}
+                className={`px-2.5 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  interventionTab === 'lesson'
+                    ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                }`}
+              >
+                <span className="sm:hidden">Lesson</span>
+                <span className="hidden sm:inline">AI Lesson Plan</span>
               </button>
             </div>
           </div>
 
-          {/* AI Analysis Banner — light mint green */}
-          <div className="bg-gradient-to-br from-[#ecfdf5] via-[#f0fdf4] to-[#f7fdf9] backdrop-blur-[12px] rounded-[20px] p-[24px] border border-emerald-100 shadow-[0_4px_16px_rgba(16,185,129,0.08)] relative overflow-hidden">
+          {/* TAB 1: OVERVIEW & DIAGNOSIS */}
+          {interventionTab === 'overview' && (
+            <>
+              {/* Mobile-only Student Metric Highlights */}
+              <div className="lg:hidden grid grid-cols-2 gap-2.5 mb-3">
+                <TeacherStatCard
+                  color="purple"
+                  title="Avg Score"
+                  value={`${interventionPlan?.avg_score || studentProgressScore || student.avgScore}%`}
+                  subtitle="Current Score"
+                  scorePercent={Number(interventionPlan?.avg_score || studentProgressScore || student.avgScore)}
+                  className="min-h-[120px] p-2.5"
+                />
+                <TeacherStatCard
+                  color="rose"
+                  title="Weakest Topic"
+                  badgeText="Focus"
+                  value={normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}
+                  subtitle="Needs Intervention"
+                  className="min-h-[120px] p-2.5"
+                />
+              </div>
+
+              {/* AI Analysis Banner — light mint green */}
+              <div className="bg-gradient-to-br from-[#ecfdf5] via-[#f0fdf4] to-[#f7fdf9] backdrop-blur-[12px] rounded-[20px] p-[24px] border border-emerald-100 shadow-[0_4px_16px_rgba(16,185,129,0.08)] relative overflow-hidden">
             <div className="absolute right-[-20px] bottom-[-20px] opacity-[0.06] pointer-events-none">
               <Bot className="w-48 h-48 text-emerald-600" />
             </div>
@@ -4226,8 +4734,11 @@ const InterventionView: React.FC<{
               </div>
             </div>
           </div>
+          </>
+        )}
 
-          {/* Learning Path Timeline */}
+        {/* TAB 2: LEARNING PATH */}
+        {interventionTab === 'path' && (
           <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
             <div className="flex items-center justify-between mb-6 border-b border-[#f1f5f9] pb-4">
               <h3 className="text-[15px] font-semibold text-[#1e293b] text-balance">Generated Learning Path</h3>
@@ -4350,8 +4861,10 @@ const InterventionView: React.FC<{
               </div>
             </BoneSkeleton>
           </div>
+        )}
 
-          {/* Targeted Lesson Generator Settings */}
+        {/* TAB 3: AI LESSON PLAN */}
+        {interventionTab === 'lesson' && (
           <div className="relative bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white overflow-hidden">
             {/* Locked overlay */}
             {!rolloutFlags.lessonEnabled && (
@@ -4495,6 +5008,7 @@ const InterventionView: React.FC<{
               )}
             </BoneSkeleton>
           </div>
+        )}
         </div>
       </div>
 
@@ -4513,22 +5027,26 @@ const InterventionView: React.FC<{
           </div>
 
           {/* 4 Stats Grid */}
-          <div className="w-full grid grid-cols-2 gap-[12px]">
-            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
-              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Avg Score</p>
-              <p className="text-[20px] font-bold text-[#a855f7] tabular-nums">{interventionPlan?.avg_score || studentProgressScore || student.avgScore}%</p>
+          <div className="w-full grid grid-cols-2 gap-[10px]">
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] rounded-2xl p-3 text-white shadow-[0_4px_16px_-4px_rgba(153,86,222,0.4)] border border-white/20">
+              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-md pointer-events-none" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-1">Avg Score</p>
+              <p className="text-xl font-display font-black text-white tabular-nums">{interventionPlan?.avg_score || studentProgressScore || student.avgScore}%</p>
             </div>
-            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
-              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Engagement</p>
-              <p className="text-[20px] font-bold text-[#1e293b]">{interventionPlan?.engagement_level || ((studentProgressScore || student.avgScore) > 80 ? 'High' : (studentProgressScore || student.avgScore) > 50 ? 'Medium' : 'Low')}</p>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#38BDF8] via-[#0284C7] to-[#0369A1] rounded-2xl p-3 text-white shadow-[0_4px_16px_-4px_rgba(2,132,199,0.4)] border border-white/20">
+              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-md pointer-events-none" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-1">Engagement</p>
+              <p className="text-xl font-display font-black text-white">{interventionPlan?.engagement_level || ((studentProgressScore || student.avgScore) > 80 ? 'High' : (studentProgressScore || student.avgScore) > 50 ? 'Medium' : 'Low')}</p>
             </div>
-            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
-              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Last Active</p>
-              <p className="text-[13px] font-semibold text-[#1e293b] mt-1">{interventionPlan?.last_active ? new Date(interventionPlan.last_active).toLocaleDateString() : student.lastActive}</p>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#75D06A] via-[#52B847] to-[#36962C] rounded-2xl p-3 text-white shadow-[0_4px_16px_-4px_rgba(82,184,71,0.4)] border border-white/20">
+              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-md pointer-events-none" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-1">Last Active</p>
+              <p className="text-xs font-bold text-white mt-1 truncate">{interventionPlan?.last_active ? new Date(interventionPlan.last_active).toLocaleDateString() : student.lastActive}</p>
             </div>
-            <div className="bg-rose-50/60 rounded-[14px] p-4 border border-rose-100 text-left flex flex-col justify-center">
-              <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider mb-1">Weakest Topic</p>
-              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={interventionPlan?.weakest_topic || effectiveWeakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}</p>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#FB7185] via-[#F43F5E] to-[#E11D48] rounded-2xl p-3 text-white shadow-[0_4px_16px_-4px_rgba(244,63,94,0.4)] border border-white/20">
+              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-md pointer-events-none" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-1">Weakest Topic</p>
+              <p className="text-xs font-bold text-white mt-1 leading-snug truncate" title={interventionPlan?.weakest_topic || effectiveWeakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}</p>
             </div>
           </div>
 

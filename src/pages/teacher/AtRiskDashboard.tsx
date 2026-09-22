@@ -7,6 +7,7 @@ import { db } from '../../lib/firebase';
 import { RiskBadge } from '../../components/risk/RiskBadge';
 import { RiskDetailPanel } from '../../components/risk/RiskDetailPanel';
 import { InterventionChecklistPanel } from '../../components/risk/InterventionChecklistPanel';
+import { TeacherStatCard } from '../../components/TeacherStatCard';
 import {
   ShieldCheck,
   Eye,
@@ -35,32 +36,6 @@ interface DashboardStudent extends ManagedStudent {
   systemPerformanceAvg: number | null;
 }
 
-// ─── Gradient Stat Card ──────────────────────────────────────────────────────
-
-interface StatCardProps {
-  label: string;
-  value: number | string;
-  icon: React.ReactNode;
-  gradient: string;
-  shadowColor: string;
-  subtitle: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, icon, gradient, shadowColor, subtitle }) => (
-  <div className={`relative overflow-hidden ${gradient} rounded-[16px] p-5 shadow-[0_4px_12px_${shadowColor}] hover:shadow-[0_8px_24px_${shadowColor}] hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group text-white`}>
-    <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8] group-hover:-translate-y-4 group-hover:-translate-x-4"></div>
-    <div className="flex items-start justify-between relative z-10 mb-2">
-      <span className="text-[13px] font-medium text-white/90">{label}</span>
-      <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10">
-        {icon}
-      </div>
-    </div>
-    <div className="text-[28px] font-bold relative z-10 leading-none mb-4 tabular-nums">{value}</div>
-    <div className="flex items-center relative z-10 border-t border-white/20 pt-3 mt-auto">
-      <span className="text-[12px] font-medium text-white/90">{subtitle}</span>
-    </div>
-  </div>
-);
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -175,54 +150,71 @@ export const AtRiskDashboard: React.FC = () => {
 
       <div className="px-6 py-6 space-y-6">
         {/* Stats Row — Gradient Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-[16px]">
-          <StatCard
-            label="Total Students"
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          <TeacherStatCard
+            color="purple"
+            title="Total Students"
+            badgeText="Enrolled"
+            icon={Users}
             value={stats.total}
-            icon={<Users className="w-4 h-4 text-white" />}
-            gradient="bg-gradient-to-br from-[#a855f7] to-[#9333ea]"
-            shadowColor="rgba(168,85,247,0.2)"
             subtitle="Enrolled in system"
+            footerLabel="All Roster"
+            footerBadge={`${stats.total} active`}
           />
-          <StatCard
-            label="Safe"
+          <TeacherStatCard
+            color="green"
+            title="Safe"
+            badgeText="On Track"
+            icon={ShieldCheck}
             value={stats.safe}
-            icon={<ShieldCheck className="w-4 h-4 text-white" />}
-            gradient="bg-gradient-to-br from-[#10b981] to-[#059669]"
-            shadowColor="rgba(16,185,129,0.2)"
-            subtitle="On track"
+            subtitle="Passing"
+            scorePercent={stats.total > 0 ? Math.round((stats.safe / stats.total) * 100) : 0}
+            footerLabel="Cohort Share"
+            footerBadge={`${stats.total > 0 ? Math.round((stats.safe / stats.total) * 100) : 0}%`}
           />
-          <StatCard
-            label="Watch"
+          <TeacherStatCard
+            color="cyan"
+            title="Watch"
+            badgeText="Monitor"
+            icon={Eye}
             value={stats.watch}
-            icon={<Eye className="w-4 h-4 text-white" />}
-            gradient="bg-gradient-to-br from-[#0ea5e9] to-[#0284c7]"
-            shadowColor="rgba(14,165,233,0.2)"
-            subtitle="Monitor closely"
+            subtitle="Needs Attention"
+            scorePercent={stats.total > 0 ? Math.round((stats.watch / stats.total) * 100) : 0}
+            footerLabel="Cohort Share"
+            footerBadge={`${stats.total > 0 ? Math.round((stats.watch / stats.total) * 100) : 0}%`}
           />
-          <StatCard
-            label="Intervene"
+          <TeacherStatCard
+            color="amber"
+            title="Intervene"
+            badgeText="Priority"
+            icon={AlertTriangle}
             value={stats.intervene}
-            icon={<AlertTriangle className="w-4 h-4 text-white" />}
-            gradient="bg-gradient-to-br from-[#f97316] to-[#ea580c]"
-            shadowColor="rgba(249,115,22,0.2)"
-            subtitle="Needs support"
+            subtitle="Needs Support"
+            scorePercent={stats.total > 0 ? Math.round((stats.intervene / stats.total) * 100) : 0}
+            footerLabel="Support Plan"
+            footerBadge={`${stats.intervene} students`}
           />
-          <StatCard
-            label="Critical"
+          <TeacherStatCard
+            color="rose"
+            title="Critical"
+            badgeText={stats.critical > 0 ? 'Urgent' : 'Clear'}
+            icon={AlertCircle}
             value={stats.critical}
-            icon={<AlertCircle className="w-4 h-4 text-white" />}
-            gradient="bg-gradient-to-br from-[#ef4444] to-[#dc2626]"
-            shadowColor="rgba(239,68,68,0.2)"
-            subtitle="Immediate action"
+            subtitle="Immediate Action"
+            scorePercent={stats.total > 0 ? Math.round((stats.critical / stats.total) * 100) : 0}
+            footerLabel="Critical Alert"
+            footerBadge={`${stats.critical} students`}
           />
-          <StatCard
-            label="At Risk"
+          <TeacherStatCard
+            color="slate"
+            title="At Risk"
+            badgeText="Legacy"
+            icon={Skull}
             value={stats.at_risk}
-            icon={<Skull className="w-4 h-4 text-white" />}
-            gradient="bg-gradient-to-br from-[#6b7280] to-[#4b5563]"
-            shadowColor="rgba(107,114,128,0.2)"
-            subtitle="Legacy classification"
+            subtitle="Classification"
+            scorePercent={stats.total > 0 ? Math.round((stats.at_risk / stats.total) * 100) : 0}
+            footerLabel="Legacy Status"
+            footerBadge={`${stats.at_risk} students`}
           />
         </div>
 
