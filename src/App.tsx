@@ -17,8 +17,16 @@ import { deactivateCurrentSessionToken } from './services/pushNotificationServic
 import PushNotificationsManager from './components/PushNotificationsManager';
 import InstallPwaButton from './components/InstallPwaButton.tsx';
 import OnlineOfflineBanner from './components/OnlineOfflineBanner.tsx';
-import { AlertTriangle, ArrowRight, Bot, Calculator, Crown, Flame, Menu, Swords, Target, Trophy, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, Calculator, Crown, Flame, LogOut as LogOutIcon, Menu, Settings as SettingsIcon, Swords, Target, Trophy, User as UserIcon, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from './components/ui/dropdown-menu.tsx';
 import { type DiagnosticTopicKey, DIAGNOSTIC_TOPIC_LABELS, normalizeDiagnosticTopic } from './lib/diagnosticTopics.ts';
 import { getCurriculumModulesForLearner, resolveLearnerGradeLevel } from './data/curriculumModules';
 import { deleteDoc, doc, getDoc, getDocFromServer, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -67,6 +75,8 @@ const ProfileModal = lazy(() => import('./components/ProfileModal.tsx'));
 const ConfirmModal = lazy(() => import('./components/ConfirmModal.tsx'));
 const SettingsModal = lazy(() => import('./components/SettingsModal.tsx'));
 const SettingsPage = lazy(() => import('./components/SettingsPage.tsx'));
+const ProfilePage = lazy(() => import('./components/ProfilePage.tsx'));
+const RewardsPage = lazy(() => import('./components/RewardsPage.tsx'));
 const ScientificCalculator = lazy(() => import('./components/ScientificCalculator.tsx'));
 const InitialAssessmentModal = lazy(() => import('./components/assessment/InitialAssessmentModal.tsx'));
 const AssessmentPage = lazy(() => import('./pages/AssessmentPage.tsx'));
@@ -83,9 +93,7 @@ const App = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const tabLoadingFallback = (
-    <div className="flex min-h-[320px] items-center justify-center text-sm font-semibold text-slate-500">
-      Loading content...
-    </div>
+    <AppLoadingScreen message="Loading content..." />
   );
   const dashboardWidgetFallback = (
     <div className="pb-4 text-sm font-semibold text-slate-500">Loading dashboard content...</div>
@@ -104,6 +112,8 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const avatarUnsavedRef = useRef(false);
   const [pendingAvatarNav, setPendingAvatarNav] = useState<string | null>(null);
+  const profileUnsavedRef = useRef(false);
+  const [pendingProfileNav, setPendingProfileNav] = useState<string | null>(null);
   const constraintsRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
@@ -201,6 +211,8 @@ const App = () => {
     'Leaderboard': '/leaderboard',
     'Grades': '/grades',
     'Avatar Studio': '/avatar',
+    'Profile': '/profile',
+    'Rewards': '/rewards',
     'Settings': '/settings',
   };
 
@@ -213,6 +225,8 @@ const App = () => {
     '/leaderboard': 'Leaderboard',
     '/grades': 'Grades',
     '/avatar': 'Avatar Studio',
+    '/profile': 'Profile',
+    '/rewards': 'Rewards',
     '/settings': 'Settings',
   };
 
@@ -233,15 +247,16 @@ const App = () => {
   }, []);
 
   const handleStudentNavigation = (tab: string, moduleId?: string) => {
-    // Guard: check if Avatar Studio has unsaved changes
+    // Guard: check if Avatar Studio or Profile has unsaved changes
     if (activeTab === 'Avatar Studio' && avatarUnsavedRef.current && tab !== 'Avatar Studio') { setPendingAvatarNav(tab); return; }
+    if (activeTab === 'Profile' && profileUnsavedRef.current && tab !== 'Profile') { setPendingProfileNav(tab); return; }
     if (moduleId) {
       setTargetModuleId(moduleId);
     } else if (tab === 'Modules' && activeTab !== 'Modules') {
       setTargetModuleId(null);
     }
 
-    if (tab === 'Settings' && activeTab !== 'Settings') {
+    if ((tab === 'Settings' || tab === 'Profile' || tab === 'Rewards') && activeTab !== tab) {
       setPreviousTab(activeTab);
     }
 
@@ -1165,6 +1180,7 @@ const App = () => {
               onLogout={() => setActiveModal('logout_confirm')}
               sidebarCollapsed={isSidebarCollapsed}
               setSidebarCollapsed={setIsSidebarCollapsed}
+              forceCollapsed={activeTab === 'Quiz Battle'}
             />
           </Suspense>
         </div>
@@ -1213,10 +1229,10 @@ const App = () => {
           
           <OnlineOfflineBanner />
 
-          {/* Invisible Universal Student Header Bar — Clean & Floating (Consumes space on top of all pages without a visible box/border) */}
-          <header className={`w-full px-5 sm:px-8 xl:px-12 pt-3.5 sm:pt-4 lg:pt-4.5 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
-            <div className="flex items-center justify-between gap-2">
-              {/* Upper Left: Level Badge & XP Counter (XP hidden on narrow mobile <= 350px, shown on 360px+ and tablet/desktop) */}
+          {/* Invisible Universal Student Header Bar — Clean & Floating */}
+          <header className={`w-full px-3 sm:px-6 lg:px-8 xl:px-12 pt-2.5 sm:pt-3.5 lg:pt-4 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
+            <div className="max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full flex items-center justify-between gap-2">
+              {/* Upper Left: Level Badge & XP Counter */}
               <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <button
                   type="button"
@@ -1232,13 +1248,13 @@ const App = () => {
                 <button
                   type="button"
                   onClick={() => setActiveModal('rewards')}
-                  className="hidden min-[360px]:flex items-center gap-2 px-2.5 py-1 rounded-xl bg-gradient-to-b from-violet-50 to-violet-100/90 border border-violet-200/80 shadow-[0_2px_0_#ddd6fe,0_3px_8px_rgba(139,92,246,0.1)] active:translate-y-[1px] active:shadow-none hover:bg-violet-50 transition-all shrink-0 cursor-pointer"
+                  className="hidden min-[360px]:flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 rounded-xl bg-gradient-to-b from-violet-50 to-violet-100/90 border border-violet-200/80 shadow-[0_2px_0_#ddd6fe,0_3px_8px_rgba(139,92,246,0.1)] active:translate-y-[1px] active:shadow-none hover:bg-violet-50 transition-all shrink-0 cursor-pointer"
                   title={`${progressXPInLevel}/${xpToNextLevel} XP`}
                   aria-label={`XP: ${displayXP}`}
                 >
                   <Zap className="w-3.5 h-3.5 text-violet-500 shrink-0 drop-shadow-sm" />
                   <span className="text-xs font-display font-black text-violet-700 dark:text-violet-300 tabular-nums shrink-0">{displayXP} XP</span>
-                  <div className="w-14 sm:w-20 h-2 bg-violet-200/60 dark:bg-violet-950/60 rounded-full overflow-hidden shadow-inner shrink-0">
+                  <div className="hidden sm:block w-14 sm:w-20 h-2 bg-violet-200/60 dark:bg-violet-950/60 rounded-full overflow-hidden shadow-inner shrink-0">
                     <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all" style={xpFillStyle} />
                   </div>
                 </button>
@@ -1251,7 +1267,7 @@ const App = () => {
                 <button
                   type="button"
                   onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:shadow-[0_6px_20px_rgba(14,165,233,0.18)] hover:border-sky-200/80 text-slate-700 hover:text-sky-500 transition-all flex items-center justify-center cursor-pointer active:scale-95"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/80 border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:shadow-[0_6px_20px_rgba(14,165,233,0.18)] hover:border-sky-200/80 text-slate-700 dark:text-slate-100 hover:text-sky-500 transition-all flex items-center justify-center cursor-pointer active:scale-95"
                   title="Scientific Calculator"
                   aria-label="Scientific Calculator"
                 >
@@ -1265,18 +1281,61 @@ const App = () => {
                 </Suspense>
 
                 {/* Profile button on top right: hidden on mobile (< md) because it's on bottom right of the navbar; shown on tablet & desktop (md:) */}
-                <button
-                  type="button"
-                  onClick={() => handleStudentNavigation('Settings')}
-                  className="hidden md:flex w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] items-center justify-center hover:ring-2 hover:ring-purple-400 transition-all active:scale-95 cursor-pointer"
-                  aria-label={`Profile: ${profileData.name}`}
-                >
-                  <UserAvatar
-                    src={profileData.photo}
-                    name={profileData.name}
-                    className="w-full h-full rounded-none"
-                  />
-                </button>
+                <div className="hidden md:block">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-purple-400 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-purple-500"
+                        aria-label={`Profile menu: ${profileData.name}`}
+                      >
+                        <UserAvatar
+                          src={profileData.photo}
+                          name={profileData.name}
+                          className="w-full h-full rounded-none"
+                        />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 p-1.5 shadow-xl z-50">
+                      <DropdownMenuLabel className="px-3 py-2 font-normal">
+                        <div className="flex flex-col space-y-0.5 min-w-0">
+                          <p className="text-xs font-black text-slate-900 dark:text-white truncate font-display">{profileData.name}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{profileData.email || 'Student Account'}</p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator className="my-1 bg-slate-200/60 dark:bg-white/10" />
+                      <DropdownMenuItem
+                        onClick={() => handleStudentNavigation('Profile')}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 transition-colors cursor-pointer"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                          <UserIcon size={14} />
+                        </div>
+                        <span>My Profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleStudentNavigation('Settings')}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 transition-colors cursor-pointer"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                          <SettingsIcon size={14} />
+                        </div>
+                        <span>Settings</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="my-1 bg-slate-200/60 dark:bg-white/10" />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setActiveModal('logout_confirm')}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                          <LogOutIcon size={14} />
+                        </div>
+                        <span>Sign Out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </div>
           </header>
@@ -1302,7 +1361,7 @@ const App = () => {
                   onHome={() => handleStudentNavigation('Dashboard')}
                 >
                 {activeTab === 'Dashboard' ? (
-                  <div className="px-5 sm:px-8 xl:px-12 py-1.5 sm:py-2.5 lg:py-3 flex flex-col gap-3 sm:gap-4 lg:gap-4.5">
+                  <div className="px-5 sm:px-8 xl:px-12 py-1.5 sm:py-2.5 lg:py-3 flex flex-col gap-3 sm:gap-4 lg:gap-4.5 max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full">
                     <div className="grid grid-cols-12 gap-4 sm:gap-6 lg:gap-10">
                       <div className="col-span-12 xl:col-span-9 flex flex-col gap-4 sm:gap-5 md:gap-6 lg:gap-8 pt-0">
 
@@ -1555,7 +1614,7 @@ const App = () => {
                   </Suspense>
                 ) : activeTab === 'Quiz Battle' ? (
                   <Suspense fallback={tabLoadingFallback}>
-                    <QuizBattlePage />
+                    <QuizBattlePage setIsInQuizMode={setIsInQuizMode} />
                   </Suspense>
                 ) : activeTab === 'AI Chat' ? (
                   <Suspense fallback={tabLoadingFallback}>
@@ -1581,6 +1640,27 @@ const App = () => {
                       onCancelNavigation={() => setPendingAvatarNav(null)}
                     />
                   </Suspense>
+                ) : activeTab === 'Profile' ? (
+                  <Suspense fallback={tabLoadingFallback}>
+                    <ProfilePage
+                      profileData={profileData}
+                      userLevel={userLevel}
+                      userXP={currentXP}
+                      onSaveProfile={handleSaveProfile}
+                      onNavigateToAvatarShop={() => handleStudentNavigation('Avatar Studio')}
+                      onNavigateToSettings={() => handleStudentNavigation('Settings')}
+                      onBack={() => handleStudentNavigation(previousTab || 'Dashboard')}
+                      previousTabName={previousTab || 'Dashboard'}
+                      unsavedChangesRef={profileUnsavedRef}
+                      pendingNavigation={pendingProfileNav}
+                      onConfirmLeave={() => {
+                        const nav = pendingProfileNav;
+                        setPendingProfileNav(null);
+                        if (nav) setTimeout(() => handleStudentNavigation(nav), 0);
+                      }}
+                      onCancelNavigation={() => setPendingProfileNav(null)}
+                    />
+                  </Suspense>
                 ) : activeTab === 'Settings' ? (
                   <Suspense fallback={tabLoadingFallback}>
                     <SettingsPage
@@ -1596,8 +1676,20 @@ const App = () => {
                       onResetData={handleResetTestingData}
                       onLogout={() => setActiveModal('logout_confirm')}
                       onNavigateToAvatarShop={() => handleStudentNavigation('Avatar Studio')}
+                      onNavigateToProfile={() => handleStudentNavigation('Profile')}
                       onBack={() => handleStudentNavigation(previousTab || 'Dashboard')}
                       previousTabName={previousTab || 'Dashboard'}
+                    />
+                  </Suspense>
+                ) : activeTab === 'Rewards' ? (
+                  <Suspense fallback={tabLoadingFallback}>
+                    <RewardsPage
+                      userId={userProfile?.uid || ''}
+                      userLevel={userLevel}
+                      currentXP={progressXPInLevel}
+                      totalXP={totalXP}
+                      xpToNextLevel={xpToNextLevel}
+                      onBack={() => handleStudentNavigation(previousTab || 'Dashboard')}
                     />
                   </Suspense>
                 ) : activeTab === 'Assessment' ? (
@@ -1651,6 +1743,10 @@ const App = () => {
                 xpToNextLevel={xpToNextLevel}
                 totalXP={totalXP}
                 userId={userProfile?.uid || ''}
+                onViewAllRewards={() => {
+                  setActiveModal(null);
+                  handleStudentNavigation('Rewards');
+                }}
               />
             </Suspense>
           )}
@@ -1772,12 +1868,14 @@ const App = () => {
             </Suspense>
           )}
 
-          {/* Mobile Bottom Navigation Bar (Hidden during full-screen assessment) */}
-          {!showAssessmentPage && (
+          {/* Mobile Bottom Navigation Bar (Hidden during full-screen assessment and active quizzes) */}
+          {(!showAssessmentPage && !isInQuizMode) && (
             <MobileBottomNav
               activeTab={activeTab}
               onSelectTab={handleStudentNavigation}
-              onOpenProfile={() => handleStudentNavigation('Settings')}
+              onOpenProfile={() => handleStudentNavigation('Profile')}
+              onOpenSettings={() => handleStudentNavigation('Settings')}
+              onLogout={() => setActiveModal('logout_confirm')}
               profilePhoto={profileData.photo}
               profileName={profileData.name}
             />

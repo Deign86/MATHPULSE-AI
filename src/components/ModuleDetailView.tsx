@@ -19,6 +19,7 @@ import type { UserProgress, AIQuizQuestion } from '../types/models';
 import { generatePracticeSession } from '../services/practiceService';
 import { useModuleProgress } from '../hooks/useModuleProgress';
 import { Loader2 } from 'lucide-react';
+import MathPulseLoader from './ui/MathPulseLoader';
 
 const MODULE_SUBJECT_FALLBACKS = {
   gm: 'gen-math',
@@ -347,7 +348,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     };
     setReturningToLesson(currentLesson);
     setSelectedLesson({ type: 'quiz', quiz: practiceQuiz });
-  }, []);
+    setIsInQuizMode?.(true);
+  }, [setIsInQuizMode]);
 
   const handleComplete = useCallback((score?: number, totalXP?: number, goToNext?: boolean) => {
     const current = selectedLessonRef.current;
@@ -398,6 +400,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       } else if (currentIdx === module.lessons.length - 1 && module.quizzes.length > 0) {
         // If it was the last lesson, move to the first quiz
         setSelectedLesson({ type: 'quiz', quiz: module.quizzes[0] });
+        setIsInQuizMode?.(true);
       } else {
         // Nothing left to go to
         setSelectedLesson(null);
@@ -405,7 +408,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     } else {
       setSelectedLesson(null);
     }
-  }, [subjectId, subjectIdSource, module.id, module.lessons.length, module.quizzes.length]);
+  }, [subjectId, subjectIdSource, module.id, module.lessons, module.quizzes, setIsInQuizMode]);
 
   const handleProgressUpdate = useCallback((percent: number) => {
     if (!userProfile?.uid || !selectedLessonRef.current || selectedLessonRef.current.type !== 'lesson') return;
@@ -459,13 +462,11 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       // Show the quiz interface — questions loaded via quizQuestions state
       if (!quizQuestions) {
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl">
-              <Loader2 size={36} className="animate-spin text-indigo-600" />
-              <p className="font-bold text-slate-700">Generating Quiz...</p>
-              <p className="text-sm text-slate-500">AI is crafting questions for {selectedLesson.quiz.title}</p>
-            </div>
-          </div>
+          <MathPulseLoader
+            title="Generating Quiz..."
+            subtitle={`AI is crafting questions for ${selectedLesson.quiz.title}`}
+            fullScreen={true}
+          />
         );
       }
       return (

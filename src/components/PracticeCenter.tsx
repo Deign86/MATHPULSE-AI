@@ -3,6 +3,7 @@ import { recordGet } from '../utils/memberOf';
 import { Award, Clock, Target, Zap, Trophy, BookOpen, PenTool, Loader2, TrendingUp, DollarSign, Brain, Dice5, BarChart3, Crosshair, FlaskConical, ScatterChart, CheckCircle, History, X, type LucideIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Quiz, QuizAnswerRecord } from './QuizExperience';
+import MathPulseLoader from './ui/MathPulseLoader';
 import { useAuth } from '../contexts/AuthContext';
 import { SHS_MATH_SUBJECTS, type SubjectId } from '../data/subjects';
 import {
@@ -305,13 +306,11 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
 
       {/* Loading Overlay */}
       {generatingTopic && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl">
-            <Loader2 size={36} className="animate-spin text-indigo-600" />
-            <p className="font-bold text-slate-700">Generating Quiz...</p>
-            <p className="text-sm text-slate-500">AI is crafting questions from curriculum</p>
-          </div>
-        </div>
+        <MathPulseLoader
+          title="Generating Quiz..."
+          subtitle="AI is crafting questions from curriculum"
+          fullScreen={true}
+        />
       )}
 
       {/* Topics Grid */}

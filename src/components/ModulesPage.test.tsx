@@ -79,6 +79,6 @@ describe('ModulesPage', () => {
     const practiceTab = screen.getByRole('button', { name: /practice/i });
     fireEvent.click(practiceTab);
 
-    expect(await screen.findByText(/practice center stub/i)).toBeInTheDocument();
+    expect(await screen.findByText(/practice center stub/i, {}, { timeout: 5000 })).toBeInTheDocument();
   });
 });

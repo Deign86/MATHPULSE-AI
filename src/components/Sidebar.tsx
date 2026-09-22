@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Settings, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X, Cpu, Database, School } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X, Cpu, Database, School } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
-import LogoutActionButton from './LogoutActionButton';
 import { cn } from './ui/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
@@ -49,7 +48,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const reduceMotion = useReducedMotion();
   const isMobile = mode === 'mobile';
   const isHoverExpanded = !forceCollapsed && sidebarHovered;
-  const canOpenSettings = (onOpenSettings instanceof Function);
   
   // Helper to determine if sidebar should show collapsed state
   const isCollapsed = !isMobile && (forceCollapsed || (sidebarCollapsed && !isHoverExpanded));
@@ -130,7 +128,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           ],
         },
         {
-          label: 'Customization',
+          label: 'Identity',
           items: [
             { icon: Shirt, label: 'Avatar Studio', displayLabel: 'Avatar Studio' },
           ],
@@ -260,54 +258,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      <div className="mt-4 space-y-2 border-t border-[#dde3eb] pt-4">
-        {true ? (
-          <Tooltip open={shouldShowIconOnlyTooltips && hoveredTooltip === 'Settings'}>
-            <TooltipTrigger asChild>
-              <motion.button
-                whileHover={{ x: 2 }}
-                whileTap={{ scale: 0.98 }}
-                onMouseEnter={() => {
-                  if (shouldShowIconOnlyTooltips) {
-                    setHoveredTooltip('Settings');
-                  }
-                }}
-                onMouseLeave={() => {
-                  setHoveredTooltip((previous) => (previous === 'Settings' ? null : previous));
-                }}
-                onFocus={() => setHoveredTooltip(null)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold border transition-all duration-200 whitespace-nowrap ${
-                  isCollapsed ? 'justify-center' : ''
-                } ${
-                  activeTab === 'Settings'
-                    ? 'bg-sky-50 border-sky-200 text-sky-700 shadow-sm'
-                    : canOpenSettings
-                    ? 'border-transparent text-[#5a6578] hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628]'
-                    : 'border-transparent text-[#a0aec0] cursor-not-allowed opacity-60'
-                }`}
-                onClick={canOpenSettings ? onOpenSettings : undefined}
-                disabled={!canOpenSettings}
-                aria-disabled={!canOpenSettings}
-                aria-label="Open settings"
-              >
-                <Settings size={18} strokeWidth={2} className="flex-shrink-0" />
-                {(!isCollapsed || isHoverExpanded) && <span className="font-body text-xs">Settings</span>}
-              </motion.button>
-            </TooltipTrigger>
-            {shouldShowIconOnlyTooltips && (
-              <TooltipContent side="right" sideOffset={16} className="font-bold text-xs">
-                Settings
-              </TooltipContent>
-            )}
-          </Tooltip>
-        ) : null}
-
-        {onLogout && (
-          <div className="text-[#5a6578]">
-            <LogoutActionButton onClick={onLogout} collapsed={isCollapsed} />
-          </div>
-        )}
-      </div>
     </motion.aside>
   );
 };

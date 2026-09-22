@@ -40,6 +40,43 @@ interface AvatarShopProps {
 }
 
 const EQUIP_EXPRESSIONS = ['Looking sharp!', 'Cool outfit!', 'I love this!', 'Fresh look!', 'Math ready!', 'Awesome!'];
+export const UNEQUIP_EXPRESSIONS = ['Back to basics!', 'Fresh look!', 'Reset and ready!'] as const;
+export const ITEM_EQUIP_DIALOGUE = {
+  top_blue: ['Wow! I love blue!', 'Cool blue uniform! Ready for math!', 'Blue is my favorite!'],
+  top_pink: ['Ooh, pretty in pink!', 'Pink gives me +10 equation energy!', 'Looking vibrant and ready!'],
+  top_brown_vest: ['Distinguished scholar look!', 'Professor vibes activated!', 'Very sharp and smart!'],
+  bot_black: ['Classic black pants—goes with everything!', 'Sleek, comfy, and stylish!'],
+  shoe_black: ['Stepping into math mastery!', 'Polished and ready to move!'],
+  shoe_slippers: ['Cozy study mode activated!', 'Chill math vibes only!', 'Comfort level: 100!'],
+  acc_leaf_clip: ['Nature power! A fresh sprout of genius!', 'Photosynthesizing math skills! 🌱'],
+  acc_blue_cap: ['Thinking cap on! Let us solve this!', 'Cool blue cap, sharp mind!'],
+  acc_red_cap: ['Fired up in red! Let us go!', 'Red cap champion look! 🧢'],
+  acc_traffic_cone: ['Warning: High IQ zone ahead! ⚠️', 'Caution: Genius at work!'],
+  acc_crown: ['Royal mathematician! Crown of mastery! 👑', 'All hail the math champion!'],
+  exc_naruto_set: ['Believe it! Math ninja mode activated! 🍜', 'Hokage of equations! Dattebayo!'],
+  exc_forehead_protector: ['Hidden Leaf headband on! Focus level: 100%!'],
+} as const satisfies Record<string, readonly string[]>;
+
+export const CATEGORY_FALLBACK_EXPRESSIONS = {
+  top: ['Looking sharp in this top!', 'Outfit on point!'],
+  bottom: ['Nice pants! Comfy and clean!', 'Ready for any problem!'],
+  shoes: ['Stepping up my style!', 'Ready to walk the path of mastery!'],
+  accessory: ['Love this accessory!', 'The perfect finishing touch!'],
+  exclusive: ['Legendary style!', 'Exclusive flair!'],
+} as const satisfies Record<string, readonly string[]>;
+
+export function getEquipQuotes(itemId: string, category: string): readonly string[] {
+  if (Object.prototype.hasOwnProperty.call(ITEM_EQUIP_DIALOGUE, itemId)) {
+    // SAFETY: itemId existence in ITEM_EQUIP_DIALOGUE is verified by hasOwnProperty above
+    return ITEM_EQUIP_DIALOGUE[itemId as keyof typeof ITEM_EQUIP_DIALOGUE];
+  }
+  if (Object.prototype.hasOwnProperty.call(CATEGORY_FALLBACK_EXPRESSIONS, category)) {
+    // SAFETY: category existence in CATEGORY_FALLBACK_EXPRESSIONS is verified by hasOwnProperty above
+    return CATEGORY_FALLBACK_EXPRESSIONS[category as keyof typeof CATEGORY_FALLBACK_EXPRESSIONS];
+  }
+  return EQUIP_EXPRESSIONS;
+}
+
 const ENCOURAGEMENT_PHRASES = [
   'Gain more XP to unlock new gear!',
   'Looking stylish today!',
@@ -248,7 +285,12 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
         if (item.setLayers.shoes) nextEquipped.shoes = item.setLayers.shoes;
         if (item.setLayers.accessory) nextEquipped.accessory = item.setLayers.accessory;
         setEquipped(nextEquipped);
-        setAvatarSpeech(item.isExclusive && !isOwned ? 'Preview only!' : 'Full set equipped!');
+        if (item.isExclusive && !isOwned) {
+          setAvatarSpeech('Preview only!');
+        } else {
+          const setQuotes = getEquipQuotes(id, 'exclusive');
+          setAvatarSpeech(setQuotes[Math.floor(Math.random() * setQuotes.length)]);
+        }
         return;
       }
 
@@ -271,12 +313,16 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
         if (allSetPieceIds.has(base.shoes || '')) base.shoes = savedEquipped.shoes;
         if (allSetPieceIds.has(base.accessory || '')) base.accessory = savedEquipped.accessory;
       }
-      const nextEquipped: AvatarLayers = { ...base, [category]: base[category] === id ? '' : id };
+      const isUnequipping = base[category] === id;
+      const nextEquipped: AvatarLayers = { ...base, [category]: isUnequipping ? '' : id };
       setEquipped(nextEquipped);
       if (item.isExclusive && !isOwned) {
         setAvatarSpeech('Preview only!');
+      } else if (isUnequipping) {
+        setAvatarSpeech(UNEQUIP_EXPRESSIONS[Math.floor(Math.random() * UNEQUIP_EXPRESSIONS.length)]);
       } else {
-        setAvatarSpeech(EQUIP_EXPRESSIONS[Math.floor(Math.random() * EQUIP_EXPRESSIONS.length)]);
+        const itemQuotes = getEquipQuotes(id, category);
+        setAvatarSpeech(itemQuotes[Math.floor(Math.random() * itemQuotes.length)]);
       }
     },
     [equipped, inventoryItems, ownedItems, isPreviewActive, savedEquipped]
