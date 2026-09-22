@@ -298,13 +298,13 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
               className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[92dvh] overflow-y-auto flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-100">
-                  <h3 className="text-lg font-bold text-slate-900">Update profile picture</h3>
+                <div className="flex items-center justify-between p-4 border-b border-slate-100 shrink-0">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900">Update profile picture</h3>
                   <button
                     onClick={clearSelection}
-                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
                     aria-label="Close modal"
                   >
                     <X size={20} />
@@ -312,8 +312,8 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
                 </div>
 
                 {/* Cropper area */}
-                <div className="p-4 sm:p-6 bg-slate-50 flex flex-col items-center">
-                  <div className="relative h-[350px] sm:h-[450px] w-[350px] sm:w-[450px] mx-auto overflow-hidden rounded-xl bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-inner">
+                <div className="p-3 sm:p-6 bg-slate-50 flex flex-col items-center">
+                  <div className="relative h-[250px] sm:h-[380px] w-full max-w-[380px] aspect-square mx-auto overflow-hidden rounded-xl bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-inner">
                     <Cropper
                       image={selectedPreview}
                       crop={crop}
