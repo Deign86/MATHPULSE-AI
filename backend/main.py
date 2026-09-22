@@ -130,6 +130,7 @@ from routes.intervention_routes import router as intervention_router
 from routes.pipeline_routes import router as pipeline_router
 from routes.deepseek_rag_routes import router as deepseek_rag_router
 from routes.at_risk_resolution import router as at_risk_resolution_router
+from routes.fun_modules_routes import router as fun_modules_router
 from routes.jev_routes import router as jev_router
 from services.jev_client import route_student_intent
 
@@ -1219,6 +1220,7 @@ app.include_router(intervention_router)
 app.include_router(pipeline_router)
 app.include_router(deepseek_rag_router)
 app.include_router(at_risk_resolution_router)
+app.include_router(fun_modules_router)
 app.include_router(jev_router)
 
 

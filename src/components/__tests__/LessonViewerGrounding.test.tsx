@@ -81,13 +81,13 @@ const lesson = {
   storagePath: 'curriculum/SHS_GM_Q1_LE2.pdf',
 } as Parameters<typeof LessonViewer>[0]['lesson'];
 
-function renderLessonViewer() {
+function renderLessonViewer(content: UseLessonContentResult = stubLessonContent) {
   const authValue = buildTestAuthContext(activeProfile);
   return render(
     <AuthContext.Provider value={authValue}>
       <LessonViewer
         lesson={lesson}
-        initialContent={stubLessonContent}
+        initialContent={content}
         onLogLessonView={stubLogLessonView}
         onBack={vi.fn()}
         onComplete={vi.fn()}
@@ -160,5 +160,26 @@ describe('Issue #164: Curriculum Grounding Evidence role gating', () => {
     );
     expect(screen.queryByLabelText('Inspect evidence')).toBeNull();
     expect(screen.queryByText('Curriculum Grounding Evidence')).toBeNull();
+  });
+
+  it('shows the Merrill deck when RAG sections contain card content', () => {
+    setRole('student');
+    renderLessonViewer();
+
+    expect(screen.getByRole('region', { name: 'Merrill micro-lesson' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Welcome to Simple Interest' })).toBeInTheDocument();
+  });
+
+  it('keeps the PDF fallback when RAG content fails', () => {
+    setRole('student');
+    renderLessonViewer({
+      ...stubLessonContent,
+      sections: [],
+      error: 'retrieval failed',
+    });
+
+    expect(screen.queryByRole('region', { name: 'Merrill micro-lesson' })).toBeNull();
+    expect(screen.getByText('AI lesson unavailable')).toBeInTheDocument();
+    expect(screen.getByText(/showing the DepEd source PDF/i)).toBeInTheDocument();
   });
 });
