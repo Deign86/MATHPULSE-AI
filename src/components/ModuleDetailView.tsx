@@ -11,6 +11,7 @@ import { subjects, Module, Lesson, Quiz } from '../data/subjects';
 import { getLessonById } from '../data/curriculum/types';
 import { useAuth } from '../contexts/AuthContext';
 import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
+import { computeHonestXp } from '../services/honestXp';
 import { db } from '../lib/firebase';
 import { getQuestionCountForQuiz } from '../services/lessonQuizService';
 import type { UserProgress, AIQuizQuestion } from '../types/models';
@@ -28,6 +29,7 @@ const MODULE_SUBJECT_FALLBACKS = {
 } as const;
 
 const DEFAULT_SUBJECT_ID = 'gen-math';
+const DEFAULT_LESSON_XP = computeHonestXp({ quizScore: 0, hintsUsed: 0, streakDays: 0 });
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -42,7 +44,6 @@ interface ModuleDetailViewProps {
 }
 
 const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP, isInQuizMode = false, setIsInQuizMode }) => {
-  const STANDARD_LESSON_XP = 10;
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
@@ -353,8 +354,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     if (current?.type !== 'lesson' || !current.lesson) return;
     const currentLesson = current.lesson;
 
-    // Standard lesson rewards are intentionally lower to keep pacing balanced.
-    const xpAmount = STANDARD_LESSON_XP;
+    const xpAmount = computeHonestXp({ quizScore: score ?? 0, hintsUsed: 0, streakDays: 0 });
     onEarnXPRef.current?.(xpAmount, `Completed "${currentLesson.title}"`);
 
     // Persist progress for Competency Matrix (Concept Grasp)
@@ -443,7 +443,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       return (
         <LessonViewer
           lesson={selectedLesson.lesson}
-          lessonCompletionXP={STANDARD_LESSON_XP}
+          lessonCompletionXP={DEFAULT_LESSON_XP}
           practiceQuiz={associatedQuiz}
           practiceQuizCompleted={practiceQuizCompleted}
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}

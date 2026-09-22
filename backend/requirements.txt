@@ -29,3 +29,4 @@ google-api-python-client>=2.0.0
 pypdf>=4.0.0
 slowapi>=0.1.0
 limits>=3.0.0
+typesafe-sdk>=0.1.0
