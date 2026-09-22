@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { getAvatarSrc } from '../data/avatarData';
 
 export interface AvatarLayers {
@@ -14,42 +15,8 @@ interface CompositeAvatarProps {
   fallbackSrc?: string; // what to show if no custom layout is given
 }
 
-const avatarAnimations = `
-  @keyframes head-sway {
-    0%, 100% { transform: rotate(-2deg) translateY(0); }
-    50% { transform: rotate(2deg) translateY(-3px); }
-  }
-  @keyframes horn-left {
-    0%, 100% { transform: rotate(-4deg); }
-    50% { transform: rotate(4deg); }
-  }
-  @keyframes horn-right {
-    0%, 100% { transform: rotate(4deg); }
-    50% { transform: rotate(-4deg); }
-  }
-  @keyframes blink {
-    0%, 90%, 100% { transform: scaleY(1); }
-    95% { transform: scaleY(0.1); }
-  }
-  .animate-head-sway {
-    transform-origin: 50% 70%;
-    animation: head-sway 4s ease-in-out infinite;
-  }
-  .animate-horn-left {
-    transform-origin: 50% 45%;
-    animation: horn-left 4s ease-in-out infinite;
-  }
-  .animate-horn-right {
-    transform-origin: 50% 45%;
-    animation: horn-right 4s ease-in-out infinite;
-  }
-  .animate-blink {
-    transform-origin: 50% 50%;
-    animation: blink 4s ease-in-out infinite;
-  }
-`;
-
 const CompositeAvatar: React.FC<CompositeAvatarProps> = ({ layers, className = "w-10 h-10 bg-slate-200 rounded-full", fallbackSrc }) => {
+  const reduceMotion = useReducedMotion();
   const topSrc = getAvatarSrc(layers?.top);
   const bottomSrc = getAvatarSrc(layers?.bottom);
   const shoesSrc = getAvatarSrc(layers?.shoes);
@@ -59,31 +26,47 @@ const CompositeAvatar: React.FC<CompositeAvatarProps> = ({ layers, className = "
   const baseBody = <img src="/avatar/avatar_body_base.png" alt="base body" className="absolute inset-0 w-full h-full object-contain z-10" />;
 
   const headGroup = (
-    <>
-      <style>{avatarAnimations}</style>
-      <div className="absolute inset-0 w-full h-full z-50 pointer-events-none animate-head-sway">
-        <img
-          src="/avatar/left_horn.png"
-          alt="left horn"
-          className="absolute inset-0 w-full h-full object-contain animate-horn-left"
-        />
-        <img
-          src="/avatar/right_horn.png"
-          alt="right horn"
-          className="absolute inset-0 w-full h-full object-contain animate-horn-right"
-        />
-        <img src="/avatar/avatar_head_base.png" alt="head base" className="absolute inset-0 w-full h-full object-contain z-10" />
-        <img
-          src="/avatar/eyes_default.png"
-          alt="Avatar Eyes"
-          className="absolute inset-0 w-full h-full object-contain z-10 animate-blink"
-        />
-        {accSrc && <img src={accSrc} alt="accessory" className="absolute inset-0 w-full h-full object-contain z-20" />}
-      </div>
-    </>
+    <motion.div
+      className="absolute inset-0 w-full h-full z-50 pointer-events-none"
+      animate={reduceMotion ? {} : { rotate: [-2.5, 2.5, -2.5], y: [0, -3, 0] }}
+      transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+      style={{ originY: 0.7, originX: 0.5 }}
+    >
+      <motion.img
+        src="/avatar/left_horn.png"
+        alt="left horn"
+        className="absolute inset-0 w-full h-full object-contain z-0"
+        style={{ originX: 0.5, originY: 0.45 }}
+        animate={reduceMotion ? {} : { rotate: [-4, 4, -4] }}
+        transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+      />
+      <motion.img
+        src="/avatar/right_horn.png"
+        alt="right horn"
+        className="absolute inset-0 w-full h-full object-contain z-0"
+        style={{ originX: 0.5, originY: 0.45 }}
+        animate={reduceMotion ? {} : { rotate: [4, -4, 4] }}
+        transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+      />
+      <img src="/avatar/avatar_head_base.png" alt="head base" className="absolute inset-0 w-full h-full object-contain z-10" />
+      <motion.img
+        src="/avatar/eyes_default.png"
+        alt="Avatar Eyes"
+        className="absolute inset-0 w-full h-full object-contain z-10"
+        style={{ originY: "50%", originX: "50%" }}
+        animate={reduceMotion ? {} : { scaleY: [1, 0.1, 1] }}
+        transition={{
+          duration: 0.22,
+          repeat: Infinity,
+          repeatDelay: 3.6,
+          ease: "easeInOut",
+        }}
+      />
+      {accSrc && <img src={accSrc} alt="accessory" className="absolute inset-0 w-full h-full object-contain z-20" />}
+    </motion.div>
   );
 
-  // If no layers defined, render fallback or nothing
+  // If no layers defined, render fallback or base
   if (!layers || (!layers.top && !layers.bottom && !layers.shoes && !layers.accessory)) {
     return (
       <div className={`relative overflow-hidden ${className}`}>
@@ -109,4 +92,5 @@ const CompositeAvatar: React.FC<CompositeAvatarProps> = ({ layers, className = "
 };
 
 export default CompositeAvatar;
+
 

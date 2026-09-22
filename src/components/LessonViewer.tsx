@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import {
   ArrowLeft, ArrowRight, CheckCircle, BookOpen, Lightbulb,
   Calculator, Award, RefreshCw, AlertTriangle, NotebookPen,
   Clock, Key, ClipboardCheck, Target, Zap, PlayCircle, Ruler, Sparkles, Pin,
-  ShieldCheck, FileText, ExternalLink, FileSearch, X
+  ShieldCheck, FileText, ExternalLink, FileSearch, X,
+  ChevronDown, Check, Lock
 } from 'lucide-react';
-
+import MathPulseLoader from './ui/MathPulseLoader';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -49,20 +50,114 @@ const MATH_RE = /[=×÷±√∑∫π²³%]/;
 /** Callout prefix patterns — "Definition:", "Formula:", "Note:", etc. */
 const CALLOUT_PREFIX_RE = /^(Definition|Formula|Note|Reminder|Important|Example|Key Concept|Concept|Rule|Theorem|Property|Step)s?\s*:/i;
 
-/** Auto-bold: term followed by "is/are/refers to/defined as" or in quotes */
+/** Auto-bold: quotes and definition sentence openers only, avoiding mid-sentence teal pills */
 function autoHighlightTerms(text: string): string {
-  // "X is ..." → **X** is ...  (only first word-group before "is/are")
   return text
-    .replace(/\b([A-Z][a-zA-Z\s]{2,30}?)\s+(is|are|refers to|defined as|means)\b/g, (_, term, verb) =>
-      `**${term.trim()}** ${verb}`
+    .replace(
+      /(^|[\.\?!]\s+)([A-Z][a-zA-Z\s]{2,25}?)\s+(is\b|are\b|occurs when\b|refers to\b|is used to\b)/g,
+      (_, prefix, term, verb) => `${prefix}**${term.trim()}** ${verb}`
     )
-    // "term" in quotes → **term**
-    .replace(/"([^"]{3,40})"/g, (_, t) => `**${t}**`);
+    .replace(/"([^"]{2,40})"/g, (_, t) => `**${t}**`);
 }
 
 function formatContent(raw: string): React.ReactNode {
   if (!raw?.trim()) return null;
 
+  const rawLines = raw.split('\n');
+  const leadingNumRegex = /^\s*(\d+)[\.\)]\s*(.*)$/;
+
+  // Check if content is a series of numbered concepts (e.g. "1. Variables: ...")
+  const numberedItems: { num: number; rawText: string }[] = [];
+  let currentNumberedItem: { num: number; lines: string[] } | null = null;
+
+  for (const line of rawLines) {
+    const trimmed = line.trim();
+    const match = trimmed.match(leadingNumRegex);
+    if (match) {
+      if (currentNumberedItem) {
+        numberedItems.push({
+          num: currentNumberedItem.num,
+          rawText: currentNumberedItem.lines.join(' ').trim(),
+        });
+      }
+      currentNumberedItem = {
+        num: parseInt(match[1], 10),
+        lines: [match[2]],
+      };
+    } else if (currentNumberedItem) {
+      if (trimmed) {
+        currentNumberedItem.lines.push(trimmed);
+      }
+    }
+  }
+  if (currentNumberedItem) {
+    numberedItems.push({
+      num: currentNumberedItem.num,
+      rawText: currentNumberedItem.lines.join(' ').trim(),
+    });
+  }
+
+  // If we have multiple numbered concepts, render them as beautiful structured cards
+  if (numberedItems.length >= 2) {
+    return (
+      <div className="space-y-3.5">
+        {numberedItems.map((item, idx) => {
+          const itemNum = idx + 1; // Always strictly sequential 1, 2, 3...
+          const titleMatch = item.rawText.match(/^([A-Za-z0-9\s,\/&\-\(\)'"]+?):\s*(.+)$/s);
+          let title: string | undefined;
+          let body = item.rawText;
+          if (titleMatch && titleMatch[1].length < 80) {
+            title = titleMatch[1].trim();
+            body = titleMatch[2].trim();
+          }
+
+          // Extract real-world example if present
+          const exampleSplit = body.match(/^(.*?)(?:\s*(?:For example,?\s*|e\.g\.,?\s*|In the [^,\.]+ scenario,?\s*|Example:\s*))(.+)$/si);
+          let explanation = body;
+          let exampleText: string | undefined;
+          if (exampleSplit && exampleSplit[1].trim().length > 15) {
+            explanation = exampleSplit[1].trim();
+            exampleText = exampleSplit[2].trim();
+          }
+
+          return (
+            <div
+              key={idx}
+              className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-slate-800/90 p-4 sm:p-5 shadow-2xs space-y-2.5 transition-all"
+            >
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-500/15 dark:bg-amber-400/20 text-amber-700 dark:text-amber-300 font-mono font-black text-[11px] sm:text-xs flex items-center justify-center shrink-0 border border-amber-500/30">
+                  {itemNum}
+                </span>
+                {title && (
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight font-display">
+                    {inlineFormat(title)}
+                  </h3>
+                )}
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal">
+                {inlineFormat(explanation)}
+              </p>
+
+              {exampleText && (
+                <div className="rounded-xl bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200/80 dark:border-amber-800/30 p-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2.5">
+                  <span className="text-amber-600 dark:text-amber-400 shrink-0 font-bold text-xs mt-0.5">
+                    💡 Example:
+                  </span>
+                  <div className="flex-1 font-medium leading-relaxed">
+                    {inlineFormat(exampleText)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Fallback for general content
   const lines = raw.split('\n');
   const nodes: React.ReactNode[] = [];
   let paraBuffer: string[] = [];
@@ -75,36 +170,27 @@ function formatContent(raw: string): React.ReactNode {
     const text = paraBuffer.join(' ').trim();
     if (!text) { paraBuffer = []; return; }
 
-    // Split very long paragraphs at sentence boundaries for readability
-    const sentences = text.match(/[^.!?]+[.!?]+["']?/g) || [text];
-    const chunks: string[][] = [];
-    let current: string[] = [];
-    let len = 0;
-    for (const s of sentences) {
-      current.push(s);
-      len += s.length;
-      if (len > 220) { chunks.push(current); current = []; len = 0; }
-    }
-    if (current.length) chunks.push(current);
-
-    for (const chunk of chunks) {
-      const chunkText = autoHighlightTerms(chunk.join(' ').trim());
-      nodes.push(
-        <p key={key++} className="lesson-body-text text-slate-700 leading-[1.8] text-[1rem] font-body">
-          {inlineFormat(chunkText)}
+    const formattedPara = autoHighlightTerms(text);
+    nodes.push(
+      <div
+        key={key++}
+        className="rounded-2xl p-4 sm:p-5 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xs border border-slate-200/90 dark:border-white/10 shadow-2xs space-y-1.5 transition-all hover:bg-white dark:hover:bg-slate-800"
+      >
+        <p className="lesson-body-text text-slate-700 dark:text-slate-300 leading-relaxed text-xs sm:text-sm font-body">
+          {inlineFormat(formattedPara)}
         </p>
-      );
-    }
+      </div>
+    );
     paraBuffer = [];
   };
 
   const flushList = () => {
     if (listBuffer.length === 0) return;
     nodes.push(
-      <ul key={key++} className="space-y-2.5 my-1 pl-1">
+      <ul key={key++} className="space-y-2 my-1 pl-1">
         {listBuffer.map((item, i) => (
-          <li key={i} className="flex items-start gap-3 text-slate-700 text-[0.95rem] leading-[1.75] font-body">
-            <span className="mt-[0.5rem] w-2 h-2 rounded-full bg-[#1a85a4] flex-shrink-0" />
+          <li key={i} className="flex items-start gap-2.5 text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed font-body">
+            <span className="mt-[0.45rem] w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
             <span>{inlineFormat(autoHighlightTerms(item))}</span>
           </li>
         ))}
@@ -118,8 +204,8 @@ function formatContent(raw: string): React.ReactNode {
     nodes.push(
       <ol key={key++} className="space-y-2.5 my-1 list-none pl-1">
         {numberedBuffer.map((item, i) => (
-          <li key={i} className="flex items-start gap-3 text-slate-700 text-[0.95rem] leading-[1.75] font-body">
-            <span className="mt-0.5 min-w-[1.5rem] h-[1.5rem] rounded-full bg-[#1a85a4] text-white text-[0.7rem] font-bold flex items-center justify-center flex-shrink-0">
+          <li key={i} className="flex items-start gap-3 text-slate-700 dark:text-slate-300 text-xs sm:text-sm leading-relaxed font-body">
+            <span className="mt-0.5 min-w-[1.4rem] h-[1.4rem] rounded-full bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 text-[0.65rem] font-bold flex items-center justify-center flex-shrink-0">
               {i + 1}
             </span>
             <span>{inlineFormat(autoHighlightTerms(item))}</span>
@@ -139,14 +225,14 @@ function formatContent(raw: string): React.ReactNode {
   const calloutScheme = (prefix: string): CalloutScheme => {
     const p = prefix.toLowerCase();
     if (/formula|theorem|property|rule/.test(p))
-      return { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', label: <Ruler aria-hidden="true" size={14} /> };
+      return { bg: 'bg-amber-50 dark:bg-amber-950/20', border: 'border-amber-300 dark:border-amber-800', text: 'text-amber-900 dark:text-amber-200', label: <Ruler aria-hidden="true" size={14} /> };
     if (/definition|concept|key/.test(p))
-      return { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-900', label: <BookOpen aria-hidden="true" size={14} /> };
+      return { bg: 'bg-blue-50 dark:bg-blue-950/20', border: 'border-blue-300 dark:border-blue-800', text: 'text-blue-900 dark:text-blue-200', label: <BookOpen aria-hidden="true" size={14} /> };
     if (/note|reminder|important/.test(p))
-      return { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-900', label: <AlertTriangle aria-hidden="true" size={14} /> };
+      return { bg: 'bg-rose-50 dark:bg-rose-950/20', border: 'border-rose-300 dark:border-rose-800', text: 'text-rose-900 dark:text-rose-200', label: <AlertTriangle aria-hidden="true" size={14} /> };
     if (/example|step/.test(p))
-      return { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', label: <NotebookPen aria-hidden="true" size={14} /> };
-    return { bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-800', label: <Lightbulb aria-hidden="true" size={14} /> };
+      return { bg: 'bg-emerald-50 dark:bg-emerald-950/20', border: 'border-emerald-300 dark:border-emerald-800', text: 'text-emerald-900 dark:text-emerald-200', label: <NotebookPen aria-hidden="true" size={14} /> };
+    return { bg: 'bg-slate-50 dark:bg-slate-900', border: 'border-slate-300 dark:border-slate-700', text: 'text-slate-800 dark:text-slate-200', label: <Lightbulb aria-hidden="true" size={14} /> };
   };
 
   for (const rawLine of lines) {
@@ -171,10 +257,10 @@ function formatContent(raw: string): React.ReactNode {
       const scheme = calloutScheme(prefix);
       nodes.push(
         <div key={key++} className={`rounded-xl px-4 py-3.5 border-l-4 ${scheme.bg} ${scheme.border} my-1`}>
-          <p className={`text-[0.75rem] font-black uppercase tracking-widest mb-1.5 ${scheme.text} opacity-80 font-display`}>
+          <p className={`text-[0.75rem] font-black uppercase tracking-widest mb-1.5 ${scheme.text} opacity-80 font-display flex items-center gap-1.5`}>
             {scheme.label} {prefix}
           </p>
-          <p className={`text-[0.95rem] leading-[1.75] font-semibold font-body ${scheme.text}`}>
+          <p className={`text-xs sm:text-sm leading-relaxed font-semibold font-body ${scheme.text}`}>
             {inlineFormat(body)}
           </p>
         </div>
@@ -196,13 +282,13 @@ function formatContent(raw: string): React.ReactNode {
       continue;
     }
 
-    // Standalone formula line (short, math-heavy, no sentence structure)
+    // Standalone formula line
     if (isFormula(trimmed) && !/[a-z]{5,}/.test(trimmed)) {
       flushList();
       flushNumbered();
       flushPara();
       nodes.push(
-        <div key={key++} className="lesson-formula-box my-3">
+        <div key={key++} className="lesson-formula-box my-2 text-xs sm:text-sm">
           {trimmed}
         </div>
       );
@@ -215,7 +301,7 @@ function formatContent(raw: string): React.ReactNode {
       flushNumbered();
       flushPara();
       nodes.push(
-        <p key={key++} className="lesson-section-heading text-[#1a85a4] text-[1.05rem] mt-5 mb-1 border-b-2 border-[#1a85a4]/20 pb-1.5">
+        <p key={key++} className="lesson-section-heading text-slate-900 dark:text-white font-black text-sm sm:text-base mt-4 mb-1 border-b border-slate-200/80 dark:border-white/10 pb-1 font-display">
           {inlineFormat(trimmed)}
         </p>
       );
@@ -250,23 +336,23 @@ function inlineFormat(text: string): React.ReactNode {
       parts.push(<React.Fragment key={k++}>{text.slice(last, match.index)}</React.Fragment>);
     }
     if (match[2]) {
-      // **bold** — vibrant teal highlight pill for key terms
+      // Clean, strong typography
       parts.push(
-        <strong key={k++} className="font-extrabold text-[#1a85a4] bg-[#e0f4fa] px-1 py-0.5 rounded-md font-body">
+        <strong key={k++} className="font-bold text-slate-900 dark:text-white font-body">
           {match[2]}
         </strong>
       );
     } else if (match[3]) {
-      parts.push(<em key={k++} className="italic text-slate-500 font-body">{match[3]}</em>);
+      parts.push(<em key={k++} className="italic text-slate-600 dark:text-slate-400 font-body">{match[3]}</em>);
     } else if (match[4]) {
       parts.push(
-        <code key={k++} className="px-1.5 py-0.5 bg-slate-100 rounded text-[0.85em] font-mono text-[#e66a5e] border border-slate-200 font-semibold">
+        <code key={k++} className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[0.85em] font-mono text-rose-600 dark:text-rose-400 border border-slate-200 dark:border-white/10 font-semibold">
           {match[4]}
         </code>
       );
     } else if (match[5]) {
       parts.push(
-        <mark key={k++} className="bg-[#fff3cd] text-[#92400e] px-1 py-0.5 rounded-md font-bold border-b-2 border-[#fbbf24]">
+        <mark key={k++} className="bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 px-1 py-0.5 rounded font-bold border-b-2 border-amber-400">
           {match[5]}
         </mark>
       );
@@ -295,7 +381,6 @@ import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
-import MicroLessonDeck from './notebook/MicroLessonDeck';
 import type { MicroLessonCardProps, MicroLessonPhase } from './notebook/MicroLessonCard';
 
 interface LessonViewerProps {
@@ -362,8 +447,21 @@ function parseIntroContent(raw: string): LessonIntroContent {
     } else if (!inObjectives) {
       welcomeLines.push(line);
     }
-    // Lines after objectives that aren't objectives themselves are ignored
-    // (they're usually trailing filler)
+  }
+
+  // If no explicit bulleted/numbered objectives were parsed, extract actionable goals from sentences
+  if (objectives.length === 0 && welcomeLines.length > 0) {
+    const fullText = welcomeLines.join(' ');
+    const sentences = fullText.match(/[^.!?]+[.!?]+/g)?.map(s => s.trim()) || [fullText];
+    const GOAL_KEYWORD_RE = /(will learn|focuses on|will encounter|will also|will be able to|goal is to|objective is to|learn how to|explore|examine|translate)/i;
+    const goalSentences = sentences.filter(s => GOAL_KEYWORD_RE.test(s));
+
+    if (goalSentences.length >= 2) {
+      return {
+        welcome: sentences[0],
+        objectives: goalSentences.slice(0, 4).map(s => ({ text: s })),
+      };
+    }
   }
 
   return {
@@ -383,66 +481,11 @@ const OBJECTIVE_COLORS = [
 
 function LoadingSkeleton() {
   return (
-    <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-50"
-      aria-busy="true"
-      aria-label="Loading lesson content"
-      data-testid="lesson-skeleton"
-    >
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 space-y-6">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full border-4 border-rose-400 border-t-transparent animate-spin" />
-            <div className="space-y-1">
-              <p className="text-slate-700 font-semibold text-base">Loading lesson from DepEd curriculum...</p>
-              <p className="text-slate-400 text-xs">Fetching staged content — cached lessons open instantly next time.</p>
-            </div>
-          </div>
-          <div className="h-7 w-3/4 rounded-lg bg-slate-200 animate-pulse" />
-          <div className="h-4 w-1/2 rounded-lg bg-slate-200/70 animate-pulse" />
-          <div className="flex gap-2">
-            <div className="h-6 w-20 rounded-full bg-slate-200 animate-pulse" />
-            <div className="h-6 w-24 rounded-full bg-slate-200/70 animate-pulse" />
-            <div className="h-6 w-16 rounded-full bg-slate-200/50 animate-pulse" />
-          </div>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-3"
-        >
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
-              <div className="w-8 h-8 rounded-xl bg-slate-200 animate-pulse" />
-              <div className="h-4 w-full rounded bg-slate-200 animate-pulse" />
-              <div className="h-3 w-2/3 rounded bg-slate-200/70 animate-pulse" />
-            </div>
-          ))}
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3"
-        >
-          <div className="h-5 w-1/3 rounded bg-slate-200 animate-pulse" />
-          <div className="h-3.5 w-full rounded bg-slate-200/70 animate-pulse" />
-          <div className="h-3.5 w-full rounded bg-slate-200/70 animate-pulse" />
-          <div className="h-3.5 w-5/6 rounded bg-slate-200/70 animate-pulse" />
-          <div className="h-20 w-full rounded-xl bg-slate-100 border border-slate-200 animate-pulse" />
-          <div className="h-3.5 w-4/6 rounded bg-slate-200/70 animate-pulse" />
-        </motion.div>
-        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-rose-300 rounded-full"
-            animate={{ x: ['-100%', '100%'] }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-            style={{ width: '50%' }}
-          />
-        </div>
-      </div>
-    </div>
+    <MathPulseLoader
+      title="Loading lesson from DepEd curriculum..."
+      subtitle="This may take a moment while the AI retrieves curriculum content."
+      fullScreen
+    />
   );
 }
 
@@ -664,6 +707,7 @@ function SectionRenderer({
   onStartPractice,
   lessonSpecificTopic,
   onStartTryItQuiz,
+  isStaffView = false,
 }: {
   section: RagLessonSection;
   sectionIndex: number;
@@ -676,102 +720,127 @@ function SectionRenderer({
   onStartPractice?: () => void;
   lessonSpecificTopic?: string | null;
   onStartTryItQuiz?: () => void;
+  isStaffView?: boolean;
 }) {
   switch (section.type) {
     case 'introduction': {
       const { welcome, objectives } = parseIntroContent(section.content || '');
-      // Count total sections for the "Heads Up" banner
-      const totalSectionCount = 7; // standard RAG lesson always has 7 sections
+      const totalSectionCount = 7;
+      const compMatch = (section.content || '').match(/\b([A-Z0-9]{2,6}-[A-Z0-9]{2,6}(?:-[A-Z0-9]{1,4})?)\b/);
+      // SAFETY: lesson object dynamically carries competencyCode from curriculum metadata.
+      const competencyBadge = compMatch ? compMatch[1] : (lesson as { competencyCode?: string }).competencyCode;
 
       return (
-        <div className="space-y-5">
-          {/* Welcome paragraph — large hook card with math pattern bg */}
-          {welcome ? (
-            <div className="lesson-welcome-card rounded-2xl border-2 border-[#1a85a4]/30 bg-gradient-to-br from-[#e8f7fc] to-[#f0fbff] px-6 py-5 shadow-md">
-              {/* Decorative label */}
-              <p className="lesson-section-heading text-[#1a85a4] text-[0.7rem] uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
-                <span className="inline-block w-4 h-0.5 bg-[#1a85a4] rounded-full" />
-                Welcome to the Lesson
-              </p>
-              <p className="font-body text-slate-700 text-[1.05rem] leading-[1.85] font-medium">
-                {inlineFormat(autoHighlightTerms(welcome))}
-              </p>
+        <div className="space-y-4 sm:space-y-5">
+          {/* Mission & Overview Hero Card */}
+          <div className="rounded-2xl border border-[#1a85a4]/30 bg-gradient-to-br from-sky-50/90 via-white to-sky-50/40 p-4 sm:p-5 shadow-xs relative overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-[#1a85a4] text-white flex items-center justify-center shadow-2xs">
+                  <Target size={15} />
+                </div>
+                <span className="font-display text-[#1a85a4] text-xs font-black uppercase tracking-wider">
+                  Lesson Mission & Overview
+                </span>
+              </div>
+              {isStaffView && competencyBadge && (
+                <span className="px-2.5 py-1 rounded-lg bg-[#1a85a4]/10 text-[#1a85a4] font-mono text-[11px] font-black border border-[#1a85a4]/20 flex items-center gap-1.5 shadow-2xs">
+                  <Award size={12} />
+                  DepEd {competencyBadge}
+                </span>
+              )}
             </div>
-          ) : !section.content?.trim() ? (
-            <p className="text-slate-400 text-sm italic">Introduction content is being prepared. Please proceed to the next section or try refreshing the lesson.</p>
+
+            <p className="font-body text-slate-700 text-xs sm:text-sm md:text-[0.95rem] leading-relaxed font-medium">
+              {inlineFormat(autoHighlightTerms(welcome || section.content || ''))}
+            </p>
+          </div>
+
+          {/* Callouts / Heads Up */}
+          {section.callouts && section.callouts.length > 0 ? (
+            <div className="space-y-2">
+              {section.callouts.map((callout, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "rounded-xl border px-3.5 py-2.5 flex items-start gap-2.5 shadow-2xs transition-colors",
+                    callout.type === 'tip'
+                      ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                      : 'bg-amber-50/80 border-amber-200 text-amber-950'
+                  )}
+                >
+                  <div className={cn(
+                    "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 text-white shadow-2xs",
+                    callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
+                  )}>
+                    {callout.type === 'tip' ? <Sparkles size={13} /> : <Lightbulb size={13} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      "text-[9px] font-black uppercase tracking-wider mb-0.5 font-display",
+                      callout.type === 'tip' ? 'text-emerald-700' : 'text-amber-700'
+                    )}>
+                      {callout.type === 'tip' ? 'Pro Tip' : callout.type === 'important' ? 'Heads Up' : 'Note'}
+                    </p>
+                    <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{callout.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <div className="lesson-welcome-card rounded-2xl border-2 border-[#1a85a4]/30 bg-gradient-to-br from-[#e8f7fc] to-[#f0fbff] px-6 py-5 shadow-md">
-              {formatContent(section.content)}
-            </div>
-          )}
-
-          {/* Callouts — "Heads Up" style banners */}
-          {section.callouts && section.callouts.length > 0 && section.callouts.map((callout, i) => (
-            <div
-              key={i}
-              className={`lesson-callout-headsup flex items-start gap-3.5 ${
-                callout.type === 'tip'
-                  ? '!bg-gradient-to-r !from-emerald-50 !to-teal-50 !border-emerald-400'
-                  : ''
-              }`}
-            >
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${
-                callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
-              }`}>
-                <Lightbulb size={16} className="text-white" />
+            <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 flex items-start gap-2.5 shadow-2xs">
+              <div className="w-6 h-6 rounded-lg bg-amber-500 flex items-center justify-center shrink-0 mt-0.5 text-white shadow-2xs">
+                <Lightbulb size={13} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
-                  callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
-                }`}>
-                  {callout.type === 'tip' ? <><Sparkles aria-hidden="true" size={12} /> Tip</> : callout.type === 'important' ? <><AlertTriangle aria-hidden="true" size={12} /> Heads Up</> : <><Pin aria-hidden="true" size={12} /> Note</>}
+                <p className="text-[9px] font-black uppercase tracking-wider mb-0.5 text-amber-700 font-display">
+                  Heads Up
                 </p>
-                <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{callout.text}</p>
-              </div>
-            </div>
-          ))}
-
-          {/* Auto "Heads Up" banner if no callouts */}
-          {(!section.callouts || section.callouts.length === 0) && (
-            <div className="lesson-callout-headsup flex items-start gap-3.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
-                <Lightbulb size={16} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 text-amber-600">
-                  <><AlertTriangle aria-hidden="true" size={12} /> Heads Up</>
-                </p>
-                <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">
-                  This lesson has {totalSectionCount} sections and takes about 20 minutes to complete. Grab a pen — you might want to take notes along the way!
+                <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
+                  This lesson has {totalSectionCount} sections. Grab your pen and scratch paper to follow the worked examples and complete the practice quiz!
                 </p>
               </div>
             </div>
           )}
 
-          {/* "What you'll learn" objectives */}
+          {/* Actionable Learning Objectives / Target Goals */}
           {objectives.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle size={20} className="text-violet-500" />
-                <h3 className="lesson-section-heading text-[1.05rem] text-balance" style={{ color: '#7c3aed' }}>What you'll learn</h3>
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={16} className="text-violet-600" />
+                  <h3 className="font-display font-black text-xs sm:text-sm text-violet-700 uppercase tracking-wide">
+                    What You'll Master Today
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400 font-bold">
+                  {objectives.length} Core Goal{objectives.length > 1 ? 's' : ''}
+                </span>
               </div>
-              <div className="space-y-2.5">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {objectives.map((obj, i) => {
                   const color = OBJECTIVE_COLORS[i % OBJECTIVE_COLORS.length];
                   return (
                     <div
                       key={i}
-                      className={`rounded-xl border-2 px-4 py-3.5 flex items-start gap-3.5 ${color.bg} ${color.border} shadow-sm`}
+                      className={cn(
+                        "rounded-xl border p-3 sm:p-3.5 flex items-start gap-3 shadow-2xs transition-all hover:shadow-xs",
+                        color.bg, color.border
+                      )}
                     >
-                      <span className={`mt-0.5 min-w-[1.75rem] h-7 rounded-full ${color.num} text-white text-[0.7rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm tabular-nums`}>
+                      <span className={cn(
+                        "mt-0.5 w-6 h-6 rounded-full text-white text-[11px] font-black flex items-center justify-center shrink-0 tabular-nums shadow-2xs font-mono",
+                        color.num
+                      )}>
                         {i + 1}
                       </span>
-                      <div>
-                        <p className={`font-body text-[0.95rem] font-semibold leading-snug ${color.text}`}>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("font-body text-xs sm:text-sm font-semibold leading-snug", color.text)}>
                           {inlineFormat(autoHighlightTerms(obj.text))}
                         </p>
                         {obj.example && (
-                          <p className={`text-xs mt-1 ${color.ex} font-mono font-semibold`}>
+                          <p className={cn("text-[11px] mt-1 font-mono font-medium truncate", color.ex)}>
                             {obj.example}
                           </p>
                         )}
@@ -782,51 +851,83 @@ function SectionRenderer({
               </div>
             </div>
           )}
+
+          {/* Learning Journey Strip */}
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3 sm:p-3.5 shadow-2xs">
+            <p className="text-[10px] font-mono font-black uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+              <ClipboardCheck size={13} className="text-slate-400" />
+              Lesson Roadmap
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 text-center">
+              {SECTION_TABS.map((t, sIdx) => {
+                const isCurrent = sIdx === 0;
+                return (
+                  <div
+                    key={t.type}
+                    className={cn(
+                      "px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all border",
+                      isCurrent
+                        ? `${t.tabBg} text-white shadow-xs border-transparent ring-1 ring-white/40`
+                        : "bg-white text-slate-600 border-slate-200/60 opacity-75"
+                    )}
+                  >
+                    <span className="block font-mono text-[9px] opacity-80">Part {sIdx + 1}</span>
+                    <span className="truncate block">{t.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       );
     }
 
     case 'key_concepts':
       return (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {section.content?.trim() ? (
-            <div className="mb-4">{formatContent(section.content)}</div>
+            <div className="space-y-2">{formatContent(section.content)}</div>
           ) : (
-            <p className="text-slate-400 text-sm italic mb-4">Key concepts are being compiled. Review the curriculum sources below for reference material.</p>
+            <p className="text-slate-400 text-xs italic mb-2">Key concepts are being compiled.</p>
           )}
-          {section.callouts && section.callouts.length > 0 && (
-            <div className="space-y-3">
-              {section.callouts.map((callout, i) => {
-                const calloutText = callout.text?.includes('Review the curriculum PDF for detailed explanations of each concept')
-                  ? 'Define variables explicitly and verify constraints when formulating mathematical and financial relations.'
-                  : callout.text;
-                return (
-                  <div
-                    key={i}
-                    className={`rounded-xl border-2 px-5 py-4 flex items-start gap-3.5 shadow-sm ${
-                      callout.type === 'important'
-                        ? 'bg-rose-50 border-rose-300'
-                        : callout.type === 'tip'
-                        ? 'bg-emerald-50 border-emerald-300'
-                        : 'bg-amber-50 border-amber-300'
-                    }`}
-                  >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm ${
-                      callout.type === 'important' ? 'bg-rose-500' : callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
-                    }`}>
-                      {callout.type === 'important' ? <AlertTriangle size={16} className="text-white" /> : callout.type === 'tip' ? <Sparkles size={16} className="text-white" /> : <Pin size={16} className="text-white" />}
+          {section.callouts && section.callouts.filter((c) => Boolean(c.text?.trim())).length > 0 && (
+            <div className="space-y-2 pt-1">
+              {section.callouts
+                .filter((callout) => Boolean(callout.text?.trim()))
+                .map((callout, i) => {
+                  const calloutText = callout.text?.includes('Review the curriculum PDF for detailed explanations of each concept')
+                    ? 'Define variables explicitly and verify constraints when formulating mathematical and financial relations.'
+                    : callout.text;
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "rounded-xl border px-3.5 py-2.5 flex items-start gap-2.5 shadow-2xs transition-colors",
+                        callout.type === 'important'
+                          ? 'bg-rose-50/80 border-rose-200'
+                          : callout.type === 'tip'
+                          ? 'bg-emerald-50/80 border-emerald-200'
+                          : 'bg-amber-50/80 border-amber-200'
+                      )}
+                    >
+                      <div className={cn(
+                        "w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 text-white shadow-2xs",
+                        callout.type === 'important' ? 'bg-rose-500' : callout.type === 'tip' ? 'bg-emerald-500' : 'bg-amber-500'
+                      )}>
+                        {callout.type === 'important' ? <AlertTriangle size={13} /> : callout.type === 'tip' ? <Sparkles size={13} /> : <Pin size={13} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-[9px] font-black uppercase tracking-wider mb-0.5 font-display",
+                          callout.type === 'important' ? 'text-rose-700' : callout.type === 'tip' ? 'text-emerald-700' : 'text-amber-700'
+                        )}>
+                          {callout.type === 'important' ? 'Important Rule' : callout.type === 'tip' ? 'Pro Tip' : 'Key Note'}
+                        </p>
+                        <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{calloutText}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${
-                        callout.type === 'important' ? 'text-rose-600' : callout.type === 'tip' ? 'text-emerald-600' : 'text-amber-600'
-                      }`}>
-                        {callout.type === 'important' ? 'Important Rule' : callout.type === 'tip' ? 'Pro Tip' : 'Key Note'}
-                      </p>
-                      <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{calloutText}</p>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </div>
@@ -834,11 +935,11 @@ function SectionRenderer({
 
     case 'video':
       return (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {section.content?.trim() ? (
-            <p className="text-slate-600 text-sm">{section.content}</p>
+            <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">{section.content}</p>
           ) : (
-            <p className="text-slate-400 text-sm italic">Video explanation loading...</p>
+            <p className="text-slate-400 text-xs italic">Video explanation loading...</p>
           )}
           <VideoLessonSection
             videos={section.videos || []}
@@ -849,42 +950,42 @@ function SectionRenderer({
 
     case 'worked_examples':
       return (
-        <div className="space-y-5">
+        <div className="space-y-3.5">
           {section.examples && section.examples.length > 0 ? (
             section.examples.map((example, i) => (
               <div
                 key={i}
-                className="bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50 rounded-2xl p-5 border-2 border-rose-200 shadow-md"
+                className="bg-white rounded-xl p-3.5 sm:p-4 border border-rose-200/80 shadow-2xs space-y-2.5"
               >
                 {/* Problem header */}
-                <div className="flex items-start gap-3.5 mb-4">
-                  <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-orange-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
-                    <Calculator size={18} className="text-white" />
+                <div className="flex items-start gap-2.5">
+                  <div className="w-7 h-7 bg-rose-500 rounded-lg flex items-center justify-center shrink-0 shadow-2xs text-white">
+                    <Calculator size={15} />
                   </div>
-                  <div>
-                    <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] text-rose-400 mb-1 tabular-nums">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-rose-500 font-display">
                       Example {i + 1}
                     </p>
-                    <p className="font-body font-bold text-slate-800 text-[1rem] leading-snug">{example.problem}</p>
+                    <p className="font-body font-bold text-slate-800 text-xs sm:text-sm leading-snug">{example.problem}</p>
                   </div>
                 </div>
 
                 {/* Solution steps */}
                 {example.steps.length > 0 && (
-                  <div className="ml-14 space-y-2.5 mb-3">
-                    <p className="lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] text-slate-400 mb-1.5">Solution</p>
+                  <div className="pl-3 sm:pl-4 border-l-2 border-rose-200 space-y-1.5 ml-3.5">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 font-display">Solution</p>
                     {example.steps.map((step, si) => {
                       const isFormulaStep = MATH_RE.test(step) && step.length < 100 && !/[a-z]{6,}/.test(step);
                       return isFormulaStep ? (
-                        <div key={si} className="lesson-formula-box">
+                        <div key={si} className="lesson-formula-box my-1">
                           {step}
                         </div>
                       ) : (
-                        <div key={si} className="flex items-start gap-3">
-                          <span className="mt-0.5 min-w-[1.5rem] h-[1.5rem] rounded-full bg-white border-2 border-rose-300 text-rose-500 text-[0.65rem] font-black flex items-center justify-center flex-shrink-0 shadow-sm tabular-nums">
+                        <div key={si} className="flex items-start gap-2">
+                          <span className="mt-0.5 w-4 h-4 rounded-full bg-rose-100 text-rose-700 text-[9px] font-black flex items-center justify-center shrink-0 tabular-nums">
                             {si + 1}
                           </span>
-                          <p className="font-body text-slate-700 text-[0.95rem] leading-[1.75]">{inlineFormat(step)}</p>
+                          <p className="font-body text-slate-700 text-xs sm:text-sm leading-relaxed">{inlineFormat(step)}</p>
                         </div>
                       );
                     })}
@@ -893,24 +994,24 @@ function SectionRenderer({
 
                 {/* Answer box */}
                 {example.answer && (
-                  <div className="ml-14 flex items-center gap-3 mt-3 pt-3 border-t-2 border-rose-200">
-                    <div className="px-3.5 py-1.5 bg-gradient-to-r from-rose-500 to-orange-500 rounded-lg text-white text-[0.65rem] font-black uppercase tracking-widest flex-shrink-0 shadow-sm">
+                  <div className="flex items-center gap-2 pt-2 border-t border-rose-100 ml-3.5">
+                    <span className="px-2 py-0.5 bg-rose-600 rounded-md text-white text-[9px] font-black uppercase tracking-wider shrink-0 shadow-2xs">
                       Answer
-                    </div>
-                    <p className="font-body text-slate-800 text-[0.95rem] font-bold">{example.answer}</p>
+                    </span>
+                    <p className="font-body text-slate-800 text-xs sm:text-sm font-bold">{example.answer}</p>
                   </div>
                 )}
               </div>
             ))
           ) : (
-            <p className="text-slate-400 text-sm italic">No worked examples available for this lesson.</p>
+            <p className="text-slate-400 text-xs italic">No worked examples available for this lesson.</p>
           )}
         </div>
       );
 
     case 'important_notes':
       return (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {section.bulletPoints && section.bulletPoints.length > 0 ? (
             section.bulletPoints.map((point, i) => {
               const calloutMatch = point.match(/^(Note|Important|Remember|Warning|Tip|Key|Formula|Rule)\s*:/i);
@@ -919,82 +1020,77 @@ function SectionRenderer({
                 const body = point.slice(calloutMatch[0].length).trim();
                 const isWarning = /note|important|warning|remember/i.test(label);
                 return (
-                  <div key={i} className={`rounded-xl px-5 py-4 border-l-4 flex items-start gap-3.5 shadow-sm ${isWarning ? 'bg-rose-50 border-rose-400' : 'bg-amber-50 border-amber-400'}`}>
-                    <Lightbulb size={18} className={`mt-0.5 flex-shrink-0 ${isWarning ? 'text-rose-500' : 'text-amber-500'}`} />
+                  <div key={i} className={cn(
+                    "rounded-xl px-3.5 py-2.5 border-l-3 flex items-start gap-2.5 shadow-2xs",
+                    isWarning ? 'bg-rose-50/70 border-rose-400' : 'bg-amber-50/70 border-amber-400'
+                  )}>
+                    <Lightbulb size={15} className={cn("mt-0.5 shrink-0", isWarning ? 'text-rose-500' : 'text-amber-500')} />
                     <div>
-                      <p className={`lesson-section-heading text-[0.65rem] uppercase tracking-[0.2em] mb-1 ${isWarning ? 'text-rose-500' : 'text-amber-600'}`}>{label}</p>
-                      <p className="font-body text-[0.95rem] text-slate-700 leading-[1.75] font-medium">{inlineFormat(autoHighlightTerms(body))}</p>
+                      <p className={cn("text-[9px] font-black uppercase tracking-wider mb-0.5 font-display", isWarning ? 'text-rose-600' : 'text-amber-600')}>{label}</p>
+                      <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{inlineFormat(autoHighlightTerms(body))}</p>
                     </div>
                   </div>
                 );
               }
               return (
-                <div key={i} className="flex items-start gap-3.5 p-4 rounded-xl bg-slate-50 border-2 border-slate-200 hover:border-[#1a85a4]/40 hover:bg-[#f0fbff] transition-colors">
-                  <div className="mt-0.5 w-6 h-6 rounded-full bg-[#1a85a4] flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <span className="text-white text-[0.65rem] font-black">{i + 1}</span>
+                <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-purple-300 transition-colors">
+                  <div className="mt-0.5 w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <span className="text-[9px] font-black">{i + 1}</span>
                   </div>
-                  <p className="font-body text-slate-700 text-[0.95rem] leading-[1.75] font-medium">{inlineFormat(autoHighlightTerms(point))}</p>
+                  <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{inlineFormat(autoHighlightTerms(point))}</p>
                 </div>
               );
             })
           ) : (
-            <p className="text-slate-400 text-sm italic">No notes available for this lesson.</p>
+            <p className="text-slate-400 text-xs italic">No notes available for this lesson.</p>
           )}
         </div>
       );
 
     case 'try_it_yourself':
       return (
-        <div className="space-y-5">
+        <div className="space-y-4 max-w-lg mx-auto py-2">
           {/* Hero icon + heading */}
-          <div className="flex flex-col items-center text-center gap-3 py-4">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg" style={{ background: '#9956DE' }}>
-              <CheckCircle size={32} className="text-white" />
+          <div className="flex flex-col items-center text-center gap-1.5 py-2">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm bg-purple-600 text-white">
+              <CheckCircle size={20} />
             </div>
-            <h3 className="text-xl font-black" style={{ color: '#9956DE' }}>Try It Yourself</h3>
-            <p className="text-slate-500 text-sm max-w-xs leading-relaxed">
-              Now it's your turn! Try applying what you've learned. You can practice with the exercises at the end of this module.
-            </p>
-          </div>
-
-          {/* Tip callout */}
-          <div className="flex items-start gap-2 rounded-xl px-4 py-3 border" style={{ background: '#f5eeff', borderColor: '#d4aaff' }}>
-            <Lightbulb size={16} className="mt-0.5 shrink-0" style={{ color: '#9956DE' }} />
-            <p className="text-sm" style={{ color: '#7a3db8' }}>
-              <span className="font-bold">Tip:</span> Complete the practice quizzes after this lesson to reinforce your learning!
+            <h3 className="text-base sm:text-lg font-black text-purple-700 font-display">Try It Yourself</h3>
+            <p className="text-slate-500 text-xs max-w-xs leading-relaxed">
+              Apply what you've learned through practice questions to reinforce your mastery.
             </p>
           </div>
 
           {/* Practice Quiz CTA card */}
           {practiceQuiz && (
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+            <div className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-2xs">
               {practiceQuizCompleted ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <CheckCircle size={20} className="text-emerald-600" />
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 shrink-0">
+                    <CheckCircle size={18} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-emerald-700">
+                    <p className="text-xs sm:text-sm font-bold text-emerald-700">
                       Quiz Complete
                       {isNum(practiceQuizScore) && (
                         <span className="ml-2 text-emerald-600">{practiceQuizScore}%</span>
                       )}
                     </p>
-                    <p className="text-xs text-emerald-600/80">Great job! You can now complete this lesson.</p>
+                    <p className="text-[11px] text-emerald-600/80">Great job! You can now complete this lesson.</p>
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: '#9956DE' }}>Practice Quiz</p>
-                    <p className="font-bold text-slate-800 text-sm">{practiceQuiz.title}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-[9px] font-black uppercase tracking-wider mb-0.5 text-purple-600">Practice Quiz</p>
+                    <p className="font-bold text-slate-800 text-xs sm:text-sm">{practiceQuiz.title}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
                       {practiceQuiz.questions} questions · {practiceQuiz.duration}
                     </p>
                   </div>
                   <button
                     onClick={onStartPractice}
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#1a85a4] text-white text-sm font-black hover:bg-[#126b84] transition-colors shadow-md uppercase tracking-wide"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-black hover:bg-purple-700 transition-colors shadow-sm uppercase tracking-wide cursor-pointer"
                   >
                     Start Practice
                   </button>
@@ -1004,24 +1100,23 @@ function SectionRenderer({
           )}
 
           {/* Try It Yourself Quiz CTA - only show if no separate practice quiz */}
-          {!practiceQuiz && (<button
-            onClick={onStartTryItQuiz}
-            className="w-full flex items-center justify-between gap-4 text-white rounded-2xl px-6 py-4 shadow-lg transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] group"
-            style={{ background: '#9956DE' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#8744cc')}
-            onMouseLeave={e => (e.currentTarget.style.background = '#9956DE')}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                <PlayCircle size={22} className="text-white" />
+          {!practiceQuiz && (
+            <button
+              onClick={onStartTryItQuiz}
+              className="w-full flex items-center justify-between gap-3 text-white rounded-xl px-4 py-3 shadow-md transition-all hover:bg-purple-700 active:scale-[0.99] group bg-purple-600 cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                  <PlayCircle size={18} className="text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="font-black text-xs sm:text-sm uppercase tracking-wide">Start Practice Quiz</p>
+                  <p className="text-white/80 text-[11px]">10 questions · AI-generated</p>
+                </div>
               </div>
-              <div className="text-left">
-                <p className="font-black text-sm uppercase tracking-wide">Start Practice Quiz</p>
-                <p className="text-white/80 text-xs mt-0.5">10 questions · AI-generated</p>
-              </div>
-            </div>
-            <ArrowRight size={20} className="text-white/80 group-hover:translate-x-1 transition-transform" />
-          </button>)}
+              <ArrowRight size={16} className="text-white/80 group-hover:translate-x-1 transition-transform" />
+            </button>
+          )}
         </div>
       );
 
@@ -1194,6 +1289,21 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const [tryItQuestions, setTryItQuestions] = useState<Question[] | null>(null);
   const [tryItLoading, setTryItLoading] = useState(false);
   const [tryItSessionId] = useState(() => `tiy-${Date.now()}`);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [maxUnlockedSection, setMaxUnlockedSection] = useState<number>(() => initialSection >= 0 ? initialSection : 0);
+
+  useEffect(() => {
+    setMaxUnlockedSection(prev => Math.max(prev, currentSection));
+  }, [currentSection]);
+
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (activeTabRef.current) {
+      activeTabRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [currentSection]);
 
   // Hide floating AI tutor during Try It Yourself quiz
   useEffect(() => {
@@ -1379,10 +1489,17 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
 
   if (showTryItPage) {
+    const portalTarget = document.getElementById('modal-root') || document.body;
     if (tryItLoading || !tryItQuestions) {
-      return (<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"><div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /><p className="font-bold text-slate-700">Generating Quiz...</p></div></div>);
+      return (
+        <MathPulseLoader
+          title="Generating Quiz..."
+          subtitle={`AI is crafting questions for ${lesson.title}`}
+          fullScreen={true}
+        />
+      );
     }
-    return (
+    return ReactDOM.createPortal(
       <TryItYourselfEngine
         questions={tryItQuestions}
         lessonTitle={lesson.title}
@@ -1397,7 +1514,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           setShowTryItPage(false);
           setTryItQuestions(null);
         }}
-      />
+      />,
+      portalTarget
     );
   }
 
@@ -1430,182 +1548,80 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   );
   const currentTab = SECTION_TABS[currentSection] || SECTION_TABS[0];
   const CurrentTabIcon = currentTab.icon;
+  // SAFETY: lesson objects from curriculum metadata dynamically carry the optional subject name.
+  const lessonSubject = (lesson as { subject?: string }).subject || 'Mathematics';
 
   const content = (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 overflow-hidden font-sans">
-      <header className="flex-none bg-transparent px-3 sm:px-6 pt-2 sm:pt-3 md:pt-4 pb-2 sm:pb-3 sm:py-4 relative z-40">
-        <div className="max-w-[90rem] mx-auto flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+      {/* Minimal Responsive Top Header */}
+      <header className="flex-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 px-3 sm:px-6 py-2 relative z-40">
+        <div className="max-w-[96rem] mx-auto w-full flex items-center justify-between gap-3">
+          {/* Left: Back Button + Clean Lesson Info */}
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             <button
               onClick={onBack}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600 transition-colors flex-shrink-0 shadow-sm"
+              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 transition-colors shrink-0 cursor-pointer shadow-2xs active:scale-95"
               aria-label="Go back"
             >
               <ArrowLeft size={16} />
             </button>
-            <div className="min-w-0 flex flex-col justify-center flex-1">
-              {/* Badges row — hidden on mobile, visible sm+ */}
-              <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">
-                <BookOpen size={10} />
-                <span>NOTEBOOK</span>
-                {isStaffView && activeModel && (
-                  <span className="text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate leading-none">
+                {lessonSubject}
+              </p>
+              <h1 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm md:text-[15px] truncate mt-0.5 leading-snug" title={lesson.title}>
+                {lesson.title}
+              </h1>
+            </div>
+          </div>
+
+          {/* Right: Staff Controls (if teacher/admin) + Clean Progress Meter */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {isStaffView && (
+              <>
+                {activeModel && (
+                  <span className="hidden sm:inline-block text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-[10px]">
                     {activeModel.split('/').pop()}
                   </span>
                 )}
-                {retrievalBand === 'high' && (
-                  <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-emerald-200">
-                    DepEd Source
-                  </span>
-                )}
-              </div>
-              {/* Mobile: compact single-line label */}
-              <div className="flex sm:hidden items-center gap-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
-                <BookOpen size={9} />
-                <span>Notebook</span>
-                {retrievalBand === 'high' && (
-                  <span className="text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded text-[8px] font-semibold border border-emerald-200 leading-none">
-                    DepEd
-                  </span>
-                )}
-              </div>
-              <h1 className="font-bold text-slate-800 text-xs sm:text-sm truncate text-balance">{lesson.title}</h1>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-            <div className="text-right hidden sm:block">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progress</p>
-              <p className="text-sm font-bold text-slate-800 tabular-nums">
-                {Math.round(((currentSection + 1) / totalSections) * 100)}%
-              </p>
-            </div>
-            <div className="w-12 sm:w-24 md:w-32 h-1.5 sm:h-2 bg-slate-200 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-[#7ec16d] rounded-full"
-                animate={{ width: `${((currentSection + 1) / totalSections) * 100}%` }}
-                transition={{ duration: 0.25 }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* DepEd Curriculum Grounding Bar */}
-        <div className="max-w-[90rem] mx-auto mt-2 sm:mt-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-white/95 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 shadow-xs transition-all">
-            {/* Left side: Grounding Badge & Source Info */}
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
-              <div
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors',
-                  confidenceBadgeConfig.badge
-                )}
-              >
-                <span className={cn('w-2 h-2 rounded-full animate-pulse', confidenceBadgeConfig.dot)} />
-                <ShieldCheck size={13} className="shrink-0" />
-                <span>{confidenceBadgeConfig.label}</span>
-                {isStaffView && retrievalConfidence > 0 && (
-                  <span className="opacity-80 font-mono text-[10px] tabular-nums">
-                    ({Math.round(retrievalConfidence * 100)}%)
-                  </span>
-                )}
-              </div>
-
-              <div
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-600 bg-slate-100/80 border border-slate-200/70 max-w-[280px] sm:max-w-md truncate"
-                title={isStaffView ? primarySourceLabel : studentSourceLabel}
-              >
-                <FileText size={13} className="text-slate-500 shrink-0" />
-                <span className="truncate font-mono">{isStaffView ? primarySourceLabel : studentSourceLabel}</span>
-              </div>
-            </div>
-
-            {/* Right side: Action Buttons */}
-            <div className="flex items-center gap-2 shrink-0">
-              {depedPdfUrl ? (
-                <a
-                  href={depedPdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200/80 transition-colors shadow-2xs"
-                  title="Open official DepEd source PDF in new tab"
-                >
-                  <ExternalLink size={12} className="shrink-0" />
-                  <span>View DepEd Source PDF</span>
-                </a>
-              ) : null}
-
-              {isStaffView && (
                 <button
                   type="button"
                   onClick={() => setShowEvidenceModal(true)}
                   aria-label="Inspect evidence"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs"
-                  title={isStaffView ? 'Inspect retrieved DepEd text chunks, similarity scores, and metadata' : 'View DepEd curriculum alignment for this lesson'}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs cursor-pointer"
+                  title="Inspect retrieved DepEd text chunks, similarity scores, and metadata"
                 >
                   <FileSearch size={12} className="shrink-0" />
-                  <span>Inspect Evidence</span>
+                  <span className="hidden sm:inline">Inspect Evidence</span>
                   {sources && sources.length > 0 && (
                     <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black tabular-nums">
                       {sources.length}
                     </span>
                   )}
                 </button>
-              )}
+              </>
+            )}
+
+            {/* Slim Progress Meter */}
+            <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-slate-200 dark:border-white/10">
+              <div className="w-12 sm:w-16 md:w-20 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-emerald-500 rounded-full"
+                  animate={{ width: `${((currentSection + 1) / totalSections) * 100}%` }}
+                  transition={{ duration: 0.25 }}
+                />
+              </div>
+              <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 tabular-nums">
+                {Math.round(((currentSection + 1) / totalSections) * 100)}%
+              </span>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 overflow-hidden px-2 sm:px-5 pb-2 relative flex justify-center min-h-0">
-        {microLessonCards.length > 0 ? (
-          <div className="flex h-full w-full max-w-3xl flex-col items-center justify-start gap-4 overflow-y-auto px-2 py-6 sm:px-5 sm:py-10">
-            <MicroLessonDeck cards={microLessonCards} />
-            {/* Preserve the legacy practice entry points when the deck is shown:
-                the deck is presentational and must not swallow the quiz flow. */}
-            {practiceQuiz && !practiceQuizCompleted && onStartPractice && (
-              <button
-                onClick={onStartPractice}
-                className="w-full max-w-3xl px-6 py-2.5 rounded-xl bg-[#1a85a4] text-white text-sm font-black hover:bg-[#126b84] transition-colors shadow-md uppercase tracking-wide"
-              >
-                Start Practice
-              </button>
-            )}
-            {!practiceQuiz && (
-              <button
-                onClick={() => setShowTryItPage(true)}
-                className="w-full max-w-3xl flex items-center justify-between gap-4 text-white rounded-2xl px-6 py-4 shadow-lg transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] group"
-                style={{ background: '#9956DE' }}
-              >
-                <span className="flex items-center gap-3">
-                  <span className="text-left">
-                    <p className="font-black text-sm uppercase tracking-wide">Start Practice Quiz</p>
-                    <p className="text-white/80 text-xs mt-0.5">10 questions · AI-generated</p>
-                  </span>
-                </span>
-                <ArrowRight size={20} className="text-white/80 group-hover:translate-x-1 transition-transform" />
-              </button>
-            )}
-            {/* Deck-mode parity with legacy footer "Complete lesson" (same practice gate). */}
-            <button
-              onClick={() => { if (!practiceQuiz || practiceQuizCompleted) setShowCompletion(true); }}
-              disabled={isPracticeRequired}
-              aria-label="Complete lesson"
-              className="w-full max-w-3xl px-5 py-2 rounded-full font-bold text-xs sm:text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center justify-center gap-2 min-h-[2.5rem] touch-manipulation"
-            >
-              <span>Complete</span>
-              <CheckCircle size={14} />
-            </button>
-            {isPracticeRequired && (
-              <p className="text-center text-[10px] sm:text-xs font-semibold text-amber-600">
-                {!tryItQuizCompleted
-                  ? 'Complete the Try It Yourself quiz first to unlock lesson completion.'
-                  : 'Complete the practice quiz first to unlock lesson completion.'}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="w-full max-w-[90rem] h-full relative flex md:pl-16 pt-10 sm:pt-10 md:pt-0">
+      {/* Main Reading Container */}
+      <main className="flex-1 overflow-hidden px-2.5 sm:px-6 md:px-8 py-2 sm:py-3.5 md:py-4 relative flex justify-center min-h-0">
+        <section aria-label="Merrill micro-lesson" className="w-full max-w-[92rem] h-full relative flex md:pl-16 pt-8.5 md:pt-0">
 
           {/* Tabs - Stick out on left */}
           <div className="hidden md:flex absolute left-0 top-8 bottom-8 w-20 flex-col justify-between z-0 py-2">
@@ -1621,7 +1637,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     setCurrentSection(idx);
                   }}
                   className={cn(
-                    'group relative flex items-center justify-start pl-4 rounded-l-[1.5rem] transition-all duration-300 shadow-sm border-r-0 flex-shrink-0',
+                    'group relative flex items-center justify-start pl-4 rounded-l-[1.5rem] transition-all duration-300 shadow-sm border-r-0 flex-shrink-0 cursor-pointer select-none',
                     tab.tabBg,
                     active
                       ? 'w-24 h-20 -translate-x-4 shadow-xl z-20 brightness-105'
@@ -1634,7 +1650,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   </div>
 
                   {/* Tooltip */}
-                  <div className="absolute right-full mr-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-slate-700/50">
+                  <div className="absolute right-full mr-3 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[100] shadow-xl border border-slate-700/50">
                     <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 border-r border-t border-slate-700/50"></div>
                     {tab.label}
                   </div>
@@ -1643,68 +1659,177 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             })}
           </div>
 
-          {/* Mobile Folder Tabs - OUTSIDE colored section */}
-          <div className="md:hidden absolute left-0 right-0 top-0 z-30 bg-slate-100/95 backdrop-blur-sm">
-            <div className="flex gap-0.8 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1">
-              {SECTION_TABS.map((tab, idx) => {
-                const active = idx === currentSection;
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.type}
-                    onClick={() => {
-                      setDirection(idx > currentSection ? 1 : -1);
-                      setCurrentSection(idx);
-                    }}
-                    aria-label={`Go to ${tab.label} section`}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-2 rounded-t-lg transition-all duration-200 shrink-0 text-[11px] font-bold touch-manipulation min-h-[2.5rem]',
-                      active
-                        ? `${tab.tabBg} text-white shadow-md`
-                        : 'bg-slate-200/80 text-slate-500'
-                    )}
-                  >
-                    <Icon size={14} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Main Notebook Container */}
-          <div className={cn("flex-1 min-w-0 rounded-none sm:rounded-lg shadow-2xl flex flex-col overflow-visible relative z-10 transition-colors duration-500", currentTab.tabBg)}>
-            {/* Header inside notebook */}
-            <div className="px-3 sm:px-6 py-2 sm:py-3.5 flex items-center gap-2 sm:gap-4 text-white">
-              <div className="bg-white/20 p-1 sm:p-2 rounded-lg sm:rounded-xl shrink-0">
-                <CurrentTabIcon size={16} className="text-white" />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <h2 className="lesson-section-heading text-sm sm:text-xl md:text-2xl truncate text-balance" title={currentSectionData.title}>
-                  {currentSectionData.title}
-                </h2>
-                <p className="text-white/90 text-[10px] sm:text-xs font-medium truncate mt-0.5 font-body" title={lesson.title}>
-                  {lesson.title}
-                </p>
+          <div className={cn("flex-1 min-w-0 rounded-2xl sm:rounded-3xl shadow-xl border border-black/5 dark:border-white/10 flex flex-col overflow-visible relative z-10 transition-colors duration-500", currentTab.tabBg)}>
+            {/* Mobile Single Tab - Directly attached to top edge of notebook container */}
+            <div className="md:hidden absolute left-3 sm:left-6 -top-8.5 z-30">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsMobileNavOpen(prev => !prev)}
+                  aria-expanded={isMobileNavOpen}
+                  aria-haspopup="true"
+                  className={cn(
+                    'flex items-center gap-2 px-3.5 h-8.5 rounded-t-xl transition-all duration-200 text-xs font-black shadow-none cursor-pointer select-none active:scale-95 border-b-0 translate-y-[1px]',
+                    currentTab.tabBg,
+                    'text-white'
+                  )}
+                  aria-label={`Section: Part ${currentSection + 1} ${currentTab.label}. Tap to open module section menu.`}
+                >
+                  <CurrentTabIcon size={14} className="shrink-0" />
+                  <span className="font-black tracking-wide">
+                    Part {currentSection + 1}: {currentTab.label}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={cn(
+                      'transition-transform duration-200 shrink-0 ml-0.5',
+                      isMobileNavOpen && 'rotate-180'
+                    )}
+                  />
+                </button>
+
+                {/* Dropdown Menu for Unlocked Sections */}
+                <AnimatePresence>
+                  {isMobileNavOpen && (
+                    <>
+                      {/* Backdrop */}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsMobileNavOpen(false)}
+                        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]"
+                      />
+
+                      {/* Dropdown Menu Card */}
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute left-0 top-full mt-1.5 w-64 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 p-2 shadow-2xl z-50 overflow-hidden"
+                      >
+                        <div className="px-2.5 py-1.5 mb-1 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-400">
+                            Module Parts
+                          </span>
+                          <span className="text-[10px] font-mono font-bold text-slate-400">
+                            {currentSection + 1} of {totalSections}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1 max-h-72 overflow-y-auto">
+                          {SECTION_TABS.map((tab, idx) => {
+                            const Icon = tab.icon;
+                            const isCurrent = idx === currentSection;
+                            const isUnlocked = idx <= maxUnlockedSection;
+
+                            return (
+                              <button
+                                key={tab.type}
+                                type="button"
+                                disabled={!isUnlocked}
+                                onClick={() => {
+                                  setDirection(idx > currentSection ? 1 : -1);
+                                  setCurrentSection(idx);
+                                  setIsMobileNavOpen(false);
+                                }}
+                                className={cn(
+                                  'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer',
+                                  isCurrent
+                                    ? `${tab.tabBg} text-white shadow-sm`
+                                    : isUnlocked
+                                    ? 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                    : 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                )}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div
+                                    className={cn(
+                                      'w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-white',
+                                      isCurrent ? 'bg-white/20' : tab.tabBg
+                                    )}
+                                  >
+                                    <Icon size={13} />
+                                  </div>
+                                  <div className="truncate">
+                                    <span className="text-[10px] opacity-75 font-mono block leading-none">
+                                      Part {idx + 1}
+                                    </span>
+                                    <span className="truncate block mt-0.5">
+                                      {tab.label}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {isCurrent ? (
+                                  <span className="w-2 h-2 rounded-full bg-white shrink-0 shadow-xs" />
+                                ) : isUnlocked ? (
+                                  idx < currentSection ? (
+                                    <Check size={13} className="text-emerald-500 shrink-0" />
+                                  ) : null
+                                ) : (
+                                  <Lock size={12} className="text-slate-400 shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 
-            {/* Inner Paper Area */}
-            <div className="flex-1 min-h-0 bg-[#fdfdfd] rounded-lg sm:rounded-[1.5rem] m-1 mt-0 relative overflow-hidden shadow-inner flex flex-col">
-              {/* Notebook lines background */}
+            {/* Header inside notebook */}
+            <div className="px-4 sm:px-6 py-3 flex items-center justify-between gap-3 text-white">
+              <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                <div className="bg-white/20 p-1.5 sm:p-2 rounded-lg sm:rounded-xl shrink-0 backdrop-blur-xs border border-white/20">
+                  <CurrentTabIcon size={16} className="text-white" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] sm:text-xs font-mono font-black uppercase tracking-wider text-white/85 bg-black/20 px-2 py-0.5 rounded-md">
+                      Part {currentSection + 1} of {totalSections}
+                    </span>
+                    <span className="text-white/80 text-[11px] font-bold hidden sm:inline">
+                      {currentTab.label}
+                    </span>
+                  </div>
+                  <h2 className="lesson-section-heading text-sm sm:text-lg md:text-xl font-black text-white truncate font-display mt-0.5 drop-shadow-xs" title={currentSectionData.title}>
+                    {currentSectionData.title}
+                  </h2>
+                </div>
+              </div>
+
+              {/* Subject Tag on right */}
+              <div className="hidden sm:flex items-center gap-2 shrink-0">
+                <div className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-[11px] font-bold text-white shadow-2xs">
+                  {lessonSubject}
+                </div>
+              </div>
+            </div>
+
+            {/* Inner Paper Area - Authentic Notebook Page */}
+            <div className="flex-1 min-h-0 bg-[#faf9f5] dark:bg-slate-950 rounded-xl sm:rounded-2xl m-2 sm:m-3 mt-0 relative overflow-hidden shadow-inner flex flex-col border border-black/5 dark:border-white/5">
+              {/* Notebook Paper Ruled Lines Pattern */}
               <div
-                className="absolute inset-0 pointer-events-none opacity-30"
+                className="absolute inset-0 pointer-events-none opacity-45 dark:opacity-20 select-none z-0"
                 style={{
-                  backgroundImage: 'linear-gradient(transparent 95%, #cbd5e1 95%)',
-                  backgroundSize: '100% 40px',
-                  backgroundPosition: '0 0'
+                  backgroundImage:
+                    'linear-gradient(to bottom, transparent 31px, rgba(148, 163, 184, 0.35) 31px, rgba(148, 163, 184, 0.35) 32px)',
+                  backgroundSize: '100% 32px',
+                  backgroundPosition: '0 0',
                 }}
               />
-              {/* Red margin line */}
-              <div className="absolute top-0 bottom-0 left-8 sm:left-12 md:left-16 w-[2px] bg-rose-300/60 pointer-events-none z-0" />
+
+              {/* Notebook Red Margin Line */}
+              <div className="absolute top-0 bottom-0 left-6 sm:left-10 md:left-14 w-[1.5px] bg-rose-400/35 dark:bg-rose-500/25 pointer-events-none z-0" />
 
               {/* Scrollable Content */}
-              <div className="relative z-10 flex-1 min-h-0 overflow-y-auto px-3 sm:px-5 md:pl-20 md:pr-10 py-2 sm:py-6" key={currentSection}>
+              <div className="relative z-10 flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 md:px-12 py-4 sm:py-6" key={currentSection}>
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentSection}
@@ -1712,95 +1837,105 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="space-y-4 sm:space-y-6"
+                    className="w-full max-w-5xl mx-auto space-y-4 sm:space-y-6 font-body pb-6"
                   >
-                    <div className="bg-white/90 backdrop-blur-sm rounded-xl sm:rounded-[1.5rem] p-4 sm:p-6 md:p-8 shadow-sm border border-slate-100/50 font-body">
-                      <SectionRenderer
-                        section={currentSectionData}
-                        sectionIndex={currentSection}
-                        onShowSolution={(idx) =>
-                          setExpandedProblem(expandedProblem === idx ? null : idx)
-                        }
-                        expandedIndex={expandedProblem}
-                        lesson={lesson}
-                        practiceQuiz={practiceQuiz}
-                        practiceQuizCompleted={practiceQuizCompleted}
-                        practiceQuizScore={practiceQuizScore}
-                        onStartPractice={onStartPractice}
-                        lessonSpecificTopic={lessonSpecificTopic}
-                        onStartTryItQuiz={() => setShowTryItPage(true)}
-                      />
-                    </div>
+                    <SectionRenderer
+                      section={currentSectionData}
+                      sectionIndex={currentSection}
+                      onShowSolution={(idx) =>
+                        setExpandedProblem(expandedProblem === idx ? null : idx)
+                      }
+                      expandedIndex={expandedProblem}
+                      lesson={lesson}
+                      practiceQuiz={practiceQuiz}
+                      practiceQuizCompleted={practiceQuizCompleted}
+                      practiceQuizScore={practiceQuizScore}
+                      onStartPractice={onStartPractice}
+                      lessonSpecificTopic={lessonSpecificTopic}
+                      onStartTryItQuiz={() => setShowTryItPage(true)}
+                      isStaffView={isStaffView}
+                    />
 
-                    {sources.length > 0 && (userProfile?.role === 'admin' || userProfile?.role === 'teacher') && (
-                      <details className="rounded-xl border border-slate-200 bg-white/90 backdrop-blur-sm px-4 py-3 text-xs text-slate-500 shadow-sm">
-                        <summary className="cursor-pointer font-semibold text-slate-600 hover:text-slate-800">
-                          {sources.length} source{sources.length > 1 ? 's' : ''} used
-                        </summary>
-                        <div className="mt-2 space-y-1 pl-2">
-                          {sources.slice(0, 3).map((src, i) => (
-                            <p key={i} className="font-mono truncate">
-                              {src.source_file} p.{src.page} ({Math.round((src.score || 0) * 100)}%)
-                            </p>
-                          ))}
-                        </div>
-                      </details>
-                    )}
+                      {sources.length > 0 && (userProfile?.role === 'admin' || userProfile?.role === 'teacher') && (
+                        <details className="mt-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 px-3 py-2 text-xs text-slate-500 shadow-2xs">
+                          <summary className="cursor-pointer font-semibold text-slate-600 hover:text-slate-800">
+                            {sources.length} source{sources.length > 1 ? 's' : ''} used
+                          </summary>
+                          <div className="mt-2 space-y-1 pl-2 font-mono text-[11px]">
+                            {sources.slice(0, 3).map((src, i) => (
+                              <p key={i} className="truncate">
+                                [{Math.round((src.score || 0) * 100)}%] {src.source_file || 'Curriculum Doc'} (p. {src.page ?? 1})
+                              </p>
+                            ))}
+                          </div>
+                        </details>
+                      )}
                   </motion.div>
                 </AnimatePresence>
               </div>
             </div>
           </div>
-          </div>
-        )}
+        </section>
       </main>
 
-      {microLessonCards.length === 0 && <footer className="bg-slate-50 border-t border-slate-100 px-3 sm:px-6 flex-shrink-0 relative z-50 w-full flex justify-center items-center py-1.5 sm:py-3">
-        <div className="w-full max-w-[90rem] flex flex-col items-center">
-          <div className="flex items-center justify-center gap-4 sm:gap-8 w-full md:ml-16">
-            <Button
-              onClick={handlePrevious}
-              disabled={currentSection === 0}
-              variant="outline"
-              aria-label="Previous section"
-              className="px-4 sm:px-5 py-2 sm:py-2 rounded-full font-bold text-xs sm:text-sm bg-white border-slate-200 text-slate-600 shadow-sm disabled:opacity-40 hover:bg-slate-50 transition-colors flex items-center gap-1 sm:gap-2 min-w-[2.5rem] min-h-[2.5rem] touch-manipulation"
-            >
-              <ArrowLeft size={14} />
-              <span className="hidden sm:inline">Previous</span>
-            </Button>
+      {/* Docked Slim Navigation Footer */}
+      <footer className="flex-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-white/10 px-3 sm:px-6 py-2 relative z-40">
+        <div className="max-w-[96rem] mx-auto w-full flex items-center justify-between gap-3">
+          <Button
+            onClick={handlePrevious}
+            disabled={currentSection === 0}
+            variant="outline"
+            aria-label="Previous section"
+            className="px-3.5 sm:px-5 h-9 rounded-xl font-bold text-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs disabled:opacity-40 hover:bg-slate-50 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+          >
+            <ArrowLeft size={13} />
+            <span className="hidden sm:inline">Previous</span>
+          </Button>
 
-            <p className="text-xs sm:text-sm text-slate-500 font-bold tabular-nums">
-              {currentSection + 1} / {totalSections}
-            </p>
-
-            <Button
-              onClick={handleNext}
-              disabled={currentSection === totalSections - 1 && isPracticeRequired}
-              aria-label={currentSection === totalSections - 1 ? "Complete lesson" : "Next section"}
-              className="px-5 sm:px-7 py-2 sm:py-2 rounded-full font-bold text-xs sm:text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center gap-1 sm:gap-2 min-w-[2.5rem] min-h-[2.5rem] touch-manipulation"
-            >
-              {currentSection === totalSections - 1 ? (
-                <>
-                  <span className="hidden sm:inline">Complete</span>
-                  <CheckCircle size={14} />
-                </>
-              ) : (
-                <>
-                  <span className="hidden sm:inline">Next</span>
-                  <ArrowRight size={14} />
-                </>
-              )}
-            </Button>
+          <div className="flex items-center gap-1.5">
+            {SECTION_TABS.map((tab, idx) => (
+              <span
+                key={tab.type}
+                className={cn(
+                  "w-1.5 h-1.5 rounded-full transition-all",
+                  idx === currentSection
+                    ? cn("w-4 sm:w-5", tab.tabBg)
+                    : idx < currentSection
+                    ? "bg-slate-400 dark:bg-slate-600"
+                    : "bg-slate-200 dark:bg-slate-800"
+                )}
+              />
+            ))}
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono font-bold ml-1">
+              {currentSection + 1}/{totalSections}
+            </span>
           </div>
-          {currentSection === totalSections - 1 && isPracticeRequired && (
-            <p className="text-center text-[10px] sm:text-xs font-semibold text-amber-600 mt-2 sm:mt-3 md:ml-16">
-              {!tryItQuizCompleted
-                ? 'Complete the Try It Yourself quiz first to unlock lesson completion.'
-                : 'Complete the practice quiz first to unlock lesson completion.'}
-            </p>
-          )}
+
+          <Button
+            onClick={handleNext}
+            disabled={currentSection === totalSections - 1 && isPracticeRequired}
+            aria-label={currentSection === totalSections - 1 ? "Complete lesson" : "Next section"}
+            className={cn(
+              "px-4 sm:px-6 h-9 rounded-xl font-bold text-xs text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95",
+              currentSection === totalSections - 1
+                ? "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
+                : "bg-purple-600 hover:bg-purple-500 shadow-purple-500/20"
+            )}
+          >
+            {currentSection === totalSections - 1 ? (
+              <>
+                <span>Complete</span>
+                <CheckCircle size={13} />
+              </>
+            ) : (
+              <>
+                <span>Next</span>
+                <ArrowRight size={13} />
+              </>
+            )}
+          </Button>
         </div>
-      </footer>}
+      </footer>
 
       <AnimatePresence>
         {showCompletion && (

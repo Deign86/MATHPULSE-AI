@@ -1,21 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, BookOpen, Bot, BarChart3, Sparkles, Swords, Trophy, ChevronRight, User } from 'lucide-react';
+import { Home, BookOpen, Bot, BarChart3, Sparkles, Swords, Trophy, ChevronRight, User, Settings, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface MobileBottomNavProps {
   activeTab: string;
-  onSelectTab: (tab: string) => void;
+  onSelectTab: (tab: string, moduleId?: string) => void;
   onOpenProfile?: () => void;
+  onOpenSettings?: () => void;
+  onLogout?: () => void;
   profilePhoto?: string;
   profileName?: string;
 }
 
-type ExpandableMenu = 'modules' | 'ai' | 'battle' | null;
+type ExpandableMenu = 'modules' | 'ai' | 'battle' | 'profile' | null;
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   activeTab,
   onSelectTab,
   onOpenProfile,
+  onOpenSettings,
+  onLogout,
   profilePhoto,
   profileName,
 }) => {
@@ -38,19 +42,10 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     setOpenMenu(null);
   };
 
-  const handleProfileClick = () => {
-    setOpenMenu(null);
-    if (onOpenProfile) {
-      onOpenProfile();
-    } else {
-      onSelectTab('profile');
-    }
-  };
-
   const isModulesActive = activeTab === 'Modules' || activeTab === 'Grades';
   const isAIActive = activeTab === 'AI Chat' || activeTab === 'Avatar Studio';
   const isBattleActive = activeTab === 'Quiz Battle' || activeTab === 'Leaderboard';
-  const isProfileActive = activeTab === 'Settings' || activeTab === 'profile';
+  const isProfileActive = activeTab === 'Settings' || activeTab === 'Profile' || activeTab === 'profile';
 
   return (
     <nav
@@ -226,6 +221,117 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           )}
         </AnimatePresence>
 
+        {/* PROFILE Expansion Popup (My Profile + Settings + Sign Out) */}
+        <AnimatePresence>
+          {openMenu === 'profile' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.95 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute bottom-[calc(100%+12px)] right-2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-purple-200 dark:border-purple-800/80 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+            >
+              {/* Profile header chip */}
+              <div className="px-3 py-2 flex items-center gap-2.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50">
+                {profilePhoto ? (
+                  <img
+                    src={profilePhoto}
+                    alt={profileName || 'Profile'}
+                    className="w-8 h-8 rounded-full object-cover border border-purple-300 dark:border-purple-700 shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-purple-200 dark:bg-purple-900 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-xs shrink-0">
+                    <User size={16} />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-display font-black text-slate-800 dark:text-white truncate">
+                    {profileName || 'Student'}
+                  </p>
+                  <p className="text-[10px] text-purple-600 dark:text-purple-400 font-medium leading-none mt-0.5">
+                    MathPulse Learner
+                  </p>
+                </div>
+              </div>
+
+              {/* Option 1: My Profile */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
+                  if (onOpenProfile) {
+                    onOpenProfile();
+                  } else {
+                    handleSelectTabAndClose('Profile');
+                  }
+                }}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                  activeTab === 'Profile'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Profile' ? 'bg-white/20' : 'bg-purple-100 dark:bg-purple-900/50 text-purple-600'}`}>
+                    <User size={16} aria-hidden="true" />
+                  </div>
+                  <span>My Profile</span>
+                </div>
+                <ChevronRight size={14} className="opacity-70" />
+              </button>
+
+              {/* Option 2: Settings */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
+                  if (onOpenSettings) {
+                    onOpenSettings();
+                  } else {
+                    handleSelectTabAndClose('Settings');
+                  }
+                }}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                  activeTab === 'Settings'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Settings' ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                    <Settings size={16} aria-hidden="true" />
+                  </div>
+                  <span>Settings</span>
+                </div>
+                <ChevronRight size={14} className="opacity-70" />
+              </button>
+
+              <div className="h-px bg-slate-200/80 dark:bg-slate-800 my-0.5" />
+
+              {/* Option 3: Sign Out */}
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null);
+                  onLogout?.();
+                }}
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all active:scale-95"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                    <LogOut size={16} aria-hidden="true" />
+                  </div>
+                  <span>Sign Out</span>
+                </div>
+                <ChevronRight size={14} className="opacity-70" />
+              </button>
+
+              {/* Triangle pointer */}
+              <div className="absolute -bottom-2 right-6 w-4 h-4 bg-white dark:bg-slate-900 border-r border-b border-purple-200 dark:border-purple-800/80 rotate-45" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* 5 Mobile Bottom Bar Buttons */}
         <div className="flex items-center justify-around max-w-md mx-auto relative z-30">
           {/* 1. DASHBOARD */}
@@ -294,14 +400,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <span className="text-[10px] mt-1 leading-none truncate font-display">Quiz Battle</span>
           </button>
 
-          {/* 5. PROFILE (Bottom Right) */}
+          {/* 5. PROFILE (Expandable: My Profile, Settings, Sign Out) */}
           <button
             type="button"
-            onClick={handleProfileClick}
-            aria-label={`Profile: ${profileName || 'User'}`}
+            onClick={() => setOpenMenu(prev => prev === 'profile' ? null : 'profile')}
+            aria-label={`Profile options for ${profileName || 'User'}`}
+            aria-expanded={openMenu === 'profile'}
+            aria-haspopup="true"
             aria-current={isProfileActive ? 'page' : undefined}
             className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
-              isProfileActive
+              isProfileActive || openMenu === 'profile'
                 ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
                 : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800'
             }`}
@@ -322,112 +430,115 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         </div>
       </div>
 
-      {/* ─── TABLET VIEW (md: to lg:): Center AI Button with Same Design as Mobile ─── */}
-      <div className="hidden md:flex items-center justify-around max-w-2xl mx-auto gap-1">
-        {/* 1. Dashboard */}
-        <button
-          type="button"
-          onClick={() => onSelectTab('Dashboard')}
-          aria-current={activeTab === 'Dashboard' ? 'page' : undefined}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
-            activeTab === 'Dashboard'
-              ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Home size={20} className={activeTab === 'Dashboard' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
-          <span className="text-[11px] mt-1 font-display">Dashboard</span>
-        </button>
+      {/* ─── TABLET VIEW (md: to lg:): 7 primary nav items, no Profile button ─── */}
+      <div className="hidden md:block relative">
+        <div className="flex items-center justify-around max-w-2xl mx-auto gap-1">
+          {/* 1. Dashboard */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('Dashboard')}
+            aria-current={activeTab === 'Dashboard' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'Dashboard'
+                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Home size={20} className={activeTab === 'Dashboard' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
+            <span className="text-[11px] mt-1 font-display">Dashboard</span>
+          </button>
 
-        {/* 2. Modules */}
-        <button
-          type="button"
-          onClick={() => onSelectTab('Modules')}
-          aria-current={activeTab === 'Modules' ? 'page' : undefined}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
-            activeTab === 'Modules'
-              ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <BookOpen size={20} className={activeTab === 'Modules' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
-          <span className="text-[11px] mt-1 font-display">Modules</span>
-        </button>
+          {/* 2. Modules */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('Modules')}
+            aria-current={activeTab === 'Modules' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'Modules'
+                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <BookOpen size={20} className={activeTab === 'Modules' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
+            <span className="text-[11px] mt-1 font-display">Modules</span>
+          </button>
 
-        {/* 3. Assessment */}
-        <button
-          type="button"
-          onClick={() => onSelectTab('Grades')}
-          aria-current={activeTab === 'Grades' ? 'page' : undefined}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
-            activeTab === 'Grades'
-              ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <BarChart3 size={20} className={activeTab === 'Grades' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
-          <span className="text-[11px] mt-1 font-display">Assessment</span>
-        </button>
+          {/* 3. Assessment */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('Grades')}
+            aria-current={activeTab === 'Grades' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'Grades'
+                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <BarChart3 size={20} className={activeTab === 'Grades' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
+            <span className="text-[11px] mt-1 font-display">Assessment</span>
+          </button>
 
-        {/* 4. AI (Exact Center - Same Elevated Purple Design as Mobile, Extra-Large Head, No Label) */}
-        <button
-          type="button"
-          onClick={() => onSelectTab('AI Chat')}
-          aria-current={isAIActive ? 'page' : undefined}
-          aria-label="AI Chat"
-          className="relative -top-3 flex items-center justify-center w-14 h-14 sm:w-15 sm:h-15 p-1 rounded-2xl transition-all focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none active:scale-[0.94] bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-xl shadow-purple-500/40 ring-2 ring-purple-300 dark:ring-purple-600 shrink-0"
-        >
-          <img
-            src="/avatar/avatar_icon.png"
-            alt="AI"
-            className="w-12 h-12 sm:w-13 sm:h-13 object-contain drop-shadow-xl select-none pointer-events-none"
-          />
-        </button>
+          {/* 4. AI (Center) */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('AI Chat')}
+            aria-current={isAIActive ? 'page' : undefined}
+            aria-label="AI Chat"
+            className="relative -top-3 flex items-center justify-center w-14 h-14 sm:w-15 sm:h-15 p-1 rounded-2xl transition-all focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none active:scale-[0.94] bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-xl shadow-purple-500/40 ring-2 ring-purple-300 dark:ring-purple-600 shrink-0"
+          >
+            <img
+              src="/avatar/avatar_icon.png"
+              alt="AI"
+              className="w-12 h-12 sm:w-13 sm:h-13 object-contain drop-shadow-xl select-none pointer-events-none"
+            />
+          </button>
 
-        {/* 5. Quiz Battle */}
-        <button
-          type="button"
-          onClick={() => onSelectTab('Quiz Battle')}
-          aria-current={activeTab === 'Quiz Battle' ? 'page' : undefined}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
-            activeTab === 'Quiz Battle'
-              ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Swords size={20} className={activeTab === 'Quiz Battle' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
-          <span className="text-[11px] mt-1 font-display">Quiz Battle</span>
-        </button>
+          {/* 5. Quiz Battle */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('Quiz Battle')}
+            aria-current={activeTab === 'Quiz Battle' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'Quiz Battle'
+                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Swords size={20} className={activeTab === 'Quiz Battle' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
+            <span className="text-[11px] mt-1 font-display">Quiz Battle</span>
+          </button>
 
-        {/* 6. Leaderboard */}
-        <button
-          type="button"
-          onClick={() => onSelectTab('Leaderboard')}
-          aria-current={activeTab === 'Leaderboard' ? 'page' : undefined}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
-            activeTab === 'Leaderboard'
-              ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Trophy size={20} className={activeTab === 'Leaderboard' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
-          <span className="text-[11px] mt-1 font-display">Leaderboard</span>
-        </button>
+          {/* 6. Leaderboard */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('Leaderboard')}
+            aria-current={activeTab === 'Leaderboard' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'Leaderboard'
+                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Trophy size={20} className={activeTab === 'Leaderboard' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
+            <span className="text-[11px] mt-1 font-display">Leaderboard</span>
+          </button>
 
-        {/* 7. Avatar Studio */}
-        <button
-          type="button"
-          onClick={() => onSelectTab('Avatar Studio')}
-          aria-current={activeTab === 'Avatar Studio' ? 'page' : undefined}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
-            activeTab === 'Avatar Studio'
-              ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Sparkles size={20} className={activeTab === 'Avatar Studio' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
-          <span className="text-[11px] mt-1 font-display">Avatar Studio</span>
-        </button>
+          {/* 7. Avatar Studio */}
+          <button
+            type="button"
+            onClick={() => onSelectTab('Avatar Studio')}
+            aria-current={activeTab === 'Avatar Studio' ? 'page' : undefined}
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
+              activeTab === 'Avatar Studio'
+                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Sparkles size={20} className={activeTab === 'Avatar Studio' ? 'stroke-[2.4]' : 'stroke-[1.8]'} />
+            <span className="text-[11px] mt-1 font-display">Avatar Studio</span>
+          </button>
+
+        </div>
       </div>
     </nav>
   );
