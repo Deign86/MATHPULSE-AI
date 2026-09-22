@@ -401,7 +401,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
       {/* ========================================================================= */}
       {/* 3. MAIN LAYOUT (DESKTOP: SPLIT VIEW, TABLET/MOBILE: VERTICAL FLOW)        */}
       {/* ========================================================================= */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-6 pb-4 flex-1 lg:h-full lg:overflow-hidden flex flex-col lg:flex-row lg:items-stretch lg:gap-8 relative z-10">
+      <div className="w-full max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-6 pb-4 flex-1 lg:h-full lg:overflow-hidden flex flex-col lg:flex-row lg:items-stretch lg:gap-8 relative z-10">
         
         {/* ======================================================================= */}
         {/* LEFT COLUMN (DESKTOP): HIGHLIGHTING TOP 1, 2, 3 PODIUMS ONLY            */}

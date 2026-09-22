@@ -22,6 +22,7 @@ import {
   Info,
   ArrowLeft,
   ChevronDown,
+  ChevronRight,
   Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -37,7 +38,6 @@ import {
   SelectValue,
 } from './ui/select';
 import ConfirmModal from './ConfirmModal';
-import StudentIDCard from './StudentIDCard';
 import {
   DEFAULT_USER_SETTINGS,
   QuizDifficultyPreference,
@@ -50,6 +50,7 @@ import {
 } from '../services/settingsService';
 import { validateProfileDraft } from '../utils/profileValidation';
 import { usePushNotificationControls } from './PushNotificationsManager';
+import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 
 export interface ProfileData {
   uid?: string;
@@ -87,6 +88,7 @@ interface SettingsPageProps {
   onResetData?: () => Promise<void>;
   onLogout?: () => void;
   onNavigateToAvatarShop?: () => void;
+  onNavigateToProfile?: () => void;
   onBack?: () => void;
   previousTabName?: string;
 }
@@ -95,7 +97,7 @@ interface SettingsPageProps {
 const cloneDefaultSettings = (): UserSettings =>
   JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)) as UserSettings;
 
-type SettingsTab = 'profile' | 'appearance' | 'notifications' | 'security' | 'data';
+export type SettingsTab = 'appearance' | 'notifications' | 'security' | 'data';
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   profileData,
@@ -110,11 +112,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onResetData,
   onLogout,
   onNavigateToAvatarShop,
+  onNavigateToProfile,
   onBack,
   previousTabName,
 }) => {
   const pushControls = usePushNotificationControls();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('appearance');
 
   // Form states
   const [accountData, setAccountData] = useState<ProfileData>(profileData);
@@ -193,26 +196,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     setIsDirty(true);
   };
 
-  // Save all profile and settings modifications
+  // Hook into browser beforeunload
+  useUnsavedChangesWarning(isDirty);
+
+  // Save all settings modifications
   const handleSaveAll = async () => {
-    const validationError = validateProfileDraft({
-      name: accountData.name || '',
-      phone: accountData.phone,
-    });
-
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-
     setIsSaving(true);
     try {
-      await Promise.all([
-        onSaveProfile(accountData),
-        onSaveSettings(localSettings),
-      ]);
+      await onSaveSettings(localSettings);
+      if (onSaveProfile && isDirty) {
+        await onSaveProfile(accountData);
+      }
       setIsDirty(false);
-      toast.success('All settings saved successfully');
+      toast.success('Settings saved successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save changes';
       toast.error(message);
@@ -282,18 +278,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const tabs = useMemo(
     () => [
       {
-        id: 'profile' as const,
-        label: 'Student Details',
-        icon: User,
-        desc: 'Your basic school info and contact details',
-        tabColor: 'purple',
-        activeClass: 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 border-t-2 border-x-2 border-purple-500 shadow-[0_-4px_14px_rgba(168,85,247,0.16)] z-20 translate-y-[2px]',
-        inactiveClass: 'bg-purple-50/70 dark:bg-purple-950/40 hover:bg-purple-100/90 dark:hover:bg-purple-900/60 text-purple-800 dark:text-purple-300 border-t border-x border-purple-200/80 dark:border-purple-800/70 z-10',
-        spineGradient: 'from-purple-500 via-indigo-500 to-purple-400',
-        folderBorder: 'border-purple-500/35 dark:border-purple-500/30 shadow-purple-950/5',
-        badgeClass: 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
-      },
-      {
         id: 'appearance' as const,
         label: 'Display & Theme',
         icon: Palette,
@@ -348,7 +332,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const currentTab = tabs.find((t) => t.id === activeTab) || tabs[0];
 
   return (
-    <div className="px-3.5 sm:px-6 lg:px-8 pt-1 sm:pt-2 pb-28 sm:pb-16 space-y-4 sm:space-y-6 max-w-[1440px] mx-auto min-h-screen">
+    <div className="px-3.5 sm:px-6 lg:px-8 xl:px-12 pt-1 sm:pt-2 pb-28 sm:pb-16 space-y-4 sm:space-y-6 max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto min-h-screen">
       {/* ── 0. Back to previous location ── */}
       {onBack && (
         <div className="flex items-center justify-between gap-3 pt-0.5">
@@ -365,26 +349,63 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </button>
 
           <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-medium">
-            <span>Student Profile</span>
+            <span>System Settings</span>
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300 capitalize">{currentTab.label}</span>
           </div>
         </div>
       )}
 
-      {/* ── 1. Main Profile & Settings Layout (Student ID on Left on Desktop; Stacked on Mobile/Tablet) ── */}
-      <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
-        {/* ── Left/Top Column: Interactive Student ID Card & Quick Actions ── */}
-        <div className="w-full lg:w-[360px] xl:w-[390px] shrink-0 flex flex-col items-center gap-4 lg:sticky lg:top-4">
-          <StudentIDCard
-            profileData={accountData}
-            userLevel={userLevel}
-            userXP={userXP}
-            onPhotoUploaded={(photoURL) => handleAccountFieldChange('photo', photoURL)}
-            className="w-full"
-          />
+      {/* ── 1. Main Settings Layout ── */}
+      <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8 xl:gap-10">
+        {/* ── Left/Top Column: Profile Overview Card & Quick Actions ── */}
+        <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col items-center gap-4 lg:sticky lg:top-4">
+          <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 flex flex-col items-center text-center relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 opacity-90" />
+            
+            {/* Avatar thumbnail */}
+            <div className="relative mt-4 mb-3">
+              {profileData.photo ? (
+                <img
+                  src={profileData.photo}
+                  alt={profileData.name || 'User'}
+                  className="w-20 h-20 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-md"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold text-2xl border-4 border-white dark:border-slate-900 shadow-md">
+                  <User size={36} />
+                </div>
+              )}
+              <span className="absolute -bottom-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] font-black shadow-xs">
+                Lv {userLevel}
+              </span>
+            </div>
 
-          {/* Quick Actions & Status Strip under Student ID */}
+            <h3 className="text-base font-display font-black text-slate-900 dark:text-white truncate max-w-full">
+              {profileData.name || 'Student Learner'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+              {profileData.grade || 'Grade 11'} {profileData.section ? `• ${profileData.section}` : ''}
+            </p>
+
+            {/* Direct button to open My Profile */}
+            {onNavigateToProfile && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onNavigateToProfile}
+                className="w-full mt-4 h-10 rounded-xl bg-purple-50/80 dark:bg-purple-950/40 hover:bg-purple-100 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/80 font-bold text-xs flex items-center justify-between px-3.5 transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <User size={15} />
+                  <span>View & Edit Student ID Pass</span>
+                </div>
+                <ChevronRight size={14} />
+              </Button>
+            )}
+          </div>
+
+          {/* Quick Actions & Status Strip */}
           <div className="w-full max-w-[360px] sm:max-w-[390px] flex flex-col gap-2.5">
             {onNavigateToAvatarShop && (
               <div
@@ -546,7 +567,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
 
           {/* Folder Jacket Body Container with Notebook Grid & Paperclip */}
-          <div className={`relative ${activeTab === 'profile' ? 'rounded-2xl lg:rounded-tl-none' : 'rounded-2xl'} rounded-b-2xl bg-white dark:bg-slate-900 border-2 ${currentTab.folderBorder} shadow-xl p-4 sm:p-6 lg:p-7 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]`}>
+          <div className={`relative rounded-2xl rounded-b-2xl bg-white dark:bg-slate-900 border-2 ${currentTab.folderBorder} shadow-xl p-4 sm:p-6 lg:p-7 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]`}>
             {/* Top spine / folder rim highlight with matching tab gradient */}
             <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${currentTab.spineGradient} opacity-90 rounded-t-sm`} />
 
@@ -605,176 +626,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 transition={{ duration: 0.18, ease: 'easeOut' }}
                 className="grid grid-cols-1 gap-5"
               >
-                {/* TAB 1: STUDENT DETAILS */}
-                {activeTab === 'profile' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    {/* Personal Details Card */}
-                    <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
-                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
-                        <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                          <User size={18} />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-display font-bold text-slate-900 dark:text-white">
-                            Basic Information
-                          </h3>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Your contact and identity details
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3.5">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Full Name
-                          </label>
-                          <Input
-                            value={accountData.name || ''}
-                            onChange={(e) => handleAccountFieldChange('name', e.target.value)}
-                            placeholder="Learner Full Name"
-                            className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                            Email Address
-                          </label>
-                          <div className="flex gap-2">
-                            <Input
-                              disabled
-                              value={accountData.email || ''}
-                              className="h-10 rounded-xl bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-500 flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setIsEmailModalOpen(true)}
-                              className="h-10 px-3 rounded-xl border-slate-200 dark:border-slate-700 text-xs font-bold shrink-0 whitespace-nowrap cursor-pointer"
-                            >
-                              Change
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                              Phone Number
-                            </label>
-                            <Input
-                              value={accountData.phone || ''}
-                              onChange={(e) => handleAccountFieldChange('phone', e.target.value)}
-                              placeholder="+63 912 345 6789"
-                              className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                              Gender
-                            </label>
-                            <Select
-                              value={accountData.gender || 'prefer_not_to_say'}
-                              onValueChange={(val) =>
-                                // SAFETY: bounded gender string literals match ProfileData gender type.
-                                handleAccountFieldChange('gender', val as ProfileData['gender'])
-                              }
-                            >
-                              <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer">
-                                <SelectValue placeholder="Select gender" />
-                              </SelectTrigger>
-                              <SelectContent className="z-[80] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                                <SelectItem value="non_binary">Non-binary</SelectItem>
-                                <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Academic Information Card */}
-                    <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
-                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                          <GraduationCap size={18} />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-display font-bold text-slate-900 dark:text-white">
-                            School & Grade Information
-                          </h3>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Senior High track, grade, and section details
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3.5">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                            DepEd LRN (12-Digit Student ID)
-                          </label>
-                          <Input
-                            value={accountData.lrn || ''}
-                            onChange={(e) => handleAccountFieldChange('lrn', e.target.value)}
-                            placeholder="12-digit DepEd LRN"
-                            maxLength={12}
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                              Grade Level
-                            </label>
-                            <Select
-                              value={accountData.grade?.includes('12') ? 'Grade 12' : 'Grade 11'}
-                              onValueChange={(val) => handleAccountFieldChange('grade', val)}
-                            >
-                              <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer">
-                                <SelectValue placeholder="Grade Level" />
-                              </SelectTrigger>
-                              <SelectContent className="z-[80] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
-                                <SelectItem value="Grade 11">Grade 11 (Senior High)</SelectItem>
-                                <SelectItem value="Grade 12">Grade 12 (Senior High)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                              Section / Strand
-                            </label>
-                            <Input
-                              value={accountData.section || ''}
-                              onChange={(e) => handleAccountFieldChange('section', e.target.value)}
-                              placeholder="e.g. STEM-11A"
-                              className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                            School Name
-                          </label>
-                          <Input
-                            value={accountData.school || ''}
-                            onChange={(e) => handleAccountFieldChange('school', e.target.value)}
-                            placeholder="e.g. Specialized Science High School"
-                            className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* TAB 2: DISPLAY & THEME */}
+                {/* TAB 1: DISPLAY & THEME */}
                 {activeTab === 'appearance' && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                     {/* Theme & Display Mode */}

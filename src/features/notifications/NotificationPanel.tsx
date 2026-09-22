@@ -12,9 +12,14 @@ import { NOTIFICATION_PAGE_SIZE, paginateNotifications } from './types';
 interface NotificationPanelProps {
   onClose: () => void;
   panelRef?: React.RefObject<HTMLDivElement | null>;
+  triggerRef?: React.RefObject<HTMLElement | null>;
 }
 
-export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose, panelRef: externalPanelRef }) => {
+export const NotificationPanel: React.FC<NotificationPanelProps> = ({
+  onClose,
+  panelRef: externalPanelRef,
+  triggerRef,
+}) => {
   const { notifications, unreadCount, isLoading, markAllAsRead } = useNotifications();
   const localPanelRef = useRef<HTMLDivElement>(null);
   const panelRef = externalPanelRef ?? localPanelRef;
@@ -25,14 +30,16 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose, p
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // SAFETY: pointer events outside the panel always carry a DOM event target Node.
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
-        onClose();
+      const target = event.target as Node;
+      if (panelRef.current?.contains(target) || triggerRef?.current?.contains(target)) {
+        return;
       }
+      onClose();
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
+  }, [onClose, triggerRef, panelRef]);
 
   const panel = (
     <>
@@ -45,6 +52,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose, p
 
       <div
         ref={panelRef}
+        data-testid="notification-panel"
         className="fixed right-4 sm:right-6 top-16 sm:top-20 w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 max-h-[85vh] sm:max-h-[32rem] overflow-hidden z-[250] flex flex-col"
       >
         {/* Header */}
