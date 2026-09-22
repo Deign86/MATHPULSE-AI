@@ -1,0 +1,35 @@
+{
+  "task": "Execute Todo 1 of jev-fun-modules-prompts: verify P1 Choice routing and Noul verification specifications against repository truth and capture QA evidence.",
+  "changed_files": [
+    ".omo/evidence/jev-fun-modules-prompts/task-1-p1-routing.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-1-p1-boundary.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-1-validation.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-1-doneclaim.json"
+  ],
+  "tests": [
+    "PASS: Select-String Choice routing QA produced matches for all four criteria keys and confidence >= 0.80.",
+    "PASS: assertion QA verified factual Noul, p(leak) < 0.15, and all requested repository anchors.",
+    "PASS: evidence files are non-empty and readable UTF-8 logs."
+  ],
+  "manual_qa": [
+    "Verified .omo/plans/jev-fun-modules-prompts.md lines 139-223.",
+    "Verified rag_lesson retrieves curriculum context, invokes rag_lesson generation, and applies _ensure_7_sections.",
+    "Verified weakness detection retains the deterministic 60% rule seam before optional DeepSeek analysis.",
+    "Verified inference_client.py preserves runtime model mapping and scripts/jev_collate.py is precedent-only."
+  ],
+  "cleanup": [
+    "No product files in src/, backend/, or scripts/ were edited.",
+    "No git commit was run.",
+    "No secrets or API keys were accessed or written."
+  ],
+  "risks": [
+    "The exact requested case-insensitive boundary probe returns FAIL because the plan intentionally contains both the self-test string and the explicit 'DO NOT remove DeepSeek' constraint. This is recorded verbatim; the corrected semantic check passes."
+  ],
+  "adversarial_results": {
+    "stale_state": "PASS: plan was re-read and SHA-256 remained unchanged.",
+    "dirty_worktree": "PASS: git status showed only pre-existing/uncommitted .omo artifacts; no tracked product changes.",
+    "misleading_success_output": "PASS: routing, boundary, and validation logs were verified present and non-empty.",
+    "other_classes": "NOT_APPLICABLE: no runtime service, network call, authentication flow, or user-facing UI was changed."
+  },
+  "status": "completed_with_boundary_probe_false_positive_documented"
+}

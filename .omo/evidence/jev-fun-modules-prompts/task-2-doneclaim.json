@@ -1,0 +1,52 @@
+{
+  "task": "Todo 2 of jev-fun-modules-prompts: verify P1 mastery scoring across Bloom levels and disagreement hierarchy",
+  "changed_files": [
+    ".omo/evidence/jev-fun-modules-prompts/task-2-p1-mastery.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-2-p1-anchor.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-2-doneclaim.json"
+  ],
+  "tests": [
+    {
+      "command": "Select-String -Pattern \"disagreement\" -Path .omo/plans/jev-fun-modules-prompts.md",
+      "result": "PASS",
+      "evidence": ".omo/evidence/jev-fun-modules-prompts/task-2-p1-mastery.log"
+    },
+    {
+      "command": "if (-not (Select-String -Pattern \"_ensure_7_sections\" -Path .omo/plans/jev-fun-modules-prompts.md)) { throw \"FAIL: missing anchor\" } else { \"PASS: anchored\" }",
+      "result": "PASS: anchored",
+      "evidence": ".omo/evidence/jev-fun-modules-prompts/task-2-p1-anchor.log"
+    }
+  ],
+  "manual_qa": {
+    "plan_lines_81_84": "PASS: Bloom levels 0 Recall, 1 Procedural, 2 Conceptual Transfer, and 3 Metacognitive/Evaluation have concrete descriptions; hierarchy is deterministic Python > Jev > DeepSeek; low confidence falls back to static DepEd curriculum excerpts.",
+    "plan_lines_203_223": "PASS: BLOOM_MASTERY_SCORE defines all four levels and constraints state deterministic Python is final authority on disagreement.",
+    "backend_routes_rag_routes_py_291_345": "PASS: _ensure_7_sections deterministically fills missing sections, replaces blank sections with grounded defaults, orders required sections, and returns the authoritative section set."
+  },
+  "cleanup": {
+    "product_files_modified": false,
+    "secrets_added": false,
+    "notes": "Only requested evidence artifacts were created; no src/ or backend/ files were edited."
+  },
+  "risks": [
+    "The worktree was already dirty with .omo/boulder.json, .omo/drafts/, and the plan before this QA run; those files were preserved.",
+    "No live Jev or DeepSeek call was required because this Todo validates the documented deterministic protocol and anchors."
+  ],
+  "adversarial": {
+    "stale_state": {
+      "result": "PASS",
+      "check": "Re-read the plan from disk after QA execution; required Bloom, disagreement, and _ensure_7_sections text remained present."
+    },
+    "dirty_worktree": {
+      "result": "PASS",
+      "check": "git status --short --branch detected only pre-existing orchestrator artifacts before evidence creation; no src/ or backend/ changes were present."
+    },
+    "misleading_success_output": {
+      "result": "PASS",
+      "check": "Verified task-2-p1-mastery.log and task-2-p1-anchor.log exist and have non-zero byte counts after capture."
+    },
+    "other_classes": {
+      "result": "NOT_APPLICABLE",
+      "reason": "No network, authentication, database, browser, concurrency, or destructive-operation behavior is exercised by this documentation-only QA task."
+    }
+  }
+}
