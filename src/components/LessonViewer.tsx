@@ -381,7 +381,6 @@ import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
-import MicroLessonDeck from './notebook/MicroLessonDeck';
 import type { MicroLessonCardProps, MicroLessonPhase } from './notebook/MicroLessonCard';
 
 interface LessonViewerProps {
@@ -1713,54 +1712,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
       {/* Main Reading Container */}
       <main className="flex-1 overflow-hidden px-3.5 sm:px-6 md:px-8 py-3.5 sm:py-4 md:py-5 relative flex justify-center min-h-0">
-        {microLessonCards.length > 0 ? (
-          <div className="flex h-full w-full max-w-3xl flex-col items-center justify-start gap-4 overflow-y-auto px-2 py-6 sm:px-5 sm:py-10">
-            <MicroLessonDeck cards={microLessonCards} />
-            {/* Preserve the legacy practice entry points when the deck is shown:
-                the deck is presentational and must not swallow the quiz flow. */}
-            {practiceQuiz && !practiceQuizCompleted && onStartPractice && (
-              <button
-                onClick={onStartPractice}
-                className="w-full max-w-3xl px-6 py-2.5 rounded-xl bg-[#1a85a4] text-white text-sm font-black hover:bg-[#126b84] transition-colors shadow-md uppercase tracking-wide cursor-pointer"
-              >
-                Start Practice
-              </button>
-            )}
-            {!practiceQuiz && (
-              <button
-                onClick={() => setShowTryItPage(true)}
-                className="w-full max-w-3xl flex items-center justify-between gap-4 text-white rounded-2xl px-6 py-4 shadow-lg transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] group cursor-pointer"
-                style={{ background: '#9956DE' }}
-              >
-                <span className="flex items-center gap-3">
-                  <span className="text-left">
-                    <p className="font-black text-sm uppercase tracking-wide">Start Practice Quiz</p>
-                    <p className="text-white/80 text-xs mt-0.5">10 questions · AI-generated</p>
-                  </span>
-                </span>
-                <ArrowRight size={20} className="text-white/80 group-hover:translate-x-1 transition-transform" />
-              </button>
-            )}
-            {/* Deck-mode parity with legacy footer "Complete lesson" (same practice gate). */}
-            <button
-              onClick={() => { if (!practiceQuiz || practiceQuizCompleted) setShowCompletion(true); }}
-              disabled={isPracticeRequired}
-              aria-label="Complete lesson"
-              className="w-full max-w-3xl px-5 py-2 rounded-full font-bold text-xs sm:text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center justify-center gap-2 min-h-[2.5rem] touch-manipulation cursor-pointer"
-            >
-              <span>Complete</span>
-              <CheckCircle size={14} />
-            </button>
-            {isPracticeRequired && (
-              <p className="text-center text-[10px] sm:text-xs font-semibold text-amber-600">
-                {!tryItQuizCompleted
-                  ? 'Complete the Try It Yourself quiz first to unlock lesson completion.'
-                  : 'Complete the practice quiz first to unlock lesson completion.'}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="w-full max-w-[92rem] h-full relative flex md:pl-16 pt-8.5 md:pt-0">
+        <section aria-label="Merrill micro-lesson" className="w-full max-w-[92rem] h-full relative flex md:pl-16 pt-8.5 md:pt-0">
 
           {/* Tabs - Stick out on left */}
           <div className="hidden md:flex absolute left-0 top-8 bottom-8 w-20 flex-col justify-between z-0 py-2">
@@ -2013,24 +1965,22 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               </div>
             </div>
           </div>
-          </div>
-        )}
+        </section>
       </main>
 
       {/* Docked Slim Navigation Footer */}
-      {microLessonCards.length === 0 && (
-        <footer className="flex-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-white/10 px-3 sm:px-6 py-2 relative z-40">
-          <div className="max-w-[96rem] mx-auto w-full flex items-center justify-between gap-3">
-            <Button
-              onClick={handlePrevious}
-              disabled={currentSection === 0}
-              variant="outline"
-              aria-label="Previous section"
-              className="px-3.5 sm:px-5 h-9 rounded-xl font-bold text-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs disabled:opacity-40 hover:bg-slate-50 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <ArrowLeft size={13} />
-              <span className="hidden sm:inline">Previous</span>
-            </Button>
+      <footer className="flex-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-white/10 px-3 sm:px-6 py-2 relative z-40">
+        <div className="max-w-[96rem] mx-auto w-full flex items-center justify-between gap-3">
+          <Button
+            onClick={handlePrevious}
+            disabled={currentSection === 0}
+            variant="outline"
+            aria-label="Previous section"
+            className="px-3.5 sm:px-5 h-9 rounded-xl font-bold text-xs bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs disabled:opacity-40 hover:bg-slate-50 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+          >
+            <ArrowLeft size={13} />
+            <span className="hidden sm:inline">Previous</span>
+          </Button>
 
           <div className="flex items-center gap-1.5">
             {SECTION_TABS.map((tab, idx) => (
@@ -2076,7 +2026,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           </Button>
         </div>
       </footer>
-      )}
 
       <AnimatePresence>
         {showCompletion && (
