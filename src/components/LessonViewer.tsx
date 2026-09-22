@@ -295,6 +295,8 @@ import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
+import MicroLessonDeck from './notebook/MicroLessonDeck';
+import type { MicroLessonCardProps, MicroLessonPhase } from './notebook/MicroLessonCard';
 
 interface LessonViewerProps {
   lesson: Lesson & { subjectId?: string; lessonId?: string; competencyCode?: string };
@@ -1127,6 +1129,42 @@ const SECTION_TABS: LessonTab[] = [
   },
 ];
 
+const MICRO_LESSON_SECTION_MAP: ReadonlyArray<{
+  phase: MicroLessonPhase;
+  sectionType: RagLessonSection['type'];
+}> = [
+  { phase: 'Activation', sectionType: 'introduction' },
+  { phase: 'Demonstration', sectionType: 'worked_examples' },
+  { phase: 'Application', sectionType: 'try_it_yourself' },
+  { phase: 'Integration', sectionType: 'summary' },
+];
+
+function getMicroLessonBody(section: RagLessonSection): string {
+  if (section.content?.trim()) return section.content;
+  if (section.examples?.length) {
+    return section.examples
+      .map((example) => [example.problem, ...example.steps, `Answer: ${example.answer}`].join('\n'))
+      .join('\n\n');
+  }
+  if (section.practiceProblems?.length) {
+    return section.practiceProblems
+      .map((problem) => `${problem.question}\nSolution: ${problem.solution}`)
+      .join('\n\n');
+  }
+  if (section.bulletPoints?.length) return section.bulletPoints.map((bulletPoint) => `- ${bulletPoint}`).join('\n');
+  return '';
+}
+
+function buildMicroLessonCards(sections: readonly RagLessonSection[]): MicroLessonCardProps[] {
+  return MICRO_LESSON_SECTION_MAP.flatMap(({ phase, sectionType }) => {
+    const section = sections.find((candidate) => candidate.type === sectionType);
+    if (!section) return [];
+
+    const body = getMicroLessonBody(section);
+    return body ? [{ phase, title: section.title, body, minutes: 3 }] : [];
+  });
+}
+
 const LessonViewer: React.FC<LessonViewerProps> = ({
   lesson,
   lessonCompletionXP = 10,
@@ -1292,6 +1330,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }, [sections.length, userProfile?.uid, lesson.id, lessonSpecificTopic, lesson.title, onLogLessonView]);
 
   const totalSections = sections.length || SECTION_TABS.length;
+  const microLessonCards = buildMicroLessonCards(sections);
 
   useEffect(() => {
     if (initialSection >= 0 && initialSection < totalSections) {
@@ -1519,7 +1558,54 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       </header>
 
       <main className="flex-1 overflow-hidden px-2 sm:px-5 pb-2 relative flex justify-center min-h-0">
-        <div className="w-full max-w-[90rem] h-full relative flex md:pl-16 pt-10 sm:pt-10 md:pt-0">
+        {microLessonCards.length > 0 ? (
+          <div className="flex h-full w-full max-w-3xl flex-col items-center justify-start gap-4 overflow-y-auto px-2 py-6 sm:px-5 sm:py-10">
+            <MicroLessonDeck cards={microLessonCards} />
+            {/* Preserve the legacy practice entry points when the deck is shown:
+                the deck is presentational and must not swallow the quiz flow. */}
+            {practiceQuiz && !practiceQuizCompleted && onStartPractice && (
+              <button
+                onClick={onStartPractice}
+                className="w-full max-w-3xl px-6 py-2.5 rounded-xl bg-[#1a85a4] text-white text-sm font-black hover:bg-[#126b84] transition-colors shadow-md uppercase tracking-wide"
+              >
+                Start Practice
+              </button>
+            )}
+            {!practiceQuiz && (
+              <button
+                onClick={() => setShowTryItPage(true)}
+                className="w-full max-w-3xl flex items-center justify-between gap-4 text-white rounded-2xl px-6 py-4 shadow-lg transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] group"
+                style={{ background: '#9956DE' }}
+              >
+                <span className="flex items-center gap-3">
+                  <span className="text-left">
+                    <p className="font-black text-sm uppercase tracking-wide">Start Practice Quiz</p>
+                    <p className="text-white/80 text-xs mt-0.5">10 questions · AI-generated</p>
+                  </span>
+                </span>
+                <ArrowRight size={20} className="text-white/80 group-hover:translate-x-1 transition-transform" />
+              </button>
+            )}
+            {/* Deck-mode parity with legacy footer "Complete lesson" (same practice gate). */}
+            <button
+              onClick={() => { if (!practiceQuiz || practiceQuizCompleted) setShowCompletion(true); }}
+              disabled={isPracticeRequired}
+              aria-label="Complete lesson"
+              className="w-full max-w-3xl px-5 py-2 rounded-full font-bold text-xs sm:text-sm bg-[#7ec16d] text-white hover:bg-[#6ab359] shadow-md transition-colors disabled:opacity-40 flex items-center justify-center gap-2 min-h-[2.5rem] touch-manipulation"
+            >
+              <span>Complete</span>
+              <CheckCircle size={14} />
+            </button>
+            {isPracticeRequired && (
+              <p className="text-center text-[10px] sm:text-xs font-semibold text-amber-600">
+                {!tryItQuizCompleted
+                  ? 'Complete the Try It Yourself quiz first to unlock lesson completion.'
+                  : 'Complete the practice quiz first to unlock lesson completion.'}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="w-full max-w-[90rem] h-full relative flex md:pl-16 pt-10 sm:pt-10 md:pt-0">
 
           {/* Tabs - Stick out on left */}
           <div className="hidden md:flex absolute left-0 top-8 bottom-8 w-20 flex-col justify-between z-0 py-2">
@@ -1665,10 +1751,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </main>
 
-      <footer className="bg-slate-50 border-t border-slate-100 px-3 sm:px-6 flex-shrink-0 relative z-50 w-full flex justify-center items-center py-1.5 sm:py-3">
+      {microLessonCards.length === 0 && <footer className="bg-slate-50 border-t border-slate-100 px-3 sm:px-6 flex-shrink-0 relative z-50 w-full flex justify-center items-center py-1.5 sm:py-3">
         <div className="w-full max-w-[90rem] flex flex-col items-center">
           <div className="flex items-center justify-center gap-4 sm:gap-8 w-full md:ml-16">
             <Button
@@ -1713,7 +1800,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             </p>
           )}
         </div>
-      </footer>
+      </footer>}
 
       <AnimatePresence>
         {showCompletion && (

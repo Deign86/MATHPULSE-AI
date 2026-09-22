@@ -189,7 +189,7 @@ describe('G1b #171 lesson completion subject fallback', () => {
       expect.stringContaining('fallback subject id'),
       expect.objectContaining({ moduleId: MODULE_ID, subjectId: FALLBACK_SUBJECT_ID }),
     );
-    expect(onEarnXP).toHaveBeenCalledWith(10, 'Completed "Fallback Lesson"');
+    expect(onEarnXP).toHaveBeenCalledWith(30, 'Completed "Fallback Lesson"');
     expect(onBack).not.toHaveBeenCalled();
   });
 
@@ -213,7 +213,7 @@ describe('G1b #171 lesson completion subject fallback', () => {
       );
     });
     expect(warnSpy).toHaveBeenCalled();
-    expect(onEarnXP).toHaveBeenCalledWith(10, 'Completed "Fallback Lesson"');
+    expect(onEarnXP).toHaveBeenCalledWith(30, 'Completed "Fallback Lesson"');
     expect(screen.getByText('Study Journey')).toBeInTheDocument();
     expect(screen.queryByText('Lesson Complete!')).not.toBeInTheDocument();
   });
