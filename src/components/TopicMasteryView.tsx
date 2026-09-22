@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, ChevronUp, Loader2, BarChart3, CheckCircle, AlertTriangle, EyeOff, Search, Bell } from 'lucide-react';
+import { ChevronDown, ChevronUp, Loader2, BarChart3, CheckCircle, AlertTriangle, EyeOff, Search, Bell, BookOpen } from 'lucide-react';
+import TeacherModuleStatusControl from './TeacherModuleStatusControl';
+import { TeacherStatCard } from './TeacherStatCard';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -67,12 +69,37 @@ const STATUS_ORDER = {
 
 // ─── Component ──────────────────────────────────────────────
 
-const TopicMasteryView: React.FC<{ 
+export interface TopicMasteryViewProps {
   classSectionId?: string;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
-}> = ({ classSectionId, onOpenNotifications, onOpenProfile }) => {
+  activeTab?: 'mastery' | 'availability';
+  onTabChange?: (tab: 'mastery' | 'availability') => void;
+  teacherId?: string;
+}
+
+const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
+  classSectionId,
+  onOpenNotifications,
+  onOpenProfile,
+  activeTab,
+  onTabChange,
+  teacherId,
+}) => {
   const { currentUser, userProfile } = useAuth();
+  const [localTab, setLocalTab] = useState<'mastery' | 'availability'>(activeTab || 'mastery');
+  const currentTab = activeTab || localTab;
+
+  useEffect(() => {
+    if (activeTab && activeTab !== localTab) {
+      setLocalTab(activeTab);
+    }
+  }, [activeTab, localTab]);
+
+  const handleTabSwitch = (tab: 'mastery' | 'availability') => {
+    setLocalTab(tab);
+    onTabChange?.(tab);
+  };
 
   // Data state
   const [topics, setTopics] = useState<TopicMasteryData[]>([]);
@@ -341,98 +368,129 @@ const TopicMasteryView: React.FC<{
       exit={{ opacity: 0, y: -20 }}
       className="w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 pb-28 sm:pb-8"
     >
-      {/* Search & Filters Row */}
-      <div className="flex flex-col md:flex-row gap-2.5 sm:gap-4">
-        <div className="flex items-center bg-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full md:w-64">
-          <Search size={15} className="text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
-          <input
-            type="text"
-            placeholder="Search topics..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-transparent border-none focus:outline-none ml-2 text-xs sm:text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full md:w-auto md:flex md:items-center">
-          <div className="relative w-full md:w-48">
-            <select
-              value={subjectFilter}
-              onChange={(e) => setSubjectFilter(e.target.value)}
-              className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] font-medium rounded-[12px] pl-3 pr-8 sm:pl-4 sm:pr-10 py-2 sm:py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer truncate"
-            >
-              <option value="all">All Subjects</option>
-              {gradeScopedSubjectIds.map((subjectId) => (
-                <option key={subjectId} value={subjectId}>{subjectNameById[subjectId] || subjectId}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="text-[#64748b] absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-          <div className="relative w-full md:w-48">
-            <select
-              value={gradeFilter}
-              onChange={(e) => setGradeFilter(e.target.value)}
-              className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] font-medium rounded-[12px] pl-3 pr-8 sm:pl-4 sm:pr-10 py-2 sm:py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer truncate"
-            >
-              <option value="all">All Grades</option>
-              {GRADE_LEVELS.map((grade) => (
-                <option key={grade} value={grade}>{grade}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="text-[#64748b] absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-        </div>
+      {/* Tab Switcher: Student Mastery Matrix vs Module Availability & Materials */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar pb-1">
+        <button
+          type="button"
+          onClick={() => handleTabSwitch('mastery')}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+            currentTab === 'mastery'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-1 ring-indigo-600/30'
+              : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/90 shadow-2xs'
+          }`}
+        >
+          <BarChart3 size={15} className="shrink-0" />
+          <span className="sm:hidden">Mastery Matrix</span>
+          <span className="hidden sm:inline">Student Mastery Matrix</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabSwitch('availability')}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+            currentTab === 'availability'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-1 ring-indigo-600/30'
+              : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/90 shadow-2xs'
+          }`}
+        >
+          <BookOpen size={15} className="shrink-0" />
+          <span className="sm:hidden">Module Availability</span>
+          <span className="hidden sm:inline">Module Availability & Materials</span>
+        </button>
       </div>
 
-      {/* 4 Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* Total Topics */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(168,85,247,0.2)] flex flex-col justify-between h-full group text-white">
-          <div className="absolute -right-8 -bottom-8 sm:-right-12 sm:-bottom-12 w-28 sm:w-40 h-28 sm:h-40 bg-white/10 rounded-full"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
-            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Total Topics Tracked</span>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
-              <BarChart3 size={13} className="text-white sm:w-4 sm:h-4" />
+      {currentTab === 'availability' ? (
+        <TeacherModuleStatusControl teacherId={teacherId || currentUser?.uid || ''} />
+      ) : (
+        <>
+          {/* Search & Filters Row */}
+          <div className="flex flex-col md:flex-row gap-2.5 sm:gap-4">
+            <div className="flex items-center bg-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full md:w-64">
+              <Search size={15} className="text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
+              <input
+                type="text"
+                placeholder="Search topics..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none focus:outline-none ml-2 text-xs sm:text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full md:w-auto md:flex md:items-center">
+              <div className="relative w-full md:w-48">
+                <select
+                  value={subjectFilter}
+                  onChange={(e) => setSubjectFilter(e.target.value)}
+                  className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] font-medium rounded-[12px] pl-3 pr-8 sm:pl-4 sm:pr-10 py-2 sm:py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer truncate"
+                >
+                  <option value="all">All Subjects</option>
+                  {gradeScopedSubjectIds.map((subjectId) => (
+                    <option key={subjectId} value={subjectId}>{subjectNameById[subjectId] || subjectId}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="text-[#64748b] absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+              <div className="relative w-full md:w-48">
+                <select
+                  value={gradeFilter}
+                  onChange={(e) => setGradeFilter(e.target.value)}
+                  className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] font-medium rounded-[12px] pl-3 pr-8 sm:pl-4 sm:pr-10 py-2 sm:py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer truncate"
+                >
+                  <option value="all">All Grades</option>
+                  {GRADE_LEVELS.map((grade) => (
+                    <option key={grade} value={grade}>{grade}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="text-[#64748b] absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
-          <div className="text-xl sm:text-2xl lg:text-[32px] font-bold relative z-10 leading-none">{summary.totalTopicsTracked}</div>
-        </div>
 
-        {/* Mastered */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(16,185,129,0.2)] flex flex-col justify-between h-full group text-white">
-          <div className="absolute -right-8 -bottom-8 sm:-right-12 sm:-bottom-12 w-28 sm:w-40 h-28 sm:h-40 bg-white/10 rounded-full"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
-            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Mastered by Class</span>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
-              <CheckCircle size={13} className="text-white sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl lg:text-[32px] font-bold relative z-10 leading-none">{summary.masteredCount}</div>
-        </div>
+          {/* 4 Stats Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            <TeacherStatCard
+              color="purple"
+              title="Total Topics"
+              badgeText="Curriculum"
+              icon={BarChart3}
+              value={summary.totalTopicsTracked}
+              subtitle="Tracked in System"
+            />
 
-        {/* Needs Work */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#f43f5e] to-[#e11d48] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(244,63,94,0.2)] flex flex-col justify-between h-full group text-white">
-          <div className="absolute -right-8 -bottom-8 sm:-right-12 sm:-bottom-12 w-28 sm:w-40 h-28 sm:h-40 bg-white/10 rounded-full"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
-            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Needs Work</span>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
-              <AlertTriangle size={13} className="text-white sm:w-4 sm:h-4" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl lg:text-[32px] font-bold relative z-10 leading-none">{summary.needsAttentionCount}</div>
-        </div>
+            <TeacherStatCard
+              color="green"
+              title="Mastered"
+              badgeText={summary.totalTopicsTracked > 0 ? `${Math.round((summary.masteredCount / summary.totalTopicsTracked) * 100)}%` : '0%'}
+              icon={CheckCircle}
+              value={summary.masteredCount}
+              subtitle="Mastered by Class"
+              scorePercent={summary.totalTopicsTracked > 0 ? Math.round((summary.masteredCount / summary.totalTopicsTracked) * 100) : 0}
+              footerLabel="Class Mastery Rate"
+              footerBadge={summary.totalTopicsTracked > 0 ? `${Math.round((summary.masteredCount / summary.totalTopicsTracked) * 100)}%` : '0%'}
+            />
 
-        {/* Excluded */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#64748b] to-[#475569] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(100,116,139,0.2)] flex flex-col justify-between h-full group text-white">
-          <div className="absolute -right-8 -bottom-8 sm:-right-12 sm:-bottom-12 w-28 sm:w-40 h-28 sm:h-40 bg-white/10 rounded-full"></div>
-          <div className="flex items-start justify-between relative z-10 mb-2 sm:mb-4">
-            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Excluded Topics</span>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
-              <EyeOff size={13} className="text-white sm:w-4 sm:h-4" />
-            </div>
+            <TeacherStatCard
+              color="rose"
+              title="Needs Work"
+              badgeText={summary.needsAttentionCount > 0 ? 'Priority' : 'Clear'}
+              icon={AlertTriangle}
+              value={summary.needsAttentionCount}
+              subtitle="Requires Intervention"
+              scorePercent={summary.totalTopicsTracked > 0 ? Math.round((summary.needsAttentionCount / summary.totalTopicsTracked) * 100) : 0}
+              footerLabel="At-Risk Rate"
+              footerBadge={summary.totalTopicsTracked > 0 ? `${Math.round((summary.needsAttentionCount / summary.totalTopicsTracked) * 100)}%` : '0%'}
+            />
+
+            <TeacherStatCard
+              color="cyan"
+              title="Excluded"
+              badgeText="Settings"
+              icon={EyeOff}
+              value={summary.excludedCount}
+              subtitle="Excluded from Quizzes"
+              footerLabel="Active Topics"
+              footerBadge={`${summary.totalTopicsTracked - summary.excludedCount}`}
+            />
           </div>
-          <div className="text-xl sm:text-2xl lg:text-[32px] font-bold relative z-10 leading-none">{summary.excludedCount}</div>
-        </div>
-      </div>
 
       {/* Topic Data Container */}
       <div className="bg-white/80 backdrop-blur-[12px] rounded-[16px] sm:rounded-[24px] p-2.5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white">
@@ -610,6 +668,8 @@ const TopicMasteryView: React.FC<{
           </div>
         </div>
       </div>
+        </>
+      )}
     </motion.div>
   );
 };

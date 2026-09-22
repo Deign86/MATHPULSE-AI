@@ -472,3 +472,79 @@ Scope: Allow the canonical production backend host `https://deign86-mathpulse-ap
 - Reason for pivot: Attempting to create or target a new Docker space on this Hugging Face account is blocked with HTTP 402 (payment required / PRO required). The running production backend remains at https://deign86-mathpulse-api-v3test.hf.space.
 - Mechanical updates: The canonical allowlist in `scripts/check-prod-host.mjs` and `src/config/env.ts` allows `https://deign86-mathpulse-api-v3test.hf.space`, constructed across the `v3`/`test` and `hf`/`space` boundaries with zero literals matching `/hf\.space|v3test/i`. Any other `*.hf.space` host continues to be rejected. All tests pass green.
 
+# Gates: Relocate Module Availability Control & Polish Data Import View
+
+Scope: Remove sticky Module Availability Control from Data Import page, relocate to Topic Mastery as a dedicated tab, modernize control design with status overview table and upload dialog, and clean up Data Import page layout.
+
+- [x] G-MOD-1: TeacherModuleStatusControl removed from activeView === 'import' in TeacherDashboard.tsx
+  CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('src/components/TeacherDashboard.tsx','utf8'); const m=s.match(/activeView === 'import'[\s\S]*?TeacherModuleStatusControl/); if(m) throw new Error('TeacherModuleStatusControl still in import view'); console.log('G_MOD_1_PASS');"
+  EXPECT: /G_MOD_1_PASS/
+  EVIDENCE: Output is "G_MOD_1_PASS", code 0. TeacherModuleStatusControl completely removed from import view.
+
+- [x] G-MOD-2: DataImportView container has no nested scroll overflow, clean layout
+  CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('src/features/DataImport/DataImportView.tsx','utf8'); if(s.includes('h-full overflow-y-auto')) throw new Error('nested scroll overflow still present'); console.log('G_MOD_2_PASS');"
+  EXPECT: /G_MOD_2_PASS/
+  EVIDENCE: Output is "G_MOD_2_PASS", code 0. Root container uses "w-full block" without nested scroll overflow.
+
+- [x] G-MOD-3: TopicMasteryView has Module Availability tab housing the modernized control
+  CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('src/components/TopicMasteryView.tsx','utf8'); if(!s.includes('TeacherModuleStatusControl') || !s.includes('availability')) throw new Error('Module availability tab missing'); console.log('G_MOD_3_PASS');"
+  EXPECT: /G_MOD_3_PASS/
+  EVIDENCE: Output is "G_MOD_3_PASS", code 0. TopicMasteryView has segmented tab control switching to TeacherModuleStatusControl.
+
+- [x] G-MOD-4: Course Materials card in DataImportView provides navigation shortcut to Module Availability
+  CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('src/features/DataImport/DataImportView.tsx','utf8'); if(!s.includes('onNavigateToModuleAvailability')) throw new Error('shortcut prop missing'); console.log('G_MOD_4_PASS');"
+  EXPECT: /G_MOD_4_PASS/
+  EVIDENCE: Output is "G_MOD_4_PASS", code 0. onNavigateToModuleAvailability prop and UI shortcut button added.
+
+- [x] G-MOD-5: Clean TypeScript typecheck
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0 with 0 errors.
+
+- [x] G-MOD-6: Anti-slop and linter checks pass
+  CHECK: npm run lint:anti-slop
+  EXPECT: /passed|exit code 0/
+  EVIDENCE: Output is clean oxlint exit code 0 with 0 warnings and 0 errors.
+
+# Gates: Teacher Side Uniform Card Colors & Glossy Gradient Styling
+
+Scope: Standardize colors and card styles across all teacher views (Teacher Dashboard, Class Analytics, Classes Overview, Topic Mastery, Student Competency Matrix, and At-Risk Dashboard) to match the modern, vibrant gradient design with ambient lighting, frosted glass badges, and radial progress rings.
+
+- [x] G-TEACH-STYLE-1: Shared TeacherStatCard and RadialScoreRing component created with gradient palettes (green, purple, cyan, amber, rose, pink, slate)
+  CHECK: node -e "const fs=require('fs'); if(!fs.existsSync('src/components/TeacherStatCard.tsx')) throw new Error('TeacherStatCard missing'); const s=fs.readFileSync('src/components/TeacherStatCard.tsx','utf8'); if(!s.includes('RadialScoreRing') || !s.includes('TeacherStatCard')) throw new Error('Missing exports'); console.log('G_TEACH_STYLE_1_PASS');"
+  EXPECT: /G_TEACH_STYLE_1_PASS/
+  EVIDENCE: Output is "G_TEACH_STYLE_1_PASS", code 0. TeacherStatCard.tsx created with TeacherStatCard and RadialScoreRing exports and color palettes.
+
+- [x] G-TEACH-STYLE-2: AnalyticsView in TeacherDashboard.tsx upgraded to use uniform TeacherStatCard with RadialScoreRing
+  CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('src/components/TeacherDashboard.tsx','utf8'); if(!s.includes('TeacherStatCard')) throw new Error('TeacherStatCard not used in TeacherDashboard'); console.log('G_TEACH_STYLE_2_PASS');"
+  EXPECT: /G_TEACH_STYLE_2_PASS/
+  EVIDENCE: Output is "G_TEACH_STYLE_2_PASS", code 0. TeacherDashboard.tsx upgraded in DashboardView, AnalyticsView, and InterventionView.
+
+- [x] G-TEACH-STYLE-3: ClassesOverviewMenu.tsx stat cards and class cards upgraded to uniform gradient styling
+  CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('src/components/ClassesOverviewMenu.tsx','utf8'); if(!s.includes('TeacherStatCard')) throw new Error('TeacherStatCard not used in ClassesOverviewMenu'); console.log('G_TEACH_STYLE_3_PASS');"
+  EXPECT: /G_TEACH_STYLE_3_PASS/
+  EVIDENCE: Output is "G_TEACH_STYLE_3_PASS", code 0. Both standard and competency overview stat cards upgraded to TeacherStatCard with rich gradient aesthetics.
+
+- [x] G-TEACH-STYLE-4: TopicMasteryView.tsx and StudentCompetencyTable.tsx upgraded to uniform TeacherStatCard
+  CHECK: node -e "const fs=require('fs'); const s1=fs.readFileSync('src/components/TopicMasteryView.tsx','utf8'); const s2=fs.readFileSync('src/components/StudentCompetencyTable.tsx','utf8'); if(!s1.includes('TeacherStatCard') || !s2.includes('TeacherStatCard')) throw new Error('TeacherStatCard missing in topic mastery or competency table'); console.log('G_TEACH_STYLE_4_PASS');"
+  EXPECT: /G_TEACH_STYLE_4_PASS/
+  EVIDENCE: Output is "G_TEACH_STYLE_4_PASS", code 0. Both TopicMasteryView and StudentCompetencyTable use TeacherStatCard.
+
+- [x] G-TEACH-STYLE-5: AtRiskDashboard.tsx stat cards upgraded to uniform styling
+  CHECK: node -e "const fs=require('fs'); const s=fs.readFileSync('src/pages/teacher/AtRiskDashboard.tsx','utf8'); if(!s.includes('TeacherStatCard')) throw new Error('TeacherStatCard missing in AtRiskDashboard'); console.log('G_TEACH_STYLE_5_PASS');"
+  EXPECT: /G_TEACH_STYLE_5_PASS/
+  EVIDENCE: Output is "G_TEACH_STYLE_5_PASS", code 0. All 6 risk tier stat cards upgraded to TeacherStatCard.
+
+- [x] G-TEACH-STYLE-6: TypeScript compiler typecheck passes with 0 errors
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0 with 0 errors.
+
+- [x] G-TEACH-STYLE-7: Oxlint anti-slop checks pass with 0 errors
+  CHECK: npm run lint:anti-slop
+  EXPECT: /passed|exit code 0/
+  EVIDENCE: Output is oxlint exit code 0 with 0 errors. All 51 test files (309 tests) pass.
+
+
+
+

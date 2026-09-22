@@ -98,13 +98,13 @@ import { ClassesOverviewMenu, CLASS_COLORS } from './ClassesOverviewMenu';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsExcel/parser/constants';
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 import DataImportView from '../features/DataImport/DataImportView';
-import TeacherModuleStatusControl from './TeacherModuleStatusControl';
 import { subscribeToUserCalendarEvents } from '../services/calendarService';
 import type { CalendarEvent } from '../types/models';
 import CreateStudentAccountModal, {
   type CreateStudentAccountSeed,
 } from './CreateStudentAccountModal';
 import { recordGet } from '../utils/memberOf';
+import { TeacherStatCard, RadialScoreRing } from './TeacherStatCard';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -672,6 +672,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
   const [insightModalOpen, setInsightModalOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileCalendar, setShowMobileCalendar] = useState(false);
+  const [topicMasteryTab, setTopicMasteryTab] = useState<'mastery' | 'availability'>('mastery');
 
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
@@ -1744,17 +1745,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   {/* Quick teacher stats */}
                   {activeView === 'dashboard' && (
                     <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#a855f7]/12 border border-[#a855f7]/30 rounded-lg">
-                        <Users size={13} className="text-[#a855f7]" />
-                        <span className="text-xs font-display font-bold text-[#a855f7] tabular-nums">{totalStudents} students</span>
+                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f3e8ff] dark:bg-purple-950/40 border border-[#e9d5ff] dark:border-purple-800/60 rounded-full shadow-2xs">
+                        <Users size={13} className="text-[#9333ea] dark:text-purple-300" />
+                        <span className="text-xs font-display font-bold text-[#9333ea] dark:text-purple-300 tabular-nums">{totalStudents} students</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F08386]/12 border border-[#F08386]/30 rounded-lg">
-                        <AlertTriangle size={13} className="text-[#F08386]" />
-                        <span className="text-xs font-display font-bold text-[#C65E63] tabular-nums">{totalAtRisk} at risk</span>
+                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#ffe4e6] dark:bg-rose-950/40 border border-[#fecdd3] dark:border-rose-800/60 rounded-full shadow-2xs">
+                        <AlertTriangle size={13} className="text-[#e11d48] dark:text-rose-300" />
+                        <span className="text-xs font-display font-bold text-[#e11d48] dark:text-rose-300 tabular-nums">{totalAtRisk} at risk</span>
                       </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#75D06A]/14 border border-[#75D06A]/35 rounded-lg">
-                        <TrendingUp size={13} className="text-[#75D06A]" />
-                        <span className="text-xs font-display font-bold text-[#4D9F46] tabular-nums">{avgPerformance}% avg</span>
+                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#dcfce7] dark:bg-emerald-950/40 border border-[#bbf7d0] dark:border-emerald-800/60 rounded-full shadow-2xs">
+                        <TrendingUp size={13} className="text-[#15803d] dark:text-emerald-300" />
+                        <span className="text-xs font-display font-bold text-[#15803d] dark:text-emerald-300 tabular-nums">{avgPerformance}% avg</span>
                       </div>
                     </div>
                   )}
@@ -1946,6 +1947,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     classSectionId={selectedClassSectionId}
                     onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={onOpenProfile}
+                    activeTab={topicMasteryTab}
+                    onTabChange={setTopicMasteryTab}
+                    teacherId={currentUser?.uid || ''}
                   />
                 )}
                 {activeView === 'competency' && effectiveAnalyticsClass && (
@@ -1979,63 +1983,62 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   />
                 )}
                 {activeView === 'import' && (
-                  <>
-                    <DataImportView
-                      classSectionId={selectedClassSectionId}
-                      className={selectedClass?.name}
-                      classMetadata={selectedClass?.classMetadata}
-                      students={students}
-                      classes={managedClasses.map(c => ({ id: c.id, name: c.name, classSectionId: c.classSectionId }))}
-                      teacherId={currentUser?.uid || ''}
-                      teacherName={teacherName}
-                      onStudentsUpdated={(updated) => setStudents(updated)}
-                      onBackToClasses={() => setActiveView('dashboard')}
-                      onOpenNotifications={() => setActiveView('notifications')}
-                      onOpenProfile={onOpenProfile}
-                      onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
-                      userPhoto={userProfile?.photo}
-                      onImportedClassRecords={(payload) => {
-                        const uploadedStudents = payload.students.map((item) =>
-                          toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
-                        );
+                  <DataImportView
+                    classSectionId={selectedClassSectionId}
+                    className={selectedClass?.name}
+                    classMetadata={selectedClass?.classMetadata}
+                    students={students}
+                    classes={managedClasses.map(c => ({ id: c.id, name: c.name, classSectionId: c.classSectionId }))}
+                    teacherId={currentUser?.uid || ''}
+                    teacherName={teacherName}
+                    onStudentsUpdated={(updated) => setStudents(updated)}
+                    onBackToClasses={() => setActiveView('dashboard')}
+                    onOpenNotifications={() => setActiveView('notifications')}
+                    onOpenProfile={onOpenProfile}
+                    onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
+                    userPhoto={userProfile?.photo}
+                    onNavigateToModuleAvailability={() => {
+                      setTopicMasteryTab('availability');
+                      setActiveView('topic_mastery');
+                    }}
+                    onImportedClassRecords={(payload) => {
+                      const uploadedStudents = payload.students.map((item) =>
+                        toUploadedStudentView(item, payload.classSectionId, payload.className, payload.classMetadata),
+                      );
 
-                        const resolvedClassMetadata = resolveClassMetadata({
-                          metadata: payload.classMetadata,
-                          classSectionId: payload.classSectionId,
-                          className: payload.className,
-                        });
-                        const classSection = resolvedClassMetadata.classSectionId || 'imported_class';
-                        const resolvedClassName = resolvedClassMetadata.className || 'Imported Class';
-                        const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
-                        const avgScore = uploadedStudents.length > 0
-                          ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
-                          : 0;
+                      const resolvedClassMetadata = resolveClassMetadata({
+                        metadata: payload.classMetadata,
+                        classSectionId: payload.classSectionId,
+                        className: payload.className,
+                      });
+                      const classSection = resolvedClassMetadata.classSectionId || 'imported_class';
+                      const resolvedClassName = resolvedClassMetadata.className || 'Imported Class';
+                      const atRiskCount = uploadedStudents.filter((item) => item.riskLevel === 'high').length;
+                      const avgScore = uploadedStudents.length > 0
+                        ? Math.round(uploadedStudents.reduce((sum, item) => sum + item.avgScore, 0) / uploadedStudents.length)
+                        : 0;
 
-                        const uploadedClass: ClassView = {
-                          id: classSection,
-                          name: resolvedClassName,
+                      const uploadedClass: ClassView = {
+                        id: classSection,
+                        name: resolvedClassName,
+                        classSectionId: classSection,
+                        classMetadata: {
+                          ...resolvedClassMetadata,
                           classSectionId: classSection,
-                          classMetadata: {
-                            ...resolvedClassMetadata,
-                            classSectionId: classSection,
-                            className: resolvedClassName,
-                          },
-                          schedule: 'Mon-Fri',
-                          studentCount: uploadedStudents.length,
-                          avgScore,
-                          atRiskCount,
-                          riskLevel: atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low',
-                        };
+                          className: resolvedClassName,
+                        },
+                        schedule: 'Mon-Fri',
+                        studentCount: uploadedStudents.length,
+                        avgScore,
+                        atRiskCount,
+                        riskLevel: atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low',
+                      };
 
-                        setStudents((prev) => mergeStudentViews(prev, uploadedStudents));
-                        setClasses((prev) => mergeClassViews(prev, [uploadedClass]));
-                      }}
-                      onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
-                    />
-                    <div className="mt-6">
-                      <TeacherModuleStatusControl teacherId={currentUser?.uid || ''} />
-                    </div>
-                  </>
+                      setStudents((prev) => mergeStudentViews(prev, uploadedStudents));
+                      setClasses((prev) => mergeClassViews(prev, [uploadedClass]));
+                    }}
+                    onDataChanged={() => setDataRefreshNonce((prev) => prev + 1)}
+                  />
                 )}
                 {activeView === 'notifications' && (
                   <TeacherNotificationsView
@@ -2698,63 +2701,6 @@ const ToolsPlaceholderView: React.FC<{
   </motion.div>
 );
 
-// Creative Radial Score Ring with smooth SVG gradient
-const RadialScoreRing: React.FC<{ 
-  value: number; 
-  size?: number; 
-  strokeWidth?: number; 
-  colorClass?: string;
-  trackClass?: string;
-  textColorClass?: string;
-  fontSizeClass?: string;
-}> = ({
-  value,
-  size = 64,
-  strokeWidth = 5,
-  colorClass = 'text-white',
-  trackClass = 'text-white/20',
-  textColorClass = 'text-white font-black',
-  fontSizeClass
-}) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const clamped = Math.min(Math.max(value, 0), 100);
-  const strokeDashoffset = circumference - (clamped / 100) * circumference;
-  const textClass = fontSizeClass || (size < 46 ? 'text-[10px]' : size < 58 ? 'text-[12px]' : 'text-[14px]');
-
-  return (
-    <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className={trackClass}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          className={`${colorClass} transition-all duration-1000 ease-out`}
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center justify-center text-center">
-        <span className={`${textClass} font-black tabular-nums leading-none ${textColorClass}`}>
-          {clamped}%
-        </span>
-      </div>
-    </div>
-  );
-};
 
 // Dashboard View
 const DashboardView: React.FC<{
@@ -2829,216 +2775,63 @@ const DashboardView: React.FC<{
       {/* Styled with student-side vibrant gradients and frosted glass badges*/}
       {/* ------------------------------------------------------------------ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* CARD 1: Total Students (System Pastel Green #75D06A via #52B847 to #36962C) */}
-        <div 
+        {/* CARD 1: Total Students */}
+        <TeacherStatCard
+          color="green"
+          title="Total Students"
+          badgeText="Active"
+          icon={Users}
+          value={totalStudents}
+          subtitle="Enrolled Roster"
+          footerLabel="Enrolled Roster"
+          footerBadge="Active"
           onClick={onViewAllClasses}
-          className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-4.5 bg-gradient-to-br from-[#75D06A] via-[#52B847] to-[#36962C] shadow-[0_8px_24px_-6px_rgba(82,184,71,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(82,184,71,0.48)] hover:-translate-y-1 sm:hover:-translate-y-1.5 border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[140px] xs:min-h-[150px] sm:min-h-[165px] group cursor-pointer select-none"
-        >
-          {/* Subtle Ambient Glow */}
-          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 group-hover:bg-white/15 transition-all duration-500 ease-out" />
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+        />
 
-          {/* CARD HEADER */}
-          <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
-            <div className="flex items-center gap-1.5 text-white/95 min-w-0">
-              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-              <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
-                Total Students
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
-              Active
-            </span>
-          </div>
-
-          {/* CARD BODY */}
-          <div className="relative z-10 my-auto py-1 flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-1 drop-shadow-xs">
-                {totalStudents}
-              </div>
-              <p className="text-white/90 text-[11px] sm:text-xs font-medium leading-snug drop-shadow-xs truncate">
-                Enrolled Roster
-              </p>
-            </div>
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-            </div>
-          </div>
-
-          {/* CARD FOOTER */}
-          <div className="relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 flex items-center justify-between text-[9px] sm:text-[11px] gap-1">
-            <span className="text-white/85 font-medium truncate">Enrolled Roster</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-md text-white font-black border border-white/25 whitespace-nowrap text-[8.5px] sm:text-[10px]">
-              Active
-            </span>
-          </div>
-        </div>
-
-        {/* CARD 2: Class Average (System Amethyst #9956DE & Slate Blue #7274ED) */}
-        <div 
+        {/* CARD 2: Class Average */}
+        <TeacherStatCard
+          color="purple"
+          title="Class Average"
+          badgeText={avgPerformance >= 75 ? 'Passing' : avgPerformance > 0 ? 'Needs Boost' : 'Pending'}
+          icon={Target}
+          value={`${avgPerformance}%`}
+          subtitle="Cohort Score"
+          scorePercent={avgPerformance}
+          footerLabel="Cohort Score"
+          footerBadge="+2.5%"
           onClick={onViewAllClasses}
-          className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-4.5 bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.48)] hover:-translate-y-1 sm:hover:-translate-y-1.5 border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[140px] xs:min-h-[150px] sm:min-h-[165px] group cursor-pointer select-none"
-        >
-          {/* Subtle Ambient Glow */}
-          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 group-hover:bg-white/15 transition-all duration-500 ease-out" />
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+        />
 
-          {/* CARD HEADER */}
-          <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
-            <div className="flex items-center gap-1.5 text-white/95 min-w-0">
-              <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-              <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
-                Class Average
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
-              {avgPerformance >= 75 ? 'Passing' : avgPerformance > 0 ? 'Needs Boost' : 'Pending'}
-            </span>
-          </div>
-
-          {/* CARD BODY */}
-          <div className="relative z-10 my-auto py-1 flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-1 drop-shadow-xs">
-                {avgPerformance}%
-              </div>
-              <p className="text-white/90 text-[11px] sm:text-xs font-medium leading-snug drop-shadow-xs truncate">
-                Cohort Score
-              </p>
-            </div>
-            <div className="shrink-0">
-              <RadialScoreRing 
-                value={avgPerformance} 
-                size={44} 
-                strokeWidth={4.5} 
-                colorClass="text-white" 
-                trackClass="text-white/20" 
-                textColorClass="text-white font-black"
-                fontSizeClass="text-[10.5px]"
-              />
-            </div>
-          </div>
-
-          {/* CARD FOOTER */}
-          <div className="relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 flex items-center justify-between text-[9px] sm:text-[11px] gap-1">
-            <span className="text-white/85 font-medium truncate">Cohort Score</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-md text-white font-black border border-white/25 whitespace-nowrap text-[8.5px] sm:text-[10px]">
-              +2.5%
-            </span>
-          </div>
-        </div>
-
-        {/* CARD 3: Engagement (Vibrant Cyan / Sky Blue #38BDF8 via #0284C7 to #0369A1) */}
-        <div 
+        {/* CARD 3: Engagement */}
+        <TeacherStatCard
+          color="cyan"
+          title="Engagement"
+          badgeText="Active"
+          icon={Activity}
+          value={`${engagementRate}%`}
+          subtitle="Participation"
+          scorePercent={engagementRate}
+          footerLabel="Participation"
+          footerBadge={`${Math.round((engagementRate / 100) * totalStudents)} active`}
           onClick={() => {
             const el = document.getElementById('teacher-classes-section');
             el?.scrollIntoView({ behavior: 'smooth' });
           }}
-          className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-4.5 bg-gradient-to-br from-[#38BDF8] via-[#0284C7] to-[#0369A1] shadow-[0_8px_24px_-6px_rgba(2,132,199,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(2,132,199,0.48)] hover:-translate-y-1 sm:hover:-translate-y-1.5 border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[140px] xs:min-h-[150px] sm:min-h-[165px] group cursor-pointer select-none"
-        >
-          {/* Subtle Ambient Glow */}
-          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 group-hover:bg-white/15 transition-all duration-500 ease-out" />
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+        />
 
-          {/* CARD HEADER */}
-          <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
-            <div className="flex items-center gap-1.5 text-white/95 min-w-0">
-              <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-              <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
-                Engagement
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
-              Active
-            </span>
-          </div>
-
-          {/* CARD BODY */}
-          <div className="relative z-10 my-auto py-1 flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-1 drop-shadow-xs">
-                {engagementRate}%
-              </div>
-              <p className="text-white/90 text-[11px] sm:text-xs font-medium leading-snug drop-shadow-xs truncate">
-                Participation
-              </p>
-            </div>
-            <div className="shrink-0">
-              <RadialScoreRing 
-                value={engagementRate} 
-                size={44} 
-                strokeWidth={4.5} 
-                colorClass="text-white" 
-                trackClass="text-white/20" 
-                textColorClass="text-white font-black"
-                fontSizeClass="text-[10.5px]"
-              />
-            </div>
-          </div>
-
-          {/* CARD FOOTER */}
-          <div className="relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 flex items-center justify-between text-[9px] sm:text-[11px] gap-1">
-            <span className="text-white/85 font-medium truncate">Participation</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-md text-white font-black border border-white/25 whitespace-nowrap text-[8.5px] sm:text-[10px]">
-              {Math.round((engagementRate / 100) * totalStudents)} active
-            </span>
-          </div>
-        </div>
-
-        {/* CARD 4: Needs Attention (System Texas Rose #FFB356 via #F29424 to #D97706) */}
-        <div 
+        {/* CARD 4: Needs Attention */}
+        <TeacherStatCard
+          color="amber"
+          title="Needs Attention"
+          badgeText={totalAtRisk > 0 ? 'Priority' : 'Clear'}
+          icon={AlertCircle}
+          value={totalAtRisk}
+          subtitle="At-Risk Students"
+          scorePercent={riskPercentage}
+          footerLabel="At-Risk Students"
+          footerBadge={`${riskPercentage}%`}
           onClick={onViewAllClasses}
-          className="relative rounded-2xl sm:rounded-3xl p-3 sm:p-4.5 bg-gradient-to-br from-[#FFB356] via-[#F29424] to-[#D97706] shadow-[0_8px_24px_-6px_rgba(242,148,36,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(242,148,36,0.48)] hover:-translate-y-1 sm:hover:-translate-y-1.5 border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[140px] xs:min-h-[150px] sm:min-h-[165px] group cursor-pointer select-none"
-        >
-          {/* Subtle Ambient Glow */}
-          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 group-hover:bg-white/15 transition-all duration-500 ease-out" />
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
-
-          {/* CARD HEADER */}
-          <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
-            <div className="flex items-center gap-1.5 text-white/95 min-w-0">
-              <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-              <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
-                Needs Attention
-              </span>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
-              {totalAtRisk > 0 ? 'Priority' : 'Clear'}
-            </span>
-          </div>
-
-          {/* CARD BODY */}
-          <div className="relative z-10 my-auto py-1 flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-1 drop-shadow-xs">
-                {totalAtRisk}
-              </div>
-              <p className="text-white/90 text-[11px] sm:text-xs font-medium leading-snug drop-shadow-xs truncate">
-                At-Risk Students
-              </p>
-            </div>
-            <div className="shrink-0">
-              <RadialScoreRing 
-                value={riskPercentage} 
-                size={44} 
-                strokeWidth={4.5} 
-                colorClass="text-white" 
-                trackClass="text-white/20" 
-                textColorClass="text-white font-black"
-                fontSizeClass="text-[10.5px]"
-              />
-            </div>
-          </div>
-
-          {/* CARD FOOTER */}
-          <div className="relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 flex items-center justify-between text-[9px] sm:text-[11px] gap-1">
-            <span className="text-white/85 font-medium truncate">At-Risk Students</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-md text-white font-black border border-white/25 whitespace-nowrap text-[8.5px] sm:text-[10px]">
-              {riskPercentage}%
-            </span>
-          </div>
-        </div>
+        />
       </div>
 
       {/* Classes Container */}
@@ -3316,40 +3109,69 @@ const SectionManagementPanel: React.FC<{
   }, [students]);
 
   return (
-    <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] border border-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+    <div className="relative rounded-2xl sm:rounded-3xl border border-indigo-200/90 dark:border-indigo-500/30 bg-gradient-to-r from-indigo-50/90 via-purple-50/60 to-white shadow-[0_4px_20px_-4px_rgba(99,102,241,0.18)] hover:shadow-[0_8px_28px_-6px_rgba(99,102,241,0.28)] transition-all duration-300 overflow-hidden">
+      {/* Ambient top specular border gradient */}
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+      {/* Ambient glow blur bubble */}
+      <div className="absolute -right-6 -top-6 w-36 h-36 bg-gradient-to-br from-indigo-400/20 to-purple-400/20 rounded-full blur-2xl pointer-events-none" />
+
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
-        className="w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-3.5 text-left hover:bg-slate-50/50 transition-colors"
+        className="w-full flex items-center justify-between gap-3 sm:gap-4 p-4 sm:p-5 text-left transition-all group"
         aria-expanded={expanded}
       >
-        <div>
-          <h3 className="text-sm sm:text-[15px] font-semibold text-[#1e293b] text-balance">Section Management</h3>
-          <p className="text-[11.5px] sm:text-[12px] text-[#64748b] mt-0.5">
-            Move students between sections. Showing <span className="tabular-nums font-medium">{students.length}</span> students across <span className="tabular-nums font-medium">{grouped.assigned.length}</span> section
-            {grouped.assigned.length === 1 ? '' : 's'}
-            {grouped.unassigned.length > 0 ? <> · <span className="tabular-nums font-medium">{grouped.unassigned.length}</span> unassigned</> : ''}.
-          </p>
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          {/* Vibrant gradient icon badge with ambient glow */}
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 shadow-[0_4px_14px_rgba(99,102,241,0.38)] flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform">
+            <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+
+          <div className="min-w-0">
+            <h3 className="text-[15px] sm:text-[16px] font-bold text-slate-900 tracking-tight">
+              Section Management
+            </h3>
+            <p className="text-xs sm:text-[13px] text-slate-600 mt-1">
+              Move students between sections. Showing <strong className="text-slate-900 font-semibold tabular-nums">{students.length}</strong> student{students.length === 1 ? '' : 's'} across <strong className="text-slate-900 font-semibold tabular-nums">{grouped.assigned.length}</strong> section{grouped.assigned.length === 1 ? '' : 's'}
+              {grouped.unassigned.length > 0 ? <> · <span className="text-amber-700 font-semibold tabular-nums">{grouped.unassigned.length} unassigned</span></> : ''}.
+            </p>
+          </div>
         </div>
-        <ChevronDown
-          className={`w-4 h-4 text-[#64748b] transition-transform ${expanded ? 'rotate-180' : ''}`}
-        />
+
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="hidden md:inline-flex text-xs font-semibold text-indigo-700 bg-indigo-100/80 hover:bg-indigo-200/80 border border-indigo-200 rounded-xl px-3 py-1.5 transition-colors shadow-xs">
+            {expanded ? 'Hide Sections' : 'Reassign Students'}
+          </span>
+          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl border flex items-center justify-center transition-all ${
+            expanded
+              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+              : 'bg-white/90 text-indigo-600 border-indigo-200/90 shadow-xs group-hover:bg-indigo-50'
+          }`}>
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            />
+          </div>
+        </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-[#f1f5f9] divide-y divide-[#f1f5f9]">
+        <div className="border-t border-indigo-100/90 bg-white/70 backdrop-blur-md divide-y divide-indigo-50">
           {grouped.assigned.length === 0 && grouped.unassigned.length === 0 && (
-            <p className="text-[12px] text-[#64748b] px-4 sm:px-6 py-4">
+            <p className="text-[12px] sm:text-[13px] text-slate-600 px-4 sm:px-6 py-5 text-center">
               No students yet. Add students to this teacher to manage section assignments.
             </p>
           )}
 
           {grouped.assigned.map((bucket) => (
-            <div key={bucket.sectionId} className="px-4 sm:px-6 py-3 sm:py-3.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b] mb-2">
-                {bucket.label}{' '}
-                <span className="text-[10px] font-normal text-[#94a3b8] tabular-nums">({bucket.students.length})</span>
-              </p>
+            <div key={bucket.sectionId} className="px-4 sm:px-6 py-3.5 sm:py-4">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-indigo-900 bg-indigo-50/90 border border-indigo-100 px-2.5 py-0.5 rounded-lg">
+                  {bucket.label}
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 tabular-nums">
+                  {bucket.students.length} student{bucket.students.length === 1 ? '' : 's'}
+                </span>
+              </div>
               <div className="space-y-1.5">
                 {bucket.students.map((student) => (
                   <SectionAssignmentRow
@@ -3366,10 +3188,15 @@ const SectionManagementPanel: React.FC<{
           ))}
 
           {grouped.unassigned.length > 0 && (
-            <div className="px-4 sm:px-6 py-3 sm:py-3.5 bg-amber-50/40">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 mb-2">
-                Unassigned <span className="text-[10px] font-normal text-amber-600/80 tabular-nums">({grouped.unassigned.length})</span>
-              </p>
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-amber-50/50">
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/80 border border-amber-200 px-2.5 py-0.5 rounded-lg">
+                  Unassigned
+                </span>
+                <span className="text-[11px] font-medium text-amber-700/90 tabular-nums">
+                  {grouped.unassigned.length} student{grouped.unassigned.length === 1 ? '' : 's'}
+                </span>
+              </div>
               <div className="space-y-1.5">
                 {grouped.unassigned.map((student) => (
                   <SectionAssignmentRow
@@ -3922,56 +3749,56 @@ const AnalyticsView: React.FC<{
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full">
           {/* Card 1: Class Average */}
-          <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-white/10 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col justify-between cursor-default select-none">
-            <div className="flex justify-between items-start mb-2">
-              <span className="font-body text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Class Average</span>
-              <div className="w-7 h-7 rounded-xl bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-100 dark:border-sky-900/50 shadow-sm">
-                <Target size={14} />
-              </div>
-            </div>
-            <div className="font-display text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight tabular-nums leading-none">
-              {Math.round(classAverage)}%
-            </div>
-          </div>
+          <TeacherStatCard
+            color="purple"
+            title="Class Average"
+            badgeText={classAverage >= 75 ? 'Passing' : classAverage > 0 ? 'Needs Boost' : 'Pending'}
+            icon={Target}
+            value={`${Math.round(classAverage)}%`}
+            subtitle="Cohort Score"
+            scorePercent={Math.round(classAverage)}
+            footerLabel="Cohort Score"
+            footerBadge={classAverage >= 75 ? 'Passing' : 'Needs Boost'}
+          />
 
           {/* Card 2: Completion */}
-          <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-white/10 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col justify-between cursor-default select-none">
-            <div className="flex justify-between items-start mb-2">
-              <span className="font-body text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Completion</span>
-              <div className="w-7 h-7 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/50 shadow-sm">
-                <CheckCircle size={14} />
-              </div>
-            </div>
-            <div className="font-display text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight tabular-nums leading-none">
-              {Math.round(completionRate)}%
-            </div>
-          </div>
+          <TeacherStatCard
+            color="cyan"
+            title="Completion"
+            badgeText={completionRate >= 75 ? 'On Track' : 'In Progress'}
+            icon={CheckCircle}
+            value={`${Math.round(completionRate)}%`}
+            subtitle="Module Completion"
+            scorePercent={Math.round(completionRate)}
+            footerLabel="Completion"
+            footerBadge={`${Math.round(completionRate)}%`}
+          />
 
           {/* Card 3: Participation */}
-          <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-white/10 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col justify-between cursor-default select-none">
-            <div className="flex justify-between items-start mb-2">
-              <span className="font-body text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Participation</span>
-              <div className="w-7 h-7 rounded-xl bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 flex items-center justify-center border border-violet-100 dark:border-violet-900/50 shadow-sm">
-                <Users size={14} />
-              </div>
-            </div>
-            <div className="font-display text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight tabular-nums leading-none">
-              {Math.round(participationRate)}%
-            </div>
-          </div>
+          <TeacherStatCard
+            color="green"
+            title="Participation"
+            badgeText="Active"
+            icon={Users}
+            value={`${Math.round(participationRate)}%`}
+            subtitle="Active Engagement"
+            scorePercent={Math.round(participationRate)}
+            footerLabel="Participation"
+            footerBadge={`${Math.round((participationRate / 100) * students.length)} active`}
+          />
 
           {/* Card 4: Needs Attention */}
-          <div className="bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-white/10 shadow-[0_2px_10px_rgba(0,0,0,0.03)] flex flex-col justify-between cursor-default select-none">
-            <div className="flex justify-between items-start mb-2">
-              <span className="font-body text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Attention</span>
-              <div className="w-7 h-7 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100 dark:border-amber-900/50 shadow-sm">
-                <AlertTriangle size={14} />
-              </div>
-            </div>
-            <div className="font-display text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight tabular-nums leading-none">
-              {attentionStudents.length}
-            </div>
-          </div>
+          <TeacherStatCard
+            color="rose"
+            title="Needs Attention"
+            badgeText={attentionStudents.length > 0 ? 'Priority' : 'Clear'}
+            icon={AlertTriangle}
+            value={attentionStudents.length}
+            subtitle="At-Risk Students"
+            scorePercent={students.length > 0 ? Math.round((attentionStudents.length / students.length) * 100) : 0}
+            footerLabel="At-Risk Rate"
+            footerBadge={students.length > 0 ? `${Math.round((attentionStudents.length / students.length) * 100)}%` : '0%'}
+          />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-6 h-auto xl:h-[600px]">
@@ -4793,14 +4620,22 @@ const InterventionView: React.FC<{
             <>
               {/* Mobile-only Student Metric Highlights */}
               <div className="lg:hidden grid grid-cols-2 gap-2.5 mb-3">
-                <div className="bg-white/80 rounded-2xl p-3 border border-slate-200/80 shadow-xs">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Avg Score</p>
-                  <p className="text-lg font-extrabold text-violet-600 tabular-nums">{interventionPlan?.avg_score || studentProgressScore || student.avgScore}%</p>
-                </div>
-                <div className="bg-white/80 rounded-2xl p-3 border border-slate-200/80 shadow-xs">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Weakest Topic</p>
-                  <p className="text-xs font-bold text-slate-800 truncate" title={interventionPlan?.weakest_topic || effectiveWeakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}</p>
-                </div>
+                <TeacherStatCard
+                  color="purple"
+                  title="Avg Score"
+                  value={`${interventionPlan?.avg_score || studentProgressScore || student.avgScore}%`}
+                  subtitle="Current Score"
+                  scorePercent={Number(interventionPlan?.avg_score || studentProgressScore || student.avgScore)}
+                  className="min-h-[120px] p-2.5"
+                />
+                <TeacherStatCard
+                  color="rose"
+                  title="Weakest Topic"
+                  badgeText="Focus"
+                  value={normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}
+                  subtitle="Needs Intervention"
+                  className="min-h-[120px] p-2.5"
+                />
               </div>
 
               {/* AI Analysis Banner — light mint green */}
@@ -5159,22 +4994,26 @@ const InterventionView: React.FC<{
           </div>
 
           {/* 4 Stats Grid */}
-          <div className="w-full grid grid-cols-2 gap-[12px]">
-            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
-              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Avg Score</p>
-              <p className="text-[20px] font-bold text-[#a855f7] tabular-nums">{interventionPlan?.avg_score || studentProgressScore || student.avgScore}%</p>
+          <div className="w-full grid grid-cols-2 gap-[10px]">
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] rounded-2xl p-3 text-white shadow-[0_4px_16px_-4px_rgba(153,86,222,0.4)] border border-white/20">
+              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-md pointer-events-none" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-1">Avg Score</p>
+              <p className="text-xl font-display font-black text-white tabular-nums">{interventionPlan?.avg_score || studentProgressScore || student.avgScore}%</p>
             </div>
-            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
-              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Engagement</p>
-              <p className="text-[20px] font-bold text-[#1e293b]">{interventionPlan?.engagement_level || ((studentProgressScore || student.avgScore) > 80 ? 'High' : (studentProgressScore || student.avgScore) > 50 ? 'Medium' : 'Low')}</p>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#38BDF8] via-[#0284C7] to-[#0369A1] rounded-2xl p-3 text-white shadow-[0_4px_16px_-4px_rgba(2,132,199,0.4)] border border-white/20">
+              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-md pointer-events-none" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-1">Engagement</p>
+              <p className="text-xl font-display font-black text-white">{interventionPlan?.engagement_level || ((studentProgressScore || student.avgScore) > 80 ? 'High' : (studentProgressScore || student.avgScore) > 50 ? 'Medium' : 'Low')}</p>
             </div>
-            <div className="bg-white/80 rounded-[14px] p-4 border border-white shadow-[0_1px_4px_rgba(0,0,0,0.02)] text-left flex flex-col justify-center">
-              <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Last Active</p>
-              <p className="text-[13px] font-semibold text-[#1e293b] mt-1">{interventionPlan?.last_active ? new Date(interventionPlan.last_active).toLocaleDateString() : student.lastActive}</p>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#75D06A] via-[#52B847] to-[#36962C] rounded-2xl p-3 text-white shadow-[0_4px_16px_-4px_rgba(82,184,71,0.4)] border border-white/20">
+              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-md pointer-events-none" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-1">Last Active</p>
+              <p className="text-xs font-bold text-white mt-1 truncate">{interventionPlan?.last_active ? new Date(interventionPlan.last_active).toLocaleDateString() : student.lastActive}</p>
             </div>
-            <div className="bg-rose-50/60 rounded-[14px] p-4 border border-rose-100 text-left flex flex-col justify-center">
-              <p className="text-[11px] font-semibold text-rose-600 uppercase tracking-wider mb-1">Weakest Topic</p>
-              <p className="text-[12px] font-semibold text-[#1e293b] mt-1 leading-snug break-words" title={interventionPlan?.weakest_topic || effectiveWeakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}</p>
+            <div className="relative overflow-hidden bg-gradient-to-br from-[#FB7185] via-[#F43F5E] to-[#E11D48] rounded-2xl p-3 text-white shadow-[0_4px_16px_-4px_rgba(244,63,94,0.4)] border border-white/20">
+              <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-md pointer-events-none" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-1">Weakest Topic</p>
+              <p className="text-xs font-bold text-white mt-1 leading-snug truncate" title={interventionPlan?.weakest_topic || effectiveWeakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}</p>
             </div>
           </div>
 
