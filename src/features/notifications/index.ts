@@ -5,4 +5,15 @@
 export { NotificationProvider, useNotifications } from './NotificationContext';
 export { NotificationBell } from './NotificationBell';
 export { notify } from './notificationService';
-export type { Notification, NotificationPayload, NotificationType } from './types';
+export {
+  TEACHER_ONLY_NOTIFICATION_TYPES,
+  defaultRecipientRole,
+  isTeacherOnlyNotification,
+  filterNotificationsForRole,
+} from './types';
+export type {
+  Notification,
+  NotificationPayload,
+  NotificationType,
+  NotificationRecipientRole,
+} from './types';

@@ -11,11 +11,18 @@ export const NotificationBell: React.FC = () => {
   const { unreadCount } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // SAFETY: pointer events outside the bell always carry a DOM event target Node.
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        panelRef.current &&
+        !panelRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
@@ -49,7 +56,7 @@ export const NotificationBell: React.FC = () => {
       </button>
 
       {isOpen && (
-        <NotificationPanel onClose={() => setIsOpen(false)} />
+        <NotificationPanel onClose={() => setIsOpen(false)} panelRef={panelRef} />
       )}
     </div>
   );

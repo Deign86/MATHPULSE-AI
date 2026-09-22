@@ -2,19 +2,25 @@
  * @file NotificationPanel.tsx
  * Dropdown panel listing notifications.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, CheckCheck, X } from 'lucide-react';
+import { Bell, CheckCheck, ChevronDown, X } from 'lucide-react';
 import { useNotifications } from './NotificationContext';
 import { NotificationItem } from './NotificationItem';
+import { NOTIFICATION_PAGE_SIZE, paginateNotifications } from './types';
 
 interface NotificationPanelProps {
   onClose: () => void;
+  panelRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose }) => {
+export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose, panelRef: externalPanelRef }) => {
   const { notifications, unreadCount, isLoading, markAllAsRead } = useNotifications();
-  const panelRef = useRef<HTMLDivElement>(null);
+  const localPanelRef = useRef<HTMLDivElement>(null);
+  const panelRef = externalPanelRef ?? localPanelRef;
+  const [visibleCount, setVisibleCount] = useState(NOTIFICATION_PAGE_SIZE);
+  const visibleNotifications = paginateNotifications(notifications, visibleCount);
+  const hasMore = visibleCount < notifications.length;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -32,14 +38,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
     <>
       {/* Mobile Backdrop to click outside easily on small screens */}
       <div
-        className="fixed inset-0 bg-black/30 backdrop-blur-xs sm:hidden z-40"
+        className="fixed inset-0 bg-black/30 backdrop-blur-xs sm:hidden z-[240]"
         onClick={onClose}
         aria-hidden="true"
       />
 
       <div
         ref={panelRef}
-        className="fixed right-4 sm:right-6 top-16 sm:top-20 w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 max-h-[85vh] sm:max-h-[32rem] overflow-hidden z-50 flex flex-col"
+        className="fixed right-4 sm:right-6 top-16 sm:top-20 w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-purple-100/80 dark:border-purple-900/40 max-h-[85vh] sm:max-h-[32rem] overflow-hidden z-[250] flex flex-col"
       >
         {/* Header */}
         <div className="p-4 border-b border-purple-200/40 dark:border-purple-900/30 flex items-center justify-between bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#1FA7E1] text-white shrink-0">
@@ -90,7 +96,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
               <p className="text-slate-500 dark:text-slate-400 text-xs">No pending notifications at this moment.</p>
             </div>
           ) : (
-            notifications.map((notification) => (
+            visibleNotifications.map((notification) => (
               <NotificationItem
                 key={notification.id}
                 notification={notification}
@@ -98,6 +104,24 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose })
             ))
           )}
         </div>
+
+        {/* Pagination footer: header count stays global, the list pages 20 at a time */}
+        {!isLoading && hasMore && (
+          <div className="p-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
+            <p className="text-center text-[11px] font-bold text-slate-400 tabular-nums mb-2">
+              Showing {visibleNotifications.length} of {notifications.length}
+            </p>
+            <button
+              type="button"
+              onClick={() => setVisibleCount((count) => count + NOTIFICATION_PAGE_SIZE)}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-950/70 transition-colors focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:outline-none cursor-pointer"
+              aria-label={`Show more notifications, ${notifications.length - visibleNotifications.length} remaining`}
+            >
+              <ChevronDown size={14} aria-hidden="true" />
+              <span>Show more ({notifications.length - visibleNotifications.length} remaining)</span>
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

@@ -32,6 +32,8 @@ interface ChatContextType {
   isLoading: boolean;
   loadingSessionId: string | null;
   sessionsLoaded: boolean;
+  sessionsLoadError: string | null;
+  retrySessionsLoad: () => void;
   setActiveSessionId: (id: string | null) => void;
   createNewSession: (firstMessage?: Message) => string;
   addMessageToSession: (sessionId: string, message: Message) => void;
@@ -685,6 +687,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  // Issue #159: chat history load failure is surfaced distinctly from an
+  // empty history so offline users see an error with retry, not a blank list.
+  const [sessionsLoadError, setSessionsLoadError] = useState<string | null>(null);
+  const [sessionsRetryCount, setSessionsRetryCount] = useState(0);
+  const retrySessionsLoad = useCallback(() => {
+    setSessionsLoadError(null);
+    setSessionsRetryCount((count) => count + 1);
+  }, []);
   // Map of tempId → Promise<firebaseId> for sessions being created
   const pendingSessionsRef = useRef<Map<string, Promise<string>>>(new Map());
 
@@ -698,8 +708,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     const loadSessions = async () => {
       try {
-        const chatService = await loadChatService();
-        const firebaseSessions = await chatService.getUserChatSessions(currentUser.uid);
+        const chatService = await loadChatService();        const firebaseSessions = await chatService.getUserChatSessions(currentUser.uid);
         const loadedSessions: ChatSession[] = await Promise.all(
           firebaseSessions.map(async (s) => {
             const msgs = await chatService.getSessionMessages(s.id, currentUser.uid);
@@ -731,15 +740,18 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           })
         );
         setSessions(loadedSessions);
+        setSessionsLoadError(null);
       } catch (err) {
         console.error('Error loading chat sessions:', err);
+        const message = err instanceof Error ? err.message : 'Unable to load chat history.';
+        setSessionsLoadError(message);
       } finally {
         setSessionsLoaded(true);
       }
     };
 
     loadSessions();
-  }, [currentUser]);
+  }, [currentUser, sessionsRetryCount]);
 
   const generateTitleFromMessages = (messages: Message[]): string => {
     if (messages.length === 0) return 'New Chat';
@@ -1284,6 +1296,8 @@ const repairedResponse = formatAssistantResponseForStorage(continuation.data.res
         isLoading,
         loadingSessionId,
         sessionsLoaded,
+        sessionsLoadError,
+        retrySessionsLoad,
         setActiveSessionId,
         createNewSession,
         addMessageToSession,

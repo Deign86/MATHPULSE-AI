@@ -11,7 +11,12 @@ that's visible in HF Space logs.
 import os
 import sys
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal, Optional, TypedDict
+
+from openai import APIConnectionError, APIError, APITimeoutError
 
 try:
     from dotenv import load_dotenv
@@ -28,10 +33,102 @@ except Exception:
 
 logger = logging.getLogger("mathpulse.startup")
 
+AuthProbeStatus = Literal["ok", "auth_failed", "connection_failed", "unchecked"]
+
+
+class DeepSeekAuthState(TypedDict):
+    status: AuthProbeStatus
+    key_suffix: str
+    checked_at: Optional[str]
+
+
+cached_deepseek_auth_state: DeepSeekAuthState = {
+    "status": "unchecked",
+    "key_suffix": "****",
+    "checked_at": None,
+}
+
 
 class StartupError(Exception):
     """Critical error during startup validation."""
     pass
+
+
+def compute_key_fingerprint(api_key: Optional[str] = None) -> str:
+    configured_key = api_key if api_key is not None else os.getenv("DEEPSEEK_API_KEY", "")
+    return f"****{configured_key[-4:]}" if configured_key else "****"
+
+
+def _record_deepseek_auth_state(status: AuthProbeStatus, key_suffix: str) -> DeepSeekAuthState:
+    global cached_deepseek_auth_state
+    cached_deepseek_auth_state = {
+        "status": status,
+        "key_suffix": key_suffix,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return cached_deepseek_auth_state
+
+
+def validate_deepseek_auth(timeout_s: float = 5.0) -> DeepSeekAuthState:
+    api_key = os.getenv("DEEPSEEK_API_KEY", "")
+    key_suffix = compute_key_fingerprint(api_key)
+    if not api_key:
+        logger.warning("DeepSeek startup auth probe: status=unchecked key=%s", key_suffix)
+        return _record_deepseek_auth_state("unchecked", key_suffix)
+
+    try:
+        from services import inference_client
+
+        executor = ThreadPoolExecutor(max_workers=1)
+        probe_future = executor.submit(
+            lambda: inference_client.get_deepseek_client().models.list()
+        )
+        try:
+            probe_future.result(timeout=max(timeout_s, 0.0))
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+    except APIError as exc:
+        if getattr(exc, "status_code", None) in (401, 403):
+            logger.warning(
+                "DeepSeek startup auth probe: status=auth_failed key=%s",
+                key_suffix,
+            )
+            return _record_deepseek_auth_state("auth_failed", key_suffix)
+        logger.warning(
+            "DeepSeek startup auth probe: status=connection_failed key=%s",
+            key_suffix,
+        )
+        return _record_deepseek_auth_state("connection_failed", key_suffix)
+    except (APIConnectionError, APITimeoutError, FutureTimeoutError, TimeoutError, OSError):
+        logger.warning(
+            "DeepSeek startup auth probe: status=connection_failed key=%s",
+            key_suffix,
+        )
+        return _record_deepseek_auth_state("connection_failed", key_suffix)
+    except ValueError:
+        logger.warning("DeepSeek startup auth probe: status=unchecked key=%s", key_suffix)
+        return _record_deepseek_auth_state("unchecked", key_suffix)
+    except Exception as exc:
+        if getattr(exc, "status_code", None) in (401, 403) or type(exc).__name__ == "InferenceAuthError":
+            logger.warning(
+                "DeepSeek startup auth probe: status=auth_failed key=%s",
+                key_suffix,
+            )
+            return _record_deepseek_auth_state("auth_failed", key_suffix)
+        if type(exc).__name__ == "InferenceConnectionError":
+            logger.warning(
+                "DeepSeek startup auth probe: status=connection_failed key=%s",
+                key_suffix,
+            )
+            return _record_deepseek_auth_state("connection_failed", key_suffix)
+        logger.warning(
+            "DeepSeek startup auth probe: status=connection_failed key=%s",
+            key_suffix,
+        )
+        return _record_deepseek_auth_state("connection_failed", key_suffix)
+
+    logger.info("DeepSeek startup auth probe: status=ok key=%s", key_suffix)
+    return _record_deepseek_auth_state("ok", key_suffix)
 
 
 def validate_imports() -> None:

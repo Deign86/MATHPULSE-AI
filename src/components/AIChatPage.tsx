@@ -52,7 +52,9 @@ const AIChatPage = () => {
     sendMessage,
     deleteSession,
     getActiveSession,
-    sessionsLoaded
+    sessionsLoaded,
+    sessionsLoadError,
+    retrySessionsLoad
   } = useChatContext();
 
   const { userProfile } = useAuth();
@@ -227,45 +229,50 @@ const AIChatPage = () => {
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
           <AnimatePresence>
             {filteredSessions.map((session) => (
-              <motion.button
+              <motion.div
                 key={session.id}
                 initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -16 }}
-                onClick={() => setActiveSessionId(session.id)}
-                className={`group w-full text-left p-3 rounded-2xl cursor-pointer transition-all duration-200 border relative ${
-                  activeSessionId === session.id
-                    ? 'border-[#9956DE]/30 shadow-sm'
-                    : 'bg-[#fafafa] border-transparent hover:bg-[#f4f4f5] hover:border-[#e4e4e7]'
-                }`}
-                style={activeSessionId === session.id ? { background: 'linear-gradient(to right, rgba(153,86,222,0.09), rgba(114,116,237,0.09))' } : {}}
+                className="group relative"
               >
-                <div className="flex items-start justify-between mb-1">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeSessionId === session.id ? 'bg-[#9956DE]' : 'bg-[#d4d4d8]'}`} />
-                    <h3 className={`text-xs font-bold line-clamp-1 ${activeSessionId === session.id ? 'text-[#9956DE]' : 'text-[#0a1628]'}`}>
-                      {session.title}
-                    </h3>
+                <button
+                  onClick={() => setActiveSessionId(session.id)}
+                  aria-label={`Open conversation: ${session.title}`}
+                  className={`w-full text-left p-3 pr-10 rounded-2xl cursor-pointer transition-all duration-200 border ${
+                    activeSessionId === session.id
+                      ? 'border-[#9956DE]/30 shadow-sm'
+                      : 'bg-[#fafafa] border-transparent hover:bg-[#f4f4f5] hover:border-[#e4e4e7]'
+                  }`}
+                  style={activeSessionId === session.id ? { background: 'linear-gradient(to right, rgba(153,86,222,0.09), rgba(114,116,237,0.09))' } : {}}
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${activeSessionId === session.id ? 'bg-[#9956DE]' : 'bg-[#d4d4d8]'}`} />
+                      <h3 className={`text-xs font-bold line-clamp-1 ${activeSessionId === session.id ? 'text-[#9956DE]' : 'text-[#0a1628]'}`}>
+                        {session.title}
+                      </h3>
+                    </div>
                   </div>
-                  <button
-                    onClick={(e) => handleDeleteSession(session.id, e)}
-                    aria-label="Delete conversation"
-                    className="flex-shrink-0 p-1 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-50 text-[#a1a1aa] hover:text-red-500 transition-all ml-1"
-                  >
-                    <Trash2 size={11} />
-                  </button>
-                </div>
-                <p className="text-[10px] text-[#71717a] mb-2 line-clamp-2 pl-3.5">{session.preview}</p>
-                <div className="flex items-center justify-between text-[10px] pl-3.5">
-                  <div className="flex items-center gap-1 text-[#a1a1aa]">
-                    <Clock size={9} />
-                    <span>{session.date}</span>
+                  <p className="text-[10px] text-[#71717a] mb-2 line-clamp-2 pl-3.5">{session.preview}</p>
+                  <div className="flex items-center justify-between text-[10px] pl-3.5">
+                    <div className="flex items-center gap-1 text-[#a1a1aa]">
+                      <Clock size={9} />
+                      <span>{session.date}</span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full font-medium ${activeSessionId === session.id ? 'bg-[#9956DE]/10 text-[#9956DE]' : 'bg-[#f4f4f5] text-[#a1a1aa]'}`}>
+                      {session.messageCount} msgs
+                    </span>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full font-medium ${activeSessionId === session.id ? 'bg-[#9956DE]/10 text-[#9956DE]' : 'bg-[#f4f4f5] text-[#a1a1aa]'}`}>
-                    {session.messageCount} msgs
-                  </span>
-                </div>
-              </motion.button>
+                </button>
+                <button
+                  onClick={(e) => handleDeleteSession(session.id, e)}
+                  aria-label={`Delete conversation: ${session.title}`}
+                  className="absolute top-2.5 right-2.5 p-1 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-red-50 text-[#a1a1aa] hover:text-red-500 transition-all"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </motion.div>
             ))}
           </AnimatePresence>
 
@@ -318,6 +325,26 @@ const AIChatPage = () => {
             </div>
 
             {/* Messages */}
+            {sessionsLoadError && (
+              <div
+                role="alert"
+                data-testid="chat-load-error"
+                className="mx-4 md:mx-6 mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3"
+              >
+                <p className="min-w-0 flex-1 text-[13px] font-semibold text-amber-900">
+                  {typeof navigator !== 'undefined' && navigator.onLine === false
+                    ? "You're offline — chat history couldn't load. New messages still work and will sync later."
+                    : sessionsLoadError}
+                </p>
+                <button
+                  type="button"
+                  onClick={retrySessionsLoad}
+                  className="rounded-full border border-amber-400 px-4 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-100"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
             <div
               ref={messagesContainerRef}
               onScroll={handleMessagesScroll}

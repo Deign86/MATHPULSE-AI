@@ -106,4 +106,58 @@ describe('NotificationPanel', () => {
 
     expect(markAllAsReadMock).toHaveBeenCalled();
   });
+
+  it('renders above the battle overlay z-index', () => {
+    const style = document.createElement('style');
+    style.textContent = '[class~="z-[250]"] { z-index: 250; } [class~="z-[240]"] { z-index: 240; } [class~="z-[100]"] { z-index: 100; }';
+    document.head.append(style);
+
+    const battleOverlay = document.createElement('div');
+    battleOverlay.className = 'fixed z-[100]';
+    document.body.append(battleOverlay);
+
+    render(<NotificationPanel onClose={() => {}} />);
+
+    const panel = document.querySelector<HTMLElement>('[class~="z-[250]"]');
+    const backdrop = document.querySelector<HTMLElement>('[class~="z-[240]"]');
+    try {
+      expect(panel).not.toBeNull();
+      expect(backdrop).not.toBeNull();
+
+      if (panel && backdrop) {
+        expect(Number.parseInt(getComputedStyle(panel).zIndex, 10)).toBeGreaterThan(
+          Number.parseInt(getComputedStyle(battleOverlay).zIndex, 10),
+        );
+      }
+    } finally {
+      style.remove();
+      battleOverlay.remove();
+    }
+  });
+
+  it('paginates the list at 20 rows with a Show more control', () => {
+    notificationsValue = Array.from({ length: 25 }, (_, index) => ({
+      id: `notif-${index}`,
+      userId: 'user-1',
+      title: `Test ${index}`,
+      message: `Msg ${index}`,
+      isRead: index % 2 === 0,
+      createdAt: new Date(),
+      type: 'message' as const,
+    }));
+    unreadCountValue = 12;
+    isLoadingValue = false;
+
+    render(<NotificationPanel onClose={() => {}} />);
+
+    expect(screen.getByTestId('item-notif-0')).toBeInTheDocument();
+    expect(screen.getByTestId('item-notif-19')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-notif-20')).not.toBeInTheDocument();
+    expect(screen.getByText('12 unread alerts')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /show more notifications/i }));
+
+    expect(screen.getByTestId('item-notif-20')).toBeInTheDocument();
+    expect(screen.getByTestId('item-notif-24')).toBeInTheDocument();
+  });
 });

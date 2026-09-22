@@ -41,15 +41,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [resolvedRole, setResolvedRole] = useState<UserRole>('student');
 
-  const inferRoleFromKnownDemoEmail = (email: string | null | undefined): UserRole | null => {
-    if (!email) return null;
-    const normalized = email.trim().toLowerCase();
-    if (normalized === 'testteacher@school.edu') return 'teacher';
-    if (normalized === 'testadmin@school.edu') return 'admin';
-    if (normalized === 'teststudent@school.edu') return 'student';
-    return null;
-  };
-
   useEffect(() => {
     void resolveGoogleRedirect();
     let fallbackTimer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
@@ -67,7 +58,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setCurrentUser(user);
 
         if (user) {
-          const requestedRole = consumePendingAuthRole() || getLastAuthRole() || inferRoleFromKnownDemoEmail(user.email) || 'student';
+          // Role is authoritative from the Firestore profile (server data).
+          // Client hints (pending/last role) only seed brand-new profiles and
+          // can never grant admin — new profiles clamp to student/teacher.
+          const requestedRole = consumePendingAuthRole() || getLastAuthRole() || 'student';
           const safeRequestedRole: UserRole = requestedRole === 'admin' ? 'student' : requestedRole;
 
           // Fetch user profile from Firestore

@@ -82,6 +82,7 @@ export const onContentUpdated = functions.firestore
               type: NOTIFICATION_TYPES.MESSAGE,
               title: "Curriculum Update",
               message: `${contentType} "${data?.title || contentId}" has been ${action}d. You may want to review affected quizzes.`,
+              recipientRole: "teacher",
             }),
           );
         }

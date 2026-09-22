@@ -289,7 +289,7 @@ import { Button } from './ui/button';
 import { cn } from './ui/utils';
 import { Lesson, Quiz } from '../data/subjects';
 import type { RagLessonSection } from '../services/lessonService';
-import { useLessonContent } from '../hooks/useLessonContent';
+import { useLessonContent, type UseLessonContentResult } from '../hooks/useLessonContent';
 import { getFirebaseStoragePdfUrl } from '../data/curriculum/types';
 import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
@@ -315,6 +315,8 @@ interface LessonViewerProps {
   onContinueLearning?: () => void;
   /** Controls floating AI tutor visibility during Try It Yourself quiz */
   setIsInQuizMode?: (value: boolean) => void;
+  initialContent?: UseLessonContentResult;
+  onLogLessonView?: (userId: string, lessonId: string, topic: string) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -379,19 +381,64 @@ const OBJECTIVE_COLORS = [
 
 function LoadingSkeleton() {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-50 gap-5">
-      <div className="w-12 h-12 rounded-full border-4 border-rose-400 border-t-transparent animate-spin" />
-      <div className="space-y-2 text-center">
-        <p className="text-slate-700 font-semibold text-base">Loading lesson from DepEd curriculum...</p>
-        <p className="text-slate-400 text-xs max-w-xs">This may take a moment while the AI retrieves curriculum content.</p>
-      </div>
-      <div className="w-64 h-2 bg-slate-200 rounded-full overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-50"
+      aria-busy="true"
+      aria-label="Loading lesson content"
+      data-testid="lesson-skeleton"
+    >
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 space-y-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full border-4 border-rose-400 border-t-transparent animate-spin" />
+            <div className="space-y-1">
+              <p className="text-slate-700 font-semibold text-base">Loading lesson from DepEd curriculum...</p>
+              <p className="text-slate-400 text-xs">Fetching staged content — cached lessons open instantly next time.</p>
+            </div>
+          </div>
+          <div className="h-7 w-3/4 rounded-lg bg-slate-200 animate-pulse" />
+          <div className="h-4 w-1/2 rounded-lg bg-slate-200/70 animate-pulse" />
+          <div className="flex gap-2">
+            <div className="h-6 w-20 rounded-full bg-slate-200 animate-pulse" />
+            <div className="h-6 w-24 rounded-full bg-slate-200/70 animate-pulse" />
+            <div className="h-6 w-16 rounded-full bg-slate-200/50 animate-pulse" />
+          </div>
+        </motion.div>
         <motion.div
-          className="h-full bg-rose-300 rounded-full"
-          animate={{ x: ['-100%', '100%'] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ width: '50%' }}
-        />
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+        >
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+              <div className="w-8 h-8 rounded-xl bg-slate-200 animate-pulse" />
+              <div className="h-4 w-full rounded bg-slate-200 animate-pulse" />
+              <div className="h-3 w-2/3 rounded bg-slate-200/70 animate-pulse" />
+            </div>
+          ))}
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3"
+        >
+          <div className="h-5 w-1/3 rounded bg-slate-200 animate-pulse" />
+          <div className="h-3.5 w-full rounded bg-slate-200/70 animate-pulse" />
+          <div className="h-3.5 w-full rounded bg-slate-200/70 animate-pulse" />
+          <div className="h-3.5 w-5/6 rounded bg-slate-200/70 animate-pulse" />
+          <div className="h-20 w-full rounded-xl bg-slate-100 border border-slate-200 animate-pulse" />
+          <div className="h-3.5 w-4/6 rounded bg-slate-200/70 animate-pulse" />
+        </motion.div>
+        <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-rose-300 rounded-full"
+            animate={{ x: ['-100%', '100%'] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ width: '50%' }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -1095,8 +1142,12 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onTryItQuizComplete,
   onContinueLearning,
   setIsInQuizMode,
+  initialContent,
+  onLogLessonView,
 }) => {
-  const { userProfile } = useAuth();
+  const { userProfile, userRole } = useAuth();
+  // Issue #164: students see assurance copy only; teacher/admin keep full RAG telemetry.
+  const isStaffView = userRole === 'teacher' || userRole === 'admin';
   const [currentSection, setCurrentSection] = useState(0);
   const [direction, setDirection] = useState(1);
   const [showCompletion, setShowCompletion] = useState(false);
@@ -1140,6 +1191,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     storagePath: (lesson as any).storagePath,
   };
 
+  const fetchedLessonContent = useLessonContent(lesson.id, request, !initialContent);
   const {
     sections,
     isLoading,
@@ -1151,7 +1203,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     needsReview,
     activeModel,
     isOffline,
-  } = useLessonContent(lesson.id, request, true);
+  } = initialContent ?? fetchedLessonContent;
 
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
 
@@ -1173,6 +1225,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const primarySourceLabel = primaryPageText
     ? `${primarySourceFile} • ${primaryPageText}`
     : primarySourceFile;
+  // SAFETY: lesson payloads from the curriculum pipeline always carry these optional metadata fields.
+  const lessonCompetencyCode = (lesson as any).competencyCode || '';
+  // SAFETY: lesson payloads from the curriculum pipeline always carry these optional metadata fields.
+  const lessonSubjectName = (lesson as any).subject || primarySource?.subject || 'Senior High School Mathematics';
+  const studentSourceLabel = lessonCompetencyCode
+    ? `${lessonSubjectName} • DepEd Competency: ${lessonCompetencyCode}`
+    : `${lessonSubjectName} • DepEd SHS Curriculum`;
   const depedPdfUrl = getFirebaseStoragePdfUrl(primaryStoragePath);
 
   const confidenceBadgeConfig = {
@@ -1223,9 +1282,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   // Track lesson view activity when lesson loads
   useEffect(() => {
     if (sections.length > 0 && userProfile?.uid && lesson.id) {
-      logLessonView(userProfile.uid, lesson.id, lessonSpecificTopic || lesson.title).catch(() => { });
+      // Issue #159: analytics-only write — a failed view log must never
+      // surface to the learner. Logged so ingestion outages stay visible.
+      const recordView = onLogLessonView ?? logLessonView;
+      recordView(userProfile.uid, lesson.id, lessonSpecificTopic || lesson.title).catch((err) => {
+        console.debug('[LessonViewer] logLessonView failed (non-blocking):', err);
+      });
     }
-  }, [sections.length, userProfile?.uid, lesson.id, lessonSpecificTopic, lesson.title]);
+  }, [sections.length, userProfile?.uid, lesson.id, lessonSpecificTopic, lesson.title, onLogLessonView]);
 
   const totalSections = sections.length || SECTION_TABS.length;
 
@@ -1345,7 +1409,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               <div className="hidden sm:flex items-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">
                 <BookOpen size={10} />
                 <span>NOTEBOOK</span>
-                {activeModel && (
+                {isStaffView && activeModel && (
                   <span className="text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded font-mono">
                     {activeModel.split('/').pop()}
                   </span>
@@ -1401,7 +1465,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 <span className={cn('w-2 h-2 rounded-full animate-pulse', confidenceBadgeConfig.dot)} />
                 <ShieldCheck size={13} className="shrink-0" />
                 <span>{confidenceBadgeConfig.label}</span>
-                {retrievalConfidence > 0 && (
+                {isStaffView && retrievalConfidence > 0 && (
                   <span className="opacity-80 font-mono text-[10px] tabular-nums">
                     ({Math.round(retrievalConfidence * 100)}%)
                   </span>
@@ -1410,10 +1474,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
               <div
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-600 bg-slate-100/80 border border-slate-200/70 max-w-[280px] sm:max-w-md truncate"
-                title={primarySourceLabel}
+                title={isStaffView ? primarySourceLabel : studentSourceLabel}
               >
                 <FileText size={13} className="text-slate-500 shrink-0" />
-                <span className="truncate font-mono">{primarySourceLabel}</span>
+                <span className="truncate font-mono">{isStaffView ? primarySourceLabel : studentSourceLabel}</span>
               </div>
             </div>
 
@@ -1432,21 +1496,23 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                 </a>
               ) : null}
 
-              <button
-                type="button"
-                onClick={() => setShowEvidenceModal(true)}
-                aria-label="Inspect evidence"
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs"
-                title="Inspect retrieved DepEd text chunks, similarity scores, and metadata"
-              >
-                <FileSearch size={12} className="shrink-0" />
-                <span>Inspect Evidence</span>
-                {sources && sources.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black tabular-nums">
-                    {sources.length}
-                  </span>
-                )}
-              </button>
+              {isStaffView && (
+                <button
+                  type="button"
+                  onClick={() => setShowEvidenceModal(true)}
+                  aria-label="Inspect evidence"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs"
+                  title={isStaffView ? 'Inspect retrieved DepEd text chunks, similarity scores, and metadata' : 'View DepEd curriculum alignment for this lesson'}
+                >
+                  <FileSearch size={12} className="shrink-0" />
+                  <span>Inspect Evidence</span>
+                  {sources && sources.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black tabular-nums">
+                      {sources.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1697,7 +1763,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       </AnimatePresence>
 
       {/* DepEd Evidence Inspection Modal */}
-      <AnimatePresence>
+      {isStaffView && <AnimatePresence>
         {showEvidenceModal && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -1717,6 +1783,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
               {/* Modal Header */}
               <div className="flex items-start justify-between px-5 py-4 border-b border-slate-200 bg-slate-50/90">
                 <div className="min-w-0 pr-4">
+                  {isStaffView ? (
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                     <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
                       DepEd RAG Grounding
@@ -1735,11 +1802,18 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                       </span>
                     )}
                   </div>
+                  ) : (
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      Verified DepEd Curriculum
+                    </span>
+                  </div>
+                  )}
                   <h2 className="text-base sm:text-lg font-black text-slate-900 truncate text-balance">
                     Curriculum Grounding Evidence
                   </h2>
                   <p className="text-xs text-slate-500 font-mono mt-0.5 truncate">
-                    {primarySourceLabel}
+                    {isStaffView ? primarySourceLabel : studentSourceLabel}
                   </p>
                 </div>
                 <button
@@ -1754,6 +1828,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
               {/* Modal Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                {isStaffView ? (
+                <>
                 {/* Meta summary stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
@@ -1849,6 +1925,52 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     ))
                   )}
                 </div>
+                </>
+                ) : (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/60 p-5 text-center">
+                    <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm">
+                      <ShieldCheck size={24} className="text-white" />
+                    </div>
+                    <h3 className="text-base font-black text-slate-900 text-balance">
+                      Verified DepEd Senior High School STEM Curriculum
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                      This lesson is aligned to the official DepEd curriculum.
+                      Your teacher can view the full technical audit trail.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Subject</span>
+                      <span className="text-sm font-bold text-slate-800 text-right">{lessonSubjectName}</span>
+                    </div>
+                    {primarySource && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Quarter</span>
+                      <span className="text-sm font-bold text-slate-800 tabular-nums">Quarter {primarySource.quarter}</span>
+                    </div>
+                    )}
+                    {lessonCompetencyCode && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">DepEd Competency</span>
+                      <span className="text-sm font-bold text-slate-800 font-mono">{lessonCompetencyCode}</span>
+                    </div>
+                    )}
+                  </div>
+                  {depedPdfUrl && (
+                  <a
+                    href={depedPdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 transition-colors"
+                  >
+                    <ExternalLink size={14} />
+                    <span>Open official textbook lesson</span>
+                  </a>
+                  )}
+                </div>
+                )}
               </div>
 
               {/* Modal Footer */}
@@ -1880,7 +2002,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>}
     </div>
   );
 

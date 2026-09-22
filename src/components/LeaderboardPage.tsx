@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import StudentProfileModal from './StudentProfileModal';
 import { useAuth } from '../contexts/AuthContext';
 import { getLeaderboard } from '../services/gamificationService';
+import { selectDisplayXP, sortByXpDesc } from '../utils/display';
 import { StudentProfile } from '../types/models';
 import { useFeatureAccess } from '../hooks/useFeatureAccess';
 
@@ -145,7 +146,10 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
             ? (currentUserPhoto || entry.photo || '')
             : (entry.photo || ''),
         level: entry.level,
-        totalXP: entry.xp,
+        totalXP:
+          entry.userId === currentUser.uid
+            ? selectDisplayXP(studentProfile?.totalXP, studentProfile?.currentXP)
+            : entry.xp,
         section: myClassSection || 'Grade 11 - STEM A',
         rank: {
           global: entry.rank,
@@ -178,10 +182,9 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
       }
     }
 
-    return filtered.sort((a, b) => {
-      const rankKey = activeView === 'section' ? 'section' : 'global';
-      return (a.rank[rankKey] || 999) - (b.rank[rankKey] || 999);
-    });
+    // Strict score-descending order (issue #158): sort by XP, never by stale
+    // rank labels, and never sort the state array in place.
+    return sortByXpDesc(filtered);
   };
 
   const filteredStudents = getFilteredStudents();

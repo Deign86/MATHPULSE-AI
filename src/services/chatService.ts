@@ -14,10 +14,24 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ChatMessage, ChatSession } from '../types/models';
+import { toDateSafe } from '../utils/timestamp';
 
 /** Firestore payload for a new chat message; the timestamp uses the server sentinel. */
-interface ChatMessagePayload {
-  id: string;
+
+// Issue #159: read failures must be distinguishable from legitimately empty
+// results, so offline chat history shows an error state instead of a blank list.
+export class ChatLoadError extends Error {
+  readonly offline: boolean;
+  declare cause: unknown;
+  constructor(message: string, cause: unknown) {
+    super(message);
+    this.name = 'ChatLoadError';
+    this.cause = cause;
+    this.offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  }
+}
+
+interface ChatMessagePayload {  id: string;
   userId: string;
   role: ChatMessage['role'];
   content: string;
@@ -72,13 +86,13 @@ export const getUserChatSessions = async (userId: string): Promise<ChatSession[]
       // SAFETY: session docs are written by createChatSession with the ChatSession field set.
       return {
         ...data,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
+        createdAt: toDateSafe(data.createdAt),
+        updatedAt: toDateSafe(data.updatedAt),
       } as ChatSession;
     });
   } catch (error) {
     console.error('Error getting chat sessions:', error);
-    return [];
+    throw new ChatLoadError('Unable to load chat history. Check your connection and retry.', error);
   }
 };
 
@@ -92,15 +106,15 @@ export const getChatSession = async (sessionId: string): Promise<ChatSession | n
       // SAFETY: session docs are written by createChatSession with the ChatSession field set.
       return {
         ...data,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || new Date(),
+        createdAt: toDateSafe(data.createdAt),
+        updatedAt: toDateSafe(data.updatedAt),
       } as ChatSession;
     }
     
     return null;
   } catch (error) {
     console.error('Error getting chat session:', error);
-    return null;
+    throw new ChatLoadError('Unable to load this conversation. Check your connection and retry.', error);
   }
 };
 
@@ -178,12 +192,12 @@ export const getSessionMessages = async (sessionId: string, userId: string): Pro
       // SAFETY: message docs are written by addMessageToSession with the ChatMessage field set.
       return {
         ...data,
-        timestamp: data.timestamp?.toDate() || new Date(),
+        timestamp: toDateSafe(data.timestamp),
       } as ChatMessage;
     });
   } catch (error) {
     console.error('Error getting session messages:', error);
-    return [];
+    throw new ChatLoadError('Unable to load conversation messages. Check your connection and retry.', error);
   }
 };
 

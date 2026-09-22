@@ -1012,54 +1012,38 @@ export interface RagHealthResponse {
 }
 
 // ─── RAG API Functions ──────────────────────────────────────
+// All `/api/rag/*` calls route through the authed `apiFetch` client so the
+// Firebase bearer token is attached (with 401-refresh retry), matching every
+// other backend caller. Contract note: `GET /api/rag/health` is intentionally
+// public server-side (backend `PUBLIC_API_PATHS`) — sending the header when
+// signed in is harmless and keeps host/header behavior uniform.
 
 export async function getRagHealth(): Promise<RagHealthResponse> {
-  const headers = new Headers({ Accept: 'application/json' });
-  const res = await fetch(apiUrl('/api/rag/health'), { headers });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`GET /api/rag/health failed: ${res.status} ${body}`);
-  }
-  return res.json();
+  return apiFetch<RagHealthResponse>('/api/rag/health', {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
 }
 
 export async function generateRagLesson(payload: RagLessonRequest): Promise<RagLessonResponse> {
-  const res = await fetch(apiUrl('/api/rag/lesson'), {
+  return apiFetch<RagLessonResponse>('/api/rag/lesson', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`POST /api/rag/lesson failed: ${res.status} ${body}`);
-  }
-  return res.json();
 }
 
 export async function generateRagProblem(payload: RagProblemRequest): Promise<RagProblemResponse> {
-  const res = await fetch(apiUrl('/api/rag/generate-problem'), {
+  return apiFetch<RagProblemResponse>('/api/rag/generate-problem', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`POST /api/rag/generate-problem failed: ${res.status} ${body}`);
-  }
-  return res.json();
 }
 
 export async function getRagAnalysisContext(payload: RagAnalysisContextRequest): Promise<RagAnalysisContextResponse> {
-  const res = await fetch(apiUrl('/api/rag/analysis-context'), {
+  return apiFetch<RagAnalysisContextResponse>('/api/rag/analysis-context', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`POST /api/rag/analysis-context failed: ${res.status} ${body}`);
-  }
-  return res.json();
 }
 
 export type QuestionType = 'identification' | 'enumeration' | 'multiple_choice' | 'word_problem' | 'equation_based';

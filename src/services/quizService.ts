@@ -10,8 +10,9 @@ import type {
   GeneratedQuizStatus,
   QuizAnswerRecord,
 } from '../types/models';
-import { apiUrl } from '../config/env';
+import { apiFetch } from './apiService';
 import { z } from 'zod';
+import { toMillisSafe } from '../utils/timestamp';
 
 /** Firebase error fields relevant for index detection; parsing never throws. */
 const firebaseErrorContract = z.looseObject({ code: z.string().optional() }).catch({});
@@ -23,30 +24,7 @@ const isMissingIndexError = <E>(err: E): boolean => {
   return code === 'failed-precondition' && message.includes('requires an index');
 };
 
-/** Firestore timestamp-like values accepted by toMillis. */
-const timestampLikeValue = z.looseObject({
-  toMillis: z.instanceof(Function).optional(),
-  seconds: z.number().optional(),
-});
-
-const toMillis = <V>(value: V): number => {
-  if (!value) return 0;
-  if (value instanceof Date) return value.getTime();
-
-  const asNumber = z.number().safeParse(value);
-  if (asNumber.success) return asNumber.data;
-
-  const asString = z.string().safeParse(value);
-  if (asString.success) {
-    const parsed = Date.parse(asString.data);
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-
-  const maybeTs = timestampLikeValue.safeParse(value);
-  if (maybeTs.success && maybeTs.data.toMillis instanceof Function) return maybeTs.data.toMillis();
-  if (maybeTs.success && maybeTs.data.seconds !== undefined) return maybeTs.data.seconds * 1000;
-  return 0;
-};
+const toMillis = <V>(value: V): number => toMillisSafe(value);
 
 // ─── SAVE GENERATED QUIZ TO FIRESTORE ─────────────────────────
 
@@ -125,16 +103,17 @@ export async function assignQuizToStudent(
     dueDate: null,
   });
 
-  // Send notification to student
-  const notificationRef = doc(collection(db, 'notifications'));
-  await setDoc(notificationRef, {
+  // Send notification to the student's scoped inbox. Teachers may create
+  // student-appropriate items in a student's subcollection (see
+  // firestore.rules); cross-user writes of teacher-only types stay denied.
+  const { notify } = await import('@/features/notifications');
+  await notify({
     userId: lrn,
     type: 'quiz_assigned',
     title: 'New Quiz Assigned',
     message: 'Your teacher has assigned you a new quiz. Complete it to earn XP!',
-    quizId,
-    isRead: false,
-    createdAt: serverTimestamp(),
+    metadata: { quizId },
+    recipientRole: 'student',
   });
 }
 
@@ -262,14 +241,10 @@ export async function fetchAdaptiveQuiz(
   subject: string,
 ): Promise<PlayableQuiz | null> {
   try {
-    const response = await fetch(apiUrl('/api/quiz/adaptive-select'), {
+    const data = await apiFetch<{ questions?: AIQuizQuestion[] }>('/api/quiz/adaptive-select', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lrn, topicId: subject, numQuestions: 10 }),
     });
-
-    if (!response.ok) return null;
-    const data = await response.json();
 
     return {
       id: `adaptive_${lrn}_${Date.now()}`,
@@ -385,11 +360,12 @@ export async function saveQuizResults(
 // ─── GET STUDENT COMPETENCY ─────────────────────────────────
 
 export async function getStudentCompetency(lrn: string) {
-  const response = await fetch(apiUrl('/api/quiz/student-competency'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lrn }),
-  });
-  if (!response.ok) return null;
-  return response.json();
+  try {
+    return await apiFetch('/api/quiz/student-competency', {
+      method: 'POST',
+      body: JSON.stringify({ lrn }),
+    });
+  } catch {
+    return null;
+  }
 }

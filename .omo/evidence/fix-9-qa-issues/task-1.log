@@ -1,0 +1,42 @@
+G3a #167 notification panel stacking + portal-aware outside-click
+
+BASELINE
+- NotificationPanel.tsx: mobile backdrop was z-40; panel was z-50.
+- NotificationBell.tsx: document mousedown only excluded containerRef, so a portaled panel node was treated as outside.
+- App.tsx header stayed z-30; QuizBattlePage.tsx in-match overlay stayed z-[100] and victory modal stayed z-[200].
+
+TDD RED
+Command: npm run test -- --run src/features/notifications/NotificationBell.test.tsx src/features/notifications/NotificationPanel.test.tsx
+Result: 2 test files failed; 2 tests failed, 11 passed. Failures were the new portaled-panel inside-mousedown case and the missing z-[250] panel token.
+
+TDD GREEN
+Command: npm run test -- --run src/features/notifications/NotificationBell.test.tsx src/features/notifications/NotificationPanel.test.tsx
+Result: 2 test files passed; 13 tests passed.
+
+STATIC VERIFICATION
+Command: npm run typecheck
+Result: PASS (tsc --noEmit exited 0).
+Command: npm run lint
+Result: PASS (ESLint exited 0; existing Node deprecation warning only).
+Command: npm run lint:anti-slop
+Result: PASS (oxlint exited 0; existing module-type warning only).
+LSP: TypeScript server was unavailable because it was previously declined; compiler and lint checks above were run instead.
+
+MANUAL QA: PASS
+- Playwright route: http://127.0.0.1:5173/battle with authenticated student session.
+- Exact flow: opened battle lobby, opened notification panel, triggered VS Bot and Start Battle click handlers without an outside mousedown, then observed the active match overlay with the panel still mounted.
+- Real computed styles: panel z-index 250; battle overlay z-index 100; assertion 250 > 100 passed.
+- Screenshot: .omo/evidence/fix-9-qa-issues/task-1.png (386213 bytes).
+- Mark-read probe: panelAfterMousedown=true; clickCount=1; panelAfterMarkRead=true.
+- Outside mousedown probe: panelAfterOutside=false.
+
+ADVERSARIAL PROBES
+- stale_state: PASS — live getComputedStyle read the mounted z-[250] and z-[100] nodes; no cached class-only assertion was used.
+- dirty_worktree: PASS — pre-existing unrelated changes were identified before editing; App.tsx and QuizBattlePage.tsx were not changed.
+- misleading_success_output: PASS — browser asserted computed numeric z-index values, click event count, and panel visibility transitions.
+- other probes: NOT APPLICABLE — no schema, auth, RAG, rules, backend, or new dependency behavior was changed.
+
+CLEANUP RECEIPT
+- Playwright page closed; no QA page remains open.
+- Vite PID 3736 on port 5173 was pre-existing (command: node node_modules/vite/bin/vite.js --host 127.0.0.1), reused, and left untouched.
+- This run started no server, created no new PID, and owns no port to terminate.
