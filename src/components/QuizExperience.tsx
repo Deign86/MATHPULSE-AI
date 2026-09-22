@@ -776,10 +776,17 @@ playSound('complete');
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch((err) => {
+        // Issue #159: fullscreen needs a user gesture and may be denied (e.g.
+        // iframe permissions) — the quiz works identically windowed.
+        console.debug('[QuizExperience] enter fullscreen denied:', err);
+      });
       setIsFullscreen(true);
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch((err) => {
+        // Issue #159: see above — exiting fullscreen is best-effort.
+        console.debug('[QuizExperience] exit fullscreen failed:', err);
+      });
       setIsFullscreen(false);
     }
   };

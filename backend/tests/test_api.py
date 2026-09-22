@@ -202,6 +202,22 @@ class TestAuthMiddleware:
 
 
 class TestChatEndpoint:
+    @pytest.fixture(scope="class", autouse=True)
+    @classmethod
+    def pin_jev_intent(cls):
+        with patch.object(
+            main_module,
+            "route_student_intent",
+            new=AsyncMock(
+                return_value={
+                    "choice": "conceptual_confusion",
+                    "confidence": 0.0,
+                    "action": "fallback_test",
+                }
+            ),
+        ):
+            yield
+
     @patch("main.call_hf_chat")
     def test_chat_success(self, mock_chat):
         mock_chat.return_value = "Hello! 2+2=4."

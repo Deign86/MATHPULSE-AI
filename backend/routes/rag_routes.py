@@ -12,9 +12,12 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
 from services.llm_json import extract_json_object
+from services.jev_client import verify_lesson_factuality
 
 from services.inference_client import (
     InferenceRequest,
+    InferenceAuthError,
+    InferenceConnectionError,
     create_default_client,
     is_sequential_model,
     get_model_for_task,
@@ -131,11 +134,15 @@ class RagLessonRequest(BaseModel):
     def _coerce_quarter(cls, value: Any) -> Any:
         # Grade-11-only: lessons may carry quarter as "Q1" string; RAG needs int 1-4.
         if isinstance(value, int) and not isinstance(value, bool):
-            return value
-        match = re.search(r"[1-4]", str(value or ""))
-        if match:
-            return int(match.group(0))
-        raise ValueError("quarter must be 1-4 (accepts 'Q1'-style strings)")
+            coerced = value
+        else:
+            match = re.fullmatch(r"\s*(?:Q(?:uarter)?\s*)?([1-4])\s*", str(value or ""), re.IGNORECASE)
+            if not match:
+                raise ValueError("quarter must be 1-4 (accepts 'Q1'-style strings)")
+            coerced = int(match.group(1))
+        if not 1 <= coerced <= 4:
+            raise ValueError("quarter must be 1-4 (accepts 'Q1'-style strings)")
+        return coerced
 
 
 class RagProblemRequest(BaseModel):
@@ -417,6 +424,26 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             max_new_tokens=4096,
             enable_thinking=True,
         )
+    except InferenceAuthError as exc:
+        logger.error(f"RAG inference auth error: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "inference_auth_failed",
+                "message": f"AI model call failed: {exc}",
+                "type": type(exc).__name__,
+            },
+        )
+    except InferenceConnectionError as exc:
+        logger.error(f"RAG inference connection error: {type(exc).__name__}: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "inference_connection_failed",
+                "message": f"AI model call failed: {exc}",
+                "type": type(exc).__name__,
+            },
+        )
     except Exception as exc:
         logger.error(f"RAG inference error: {type(exc).__name__}: {exc}")
         raise HTTPException(
@@ -431,7 +458,32 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
     # ── Step 4: Parse & validate response ────────────────────────────────────
     try:
         parsed_lesson = _strip_thinking_and_parse(raw_explanation)
-        parsed_lesson = _ensure_7_sections(parsed_lesson, payload.lessonTitle or payload.topic, chunks=chunks)
+        lesson_title = payload.lessonTitle or payload.topic
+        ref_text = format_retrieved_chunks(chunks)
+        gen_text = json.dumps(parsed_lesson.get("sections", []), ensure_ascii=False)
+        try:
+            verification = await verify_lesson_factuality(
+                reference_text=ref_text,
+                generated_text=gen_text,
+            )
+        except Exception as exc:
+            logger.warning("Jev verification error: %s; failing open", exc)
+            verification = None
+
+        if verification is not None and (
+            not verification.get("verified", True)
+            or verification.get("pCorrect", 1.0) < 0.70
+        ):
+            logger.warning(
+                "Jev factuality check failed (pCorrect=%.2f); replacing with grounded defaults",
+                verification.get("pCorrect", 0.0),
+            )
+            parsed_lesson = {
+                **parsed_lesson,
+                "sections": list(_build_grounded_defaults(lesson_title, chunks=chunks).values()),
+            }
+        else:
+            parsed_lesson = _ensure_7_sections(parsed_lesson, lesson_title, chunks=chunks)
     except Exception as exc:
         logger.error(f"RAG parse error: {type(exc).__name__}: {exc}")
         raise HTTPException(
@@ -508,6 +560,7 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             for row in chunks
         ],
         "activeModel": get_model_for_task("rag_lesson"),
+        "jevVerification": verification,
     }
 
 

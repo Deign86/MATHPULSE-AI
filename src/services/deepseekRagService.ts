@@ -1,4 +1,4 @@
-import { apiUrl } from '../config/env';
+import { apiFetch } from './apiService';
 
 export interface ModulePreviewResult {
   ai_overview: string;
@@ -12,19 +12,24 @@ export interface StudyTipsResult {
   confidence_score: number;
 }
 
+// Both `/api/deepseek/*` calls route through the authed `apiFetch` client so
+// the Firebase bearer token is attached (with 401-refresh retry). Failure
+// fallbacks are preserved: callers render the no-AI state when generation
+// is unavailable or the session is unauthenticated (server responds 401).
 export async function fetchModulePreview(
   moduleId: string,
   moduleTitle: string,
   subject: string,
   quarter: number,
 ): Promise<ModulePreviewResult> {
-  const res = await fetch(apiUrl('/api/deepseek/module-preview'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ module_id: moduleId, module_title: moduleTitle, subject, quarter }),
-  });
-  if (!res.ok) return { ai_overview: '', rag_confidence: 'low', generated: false };
-  return res.json();
+  try {
+    return await apiFetch<ModulePreviewResult>('/api/deepseek/module-preview', {
+      method: 'POST',
+      body: JSON.stringify({ module_id: moduleId, module_title: moduleTitle, subject, quarter }),
+    });
+  } catch {
+    return { ai_overview: '', rag_confidence: 'low', generated: false };
+  }
 }
 
 export async function fetchStudyTips(
@@ -34,17 +39,18 @@ export async function fetchStudyTips(
   subject: string,
   confidenceScore: number,
 ): Promise<StudyTipsResult> {
-  const res = await fetch(apiUrl('/api/deepseek/study-tips'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      student_id: studentId,
-      topic_id: topicId,
-      topic_name: topicName,
-      subject,
-      confidence_score: confidenceScore,
-    }),
-  });
-  if (!res.ok) return { tips: '', generated: false, confidence_score: 0 };
-  return res.json();
+  try {
+    return await apiFetch<StudyTipsResult>('/api/deepseek/study-tips', {
+      method: 'POST',
+      body: JSON.stringify({
+        student_id: studentId,
+        topic_id: topicId,
+        topic_name: topicName,
+        subject,
+        confidence_score: confidenceScore,
+      }),
+    });
+  } catch {
+    return { tips: '', generated: false, confidence_score: 0 };
+  }
 }

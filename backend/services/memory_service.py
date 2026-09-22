@@ -12,6 +12,7 @@ Layers:
 
 import os
 import re
+import time
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -1013,7 +1014,14 @@ def check_memory_health(uid: str) -> dict:
         result["_elapsed_ms"] = _time_ms() - now
         return result
 
-    db = firebase_admin.firestore.client()
+    from firebase_admin import firestore as _fs
+
+    db = _get_firestore()
+    if db is None:
+        for key in ("profile_writable", "active_state_writable", "session_summary_writable"):
+            result[key]["error"] = "Firestore not initialized"
+        result["_elapsed_ms"] = _time_ms() - now
+        return result
     test_prefix = f"_health_check_test_{int(time.time())}"
     profile_ref = db.collection("users").document(uid).collection("tutorMemory").document("profile")
     active_ref = db.collection("users").document(uid).collection("tutorMemory").document("working").collection("state").document("active_state")
@@ -1039,7 +1047,7 @@ def check_memory_health(uid: str) -> dict:
             result["profile_writable"]["error"] = "Write verification failed"
         result["profile_writable"]["latency_ms"] = latency
         # Cleanup
-        profile_ref.update({"stable_facts.test_fact": firestore.DELETE_FIELD})
+        profile_ref.update({"stable_facts.test_fact": _fs.DELETE_FIELD})
     except Exception as e:
         result["profile_writable"]["error"] = str(e)
         result["profile_writable"]["latency_ms"] = _time_ms() - t0
@@ -1057,7 +1065,7 @@ def check_memory_health(uid: str) -> dict:
             result["active_state_writable"]["error"] = "Write verification failed"
         result["active_state_writable"]["latency_ms"] = latency
         # Cleanup
-        active_ref.update({"active_topic": firestore.DELETE_FIELD, "turn_count": firestore.DELETE_FIELD})
+        active_ref.update({"active_topic": _fs.DELETE_FIELD, "turn_count": _fs.DELETE_FIELD})
     except Exception as e:
         result["active_state_writable"]["error"] = str(e)
         result["active_state_writable"]["latency_ms"] = _time_ms() - t0
@@ -1068,7 +1076,7 @@ def check_memory_health(uid: str) -> dict:
         session_ref.set({
             "concepts_covered": ["health_check_test"],
             "key_insights": "health check",
-            "timestamp": firestore.SERVER_TIMESTAMP,
+            "timestamp": _fs.SERVER_TIMESTAMP,
         })
         readback = session_ref.get()
         data = readback.to_dict() if readback.exists else {}

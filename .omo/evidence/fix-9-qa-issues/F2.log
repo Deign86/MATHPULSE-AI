@@ -1,0 +1,50 @@
+F2 code quality review
+Date: 2026-09-21
+Scope: exact files changed by the last 15 commits from `git log --oneline -15`.
+Constraint: read-only product review; no source edits, no Playwright, each npm command capped at 300 seconds.
+
+RESULT: APPROVE
+
+QUALITY GATES
+- PASS: `npm run typecheck` — exit 0 (`tsc --noEmit`), no compiler output.
+- PASS: `npm run lint` — exit 0 (`eslint src --ext .ts,.tsx`). Node emitted only the existing `util._extend` deprecation warning.
+- PASS: `npm run lint:anti-slop` — exit 0 (`oxlint --quiet`). Node emitted only the existing `MODULE_TYPELESS_PACKAGE_JSON` warning for `oxlint.config.ts`.
+
+RECENT-COMMIT SCOPE
+- `git log --name-status --format='COMMIT %H %s' -15` identified 26 unique non-`.omo` paths.
+- The TypeScript/TSX subset contained 23 paths:
+  - `src/components/__tests__/LessonViewerGrounding.test.tsx`
+  - `src/components/__tests__/TeacherDashboardClassCounts.test.ts`
+  - `src/components/GradesPage.test.tsx`
+  - `src/components/GradesPage.tsx`
+  - `src/components/LessonViewer.tsx`
+  - `src/components/Sidebar.test.tsx`
+  - `src/components/Sidebar.tsx`
+  - `src/components/StudentIDCard.test.tsx`
+  - `src/components/StudentIDCard.tsx`
+  - `src/components/TeacherDashboard.tsx`
+  - `src/features/notifications/NotificationBell.test.tsx`
+  - `src/features/notifications/NotificationBell.tsx`
+  - `src/features/notifications/NotificationContext.test.tsx`
+  - `src/features/notifications/NotificationContext.tsx`
+  - `src/features/notifications/notificationFirestoreService.test.ts`
+  - `src/features/notifications/notificationFirestoreService.ts`
+  - `src/features/notifications/notificationMarkAllAsRead.test.ts`
+  - `src/features/notifications/NotificationPanel.test.tsx`
+  - `src/features/notifications/NotificationPanel.tsx`
+  - `src/utils/pdfExport.test.ts`
+  - `src/utils/pdfExport.ts`
+  - `src/utils/studentIdVerification.test.ts`
+  - `src/utils/studentIdVerification.ts`
+
+NEW-LINE QUALITY SCAN
+- Exact command strategy: collected the 15 commit hashes, ran `git show --unified=0` for each TS/TSX diff, and scanned added lines only.
+- PASS: `as any` additions — 0.
+- PASS: `@ts-ignore`, `@ts-nocheck`, and `@ts-expect-error` additions — 0.
+- PASS: empty `catch {}` additions — 0.
+- PASS: console-only/logging additions — 0, including `console.log`.
+- Full-file scan observed pre-existing `(lesson as any)` and console calls in touched files; these were not added by the exact last-15 commit diffs and are not counted as F2 new-path findings.
+
+VERIFICATION NOTES
+- No test suite, build, server, or browser tooling was run because F2 requested only typecheck, lint, anti-slop, and targeted grep review.
+- No product files were edited. The only requested artifact is this evidence log.

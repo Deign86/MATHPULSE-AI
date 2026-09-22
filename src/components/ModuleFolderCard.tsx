@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import type { ModuleStatus } from '../data/curriculumModules';
 import { fetchModulePreview } from '../services/deepseekRagService';
+import { pluralize } from '../utils/display';
 
 export const THEMES = [
   { bg: 'bg-[#9956DE]', tab: 'bg-[#8544c7]', shadow: 'shadow-[#9956DE]/30' },
@@ -126,10 +127,10 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
               {/* Lessons & Quizzes Pills - Bottom Left */}
               <div className="flex flex-wrap md:flex-nowrap items-center gap-1 md:gap-1.5">
                 <div className="flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 bg-white/25 rounded-md md:rounded-lg text-white font-bold text-[9px] md:text-[11px] backdrop-blur-md shadow-[0_2px_4px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.4)] border border-white/30">
-                  <BookOpen size={10} className="md:w-3 md:h-3 opacity-90" /> {module.totalLessons || module.lessons?.length || 0} lessons
+                  <BookOpen size={10} className="md:w-3 md:h-3 opacity-90" /> {pluralize(module.totalLessons || module.lessons?.length || 0, 'lesson')}
                 </div>
                 <div className="flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 bg-white/25 rounded-md md:rounded-lg text-white font-bold text-[9px] md:text-[11px] backdrop-blur-md shadow-[0_2px_4px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.4)] border border-white/30">
-                  <Clock size={10} className="md:w-3 md:h-3 opacity-90" /> {module.totalQuizzes || module.quizzes?.length || 0} quizzes
+                  <Clock size={10} className="md:w-3 md:h-3 opacity-90" /> {pluralize(module.totalQuizzes || module.quizzes?.length || 0, 'quiz', 'quizzes')}
                 </div>
               </div>
 
@@ -196,7 +197,11 @@ const ModuleStatusOverlay: React.FC<ModuleStatusOverlayProps> = ({ moduleStatus,
     let cancelled = false;
     fetchModulePreview(moduleId, moduleTitle, moduleSubject || 'General Mathematics', moduleQuarter || 1)
       .then((r) => { if (!cancelled && r.generated) setAiPreview(r.ai_overview); })
-      .catch(() => {});
+      .catch((err) => {
+        // Issue #159: progressive enhancement — the card renders fully without
+        // the AI preview; failure only means the preview stays hidden.
+        console.debug('[ModuleFolderCard] AI preview unavailable:', err);
+      });
     return () => { cancelled = true; };
   }, [moduleStatus, moduleId, moduleTitle, moduleSubject, moduleQuarter]);
 

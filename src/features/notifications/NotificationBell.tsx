@@ -11,20 +11,20 @@ export const NotificationBell: React.FC = () => {
   const { unreadCount } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const bellButtonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // SAFETY: pointer events outside the bell always carry a DOM event target Node.
       const target = event.target as Node;
-      if (containerRef.current && containerRef.current.contains(target)) {
-        return;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        panelRef.current &&
+        !panelRef.current.contains(target)
+      ) {
+        setIsOpen(false);
       }
-      const panelElement = document.querySelector('[data-testid="notification-panel"]');
-      if (panelElement && panelElement.contains(target)) {
-        return;
-      }
-      setIsOpen(false);
     };
 
     if (isOpen) {
@@ -41,7 +41,6 @@ export const NotificationBell: React.FC = () => {
   return (
     <div ref={containerRef} className="relative">
       <button
-        ref={bellButtonRef}
         onClick={() => setIsOpen((prev) => !prev)}
         className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:shadow-[0_6px_20px_rgba(245,158,11,0.18)] hover:border-amber-200/80 text-slate-700 hover:text-amber-500 transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none cursor-pointer group active:scale-95"
         aria-label="Notifications"
@@ -57,10 +56,7 @@ export const NotificationBell: React.FC = () => {
       </button>
 
       {isOpen && (
-        <NotificationPanel
-          onClose={() => setIsOpen(false)}
-          triggerRef={bellButtonRef}
-        />
+        <NotificationPanel onClose={() => setIsOpen(false)} panelRef={panelRef} />
       )}
     </div>
   );

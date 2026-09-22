@@ -11,6 +11,7 @@ import { subjects, Module, Lesson, Quiz } from '../data/subjects';
 import { getLessonById } from '../data/curriculum/types';
 import { useAuth } from '../contexts/AuthContext';
 import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
+import { computeHonestXp } from '../services/honestXp';
 import { db } from '../lib/firebase';
 import { getQuestionCountForQuiz } from '../services/lessonQuizService';
 import type { UserProgress, AIQuizQuestion } from '../types/models';
@@ -19,6 +20,17 @@ import { generatePracticeSession } from '../services/practiceService';
 import { useModuleProgress } from '../hooks/useModuleProgress';
 import { Loader2 } from 'lucide-react';
 import MathPulseLoader from './ui/MathPulseLoader';
+
+const MODULE_SUBJECT_FALLBACKS = {
+  gm: 'gen-math',
+  bm: 'business-math',
+  stat: 'stats-prob',
+  sp: 'stats-prob',
+  fm: 'finite-math',
+} as const;
+
+const DEFAULT_SUBJECT_ID = 'gen-math';
+const DEFAULT_LESSON_XP = computeHonestXp({ quizScore: 0, hintsUsed: 0, streakDays: 0 });
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -33,7 +45,6 @@ interface ModuleDetailViewProps {
 }
 
 const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP, isInQuizMode = false, setIsInQuizMode }) => {
-  const STANDARD_LESSON_XP = 10;
   const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
@@ -105,13 +116,25 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return Number.isFinite(candidate) && candidate > 0 ? candidate : 1;
   }, [module.id]);
 
-  const subjectId = useMemo(() => {
+  const subjectIdResolution = useMemo(() => {
     // SAFETY: trusted internal value already conforms to the asserted type.
     const curriculumSubjectId = (module as Module & { subjectId?: string }).subjectId;
-    if (curriculumSubjectId) return curriculumSubjectId;
+    if (curriculumSubjectId) return { id: curriculumSubjectId, source: 'module' as const };
     const parent = subjects.find((s) => s.modules.some((m) => m.id === module.id));
-    return parent?.id ?? null;
+    if (parent?.id) return { id: parent.id, source: 'parent' as const };
+
+    const normalizedModuleId = module.id.trim().toLowerCase();
+    const fallbackSubjectId = Object.entries(MODULE_SUBJECT_FALLBACKS).find(([prefix]) =>
+      normalizedModuleId.startsWith(`${prefix}-`),
+    )?.[1];
+
+    return {
+      id: fallbackSubjectId ?? DEFAULT_SUBJECT_ID,
+      source: 'fallback' as const,
+    };
   }, [module.id]);
+
+  const { id: subjectId, source: subjectIdSource } = subjectIdResolution;
 
   // Palette (requested) used for per-module accents where the curriculum data isn't differentiated.
   const MODULE_PALETTE = ['#1FA7E1', '#9956DE', '#75D06A', '#FFB356', '#7274ED', '#FF8B8B', '#6ED1CF', '#FB96BB'];
@@ -333,12 +356,17 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     if (current?.type !== 'lesson' || !current.lesson) return;
     const currentLesson = current.lesson;
 
-    // Standard lesson rewards are intentionally lower to keep pacing balanced.
-    const xpAmount = STANDARD_LESSON_XP;
+    const xpAmount = computeHonestXp({ quizScore: score ?? 0, hintsUsed: 0, streakDays: 0 });
     onEarnXPRef.current?.(xpAmount, `Completed "${currentLesson.title}"`);
 
     // Persist progress for Competency Matrix (Concept Grasp)
-    if (userProfile?.uid && subjectId) {
+    if (userProfile?.uid) {
+      if (subjectIdSource === 'fallback') {
+        console.warn('[LessonComplete] Using fallback subject id', {
+          moduleId: module.id,
+          subjectId,
+        });
+      }
       void (async () => {
         try {
           await markStudyMaterialsComplete(currentLesson.id);
@@ -380,7 +408,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     } else {
       setSelectedLesson(null);
     }
-  }, [subjectId, module.id, module.lessons, module.quizzes, setIsInQuizMode]);
+  }, [subjectId, subjectIdSource, module.id, module.lessons, module.quizzes, setIsInQuizMode]);
 
   const handleProgressUpdate = useCallback((percent: number) => {
     if (!userProfile?.uid || !selectedLessonRef.current || selectedLessonRef.current.type !== 'lesson') return;
@@ -418,7 +446,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       return (
         <LessonViewer
           lesson={selectedLesson.lesson}
-          lessonCompletionXP={STANDARD_LESSON_XP}
+          lessonCompletionXP={DEFAULT_LESSON_XP}
           practiceQuiz={associatedQuiz}
           practiceQuizCompleted={practiceQuizCompleted}
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
