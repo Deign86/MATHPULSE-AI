@@ -3,7 +3,6 @@
 // Each band triggers a different automated response when WRI status changes.
 
 import { doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { recordGet } from '../utils/memberOf';
 import { db } from '../lib/firebase';
 import type { StudentRiskProfile } from '../types/models';
 
@@ -154,61 +153,25 @@ export async function increaseTutorCheckInFrequency(
 }
 
 /**
- * Send a risk_alert notification to the student's teacher.
+ * Teacher fan-out is backend-owned (issue #156).
+ *
+ * The Cloud Functions WRI trigger (riskTriggers.applyRiskResponse) writes
+ * risk_alert documents into the teacher's scoped
+ * `notifications/{teacherId}/items` subcollection via the Admin SDK after
+ * verifying the recipient holds a teacher/admin role. A browser client must
+ * never write into another user's inbox (Firestore rules deny it), so this
+ * entry point only logs the handoff and returns. Kept for API stability —
+ * triggerRiskResponse still calls it.
  */
 export async function notifyTeacher(
   studentId: string,
   status: RiskStatus,
   wri: number
 ): Promise<void> {
-  // Fetch student doc to get teacherId and name
-  const { getDoc } = await import('firebase/firestore');
-  const studentRef = doc(db, 'users', studentId);
-  const snap = await getDoc(studentRef);
-  if (!snap.exists()) {
-    console.warn(`[riskResponse] notifyTeacher: student ${studentId} not found`);
-    return;
-  }
-
-  const data = snap.data();
-  // SAFETY: user docs store teacherId/displayName/name as scalar strings.
-  const teacherId = data?.teacherId as string | undefined;
-  // SAFETY: user docs store teacherId/displayName/name as scalar strings.
-  const displayName = data?.displayName as string | undefined;
-  // SAFETY: user docs store teacherId/displayName/name as scalar strings.
-  const legacyName = data?.name as string | undefined;
-  const studentName = displayName || legacyName || studentId;
-
-  if (!teacherId) {
-    console.warn(`[riskResponse] notifyTeacher: no teacherId for ${studentId}`);
-    return;
-  }
-
-  const messageFn = recordGet(TEACHER_ALERT_MESSAGES, status);
-  if (!messageFn) return;
-
-  const message = messageFn(studentName, wri);
-
-  // Write to teacher's notifications subcollection
-  const notifRef = doc(db, 'notifications', `${teacherId}_${Date.now()}`);
-  await setDoc(notifRef, {
-    userId: teacherId,
-    type: 'risk_alert',
-    title:
-      status === 'intervene'
-        ? 'Student Intervention Needed'
-        : status === 'critical'
-        ? 'Urgent: Student Critical'
-        : 'Emergency: Student At Risk',
-    message,
-    studentId,
-    studentName,
-    wri,
-    riskStatus: status,
-    isRead: false,
-    createdAt: serverTimestamp(),
-  });
-
+  console.info(
+    `[riskResponse] teacher fan-out delegated to backend trigger (student=${studentId}, status=${status}, wri=${wri})`
+  );
+  return Promise.resolve();
 }
 
 /**

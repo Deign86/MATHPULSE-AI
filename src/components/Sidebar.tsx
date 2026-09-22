@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X, Cpu, Database, School } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { cn } from './ui/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
@@ -25,6 +25,12 @@ interface NavSection {
   items: { icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string; displayLabel?: string }[];
 }
 
+export const getSidebarWidthTransition = (reduceMotion: boolean | null) => ({
+  type: 'tween' as const,
+  duration: reduceMotion ? 0 : 0.2,
+  ease: 'easeInOut' as const,
+});
+
 const Sidebar: React.FC<SidebarProps> = ({ 
   activeTab, 
   setActiveTab, 
@@ -39,6 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion();
   const isMobile = mode === 'mobile';
   const isHoverExpanded = !forceCollapsed && sidebarHovered;
   
@@ -136,7 +143,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     <motion.aside
       initial={false}
       animate={isMobile ? { width: 280 } : { width: isCollapsed ? 80 : 280 }}
-      transition={{ type: 'spring', stiffness: 360, damping: 34 }}
+      transition={getSidebarWidthTransition(reduceMotion)}
+      style={{ willChange: 'width' }}
       onMouseEnter={() => canCollapse && sidebarCollapsed && setSidebarHovered(true)}
       onMouseLeave={() => {
         setSidebarHovered(false);

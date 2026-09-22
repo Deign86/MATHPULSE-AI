@@ -73,6 +73,7 @@ import { useCurriculum } from '../hooks/useCurriculum';
 import { submitPracticeSession } from '../services/practiceService';
 import { subscribeToUserProgress } from '../services/progressService';
 import { watchModule } from '../services/moduleWatchService';
+import { getUnlockedModuleIds } from '../services/unlockGate';
 import type { ModuleProgress, UserProgress } from '../types/models';
 
 interface ModulesPageProps {
@@ -485,15 +486,45 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   // Enrich modules with real progress from Firestore
   const modulesWithProgress = useMemo(() => {
     if (!userProgress) return filteredModules;
+
+    const modulesBySubject = new Map<string, CurriculumModuleRuntime[]>();
+    for (const curriculumModule of curriculumRuntimeModules) {
+      const subjectModules = modulesBySubject.get(curriculumModule.subjectId) ?? [];
+      subjectModules.push(curriculumModule);
+      modulesBySubject.set(curriculumModule.subjectId, subjectModules);
+    }
+
+    const unlockedModuleKeys = new Set<string>();
+    for (const [subjectId, subjectModules] of modulesBySubject) {
+      const unlockedModuleIds = getUnlockedModuleIds({
+        subjectId,
+        moduleIds: subjectModules.map((curriculumModule) => curriculumModule.id),
+        // The selector uses checkpointQuizIds[N] to unlock module N, so N must point to N-1's quiz.
+        checkpointQuizIds: subjectModules.map((_, moduleIndex) => {
+          if (moduleIndex === 0) return '';
+          const previousModule = subjectModules[moduleIndex - 1];
+          return previousModule.quizzes.find((quiz) => quiz.type === 'module')?.id
+            ?? previousModule.quizzes[0]?.id
+            ?? '';
+        }),
+        quizAttempts: userProgress.quizAttempts ?? [],
+      });
+
+      for (const moduleId of unlockedModuleIds) {
+        unlockedModuleKeys.add(`${subjectId}::${moduleId}`);
+      }
+    }
+
     return filteredModules.map(module => {
       const mp = progressBySubjectModule.get(`${module.subjectId}::${module.id}`);
-      if (!mp) return module;
+      const isAvailable = unlockedModuleKeys.has(`${module.subjectId}::${module.id}`);
+      if (!mp) return { ...module, isAvailable };
       const totalItems = module.lessons.length + module.quizzes.length;
       const completedItems = (mp.lessonsCompleted?.length || 0) + (mp.quizzesCompleted?.length || 0);
       const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-      return { ...module, progress };
+      return { ...module, progress, isAvailable };
     });
-  }, [filteredModules, userProgress, progressBySubjectModule]);
+  }, [curriculumRuntimeModules, filteredModules, userProgress, progressBySubjectModule]);
 
   const curriculumContextLabel = useMemo(() => {
     const visibleQuarter = quarterFilter === 'all' ? 'All Quarters' : quarterFilter;
@@ -537,7 +568,12 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       .then((res) => {
         setLearningPath({ status: 'ready', context: res.curriculumContext });
       })
-      .catch(() => setLearningPath(IDLE_LEARNING_PATH));
+      .catch((err) => {
+        // Issue #159: visible fallback already handled — the panel renders the
+        // idle state below. Warn so RAG outages stay visible in telemetry.
+        console.warn('[ModulesPage] learning-path context failed, showing idle:', err);
+        setLearningPath(IDLE_LEARNING_PATH);
+      });
   }, [activeTab, normalizedRiskTopics]);
 
   const handleQuizComplete = (score: number, xpEarned: number) => {

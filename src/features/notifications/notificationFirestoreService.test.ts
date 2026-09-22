@@ -78,7 +78,6 @@ const {
   createNotification,
   getUserNotifications,
   markAsRead,
-  markAllAsRead,
   deleteNotification,
   subscribeToNotifications,
   hasCheckedInToday,
@@ -88,6 +87,8 @@ import type { NotificationPayload } from './types';
 describe('notificationFirestoreService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getDocs).mockReset();
+    vi.mocked(getDocs).mockResolvedValue(snapshotWith({ docs: [] }));
   });
 
   describe('createNotification', () => {
@@ -161,12 +162,12 @@ describe('notificationFirestoreService', () => {
   describe('getUserNotifications', () => {
     it('returns notifications ordered by createdAt desc', async () => {
       const mockDocs = [
-        { id: 'notif-1', data: () => ({ userId: 'user-123', type: 'daily_checkin', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(2000, 0, 1) }) },
-        { id: 'notif-2', data: () => ({ userId: 'user-123', type: 'streak_reminder', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(1000, 0, 1) }) },
+        { id: 'notif-1', data: () => ({ userId: 'test-user-id', type: 'daily_checkin', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(2000, 0, 1) }) },
+        { id: 'notif-2', data: () => ({ userId: 'test-user-id', type: 'streak_reminder', title: 'Test 2', message: 'Msg 2', isRead: true, createdAt: new Date(1000, 0, 1) }) },
       ];
       vi.mocked(getDocs).mockResolvedValue(snapshotWith({ docs: mockDocs }));
 
-      const result = await getUserNotifications('user-123', 2);
+      const result = await getUserNotifications('test-user-id', 2);
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe('notif-1'); // Newest first
@@ -174,10 +175,17 @@ describe('notificationFirestoreService', () => {
       expect(getDocs).toHaveBeenCalled();
     });
 
+    it('returns empty array when the requested inbox is not the signed-in user', async () => {
+      const result = await getUserNotifications('someone-else');
+
+      expect(result).toEqual([]);
+      expect(getDocs).not.toHaveBeenCalled();
+    });
+
     it('returns empty array on error', async () => {
       vi.mocked(getDocs).mockRejectedValue(new Error('Query failed'));
 
-      const result = await getUserNotifications('user-123');
+      const result = await getUserNotifications('test-user-id');
 
       expect(result).toEqual([]);
     });
@@ -195,34 +203,6 @@ describe('notificationFirestoreService', () => {
       vi.mocked(updateDoc).mockRejectedValueOnce(new Error('Update failed'));
 
       await expect(markAsRead('user-123', 'notif-123')).rejects.toThrow('Update failed');
-    });
-  });
-
-  describe('markAllAsRead', () => {
-    it('marks all unread notifications as read', async () => {
-      const mockIsReadDocs = [
-        { id: 'doc-1', ref: 'ref-1', data: () => ({ isRead: false }) },
-        { id: 'doc-2', ref: 'ref-2', data: () => ({ isRead: false }) },
-      ];
-      const mockLegacyDocs = [
-        { id: 'doc-2', ref: 'ref-2', data: () => ({ read: false }) },
-        { id: 'doc-3', ref: 'ref-3', data: () => ({ read: false }) },
-      ];
-      vi.mocked(getDocs)
-        .mockResolvedValueOnce(snapshotWith({ docs: mockIsReadDocs }))
-        .mockResolvedValueOnce(snapshotWith({ docs: mockLegacyDocs }));
-      const batchUpdate = vi.fn();
-      const batchCommit = vi.fn(async () => undefined);
-      vi.mocked(firestore.writeBatch).mockImplementation(
-        // SAFETY: mock WriteBatch handle; tests track batchUpdate and batchCommit calls.
-        () => mockWriteBatchWith({ update: batchUpdate, commit: batchCommit }),
-      );
-
-      await markAllAsRead('user-123');
-
-      // doc-1, doc-2 (deduped), doc-3 → 3 batched updates, one atomic commit
-      expect(batchUpdate).toHaveBeenCalledTimes(3);
-      expect(batchCommit).toHaveBeenCalledTimes(1);
     });
   });
 

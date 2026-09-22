@@ -241,8 +241,14 @@ const HeroBannerModalContent: React.FC<{
 
 /** Check all possible Firestore locations for assessment data and build a summary */
 async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalSummary | null> {
+  // Issue #159: sequential fallback chain — each source logs at debug when
+  // unavailable and yields to the next source; all-null means "no data".
+  const nullOnFailure = (source: string) => (err: Error): null => {
+    console.debug(`[AssessmentResultsModal] fallback source ${source} unavailable:`, err);
+    return null;
+  };
   // 1. competencyProfiles/{uid}
-  const cpSnap = await getDoc(doc(db, 'competencyProfiles', studentId)).catch(() => null);
+  const cpSnap = await getDoc(doc(db, 'competencyProfiles', studentId)).catch(nullOnFailure('competencyProfiles'));
   if (cpSnap?.exists()) {
     const cp = cpSnap.data();
     const strengths: string[] = cp.primaryStrength ? [cp.primaryStrength] : [];
@@ -264,7 +270,7 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
   // 2. assessments/{uid}/attempts (from completeInitialAssessment)
   const assessSnap = await getDocs(
     query(collection(db, 'assessments', studentId, 'attempts'), orderBy('completedAt', 'desc'), limit(1))
-  ).catch(() => null);
+  ).catch(nullOnFailure('assessments/attempts'));
   if (assessSnap && !assessSnap.empty) {
     const d = assessSnap.docs[0].data();
     const score = d.rawScore || d.overallScorePercent || 0;
@@ -285,7 +291,7 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
   }
 
   // 3. diagnosticResults/{uid}
-  const diagSnap = await getDoc(doc(db, 'diagnosticResults', studentId)).catch(() => null);
+  const diagSnap = await getDoc(doc(db, 'diagnosticResults', studentId)).catch(nullOnFailure('diagnosticResults'));
   if (diagSnap?.exists()) {
     const d = diagSnap.data();
     const score = d.overallScorePercent || d.overall_score_percent || 0;
@@ -307,7 +313,7 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
   // 4. users/{uid}/assessments subcollection (from gradesService.saveAssessmentResult)
   const gradesSnap = await getDocs(
     query(collection(db, 'users', studentId, 'assessments'), orderBy('completedAt', 'desc'), limit(5))
-  ).catch(() => null);
+  ).catch(nullOnFailure('users/assessments'));
   if (gradesSnap && !gradesSnap.empty) {
     const entries = gradesSnap.docs.map(d => d.data());
     const latest = entries[0];
@@ -328,7 +334,7 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
   }
 
   // 5. Last resort: user profile has initialAssessmentCompleted but no detailed data
-  const userSnap = await getDoc(doc(db, 'users', studentId)).catch(() => null);
+  const userSnap = await getDoc(doc(db, 'users', studentId)).catch(nullOnFailure('users/profile'));
   if (userSnap?.exists()) {
     const u = userSnap.data();
     if (u.initialAssessmentCompleted || u.hasCompletedInitialAssessment) {

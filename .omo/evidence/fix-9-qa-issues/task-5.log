@@ -1,0 +1,21 @@
+G6A-172 Task 5 manual QA evidence
+Date: 2026-09-21
+Target: http://127.0.0.1:5173/battle
+
+LIVE QA
+- PASS: Existing authenticated Test Student session loaded Quiz Battle without a page reload.
+- PASS: VS Bot setup opened and a completed bot match returned to the battle arena.
+- OBSERVED: Header showed `XP: 248` before starting and `XP: 248` after completion; the live backend exposed no visible XP delta in this run.
+- OBSERVED: Match UI advanced through the completed rounds and returned to the lobby; no browser console errors were reported.
+- LIMITATION: Playwright MCP could not attach because its Chromium profile was already locked by another session. The same attached Chromium page was driven through the DevTools browser control and produced `task-5.png`.
+
+REGRESSION PROOF
+- PASS: `npx vitest run src/components/__tests__/QuizBattleProfileRefresh.test.tsx --reporter=verbose`
+- PASS: Delayed `refreshProfile` resolution kept the header at `100 XP` until the profile write resolved, then updated it to `150 XP` without a reload and called `refreshProfile` exactly once.
+- PASS: Full Vitest suite: 44 files and 286 tests passed.
+- PASS: `npm run lint:anti-slop`.
+- PASS: `npm run build`.
+- PASS: `npm run typecheck` (`TYPECHECK_PASS`).
+
+ARTIFACT
+- Screenshot: `.omo/evidence/fix-9-qa-issues/task-5.png`

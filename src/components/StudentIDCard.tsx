@@ -1,7 +1,9 @@
 import React, { useRef, useState } from 'react';
 import { CheckCircle2, RotateCw, Sparkles, Star, Zap, GraduationCap, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
+import { QRCodeSVG } from 'qrcode.react';
 import type { ProfileData } from './SettingsPage';
+import { buildStudentIdVerificationPayload, STUDENT_ID_QR_OPTIONS } from '../utils/studentIdVerification';
 
 interface StudentIDCardProps {
   profileData: ProfileData;
@@ -10,83 +12,6 @@ interface StudentIDCardProps {
   onPhotoUploaded?: (photoURL: string) => void;
   className?: string;
 }
-
-/**
- * Cute MathPulse Barcode Graphic (SVG)
- * Deterministically renders bars based on the student's real LRN or UID
- */
-const StudentBarcodeSVG: React.FC<{ code: string }> = ({ code }) => {
-  const bars = [
-    2, 1, 3, 1, 2, 4, 1, 2, 3, 1, 1, 2, 4, 1, 2, 1, 3, 2, 1, 4,
-    1, 2, 2, 1, 3, 1, 4, 2, 1, 2, 1, 3, 2, 1, 4, 1, 2, 3, 1, 2,
-    1, 3, 1, 4, 2, 1, 2, 3, 1, 1, 2, 4, 1, 2, 1, 3, 2, 1, 4, 2,
-  ];
-
-  return (
-    <div className="flex flex-col items-start select-none">
-      <svg
-        viewBox="0 0 160 26"
-        className="w-full max-w-[130px] sm:max-w-[145px] h-5 sm:h-6 text-slate-800 dark:text-slate-200"
-        fill="currentColor"
-        aria-label="Student ID Barcode"
-      >
-        {bars.map((width, idx) => {
-          const x = bars.slice(0, idx).reduce((acc, w) => acc + w + 1, 0);
-          return idx % 2 === 0 ? (
-            <rect key={idx} x={x} y={0} width={width} height={26} rx={0.5} />
-          ) : null;
-        })}
-      </svg>
-      <span className="font-mono text-[9px] tracking-wider text-slate-500 dark:text-slate-400 font-bold pl-0.5">
-        *{code}*
-      </span>
-    </div>
-  );
-};
-
-/**
- * Cute Mini QR Code with center heart/pulse glyph
- */
-const CuteMiniQRSVG: React.FC = () => (
-  <div className="relative p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
-    <svg
-      viewBox="0 0 32 32"
-      className="w-7 h-7 sm:w-8 sm:h-8 text-slate-800 dark:text-slate-100"
-      fill="currentColor"
-      aria-label="Digital Verification QR"
-    >
-      {/* Corner position markers */}
-      <rect x="1" y="1" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2" />
-      <rect x="4" y="4" width="3" height="3" rx="0.5" />
-      <rect x="22" y="1" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2" />
-      <rect x="25" y="4" width="3" height="3" rx="0.5" />
-      <rect x="1" y="22" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2" />
-      <rect x="4" y="25" width="3" height="3" rx="0.5" />
-      {/* Data dots */}
-      <rect x="13" y="2" width="2" height="2" rx="0.5" />
-      <rect x="17" y="2" width="2" height="2" rx="0.5" />
-      <rect x="13" y="6" width="2" height="2" rx="0.5" />
-      <rect x="15" y="10" width="2" height="2" rx="0.5" />
-      <rect x="11" y="14" width="2" height="2" rx="0.5" />
-      <rect x="19" y="14" width="2" height="2" rx="0.5" />
-      <rect x="2" y="13" width="2" height="2" rx="0.5" />
-      <rect x="6" y="17" width="2" height="2" rx="0.5" />
-      <rect x="24" y="13" width="2" height="2" rx="0.5" />
-      <rect x="28" y="17" width="2" height="2" rx="0.5" />
-      <rect x="13" y="22" width="2" height="2" rx="0.5" />
-      <rect x="17" y="24" width="2" height="2" rx="0.5" />
-      <rect x="23" y="24" width="2" height="2" rx="0.5" />
-      <rect x="27" y="22" width="2" height="2" rx="0.5" />
-      <rect x="23" y="28" width="2" height="2" rx="0.5" />
-      <rect x="27" y="28" width="2" height="2" rx="0.5" />
-      {/* Center Cute Heart */}
-      <path
-        d="M16 13.5 C15 12 13 12.5 13 14 C13 15.5 16 17.5 16 17.5 C16 17.5 19 15.5 19 14 C19 12.5 17 12 16 13.5 Z"
-        className="fill-purple-600 dark:fill-purple-400"
-      />
-    </svg>
-  </div>
-);
 
 interface PhotoCellProps {
   photoURL?: string;
@@ -186,9 +111,10 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
   const studentName = profileData.name?.trim() || 'Student Learner';
   const hasLRN = Boolean(profileData.lrn?.trim());
   const lrnDisplay = hasLRN ? profileData.lrn?.trim() : 'Pending';
-  const barcodeCode = hasLRN
-    ? (profileData.lrn?.trim() || '')
-    : (profileData.uid ? profileData.uid.slice(0, 10).toUpperCase() : 'STUDENT');
+  const verificationPayload = buildStudentIdVerificationPayload(
+    window.location.host,
+    profileData.uid ?? '',
+  );
 
   const gradeText = profileData.grade
     ? (profileData.grade.startsWith('Grade') ? profileData.grade : `Grade ${profileData.grade}`)
@@ -367,10 +293,30 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
               </div>
             </div>
 
-            {/* Bottom Bar: Cute Barcode + Mini QR */}
             <div className="px-3.5 py-1 bg-slate-50 dark:bg-slate-950/90 border-t border-purple-100 dark:border-purple-950 flex items-center justify-between gap-2">
-              <StudentBarcodeSVG code={barcodeCode} />
-              <CuteMiniQRSVG />
+              <span className="font-mono text-[9px] tracking-wider text-slate-500 dark:text-slate-400 font-bold">
+                Scan to verify
+              </span>
+              {verificationPayload.kind === 'ready' ? (
+                <a
+                  href={verificationPayload.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Open student ID verification in a new tab"
+                  className="inline-flex rounded-lg bg-white p-1 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <QRCodeSVG
+                    value={verificationPayload.url}
+                    {...STUDENT_ID_QR_OPTIONS}
+                    className="h-8 w-8 sm:h-9 sm:w-9"
+                  />
+                </a>
+              ) : (
+                <span className="inline-flex min-h-8 items-center rounded-lg border border-slate-200 px-2 text-[9px] font-bold text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                  Verification unavailable
+                </span>
+              )}
             </div>
           </div>
 

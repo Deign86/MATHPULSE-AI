@@ -31,7 +31,11 @@ export const BattleFooter: React.FC<BattleFooterProps> = React.memo(({
         // SAFETY: trusted internal value already conforms to the asserted type.
         setOpponentLayers(profile.avatarLayers as AvatarLayers);
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      // Issue #159: cosmetic-only fetch — opponent avatar layers fall back to
+      // initials when unavailable. Logged (debug) so failures stay visible.
+      console.debug('[BattleFooter] opponent avatar layers unavailable:', err);
+    });
     return () => { cancelled = true; };
   }, [opponentId]);
 

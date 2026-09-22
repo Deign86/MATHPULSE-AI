@@ -60,7 +60,7 @@ except Exception:
 
 # STARTUP VALIDATION - Run before anything else to prevent restart loops
 try:
-    from startup_validation import run_all_validations
+    from startup_validation import run_all_validations, validate_deepseek_auth
     run_all_validations()  # Exits with error if any critical check fails
 except ImportError as e:
     # If startup_validation module is not found, log warning but continue
@@ -130,6 +130,9 @@ from routes.intervention_routes import router as intervention_router
 from routes.pipeline_routes import router as pipeline_router
 from routes.deepseek_rag_routes import router as deepseek_rag_router
 from routes.at_risk_resolution import router as at_risk_resolution_router
+from routes.fun_modules_routes import router as fun_modules_router
+from routes.jev_routes import router as jev_router
+from services.jev_client import route_student_intent
 
 # Rate limiting (slowapi)
 try:
@@ -395,6 +398,7 @@ PUBLIC_API_PATHS: Set[str] = {
     "/api/quiz/topics",
     "/api/rag/health",
     "/api/templates/class-records",
+    "/api/jev/verify",
 }
 
 ROLE_POLICIES: Dict[str, Set[str]] = {
@@ -565,8 +569,17 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         except Exception as exc:
             logger.error("RAG vectorstore warm-up failed: %s", exc)
 
+    async def _warmup_deepseek_auth() -> None:
+        auth_state = await asyncio.to_thread(validate_deepseek_auth, 5.0)
+        logger.warning(
+            "DeepSeek startup auth state: status=%s key=%s",
+            auth_state["status"],
+            auth_state["key_suffix"],
+        )
+
     _warmup_inference_task = asyncio.create_task(_warmup_inference_client())
     _warmup_vectorstore_task = asyncio.create_task(_warmup_vectorstore())
+    _warmup_deepseek_auth_task = asyncio.create_task(_warmup_deepseek_auth())
 
     # FIX(502): Set a readiness flag so /health reports the true state without
     # triggering heavy init on every health-check ping from HF Spaces' proxy.
@@ -1207,6 +1220,8 @@ app.include_router(intervention_router)
 app.include_router(pipeline_router)
 app.include_router(deepseek_rag_router)
 app.include_router(at_risk_resolution_router)
+app.include_router(fun_modules_router)
+app.include_router(jev_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
@@ -1242,7 +1257,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 _cors_origins = [
     origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:4173").split(",")
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173").split(",")
     if origin.strip()
 ]
 
@@ -1827,6 +1842,7 @@ _MATH_SCOPE_PATTERNS: Tuple[re.Pattern[str], ...] = (
     re.compile(r"\b(?:difference between|relationship between|compare|contrast)\s+(?:\w+\s+){0,3}(?:and|vs|versus|with)", re.IGNORECASE),
     # Learning/understanding signals
     re.compile(r"\b(?:i don't understand|i don't get|i'm confused|help me|can you help|struggle|confus|difficult|hard to)\b", re.IGNORECASE),
+    re.compile(r"\b(?:give me|just give me|tell me)\s+(?:the\s+)?answer\b", re.IGNORECASE),
     # Proof derivation
     re.compile(r"\b(?:proof|prove|derivation|derive|show that)\b", re.IGNORECASE),
 )
@@ -2214,8 +2230,11 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     verified: Optional[bool] = None
-    confidence: Optional[str] = None
+    confidence: Optional[float] = None
     warning: Optional[str] = None
+    sources: List[Dict[str, Any]] = Field(default_factory=list)
+    suggestedFollowups: List[str] = Field(default_factory=list)
+    activeModel: Optional[str] = None
 
 
 class StudentRiskData(BaseModel):
@@ -2325,12 +2344,27 @@ class TestingResetResponse(BaseModel):
 # to decide whether to route traffic; a slow response or crash here causes 502.
 @app.get("/health")
 async def health_check():
+    # Cached DeepSeek auth state is read dynamically (never imported by name):
+    # the startup probe rebinds the holder, and this handler must see the
+    # current object. Missing module or holder degrades to "unchecked".
+    try:
+        import startup_validation as _startup_validation_module
+        cached_auth = (
+            getattr(_startup_validation_module, "cached_deepseek_auth_state", None) or {}
+        )
+    except Exception:
+        cached_auth = {}
     return {
         "status": "ready" if _backend_ready else "starting",
         "space": "mathpulse-ai",
         "firebase": _firebase_ready,
         "chat_model": CHAT_MODEL,
         "risk_model": RISK_MODEL,
+        "deepseek": {
+            "status": cached_auth.get("status", "unchecked"),
+            "key_suffix": cached_auth.get("key_suffix", "****"),
+            "checked_at": cached_auth.get("checked_at"),
+        },
     }
 
 
@@ -2686,6 +2720,31 @@ async def chat_tutor(request: ChatRequest):
             boundary_response = get_scope_boundary_response(request.message, request.history)
             if boundary_response is not None:
                 return ChatResponse(response=boundary_response)
+
+        if not request.history and not _skip_scope_check:
+            try:
+                intent_res = await route_student_intent(request.message)
+                if (
+                    intent_res.get("choice") == "direct_answer_request"
+                    and float(intent_res.get("confidence", 0.0)) >= 0.80
+                ):
+                    return ChatResponse(
+                        response=(
+                            "I can guide you step-by-step, but I won't give the final answer "
+                            "directly! What is the governing formula or first step you think "
+                            "we should use here?"
+                        ),
+                        sources=[],
+                        suggestedFollowups=[
+                            "What is the first step?",
+                            "Can you explain the formula?",
+                            "Give me a hint",
+                        ],
+                        confidence=float(intent_res.get("confidence", 0.95)),
+                        activeModel="jev-socratic-router",
+                    )
+            except Exception as intent_err:
+                logger.warning("Jev intent routing failed; continuing with chat: %s", intent_err)
 
         system_prompt = MATH_TUTOR_SYSTEM_PROMPT
 

@@ -29,6 +29,31 @@ service cloud.firestore {
       return isSignedIn() && (role() == 'teacher' || role() == 'admin');
     }
 
+    // Role is server-guarded (issue #156): a non-admin can never grant,
+    // change, or drop the role field — self role-escalation writes are
+    // denied. Only an admin may set a role, and only to a known value.
+    function roleWriteAllowed() {
+      return !request.resource.data.keys().hasAny(['role'])
+        || (resource != null && request.resource.data.role == resource.data.role)
+        || (isAdmin() && request.resource.data.role in ['student', 'teacher', 'admin']);
+    }
+
+    // Teacher-only notification types carry other users' data and are
+    // backend-only. Clients may never place them in another user's inbox.
+    function teacherOnlyNotificationType() {
+      return request.resource.data.type is string
+        && request.resource.data.type in ['risk_alert'];
+    }
+
+    // Teachers/admins may create student-appropriate items in a student's
+    // scoped inbox (e.g. quiz assignments). Self-writes always stay scoped
+    // to the writer's own inbox with a matching userId field.
+    function teacherCreatableNotification(userId) {
+      return isTeacherOrAdmin()
+        && request.resource.data.userId == userId
+        && !teacherOnlyNotificationType();
+    }
+
     // Single owner-predicate family. `isSelf` covers "this document is mine",
     // the field variants cover "this document is mine by a stored field", and
     // `ownerByField` composes them so no rule hand-rolls raw uid comparisons.
@@ -84,9 +109,10 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow create: if isSelf(userId);
+      allow create: if isSelf(userId)
+        && (!request.resource.data.keys().hasAny(['role']) || request.resource.data.role in ['student', 'teacher']);
       allow read: if isSelf(userId) || isTeacherOrAdmin();
-      allow update: if isSelf(userId) || isTeacherOrAdmin();
+      allow update: if (isSelf(userId) || isTeacherOrAdmin()) && roleWriteAllowed();
       allow delete: if isAdmin();
     }
 
@@ -227,10 +253,11 @@ service cloud.firestore {
       allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
     }
 
-    // ── Notifications subcollection ─────────────────────────────────
+    // ── Notifications subcollection (recipient-scoped inboxes) ──────────
     match /notifications/{userId}/items/{notificationId} {
       allow read, update, delete: if isSelf(userId);
-      allow create: if isSelf(userId);
+      allow create: if (isSelf(userId) && request.resource.data.userId == userId)
+        || teacherCreatableNotification(userId);
     }
 
     // ── Tutor Nudges (proactive AI nudges per student) ───────────────
@@ -456,6 +483,18 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /learning_events/{eventId} {
+      allow read: if isSignedIn() && (ownerByField('userId') || isTeacherOrAdmin());
+      allow create: if isSignedIn() && isClaimingOwner('userId');
+      allow update, delete: if false;
+    }
+
+    match /user_streaks/{userId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /contentAuditLog/{docId} {
       allow read: if isTeacherOrAdmin();
       allow create, update, delete: if false;
@@ -599,6 +638,14 @@ service cloud.firestore {
     match /classAssessments/{classId}/students/{uid} {
       allow read: if resource.data.teacherUid == request.auth.uid || isAdmin();
       allow write: if isAdmin();
+    }
+
+    // ── Class Activity Feed (teacher dashboard live stream via subscribeToActivityFeed) ──
+    // Backend writes via Firebase Admin SDK (bypasses rules); teachers/admins read the feed
+    match /activities/{activityId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
     }
     // ── Platform Config (admin-managed subject availability) ──
     match /platformConfig/{docId} {
