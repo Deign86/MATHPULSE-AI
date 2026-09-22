@@ -483,6 +483,18 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /learning_events/{eventId} {
+      allow read: if isSignedIn() && (ownerByField('userId') || isTeacherOrAdmin());
+      allow create: if isSignedIn() && isClaimingOwner('userId');
+      allow update, delete: if false;
+    }
+
+    match /user_streaks/{userId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
     match /contentAuditLog/{docId} {
       allow read: if isTeacherOrAdmin();
       allow create, update, delete: if false;

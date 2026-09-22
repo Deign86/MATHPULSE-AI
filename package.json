@@ -77,7 +77,6 @@
   "devDependencies": {
     "@capacitor/cli": "^7.6.8",
     "@oxlint/plugins": "^1.79.0",
-    "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
