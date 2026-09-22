@@ -1,0 +1,23 @@
+G4B-169 Task 10 manual QA evidence
+Date: 2026-09-21
+Scope: Student ID card QR rendering, verification link semantics, barcode removal, and missing-UID fallback.
+
+RTL RED -> GREEN
+- PASS: RED characterization against committed HEAD failed all 4 focused assertions: QR matrix/title, barcode absence, verification link, and missing-UID placeholder. The run exited 1 and restored the pre-existing StudentIDCard diff.
+- PASS: `npm run test -- --run src/components/StudentIDCard.test.tsx --reporter=verbose` — 1 file and 4 tests passed in 2.43s.
+- PASS: Focused tests assert the exact `https://${host}/verify/${uid}?src=id_card` href, `_blank` target, accessible link name, barcode absence, and `Verification unavailable` for a missing UID.
+
+CHROME DEVTOOLS QA
+- PASS: Attached chrome-devtools snapshot of the QR fixture exposed `image "Verify MathPulse student ID"`.
+- PASS: `evaluate_script` observed SVG `role=img`, `width=192`, `height=192`, title `Verify MathPulse student ID`, and a QR path; barcode selector/text counts were 0.
+- PASS: DOM-only anchor probe observed `href=https://mathpulse-ai-2026.web.app/verify/uid-fixture-169?src=id_card`, `target=_blank`, `rel=noreferrer`, `aria-label=Open student ID verification in a new tab`, and keyboard tab index 0.
+- PASS: DOM-only missing-UID probe observed `Verification unavailable`.
+- PASS: Screenshot saved to `.omo/evidence/fix-9-qa-issues/task-10.png` using `chrome-devtools_take_screenshot`.
+- LIMITATION: The attached live deployment at `https://mathpulse-ai-2026.web.app/settings` still rendered the pre-G4b barcode; no server, new window, Playwright, or browser-profile change was used. The browser evidence uses the existing QR fixture while RTL verifies the checked-in component.
+
+SCOPE + CLEANUP
+- PASS: No auth/session, SettingsPage, App, or profile data changes were made by this task.
+- OBSERVED: Pre-existing dirty worktree changes were preserved; only the StudentIDCard implementation/test and task-10 evidence paths are eligible for the requested commit.
+- PASS: No QA server or process was launched.
+
+RESULT: PASS

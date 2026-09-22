@@ -331,8 +331,39 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
+  /* ── Escape always closes the modal (issue #152) ───────────
+     Focus-independent: Alt+K opens without focusing the dialog, so
+     gating Escape on isFocused left it dead. Inline embeds are
+     excluded — Escape must not unmount those. */
+  useEffect(() => {
+    if (!isOpen || inline) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, inline, onClose]);
+
+  /* ── Focus return to trigger (issue #152) ───────────────────
+     Save the opener (Alt+K leaves focus on body, toolbar click
+     leaves it on the trigger button), move focus into the dialog,
+     restore on unmount. */
   const expressionRef = useRef<HTMLDivElement>(null);
   const calcWrapperRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<Element | null>(null);
+  useEffect(() => {
+    if (!isOpen || inline) return;
+    triggerRef.current = document.activeElement;
+    dialogRef.current?.focus();
+    const trigger = triggerRef.current;
+    return () => {
+      if (trigger instanceof HTMLElement) trigger.focus();
+    };
+  }, [isOpen, inline]);
 
   // Persist minimized state
   useEffect(() => {
@@ -403,7 +434,6 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
       else if (key === '^') { handleInput('^'); e.preventDefault(); }
       else if (key === 'Enter' || key === '=') { handleEquals(); e.preventDefault(); }
       else if (key === 'Backspace') { handleDelete(); e.preventDefault(); }
-      else if (key === 'Escape') { handleAllClear(); e.preventDefault(); }
       else if (key === 'Delete') { handleAllClear(); e.preventDefault(); }
     };
     document.addEventListener('keydown', handleKey);
@@ -811,7 +841,14 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
           {/* Calculator Dialog Container - Centered Vertically & Horizontally */}
           <motion.div
-            ref={calcWrapperRef}
+            ref={(node) => {
+              calcWrapperRef.current = node;
+              dialogRef.current = node;
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Scientific Calculator"
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -847,6 +884,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
+                  aria-label="Close calculator"
                   className="p-1 rounded-lg hover:bg-white/20 transition-colors cursor-pointer"
                   title="Close calculator"
                 >

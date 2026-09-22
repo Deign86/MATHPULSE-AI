@@ -120,36 +120,141 @@ def _distance_to_score(distance: float) -> float:
     return round(1.0 / (1.0 + max(distance, 0.0)), 4)
 
 
-def retrieve_curriculum_context(
-    query: str,
-    subject: str | None = None,
-    quarter: int | None = None,
-    content_domain: str | None = None,
-    chunk_type: str | None = None,
-    module_id: str | None = None,
-    lesson_id: str | None = None,
-    competency_code: str | None = None,
-    storage_path: str | None = None,
-    top_k: int = 8,
-    grade_level: str | None = None,
-    **kwargs: Any,
-) -> list[dict]:
-    from rag.vectorstore_loader import get_vectorstore_components
+def _cosine_distance(vec_a: List[float], vec_b: List[float]) -> float:
+    """Cosine distance (1 - cosine similarity) between two embedding vectors."""
+    dot = sum(a * b for a, b in zip(vec_a, vec_b))
+    norm_a = sum(a * a for a in vec_a) ** 0.5
+    norm_b = sum(b * b for b in vec_b) ** 0.5
+    if norm_a <= 0.0 or norm_b <= 0.0:
+        return 1.0
+    return max(0.0, 1.0 - dot / (norm_a * norm_b))
 
-    _, collection, embedder = get_vectorstore_components()
-    where = _to_where(subject, quarter, content_domain, chunk_type, module_id, lesson_id, competency_code, storage_path)
 
-    prefixed_query = f"Represent this sentence for searching relevant passages: {query}"
+def _meta_quarter(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _subject_filter_values(subject: Optional[str]) -> List[str]:
+    """Allowed stored `subject` values for a requested subject (mirrors _to_where)."""
+    if not subject:
+        return []
+    norm = _normalize_subject(subject)
+    candidates = [subject]
+    if norm:
+        candidates.append(norm)
+    if norm == "statistics_and_probability":
+        candidates.extend(["statistics_and_probability", "stat_prob", "statistics", "probability", "statistics and probability"])
+    elif norm == "general_mathematics":
+        candidates.extend(["general_mathematics", "general_math", "general mathematics"])
+    return list(dict.fromkeys([c for c in candidates if c]))
+
+
+def _metadata_matches(
+    md: Dict[str, Any],
+    subject: Optional[str] = None,
+    quarter: Optional[int] = None,
+    content_domain: Optional[str] = None,
+    chunk_type: Optional[str] = None,
+    module_id: Optional[str] = None,
+    lesson_id: Optional[str] = None,
+    competency_code: Optional[str] = None,
+    storage_path: Optional[str] = None,
+) -> bool:
+    """Python-side equivalent of _to_where for post-query filtering (issue #160)."""
+    if subject:
+        if str(md.get("subject") or "") not in _subject_filter_values(subject):
+            return False
+    if quarter is not None:
+        if _meta_quarter(md.get("quarter")) != int(quarter):
+            return False
+    if content_domain:
+        if str(md.get("content_domain") or "") != content_domain:
+            return False
+    if chunk_type:
+        if str(md.get("chunk_type") or "") != chunk_type:
+            return False
+    if module_id:
+        if str(md.get("module_id") or "") != module_id:
+            return False
+    if lesson_id:
+        if str(md.get("lesson_id") or "") != lesson_id:
+            return False
+    if competency_code:
+        if str(md.get("competency_code") or "") != competency_code:
+            return False
+    if storage_path:
+        cand_paths, cand_files = _normalize_storage_candidates(storage_path)
+        if str(md.get("storage_path") or "") not in cand_paths and str(md.get("source_file") or "") not in cand_files:
+            return False
+    return True
+
+
+def _row_from_chunk(content: Any, md: Dict[str, Any], distance: float, storage_path: Optional[str] = None) -> dict:
+    ret_storage = str(md.get("storage_path") or "").strip()
+    ret_source_file = str(md.get("source_file") or "").strip()
+    ret_source_path = str(md.get("source_path") or "").strip()
+
+    if not ret_storage:
+        if ret_source_path:
+            norm_sp = ret_source_path.replace("\\", "/")
+            if "curriculum/" in norm_sp:
+                ret_storage = "curriculum/" + norm_sp.split("curriculum/", 1)[1]
+        if not ret_storage and storage_path:
+            norm_sp = storage_path.replace("\\", "/").strip("/")
+            ret_storage = norm_sp if norm_sp.startswith("curriculum/") else f"curriculum/{norm_sp}"
+        if not ret_storage and ret_source_file:
+            ret_storage = f"curriculum/{ret_source_file}"
+
+    if not ret_source_file:
+        if ret_storage:
+            ret_source_file = ret_storage.split("/")[-1]
+        elif ret_source_path:
+            ret_source_file = ret_source_path.replace("\\", "/").split("/")[-1]
+
+    raw_page = md.get("page")
+    if raw_page is not None and str(raw_page).isdigit() and int(raw_page) > 0:
+        page = int(raw_page)
+    else:
+        raw_chunk = md.get("chunk_index")
+        if raw_chunk is not None and str(raw_chunk).isdigit() and int(raw_chunk) > 0:
+            page = int(raw_chunk)
+        else:
+            page = 1
+
+    return {
+        "content": str(content or ""),
+        "subject": str(md.get("subject") or "unknown"),
+        "quarter": _meta_quarter(md.get("quarter")),
+        "content_domain": str(md.get("content_domain") or "general"),
+        "chunk_type": str(md.get("chunk_type") or "concept"),
+        "source_file": ret_source_file,
+        "storage_path": ret_storage,
+        "module_id": str(md.get("module_id") or ""),
+        "lesson_id": str(md.get("lesson_id") or ""),
+        "competency_code": str(md.get("competency_code") or ""),
+        "page": page,
+        "score": _distance_to_score(distance),
+    }
+
+
+def _query_embeddings_with_fallback(
+    collection: Any,
+    embedder: Any,
+    prefixed_query: str,
+    n_results: int,
+) -> Tuple[Any, Any, List[float]]:
+    """Run an unfiltered vector query, retrying once on embedding-dimension mismatch."""
     query_embedding = embedder.encode(
         prefixed_query,
         normalize_embeddings=True,
     ).tolist()
-
     try:
         result = collection.query(
             query_embeddings=[query_embedding],
-            n_results=max(1, top_k),
-            where=where,
+            n_results=max(1, n_results),
             include=["documents", "metadatas", "distances"],
         )
     except Exception as exc:
@@ -167,12 +272,124 @@ def retrieve_curriculum_context(
             ).tolist()
             result = collection.query(
                 query_embeddings=[query_embedding],
-                n_results=max(1, top_k),
-                where=where,
+                n_results=max(1, n_results),
                 include=["documents", "metadatas", "distances"],
             )
         else:
             raise
+    return collection, result, query_embedding
+
+
+def _retrieve_exact_file_chunks(
+    collection: Any,
+    embedder: Any,
+    query_embedding: List[float],
+    storage_path: str,
+    subject: str | None,
+    quarter: int | None,
+    content_domain: str | None,
+    chunk_type: str | None,
+    module_id: str | None,
+    lesson_id: str | None,
+    competency_code: str | None,
+    top_k: int,
+) -> List[dict]:
+    """Exact-match retrieval for one source file via collection.get (server-side
+    metadata filtering works; only id-resolving vector reads are broken)."""
+    cand_paths, cand_files = _normalize_storage_candidates(storage_path)
+    payload = collection.get(
+        where={
+            "$or": [
+                {"storage_path": {"$in": cand_paths}},
+                {"source_file": {"$in": cand_files}},
+            ]
+        },
+        include=["documents", "metadatas"],
+    )
+    ids = payload.get("ids") or []
+    documents = payload.get("documents") or []
+    metadatas = payload.get("metadatas") or []
+    kept: List[Tuple[int, Dict[str, Any]]] = []
+    for idx in range(len(ids)):
+        md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
+        if not _metadata_matches(
+            md,
+            subject=subject,
+            quarter=quarter,
+            content_domain=content_domain,
+            chunk_type=chunk_type,
+            module_id=module_id,
+            lesson_id=lesson_id,
+            competency_code=competency_code,
+            storage_path=storage_path,
+        ):
+            continue
+        kept.append((idx, md))
+    rows: List[dict] = []
+    if kept:
+        texts = [str(documents[idx]) if idx < len(documents) else "" for idx, _ in kept]
+        try:
+            vectors = embedder.encode(texts, normalize_embeddings=True).tolist()
+        except Exception:
+            vectors = [None] * len(texts)
+        for (idx, md), text, vec in zip(kept, texts, vectors):
+            try:
+                distance = _cosine_distance(list(vec), query_embedding) if vec is not None else 1.0
+            except (TypeError, ValueError):
+                distance = 1.0
+            rows.append(_row_from_chunk(text, md, distance, storage_path=storage_path))
+    rows.sort(key=lambda row: row.get("score", 0.0), reverse=True)
+    return rows[: max(1, top_k)]
+
+
+def retrieve_curriculum_context(
+    query: str,
+    subject: str | None = None,
+    quarter: int | None = None,
+    content_domain: str | None = None,
+    chunk_type: str | None = None,
+    module_id: str | None = None,
+    lesson_id: str | None = None,
+    competency_code: str | None = None,
+    storage_path: str | None = None,
+    top_k: int = 8,
+    grade_level: str | None = None,
+    **kwargs: Any,
+) -> list[dict]:
+    from rag.vectorstore_loader import get_vectorstore_components
+
+    _, collection, embedder = get_vectorstore_components()
+
+    prefixed_query = f"Represent this sentence for searching relevant passages: {query}"
+
+    # FIX (issue #160): chroma 1.5.9 query+where raises InternalError
+    # "Error finding id" whenever the filter matches; unfiltered query and
+    # filtered get both work, so filter candidates in Python. No re-ingest.
+    if storage_path:
+        try:
+            query_embedding = embedder.encode(
+                prefixed_query,
+                normalize_embeddings=True,
+            ).tolist()
+            return _retrieve_exact_file_chunks(
+                collection,
+                embedder,
+                query_embedding,
+                storage_path,
+                subject,
+                quarter,
+                content_domain,
+                chunk_type,
+                module_id,
+                lesson_id,
+                competency_code,
+                top_k,
+            )
+        except Exception:
+            pass
+
+    fetch_n = max(int(top_k) * 10, 50)
+    _, result, _ = _query_embeddings_with_fallback(collection, embedder, prefixed_query, fetch_n)
 
     documents = (result.get("documents") or [[]])[0]
     metadatas = (result.get("metadatas") or [[]])[0]
@@ -182,52 +399,20 @@ def retrieve_curriculum_context(
     for idx, content in enumerate(documents):
         md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
         distance = float(distances[idx]) if idx < len(distances) else 1.0
-
-        ret_storage = str(md.get("storage_path") or "").strip()
-        ret_source_file = str(md.get("source_file") or "").strip()
-        ret_source_path = str(md.get("source_path") or "").strip()
-
-        if not ret_storage:
-            if ret_source_path:
-                norm_sp = ret_source_path.replace("\\", "/")
-                if "curriculum/" in norm_sp:
-                    ret_storage = "curriculum/" + norm_sp.split("curriculum/", 1)[1]
-            if not ret_storage and storage_path:
-                norm_sp = storage_path.replace("\\", "/").strip("/")
-                ret_storage = norm_sp if norm_sp.startswith("curriculum/") else f"curriculum/{norm_sp}"
-            if not ret_storage and ret_source_file:
-                ret_storage = f"curriculum/{ret_source_file}"
-
-        if not ret_source_file:
-            if ret_storage:
-                ret_source_file = ret_storage.split("/")[-1]
-            elif ret_source_path:
-                ret_source_file = ret_source_path.replace("\\", "/").split("/")[-1]
-
-        raw_page = md.get("page")
-        if raw_page is not None and str(raw_page).isdigit() and int(raw_page) > 0:
-            page = int(raw_page)
-        else:
-            raw_chunk = md.get("chunk_index")
-            if raw_chunk is not None and str(raw_chunk).isdigit() and int(raw_chunk) > 0:
-                page = int(raw_chunk)
-            else:
-                page = 1
-
-        rows.append({
-            "content": str(content or ""),
-            "subject": str(md.get("subject") or "unknown"),
-            "quarter": int(md.get("quarter") or 0),
-            "content_domain": str(md.get("content_domain") or "general"),
-            "chunk_type": str(md.get("chunk_type") or "concept"),
-            "source_file": ret_source_file,
-            "storage_path": ret_storage,
-            "module_id": str(md.get("module_id") or ""),
-            "lesson_id": str(md.get("lesson_id") or ""),
-            "competency_code": str(md.get("competency_code") or ""),
-            "page": page,
-            "score": _distance_to_score(distance),
-        })
+        if _metadata_matches(
+            md,
+            subject=subject,
+            quarter=quarter,
+            content_domain=content_domain,
+            chunk_type=chunk_type,
+            module_id=module_id,
+            lesson_id=lesson_id,
+            competency_code=competency_code,
+            storage_path=storage_path,
+        ):
+            rows.append(_row_from_chunk(content, md, distance, storage_path=storage_path))
+        if len(rows) >= max(1, top_k):
+            break
     return rows
 
 

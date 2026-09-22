@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Eye,
   EyeOff,
@@ -137,7 +137,39 @@ export const LoginPage: React.FC = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Issue #159: revealed passwords auto-hide after 10s so plaintext does not
+  // linger indefinitely on shared screens.
+  const showPasswordTimerRef = useRef<number | null>(null);
+  const hidePassword = () => {
+    if (showPasswordTimerRef.current !== null) {
+      window.clearTimeout(showPasswordTimerRef.current);
+      showPasswordTimerRef.current = null;
+    }
+    setShowPassword(false);
+  };
+  const toggleShowPassword = () => {
+    if (showPassword) {
+      hidePassword();
+      return;
+    }
+    setShowPassword(true);
+    if (showPasswordTimerRef.current !== null) {
+      window.clearTimeout(showPasswordTimerRef.current);
+    }
+    showPasswordTimerRef.current = window.setTimeout(() => {
+      setShowPassword(false);
+      showPasswordTimerRef.current = null;
+    }, 10000);
+  };
+  useEffect(() => {
+    return () => {
+      if (showPasswordTimerRef.current !== null) {
+        window.clearTimeout(showPasswordTimerRef.current);
+      }
+    };
+  }, []);
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
@@ -179,39 +211,51 @@ export const LoginPage: React.FC = () => {
     }
   }, [selectedGrade, selectedSection]);
 
-  const demoAccounts: {
+  // Demo 1-click accounts are dev-only and env-injected (issue #156).
+  // The section renders only when explicitly enabled in a dev build, so
+  // production bundles never contain credential material of any kind.
+  const demoLoginEnabled =
+    import.meta.env.DEV === true && import.meta.env.VITE_ENABLE_DEMO_LOGIN === 'true';
+
+  interface DemoAccount {
     label: string;
     role: UserRole;
     email: string;
     password: string;
     icon: typeof GraduationCap;
     color: string;
-  }[] = [
+  }
+
+  const configuredDemos: DemoAccount[] = [
     {
       label: 'Student',
       role: 'student',
-      email: 'teststudent@school.edu',
-      password: 'TestPass123!',
+      email: import.meta.env.VITE_DEMO_STUDENT_EMAIL ?? '',
+      password: import.meta.env.VITE_DEMO_STUDENT_PASSWORD ?? '',
       icon: GraduationCap,
       color: 'sky',
     },
     {
       label: 'Teacher',
       role: 'teacher',
-      email: 'testteacher@school.edu',
-      password: 'TestPass123!',
+      email: import.meta.env.VITE_DEMO_TEACHER_EMAIL ?? '',
+      password: import.meta.env.VITE_DEMO_TEACHER_PASSWORD ?? '',
       icon: BookOpen,
       color: 'emerald',
     },
     {
       label: 'Admin',
       role: 'admin',
-      email: 'testadmin@school.edu',
-      password: 'TestPass123!',
+      email: import.meta.env.VITE_DEMO_ADMIN_EMAIL ?? '',
+      password: import.meta.env.VITE_DEMO_ADMIN_PASSWORD ?? '',
       icon: ShieldCheck,
       color: 'rose',
     },
   ];
+
+  const demoAccounts: DemoAccount[] = demoLoginEnabled
+    ? configuredDemos.filter((account) => account.email !== '' && account.password !== '')
+    : [];
 
   const fillDemoAccount = async (demoEmail: string, demoPassword: string, role: UserRole) => {
     setError(null);
@@ -257,6 +301,12 @@ export const LoginPage: React.FC = () => {
 
         if (!passwordMeetsSignupRequirements) {
           setError(`Password does not meet signup requirements. ${SIGNUP_PASSWORD_HELP_TEXT}`);
+          setLoading(false);
+          return;
+        }
+
+        if (confirmPassword !== password) {
+          setError('Passwords do not match. Please re-enter your password.');
           setLoading(false);
           return;
         }
@@ -513,11 +563,13 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-11 pr-11 py-2.5 rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all"
                   required
-                  minLength={isSignUp ? 8 : 6}
+                  // Issue #159: sign-in accepts any length (Firebase validates
+                  // existing credentials); only sign-up enforces 8+complexity.
+                  {...(isSignUp ? { minLength: 8 } : {})}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={toggleShowPassword}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-2"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
@@ -551,6 +603,34 @@ export const LoginPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Confirm Password (sign-up only, issue #159) */}
+            {isSignUp && (
+              <div className="space-y-1.5 text-left">
+                <label htmlFor="login-confirm-password" className="block text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="login-confirm-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-sm font-body transition-all"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                  />
+                </div>
+                {confirmPassword.length > 0 && confirmPassword !== password && (
+                  <p className="text-[11px] font-body text-rose-600" role="alert">
+                    Passwords do not match.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
@@ -599,6 +679,8 @@ export const LoginPage: React.FC = () => {
                 onClick={() => {
                   setIsSignUp(!isSignUp);
                   setError(null);
+                  setConfirmPassword('');
+                  hidePassword();
                 }}
                 className="text-xs text-slate-500 hover:text-purple-600 font-body font-medium transition-colors py-1.5 px-3 rounded-lg hover:bg-slate-100/50"
               >
@@ -607,8 +689,8 @@ export const LoginPage: React.FC = () => {
             </div>
           </form>
 
-          {/* Demo Accounts Quick Access */}
-          {!isSignUp && (
+          {/* Demo Accounts Quick Access (dev-only, env-gated) */}
+          {!isSignUp && demoAccounts.length > 0 && (
             <div className="mt-4 pt-3 border-t border-slate-100 relative">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-body font-semibold text-slate-400 uppercase tracking-widest">
@@ -663,7 +745,7 @@ export const LoginPage: React.FC = () => {
           {/* Security Footer */}
           <p className="text-[11px] text-slate-400 text-center mt-3 font-body flex items-center justify-center gap-1">
             <Lock size={11} className="text-slate-400" />
-            <span>Your data is encrypted and secure</span>
+            <span>Sign-in protected by TLS; data encrypted in transit and at rest</span>
           </p>
         </motion.div>
       </div>

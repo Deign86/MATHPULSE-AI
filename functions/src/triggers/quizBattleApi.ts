@@ -257,6 +257,7 @@ interface BattleQuestionPublic {
   questionId: string;
   prompt: string;
   choices: string[];
+  roundId?: string;
 }
 
 interface StoredRoundResultRecord {
@@ -2456,8 +2457,12 @@ const mapMatchStateForStudent = (
         : [],
     }));
 
-  const currentQuestion = status === "in_progress"
+  const roundStartedAtMs = Math.floor(asNumber(data.roundStartedAtMs, 0));
+  const foundQuestion = status === "in_progress"
     ? (questions.find((question) => question.roundNumber === currentRound) || null)
+    : null;
+  const currentQuestion = foundQuestion
+    ? { ...foundQuestion, roundId: buildBattleRoundId(matchId, currentRound, roundStartedAtMs) }
     : null;
 
   const opponentName = isPlayerA
@@ -3978,6 +3983,51 @@ const normalizeSelection = (
   return bounded >= 0 ? bounded : null;
 };
 
+const buildBattleRoundId = (
+  matchId: string,
+  roundNumber: number,
+  roundStartedAtMs: number,
+): string => {
+  const cleanMatchId = asString(matchId, "").trim();
+  const round = Math.floor(roundNumber);
+  const startedAt = Math.floor(roundStartedAtMs);
+  if (!cleanMatchId || round < 1 || startedAt <= 0) return "";
+  return `${cleanMatchId}#r${round}#${startedAt}`;
+};
+
+interface ParsedBattleRoundId {
+  matchId: string;
+  roundNumber: number;
+  roundStartedAtMs: number;
+}
+
+const parseBattleRoundId = <T>(roundId: T): ParsedBattleRoundId | null => {
+  const raw = asString(roundId, "").trim();
+  if (!raw) return null;
+  const parsed = raw.match(/^(.*)#r(\d+)#(\d+)$/);
+  if (!parsed) return null;
+  const roundNumber = Math.floor(Number(parsed[2]));
+  const roundStartedAtMs = Math.floor(Number(parsed[3]));
+  if (!parsed[1] || roundNumber < 1 || !(roundStartedAtMs > 0)) return null;
+  return { matchId: parsed[1], roundNumber, roundStartedAtMs };
+};
+
+const isTimeoutSubmit = <T>(selectedOptionIndex: T): boolean => selectedOptionIndex === null;
+
+type StaleRoundRecovery = "idempotent-replay" | "resync-required";
+
+const resolveStaleRoundRecovery = (params: {
+  expectedRoundId: string;
+  receivedRoundId: string;
+  roundAlreadyResolved: boolean;
+}): StaleRoundRecovery => {
+  if (params.roundAlreadyResolved) return "idempotent-replay";
+  if (params.receivedRoundId && params.receivedRoundId === params.expectedRoundId) {
+    return "idempotent-replay";
+  }
+  return "resync-required";
+};
+
 const progressMatchTimerIfExpired = async (
   db: FirebaseFirestore.Firestore,
   matchRef: FirebaseFirestore.DocumentReference,
@@ -5096,6 +5146,7 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
   const selectedOptionIndex = asNullableNumber(data?.selectedOptionIndex);
   const clientResponseMs = clamp(Math.floor(asNumber(data?.responseMs, 0)), 0, 180000);
   const idempotencyKey = asString(data?.idempotencyKey, "");
+  const roundId = asString(data?.roundId, "");
 
   if (!matchId || roundNumber <= 0) {
     throw new functions.https.HttpsError(
@@ -5146,17 +5197,47 @@ export const quizBattleSubmitAnswer = functions.https.onCall(async (data, contex
     const boundedResponseMs = clamp(clientResponseMs, 0, timeLimitMs);
 
     const roundDeadlineAtMs = getRoundDeadlineAtMs(matchData);
+    const serverRoundStartedAtMs = Math.floor(asNumber(matchData.roundStartedAtMs, 0));
+    const expectedRoundId = buildBattleRoundId(matchId, currentRound, serverRoundStartedAtMs);
+    const storedResults = (Array.isArray(matchData.roundResults) ? matchData.roundResults : [])
+      .filter((entry) => isRecord(entry));
+    const hasResultFor = (targetRound: number): boolean =>
+      storedResults.some((entry) => Math.floor(asNumber(entry.roundNumber, 0)) === targetRound);
+
+    if (isTimeoutSubmit(selectedOptionIndex)) {
+      duplicateSubmission = hasResultFor(roundNumber);
+      return;
+    }
+
     if (roundDeadlineAtMs > 0 && Date.now() > roundDeadlineAtMs) {
       throw new functions.https.HttpsError(
         "deadline-exceeded",
         "Round timer elapsed. Fetching latest state.",
+        { match: mapMatchStateForStudent(matchRef.id, studentId, matchData) },
       );
     }
 
-    if (currentRound !== roundNumber) {
+    const roundIdMismatch = roundId.trim().length > 0
+      && expectedRoundId.length > 0
+      && roundId.trim() !== expectedRoundId;
+    if (currentRound !== roundNumber || roundIdMismatch) {
+      const recovery = resolveStaleRoundRecovery({
+        expectedRoundId,
+        receivedRoundId: roundId,
+        roundAlreadyResolved: hasResultFor(roundNumber),
+      });
+      if (recovery === "idempotent-replay") {
+        duplicateSubmission = true;
+        return;
+      }
       throw new functions.https.HttpsError(
         "failed-precondition",
         `Expected round ${currentRound}, received ${roundNumber}.`,
+        {
+          match: mapMatchStateForStudent(matchRef.id, studentId, matchData),
+          expectedRound: currentRound,
+          receivedRound: roundNumber,
+        },
       );
     }
 
@@ -5912,4 +5993,8 @@ export const __quizBattleTestUtils = {
   getPublicMatchmakingDeadlineMs,
   isPublicMatchmakingReadyMatch,
   isExpiredPublicMatchmakingSession,
+  buildBattleRoundId,
+  parseBattleRoundId,
+  isTimeoutSubmit,
+  resolveStaleRoundRecovery,
 };

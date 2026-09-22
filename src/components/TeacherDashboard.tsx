@@ -471,7 +471,32 @@ function buildClassMergeKey(classView: ClassView): string {
   return `name:${(classView.name || '').trim().toLowerCase()}`;
 }
 
-function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView[] {
+type ClassCountClass = Pick<ClassView, 'id' | 'classSectionId' | 'name'>;
+type ClassCountStudent = Pick<StudentView, 'classroomId' | 'classSectionId' | 'className'>;
+
+function isStudentInClass(student: ClassCountStudent, classView: ClassCountClass): boolean {
+  const selectedId = classView.id.trim().toLowerCase();
+  const selectedSectionId = normalizeClassSectionId(classView.classSectionId);
+  const selectedName = classView.name.trim().toLowerCase();
+  const studentClassroomId = normalizeClassSectionId(student.classroomId);
+  const studentClassSectionId = normalizeClassSectionId(student.classSectionId);
+  const studentClassName = student.className.trim().toLowerCase();
+
+  return Boolean(
+    (selectedSectionId && (studentClassSectionId === selectedSectionId || studentClassroomId === selectedSectionId))
+    || (selectedId && (studentClassroomId === selectedId || studentClassSectionId === selectedId))
+    || (selectedName && studentClassName === selectedName)
+  );
+}
+
+export function countResolvedStudentsForClass(
+  classView: ClassCountClass,
+  resolvedStudents: readonly ClassCountStudent[],
+): number {
+  return resolvedStudents.filter((student) => isStudentInClass(student, classView)).length;
+}
+
+export function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView[] {
   const merged = new Map<string, ClassView>();
 
   primary.forEach((item) => {
@@ -487,7 +512,6 @@ function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView
     }
 
     const atRiskCount = Math.max(existing.atRiskCount || 0, item.atRiskCount || 0);
-    const studentCount = Math.max(existing.studentCount || 0, item.studentCount || 0);
     const avgScore = item.avgScore > 0 ? item.avgScore : existing.avgScore;
     const riskLevel = atRiskCount >= 5 ? 'high' : atRiskCount >= 2 ? 'medium' : 'low';
     const classMetadata = resolveClassMetadata({
@@ -519,7 +543,7 @@ function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView
       managerId: classMetadata.managerId || undefined,
       managerName: classMetadata.managerName || undefined,
       schedule: existing.schedule || item.schedule,
-      studentCount,
+      studentCount: item.studentCount,
       atRiskCount,
       avgScore,
       riskLevel,
@@ -1509,22 +1533,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
 
   const filteredStudentsForAnalytics = useMemo(() => {
     if (!effectiveAnalyticsClass) return students;
-
-    const selectedId = (effectiveAnalyticsClass.id || '').trim().toLowerCase();
-    const selectedSectionId = normalizeClassSectionId(effectiveAnalyticsClass.classSectionId);
-    const selectedName = (effectiveAnalyticsClass.name || '').trim().toLowerCase();
-
-    return students.filter((student) => {
-      const studentClassroomId = normalizeClassSectionId(student.classroomId);
-      const studentClassSectionId = normalizeClassSectionId(student.classSectionId);
-      const studentClassName = (student.className || '').trim().toLowerCase();
-
-      return (
-        (selectedSectionId && (studentClassSectionId === selectedSectionId || studentClassroomId === selectedSectionId))
-        || (selectedId && (studentClassroomId === selectedId || studentClassSectionId === selectedId))
-        || (selectedName && studentClassName === selectedName)
-      );
-    });
+    return students.filter((student) => isStudentInClass(student, effectiveAnalyticsClass));
   }, [effectiveAnalyticsClass, students]);
 
   if (dataLoading) {
@@ -1861,6 +1870,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   <AnalyticsView
                     selectedClass={effectiveAnalyticsClass}
                     students={filteredStudentsForAnalytics}
+                    allStudents={students}
                     allClasses={availableClasses}
                     riskDistribution={riskDistribution}
                     topicPerformance={topicPerformance}
@@ -3458,6 +3468,7 @@ const SectionAssignmentRow: React.FC<{
 const AnalyticsView: React.FC<{
   selectedClass: ClassView;
   students: StudentView[];
+  allStudents: StudentView[];
   allClasses: ClassView[];
   riskDistribution: { name: string; value: number; color: string }[];
   topicPerformance: { topic: string; score: number }[];
@@ -3484,6 +3495,7 @@ const AnalyticsView: React.FC<{
 }> = ({
   selectedClass,
   students,
+  allStudents,
   allClasses,
   riskDistribution: _parentRiskDist,
   topicPerformance,
@@ -3857,7 +3869,7 @@ const AnalyticsView: React.FC<{
                 >
                   {allClasses.map((c) => (
                     <option key={c.id} value={c.id} className="text-slate-800 font-medium">
-                      {c.name} ({c.studentCount || 0} students)
+                      {c.name} ({countResolvedStudentsForClass(c, allStudents)} students)
                     </option>
                   ))}
                 </select>

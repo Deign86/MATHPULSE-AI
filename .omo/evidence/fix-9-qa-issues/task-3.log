@@ -1,0 +1,35 @@
+TASK: G1a #165 — Evidence cluster visibility
+DATE: 2026-09-21
+
+IMPLEMENTATION
+- PASS: `src/components/LessonViewer.tsx` gates the Inspect Evidence trigger and the entire evidence modal root behind `isStaffView`.
+- PASS: Inline staff `<details>` grounding information and staff telemetry copy were not changed.
+- PASS: `src/components/ModuleDetailView.tsx` was not changed.
+
+RTL
+- PASS: RED characterization ran before the production gate; 2 of 3 focused assertions failed because the student trigger/stale modal path was exposed.
+- PASS: GREEN focused run: `npm run test -- --run src/components/__tests__/LessonViewerGrounding.test.tsx --reporter=verbose` — 1 file and 3 tests passed.
+- PASS: Student has no Inspect Evidence label or evidence modal; staff can open the modal and retains Chunk #1, model, source, score, and grounding telemetry; staff-open-to-student rerender removes both trigger and modal.
+- PASS: Full frontend Vitest — 49 files and 298 tests passed.
+
+PLAYWRIGHT
+- PASS: Existing local Firebase `Test Student` session opened Modules → Business and Finance → Lesson 1.
+- BLOCKED/RECOVERED: Live `POST http://127.0.0.1:5173/api/rag/lesson` returned `502 Bad Gateway`, so the app correctly rendered its DepEd PDF fallback and did not mount LessonViewer. A Playwright-only controlled 200 response for the same lesson then exercised the modified LessonViewer without changing application code.
+- PASS: Controlled student LessonViewer proof returned `account=student`, `lessonLoaded=true`, `evidenceTriggerCount=0`, and `evidenceHeadingCount=0`.
+- PASS: Screenshot: `.omo/evidence/fix-9-qa-issues/task-3.png`.
+- PASS: Teacher demo sign-in succeeded and rendered `Teacher Dashboard`, `Test Teacher`, and the expected class metrics.
+- BLOCKED: Teacher `/modules` navigation intentionally remains on `TeacherDashboard`; the teacher app has no live route into the student `ModulesPage`/`LessonViewer`, so an exact live staff modal click could not be performed without inventing a route or changing product code. Staff telemetry is covered by the passing RTL proof above.
+
+STATIC CHECKS
+- PASS: `npm run lint`.
+- PASS: `npm run lint:anti-slop` (existing Node module-type warning only).
+- PASS: `npm run typecheck`.
+- BLOCKED: TypeScript LSP diagnostics unavailable because the server is not installed and installation was previously declined.
+
+ADVERSARIAL DISPOSITIONS
+- PASS: `prompt_injection` — N/A; no untrusted prompt or lesson text was used as instructions.
+- PASS: `stale_state` — focused RTL opens staff modal, rerenders as student, and verifies trigger/modal absence.
+- PASS: `dirty_worktree` — unrelated worktree changes were recorded and not reset or staged.
+- PASS: `misleading_success_output` — live 502 and teacher route limitation remain explicitly recorded; G1a-5 stays unchecked rather than being represented as complete.
+
+RESULT: IMPLEMENTATION AND AUTOMATED ROLE-GATING PROOF PASS; LIVE STAFF PLAYWRIGHT GATE BLOCKED BY PRODUCT ROUTING; TYPECHECK AND BUILD PASS.
