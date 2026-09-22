@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
 from services.llm_json import extract_json_object
+from services.jev_client import verify_lesson_factuality
 
 from services.inference_client import (
     InferenceRequest,
@@ -457,7 +458,32 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
     # ── Step 4: Parse & validate response ────────────────────────────────────
     try:
         parsed_lesson = _strip_thinking_and_parse(raw_explanation)
-        parsed_lesson = _ensure_7_sections(parsed_lesson, payload.lessonTitle or payload.topic, chunks=chunks)
+        lesson_title = payload.lessonTitle or payload.topic
+        ref_text = format_retrieved_chunks(chunks)
+        gen_text = json.dumps(parsed_lesson.get("sections", []), ensure_ascii=False)
+        try:
+            verification = await verify_lesson_factuality(
+                reference_text=ref_text,
+                generated_text=gen_text,
+            )
+        except Exception as exc:
+            logger.warning("Jev verification error: %s; failing open", exc)
+            verification = None
+
+        if verification is not None and (
+            not verification.get("verified", True)
+            or verification.get("pCorrect", 1.0) < 0.70
+        ):
+            logger.warning(
+                "Jev factuality check failed (pCorrect=%.2f); replacing with grounded defaults",
+                verification.get("pCorrect", 0.0),
+            )
+            parsed_lesson = {
+                **parsed_lesson,
+                "sections": list(_build_grounded_defaults(lesson_title, chunks=chunks).values()),
+            }
+        else:
+            parsed_lesson = _ensure_7_sections(parsed_lesson, lesson_title, chunks=chunks)
     except Exception as exc:
         logger.error(f"RAG parse error: {type(exc).__name__}: {exc}")
         raise HTTPException(
@@ -534,6 +560,7 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
             for row in chunks
         ],
         "activeModel": get_model_for_task("rag_lesson"),
+        "jevVerification": verification,
     }
 
 

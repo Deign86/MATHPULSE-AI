@@ -14,6 +14,7 @@ from fastapi import APIRouter
 
 from services.ai_client import REASONER_MODEL, CHAT_MODEL
 from services.inference_client import is_enabled, rag_grounded_completion, parse_json_response
+from services.jev_client import score_student_mastery
 from rag.curriculum_rag import (
     retrieve_curriculum_context,
     build_analysis_curriculum_context,
@@ -54,6 +55,31 @@ class WeaknessDetectionResponse(BaseModel):
     source: str = "rule_based"  # "deepseek" or "rule_based"
 
 
+async def _annotate_mastery(
+    req: WeaknessDetectionRequest,
+    flagged_topics: list[str],
+    reasoning_summary: str,
+) -> str:
+    annotations: list[str] = []
+    for topic in flagged_topics:
+        topic_questions = [q.model_dump() for q in req.questions if q.topic_id == topic]
+        try:
+            mastery = await score_student_mastery(
+                student_answers=topic_questions,
+                topic=topic,
+            )
+            if mastery.get("action") == "fallback_disabled" or "level" not in mastery:
+                continue
+            annotations.append(f"{topic} [Bloom Mastery: {mastery['level']}]")
+        except Exception as exc:
+            logger.warning("Jev mastery scoring failed for %s: %s", topic, exc)
+            continue
+
+    if not annotations:
+        return reasoning_summary
+    return f"{reasoning_summary} {'; '.join(annotations)}"
+
+
 @router.post("/weakness-detection", response_model=WeaknessDetectionResponse)
 async def detect_weaknesses(req: WeaknessDetectionRequest):
     """Detect topic-level weaknesses using RAG + DeepSeek, with rule-based fallback."""
@@ -75,11 +101,17 @@ async def detect_weaknesses(req: WeaknessDetectionRequest):
             rule_flagged.append(topic_id)
             rule_confidence[topic_id] = round(1.0 - accuracy, 2)
 
+    standard_summary = "Rule-based detection: topics below 60% accuracy threshold."
     if not is_enabled() or not rule_flagged:
+        reasoning_summary = await _annotate_mastery(
+            req,
+            rule_flagged,
+            standard_summary,
+        )
         return WeaknessDetectionResponse(
             flagged_topics=rule_flagged,
             confidence=rule_confidence,
-            reasoning_summary="Rule-based detection: topics below 60% accuracy threshold.",
+            reasoning_summary=reasoning_summary,
             source="rule_based",
         )
 
@@ -115,14 +147,32 @@ async def detect_weaknesses(req: WeaknessDetectionRequest):
         '"reasoning_summary": "plain text for teacher dashboard, grounded in DepEd competencies"}'
     )
 
-    raw = rag_grounded_completion(REASONER_MODEL, system_prompt, user_prompt, temperature=0.1)
-    parsed = parse_json_response(raw)
+    try:
+        raw = rag_grounded_completion(REASONER_MODEL, system_prompt, user_prompt, temperature=0.1)
+        parsed = parse_json_response(raw)
+    except Exception as exc:
+        logger.warning(f"RAG grounded completion failed for weakness detection: {exc}, falling back to rule-based with Jev mastery")
+        parsed = None
 
     if parsed and "flagged_topics" in parsed:
+        flagged_topics = [
+            topic for topic in parsed["flagged_topics"] if topic in rule_flagged
+        ]
+        parsed_confidence = parsed.get("confidence", rule_confidence)
+        if not isinstance(parsed_confidence, dict):
+            parsed_confidence = rule_confidence
+        reasoning_summary = await _annotate_mastery(
+            req,
+            flagged_topics,
+            parsed.get("reasoning_summary", ""),
+        )
         return WeaknessDetectionResponse(
-            flagged_topics=parsed["flagged_topics"],
-            confidence=parsed.get("confidence", rule_confidence),
-            reasoning_summary=parsed.get("reasoning_summary", ""),
+            flagged_topics=flagged_topics,
+            confidence={
+                topic: parsed_confidence.get(topic, rule_confidence[topic])
+                for topic in flagged_topics
+            },
+            reasoning_summary=reasoning_summary,
             source="deepseek",
         )
 
@@ -130,7 +180,7 @@ async def detect_weaknesses(req: WeaknessDetectionRequest):
     return WeaknessDetectionResponse(
         flagged_topics=rule_flagged,
         confidence=rule_confidence,
-        reasoning_summary="Rule-based detection: topics below 60% accuracy threshold.",
+        reasoning_summary=await _annotate_mastery(req, rule_flagged, standard_summary),
         source="rule_based",
     )
 
