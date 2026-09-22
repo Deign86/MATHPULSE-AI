@@ -60,7 +60,7 @@ except Exception:
 
 # STARTUP VALIDATION - Run before anything else to prevent restart loops
 try:
-    from startup_validation import run_all_validations
+    from startup_validation import run_all_validations, validate_deepseek_auth
     run_all_validations()  # Exits with error if any critical check fails
 except ImportError as e:
     # If startup_validation module is not found, log warning but continue
@@ -565,8 +565,17 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         except Exception as exc:
             logger.error("RAG vectorstore warm-up failed: %s", exc)
 
+    async def _warmup_deepseek_auth() -> None:
+        auth_state = await asyncio.to_thread(validate_deepseek_auth, 5.0)
+        logger.warning(
+            "DeepSeek startup auth state: status=%s key=%s",
+            auth_state["status"],
+            auth_state["key_suffix"],
+        )
+
     _warmup_inference_task = asyncio.create_task(_warmup_inference_client())
     _warmup_vectorstore_task = asyncio.create_task(_warmup_vectorstore())
+    _warmup_deepseek_auth_task = asyncio.create_task(_warmup_deepseek_auth())
 
     # FIX(502): Set a readiness flag so /health reports the true state without
     # triggering heavy init on every health-check ping from HF Spaces' proxy.
@@ -2325,12 +2334,27 @@ class TestingResetResponse(BaseModel):
 # to decide whether to route traffic; a slow response or crash here causes 502.
 @app.get("/health")
 async def health_check():
+    # Cached DeepSeek auth state is read dynamically (never imported by name):
+    # the startup probe rebinds the holder, and this handler must see the
+    # current object. Missing module or holder degrades to "unchecked".
+    try:
+        import startup_validation as _startup_validation_module
+        cached_auth = (
+            getattr(_startup_validation_module, "cached_deepseek_auth_state", None) or {}
+        )
+    except Exception:
+        cached_auth = {}
     return {
         "status": "ready" if _backend_ready else "starting",
         "space": "mathpulse-ai",
         "firebase": _firebase_ready,
         "chat_model": CHAT_MODEL,
         "risk_model": RISK_MODEL,
+        "deepseek": {
+            "status": cached_auth.get("status", "unchecked"),
+            "key_suffix": cached_auth.get("key_suffix", "****"),
+            "checked_at": cached_auth.get("checked_at"),
+        },
     }
 
 
