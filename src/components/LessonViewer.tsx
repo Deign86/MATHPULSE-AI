@@ -707,6 +707,7 @@ function SectionRenderer({
   onStartPractice,
   lessonSpecificTopic,
   onStartTryItQuiz,
+  isStaffView = false,
 }: {
   section: RagLessonSection;
   sectionIndex: number;
@@ -719,6 +720,7 @@ function SectionRenderer({
   onStartPractice?: () => void;
   lessonSpecificTopic?: string | null;
   onStartTryItQuiz?: () => void;
+  isStaffView?: boolean;
 }) {
   switch (section.type) {
     case 'introduction': {
@@ -741,7 +743,7 @@ function SectionRenderer({
                   Lesson Mission & Overview
                 </span>
               </div>
-              {competencyBadge && (
+              {isStaffView && competencyBadge && (
                 <span className="px-2.5 py-1 rounded-lg bg-[#1a85a4]/10 text-[#1a85a4] font-mono text-[11px] font-black border border-[#1a85a4]/20 flex items-center gap-1.5 shadow-2xs">
                   <Award size={12} />
                   DepEd {competencyBadge}
@@ -1551,85 +1553,58 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   const content = (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-50 overflow-hidden font-sans">
-      {/* Unified Slim Responsive Top Bar */}
+      {/* Minimal Responsive Top Header */}
       <header className="flex-none bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 px-3 sm:px-6 py-2 relative z-40">
-        <div className="max-w-[96rem] mx-auto w-full flex items-center justify-between gap-2 sm:gap-4">
-          {/* Left: Back Button + Lesson Title */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <div className="max-w-[96rem] mx-auto w-full flex items-center justify-between gap-3">
+          {/* Left: Back Button + Clean Lesson Info */}
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
             <button
               onClick={onBack}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 transition-colors shrink-0 cursor-pointer shadow-2xs active:scale-95"
+              className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 transition-colors shrink-0 cursor-pointer shadow-2xs active:scale-95"
               aria-label="Go back"
             >
               <ArrowLeft size={16} />
             </button>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider leading-none">
-                <BookOpen size={10} className="text-purple-500 shrink-0" />
-                <span>Notebook</span>
-                <span>•</span>
-                <span className="truncate">{lessonSubject}</span>
-                {isStaffView && activeModel && (
-                  <span className="text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">
-                    {activeModel.split('/').pop()}
-                  </span>
-                )}
-                {retrievalBand === 'high' && (
-                  <span className="text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-emerald-200 dark:border-emerald-800">
-                    DepEd Source
-                  </span>
-                )}
-              </div>
-              <h1 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm truncate mt-0.5" title={lesson.title}>
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate leading-none">
+                {lessonSubject}
+              </p>
+              <h1 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm md:text-[15px] truncate mt-0.5 leading-snug" title={lesson.title}>
                 {lesson.title}
               </h1>
             </div>
           </div>
 
-          {/* Right: DepEd Grounding Evidence Pill + Progress */}
+          {/* Right: Staff Controls (if teacher/admin) + Clean Progress Meter */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* DepEd Evidence Trigger */}
-            <button
-              type="button"
-              onClick={() => setShowEvidenceModal(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-bold border transition-all cursor-pointer shadow-2xs active:scale-95",
-                confidenceBadgeConfig.badge
-              )}
-              title="Inspect DepEd curriculum grounding and evidence"
-            >
-              <span className={cn('w-1.5 h-1.5 rounded-full animate-pulse', confidenceBadgeConfig.dot)} />
-              <ShieldCheck size={12} className="shrink-0" />
-              <span className="hidden sm:inline">DepEd Aligned</span>
-              {retrievalConfidence > 0 && (
-                <span className="opacity-80 font-mono text-[9px] tabular-nums">
-                  {Math.round(retrievalConfidence * 100)}%
-                </span>
-              )}
-              {sources && sources.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300 text-[9px] font-black tabular-nums">
-                  {sources.length}
-                </span>
-              )}
-            </button>
-
-            {/* Source PDF Link (sm+) */}
-            {depedPdfUrl && (
-              <a
-                href={depedPdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold text-sky-700 bg-sky-50 dark:bg-sky-950/40 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 transition-colors shadow-2xs"
-                title="Open official DepEd source PDF in new tab"
-              >
-                <ExternalLink size={11} />
-                <span>PDF</span>
-              </a>
+            {isStaffView && (
+              <>
+                {activeModel && (
+                  <span className="hidden sm:inline-block text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-[10px]">
+                    {activeModel.split('/').pop()}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowEvidenceModal(true)}
+                  aria-label="Inspect evidence"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs cursor-pointer"
+                  title="Inspect retrieved DepEd text chunks, similarity scores, and metadata"
+                >
+                  <FileSearch size={12} className="shrink-0" />
+                  <span className="hidden sm:inline">Inspect Evidence</span>
+                  {sources && sources.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black tabular-nums">
+                      {sources.length}
+                    </span>
+                  )}
+                </button>
+              </>
             )}
 
             {/* Slim Progress Meter */}
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-white/10">
-              <div className="w-10 sm:w-16 md:w-20 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-slate-200 dark:border-white/10">
+              <div className="w-12 sm:w-16 md:w-20 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full bg-emerald-500 rounded-full"
                   animate={{ width: `${((currentSection + 1) / totalSections) * 100}%` }}
@@ -1642,76 +1617,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
             </div>
           </div>
         </div>
-
-        {/* DepEd Curriculum Grounding Bar */}
-        <div className="max-w-[96rem] mx-auto mt-2 sm:mt-2.5">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-2.5 sm:px-3.5 py-1.5 sm:py-2 shadow-xs transition-all">
-            {/* Left side: Grounding Badge & Source Info */}
-            <div className="flex flex-wrap items-center gap-2 min-w-0">
-              <div
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors',
-                  confidenceBadgeConfig.badge
-                )}
-              >
-                <span className={cn('w-2 h-2 rounded-full animate-pulse', confidenceBadgeConfig.dot)} />
-                <ShieldCheck size={13} className="shrink-0" />
-                <span>{confidenceBadgeConfig.label}</span>
-                {isStaffView && retrievalConfidence > 0 && (
-                  <span className="opacity-80 font-mono text-[10px] tabular-nums">
-                    ({Math.round(retrievalConfidence * 100)}%)
-                  </span>
-                )}
-              </div>
-
-              <div
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium text-slate-600 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 max-w-[280px] sm:max-w-md truncate"
-                title={isStaffView ? primarySourceLabel : studentSourceLabel}
-              >
-                <FileText size={13} className="text-slate-500 shrink-0" />
-                <span className="truncate font-mono">{isStaffView ? primarySourceLabel : studentSourceLabel}</span>
-              </div>
-            </div>
-
-            {/* Right side: Action Buttons */}
-            <div className="flex items-center gap-2 shrink-0">
-              {depedPdfUrl ? (
-                <a
-                  href={depedPdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200/80 transition-colors shadow-2xs"
-                  title="Open official DepEd source PDF in new tab"
-                >
-                  <ExternalLink size={12} className="shrink-0" />
-                  <span>View DepEd Source PDF</span>
-                </a>
-              ) : null}
-
-              {isStaffView && (
-                <button
-                  type="button"
-                  onClick={() => setShowEvidenceModal(true)}
-                  aria-label="Inspect evidence"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 transition-colors shadow-2xs cursor-pointer"
-                  title="Inspect retrieved DepEd text chunks, similarity scores, and metadata"
-                >
-                  <FileSearch size={12} className="shrink-0" />
-                  <span>Inspect Evidence</span>
-                  {sources && sources.length > 0 && (
-                    <span className="px-1.5 py-0.2 rounded-full bg-indigo-200 text-indigo-800 text-[10px] font-black tabular-nums">
-                      {sources.length}
-                    </span>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
       </header>
 
       {/* Main Reading Container */}
-      <main className="flex-1 overflow-hidden px-3.5 sm:px-6 md:px-8 py-3.5 sm:py-4 md:py-5 relative flex justify-center min-h-0">
+      <main className="flex-1 overflow-hidden px-2.5 sm:px-6 md:px-8 py-2 sm:py-3.5 md:py-4 relative flex justify-center min-h-0">
         <section aria-label="Merrill micro-lesson" className="w-full max-w-[92rem] h-full relative flex md:pl-16 pt-8.5 md:pt-0">
 
           {/* Tabs - Stick out on left */}
@@ -1944,6 +1853,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                       onStartPractice={onStartPractice}
                       lessonSpecificTopic={lessonSpecificTopic}
                       onStartTryItQuiz={() => setShowTryItPage(true)}
+                      isStaffView={isStaffView}
                     />
 
                       {sources.length > 0 && (userProfile?.role === 'admin' || userProfile?.role === 'teacher') && (
