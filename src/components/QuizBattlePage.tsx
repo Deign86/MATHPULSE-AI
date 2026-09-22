@@ -2260,8 +2260,10 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
-                  className="space-y-6 sm:space-y-8"
                 >
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+                    {/* Left Column (~70% on desktop: Hero Banner & Battle Modes) */}
+                    <div className="lg:col-span-8 space-y-6 sm:space-y-7">
 
                   {/* 1. Hero Banner — Pop-out Overlapping Hero Avatar */}
                   <div className="relative select-none mt-2 sm:mt-4 lg:mt-5 rounded-2xl sm:rounded-3xl lg:rounded-[2rem] border border-white/20 shadow-[0_16px_40px_-12px_rgba(99,102,241,0.35)] shrink-0 overflow-visible">
@@ -2443,277 +2445,338 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                       </motion.button>
                     </div>
                   </div>
-
-                  {/* 3. Hall of Fame | My Stats (Side-by-Side on md+) */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 items-stretch">
-
-                    {/* Hall of Fame Widget — Modern Champions Card */}
-                    <div
-                      onClick={() => setActiveTab('leaderboard')}
-                      className="relative w-full h-full bg-gradient-to-br from-[#7C3AED]/35 via-[#6366F1]/25 to-[#3b3a82]/50 backdrop-blur-xl border border-white/20 hover:border-purple-300/60 rounded-3xl overflow-hidden p-5 sm:p-6 shadow-[0_10px_30px_rgba(124,58,237,0.25)] hover:shadow-[0_14px_40px_rgba(124,58,237,0.4)] cursor-pointer group transition-all duration-300 flex flex-col justify-between active:scale-[0.99]"
-                    >
-                      {/* Ambient beam highlight */}
-                      <div className="absolute top-0 right-0 w-48 h-48 bg-purple-400/20 blur-2xl rounded-full pointer-events-none" />
-                      
-                      <div className="flex items-center justify-between mb-3 relative z-10">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center shadow-inner">
-                            <Crown className="w-4 h-4 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
-                          </div>
-                          <div>
-                            <h3 className="text-base sm:text-lg font-black text-white font-display tracking-tight leading-none">Hall of Fame</h3>
-                            <p className="text-[10px] sm:text-[11px] font-bold text-purple-200 uppercase tracking-wider mt-0.5">Top Arena Players</p>
-                          </div>
-                        </div>
-                        <span className="text-[11px] sm:text-xs font-bold text-white/80 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all inline-flex items-center gap-1">
-                          View Board <ChevronRight size={14} />
-                        </span>
-                      </div>
-
-                      {/* Mini Podium Preview */}
-                      <div className="relative z-10 flex items-end justify-center gap-3 pt-3 pb-2 my-auto">
-                        {/* 2nd Place Silver */}
-                        <div className="flex flex-col items-center w-20 sm:w-24">
-                          <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-br from-slate-100 to-slate-400 border border-white shadow-md flex items-center justify-center mb-1 overflow-hidden">
-                            {leaderboardRows[1]?.photo ? (
-                              <img src={leaderboardRows[1].photo} alt="2nd" className="w-full h-full object-cover rounded-full" />
-                            ) : (
-                              <span className="text-xs font-black text-slate-800">
-                                {leaderboardRows[1] ? toInitials(leaderboardRows[1].displayName) : '2'}
-                              </span>
-                            )}
-                          </div>
-                          <div className="w-full h-10 rounded-t-xl bg-gradient-to-b from-slate-200/40 to-slate-400/20 border-t border-x border-white/30 flex flex-col items-center justify-center">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-white/90 truncate px-1">
-                              {leaderboardRows[1] ? leaderboardRows[1].displayName.split(' ')[0] : 'Silver'}
-                            </span>
-                            {leaderboardRows[1] && (
-                              <span className="text-[9px] font-bold text-slate-300">{leaderboardRows[1].scoreLabel}</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 1st Place Gold */}
-                        <div className="flex flex-col items-center w-24 sm:w-28">
-                          <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-500 border-2 border-white shadow-[0_0_15px_rgba(251,191,36,0.6)] flex items-center justify-center mb-1 animate-star-float overflow-hidden">
-                            {leaderboardRows[0]?.photo ? (
-                              <img src={leaderboardRows[0].photo} alt="1st" className="w-full h-full object-cover rounded-full" />
-                            ) : (
-                              <Crown className="w-5 h-5 text-amber-900 fill-amber-900" />
-                            )}
-                          </div>
-                          <div className="w-full h-16 rounded-t-xl bg-gradient-to-b from-amber-400/50 to-amber-600/30 border-t border-x border-amber-300/50 flex flex-col items-center justify-center shadow-lg">
-                            <span className="text-xs sm:text-sm font-black text-amber-200 drop-shadow-sm truncate px-1">
-                              {leaderboardRows[0] ? leaderboardRows[0].displayName.split(' ')[0] : '#1 Champ'}
-                            </span>
-                            {leaderboardRows[0] && (
-                              <span className="text-[10px] font-black text-amber-100">{leaderboardRows[0].scoreLabel}</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 3rd Place Bronze */}
-                        <div className="flex flex-col items-center w-20 sm:w-24">
-                          <div className="w-10 h-10 rounded-full p-0.5 bg-gradient-to-br from-amber-600 to-amber-800 border border-white shadow-md flex items-center justify-center mb-1 overflow-hidden">
-                            {leaderboardRows[2]?.photo ? (
-                              <img src={leaderboardRows[2].photo} alt="3rd" className="w-full h-full object-cover rounded-full" />
-                            ) : (
-                              <span className="text-xs font-black text-amber-100">
-                                {leaderboardRows[2] ? toInitials(leaderboardRows[2].displayName) : '3'}
-                              </span>
-                            )}
-                          </div>
-                          <div className="w-full h-8 rounded-t-xl bg-gradient-to-b from-amber-700/40 to-amber-900/20 border-t border-x border-amber-500/30 flex flex-col items-center justify-center">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-white/90 truncate px-1">
-                              {leaderboardRows[2] ? leaderboardRows[2].displayName.split(' ')[0] : 'Bronze'}
-                            </span>
-                            {leaderboardRows[2] && (
-                              <span className="text-[9px] font-bold text-amber-200/80">{leaderboardRows[2].scoreLabel}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-white/10 text-center relative z-10">
-                        <p className="text-[11px] text-purple-200/70 font-medium">Rankings update live after every duel</p>
-                      </div>
                     </div>
 
-                    {/* My Stats Widget */}
-                    <div className="relative w-full h-full bg-slate-900/60 backdrop-blur-xl border border-white/15 rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl">
-                      {/* Header */}
-                      <div className="flex flex-row items-center justify-between px-5 sm:px-6 pt-5 pb-2.5 relative z-10">
-                        <div>
-                          <h3 className="text-base sm:text-lg font-black text-white tracking-wide leading-none drop-shadow-md font-display">My Stats</h3>
-                          <p className="text-[10px] sm:text-[11px] font-bold text-purple-300/80 uppercase tracking-wider mt-0.5">Career Combat Summary</p>
-                        </div>
-                        <Button
-                          className="bg-purple-600/80 hover:bg-purple-500 text-white font-bold text-[10px] tracking-widest uppercase rounded-full px-3.5 h-[28px] border border-white/20 shadow-sm transition-all active:scale-95 cursor-pointer"
-                          onClick={() => setActiveTab('stats')}
-                        >
-                          View Stats →
-                        </Button>
-                      </div>
+                    {/* Right Column (~30% on desktop: Hall of Fame, My Stats Bento HUD, Match History) */}
+                    <div className="lg:col-span-4 space-y-4 sm:space-y-5">
 
-                      {/* Content: Carousel Row */}
-                      <div className="relative z-10 w-full overflow-hidden py-3">
-                        {/* Gradient overlays to fade the edges of the carousel */}
-                        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-900/80 to-transparent z-20 pointer-events-none"></div>
-                        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-900/80 to-transparent z-20 pointer-events-none"></div>
-
-                        <motion.div
-                          className="flex w-max"
-                          animate={{ x: ["0%", "-33.333333%"] }}
-                          transition={{ ease: "linear", duration: 15, repeat: Infinity }}
-                        >
-                          {[1, 2, 3].map((copyIndex) => (
-                            <div key={copyIndex} className="flex gap-3 pr-3">
-                              {[
-                                {
-                                  key: 'totalXP',
-                                  bg: 'from-[#FF7B88] to-[#FF5C70]',
-                                  shadow: 'shadow-[0_4px_15px_rgba(255,92,112,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)]',
-                                  icon: Sparkles,
-                                  value: studentProfile?.currentXP || 0,
-                                  label: 'Total XP'
-                                },
-                                {
-                                  key: 'winRate',
-                                  bg: 'from-[#B467FF] to-[#9D44FF]',
-                                  shadow: 'shadow-[0_4px_15px_rgba(157,68,255,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)]',
-                                  icon: Trophy,
-                                  value: `${Math.round(statsData?.winRate || 0)} %`,
-                                  label: 'Win Rate'
-                                },
-                                {
-                                  key: 'matches',
-                                  bg: 'from-[#4DB9E9] to-[#2DA1D8]',
-                                  shadow: 'shadow-[0_4px_15px_rgba(45,161,216,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)]',
-                                  icon: Target,
-                                  value: statsData?.matchesPlayed || 0,
-                                  label: 'Matches'
-                                },
-                                {
-                                  key: 'response',
-                                  bg: 'from-[#48DA94] to-[#2BBF7B]',
-                                  shadow: 'shadow-[0_4px_15px_rgba(43,191,123,0.4),inset_0_1px_1px_rgba(255,255,255,0.4)]',
-                                  icon: Clock3,
-                                  value: statsData?.averageResponseMs ? `${(statsData.averageResponseMs / 1000).toFixed(0)}s` : '0s',
-                                  label: 'Response'
-                                }
-                              ].map((card) => (
-                                <div key={card.key} className={cn("w-[92px] sm:w-[104px] shrink-0 aspect-square rounded-[18px] bg-gradient-to-br p-3 flex flex-col justify-between relative overflow-hidden group", card.bg, card.shadow)}>
-                                  <div className="absolute -bottom-6 -right-6 text-white/10 transition-transform duration-500 group-hover:scale-110">
-                                    <card.icon className="w-20 h-20" />
-                                  </div>
-                                  <div className="w-7 h-7 rounded-full border border-white/30 flex items-center justify-center relative z-10 shadow-[inset_0_1px_3px_rgba(255,255,255,0.5)]">
-                                    <card.icon className="w-3.5 h-3.5 text-white" />
-                                  </div>
-                                  <div className="relative z-10 flex flex-col">
-                                    <h4 className="text-[14px] sm:text-[17px] font-black text-white leading-none tracking-tight drop-shadow-sm">{card.value}</h4>
-                                    <p className="text-[8px] sm:text-[9px] font-extrabold text-white/80 uppercase tracking-widest mt-1 truncate">{card.label}</p>
-                                  </div>
-                                </div>
-                              ))}
+                      {/* 1. Hall of Fame Widget — Ornate Trophy Showcase */}
+                      <div
+                        onClick={() => setActiveTab('leaderboard')}
+                        className="relative w-full bg-gradient-to-br from-[#7C3AED]/35 via-[#6366F1]/25 to-[#3b3a82]/50 backdrop-blur-xl border border-white/20 hover:border-purple-300/60 rounded-3xl overflow-hidden p-5 shadow-[0_10px_30px_rgba(124,58,237,0.25)] hover:shadow-[0_14px_40px_rgba(124,58,237,0.4)] cursor-pointer group transition-all duration-300 flex flex-col justify-between active:scale-[0.99]"
+                      >
+                        {/* Ambient beam highlight */}
+                        <div className="absolute top-0 right-0 w-48 h-48 bg-purple-400/20 blur-2xl rounded-full pointer-events-none" />
+                        
+                        <div className="flex items-center justify-between mb-3 relative z-10">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center shadow-inner">
+                              <Trophy className="w-4 h-4 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
                             </div>
-                          ))}
-                        </motion.div>
-                      </div>
-
-                      <div className="px-5 pb-4 pt-1 border-t border-white/10 text-center relative z-10">
-                        <p className="text-[11px] text-white/60 font-medium">Auto-synced with online matchmaking & bot practice</p>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* 4. Match History (Full Width) */}
-                  <div className="relative w-full bg-slate-900/60 backdrop-blur-xl border border-white/15 rounded-3xl overflow-hidden flex flex-col shadow-xl">
-                    <div className="px-5 sm:px-6 pt-5 pb-3 flex flex-row items-center justify-between border-b border-white/10">
-                      <div>
-                        <h4 className="text-base sm:text-lg font-black flex items-center gap-2 text-white font-display">
-                          <History className="h-4 w-4 text-purple-400" /> Recent Match History
-                        </h4>
-                        <p className="text-[11px] text-white/60 font-medium mt-0.5">
-                          Review your most recent duels and score breakdowns
-                        </p>
-                      </div>
-                      <Button variant="link" size="sm" className="h-auto p-0 text-xs font-bold text-purple-300 hover:text-white transition-colors cursor-pointer" onClick={() => setActiveTab('history')}>
-                        View Full History →
-                      </Button>
-                    </div>
-
-                    <div className="p-4 sm:p-5">
-                      {statsLoading ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          <Skeleton className="h-16 w-full rounded-2xl bg-white/10" />
-                          <Skeleton className="h-16 w-full rounded-2xl bg-white/10" />
-                          <Skeleton className="h-16 w-full rounded-2xl bg-white/10" />
+                            <div>
+                              <h3 className="text-base font-black text-white font-display tracking-tight leading-none">Hall of Fame</h3>
+                              <p className="text-[10px] font-bold text-purple-200 uppercase tracking-wider mt-0.5">Top Arena Champions</p>
+                            </div>
+                          </div>
+                          <span className="text-[11px] font-bold text-white/80 group-hover:text-amber-300 group-hover:translate-x-0.5 transition-all inline-flex items-center gap-1">
+                            View Board <ChevronRight size={14} />
+                          </span>
                         </div>
-                      ) : filteredHistory.length === 0 ? (
-                        <div className="text-center py-8">
-                          <p className="text-xs sm:text-sm text-white/50">No battle history recorded yet.</p>
-                          <p className="text-[11px] text-purple-300/80 mt-1">Jump into a 1v1 battle or bot duel to earn XP and rank up!</p>
+
+                        {/* Mini Trophy Podium Preview */}
+                        <div className="relative z-10 flex items-end justify-center gap-2 pt-2 pb-1 my-auto">
+                          {/* 2nd Place Silver Trophy */}
+                          <div className="flex flex-col items-center w-[74px] sm:w-[80px]">
+                            <div className="relative mb-1">
+                              <div className="w-9 h-9 rounded-full p-0.5 bg-gradient-to-br from-slate-100 to-slate-400 border border-white shadow-md flex items-center justify-center overflow-hidden">
+                                {leaderboardRows[1]?.photo ? (
+                                  <img src={leaderboardRows[1].photo} alt="2nd" className="w-full h-full object-cover rounded-full" />
+                                ) : (
+                                  <span className="text-xs font-black text-slate-800">
+                                    {leaderboardRows[1] ? toInitials(leaderboardRows[1].displayName) : '2'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-slate-300 border border-white shadow-xs flex items-center justify-center font-black text-[9px] text-slate-900">
+                                2
+                              </div>
+                            </div>
+                            {/* Silver Trophy Pedestal Base */}
+                            <div className="w-full h-11 rounded-t-xl bg-gradient-to-b from-slate-200 via-slate-300/85 to-slate-500/40 border-t-2 border-x border-white/50 flex flex-col items-center justify-center shadow-md relative overflow-hidden">
+                              <div className="absolute inset-x-0 top-0 h-[1px] bg-white/80" />
+                              <span className="text-[10px] font-extrabold text-white truncate px-1 drop-shadow-sm">
+                                {leaderboardRows[1] ? leaderboardRows[1].displayName.split(' ')[0] : 'Silver'}
+                              </span>
+                              {leaderboardRows[1] && (
+                                <span className="text-[8.5px] font-bold text-slate-200/90">{leaderboardRows[1].scoreLabel}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 1st Place Gold Champion Trophy */}
+                          <div className="flex flex-col items-center w-[90px] sm:w-[96px]">
+                            <div className="relative mb-1">
+                              <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-500 border-2 border-white shadow-[0_0_15px_rgba(251,191,36,0.6)] flex items-center justify-center animate-star-float overflow-hidden">
+                                {leaderboardRows[0]?.photo ? (
+                                  <img src={leaderboardRows[0].photo} alt="1st" className="w-full h-full object-cover rounded-full" />
+                                ) : (
+                                  <Crown className="w-5 h-5 text-amber-900 fill-amber-900" />
+                                )}
+                              </div>
+                              <div className="absolute -top-2 left-1/2 -translate-x-1/2">
+                                <Crown className="w-4 h-4 text-amber-300 fill-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.9)]" />
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 border border-white shadow-sm flex items-center justify-center font-black text-[10px] text-amber-950">
+                                1
+                              </div>
+                            </div>
+                            {/* Gold Trophy Pedestal Base */}
+                            <div className="w-full h-16 rounded-t-xl bg-gradient-to-b from-amber-300 via-amber-400 to-amber-600/70 border-t-2 border-x border-amber-200 flex flex-col items-center justify-center shadow-lg relative overflow-hidden">
+                              <div className="absolute inset-x-0 top-0 h-[1.5px] bg-white/90" />
+                              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1/3 bg-white/20 blur-[1px] pointer-events-none" />
+                              <Trophy className="w-3.5 h-3.5 text-amber-900/60 mb-0.5" />
+                              <span className="text-[11px] font-black text-amber-950 truncate px-1 drop-shadow-xs">
+                                {leaderboardRows[0] ? leaderboardRows[0].displayName.split(' ')[0] : '#1 Champ'}
+                              </span>
+                              {leaderboardRows[0] && (
+                                <span className="text-[9px] font-black text-amber-900">{leaderboardRows[0].scoreLabel}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 3rd Place Bronze Trophy */}
+                          <div className="flex flex-col items-center w-[74px] sm:w-[80px]">
+                            <div className="relative mb-1">
+                              <div className="w-9 h-9 rounded-full p-0.5 bg-gradient-to-br from-amber-600 to-amber-800 border border-white shadow-md flex items-center justify-center overflow-hidden">
+                                {leaderboardRows[2]?.photo ? (
+                                  <img src={leaderboardRows[2].photo} alt="3rd" className="w-full h-full object-cover rounded-full" />
+                                ) : (
+                                  <span className="text-xs font-black text-amber-100">
+                                    {leaderboardRows[2] ? toInitials(leaderboardRows[2].displayName) : '3'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-700 border border-white shadow-xs flex items-center justify-center font-black text-[9px] text-white">
+                                3
+                              </div>
+                            </div>
+                            {/* Bronze Trophy Pedestal Base */}
+                            <div className="w-full h-9 rounded-t-xl bg-gradient-to-b from-amber-600 via-amber-700/80 to-amber-900/50 border-t-2 border-x border-amber-400/60 flex flex-col items-center justify-center shadow-md relative overflow-hidden">
+                              <div className="absolute inset-x-0 top-0 h-[1px] bg-amber-300/60" />
+                              <span className="text-[10px] font-extrabold text-white truncate px-1 drop-shadow-sm">
+                                {leaderboardRows[2] ? leaderboardRows[2].displayName.split(' ')[0] : 'Bronze'}
+                              </span>
+                              {leaderboardRows[2] && (
+                                <span className="text-[8.5px] font-bold text-amber-200/90">{leaderboardRows[2].scoreLabel}</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {filteredHistory.slice(0, 6).map((entry) => {
-                            const isWin = entry.outcome === 'win';
-                            const isLoss = entry.outcome === 'loss';
-                            const initials = entry.opponentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OP';
 
-                            return (
-                              <div key={entry.matchId} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-3 shadow-sm transition-all hover:scale-[1.01] hover:border-white/20">
-                                {/* Dynamic Background Gradient Fade */}
-                                <div className={cn(
-                                  "absolute inset-y-0 right-0 w-[55%] pointer-events-none opacity-[0.25] mix-blend-screen transition-all",
-                                  isWin ? "bg-gradient-to-l from-emerald-500 via-emerald-500/40 to-transparent" :
-                                    isLoss ? "bg-gradient-to-l from-rose-500 via-rose-500/40 to-transparent" :
-                                      "bg-gradient-to-l from-amber-400 via-amber-400/40 to-transparent"
-                                )} />
+                        <div className="pt-2 border-t border-white/10 text-center relative z-10">
+                          <p className="text-[10px] text-purple-200/70 font-medium">Rankings update live after every duel</p>
+                        </div>
+                      </div>
 
-                                <div className="flex items-center gap-3 relative z-10 w-full">
-                                  {/* Left Avatar Bubble */}
-                                  <div className={cn(
-                                    "w-10 h-10 rounded-full flex items-center justify-center font-black text-[12px] tracking-wide text-white flex-shrink-0 shadow-inner",
-                                    isWin ? "bg-emerald-600" : isLoss ? "bg-rose-600" : "bg-amber-600"
-                                  )}>
-                                    {initials}
-                                  </div>
+                      {/* 2. My Stats Bento HUD Widget with Staggered Floating Motion */}
+                      <div className="relative w-full bg-slate-900/60 backdrop-blur-xl border border-white/15 rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl">
+                        {/* Header */}
+                        <div className="flex flex-row items-center justify-between px-5 pt-4 pb-2 relative z-10">
+                          <div>
+                            <h3 className="text-base font-black text-white tracking-wide leading-none drop-shadow-md font-display">My Stats</h3>
+                            <p className="text-[10px] font-bold text-purple-300/80 uppercase tracking-wider mt-0.5">Career Combat Summary</p>
+                          </div>
+                          <Button
+                            className="bg-purple-600/80 hover:bg-purple-500 text-white font-bold text-[10px] tracking-widest uppercase rounded-full px-3 h-[26px] border border-white/20 shadow-sm transition-all active:scale-95 cursor-pointer"
+                            onClick={() => setActiveTab('stats')}
+                          >
+                            View Stats →
+                          </Button>
+                        </div>
 
-                                  {/* Center Match Details */}
-                                  <div className="flex-grow min-w-0 flex flex-col justify-center">
-                                    <p className="text-[13px] font-extrabold text-white truncate leading-tight">
-                                      vs {entry.opponentName}
-                                    </p>
-                                    <p className="text-[10px] font-bold text-white/60 truncate flex items-center gap-1 mt-0.5">
-                                      {entry.subjectId} <span className="w-1 h-1 rounded-full bg-white/30" /> {entry.difficulty || 'Medium'} <span className="w-1 h-1 rounded-full bg-white/30" /> {entry.rounds || '5'} rnds
-                                    </p>
-                                  </div>
+                        {/* 2x2 Bento HUD Cards */}
+                        <div className="grid grid-cols-2 gap-2.5 p-3.5 relative z-10">
+                          {/* 1. Total XP (Cycle A floating) */}
+                          <motion.div
+                            animate={{ y: [0, -3.5, 0] }}
+                            transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+                            whileHover={{ scale: 1.03 }}
+                            className="rounded-2xl bg-gradient-to-br from-[#FF7B88] to-[#FF5C70] p-3 shadow-[0_4px_14px_rgba(255,92,112,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] relative overflow-hidden group cursor-default flex flex-col justify-between min-h-[76px]"
+                          >
+                            <div className="absolute -bottom-3 -right-3 text-white/15 transition-transform duration-500 group-hover:scale-110 pointer-events-none">
+                              <Sparkles className="w-14 h-14" />
+                            </div>
+                            <div className="w-6 h-6 rounded-full border border-white/30 flex items-center justify-center relative z-10 shadow-[inset_0_1px_3px_rgba(255,255,255,0.5)] bg-white/10">
+                              <Sparkles className="w-3 h-3 text-white" />
+                            </div>
+                            <div className="relative z-10 mt-1">
+                              <h4 className="text-base sm:text-lg font-black text-white leading-none tracking-tight drop-shadow-sm">
+                                {studentProfile?.currentXP || 0}
+                              </h4>
+                              <p className="text-[8.5px] font-extrabold text-white/90 uppercase tracking-wider mt-1 truncate">Total XP</p>
+                            </div>
+                          </motion.div>
 
-                                  {/* Right Score & Outcome Text */}
-                                  <div className="text-right flex flex-col items-end justify-center pl-2 flex-shrink-0">
-                                    <p className="tabular-nums text-[17px] leading-[1.1] font-black text-white tracking-tighter">
-                                      {entry.scoreFor}<span className="text-white/40 mx-[1px]">-</span>{entry.scoreAgainst}
-                                    </p>
-                                    <p
+                          {/* 2. Win Rate (Cycle B floating with delay) */}
+                          <motion.div
+                            animate={{ y: [-3.5, 0, -3.5] }}
+                            transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                            whileHover={{ scale: 1.03 }}
+                            className="rounded-2xl bg-gradient-to-br from-[#B467FF] to-[#9D44FF] p-3 shadow-[0_4px_14px_rgba(157,68,255,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] relative overflow-hidden group cursor-default flex flex-col justify-between min-h-[76px]"
+                          >
+                            <div className="absolute -bottom-3 -right-3 text-white/15 transition-transform duration-500 group-hover:scale-110 pointer-events-none">
+                              <Trophy className="w-14 h-14" />
+                            </div>
+                            <div className="w-6 h-6 rounded-full border border-white/30 flex items-center justify-center relative z-10 shadow-[inset_0_1px_3px_rgba(255,255,255,0.5)] bg-white/10">
+                              <Trophy className="w-3 h-3 text-white" />
+                            </div>
+                            <div className="relative z-10 mt-1">
+                              <h4 className="text-base sm:text-lg font-black text-white leading-none tracking-tight drop-shadow-sm">
+                                {Math.round(statsData?.winRate || 0)}%
+                              </h4>
+                              <p className="text-[8.5px] font-extrabold text-white/90 uppercase tracking-wider mt-1 truncate">Win Rate</p>
+                            </div>
+                          </motion.div>
+
+                          {/* 3. Matches (Cycle B floating with delay) */}
+                          <motion.div
+                            animate={{ y: [-3.5, 0, -3.5] }}
+                            transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+                            whileHover={{ scale: 1.03 }}
+                            className="rounded-2xl bg-gradient-to-br from-[#4DB9E9] to-[#2DA1D8] p-3 shadow-[0_4px_14px_rgba(45,161,216,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] relative overflow-hidden group cursor-default flex flex-col justify-between min-h-[76px]"
+                          >
+                            <div className="absolute -bottom-3 -right-3 text-white/15 transition-transform duration-500 group-hover:scale-110 pointer-events-none">
+                              <Target className="w-14 h-14" />
+                            </div>
+                            <div className="w-6 h-6 rounded-full border border-white/30 flex items-center justify-center relative z-10 shadow-[inset_0_1px_3px_rgba(255,255,255,0.5)] bg-white/10">
+                              <Target className="w-3 h-3 text-white" />
+                            </div>
+                            <div className="relative z-10 mt-1">
+                              <h4 className="text-base sm:text-lg font-black text-white leading-none tracking-tight drop-shadow-sm">
+                                {statsData?.matchesPlayed || 0}
+                              </h4>
+                              <p className="text-[8.5px] font-extrabold text-white/90 uppercase tracking-wider mt-1 truncate">Matches</p>
+                            </div>
+                          </motion.div>
+
+                          {/* 4. Avg Speed / Response (Cycle A floating) */}
+                          <motion.div
+                            animate={{ y: [0, -3.5, 0] }}
+                            transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+                            whileHover={{ scale: 1.03 }}
+                            className="rounded-2xl bg-gradient-to-br from-[#48DA94] to-[#2BBF7B] p-3 shadow-[0_4px_14px_rgba(43,191,123,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] relative overflow-hidden group cursor-default flex flex-col justify-between min-h-[76px]"
+                          >
+                            <div className="absolute -bottom-3 -right-3 text-white/15 transition-transform duration-500 group-hover:scale-110 pointer-events-none">
+                              <Clock3 className="w-14 h-14" />
+                            </div>
+                            <div className="w-6 h-6 rounded-full border border-white/30 flex items-center justify-center relative z-10 shadow-[inset_0_1px_3px_rgba(255,255,255,0.5)] bg-white/10">
+                              <Clock3 className="w-3 h-3 text-white" />
+                            </div>
+                            <div className="relative z-10 mt-1">
+                              <h4 className="text-base sm:text-lg font-black text-white leading-none tracking-tight drop-shadow-sm">
+                                {statsData?.averageResponseMs ? `${(statsData.averageResponseMs / 1000).toFixed(0)}s` : '0s'}
+                              </h4>
+                              <p className="text-[8.5px] font-extrabold text-white/90 uppercase tracking-wider mt-1 truncate">Avg Speed</p>
+                            </div>
+                          </motion.div>
+                        </div>
+
+                        <div className="px-4 pb-3 pt-1 border-t border-white/10 text-center relative z-10">
+                          <p className="text-[10px] text-white/60 font-medium">Auto-synced with matchmaking & bot duels</p>
+                        </div>
+                      </div>
+
+                      {/* 3. Match History Widget (Compact 3 recent matches) */}
+                      <div className="relative w-full bg-slate-900/60 backdrop-blur-xl border border-white/15 rounded-3xl overflow-hidden flex flex-col shadow-xl">
+                        <div className="px-5 pt-4 pb-2.5 flex flex-row items-center justify-between border-b border-white/10">
+                          <div>
+                            <h4 className="text-base font-black flex items-center gap-2 text-white font-display">
+                              <History className="h-4 w-4 text-purple-400" /> Match History
+                            </h4>
+                            <p className="text-[10px] text-white/60 font-medium mt-0.5">
+                              Recent duels & score breakdowns
+                            </p>
+                          </div>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="h-auto p-0 text-xs font-bold text-purple-300 hover:text-white transition-colors cursor-pointer"
+                            onClick={() => setActiveTab('history')}
+                          >
+                            View All →
+                          </Button>
+                        </div>
+
+                        <div className="p-3.5 space-y-2">
+                          {statsLoading ? (
+                            <div className="space-y-2">
+                              <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
+                              <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
+                              <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
+                            </div>
+                          ) : filteredHistory.length === 0 ? (
+                            <div className="text-center py-6">
+                              <p className="text-xs text-white/50">No battle history recorded yet.</p>
+                              <p className="text-[10px] text-purple-300/80 mt-1">Jump into a 1v1 battle or bot duel to earn XP!</p>
+                            </div>
+                          ) : (
+                            filteredHistory.slice(0, 3).map((entry) => {
+                              const isWin = entry.outcome === 'win';
+                              const isLoss = entry.outcome === 'loss';
+                              const opponentInitials = entry.opponentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'OP';
+
+                              return (
+                                <div
+                                  key={entry.matchId}
+                                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-2.5 shadow-xs transition-all hover:border-white/20"
+                                >
+                                  {/* Dynamic Background Gradient Fade */}
+                                  <div
+                                    className={cn(
+                                      "absolute inset-y-0 right-0 w-[55%] pointer-events-none opacity-[0.25] mix-blend-screen transition-all",
+                                      isWin
+                                        ? "bg-gradient-to-l from-emerald-500 via-emerald-500/40 to-transparent"
+                                        : isLoss
+                                          ? "bg-gradient-to-l from-rose-500 via-rose-500/40 to-transparent"
+                                          : "bg-gradient-to-l from-amber-400 via-amber-400/40 to-transparent"
+                                    )}
+                                  />
+
+                                  <div className="flex items-center gap-2.5 relative z-10 w-full">
+                                    {/* Left Avatar Bubble */}
+                                    <div
                                       className={cn(
-                                        'text-[9px] font-black uppercase tracking-[0.1em]',
-                                        isWin ? 'text-emerald-400' : isLoss ? 'text-rose-400' : 'text-amber-400'
+                                        "w-8 h-8 rounded-full flex items-center justify-center font-black text-[11px] tracking-wide text-white shrink-0 shadow-inner",
+                                        isWin ? "bg-emerald-600" : isLoss ? "bg-rose-600" : "bg-amber-600"
                                       )}
                                     >
-                                      {entry.outcome}
-                                    </p>
+                                      {opponentInitials}
+                                    </div>
+
+                                    {/* Center Match Details */}
+                                    <div className="flex-grow min-w-0 flex flex-col justify-center">
+                                      <p className="text-xs font-extrabold text-white truncate leading-tight">
+                                        vs {entry.opponentName}
+                                      </p>
+                                      <p className="text-[10px] font-bold text-white/60 truncate flex items-center gap-1 mt-0.5">
+                                        {entry.subjectId} <span className="w-1 h-1 rounded-full bg-white/30" /> {entry.difficulty || 'Medium'}
+                                      </p>
+                                    </div>
+
+                                    {/* Right Score & Outcome Text */}
+                                    <div className="text-right flex flex-col items-end justify-center pl-1.5 shrink-0">
+                                      <p className="tabular-nums text-sm leading-tight font-black text-white tracking-tighter">
+                                        {entry.scoreFor}<span className="text-white/40 mx-[1px]">-</span>{entry.scoreAgainst}
+                                      </p>
+                                      <p
+                                        className={cn(
+                                          'text-[8.5px] font-black uppercase tracking-[0.1em]',
+                                          isWin ? 'text-emerald-400' : isLoss ? 'text-rose-400' : 'text-amber-400'
+                                        )}
+                                      >
+                                        {entry.outcome}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })
+                          )}
                         </div>
-                      )}
+                      </div>
+
                     </div>
                   </div>
-
                 </motion.div>
               </TabsContent>
 
@@ -4436,16 +4499,24 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                           </div>
 
                           <div className="w-full relative flex flex-col items-center">
-                            <div className="w-full h-8 sm:h-9 rounded-[50%] bg-gradient-to-b from-white via-slate-100 to-slate-300 border-2 border-white shadow-[inset_0_2px_5px_rgba(255,255,255,0.95),0_3px_8px_rgba(71,85,105,0.3)] relative z-20 flex items-center justify-center">
+                            {/* Silver Trophy Cup Rim */}
+                            <div className="w-full h-8 sm:h-9 rounded-[50%] bg-gradient-to-b from-white via-slate-100 to-slate-300 border-2 border-white shadow-[inset_0_2px_5px_rgba(255,255,255,0.95),0_4px_10px_rgba(71,85,105,0.35)] relative z-20 flex items-center justify-center">
                               <div className="w-[82%] h-[58%] rounded-[50%] border border-white/70 bg-white/40" />
                             </div>
+                            {/* Trophy Cup Body & Pedestal */}
                             <div className="w-full h-[90px] sm:h-[110px] lg:h-[115px] -mt-4 rounded-b-[24px] sm:rounded-b-[30px] bg-gradient-to-r from-slate-400 via-slate-100 via-slate-200 to-slate-400 relative shadow-[0_16px_32px_rgba(0,0,0,0.25)] flex flex-col items-center justify-end pb-3 overflow-hidden border-b-2 border-slate-300">
                               <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1/3 bg-white/40 blur-[2px] pointer-events-none" />
-                              <span className="text-white font-black text-4xl sm:text-5xl select-none tabular-nums drop-shadow-[0_2px_10px_rgba(100,116,139,0.5)] relative z-10 leading-none">
+                              <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-slate-500/80 drop-shadow-sm mb-0.5 relative z-10" />
+                              <span className="text-white font-black text-3xl sm:text-4xl select-none tabular-nums drop-shadow-[0_2px_10px_rgba(100,116,139,0.5)] relative z-10 leading-none">
                                 2
                               </span>
+                              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-700/90 relative z-10 mt-0.5">
+                                Silver
+                              </span>
                             </div>
-                            <div className="w-[88%] h-3 rounded-[50%] bg-black/20 blur-xs -mt-1.5 relative z-0" />
+                            {/* Stepped Base Footing */}
+                            <div className="w-[104%] h-2.5 sm:h-3 rounded-b-xl bg-gradient-to-r from-slate-500 via-slate-200 to-slate-500 border-t border-white/60 shadow-md -mt-1 relative z-20" />
+                            <div className="w-[88%] h-3 rounded-[50%] bg-black/20 blur-xs -mt-1 relative z-0" />
                           </div>
                         </motion.div>
 
@@ -4492,16 +4563,24 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                           </div>
 
                           <div className="w-full relative flex flex-col items-center">
-                            <div className="w-full h-9 sm:h-10 rounded-[50%] bg-gradient-to-b from-yellow-100 via-amber-200 to-yellow-400 border-2 border-yellow-100 shadow-[inset_0_2px_6px_rgba(255,255,255,0.95),0_3px_10px_rgba(180,83,9,0.35)] relative z-20 flex items-center justify-center">
+                            {/* Gold Trophy Cup Rim */}
+                            <div className="w-full h-9 sm:h-10 rounded-[50%] bg-gradient-to-b from-yellow-100 via-amber-200 to-yellow-400 border-2 border-yellow-100 shadow-[inset_0_3px_7px_rgba(255,255,255,0.95),0_6px_14px_rgba(180,83,9,0.4)] relative z-20 flex items-center justify-center">
                               <div className="w-[84%] h-[60%] rounded-[50%] border border-yellow-100/70 bg-white/40" />
                             </div>
-                            <div className="w-full h-[125px] sm:h-[150px] lg:h-[160px] -mt-4.5 rounded-b-[28px] sm:rounded-b-[36px] bg-gradient-to-r from-amber-500 via-yellow-200 via-amber-300 to-amber-600 relative shadow-[0_20px_40px_rgba(0,0,0,0.3)] flex flex-col items-center justify-end pb-4 overflow-hidden border-b-2 border-amber-400">
+                            {/* Trophy Cup Body & Pedestal */}
+                            <div className="w-full h-[125px] sm:h-[150px] lg:h-[160px] -mt-4.5 rounded-b-[28px] sm:rounded-b-[36px] bg-gradient-to-r from-amber-500 via-yellow-200 via-amber-300 to-amber-600 relative shadow-[0_20px_40px_rgba(0,0,0,0.3)] flex flex-col items-center justify-end pb-3.5 overflow-hidden border-b-2 border-amber-400">
                               <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1/3 bg-white/45 blur-[3px] pointer-events-none" />
-                              <span className="text-white font-black text-5xl sm:text-6xl select-none tabular-nums drop-shadow-[0_2px_12px_rgba(245,158,11,0.6)] relative z-10 leading-none">
+                              <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-amber-900/80 drop-shadow-sm mb-0.5 relative z-10" />
+                              <span className="text-white font-black text-4xl sm:text-5xl select-none tabular-nums drop-shadow-[0_2px_12px_rgba(245,158,11,0.7)] relative z-10 leading-none">
                                 1
                               </span>
+                              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-950 bg-yellow-300/70 px-2 py-0.5 rounded-full relative z-10 mt-1 shadow-xs border border-yellow-200/60">
+                                Champion
+                              </span>
                             </div>
-                            <div className="w-[88%] h-3.5 rounded-[50%] bg-black/25 blur-xs -mt-1.5 relative z-0" />
+                            {/* Stepped Champion Base Footing */}
+                            <div className="w-[106%] h-3 sm:h-3.5 rounded-b-2xl bg-gradient-to-r from-amber-600 via-yellow-200 to-amber-600 border-t-2 border-yellow-200 shadow-lg -mt-1 relative z-20" />
+                            <div className="w-[88%] h-3.5 rounded-[50%] bg-black/25 blur-xs -mt-1 relative z-0" />
                           </div>
                         </motion.div>
 
@@ -4539,16 +4618,24 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                           </div>
 
                           <div className="w-full relative flex flex-col items-center">
-                            <div className="w-full h-8 sm:h-9 rounded-[50%] bg-gradient-to-b from-amber-100 via-amber-200 to-amber-400 border-2 border-amber-200 shadow-[inset_0_2px_5px_rgba(255,255,255,0.95),0_3px_8px_rgba(180,83,9,0.3)] relative z-20 flex items-center justify-center">
+                            {/* Bronze Trophy Cup Rim */}
+                            <div className="w-full h-8 sm:h-9 rounded-[50%] bg-gradient-to-b from-amber-100 via-amber-200 to-amber-400 border-2 border-amber-200 shadow-[inset_0_2px_5px_rgba(255,255,255,0.95),0_4px_10px_rgba(180,83,9,0.35)] relative z-20 flex items-center justify-center">
                               <div className="w-[82%] h-[58%] rounded-[50%] border border-amber-200/70 bg-white/40" />
                             </div>
-                            <div className="w-full h-[75px] sm:h-[90px] lg:h-[95px] -mt-4 rounded-b-[24px] sm:rounded-b-[30px] bg-gradient-to-r from-amber-700 via-amber-400 via-amber-500 to-amber-700 relative shadow-[0_16px_32px_rgba(0,0,0,0.25)] flex flex-col items-center justify-end pb-3 overflow-hidden border-b-2 border-amber-600">
+                            {/* Trophy Cup Body & Pedestal */}
+                            <div className="w-full h-[75px] sm:h-[90px] lg:h-[95px] -mt-4 rounded-b-[24px] sm:rounded-b-[30px] bg-gradient-to-r from-amber-700 via-amber-400 via-amber-500 to-amber-700 relative shadow-[0_16px_32px_rgba(0,0,0,0.25)] flex flex-col items-center justify-end pb-2.5 overflow-hidden border-b-2 border-amber-600">
                               <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-1/3 bg-white/40 blur-[2px] pointer-events-none" />
-                              <span className="text-white font-black text-4xl sm:text-5xl select-none tabular-nums drop-shadow-[0_2px_10px_rgba(180,83,9,0.5)] relative z-10 leading-none">
+                              <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-amber-950/70 drop-shadow-sm mb-0.5 relative z-10" />
+                              <span className="text-white font-black text-3xl sm:text-4xl select-none tabular-nums drop-shadow-[0_2px_10px_rgba(180,83,9,0.5)] relative z-10 leading-none">
                                 3
                               </span>
+                              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-amber-950/90 relative z-10 mt-0.5">
+                                Bronze
+                              </span>
                             </div>
-                            <div className="w-[88%] h-3 rounded-[50%] bg-black/20 blur-xs -mt-1.5 relative z-0" />
+                            {/* Stepped Base Footing */}
+                            <div className="w-[104%] h-2.5 sm:h-3 rounded-b-xl bg-gradient-to-r from-amber-800 via-amber-400 to-amber-800 border-t border-amber-200/60 shadow-md -mt-1 relative z-20" />
+                            <div className="w-[88%] h-3 rounded-[50%] bg-black/20 blur-xs -mt-1 relative z-0" />
                           </div>
                         </motion.div>
                       </div>

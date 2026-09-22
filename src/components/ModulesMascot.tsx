@@ -1,50 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
-
-const mascotAnimations = `
-  @keyframes head-sway {
-    0%, 100% { transform: rotate(-2deg) translateY(0); }
-    50% { transform: rotate(2deg) translateY(-2px); }
-  }
-  @keyframes horn-left-wiggle {
-    0%, 100% { transform: rotate(-4deg); }
-    50% { transform: rotate(4deg); }
-  }
-  @keyframes horn-right-wiggle {
-    0%, 100% { transform: rotate(4deg); }
-    50% { transform: rotate(-4deg); }
-  }
-  @keyframes blink {
-    0%, 90%, 100% { transform: scaleY(1); }
-    95% { transform: scaleY(0.1); }
-  }
-  @keyframes mouth-talk {
-    0%, 100% { transform: scaleY(1) scaleX(1); }
-    25% { transform: scaleY(1.1) scaleX(0.98); }
-    50% { transform: scaleY(0.9) scaleX(1.02); }
-    75% { transform: scaleY(1.05) scaleX(0.98); }
-  }
-  .animate-head-sway {
-    transform-origin: 50% 75%;
-    animation: head-sway 4s ease-in-out infinite;
-  }
-  .animate-horn-left {
-    transform-origin: 50% 45%;
-    animation: horn-left-wiggle 4s ease-in-out infinite;
-  }
-  .animate-horn-right {
-    transform-origin: 50% 45%;
-    animation: horn-right-wiggle 4s ease-in-out infinite;
-  }
-  .animate-blink {
-    transform-origin: 50% 45%;
-    animation: blink 3.7s ease-in-out infinite;
-  }
-  .animate-mouth {
-    transform-origin: 50% 55%;
-    animation: mouth-talk 3s ease-in-out infinite;
-  }
-`;
+import { motion, useReducedMotion } from 'motion/react';
 
 interface ModulesMascotProps {
   assessmentDismissed?: boolean;
@@ -55,7 +10,8 @@ const ModulesMascot: React.FC<ModulesMascotProps> = ({
   assessmentDismissed,
   initialAssessmentCompleted,
 }) => {
-  const imageClass = "absolute inset-0 w-full h-full object-contain";
+  const reduceMotion = useReducedMotion();
+  const imageClass = 'absolute inset-0 w-full h-full object-contain';
   const [showReminder, setShowReminder] = useState(false);
 
   useEffect(() => {
@@ -79,7 +35,6 @@ const ModulesMascot: React.FC<ModulesMascotProps> = ({
 
   return (
     <>
-      <style>{mascotAnimations}</style>
       <div className="relative w-full h-[250px] flex items-end justify-center drop-shadow-sm select-none pointer-events-none">
         {showReminder && (
           <motion.div
@@ -95,55 +50,108 @@ const ModulesMascot: React.FC<ModulesMascotProps> = ({
               <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />
               <span className="text-[10px] text-[#5a6578] font-medium">Tap to start</span>
             </div>
-            {/* Speech bubble tail pointing to mascot */}
+            {/* Speech bubble tail */}
             <div className="absolute -bottom-2 left-4 w-3 h-3 bg-white border-r border-b border-[#dde3eb] rotate-45" />
           </motion.div>
         )}
 
-        {/* Base: Desk and Body */}
+        {/* Static Body + Desk — no animation, no will-change needed */}
         <img
           src="/mascot/modules_avatar_body.png"
           alt="Desk setup"
           className={`${imageClass} z-10`}
+          draggable={false}
         />
 
-        {/* Animated Head Group - CSS WAAPI animation */}
-        <div className={`${imageClass} z-20 animate-head-sway`}>
+        {/*
+          Animated Head Group
+          - Only `rotate` (no y-translation) so the compositor handles a single
+            transform property rather than a compound translate+rotate matrix.
+          - `will-change: transform` promotes the subtree to its own GPU layer,
+            preventing main-thread layout recalculation on each frame.
+        */}
+        <motion.div
+          className="absolute inset-0 w-full h-full z-20 pointer-events-none"
+          style={{ originY: 0.75, originX: 0.5, willChange: 'transform' }}
+          animate={reduceMotion ? {} : { rotate: [-2, 2, -2] }}
+          transition={{
+            duration: 4,
+            ease: 'easeInOut',
+            repeat: Infinity,
+          }}
+        >
           {/* Left Horn */}
-          <img
+          <motion.img
             src="/mascot/modules_left_horn.png"
-            alt="Left Horn"
-            className={`${imageClass} z-0 animate-horn-left`}
+            alt=""
+            aria-hidden="true"
+            className={`${imageClass} z-0`}
+            style={{ originX: 0.5, originY: 0.45, willChange: 'transform' }}
+            animate={reduceMotion ? {} : { rotate: [-4, 4, -4] }}
+            transition={{
+              duration: 3.5,
+              ease: 'easeInOut',
+              repeat: Infinity,
+            }}
           />
 
           {/* Right Horn */}
-          <img
+          <motion.img
             src="/mascot/modules_right_horn.png"
-            alt="Right Horn"
-            className={`${imageClass} z-0 animate-horn-right`}
+            alt=""
+            aria-hidden="true"
+            className={`${imageClass} z-0`}
+            style={{ originX: 0.5, originY: 0.45, willChange: 'transform' }}
+            animate={reduceMotion ? {} : { rotate: [4, -4, 4] }}
+            transition={{
+              duration: 3.5,
+              ease: 'easeInOut',
+              repeat: Infinity,
+            }}
           />
 
-          {/* Head Base (with headphones) */}
+          {/* Head Base (with headphones) — static, no extra animation */}
           <img
             src="/mascot/modules_head.png"
             alt="Mascot Head"
             className={`${imageClass} z-[1]`}
+            draggable={false}
           />
 
-          {/* Eyes - CSS blink animation */}
-          <img
+          {/* Blinking Eyes — single-property scaleY for cheapest GPU path */}
+          <motion.img
             src="/mascot/modules_eyes.png"
-            alt="Eyes"
-            className={`${imageClass} z-[2] animate-blink`}
+            alt=""
+            aria-hidden="true"
+            className={`${imageClass} z-[2]`}
+            style={{ originX: '50%', originY: '50%', willChange: 'transform' }}
+            animate={reduceMotion ? {} : { scaleY: [1, 0.1, 1] }}
+            transition={{
+              duration: 0.22,
+              repeat: Infinity,
+              repeatDelay: 3.6,
+              ease: 'easeInOut',
+            }}
           />
 
-          {/* Mouth - CSS talking animation */}
-          <img
+          {/*
+            Mouth — single-property scaleY only (dropped simultaneous scaleX
+            to avoid dual-property paint on every frame).
+          */}
+          <motion.img
             src="/mascot/modules_mouth.png"
-            alt="Mouth"
-            className={`${imageClass} z-[3] animate-mouth`}
+            alt=""
+            aria-hidden="true"
+            className={`${imageClass} z-[3]`}
+            style={{ originX: '50%', originY: '55%', willChange: 'transform' }}
+            animate={reduceMotion ? {} : { scaleY: [1, 1.12, 0.92, 1.06, 1] }}
+            transition={{
+              duration: 3,
+              ease: 'easeInOut',
+              repeat: Infinity,
+            }}
           />
-        </div>
+        </motion.div>
       </div>
     </>
   );
