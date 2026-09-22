@@ -1831,6 +1831,7 @@ _MATH_SCOPE_PATTERNS: Tuple[re.Pattern[str], ...] = (
     re.compile(r"\b(?:difference between|relationship between|compare|contrast)\s+(?:\w+\s+){0,3}(?:and|vs|versus|with)", re.IGNORECASE),
     # Learning/understanding signals
     re.compile(r"\b(?:i don't understand|i don't get|i'm confused|help me|can you help|struggle|confus|difficult|hard to)\b", re.IGNORECASE),
+    re.compile(r"\b(?:give me|just give me|tell me)\s+(?:the\s+)?answer\b", re.IGNORECASE),
     # Proof derivation
     re.compile(r"\b(?:proof|prove|derivation|derive|show that)\b", re.IGNORECASE),
 )
@@ -2689,34 +2690,35 @@ async def chat_tutor(request: ChatRequest):
                 _skip_scope_check = True
         # ─── End Intent Gate ─────────────────────────────────────
 
-        try:
-            intent_res = await route_student_intent(request.message)
-            if (
-                intent_res.get("choice") == "direct_answer_request"
-                and float(intent_res.get("confidence", 0.0)) >= 0.80
-            ):
-                return ChatResponse(
-                    response=(
-                        "I can guide you step-by-step, but I won't give the final answer "
-                        "directly! What is the governing formula or first step you think "
-                        "we should use here?"
-                    ),
-                    sources=[],
-                    suggestedFollowups=[
-                        "What is the first step?",
-                        "Can you explain the formula?",
-                        "Give me a hint",
-                    ],
-                    confidence=float(intent_res.get("confidence", 0.95)),
-                    activeModel="jev-socratic-router",
-                )
-        except Exception as intent_err:
-            logger.warning("Jev intent routing failed; continuing with chat: %s", intent_err)
-
         if not _skip_scope_check:
             boundary_response = get_scope_boundary_response(request.message, request.history)
             if boundary_response is not None:
                 return ChatResponse(response=boundary_response)
+
+        if not request.history and not _skip_scope_check:
+            try:
+                intent_res = await route_student_intent(request.message)
+                if (
+                    intent_res.get("choice") == "direct_answer_request"
+                    and float(intent_res.get("confidence", 0.0)) >= 0.80
+                ):
+                    return ChatResponse(
+                        response=(
+                            "I can guide you step-by-step, but I won't give the final answer "
+                            "directly! What is the governing formula or first step you think "
+                            "we should use here?"
+                        ),
+                        sources=[],
+                        suggestedFollowups=[
+                            "What is the first step?",
+                            "Can you explain the formula?",
+                            "Give me a hint",
+                        ],
+                        confidence=float(intent_res.get("confidence", 0.95)),
+                        activeModel="jev-socratic-router",
+                    )
+            except Exception as intent_err:
+                logger.warning("Jev intent routing failed; continuing with chat: %s", intent_err)
 
         system_prompt = MATH_TUTOR_SYSTEM_PROMPT
 
