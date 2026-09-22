@@ -1,0 +1,75 @@
+{
+  "task": "Execute Todo 4: verify and validate P2 RAG lesson generation and gamified features roadmap.",
+  "changed_files": [
+    ".omo/evidence/jev-fun-modules-prompts/task-4-p2-rag.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-4-p2-pedagogy.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-4-doneclaim.json"
+  ],
+  "tests": [
+    {
+      "name": "fallback preservation selector",
+      "command": "Select-String -Pattern \"PdfFallbackPanel\" -Path .omo/plans/jev-fun-modules-prompts.md",
+      "evidence": ".omo/evidence/jev-fun-modules-prompts/task-4-p2-rag.log",
+      "status": "passed"
+    },
+    {
+      "name": "pedagogical model selector",
+      "command": "if (-not (Select-String -Pattern \"Merrill\" -Path .omo/plans/jev-fun-modules-prompts.md)) { throw \"FAIL: missing pedagogical model\" } else { \"PASS: pedagogical model present\" }",
+      "evidence": ".omo/evidence/jev-fun-modules-prompts/task-4-p2-pedagogy.log",
+      "status": "passed"
+    }
+  ],
+  "manual_qa": {
+    "plan_lines": "256-274",
+    "grounding": {
+      "backend": "backend/routes/rag_routes.py:347-460 separates retrieval, prompt construction, inference, and response parsing; retrieval and inference failures return explicit HTTP errors.",
+      "frontend": "src/components/LessonViewer.tsx:485-550 defines PdfFallbackPanel and its PDF/error presentation path.",
+      "pedagogy": [
+        "Activation",
+        "Demonstration",
+        "Application",
+        "Integration"
+      ],
+      "micro_lessons": "Three-minute bite-sized cards with progress dots are specified.",
+      "fallback": "Low-confidence or timed-out retrieval displays PdfFallbackPanel and never a blank screen.",
+      "wave_order": [
+        "Wave 1 core progression",
+        "Wave 2 Manipulatives",
+        "Wave 3 Peer Duels & Boss Raids",
+        "Wave 4 Reactive Mascot"
+      ]
+    }
+  },
+  "cleanup": {
+    "product_files_modified": false,
+    "secrets_added": false,
+    "temporary_files_created": false,
+    "git_commit_created": false
+  },
+  "risks": [
+    "This task validates the written roadmap and source anchors; it does not execute a live RAG request or browser outage flow.",
+    "The worktree had pre-existing untracked .omo/boulder.json, .omo/drafts/, and .omo/plans/ artifacts; they were not changed by this task."
+  ],
+  "adversarial_results": {
+    "stale_state": {
+      "status": "passed",
+      "result": "Re-read plan contains Merrill, PdfFallbackPanel, Wave 2, Wave 3, and Wave 4 markers."
+    },
+    "dirty_worktree": {
+      "status": "observed",
+      "result": "Pre-existing untracked .omo artifacts present; no src/ or backend/ changes."
+    },
+    "misleading_success_output": {
+      "status": "passed",
+      "result": "Both evidence logs were checked for non-zero length; rag log is 713 bytes and pedagogy log is 36 bytes."
+    },
+    "network_failure": {
+      "status": "not_applicable",
+      "reason": "Todo 4 acceptance gates are static plan/source verification commands; no network call is required."
+    },
+    "secret_exposure": {
+      "status": "not_applicable",
+      "reason": "No credentials, API keys, or secret-bearing files were read or written."
+    }
+  }
+}
