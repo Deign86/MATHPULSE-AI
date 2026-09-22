@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, Shield, Loader2, BookMarked, Menu } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, Shield, Loader2, BookMarked, Menu, User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon } from 'lucide-react';
 import Sidebar from './Sidebar';
 import ConfirmModal from './ConfirmModal';
 import UserAvatar from './UserAvatar';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from './ui/dropdown-menu';
 import AdminPdfUpload from './admin/AdminPdfUpload';
 import AdminAuditLog from './AdminAuditLog';
 import AdminRagManager from './AdminRagManager';
@@ -395,21 +403,64 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 />
               </div>
 
-              {/* Profile Pill */}
-              <div
-                onClick={onOpenProfile}
-                className="flex items-center gap-2 bg-white/60 p-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02] shrink-0"
-              >
-                <div className="w-7 h-7 rounded-full bg-indigo-100 overflow-hidden shrink-0">
-                  <UserAvatar
-                    src={userProfile?.photo}
-                    name={userProfile?.name || 'Admin'}
-                    gender={userProfile?.gender}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <span className="hidden sm:inline text-[13px] font-semibold text-[#1e293b] truncate max-w-[120px]">{userProfile?.name || 'Admin'}</span>
-              </div>
+              {/* Profile Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 bg-white/60 p-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02] shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 data-[state=open]:ring-2 data-[state=open]:ring-indigo-500"
+                    aria-label={`Profile menu: ${userProfile?.name || 'Admin'}`}
+                  >
+                    <div className="w-7 h-7 rounded-full bg-indigo-100 overflow-hidden shrink-0">
+                      <UserAvatar
+                        src={userProfile?.photo}
+                        name={userProfile?.name || 'Admin'}
+                        gender={userProfile?.gender}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <span className="hidden sm:inline text-[13px] font-semibold text-[#1e293b] truncate max-w-[120px]">{userProfile?.name || 'Admin'}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 p-1.5 shadow-xl z-50">
+                  <DropdownMenuLabel className="px-3 py-2 font-normal">
+                    <div className="flex flex-col space-y-0.5 min-w-0">
+                      <p className="text-xs font-black text-slate-900 dark:text-white truncate font-display">{userProfile?.name || 'Admin'}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{userProfile?.email || 'Administrator Account'}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="my-1 bg-slate-200/60 dark:bg-white/10" />
+                  <DropdownMenuItem
+                    onClick={() => onOpenProfile?.()}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors cursor-pointer"
+                  >
+                    <div className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                      <UserIcon size={14} />
+                    </div>
+                    <span>My Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onOpenSettings?.()}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors cursor-pointer"
+                  >
+                    <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                      <SettingsIcon size={14} />
+                    </div>
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1 bg-slate-200/60 dark:bg-white/10" />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setShowLogoutConfirm(true)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                  >
+                    <div className="w-6 h-6 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                      <LogOutIcon size={14} />
+                    </div>
+                    <span>Sign Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>

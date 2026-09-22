@@ -7,7 +7,8 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck,
+  User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -18,7 +19,14 @@ import { CreateClassModal } from './CreateClassModal';
 import { AddStudentsModal } from './AddStudentsModal';
 import NotificationDropdown from './NotificationDropdown';
 import { useNotifications } from '@/features/notifications';
-import LogoutActionButton from './LogoutActionButton';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from './ui/dropdown-menu';
 import UserAvatar from './UserAvatar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
@@ -1681,25 +1689,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
           </div>
         </nav>
 
-        {/* User Section */}
-        <div className="space-y-2 border-t border-[#dde3eb] pt-4">
-          <motion.button
-            whileHover={{ x: 2 }}
-            whileTap={{ scale: 0.98 }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[#5a6578] font-semibold border border-transparent hover:bg-[#dde3eb] hover:border-[#dde3eb] hover:text-[#0a1628] transition-all duration-200 whitespace-nowrap ${sidebarCollapsed && !sidebarHovered ? 'justify-center' : ''
-              }`}
-            onClick={onOpenSettings}
-            aria-label="Settings"
-            title={sidebarCollapsed && !sidebarHovered ? 'Settings' : ''}
-          >
-            <Settings size={18} strokeWidth={2} className="flex-shrink-0" />
-            {(!sidebarCollapsed || sidebarHovered) && <span className="font-body text-xs">Settings</span>}
-          </motion.button>
-
-          <div className="text-[#5a6578]">
-            <LogoutActionButton onClick={() => setShowLogoutConfirm(true)} collapsed={sidebarCollapsed && !sidebarHovered} />
-          </div>
-        </div>
       </motion.aside>
 
       {/* Main Content + Right Sidebar */}
@@ -1808,19 +1797,63 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       onViewAll={() => setActiveView('notifications')}
                     />
                   </div>
-                  {/* Profile Pill - Avatar only on mobile to prevent squishing header */}
-                  {activeView !== 'dashboard' && (
-                    <div
-                      onClick={onOpenProfile}
-                      className="flex items-center gap-2 bg-white/60 p-1 sm:px-4 sm:py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-8 sm:h-10 active:scale-95 sm:hover:scale-[1.02]"
-                      title={teacherName || 'Teacher Profile'}
-                    >
-                      <div className="w-6 h-6 rounded-full bg-[#f3e8ff] overflow-hidden shrink-0">
-                        <img src={userProfile?.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName || 'Teacher')}&background=f3e8ff&color=a855f7`} alt="Profile" className="w-full h-full object-cover" />
-                      </div>
-                      <span className="hidden sm:inline text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Test Teacher'}</span>
-                    </div>
-                  )}
+                  {/* Profile Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 bg-white/60 p-1 sm:px-4 sm:py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-8 sm:h-10 active:scale-95 sm:hover:scale-[1.02] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-purple-500 data-[state=open]:ring-2 data-[state=open]:ring-purple-500"
+                        aria-label={`Profile menu: ${teacherName || 'Teacher'}`}
+                      >
+                        <div className="w-6 h-6 rounded-full bg-[#f3e8ff] overflow-hidden shrink-0">
+                          <UserAvatar
+                            src={userProfile?.photo}
+                            name={teacherName || 'Teacher'}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="hidden sm:inline text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Teacher'}</span>
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 p-1.5 shadow-xl z-50">
+                      <DropdownMenuLabel className="px-3 py-2 font-normal">
+                        <div className="flex flex-col space-y-0.5 min-w-0">
+                          <p className="text-xs font-black text-slate-900 dark:text-white truncate font-display">{teacherName || 'Teacher'}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{currentUser?.email || userProfile?.email || 'Teacher Account'}</p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator className="my-1 bg-slate-200/60 dark:bg-white/10" />
+                      <DropdownMenuItem
+                        onClick={onOpenProfile}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 transition-colors cursor-pointer"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                          <UserIcon size={14} />
+                        </div>
+                        <span>My Profile</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={onOpenSettings}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 transition-colors cursor-pointer"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                          <SettingsIcon size={14} />
+                        </div>
+                        <span>Settings</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="my-1 bg-slate-200/60 dark:bg-white/10" />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setShowLogoutConfirm(true)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      >
+                        <div className="w-6 h-6 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                          <LogOutIcon size={14} />
+                        </div>
+                        <span>Sign Out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </header>

@@ -18,6 +18,7 @@ import type { UserProgress, AIQuizQuestion } from '../types/models';
 import { generatePracticeSession } from '../services/practiceService';
 import { useModuleProgress } from '../hooks/useModuleProgress';
 import { Loader2 } from 'lucide-react';
+import MathPulseLoader from './ui/MathPulseLoader';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -433,13 +434,11 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       // Show the quiz interface — questions loaded via quizQuestions state
       if (!quizQuestions) {
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-xl">
-              <Loader2 size={36} className="animate-spin text-indigo-600" />
-              <p className="font-bold text-slate-700">Generating Quiz...</p>
-              <p className="text-sm text-slate-500">AI is crafting questions for {selectedLesson.quiz.title}</p>
-            </div>
-          </div>
+          <MathPulseLoader
+            title="Generating Quiz..."
+            subtitle={`AI is crafting questions for ${selectedLesson.quiz.title}`}
+            fullScreen={true}
+          />
         );
       }
       return (

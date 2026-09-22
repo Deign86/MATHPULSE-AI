@@ -88,9 +88,7 @@ const App = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const tabLoadingFallback = (
-    <div className="flex min-h-[320px] items-center justify-center text-sm font-semibold text-slate-500">
-      Loading content...
-    </div>
+    <AppLoadingScreen message="Loading content..." />
   );
   const dashboardWidgetFallback = (
     <div className="pb-4 text-sm font-semibold text-slate-500">Loading dashboard content...</div>

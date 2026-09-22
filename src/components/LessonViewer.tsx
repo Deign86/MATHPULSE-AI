@@ -7,7 +7,7 @@ import {
   ShieldCheck, FileText, ExternalLink, FileSearch, X,
   ChevronDown, Check, Lock
 } from 'lucide-react';
-
+import MathPulseLoader from './ui/MathPulseLoader';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -478,21 +478,11 @@ const OBJECTIVE_COLORS = [
 
 function LoadingSkeleton() {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-50 gap-5">
-      <div className="w-12 h-12 rounded-full border-4 border-rose-400 border-t-transparent animate-spin" />
-      <div className="space-y-2 text-center">
-        <p className="text-slate-700 font-semibold text-base">Loading lesson from DepEd curriculum...</p>
-        <p className="text-slate-400 text-xs max-w-xs">This may take a moment while the AI retrieves curriculum content.</p>
-      </div>
-      <div className="w-64 h-2 bg-slate-200 rounded-full overflow-hidden">
-        <motion.div
-          className="h-full bg-rose-300 rounded-full"
-          animate={{ x: ['-100%', '100%'] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ width: '50%' }}
-        />
-      </div>
-    </div>
+    <MathPulseLoader
+      title="Loading lesson from DepEd curriculum..."
+      subtitle="This may take a moment while the AI retrieves curriculum content."
+      fullScreen
+    />
   );
 }
 
@@ -1442,14 +1432,12 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   if (showTryItPage) {
     const portalTarget = document.getElementById('modal-root') || document.body;
     if (tryItLoading || !tryItQuestions) {
-      return ReactDOM.createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 flex flex-col items-center gap-3 shadow-2xl border border-slate-200/80 dark:border-white/10">
-            <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
-            <p className="font-bold text-slate-700 dark:text-slate-200">Generating Quiz...</p>
-          </div>
-        </div>,
-        portalTarget
+      return (
+        <MathPulseLoader
+          title="Generating Quiz..."
+          subtitle={`AI is crafting questions for ${lesson.title}`}
+          fullScreen={true}
+        />
       );
     }
     return ReactDOM.createPortal(

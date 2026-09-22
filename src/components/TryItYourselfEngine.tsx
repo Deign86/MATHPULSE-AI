@@ -249,6 +249,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
   const [showHintPanel, setShowHintPanel] = useState(false);
   const [showExplainPanel, setShowExplainPanel] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
+  const [showQuizMenu, setShowQuizMenu] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [shakeCard, setShakeCard] = useState(false);
   const [showRoundResult, setShowRoundResult] = useState(false);
@@ -543,6 +544,31 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
     return () => window.removeEventListener('keydown', handleKey);
   }, [handleAnswer, currentQuestion, textInput]);
 
+  // ─── Fullscreen & Restart Handlers ─────────────────────────────────────────
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const handleRestartPhase = useCallback(() => {
+    const phaseQs = phaseGroups[currentPhaseIdx] || [];
+    setQuestionStates(prev => {
+      const next = { ...prev };
+      phaseQs.forEach(q => {
+        delete next[q.id];
+      });
+      return next;
+    });
+    setQueue([...phaseQs]);
+    setQueueIndex(0);
+    setSelectedOption(null);
+    setTextInput('');
+    setShowQuizMenu(false);
+  }, [phaseGroups, currentPhaseIdx]);
+
   // Fire confetti on phase-complete screen
   useEffect(() => {
     if ((quizState === 'phase-complete' || quizState === 'complete') && !phaseConfettiFired) {
@@ -749,58 +775,200 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
         document.getElementById('modal-root') || document.body
       )}
 
-      {/* Round Result Overlay */}
-      <AnimatePresence>
-        {showRoundResult && (
-          <motion.div
-            key="round-result"
-            initial={{ opacity: 0, scale: 0.8, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center justify-center"
-          >
-            <div className="bg-white/95 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.15)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
-              <img src="/mascot/modules_avatar.png" alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.15)]" />
-              <h2 className={`text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest text-balance ${isCorrect ? "text-emerald-500" : "text-rose-500"}`}>
-                {isCorrect ? "Correct!" : "Incorrect"}
-              </h2>
-              {isCorrect ? (
-                <div className="flex flex-col items-center gap-3 w-full justify-center">
-                  <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full font-bold border border-emerald-500/30 tabular-nums">
-                    <span>+ {qs?.xpAwarded ?? 10} XP</span>
+      {/* Round Result Overlay via Portal */}
+      {showRoundResult && createPortal(
+        <motion.div
+          key="round-result"
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[99999] pointer-events-none flex flex-col items-center justify-center"
+        >
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.15)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
+            <img src="/mascot/modules_avatar.png" alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.15)]" />
+            <h2 className={`text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest text-balance ${isCorrect ? "text-emerald-500" : "text-rose-500"}`}>
+              {isCorrect ? "Correct!" : "Incorrect"}
+            </h2>
+            {isCorrect ? (
+              <div className="flex flex-col items-center gap-3 w-full justify-center">
+                <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full font-bold border border-emerald-500/30 tabular-nums">
+                  <span>+ {qs?.xpAwarded ?? 10} XP</span>
+                </div>
+                {streak >= 3 && (
+                  <div className="flex items-center gap-2 bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-full text-sm font-bold border border-orange-500/30 tabular-nums">
+                    <Flame size={14} /> Streak ×{streak}!
                   </div>
-                  {streak >= 3 && (
-                    <div className="flex items-center gap-2 bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-full text-sm font-bold border border-orange-500/30 tabular-nums">
-                      <Flame size={14} /> Streak ×{streak}!
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold px-5 py-2 rounded-xl text-center">
-                  Correct: {currentQuestion.correctAnswer}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Leave Confirmation Modal */}
-      <AnimatePresence>
-        {showLeaveConfirm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowLeaveConfirm(false)}>
-            <motion.div onClick={e => e.stopPropagation()} initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-[2rem] p-6 sm:p-8 max-w-xs w-full shadow-2xl flex flex-col gap-4 text-center">
-              <h2 className="text-xl font-black text-slate-800 text-balance">Are you sure you want to leave?</h2>
-              <p className="text-sm text-slate-500">Your progress won't be saved.</p>
-              <div className="flex flex-col gap-2">
-                <Button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold transition-all motion-reduce:transition-none active:scale-[0.98]">Stay</Button>
-                <Button onClick={() => { setShowLeaveConfirm(false); onBack(); }} className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-all motion-reduce:transition-none active:scale-[0.98]">Leave</Button>
+                )}
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            ) : (
+              <div className="bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold px-5 py-2 rounded-xl text-center">
+                Correct: {currentQuestion.correctAnswer}
+              </div>
+            )}
+          </div>
+        </motion.div>,
+        document.body
+      )}
+
+      {/* Quiz Menu Modal via Portal */}
+      {showQuizMenu && createPortal(
+        <div
+          className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setShowQuizMenu(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-white rounded-[2rem] p-6 sm:p-7 max-w-sm w-full shadow-2xl border border-slate-200/80 flex flex-col gap-4 text-slate-800"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
+                  <Menu size={16} />
+                </div>
+                <div>
+                  <h3 className="font-display font-black text-slate-900 text-base leading-tight">Quiz Menu</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Phase {currentPhaseIdx + 1} of {totalPhases} • {lessonTitle}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowQuizMenu(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors"
+                aria-label="Close menu"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {/* Resume */}
+              <button
+                onClick={() => setShowQuizMenu(false)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold transition-all shadow-md shadow-purple-200 active:scale-[0.98]"
+              >
+                <span className="flex items-center gap-3">
+                  <Sparkles size={18} />
+                  <span>Resume Quiz</span>
+                </span>
+                <span className="text-xs bg-white/20 px-2.5 py-1 rounded-full font-semibold">Continue</span>
+              </button>
+
+              {/* Sound toggle */}
+              <button
+                onClick={() => setIsAudioEnabled(!isAudioEnabled)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-700 font-semibold transition-all active:scale-[0.98]"
+              >
+                <span className="flex items-center gap-3">
+                  {isAudioEnabled ? <Volume2 size={18} className="text-purple-600" /> : <VolumeX size={18} className="text-slate-400" />}
+                  <span>Sound Effects</span>
+                </span>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${isAudioEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                  {isAudioEnabled ? 'ON' : 'OFF'}
+                </span>
+              </button>
+
+              {/* Calculator toggle */}
+              <button
+                onClick={() => {
+                  setShowCalculator(prev => !prev);
+                  setShowQuizMenu(false);
+                }}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-700 font-semibold transition-all active:scale-[0.98]"
+              >
+                <span className="flex items-center gap-3">
+                  <Calculator size={18} className="text-purple-600" />
+                  <span>Scientific Calculator</span>
+                </span>
+                <span className="text-xs bg-purple-50 text-purple-700 border border-purple-200/60 px-2.5 py-1 rounded-full font-bold">
+                  {showCalculator ? 'Close' : 'Launch'}
+                </span>
+              </button>
+
+              {/* Fullscreen toggle */}
+              <button
+                onClick={() => {
+                  toggleFullscreen();
+                }}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-700 font-semibold transition-all active:scale-[0.98]"
+              >
+                <span className="flex items-center gap-3">
+                  {isFullscreen ? <Minimize size={18} className="text-purple-600" /> : <Maximize size={18} className="text-purple-600" />}
+                  <span>Fullscreen Mode</span>
+                </span>
+                <span className="text-xs bg-slate-200 text-slate-600 px-2.5 py-1 rounded-full font-bold">
+                  {isFullscreen ? 'Exit' : 'Enter'}
+                </span>
+              </button>
+
+              {/* Restart phase */}
+              <button
+                onClick={handleRestartPhase}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/70 text-slate-700 font-semibold transition-all active:scale-[0.98]"
+              >
+                <span className="flex items-center gap-3">
+                  <RefreshCw size={18} className="text-amber-500" />
+                  <span>Restart Current Phase</span>
+                </span>
+                <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200/60 px-2 py-0.5 rounded-full font-bold">
+                  Reset
+                </span>
+              </button>
+
+              {/* Leave Quiz */}
+              <button
+                onClick={() => {
+                  setShowQuizMenu(false);
+                  setShowLeaveConfirm(true);
+                }}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200/70 text-rose-700 font-semibold transition-all active:scale-[0.98] mt-1"
+              >
+                <span className="flex items-center gap-3">
+                  <AlertTriangle size={18} className="text-rose-600" />
+                  <span>Leave Quiz</span>
+                </span>
+                <span className="text-xs text-rose-600 bg-white border border-rose-200 px-2 py-0.5 rounded-full font-bold">
+                  Exit
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Leave Confirmation Modal via Portal */}
+      {showLeaveConfirm && createPortal(
+        <div
+          className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setShowLeaveConfirm(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-white rounded-[2rem] p-6 sm:p-8 max-w-xs w-full shadow-2xl flex flex-col gap-4 text-center border border-slate-200/80"
+          >
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertTriangle size={24} />
+            </div>
+            <h2 className="text-xl font-black text-slate-800 text-balance">Are you sure you want to leave?</h2>
+            <p className="text-sm text-slate-500">Your progress in this quiz session won't be saved.</p>
+            <div className="flex flex-col gap-2 pt-2">
+              <Button
+                onClick={() => setShowLeaveConfirm(false)}
+                className="w-full py-3 rounded-full bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold transition-all motion-reduce:transition-none active:scale-[0.98]"
+              >
+                Stay & Keep Solving
+              </Button>
+              <Button
+                onClick={() => { setShowLeaveConfirm(false); onBack(); }}
+                className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition-all motion-reduce:transition-none active:scale-[0.98]"
+              >
+                Leave Quiz
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       <div className="fixed inset-0 z-[100] h-dvh w-full flex flex-col bg-slate-50 overflow-hidden">
         {/* ─── Sticky Header ─────────────────────────────────────────────── */}
@@ -831,7 +999,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
               <button onClick={toggleFullscreen} aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"} className="hidden sm:flex w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                 {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
               </button>
-              <button onClick={() => setShowLeaveConfirm(true)} aria-label="Exit quiz" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
+              <button onClick={() => setShowQuizMenu(true)} aria-label="Open quiz menu" className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/20 text-white flex items-center justify-center hover:bg-purple-900/40 transition-colors shadow-sm border border-white/10">
                 <Menu size={20} />
               </button>
             </div>

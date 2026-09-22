@@ -156,3 +156,35 @@
   CHECK: npm run typecheck && npm run lint:anti-slop
   EXPECT: /0 errors/
   EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors), single mobile tab seamlessly integrated with container edge with 0 gap, container padding increased for floating breathing room, lined paper and red margin removed for clean reading canvas, concept paragraphs wrapped in structured cards with bolded definition terms, verified visually in browser (screenshots mobile_part2_key_concepts_1789909355386.png, desktop_part2_key_concepts_1789909387151.png, and part2_key_concepts_1789909707981.png)
+
+- [x] gate-37: Restore avatar animations in CompositeAvatar and DashboardAvatar (head swinging + bobbing, opposing horn/ear wiggling, blinking eyes, accessory syncing)
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm run test -- src/components/__tests__/AvatarAndLoader.test.tsx
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors) | > vitest run (4 passed, 4 tests), CompositeAvatar and DashboardAvatar motion/react animation pipeline restored with independent left and right horn wiggling, head sway and bobbing, realistic eye blinking, and reduced-motion fallback
+
+- [x] gate-38: Personalized equip dialogue in AvatarShop tailored to each item ID with custom speech bubbles and unequip reaction
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm run test -- src/components/__tests__/AvatarAndLoader.test.tsx
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors) | > vitest run (4 passed), getEquipQuotes returns custom dialogue per item ID (e.g. 'Wow! I love blue!' for blue uniform, 'Ooh, pretty in pink!' for pink uniform, 'Cozy study mode activated!' for slippers, crown, etc.), unequip reactions handled gracefully, and contract type safety enforced
+
+- [x] gate-39: Creative unified MathPulse animated puppet loader created and integrated into LessonViewer
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm run test -- src/components/__tests__/AvatarAndLoader.test.tsx
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors) | > vitest run (4 passed), MathPulseLoader created in src/components/ui/MathPulseLoader.tsx featuring animated puppet head with wiggling horns and blinking eyes, ambient floating math glyphs, radial glow, smooth progress bar, and integrated into LessonViewer.tsx LoadingSkeleton
+
+- [x] gate-40: Remove Settings and Logout buttons from left sidebar for all user roles (Student, Teacher, Admin), and implement upper-right profile dropdown menu in Teacher and Admin dashboards unifying layout across all users
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm run test
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors) | > vitest run (34 passed, 220 tests passed), Settings and Sign Out removed from Sidebar.tsx and TeacherDashboard.tsx sidebar, unified DropdownMenu implemented in TeacherDashboard.tsx and AdminDashboard.tsx headers, verified visually in browser (screenshot clean_sidebar_dropdown_1790051283463.png)
+
+- [x] gate-41: Unify global loading screens by upgrading AppLoadingScreen and tabLoadingFallback to use creative animated MathPulseLoader mascot with full-screen portal
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm run test -- src/components/__tests__/AvatarAndLoader.test.tsx
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors) | > vitest run (5 passed, 5 tests passed), AppLoadingScreen now renders MathPulseLoader with puppet animated head (wiggling horns, blinking eyes, ambient math glyphs, progress bar) through ReactDOM.createPortal across student, teacher, admin dashboard initializations and tab suspense fallbacks
+
+- [x] gate-42: Restore 70:30 desktop layout for Quiz Battle Hub, implement esports Bento HUD with 3D floating movement for My Stats preview, and restore authentic trophy designs for Hall of Fame (Hub preview & main leaderboard)
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm run test
+  EXPECT: /0 errors/
+  EVIDENCE: > mathpulse-ai@1.2.0 typecheck (0 errors) | > mathpulse-ai@1.2.0 lint:anti-slop (0 errors) | > vitest run (34 passed, 221 tests passed), desktop 70:30 grid restored in Quiz Battle Hub (Left: Hero Banner & Battle Modes; Right: Hall of Fame Trophy widget, My Stats 2x2 Bento HUD with staggered floating motion, Match History), mobile single-column stacked layout preserved (< lg), and 3D trophy pedestals restored for 1st, 2nd, and 3rd place champions with handles, cup rims, and embossed badges
+
+
