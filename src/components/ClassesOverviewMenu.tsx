@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Bell, Users, Target, AlertCircle, TrendingDown, FileText, BookOpen, Sparkles, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { TeacherStatCard } from './TeacherStatCard';
 
 export interface ClassView {
   id: string;
@@ -107,134 +108,99 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
 
         {/* Global Stats & Alerts Row (Vibrant Palette) */}
         {isCompetency ? (
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
-            {/* Card 1 (Total Students / Amethyst) */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col justify-between group text-white">
-              <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
-              <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
-                <span className="text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">
-                  <span className="sm:hidden">Total</span>
-                  <span className="hidden sm:inline">Total Students</span>
-                </span>
-                <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
-                  <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                </div>
-              </div>
-              <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{totalStudents}</div>
-              <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5 mt-auto">
-                <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">Active across classes</span>
-              </div>
-            </div>
-
-            {/* Card 2 (Global Average / Blue) */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between group text-white">
-              <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
-              <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
-                <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">
-                  <span className="sm:hidden">Avg Comp.</span>
-                  <span className="hidden sm:inline">Avg Competency</span>
-                </span>
-                <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
-                  <Target className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                </div>
-              </div>
-              <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{avgPerformance}%</div>
-              <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5 mt-auto">
-                <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">{classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
-              </div>
-            </div>
-
-            {/* Card 3 (Most Common Weakness / Orange) */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between group text-white">
-              <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
-              <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
-                <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">
-                  <span className="sm:hidden">Weakness</span>
-                  <span className="hidden sm:inline">Universal Weakness</span>
-                </span>
-                <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
-                  <Target className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                </div>
-              </div>
-              <div className="font-display text-[13px] sm:text-base lg:text-[18px] font-bold relative z-10 leading-tight mb-1 sm:mb-2 truncate">Foundations</div>
-              <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5 mt-auto">
-                <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">{classes.length} classes</span>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <TeacherStatCard
+              color="green"
+              title="Total Students"
+              badgeText="Active"
+              icon={Users}
+              value={totalStudents}
+              subtitle="Active across classes"
+              footerLabel="Classes Active"
+              footerBadge={`${classes.length} classes`}
+            />
+            <TeacherStatCard
+              color="purple"
+              title="Avg Competency"
+              badgeText={Number(avgPerformance) >= 75 ? 'On Track' : 'Needs Boost'}
+              icon={Target}
+              value={`${avgPerformance}%`}
+              subtitle="Cohort Competency"
+              scorePercent={Number(avgPerformance)}
+              footerLabel="Evaluated"
+              footerBadge={`${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}
+            />
+            <TeacherStatCard
+              color="amber"
+              title="Universal Weakness"
+              badgeText="Priority"
+              icon={Target}
+              value="Foundations"
+              subtitle="Curriculum Focus"
+              footerLabel="Affects"
+              footerBadge={`${classes.length} classes`}
+            />
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-[16px]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
             {/* Global Stats Cards (3 columns across all screen sizes) */}
-            <div className="lg:col-span-8 grid grid-cols-3 gap-2 sm:gap-[16px]">
-
-              {/* Card 1 (Total Students / Green) */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col justify-between h-full group text-white">
-                <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
-                <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
-                  <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">Total Students</span>
-                  <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
-                    <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                  </div>
-                </div>
-                <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{totalStudents}</div>
-                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5">
-                  <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">Across {classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
-                </div>
-              </div>
-
-              {/* Card 2 (Global Average / Blue) */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col justify-between h-full group text-white">
-                <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
-                <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
-                  <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">Class avg</span>
-                  <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
-                    <Target className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                  </div>
-                </div>
-                <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{avgPerformance}%</div>
-                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5">
-                  <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">Across {classes.length} {classes.length === 1 ? 'class' : 'classes'}</span>
-                </div>
-              </div>
-
-              {/* Card 3 (Total At-Risk / Orange) */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-xl sm:rounded-[16px] p-2.5 sm:p-4 shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col justify-between h-full group text-white">
-                <div className="absolute -right-6 -bottom-6 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full pointer-events-none"></div>
-                <div className="flex items-start justify-between relative z-10 gap-1 mb-1 sm:mb-2">
-                  <span className="font-body text-[10px] sm:text-xs font-semibold text-white/90 leading-tight truncate">At risk</span>
-                  <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-lg border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
-                    <AlertCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
-                  </div>
-                </div>
-                <div className="font-display text-base sm:text-xl lg:text-[28px] font-extrabold sm:font-black relative z-10 leading-none mb-1 sm:mb-2 tabular-nums">{totalAtRisk}</div>
-                <div className="flex items-center justify-between relative z-10 border-t border-white/20 pt-1 sm:pt-1.5">
-                  <span className="font-body text-[9.5px] sm:text-[11px] font-medium text-white/90 truncate">Attention</span>
-                  <span className="font-body text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded backdrop-blur-sm tabular-nums shrink-0">
-                    {totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%
-                  </span>
-                </div>
-              </div>
+            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <TeacherStatCard
+                color="green"
+                title="Total Students"
+                badgeText="Active"
+                icon={Users}
+                value={totalStudents}
+                subtitle="Enrolled Roster"
+                footerLabel="Across Roster"
+                footerBadge={`${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}
+              />
+              <TeacherStatCard
+                color="purple"
+                title="Class Average"
+                badgeText={Number(avgPerformance) >= 75 ? 'Passing' : 'Needs Boost'}
+                icon={Target}
+                value={`${avgPerformance}%`}
+                subtitle="Cohort Score"
+                scorePercent={Number(avgPerformance)}
+                footerLabel="Cohort Score"
+                footerBadge={`${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}
+              />
+              <TeacherStatCard
+                color="amber"
+                title="Needs Attention"
+                badgeText={totalAtRisk > 0 ? 'Priority' : 'Clear'}
+                icon={AlertCircle}
+                value={totalAtRisk}
+                subtitle="At-Risk Students"
+                scorePercent={totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}
+                footerLabel="Attention Rate"
+                footerBadge={`${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%`}
+              />
             </div>
 
-            {/* AI Action Items (Purple Theme) */}
-            <div className="lg:col-span-4 relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-[16px] p-3 sm:p-5 shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col text-white">
-              <div className="absolute -right-12 -top-12 w-40 h-40 bg-white/10 rounded-full"></div>
+            {/* AI Action Items (Purple Theme with matching vibrant gradient) */}
+            <div className="lg:col-span-4 relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] flex flex-col text-white border border-white/20">
+              <div className="absolute -bottom-8 -right-8 w-36 h-36 bg-white/10 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
               <div className="flex justify-between items-center mb-2.5 sm:mb-4 relative z-10 border-b border-white/20 pb-2 sm:pb-3">
                 <h3 className="font-display text-xs sm:text-[14px] font-bold text-white flex items-center gap-1.5 sm:gap-2">
-                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                  <div className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
                   AI Action Items
                 </h3>
-                <span className="font-body text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider text-[#a855f7] bg-white px-2 py-0.5 rounded-[4px]">{aiActionItems.length} Pending</span>
+                <span className="font-body text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-purple-900 bg-white px-2.5 py-0.5 rounded-full shadow-2xs">
+                  {aiActionItems.length} Pending
+                </span>
               </div>
 
-              <div className="space-y-[6px] sm:space-y-[8px] flex-1 overflow-y-auto no-scrollbar relative z-10">
+              <div className="space-y-2 flex-1 overflow-y-auto no-scrollbar relative z-10">
                 {aiActionItems.map((item, i) => (
-                  <div key={i} className="bg-white/10 hover:bg-white/20 rounded-[8px] p-2.5 sm:p-3 text-[11px] sm:text-[12px] border border-white/10 transition-colors backdrop-blur-sm group cursor-pointer flex gap-2.5 items-start">
-                    <div className="mt-0.5 shrink-0 text-white/80 group-hover:text-white transition-colors">
+                  <div key={i} className="bg-white/15 hover:bg-white/25 rounded-xl p-2.5 sm:p-3 text-[11px] sm:text-xs border border-white/15 transition-colors backdrop-blur-sm group cursor-pointer flex gap-2.5 items-start">
+                    <div className="mt-0.5 shrink-0 text-white/85 group-hover:text-white transition-colors">
                       <item.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </div>
-                    <div className="leading-snug text-white/90">{item.text}</div>
+                    <div className="leading-snug text-white/95">{item.text}</div>
                   </div>
                 ))}
               </div>
@@ -288,42 +254,43 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
                 <div
                   key={classItem.id}
                   onClick={() => onSelectClass(classItem)}
-                  className={`flex flex-col p-[16px] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-md hover:-translate-y-0.5 rounded-[18px] transition-all cursor-pointer group border border-[#f1f5f9] border-l-[6px] ${color.borderLeft}`}
+                  className="flex flex-col p-4 bg-white dark:bg-slate-800/90 shadow-sm hover:shadow-md hover:-translate-y-1 rounded-2xl sm:rounded-3xl transition-all duration-300 cursor-pointer group border border-slate-200/80 dark:border-slate-700/80 relative overflow-hidden"
                 >
-                  <div className="flex justify-between items-start mb-4">
+                  <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b from-[#9956DE] to-[#7274ED] opacity-80 group-hover:opacity-100 group-hover:w-2 transition-all" />
+                  <div className="flex justify-between items-start mb-3.5 pl-1">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-[12px] ${color.bg} flex items-center justify-center border ${color.border}`}>
-                        <BookOpen className={`w-5 h-5 ${color.text}`} />
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white flex items-center justify-center shadow-sm shadow-purple-500/25 group-hover:scale-105 transition-transform">
+                        <BookOpen className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <h4 className={`font-bold text-[14px] text-[#1e293b] mb-0.5 transition-colors ${color.groupHover}`}>
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-0.5 transition-colors group-hover:text-violet-600">
                           {classItem.name}
                         </h4>
-                        <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                           {classItem.gradeLevel || 'Senior High'}
                         </p>
                       </div>
                     </div>
                     {riskBadge}
                   </div>
-                  <div className="flex items-center justify-between text-[13px] text-[#475569] bg-[#f8fafc] rounded-[12px] p-3 border border-[#f1f5f9]">
+                  <div className="flex items-center justify-between text-[13px] text-slate-600 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-750 rounded-xl p-3 border border-slate-100 dark:border-slate-700/60 mt-auto">
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Students</span>
-                      <span className="font-semibold text-[#1e293b]">{classItem.studentCount}</span>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Students</span>
+                      <span className="font-bold text-slate-800 dark:text-white tabular-nums">{classItem.studentCount}</span>
                     </div>
-                    <div className="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                    <div className="w-px h-7 bg-slate-200 dark:bg-slate-700" />
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">
-                        {isCompetency ? 'Avg Competency' : 'Average'}
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
+                        {isCompetency ? 'Avg Comp.' : 'Average'}
                       </span>
-                      <span className="font-semibold text-[#1e293b]">{classItem.avgScore}%</span>
+                      <span className="font-bold text-slate-800 dark:text-white tabular-nums">{classItem.avgScore}%</span>
                     </div>
                     {!isCompetency && (
                       <>
-                        <div className="w-[1px] h-8 bg-[#e2e8f0]"></div>
+                        <div className="w-px h-7 bg-slate-200 dark:bg-slate-700" />
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1">Schedule</span>
-                          <span className="font-semibold text-[#1e293b]">{classItem.schedule || 'Mon-Fri'}</span>
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Schedule</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-200 text-xs truncate max-w-[90px]">{classItem.schedule || 'Mon-Fri'}</span>
                         </div>
                       </>
                     )}

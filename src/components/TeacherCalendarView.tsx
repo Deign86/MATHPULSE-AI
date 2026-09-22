@@ -112,6 +112,18 @@ const getTimelineEventClasses = (color?: string, isSchedule = false) => {
   }
 };
 
+const getDotColorClass = (color?: string, isSchedule = false) => {
+  if (isSchedule) return 'bg-blue-500';
+  switch (color) {
+    case 'blue': return 'bg-blue-500';
+    case 'emerald': return 'bg-emerald-500';
+    case 'amber': return 'bg-amber-500';
+    case 'rose': return 'bg-rose-500';
+    case 'purple':
+    default: return 'bg-purple-500';
+  }
+};
+
 interface TeacherCalendarViewProps {
   classes?: { id: string; name: string; schedule: string }[];
   teacherId?: string;
@@ -388,7 +400,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col px-3 sm:px-6 xl:px-8 py-3.5 sm:py-6 xl:py-8 overflow-hidden">
+    <div className="w-full min-h-full flex flex-col px-2 sm:px-6 xl:px-8 py-2 sm:py-6 xl:py-8 pb-32 sm:pb-36 lg:pb-8 overflow-y-auto">
       {/* Layout Grid */}
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 flex-1 min-h-0 w-full max-w-[1400px] mx-auto">
         
@@ -397,36 +409,38 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
           <div className="bg-white/90 backdrop-blur-[12px] rounded-[18px] sm:rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-full">
             
             {/* Solid Calendar Header */}
-            <div className="p-3.5 sm:p-6 border-b border-[#a855f7] bg-[#a855f7] shrink-0 flex flex-wrap sm:flex-nowrap gap-3 justify-between items-center rounded-t-[18px] sm:rounded-t-[24px] relative overflow-hidden group">
-              {/* Subtle background decoration resembling the provided screenshot */}
-              <div className="absolute -bottom-24 -right-12 w-64 h-64 bg-white/10 rounded-full"></div>
-              <div className="absolute -top-20 left-1/4 w-40 h-40 bg-white/5 rounded-full"></div>
+            <div className="p-3 sm:p-5 lg:p-6 border-b border-purple-500/30 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 shrink-0 flex items-center justify-between gap-2 sm:gap-3 rounded-t-[18px] sm:rounded-t-[24px] relative overflow-hidden group text-white">
+              {/* Subtle background decoration */}
+              <div className="absolute -bottom-24 -right-12 w-64 h-64 bg-white/10 rounded-full pointer-events-none" />
+              <div className="absolute -top-20 left-1/4 w-40 h-40 bg-white/5 rounded-full pointer-events-none" />
               
-              <div className="flex items-center gap-2 sm:gap-5 relative z-10">
+              <div className="flex items-center gap-1.5 sm:gap-4 relative z-10">
                 <button
                   onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
                   aria-label="Previous month"
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
+                  className="w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-all shadow-xs hover:shadow-sm active:scale-90"
                 >
-                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <ChevronLeft className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
                 </button>
-                <h2 className="text-base sm:text-[22px] font-bold text-white min-w-[120px] sm:w-44 text-center tracking-tight">{monthLabel(month)}</h2>
+                <h2 className="text-sm sm:text-lg md:text-[22px] font-bold text-white tracking-tight select-none">
+                  {monthLabel(month)}
+                </h2>
                 <button
                   onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
                   aria-label="Next month"
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-colors shadow-sm hover:shadow-md active:scale-90"
+                  className="w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-[#6d28d9] bg-white hover:bg-slate-50 transition-all shadow-xs hover:shadow-sm active:scale-90"
                 >
-                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <ChevronRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
                 </button>
               </div>
               
               <div className="flex items-center gap-2 sm:gap-3 relative z-10">
-                <span className="text-xs sm:text-[13px] font-bold text-[#6d28d9] bg-white px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-sm">
+                <span className="text-[11px] sm:text-[13px] font-bold text-[#6d28d9] bg-white px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-xs">
                   {monthEvents.length} events
                 </span>
                 <button 
                   onClick={() => setShowSidebar(!showSidebar)}
-                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all shadow-sm hover:shadow-md border ${
+                  className={`hidden lg:flex w-8 h-8 sm:w-9 sm:h-9 rounded-full items-center justify-center transition-all shadow-xs hover:shadow-sm border ${
                     showSidebar ? 'text-[#6d28d9] bg-white border-white' : 'text-white bg-white/20 border-white/30 backdrop-blur-md'
                   }`}
                   title={showSidebar ? "Hide Sidebar" : "Show Sidebar"}
@@ -437,17 +451,21 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
               </div>
             </div>
 
-            {/* Grid Wrapper - Scrollable */}
-            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-auto custom-scrollbar">
+            {/* Grid Wrapper */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
               {/* Weekdays */}
-              <div className="grid grid-cols-7 min-w-[560px] md:min-w-0 text-center border-b border-slate-200/60 pb-5 shrink-0 sticky top-0 bg-white z-20 shadow-[0_10px_10px_-10px_rgba(0,0,0,0.05)] px-4 pt-6">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-[12px] font-bold text-[#475569] uppercase tracking-widest">{day}</div>
+              <div className="grid grid-cols-7 w-full text-center border-b border-slate-200/60 py-2 sm:py-3.5 shrink-0 bg-white z-20 px-1 sm:px-4">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                  <div key={day} className="text-[10px] sm:text-[12px] font-bold text-[#475569] uppercase tracking-wider">
+                    <span className="xs:hidden">{day[0]}</span>
+                    <span className="hidden xs:inline sm:hidden">{day.slice(0, 2)}</span>
+                    <span className="hidden sm:inline">{day}</span>
+                  </div>
                 ))}
               </div>
 
-              {/* Days Grid - removed grid-rows to allow height expansion */}
-              <div className="grid grid-cols-7 min-w-[560px] md:min-w-0 gap-2 pb-6 px-4">
+              {/* Days Grid - fits in one glance on mobile */}
+              <div className="grid grid-cols-7 w-full gap-1 sm:gap-2 p-1.5 sm:p-4">
                 {gridDays.map((day) => {
                   const key = toDateKey(day);
                   const dayEvs = eventsByDay.get(key) || [];
@@ -459,33 +477,51 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
                     <div
                       key={key}
                       onClick={() => setSelectedDay(new Date(day))}
-                      className={`group p-2 rounded-lg transition-all cursor-pointer border-2 flex flex-col relative min-h-[100px] xl:min-h-[120px] ${
+                      className={`group p-1 sm:p-2 rounded-xl sm:rounded-2xl transition-all cursor-pointer border flex flex-col justify-between items-center sm:items-stretch relative min-h-[46px] xs:min-h-[52px] sm:min-h-[72px] md:min-h-[96px] ${
                         selected
-                          ? 'bg-purple-50/50 border-[#a855f7] shadow-sm z-10'
+                          ? 'bg-purple-50/80 border-purple-400 ring-2 ring-purple-400/40 shadow-xs z-10'
                           : today 
-                            ? 'bg-purple-50/20 border-purple-300 shadow-[inset_0_0_20px_rgba(168,85,247,0.05)] hover:bg-purple-50/40 hover:border-purple-400'
-                            : 'border-transparent hover:bg-slate-50 hover:border-slate-200'
+                            ? 'bg-purple-50/25 border-purple-300/80 hover:bg-purple-50/40'
+                            : 'border-transparent hover:bg-slate-50/80 hover:border-slate-200'
                       } ${!inMonth ? 'opacity-30 grayscale' : ''}`}
                     >
-                      <div className="flex justify-between items-start">
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[14px] transition-all ${
+                      <div className="flex justify-center sm:justify-between items-center w-full">
+                        <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-bold text-[12px] sm:text-[14px] transition-all ${
                           today
-                            ? 'bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-white shadow-md'
-                            : selected ? 'text-[#9333ea]' : 'text-[#1e293b]'
+                            ? 'bg-gradient-to-br from-[#a855f7] to-[#9333ea] text-white shadow-xs'
+                            : selected ? 'bg-purple-600 text-white font-black' : 'text-[#1e293b]'
                         }`}>
                           {day.getDate()}
                         </span>
                       </div>
 
-                      {/* Event Tags */}
-                      <div className="mt-1 space-y-1">
+                      {/* Mobile Event Dots (One Glance Indicator) */}
+                      <div className="md:hidden flex items-center justify-center gap-0.5 mt-0.5 min-h-[6px]">
+                        {dayEvs.slice(0, 3).map((ev) => {
+                          const isSchedule = ev.id.startsWith('schedule-');
+                          return (
+                            <span
+                              key={ev.id}
+                              className={`w-1 h-1 xs:w-1.5 xs:h-1.5 rounded-full shrink-0 ${getDotColorClass(ev.color, isSchedule)}`}
+                            />
+                          );
+                        })}
+                        {dayEvs.length > 3 && (
+                          <span className="text-[7.5px] xs:text-[8px] font-black text-purple-600 leading-none">
+                            +
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Desktop Event Pills */}
+                      <div className="hidden md:block mt-1 space-y-1">
                         {dayEvs.slice(0, 3).map((ev) => {
                           const isSchedule = ev.id.startsWith('schedule-');
                           return (
                             <div
                               key={ev.id}
                               onClick={(e) => openView(e, ev)}
-                              className={`w-full truncate text-[11px] font-bold px-2 py-1.5 rounded border shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md cursor-pointer ${getGridEventClasses(ev.color, isSchedule)}`}
+                              className={`w-full truncate text-[11px] font-bold px-2 py-1 rounded border shadow-2xs transition-all hover:-translate-y-[1px] hover:shadow-xs cursor-pointer ${getGridEventClasses(ev.color, isSchedule)}`}
                             >
                               {ev.title}
                             </div>
@@ -501,18 +537,71 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
                   );
                 })}
               </div>
+
+              {/* Selected Day Agenda on Mobile (Below Calendar) */}
+              <div className="lg:hidden border-t border-slate-200/80 bg-slate-50/70 p-3 sm:p-4 rounded-b-[18px] sm:rounded-b-[24px]">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 truncate">
+                      {selectedDay.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    </h3>
+                    <p className="text-[10.5px] sm:text-[11px] text-slate-500">
+                      {dayEvents.length} event{dayEvents.length === 1 ? '' : 's'} scheduled
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openAdd(selectedDay)}
+                    className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs active:scale-95 transition-all shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Event</span>
+                  </button>
+                </div>
+
+                {dayEvents.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-2.5 text-center font-medium">
+                    No events scheduled for this day
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {dayEvents.map((ev) => {
+                      const isSchedule = ev.id.startsWith('schedule-');
+                      const timelineClasses = getTimelineEventClasses(ev.color, isSchedule);
+                      return (
+                        <div
+                          key={ev.id}
+                          onClick={(e) => openView(e, ev)}
+                          className={`p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-between gap-2 cursor-pointer border-l-4 hover:border-slate-300 transition-all ${timelineClasses.border}`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-800 truncate">{ev.title}</p>
+                            <p className="text-[10.5px] text-slate-500 flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              <span>{formatTime(ev.startTime)}{ev.endTime ? ` - ${formatTime(ev.endTime)}` : ''}</span>
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md shrink-0">
+                            View
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Sidebar Schedule */}
+        {/* Sidebar Schedule (Desktop) */}
         <AnimatePresence>
           {showSidebar && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="lg:w-[35%] xl:w-[30%] h-full shrink-0"
+              className="hidden lg:block lg:w-[35%] xl:w-[30%] h-full shrink-0"
             >
               <div className="bg-white/90 backdrop-blur-[12px] rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-full">
                 <div className="p-6 border-b border-[#f1f5f9] bg-white shrink-0 flex justify-between items-center relative overflow-hidden group">

@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import {
   Sparkles, Bell, Layers, ChevronDown, Table, FileText, ScanLine, TrendingDown,
   CheckCircle, Edit3, ArrowLeft, Cpu, ArrowRight, Check, Save, Info, Edit2, Search,
-  FileSpreadsheet, Download, Trash2, ChevronLeft, ChevronRight, CheckCircle2
+  FileSpreadsheet, Download, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Upload
 } from 'lucide-react';
 
 import type { ClassSectionMetadata } from '../../types/models';
@@ -54,6 +54,7 @@ export interface DataImportViewProps {
   onOpenProfile?: () => void;
   onOpenInsightModal?: () => void;
   userPhoto?: string;
+  onNavigateToModuleAvailability?: () => void;
 }
 
 export default function DataImportView({
@@ -71,7 +72,8 @@ export default function DataImportView({
   onOpenNotifications,
   onOpenProfile,
   onOpenInsightModal,
-  userPhoto
+  userPhoto,
+  onNavigateToModuleAvailability
 }: DataImportViewProps) {
   const [currentImportView, setCurrentImportView] = useState<'main' | 'mapping-logs' | 'edit-records' | 'upload-history'>('main');
 
@@ -350,8 +352,8 @@ export default function DataImportView({
   };
 
   return (
-    <div className="h-full overflow-y-auto w-full block">
-      <div className="w-full p-[24px] xl:p-[32px] space-y-[24px]">
+    <div className="w-full min-h-full block">
+      <div className="w-full p-3.5 sm:p-[24px] xl:p-[32px] space-y-4 sm:space-y-[24px] pb-36 sm:pb-40 lg:pb-12">
         {/* Sub-view: Main Dashboard */}
         {currentImportView === 'main' && (
           <div className="block space-y-[24px]">
@@ -382,52 +384,111 @@ export default function DataImportView({
             </div>
 
             {/* Upload Zones (Side by Side) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
               {/* Zone 1: Class Records (Summer Sky Blue) */}
               <div 
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
                 onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
                 onDragLeave={() => setDragOver1(false)}
                 onDrop={(e) => { e.preventDefault(); setDragOver1(false); const f = e.dataTransfer.files[0]; if(f) handleFileUpload(f); }}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed transition-all rounded-[24px] p-8 flex flex-col items-center justify-center text-center cursor-pointer group shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden h-[280px] ${dragOver1 ? 'border-[#1FA7E1] bg-[#1FA7E1]/10' : 'border-[#1FA7E1]/30 hover:border-[#1FA7E1] bg-white hover:bg-[#1FA7E1]/5'}`}
+                className={`border-2 border-dashed transition-all duration-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center cursor-pointer group relative overflow-hidden min-h-[195px] sm:min-h-[230px] md:h-[270px] active:scale-[0.99] ${
+                  dragOver1
+                    ? 'border-[#1FA7E1] bg-[#1FA7E1]/15 shadow-md'
+                    : 'border-[#1FA7E1]/40 hover:border-[#1FA7E1] bg-gradient-to-b from-[#1FA7E1]/[0.06] via-white to-[#1FA7E1]/[0.03] hover:bg-[#1FA7E1]/10 shadow-[0_4px_16px_rgba(31,167,225,0.06)] hover:shadow-[0_8px_24px_rgba(31,167,225,0.15)] hover:-translate-y-0.5'
+                }`}
               >
                 <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleFileUpload(f); }} className="hidden" />
-                <div className="w-16 h-16 rounded-full bg-[#1FA7E1]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-[#1FA7E1]/20">
-                  {uploadingClassRecords ? <span className="animate-spin text-[#1FA7E1]">...</span> : <Table className="w-8 h-8 text-[#1FA7E1]" />}
+
+                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl bg-[#1FA7E1]/10 flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 shadow-xs border border-[#1FA7E1]/25 shrink-0">
+                  {uploadingClassRecords ? <span className="animate-spin text-[#1FA7E1] font-bold">...</span> : <Table className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-[#1FA7E1]" />}
                 </div>
-                <h3 className="text-[18px] font-bold text-[#1e293b] mb-2">{uploadingClassRecords ? 'Uploading...' : 'Class Records'}</h3>
-                <p className="text-[13px] text-[#64748b] max-w-sm mb-6">
+
+                <h3 className="text-[16px] sm:text-[17px] md:text-[18px] font-bold text-[#1e293b] mb-1">
+                  {uploadingClassRecords ? 'Uploading Class Records...' : 'Class Records'}
+                </h3>
+                <p className="text-[11.5px] sm:text-[12.5px] md:text-[13px] text-[#64748b] max-w-xs sm:max-w-sm mb-3 sm:mb-4 line-clamp-2">
                   Upload student grades, attendance logs, and quiz scores to power predictive analytics.
                 </p>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[11px] font-semibold rounded-full border border-slate-200">.csv</span>
-                  <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[11px] font-semibold rounded-full border border-slate-200">.xlsx</span>
+
+                <div className="flex flex-col items-center gap-2">
+                  <div className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#1FA7E1] text-white text-xs font-semibold shadow-xs group-hover:bg-[#0284c7] transition-colors">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Choose Spreadsheet</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1">
+                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.csv</span>
+                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.xlsx</span>
+                  </div>
                 </div>
               </div>
 
               {/* Zone 2: Course Materials (Amethyst Purple) */}
               <div 
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') materialInputRef.current?.click(); }}
                 onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
                 onDragLeave={() => setDragOver2(false)}
                 onDrop={(e) => { e.preventDefault(); setDragOver2(false); const f = e.dataTransfer.files[0]; if(f) handleCourseMaterialUpload(f); }}
                 onClick={() => materialInputRef.current?.click()}
-                className={`border-2 border-dashed transition-all rounded-[24px] p-8 flex flex-col items-center justify-center text-center cursor-pointer group shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden h-[280px] ${dragOver2 ? 'border-[#9956DE] bg-[#9956DE]/10' : 'border-[#9956DE]/30 hover:border-[#9956DE] bg-white hover:bg-[#9956DE]/5'}`}
+                className={`border-2 border-dashed transition-all duration-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center cursor-pointer group relative overflow-hidden min-h-[195px] sm:min-h-[230px] md:h-[270px] active:scale-[0.99] ${
+                  dragOver2
+                    ? 'border-[#9956DE] bg-[#9956DE]/15 shadow-md'
+                    : 'border-[#9956DE]/40 hover:border-[#9956DE] bg-gradient-to-b from-[#9956DE]/[0.06] via-white to-[#9956DE]/[0.03] hover:bg-[#9956DE]/10 shadow-[0_4px_16px_rgba(153,86,222,0.06)] hover:shadow-[0_8px_24px_rgba(153,86,222,0.15)] hover:-translate-y-0.5'
+                }`}
               >
                 <input ref={materialInputRef} type="file" accept=".pdf,.docx,.txt" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleCourseMaterialUpload(f); }} className="hidden" />
-                <div className="w-16 h-16 rounded-full bg-[#9956DE]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-[#9956DE]/20">
-                  {uploadingCourseMaterials ? <span className="animate-spin text-[#9956DE]">...</span> : <FileText className="w-8 h-8 text-[#9956DE]" />}
+
+                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl bg-[#9956DE]/10 flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 shadow-xs border border-[#9956DE]/25 shrink-0">
+                  {uploadingCourseMaterials ? <span className="animate-spin text-[#9956DE] font-bold">...</span> : <FileText className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-[#9956DE]" />}
                 </div>
-                <h3 className="text-[18px] font-bold text-[#1e293b] mb-2">{uploadingCourseMaterials ? 'Uploading...' : 'Course Materials'}</h3>
-                <p className="text-[13px] text-[#64748b] max-w-sm mb-6">
+
+                <h3 className="text-[16px] sm:text-[17px] md:text-[18px] font-bold text-[#1e293b] mb-1">
+                  {uploadingCourseMaterials ? 'Uploading Course Materials...' : 'Course Materials'}
+                </h3>
+                <p className="text-[11.5px] sm:text-[12.5px] md:text-[13px] text-[#64748b] max-w-xs sm:max-w-sm mb-3 sm:mb-4 line-clamp-2">
                   Upload syllabus, lesson plans, and curriculum docs to ground AI lesson generation.
                 </p>
-                <div className="flex gap-2">
-                  <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[11px] font-semibold rounded-full border border-slate-200">.pdf</span>
-                  <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[11px] font-semibold rounded-full border border-slate-200">.docx</span>
-                  <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[11px] font-semibold rounded-full border border-slate-200">.txt</span>
+
+                <div className="flex flex-col items-center gap-2">
+                  <div className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#9956DE] text-white text-xs font-semibold shadow-xs group-hover:bg-[#7c3aed] transition-colors">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Choose Document</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1">
+                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.pdf</span>
+                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.docx</span>
+                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.txt</span>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Quick Link to Module Availability Control in Topic Mastery */}
+            {onNavigateToModuleAvailability && (
+              <div className="bg-gradient-to-r from-purple-50/80 via-indigo-50/70 to-purple-50/80 rounded-[18px] p-4 border border-purple-100 shadow-[0_1px_4px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-[13px] font-bold text-[#1e293b]">Manage Curriculum Module Availability</h4>
+                    <p className="text-[11px] text-[#64748b]">Configure DepEd module states or attach custom teacher PDFs to curriculum topics.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onNavigateToModuleAvailability}
+                  className="self-start sm:self-auto px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-[12px] font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 shrink-0"
+                >
+                  Manage Availability
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* How AI Uses Data Feature Cards (Vibrant Gradients) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px]">

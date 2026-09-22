@@ -18,6 +18,7 @@ import {
 import { getUserProgress } from '../services/progressService';
 import { subjects } from '../data/subjects';
 import type { UserProgress } from '../types/models';
+import { TeacherStatCard } from './TeacherStatCard';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -695,65 +696,52 @@ const StudentCompetencyTable: React.FC<{
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-4 sm:mb-6">
-        {/* Card 1 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(168,85,247,0.2)] hover:shadow-[0_8px_24px_rgba(168,85,247,0.3)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8]"></div>
-          <div className="flex items-start justify-between relative z-10 mb-1.5 sm:mb-2">
-            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Total Students</span>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
-              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl lg:text-[28px] font-bold relative z-10 leading-none mb-1 sm:mb-4">{totalStudents}</div>
-          <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-2.5 sm:pt-3 mt-auto">
-            <span className="text-[11px] sm:text-[12px] font-medium text-white/90">Evaluated in this class</span>
-          </div>
-        </div>
+        <TeacherStatCard
+          color="green"
+          title="Total Students"
+          badgeText="Evaluated"
+          icon={User}
+          value={totalStudents}
+          subtitle="Enrolled in Class"
+          footerLabel="Class Roster"
+          footerBadge={`${totalStudents} active`}
+        />
 
-        {/* Card 2 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(249,115,22,0.2)] hover:shadow-[0_8px_24px_rgba(249,115,22,0.3)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8]"></div>
-          <div className="flex items-start justify-between relative z-10 mb-1.5 sm:mb-2">
-            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">At-Risk Students</span>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
-              <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl lg:text-[28px] font-bold relative z-10 leading-none mb-1 sm:mb-4">{highRisk}</div>
-          <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-2.5 sm:pt-3 mt-auto">
-            <span className="text-[11px] sm:text-[12px] font-medium text-white/90">Need immediate intervention</span>
-          </div>
-        </div>
+        <TeacherStatCard
+          color="amber"
+          title="Needs Attention"
+          badgeText={highRisk > 0 ? 'Priority' : 'Clear'}
+          icon={AlertTriangle}
+          value={highRisk}
+          subtitle="At-Risk Students"
+          scorePercent={totalStudents > 0 ? Math.round((highRisk / totalStudents) * 100) : 0}
+          footerLabel="Risk Percentage"
+          footerBadge={`${totalStudents > 0 ? Math.round((highRisk / totalStudents) * 100) : 0}%`}
+        />
 
-        {/* Card 3 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(14,165,233,0.2)] hover:shadow-[0_8px_24px_rgba(14,165,233,0.3)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8]"></div>
-          <div className="flex items-start justify-between relative z-10 mb-1.5 sm:mb-2">
-            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Class Average</span>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
-              <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl lg:text-[28px] font-bold relative z-10 leading-none mb-1 sm:mb-4">{avgScore}%</div>
-          <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-2.5 sm:pt-3 mt-auto">
-            <span className="text-[11px] sm:text-[12px] font-medium text-white/90">Vs. expected benchmark</span>
-          </div>
-        </div>
+        <TeacherStatCard
+          color="purple"
+          title="Class Average"
+          badgeText={avgScore >= 75 ? 'Passing' : 'Needs Boost'}
+          icon={BarChart3}
+          value={`${avgScore}%`}
+          subtitle="Cohort Score"
+          scorePercent={avgScore}
+          footerLabel="Benchmark"
+          footerBadge="75% target"
+        />
 
-        {/* Card 4 */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-xl sm:rounded-[16px] p-2.5 sm:p-5 shadow-[0_2px_8px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.3)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
-          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.8]"></div>
-          <div className="flex items-start justify-between relative z-10 mb-1.5 sm:mb-2">
-            <span className="text-[11px] sm:text-[13px] font-medium text-white/90 leading-tight">Avg. Engagement</span>
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0 ml-1">
-              <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl lg:text-[28px] font-bold relative z-10 leading-none mb-1 sm:mb-4">{avgEngagement}%</div>
-          <div className="hidden sm:flex items-center justify-between relative z-10 border-t border-white/20 pt-2.5 sm:pt-3 mt-auto">
-            <span className="text-[11px] sm:text-[12px] font-medium text-white/90">Activity completion rate</span>
-          </div>
-        </div>
+        <TeacherStatCard
+          color="cyan"
+          title="Avg. Engagement"
+          badgeText="Active"
+          icon={TrendingUp}
+          value={`${avgEngagement}%`}
+          subtitle="Activity Completion"
+          scorePercent={avgEngagement}
+          footerLabel="Participation"
+          footerBadge={`${avgEngagement}% avg`}
+        />
       </div>
 
       {/* Imported Topic Context Banner (Compact) */}
