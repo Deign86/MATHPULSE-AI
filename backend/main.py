@@ -130,6 +130,8 @@ from routes.intervention_routes import router as intervention_router
 from routes.pipeline_routes import router as pipeline_router
 from routes.deepseek_rag_routes import router as deepseek_rag_router
 from routes.at_risk_resolution import router as at_risk_resolution_router
+from routes.jev_routes import router as jev_router
+from services.jev_client import route_student_intent
 
 # Rate limiting (slowapi)
 try:
@@ -395,6 +397,7 @@ PUBLIC_API_PATHS: Set[str] = {
     "/api/quiz/topics",
     "/api/rag/health",
     "/api/templates/class-records",
+    "/api/jev/verify",
 }
 
 ROLE_POLICIES: Dict[str, Set[str]] = {
@@ -1207,6 +1210,7 @@ app.include_router(intervention_router)
 app.include_router(pipeline_router)
 app.include_router(deepseek_rag_router)
 app.include_router(at_risk_resolution_router)
+app.include_router(jev_router)
 
 
 # ─── Global Exception Handler ─────────────────────────────────
@@ -2214,8 +2218,11 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     verified: Optional[bool] = None
-    confidence: Optional[str] = None
+    confidence: Optional[float] = None
     warning: Optional[str] = None
+    sources: List[Dict[str, Any]] = Field(default_factory=list)
+    suggestedFollowups: List[str] = Field(default_factory=list)
+    activeModel: Optional[str] = None
 
 
 class StudentRiskData(BaseModel):
@@ -2681,6 +2688,30 @@ async def chat_tutor(request: ChatRequest):
             if is_continuation_reply(request.message, _active, _history_dicts):
                 _skip_scope_check = True
         # ─── End Intent Gate ─────────────────────────────────────
+
+        try:
+            intent_res = await route_student_intent(request.message)
+            if (
+                intent_res.get("choice") == "direct_answer_request"
+                and float(intent_res.get("confidence", 0.0)) >= 0.80
+            ):
+                return ChatResponse(
+                    response=(
+                        "I can guide you step-by-step, but I won't give the final answer "
+                        "directly! What is the governing formula or first step you think "
+                        "we should use here?"
+                    ),
+                    sources=[],
+                    suggestedFollowups=[
+                        "What is the first step?",
+                        "Can you explain the formula?",
+                        "Give me a hint",
+                    ],
+                    confidence=float(intent_res.get("confidence", 0.95)),
+                    activeModel="jev-socratic-router",
+                )
+        except Exception as intent_err:
+            logger.warning("Jev intent routing failed; continuing with chat: %s", intent_err)
 
         if not _skip_scope_check:
             boundary_response = get_scope_boundary_response(request.message, request.history)
