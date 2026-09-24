@@ -3701,21 +3701,67 @@ const AnalyticsView: React.FC<{
         className="p-3 sm:p-[24px] xl:p-[32px] space-y-3 sm:space-y-[24px] h-full overflow-y-auto pb-32 sm:pb-36 lg:pb-12"
       >
         {/* Analytics Sub-Header Toolbar with Class Switcher */}
-        <div className="flex items-center justify-between gap-3 mb-3 sm:mb-5">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-5">
+          <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0 w-full sm:w-auto">
             <button
               onClick={onBack}
-              className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-slate-700 hover:text-indigo-600 bg-white/90 hover:bg-white px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-slate-200/80 shadow-sm backdrop-blur-md transition-all active:scale-95 shrink-0"
+              className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-slate-700 hover:text-indigo-600 bg-white/90 hover:bg-white px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-slate-200/80 shadow-xs backdrop-blur-md transition-all active:scale-95 shrink-0"
             >
               <ChevronLeft size={15} />
               <span>Dashboard</span>
             </button>
 
-            {/* Class Switcher Pill */}
+            {/* Class Switcher Pill on desktop */}
+            <div className="hidden sm:flex items-center min-w-0">
+              {allClasses.length > 1 ? (
+                <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-1.5 sm:py-2 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 max-w-[260px] sm:max-w-xs min-w-0">
+                  <BookOpen size={14} className="text-indigo-600 mr-2 shrink-0" />
+                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1.5 hidden md:inline shrink-0">Class:</span>
+                  <select
+                    value={selectedClass.id}
+                    onChange={(e) => {
+                      const match = allClasses.find((c) => c.id === e.target.value);
+                      if (match && onSelectClass) {
+                        onSelectClass(match);
+                      }
+                    }}
+                    aria-label="Select class to view analytics"
+                    className="appearance-none bg-transparent text-xs sm:text-[13px] font-bold text-slate-800 border-none focus:outline-none cursor-pointer pr-6 truncate w-full min-w-0"
+                  >
+                    {allClasses.map((c) => (
+                      <option key={c.id} value={c.id} className="text-slate-800 font-medium">
+                        {c.name} ({countResolvedStudentsForClass(c, allStudents)} students)
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="text-slate-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-xl px-3 py-1.5 sm:py-2 shadow-xs">
+                  <BookOpen size={14} className="text-indigo-600 shrink-0" />
+                  <span className="text-xs sm:text-[13px] font-semibold text-slate-800 truncate max-w-[200px]">{selectedClass.name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* New Class on mobile: right aligned on top row */}
+            {onCreateClass && (
+              <button
+                onClick={onCreateClass}
+                className="sm:hidden flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-3 py-1.5 rounded-xl border border-indigo-200/60 shadow-xs transition-all active:scale-95 shrink-0"
+              >
+                <Plus size={14} />
+                <span>New Class</span>
+              </button>
+            )}
+          </div>
+
+          {/* Class Switcher Pill on mobile: full width second row without overlapping */}
+          <div className="sm:hidden w-full min-w-0">
             {allClasses.length > 1 ? (
-              <div className="relative inline-flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-1.5 sm:py-2 shadow-sm transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 max-w-[260px] sm:max-w-xs">
+              <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-2 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 w-full min-w-0">
                 <BookOpen size={14} className="text-indigo-600 mr-2 shrink-0" />
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1.5 hidden md:inline shrink-0">Class:</span>
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1.5 shrink-0">Class:</span>
                 <select
                   value={selectedClass.id}
                   onChange={(e) => {
@@ -3725,7 +3771,7 @@ const AnalyticsView: React.FC<{
                     }
                   }}
                   aria-label="Select class to view analytics"
-                  className="appearance-none bg-transparent text-xs sm:text-[13px] font-bold text-slate-800 border-none focus:outline-none cursor-pointer pr-6 truncate w-full"
+                  className="appearance-none bg-transparent text-xs font-bold text-slate-800 border-none focus:outline-none cursor-pointer pr-6 truncate w-full min-w-0"
                 >
                   {allClasses.map((c) => (
                     <option key={c.id} value={c.id} className="text-slate-800 font-medium">
@@ -3736,18 +3782,19 @@ const AnalyticsView: React.FC<{
                 <ChevronDown size={13} className="text-slate-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
               </div>
             ) : (
-              <div className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-xl px-3 py-1.5 sm:py-2 shadow-sm">
+              <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-xl px-3 py-2 shadow-xs w-full">
                 <BookOpen size={14} className="text-indigo-600 shrink-0" />
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-800 truncate max-w-[200px]">{selectedClass.name}</span>
+                <span className="text-xs font-semibold text-slate-800 truncate">{selectedClass.name}</span>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          {/* New Class on desktop */}
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             {onCreateClass && (
               <button
                 onClick={onCreateClass}
-                className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-indigo-200/60 shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-indigo-200/60 shadow-xs transition-all active:scale-95"
               >
                 <Plus size={14} />
                 <span>New Class</span>
