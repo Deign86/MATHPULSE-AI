@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getDefaultAvatar } from '../utils/avatarUtils';
-import { 
+import {
   Search, Plus, Save,
   Edit, Trash2, Shield, Ban, Users, UserCheck,
-  GraduationCap, School, Loader2, RefreshCw, CheckCheck, Mail, Download, AlertCircle,
-  Eye, EyeOff, ChevronLeft, ChevronRight, RotateCcw, UserPlus, FilterX
+  GraduationCap, School, Loader2, RefreshCw, Mail, Download, AlertCircle,
+  Eye, EyeOff, ChevronLeft, ChevronRight, UserPlus, FilterX, X, SlidersHorizontal
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -13,7 +13,6 @@ import ConfirmModal from './ConfirmModal';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -773,60 +772,159 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     });
   };
 
-  // Stats — derived from server paginated view and current page composition
-  const stats = [
-    { label: 'Total Users', value: totalUsers, color: 'text-[#0a1628]' },
-    { label: 'Active (Page)', value: users.filter(u => u.status === 'Active').length, color: 'text-green-600' },
-    { label: 'Admins (Page)', value: users.filter(u => u.role === 'Admin').length, color: 'text-sky-600' },
-    { label: 'Teachers (Page)', value: users.filter(u => u.role === 'Teacher').length, color: 'text-sky-600' },
-    { label: 'Students (Page)', value: users.filter(u => u.role === 'Student').length, color: 'text-emerald-600' },
-  ];
-
   const visibleRangeStart = totalUsers === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
   const visibleRangeEnd = totalUsers === 0 ? 0 : Math.min(currentPage * pageSize, totalUsers);
 
+  // Quick-filter card definitions for the interactive KPI strip
+  const kpiCards = [
+    {
+      label: 'All Users',
+      value: totalUsers,
+      subtext: 'Total registered',
+      icon: Users,
+      gradient: 'bg-gradient-to-br from-[#818CF8] via-[#6366F1] to-[#4F46E5]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(99,102,241,0.42)] hover:shadow-[0_16px_32px_-6px_rgba(99,102,241,0.55)]',
+      isActive: roleFilter === 'All Roles' && statusFilter === 'All Status',
+      onClick: () => {
+        setRoleFilter('All Roles');
+        setStatusFilter('All Status');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+    {
+      label: 'Active',
+      value: users.filter(u => u.status === 'Active').length,
+      subtext: 'Accounts',
+      icon: UserCheck,
+      gradient: 'bg-gradient-to-br from-[#4ADE80] via-[#16A34A] to-[#15803D]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(22,163,74,0.42)] hover:shadow-[0_16px_32px_-6px_rgba(22,163,74,0.55)]',
+      isActive: statusFilter === 'Active',
+      onClick: () => {
+        setStatusFilter(statusFilter === 'Active' ? 'All Status' : 'Active');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+    {
+      label: 'Admins',
+      value: users.filter(u => u.role === 'Admin').length,
+      subtext: 'Portal access',
+      icon: Shield,
+      gradient: 'bg-gradient-to-br from-[#38BDF8] via-[#0284C7] to-[#0369A1]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(2,132,199,0.42)] hover:shadow-[0_16px_32px_-6px_rgba(2,132,199,0.55)]',
+      isActive: roleFilter === 'Admin',
+      onClick: () => {
+        setRoleFilter(roleFilter === 'Admin' ? 'All Roles' : 'Admin');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+    {
+      label: 'Teachers',
+      value: users.filter(u => u.role === 'Teacher').length,
+      subtext: 'Educators',
+      icon: GraduationCap,
+      gradient: 'bg-gradient-to-br from-[#A78BFA] via-[#8B5CF6] to-[#7C3AED]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(139,92,246,0.42)] hover:shadow-[0_16px_32px_-6px_rgba(139,92,246,0.55)]',
+      isActive: roleFilter === 'Teacher',
+      onClick: () => {
+        setRoleFilter(roleFilter === 'Teacher' ? 'All Roles' : 'Teacher');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+    {
+      label: 'Students',
+      value: users.filter(u => u.role === 'Student').length,
+      subtext: 'Learners',
+      icon: School,
+      gradient: 'bg-gradient-to-br from-[#60A5FA] via-[#2563EB] to-[#1D4ED8]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(37,99,235,0.42)] hover:shadow-[0_16px_32px_-6px_rgba(37,99,235,0.55)]',
+      isActive: roleFilter === 'Student',
+      onClick: () => {
+        setRoleFilter(roleFilter === 'Student' ? 'All Roles' : 'Student');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+  ] as const;
+
+  const hasActiveFilters = searchQuery || roleFilter !== 'All Roles' || statusFilter !== 'All Status' || sectionFilter !== 'All Sections';
+
   return (
     <div className="flex flex-col animate-in fade-in duration-500">
-      <div className="space-y-8 pt-6 xl:pt-8 pb-6 px-1">
-        {/* Stats Cards - Bento Style */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-        {loading && users.length === 0
-          ? Array.from({ length: 5 }).map((_, idx) => (
-              <div key={`stats-skeleton-${idx}`} className="bg-white p-5 rounded-[28px] border border-slate-200/60 shadow-sm shadow-slate-200/50 animate-pulse">
-                <div className="h-4 w-20 bg-slate-100 rounded-full mb-3" />
-                <div className="h-8 w-12 bg-slate-100 rounded-lg" />
-              </div>
-            ))
-          : [
-              { label: 'Total Users', value: totalUsers, icon: Users, bg: 'bg-[#4f46e5]', shadow: 'shadow-indigo-500/20' },
-              { label: 'Active Today', value: users.filter(u => u.status === 'Active').length, icon: UserCheck, bg: 'bg-[#10b981]', shadow: 'shadow-emerald-500/20' },
-              { label: 'Admins', value: users.filter(u => u.role === 'Admin').length, icon: Shield, bg: 'bg-[#0ea5e9]', shadow: 'shadow-sky-500/20' },
-              { label: 'Teachers', value: users.filter(u => u.role === 'Teacher').length, icon: GraduationCap, bg: 'bg-[#8b5cf6]', shadow: 'shadow-purple-500/20' },
-              { label: 'Students', value: users.filter(u => u.role === 'Student').length, icon: School, bg: 'bg-[#3b82f6]', shadow: 'shadow-blue-500/20' },
-            ].map((stat, idx) => (
-              <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-5 rounded-[28px] text-white flex flex-col gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg`}>
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
-                <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-700 delay-75 ease-out" />
-                
-                <div className="relative z-10 flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{stat.label}</p>
-                  <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm group-hover:bg-white/30 transition-colors">
-                    <stat.icon size={14} />
-                  </div>
-                </div>
-                <h3 className="relative z-10 text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
-              </div>
-            ))}
+      {/* ── Section Header ── */}
+      <div className="pt-5 pb-2 px-1">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
+            <Users size={18} className="text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-black font-display text-slate-900 dark:text-white leading-tight tracking-tight">User Management</h2>
+            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">Manage accounts, roles, and access across your platform</p>
+          </div>
+        </div>
       </div>
-      </div>      {/* Action Bar - Sticky Header */}
-      <div className="sticky top-0 z-40 px-2 sm:px-4 pt-3 sm:pt-4 pb-3 sm:pb-4 bg-[#f8fafc] backdrop-blur-sm w-full">
-        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 w-full">
-          {/* Global Search */}
-          <div className="relative flex-1 w-full group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
-            <Input 
-              placeholder="Search by name, email, or LRN..." 
-              className="pl-11 h-12 bg-white border-slate-200/60 rounded-2xl focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all text-sm font-medium shadow-md shadow-slate-200/40 w-full"
+
+      {/* ── Interactive KPI Quick-Filter Strip ── */}
+      <div className="pt-3 pb-4 px-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {loading && users.length === 0
+            ? Array.from({ length: 5 }).map((_, idx) => (
+                <div key={`kpi-skel-${idx}`} className="rounded-2xl p-4 bg-slate-200/60 dark:bg-slate-800 animate-pulse min-h-[110px]">
+                  <div className="h-3 w-14 bg-white/40 dark:bg-slate-700 rounded-full mb-4" />
+                  <div className="h-7 w-10 bg-white/40 dark:bg-slate-700 rounded-lg" />
+                </div>
+              ))
+            : kpiCards.map((card) => (
+                <button
+                  key={card.label}
+                  type="button"
+                  onClick={card.onClick}
+                  className={`group relative ${card.gradient} ${card.shadow} border border-white/20 hover:border-white/35 p-4 rounded-2xl flex flex-col justify-between transition-all duration-300 ease-out min-w-0 text-left cursor-pointer overflow-hidden min-h-[110px] ${
+                    card.isActive ? 'scale-[1.03] brightness-110' : 'hover:-translate-y-0.5'
+                  }`}
+                >
+                  {/* ambient orb */}
+                  <div className="absolute -bottom-5 -right-5 w-20 h-20 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                  {/* top shine strip */}
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+
+                  {/* active dot */}
+                  {card.isActive && (
+                    <span className="absolute top-2.5 right-2.5 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/60" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white/90" />
+                    </span>
+                  )}
+
+                  {/* icon */}
+                  <div className="relative z-10 w-9 h-9 rounded-xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 mb-3 group-hover:scale-105 transition-transform">
+                    <card.icon size={16} className="text-white" />
+                  </div>
+
+                  {/* value + label */}
+                  <div className="relative z-10 min-w-0">
+                    <p className="text-2xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{card.value}</p>
+                    <p className="text-[11px] font-semibold text-white/90 mt-1 truncate">{card.label}</p>
+                    <p className="text-[10px] text-white/60 mt-0.5 truncate">{card.subtext}</p>
+                  </div>
+                </button>
+              ))}
+        </div>
+      </div>
+
+      {/* ── Compact Toolbar + Active Filters ── */}
+      <div className="sticky top-0 z-40 px-1 pt-2 pb-2.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
+        {/* Toolbar card */}
+        <div className="flex items-center gap-2 w-full bg-white dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/50 rounded-2xl px-3 py-2 shadow-sm">
+          {/* Search */}
+          <div className="relative flex-1 min-w-0 group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors shrink-0" size={15} />
+            <Input
+              placeholder="Search name, email, LRN…"
+              className="pl-9 pr-8 h-9 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-xs font-medium w-full placeholder:text-slate-400"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -834,185 +932,207 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 clearSelection();
               }}
             />
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-            <Select
-              value={roleFilter}
-              onValueChange={(value) => {
-                setRoleFilter(value);
-                setCurrentPage(1);
-                clearSelection();
-              }}
-            >
-              <SelectTrigger className="flex-1 sm:w-[150px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-3">
-                <span className="truncate">
-                  {roleFilter === 'All Roles' ? 'All Roles' : roleFilter === 'Admin' ? 'Admin' : roleFilter === 'Teacher' ? 'Teacher' : roleFilter}
-                </span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200">
-                <SelectItem value="All Roles" className="font-bold uppercase tracking-widest text-[10px]">All Roles</SelectItem>
-                <SelectItem value="Admin" className="font-bold uppercase tracking-widest text-[10px]">Administrator</SelectItem>
-                <SelectItem value="Teacher" className="font-bold uppercase tracking-widest text-[10px]">Educator</SelectItem>
-                <SelectItem value="Student" className="font-bold uppercase tracking-widest text-[10px]">Student</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => {
-                setStatusFilter(value);
-                setCurrentPage(1);
-                clearSelection();
-              }}
-            >
-              <SelectTrigger className="flex-1 sm:w-[140px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-3">
-                <span className="truncate">{statusFilter === 'All Status' ? 'All Statuses' : statusFilter}</span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200">
-                <SelectItem value="All Status" className="font-bold uppercase tracking-widest text-[10px]">All Statuses</SelectItem>
-                <SelectItem value="Active" className="font-bold uppercase tracking-widest text-[10px]">Active</SelectItem>
-                <SelectItem value="Inactive" className="font-bold uppercase tracking-widest text-[10px]">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {availableSections.length > 0 && (
-              <Select
-                value={sectionFilter}
-                onValueChange={(value) => {
-                  setSectionFilter(value);
-                  clearSelection();
-                }}
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => { setSearchQuery(''); setCurrentPage(1); clearSelection(); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 transition-colors"
+                aria-label="Clear search"
               >
-                <SelectTrigger className="flex-1 sm:w-[140px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-3">
-                  <span className="truncate">{sectionFilter === 'All Sections' ? 'All Sections' : sectionFilter}</span>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
-                  <SelectItem value="All Sections" className="font-bold uppercase tracking-widest text-[10px]">All Sections</SelectItem>
-                  {availableSections.map(s => (
-                    <SelectItem key={s} value={s} className="font-bold uppercase tracking-widest text-[10px]">{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <X size={13} />
+              </button>
             )}
-
-            <div className="flex items-center gap-2 ml-auto">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  setSearchQuery('');
-                  setRoleFilter('All Roles');
-                  setStatusFilter('All Status');
-                  setSectionFilter('All Sections');
-                  setCurrentPage(1);
-                  clearSelection();
-                }}
-                disabled={!searchQuery && roleFilter === 'All Roles' && statusFilter === 'All Status'}
-                className="h-12 w-12 rounded-xl border-slate-200 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-slate-200/40 shrink-0"
-                title="Reset Filters"
-                aria-label="Reset Filters"
-              >
-                <FilterX size={18} />
-              </Button>
-
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-12 w-12 rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 transition-all shadow-md shadow-slate-200/40 shrink-0"
-                onClick={() => loadUsers(currentPage)}
-                disabled={loading || isProcessingBulkAction}
-                title="Refresh Users"
-                aria-label="Refresh Users"
-              >
-                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-              </Button>
-
-              <Button 
-                className="h-12 gap-2 bg-[#9956DE] hover:bg-[#8b5cf6] text-white rounded-xl shadow-lg shadow-purple-200/50 transition-all px-4 sm:px-6 font-black uppercase text-[11px] tracking-widest shrink-0" 
-                onClick={() => handleOpenAddModal()}
-                disabled={isProcessingBulkAction}
-              >
-                <UserPlus size={18} />
-                <span className="hidden sm:inline">Add User</span>
-                <span className="sm:hidden">Add</span>
-              </Button>
-            </div>
           </div>
+
+          {/* Divider */}
+          <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 shrink-0" />
+
+          {/* Role filter */}
+          <Select
+            value={roleFilter}
+            onValueChange={(value) => { setRoleFilter(value); setCurrentPage(1); clearSelection(); }}
+          >
+            <SelectTrigger className="h-9 w-[100px] sm:w-[120px] rounded-xl bg-slate-50 dark:bg-slate-700/60 border-slate-200/80 dark:border-slate-600/50 text-xs font-semibold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none focus:ring-1 focus:ring-indigo-400/40">
+              <span className="truncate">{roleFilter === 'All Roles' ? 'Role' : roleFilter}</span>
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+              <SelectItem value="All Roles" className="text-xs font-medium">All Roles</SelectItem>
+              <SelectItem value="Admin" className="text-xs font-medium">Administrator</SelectItem>
+              <SelectItem value="Teacher" className="text-xs font-medium">Educator</SelectItem>
+              <SelectItem value="Student" className="text-xs font-medium">Student</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Status filter */}
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => { setStatusFilter(value); setCurrentPage(1); clearSelection(); }}
+          >
+            <SelectTrigger className="h-9 w-[95px] sm:w-[110px] rounded-xl bg-slate-50 dark:bg-slate-700/60 border-slate-200/80 dark:border-slate-600/50 text-xs font-semibold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none focus:ring-1 focus:ring-indigo-400/40">
+              <span className="truncate">{statusFilter === 'All Status' ? 'Status' : statusFilter}</span>
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+              <SelectItem value="All Status" className="text-xs font-medium">All Statuses</SelectItem>
+              <SelectItem value="Active" className="text-xs font-medium">Active</SelectItem>
+              <SelectItem value="Inactive" className="text-xs font-medium">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Section filter — only shown when sections exist */}
+          {availableSections.length > 0 && (
+            <Select
+              value={sectionFilter}
+              onValueChange={(value) => { setSectionFilter(value); clearSelection(); }}
+            >
+              <SelectTrigger className="hidden sm:flex h-9 w-[110px] rounded-xl bg-slate-50 dark:bg-slate-700/60 border-slate-200/80 dark:border-slate-600/50 text-xs font-semibold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none focus:ring-1 focus:ring-indigo-400/40">
+                <span className="truncate">{sectionFilter === 'All Sections' ? 'Section' : sectionFilter}</span>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                <SelectItem value="All Sections" className="text-xs font-medium">All Sections</SelectItem>
+                {availableSections.map(s => (
+                  <SelectItem key={s} value={s} className="text-xs font-medium">{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Divider */}
+          <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 shrink-0" />
+
+          {/* Refresh */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-indigo-600 transition-all shrink-0"
+            onClick={() => loadUsers(currentPage)}
+            disabled={loading || isProcessingBulkAction}
+            title="Refresh"
+            aria-label="Refresh users"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          </Button>
+
+          {/* Add User */}
+          <Button
+            className="h-9 gap-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white rounded-xl shadow-md shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all px-3 sm:px-4 font-semibold text-xs shrink-0 border border-indigo-400/30"
+            onClick={() => handleOpenAddModal()}
+            disabled={isProcessingBulkAction}
+          >
+            <UserPlus size={14} />
+            <span className="hidden sm:inline">Add User</span>
+          </Button>
         </div>
-      </div>
 
-        {/* Floating Bulk Action Bar */}
-        {selectedCount > 0 && (
-          <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-4rem)] max-w-[1100px] bg-[#2d1b69] rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-4 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl shadow-purple-900/50" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-            <div className="flex items-center gap-3 px-3 border-r border-white/10 pr-6">
-              <div className="w-8 h-8 rounded-xl bg-purple-500/30 flex items-center justify-center text-white font-black text-xs">
-                {selectedCount}
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-purple-300 uppercase tracking-widest leading-none">Selected</p>
-                <p className="text-[9px] text-white/60 font-medium mt-1">
-                  {allFilteredSelected ? 'All matching users' : `${selectedCount} users chosen`}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 flex-1">
-              {/* Compact Bulk Tools */}
-              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                <Select value={bulkRoleTarget} onValueChange={(value) => setBulkRoleTarget(memberOf(['Student', 'Teacher', 'Admin'] as const, value, 'Student'))}>
-                  <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="Student">Student</SelectItem>
-                    <SelectItem value="Teacher">Teacher</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button size="sm" className="h-8 bg-purple-600 hover:bg-purple-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeRole()}>Apply Role</Button>
-              </div>
-
-              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                <Select value={bulkStatusTarget} onValueChange={(value) => setBulkStatusTarget(memberOf(['Active', 'Inactive'] as const, value, 'Active'))}>
-                  <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button size="sm" className="h-8 bg-purple-600 hover:bg-purple-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeStatus()}>Set Status</Button>
-              </div>
-
-              <div className="h-6 w-[1px] bg-white/10 mx-1"></div>
-
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="ghost" className="h-9 text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest gap-2" onClick={() => void handleBulkResetPassword()}>
-                  <Mail size={14} /> Reset Pass
-                </Button>
-                <Button size="sm" variant="ghost" className="h-9 text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest gap-2" onClick={() => void handleBulkExport()}>
-                  <Download size={14} /> Export
-                </Button>
-                <Button size="sm" variant="ghost" className="h-9 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-[10px] font-black uppercase tracking-widest gap-2" onClick={handleBulkDelete}>
-                  <Trash2 size={14} /> Delete
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pl-4 border-l border-white/10">
-               {!allFilteredSelected && selectedCount < totalUsers && (
-                <Button variant="ghost" className="h-9 text-indigo-200 hover:text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest" onClick={handleSelectAllFiltered}>
-                  Select All {totalUsers}
-                </Button>
-              )}
-              <Button size="icon" variant="ghost" className="h-9 w-9 text-white/40 hover:text-white hover:bg-white/10 rounded-xl" onClick={clearSelection}>
-                <Edit size={16} className="rotate-45" />
-              </Button>
-            </div>
+        {/* Active filter pills */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap px-1">
+            <SlidersHorizontal size={12} className="text-indigo-400 shrink-0" />
+            {searchQuery && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[11px] font-semibold border border-indigo-200/60 dark:border-indigo-900/50">
+                &quot;{searchQuery}&quot;
+                <button type="button" onClick={() => { setSearchQuery(''); setCurrentPage(1); }} className="text-indigo-400 hover:text-indigo-700 ml-0.5"><X size={10} /></button>
+              </span>
+            )}
+            {roleFilter !== 'All Roles' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-[11px] font-semibold border border-violet-200/60 dark:border-violet-900/50">
+                Role: {roleFilter}
+                <button type="button" onClick={() => { setRoleFilter('All Roles'); setCurrentPage(1); }} className="text-violet-400 hover:text-violet-700 ml-0.5"><X size={10} /></button>
+              </span>
+            )}
+            {statusFilter !== 'All Status' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold border border-emerald-200/60 dark:border-emerald-900/50">
+                {statusFilter}
+                <button type="button" onClick={() => { setStatusFilter('All Status'); setCurrentPage(1); }} className="text-emerald-400 hover:text-emerald-700 ml-0.5"><X size={10} /></button>
+              </span>
+            )}
+            {sectionFilter !== 'All Sections' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-[11px] font-semibold border border-sky-200/60 dark:border-sky-900/50">
+                &sect;&nbsp;{sectionFilter}
+                <button type="button" onClick={() => { setSectionFilter('All Sections'); }} className="text-sky-400 hover:text-sky-700 ml-0.5"><X size={10} /></button>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(''); setRoleFilter('All Roles'); setStatusFilter('All Status'); setSectionFilter('All Sections'); setCurrentPage(1); clearSelection(); }}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+            >
+              <FilterX size={11} /> Clear all
+            </button>
           </div>
         )}
+      </div>
+
+      {/* Floating Bulk Action Bar */}
+      {selectedCount > 0 && (
+        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-[1000px] bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md border border-slate-700/80 text-white rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-3 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div className="flex items-center gap-2.5 px-3 border-r border-slate-800 pr-5">
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 font-bold text-xs tabular-nums">
+              {selectedCount}
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Selected</p>
+              <p className="text-[10px] text-slate-300 font-medium mt-0.5">
+                {allFilteredSelected ? 'All matching users' : `${selectedCount} chosen`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            {/* Compact Bulk Tools */}
+            <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/50">
+              <Select value={bulkRoleTarget} onValueChange={(value) => setBulkRoleTarget(memberOf(['Student', 'Teacher', 'Admin'] as const, value, 'Student'))}>
+                <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs font-medium min-w-[90px] focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-700 bg-slate-900 text-white">
+                  <SelectItem value="Student">Student</SelectItem>
+                  <SelectItem value="Teacher">Teacher</SelectItem>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg px-2.5" onClick={() => void handleBulkChangeRole()}>Apply Role</Button>
+            </div>
+
+            <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/50">
+              <Select value={bulkStatusTarget} onValueChange={(value) => setBulkStatusTarget(memberOf(['Active', 'Inactive'] as const, value, 'Active'))}>
+                <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs font-medium min-w-[90px] focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-700 bg-slate-900 text-white">
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="h-8 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg px-2.5" onClick={() => void handleBulkChangeStatus()}>Set Status</Button>
+            </div>
+
+            <div className="h-5 w-[1px] bg-slate-800 mx-1" />
+
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" variant="ghost" className="h-8 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold gap-1.5" onClick={() => void handleBulkResetPassword()}>
+                <Mail size={13} /> Reset Pass
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold gap-1.5" onClick={() => void handleBulkExport()}>
+                <Download size={13} /> Export
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 text-xs font-semibold gap-1.5" onClick={handleBulkDelete}>
+                <Trash2 size={13} /> Delete
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
+             {!allFilteredSelected && selectedCount < totalUsers && (
+              <Button variant="ghost" className="h-8 text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 text-xs font-semibold" onClick={handleSelectAllFiltered}>
+                Select All {totalUsers}
+              </Button>
+            )}
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg" onClick={clearSelection}>
+              <FilterX size={15} />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {loadError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start justify-between gap-3">
@@ -1035,21 +1155,22 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         </div>
       ) : null}
 
-      {/* Users Table - Premium Styling */}
-      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 relative">
+      {/* ── Users Table ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200/60 dark:border-slate-700/60 shadow-sm relative">
         {loading && users.length > 0 && (
           <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-20 flex items-center justify-center">
             <Loader2 className="animate-spin text-indigo-500" size={32} />
           </div>
         )}
         
-        <div className="md:hidden divide-y divide-slate-100">
-          <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
-            <label className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer">
-              <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300" />
-              Select Page
+        {/* Mobile card view (< md) */}
+        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="px-5 py-3.5 bg-slate-50/60 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest cursor-pointer select-none">
+              <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300 dark:border-slate-600" />
+              Select page
             </label>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">p. {currentPage}/{totalPages}</span>
           </div>
           {loading && users.length === 0 ? (
             <div className="px-6 py-12 text-center text-slate-400 font-medium">Loading users...</div>
@@ -1057,66 +1178,72 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             displayedUsers.map((user) => {
               const isPendingToggle = pendingRowActionUserId === user.id;
               return (
-                <div key={`mobile-${user.id}`} className="p-5 space-y-4 group hover:bg-slate-50/50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center self-center">
-                      <Checkbox
-                        checked={isUserSelected(user.id)}
-                        onCheckedChange={() => handleToggleUserSelection(user.id)}
-                        className="rounded-md border-slate-300"
-                      />
-                    </div>
-                    <div className="relative">
-                      <Avatar className="h-12 w-12 rounded-full border-2 border-white shadow-sm">
+                <div key={`mobile-${user.id}`} className="p-4 space-y-3 group hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={isUserSelected(user.id)}
+                      onCheckedChange={() => handleToggleUserSelection(user.id)}
+                      className="rounded-md border-slate-300 dark:border-slate-600 shrink-0"
+                    />
+                    <div className="relative shrink-0">
+                      <Avatar className="h-11 w-11 rounded-full border-2 border-white dark:border-slate-800 shadow-sm">
                         <AvatarImage src={user.photo || getDefaultAvatar(user.gender)} className="object-cover" />
-                        <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold">{user.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold text-sm">{user.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                      <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-black text-[#1e293b] truncate text-sm">{user.name}</p>
-                      <p className="text-[11px] font-medium text-slate-400 truncate mt-0.5">{user.email}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-900 dark:text-white truncate text-sm leading-tight">{user.name}</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5">{user.email}</p>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
-                      user.role === 'Admin' ? 'bg-sky-50 text-sky-600' :
-                      user.role === 'Teacher' ? 'bg-purple-50 text-purple-600' :
-                      'bg-blue-50 text-blue-600'
+
+                  <div className="flex flex-wrap items-center gap-2 pl-[calc(1.5rem+2.75rem)]">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg ${
+                      user.role === 'Admin' ? 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400' :
+                      user.role === 'Teacher' ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400' :
+                      'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
                     }`}>
                       {user.role}
                     </span>
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-slate-50 text-slate-500">
-                      {user.grade} • {user.section || user.department}
-                    </span>
+                    {(user.grade || user.section || user.department) && (
+                      <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                        {user.role === 'Student'
+                          ? [user.grade, user.classSection || user.section].filter(Boolean).join(' · ')
+                          : user.department}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2">
+                  <div className="flex items-center gap-2 pl-[calc(1.5rem+2.75rem)]">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 h-10 min-h-[40px] rounded-xl border-slate-200 text-slate-600 font-bold text-xs gap-2"
+                      className="flex-1 h-11 min-h-[44px] rounded-xl border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-800"
                       onClick={() => handleOpenEditModal(user)}
                     >
-                      <Edit size={14} /> Edit
+                      <Edit size={13} /> Edit
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`flex-1 h-10 min-h-[40px] rounded-xl border-slate-200 font-bold text-xs gap-2 ${
-                        user.status === 'Active' ? 'text-slate-600' : 'text-emerald-600'
+                      className={`flex-1 h-11 min-h-[44px] rounded-xl border-slate-200 dark:border-slate-700 font-semibold text-xs gap-1.5 ${
+                        user.status === 'Active'
+                          ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                          : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
                       }`}
                       onClick={() => handleToggleStatus(user)}
-                      disabled={(pendingRowActionUserId === user.id) || isProcessingBulkAction}
+                      disabled={pendingRowActionUserId === user.id || isProcessingBulkAction}
                     >
-                      {(pendingRowActionUserId === user.id) ? <Loader2 size={14} className="animate-spin" /> : user.status === 'Active' ? <Ban size={14} /> : <UserCheck size={14} />}
-                      {user.status === 'Active' ? 'Ban' : 'Active'}
+                      {pendingRowActionUserId === user.id
+                        ? <Loader2 size={13} className="animate-spin" />
+                        : user.status === 'Active' ? <Ban size={13} /> : <UserCheck size={13} />}
+                      {user.status === 'Active' ? 'Deactivate' : 'Activate'}
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-10 w-10 min-w-[40px] min-h-[40px] rounded-xl border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center"
+                      className="h-11 w-11 min-w-[44px] min-h-[44px] rounded-xl border-slate-200 dark:border-slate-700 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-200 dark:hover:border-rose-800 flex items-center justify-center"
                       onClick={() => handleDeleteUser(user.id, user.name)}
                       disabled={isProcessingBulkAction}
                     >
@@ -1148,19 +1275,21 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           )}
         </div>
 
-        <div className="hidden md:block">
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-[80px] z-30 bg-[#f8fafc] backdrop-blur-sm shadow-[0_-12px_0_0_#f8fafc]">
-              <tr className="border-b border-[#8b5cf6]">
-                <th className="bg-[#9956DE] px-6 py-4 w-[60px] rounded-tl-[20px]">
-                  <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#9956DE]" />
+        {/* Desktop table view (≥ md) — overflow-x-auto ensures horizontal scroll without squishing columns */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left border-collapse" style={{ minWidth: '860px' }}>
+            {/* thead uses sticky top-0 inside the overflow container so it is always coordinated with the action bar */}
+            <thead className="sticky top-0 z-20">
+              <tr className="bg-gradient-to-r from-indigo-50 via-slate-50 to-slate-50 dark:from-indigo-950/30 dark:via-slate-800/80 dark:to-slate-800/80 border-b border-indigo-100/80 dark:border-slate-700/60">
+                <th className="px-5 py-3.5 w-[50px]">
+                  <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300 dark:border-slate-600" />
                 </th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">User Profile</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Role & Access</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Status</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Placement</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Activity</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-right text-[11px] font-black text-white uppercase tracking-widest rounded-tr-[20px]">Actions</th>
+                <th className="px-5 py-3.5 text-[11px] font-bold text-indigo-700/70 dark:text-indigo-300/70 uppercase tracking-wider whitespace-nowrap">User</th>
+                <th className="px-5 py-3.5 text-[11px] font-bold text-indigo-700/70 dark:text-indigo-300/70 uppercase tracking-wider whitespace-nowrap">Role</th>
+                <th className="px-5 py-3.5 text-[11px] font-bold text-indigo-700/70 dark:text-indigo-300/70 uppercase tracking-wider whitespace-nowrap">Status</th>
+                <th className="px-5 py-3.5 text-[11px] font-bold text-indigo-700/70 dark:text-indigo-300/70 uppercase tracking-wider whitespace-nowrap">Placement</th>
+                <th className="px-5 py-3.5 text-[11px] font-bold text-indigo-700/70 dark:text-indigo-300/70 uppercase tracking-wider whitespace-nowrap">Last Seen</th>
+                <th className="px-5 py-3.5 text-right text-[11px] font-bold text-indigo-700/70 dark:text-indigo-300/70 uppercase tracking-wider whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -1306,7 +1435,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               )}
             </tbody>
           </table>
-        </div>
+        </div>{/* end overflow-x-auto */}
       </div>
 
       {/* Pagination — ── Standardized Sticky Footer Pagination ── */}

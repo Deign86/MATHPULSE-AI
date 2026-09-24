@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { BookOpen, Zap, Globe, ShieldCheck, X, ChevronRight } from 'lucide-react';
 
 interface SubjectsHelpModalProps {
@@ -9,7 +10,7 @@ interface SubjectsHelpModalProps {
 const SubjectsHelpModal: React.FC<SubjectsHelpModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  return (
+  const modalElement = (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
       <div 
@@ -105,6 +106,11 @@ const SubjectsHelpModal: React.FC<SubjectsHelpModalProps> = ({ isOpen, onClose }
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+  return modalElement;
 };
 
 export default SubjectsHelpModal;
