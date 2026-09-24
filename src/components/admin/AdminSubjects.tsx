@@ -124,47 +124,49 @@ const AdminSubjects: React.FC = () => {
         </div>
       )}
 
-      {/* Stats Grid - Bento Style */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      {/* Stats Grid - Executive Bento Style */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           { 
             label: 'Total Subjects', 
             value: SUBJECT_ROWS.length, 
+            subtext: 'Senior high math subjects',
             icon: BookOpen, 
-            bg: 'bg-[#4f46e5]', 
-            shadow: 'shadow-indigo-500/20' 
+            color: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50'
           },
           { 
             label: 'Available', 
             value: SUBJECT_ROWS.filter(s => availability[s.id]?.available !== false).length, 
+            subtext: 'Active curriculum access',
             icon: Unlock, 
-            bg: 'bg-[#10b981]', 
-            shadow: 'shadow-emerald-500/20' 
+            color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50'
           },
           { 
-            label: 'Locked', 
+            label: 'Locked / Shelved', 
             value: SUBJECT_ROWS.filter(s => availability[s.id]?.available === false).length, 
+            subtext: 'Pending PDF materials',
             icon: Lock, 
-            bg: 'bg-[#ef4444]', 
-            shadow: 'shadow-rose-500/20' 
+            color: 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/50'
           },
           { 
             label: 'RAG Sources', 
             value: SUBJECT_ROWS.filter(s => availability[s.id]?.pdfPath).length, 
+            subtext: 'Vectorized knowledge docs',
             icon: FileText, 
-            bg: 'bg-[#8b5cf6]', 
-            shadow: 'shadow-purple-500/20' 
+            color: 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-100 dark:border-violet-900/50'
           },
         ].map((stat, idx) => (
-          <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-3.5 sm:p-5 rounded-[24px] sm:rounded-[28px] text-white flex flex-col gap-2 sm:gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg min-w-0`}>
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
-            <div className="relative z-10 flex items-center justify-between">
-              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-[0.2em] opacity-80 truncate">{stat.label}</p>
-              <div className="bg-white/20 p-1.5 sm:p-2 rounded-xl backdrop-blur-sm shrink-0">
-                <stat.icon size={13} className="sm:w-3.5 sm:h-3.5" />
+          <div key={idx} className="bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 p-4 sm:p-5 rounded-2xl flex flex-col justify-between shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-colors min-w-0">
+            <div className="flex items-center justify-between mb-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${stat.color} shrink-0`}>
+                <stat.icon size={18} />
               </div>
             </div>
-            <h3 className="relative z-10 text-2xl sm:text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
+            <div>
+              <h3 className="text-2xl font-bold font-display text-slate-900 dark:text-white leading-none tracking-tight tabular-nums">{stat.value}</h3>
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1 truncate">{stat.label}</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-0.5 truncate">{stat.subtext}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -177,15 +179,15 @@ const AdminSubjects: React.FC = () => {
       )}
 
       {/* Subject Table - Premium Integrated */}
-      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 overflow-hidden overflow-x-auto relative w-full">
+      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm overflow-hidden overflow-x-auto relative w-full">
         <Table className="w-full text-left border-collapse min-w-[720px]">
           <TableHeader>
-            <TableRow className="bg-[#9956DE] hover:bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-md">
-              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Subject Identity</TableHead>
-              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Grade / Quarters</TableHead>
-              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Access Status</TableHead>
-              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">Toggle Access</TableHead>
-              <TableHead className="px-6 py-5 text-[11px] font-black text-white uppercase tracking-widest">RAG Resource Mapping</TableHead>
+            <TableRow className="bg-slate-50/90 dark:bg-slate-800/90 border-b border-slate-200/80 dark:border-slate-700/60 sticky top-0 z-20">
+              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Subject Identity</TableHead>
+              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Grade / Quarters</TableHead>
+              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Access Status</TableHead>
+              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toggle Access</TableHead>
+              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">RAG Resource Mapping</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-slate-50">

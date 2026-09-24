@@ -184,26 +184,36 @@ const AdminRagManager: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Stats */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-            <Database className="w-5 h-5 text-indigo-600" />
+    <div className="space-y-6 pt-2 pb-6 max-w-[1400px] mx-auto min-w-0">
+      {/* Header Stats Bento Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Database size={18} />
+            </div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Vector Knowledge Base</span>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-800">RAG Pipeline Manager</h2>
-            <p className="text-sm text-slate-500">Manage vectorstore content and uploaded files</p>
+            <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums">{totalChunks.toLocaleString()}</p>
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">Total Indexed Chunks</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Parsed into BAAI/bge-small vector store</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="px-4 py-2 bg-indigo-50 rounded-xl text-center">
-            <p className="text-xl font-bold text-indigo-600">{totalChunks}</p>
-            <p className="text-[10px] font-bold text-indigo-400 uppercase">Total Chunks</p>
+
+        <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <FileText size={18} />
+            </div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+              Curriculum Ready
+            </span>
           </div>
-          <div className="px-4 py-2 bg-emerald-50 rounded-xl text-center">
-            <p className="text-xl font-bold text-emerald-600">{subjectGroups.length}</p>
-            <p className="text-[10px] font-bold text-emerald-400 uppercase">Subjects</p>
+          <div>
+            <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums">{subjectGroups.length}</p>
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">Configured Subjects</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Active knowledge namespaces</p>
           </div>
         </div>
       </div>
@@ -213,32 +223,32 @@ const AdminRagManager: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between gap-3 p-3.5 sm:p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900"
+          className="flex items-center justify-between gap-3 p-4 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 rounded-2xl text-amber-900 dark:text-amber-200"
         >
-          <div className="flex items-center gap-2.5">
-            <Loader2 size={16} className="animate-spin text-amber-600 flex-shrink-0" />
+          <div className="flex items-center gap-3">
+            <Loader2 size={18} className="animate-spin text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
               <p className="text-xs sm:text-sm font-semibold">
-                Cloud re-ingestion in progress (FastAPI / GitHub Actions runner)...
+                Cloud re-ingestion pipeline in progress...
               </p>
-              <p className="text-[11px] text-amber-700">
-                Vectorstore chunks are being re-indexed and synchronized. This page will update automatically.
+              <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
+                Vectorstore chunks are being re-indexed. This page will update automatically upon completion.
               </p>
             </div>
           </div>
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-200/70 text-amber-900 flex-shrink-0">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 shrink-0">
             Running
           </span>
         </motion.div>
       )}
 
       {/* Actions Bar */}
-      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 p-3.5 sm:p-4 bg-slate-50 rounded-2xl border border-slate-200 w-full min-w-0">
+      <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 p-3.5 sm:p-4 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm w-full min-w-0">
         <Button
           onClick={fetchDocuments}
           disabled={loading}
           variant="outline"
-          className="gap-2 min-h-[40px] flex-1 sm:flex-initial text-xs"
+          className="gap-2 min-h-[44px] flex-1 sm:flex-initial text-xs font-semibold rounded-xl border-slate-200/80 dark:border-slate-700/60"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           Refresh
@@ -247,7 +257,7 @@ const AdminRagManager: React.FC = () => {
           onClick={handleReingest}
           disabled={!!actionLoading || isReingestRunning}
           variant="outline"
-          className="gap-2 min-h-[40px] flex-1 sm:flex-initial text-xs"
+          className="gap-2 min-h-[44px] flex-1 sm:flex-initial text-xs font-semibold rounded-xl border-slate-200/80 dark:border-slate-700/60"
         >
           {actionLoading === 'reingest' || isReingestRunning ? (
             <Loader2 size={14} className="animate-spin text-indigo-600" />
@@ -261,21 +271,21 @@ const AdminRagManager: React.FC = () => {
           <Button
             onClick={() => setConfirmPurge(true)}
             variant="outline"
-            className="gap-2 text-red-600 border-red-200 hover:bg-red-50 min-h-[40px] w-full sm:w-auto text-xs"
+            className="gap-2 text-rose-600 dark:text-rose-400 border-rose-200/80 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 min-h-[44px] w-full sm:w-auto text-xs font-semibold rounded-xl"
           >
             <Trash2 size={14} />
             Purge All
           </Button>
         ) : (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-            <span className="text-xs text-red-600 font-medium flex items-center gap-1">
-              <AlertTriangle size={14} /> This will delete ALL RAG content
+            <span className="text-xs text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1">
+              <AlertTriangle size={14} /> Deletes ALL RAG content
             </span>
-            <Button onClick={handlePurgeAll} disabled={actionLoading === 'purge'} className="bg-red-600 hover:bg-red-700 text-white gap-2 min-h-[40px] text-xs">
+            <Button onClick={handlePurgeAll} disabled={actionLoading === 'purge'} className="bg-rose-600 hover:bg-rose-700 text-white gap-2 min-h-[44px] text-xs font-semibold rounded-xl shadow-sm">
               {actionLoading === 'purge' ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
               Confirm Purge
             </Button>
-            <Button onClick={() => setConfirmPurge(false)} variant="outline" className="min-h-[40px] text-xs">Cancel</Button>
+            <Button onClick={() => setConfirmPurge(false)} variant="outline" className="min-h-[44px] text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700">Cancel</Button>
           </div>
         )}
       </div>
@@ -283,13 +293,13 @@ const AdminRagManager: React.FC = () => {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 size={32} className="animate-spin text-indigo-500" />
+          <Loader2 size={32} className="animate-spin text-indigo-600" />
         </div>
       ) : subjectGroups.length === 0 ? (
-        <div className="text-center py-16 text-slate-500">
-          <Database size={48} className="mx-auto mb-3 text-slate-300" />
-          <p className="font-medium">No RAG content found</p>
-          <p className="text-sm">Upload PDFs via the Content tab or trigger re-ingestion</p>
+        <div className="text-center py-16 text-slate-400 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 p-6">
+          <Database size={40} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+          <p className="font-semibold text-sm text-slate-700 dark:text-slate-300">No RAG content indexed yet</p>
+          <p className="text-xs text-slate-400 mt-0.5">Upload curriculum PDFs via the Content tab or trigger cloud re-ingestion</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -298,43 +308,43 @@ const AdminRagManager: React.FC = () => {
               key={group.subject}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl border border-slate-200 overflow-hidden"
+              className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm overflow-hidden"
             >
               {/* Subject Header */}
-              <div className="flex items-center justify-between px-5 py-4 bg-slate-50 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-slate-50/50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-700/60">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                    <FileText size={16} className="text-indigo-600" />
+                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <FileText size={16} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-800 capitalize">{group.subject.replace(/_/g, ' ')}</h3>
-                    <p className="text-xs text-slate-500">{group.totalChunks} chunks • {group.files.length} source file{group.files.length !== 1 ? 's' : ''}</p>
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white capitalize">{group.subject.replace(/_/g, ' ')}</h3>
+                    <p className="text-xs text-slate-400">{group.totalChunks} chunks • {group.files.length} source file{group.files.length !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
                 <Button
                   onClick={() => handleDeleteSubject(group.subject)}
                   disabled={!!actionLoading}
                   variant="outline"
-                  className="gap-2 text-red-600 border-red-200 hover:bg-red-50 text-xs min-h-[38px]"
+                  className="gap-1.5 text-rose-600 dark:text-rose-400 border-rose-200/80 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold min-h-[40px] rounded-xl self-start sm:self-auto"
                 >
-                  {actionLoading === `subject:${group.subject}` ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                  {actionLoading === `subject:${group.subject}` ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                   Remove Subject
                 </Button>
               </div>
 
               {/* Source Files */}
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
                 {group.files.map((file) => (
-                  <div key={file.source_file} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <FileText size={14} className="text-slate-400" />
-                      <span className="text-sm text-slate-700 font-medium truncate max-w-[400px]">{file.source_file}</span>
-                      <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{file.chunk_count} chunks</span>
+                  <div key={file.source_file} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText size={15} className="text-slate-400 shrink-0" />
+                      <span className="text-xs text-slate-700 dark:text-slate-200 font-medium truncate max-w-[360px]">{file.source_file}</span>
+                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full shrink-0 tabular-nums">{file.chunk_count} chunks</span>
                     </div>
                     <button
                       onClick={() => handleDeleteSource(file.source_file)}
                       disabled={!!actionLoading}
-                      className="p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors disabled:opacity-50"
                       aria-label={`Delete ${file.source_file}`}
                     >
                       {actionLoading === `source:${file.source_file}` ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}

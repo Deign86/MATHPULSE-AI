@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import {
   Search, Shield, AlertTriangle, AlertCircle, Info,
-  Calendar, Eye, Loader2, RefreshCw, Lock,
+  Eye, Loader2, RefreshCw, Lock,
   FileText, ShieldAlert, UserCheck, ChevronLeft, ChevronRight,
-  ListFilter, ArrowRight, Clock, ShieldCheck, Activity,
-  Filter, FilterX, Download, RotateCcw
+  Clock, ShieldCheck, Activity,
+  FilterX, Download, type LucideIcon
 } from 'lucide-react';
 import { recordGet } from '../utils/memberOf';
 import { Button } from './ui/button';
@@ -15,23 +14,13 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from './ui/select';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from './ui/table';
 import { getAuditLogs, type AuditLogEntry } from '../services/adminService';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
@@ -50,30 +39,31 @@ const StatCard: React.FC<{
   title: string;
   value: string | number;
   subtitle: string;
-  icon: any;
+  icon: LucideIcon;
   variant: 'blue' | 'purple' | 'rose' | 'emerald';
 }> = ({ title, value, subtitle, icon: Icon, variant }) => {
-  const variants = {
-    blue: 'bg-[#5154E7] shadow-blue-200/50',
-    purple: 'bg-[#9956DE] shadow-purple-200/50',
-    rose: 'bg-[#F43F5E] shadow-rose-200/50',
-    emerald: 'bg-[#10B981] shadow-emerald-200/50',
+  const iconThemes = {
+    blue: 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/50',
+    purple: 'bg-violet-50 text-violet-600 border-violet-100 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-900/50',
+    rose: 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-900/50',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50',
   };
 
   return (
-    <div className={`relative overflow-hidden rounded-[24px] p-3.5 sm:p-5 text-white shadow-lg transition-all hover:scale-[1.02] min-w-0 ${variants[variant]}`}>
-      <div className="absolute -right-4 -top-4 opacity-10">
-        <Icon size={100} />
+    <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
+      <div className="flex items-center justify-between mb-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shrink-0 ${iconThemes[variant]}`}>
+          <Icon size={18} />
+        </div>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Security</span>
       </div>
-      <div className="absolute right-3.5 top-3.5 sm:right-4 sm:top-4 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/20 flex items-center justify-center">
-        <Icon size={14} className="sm:w-4 sm:h-4" />
+      <div>
+        <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums leading-none">
+          {value}
+        </p>
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-2">{title}</p>
+        <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>
       </div>
-      <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight sm:tracking-[0.2em] opacity-80 truncate">{title}</p>
-      <h3 className="text-xl sm:text-2xl font-black mt-1.5 sm:mt-2 leading-none truncate tabular-nums">{value}</h3>
-      <p className="text-[9px] sm:text-[10px] font-bold mt-3 sm:mt-4 opacity-70 uppercase tracking-widest truncate">{subtitle}</p>
-      
-      {/* Subject Card Styling Circle */}
-      <div className="absolute -bottom-8 -left-8 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
     </div>
   );
 };
@@ -121,26 +111,25 @@ const AdminAuditLog: React.FC = () => {
 
   // Computed stats from real data
   const infoCount = logs.filter(l => l.severity === 'Info').length;
-  const warningCount = logs.filter(l => l.severity === 'Warning').length;
   const alertCount = logs.filter(l => l.severity === 'Error' || l.severity === 'Critical').length;
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'Info': return <Info size={14} />;
-      case 'Warning': return <AlertTriangle size={14} />;
-      case 'Error': return <ShieldAlert size={14} />;
-      case 'Critical': return <AlertCircle size={14} />;
-      default: return <Activity size={14} />;
+      case 'Info': return <Info size={13} />;
+      case 'Warning': return <AlertTriangle size={13} />;
+      case 'Error': return <ShieldAlert size={13} />;
+      case 'Critical': return <AlertCircle size={13} />;
+      default: return <Activity size={13} />;
     }
   };
 
   const getSeverityStyle = (severity: string) => {
     switch (severity) {
-      case 'Info': return 'bg-sky-50 text-sky-600 border-sky-100';
-      case 'Warning': return 'bg-amber-50 text-amber-600 border-amber-100';
-      case 'Error': return 'bg-rose-50 text-rose-600 border-rose-100';
-      case 'Critical': return 'bg-red-50 text-red-600 border-red-100 ring-1 ring-red-500';
-      default: return 'bg-slate-50 text-slate-600 border-slate-100';
+      case 'Info': return 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200/80 dark:border-sky-800/50';
+      case 'Warning': return 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/50';
+      case 'Error': return 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/50';
+      case 'Critical': return 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200/80 dark:border-red-800/50 ring-1 ring-red-400';
+      default: return 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
     }
   };
 
@@ -196,13 +185,13 @@ const AdminAuditLog: React.FC = () => {
 
   if (accessDenied) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-white rounded-[32px] border border-slate-200 mt-8">
-        <div className="w-20 h-20 rounded-full bg-rose-50 flex items-center justify-center mb-6">
-          <Lock size={40} className="text-rose-500" />
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 mt-4">
+        <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center mb-4">
+          <Lock size={32} className="text-rose-500" />
         </div>
-        <h3 className="text-2xl font-black text-[#1e293b]">Access Denied</h3>
-        <p className="text-slate-400 font-medium max-w-md mx-auto mt-2 uppercase text-[11px] tracking-widest">
-          Security policy restricts audit log visibility to administrative personnel only.
+        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Access Restricted</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1">
+          Security policy limits audit log inspection to administrative personnel.
         </p>
       </div>
     );
@@ -213,252 +202,244 @@ const AdminAuditLog: React.FC = () => {
   const visibleRangeEnd = Math.min(currentPage * pageSize, filteredLogs.length);
 
   return (
-    <div className="flex flex-col min-h-full w-full max-w-full overflow-x-hidden animate-in fade-in duration-500">
-      <div className="flex-1 space-y-6 sm:space-y-8 pt-4 sm:pt-6 xl:pt-8 pb-6 px-1 max-w-[1600px] mx-auto w-full">
-        {/* ── 1. Action Header Bar ── */}
-        <div className="flex items-center justify-between px-2 shrink-0">
-          <div className="flex items-center gap-3">
-             <div className="w-1.5 h-6 bg-[#9956DE] rounded-full" />
-             <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">System Governance Pipeline</p>
+    <div className="space-y-6 pt-2 pb-6 max-w-[1400px] mx-auto min-w-0">
+      {/* ── 1. Action Header Bar ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">System Governance & Audit Trails</h2>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/50">
+              <Shield size={11} /> Compliance
+            </span>
           </div>
-          
-          <div className="flex items-center gap-3">
-             <button 
-               onClick={loadLogs} 
-               disabled={loading}
-               className="p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-purple-600 shadow-sm transition-all active:scale-95 group"
-               title="Synchronize logs"
-               aria-label="Synchronize logs"
-             >
-               <RefreshCw size={14} className={loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
-             </button>
-             <button 
-               disabled
-               className="flex items-center gap-2 px-4 py-2 min-h-[40px] bg-white border border-slate-200 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest opacity-60 cursor-not-allowed"
-             >
-               <Download size={14} /> Export Logs
-             </button>
-          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Immutable record of security events, administrative changes, and user operations</p>
         </div>
+        
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button 
+            onClick={loadLogs} 
+            disabled={loading}
+            className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            title="Synchronize logs"
+            aria-label="Synchronize logs"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin text-indigo-600' : ''} />
+          </button>
+          <Button 
+            variant="outline"
+            disabled
+            className="h-[44px] px-3.5 gap-2 rounded-xl border-slate-200/80 dark:border-slate-700/60 text-xs font-semibold text-slate-400 dark:text-slate-500 opacity-60 cursor-not-allowed"
+          >
+            <Download size={14} /> Export Logs
+          </Button>
+        </div>
+      </div>
 
-        {/* ── 2. Performance Metric Pods ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0">
-          <StatCard
-            title="Total Events"
-            value={loading ? '...' : logs.length}
-            subtitle="System-Wide Logs"
-            icon={FileText}
-            variant="purple"
-          />
-          <StatCard
-            title="Security Alerts"
-            value={loading ? '...' : alertCount}
-            subtitle="Critical Incidents"
-            icon={ShieldAlert}
-            variant="rose"
-          />
-          <StatCard
-            title="Operational Info"
-            value={loading ? '...' : infoCount}
-            subtitle="Routine Pipelines"
-            icon={UserCheck}
-            variant="blue"
-          />
-          <StatCard
-            title="System Health"
-            value={alertCount > 0 ? 'Compromised' : 'Healthy'}
-            subtitle="Live Monitoring"
-            icon={ShieldCheck}
-            variant={alertCount > 0 ? 'rose' : 'emerald'}
-          />
-        </div>
-      </div>{/* End flex-1 stats wrapper */}
+      {/* ── 2. Performance Metric Bento Pods ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          title="Total Events"
+          value={loading ? '...' : logs.length}
+          subtitle="System-wide records"
+          icon={FileText}
+          variant="purple"
+        />
+        <StatCard
+          title="Security Alerts"
+          value={loading ? '...' : alertCount}
+          subtitle="Requires attention"
+          icon={ShieldAlert}
+          variant="rose"
+        />
+        <StatCard
+          title="Operational Info"
+          value={loading ? '...' : infoCount}
+          subtitle="Routine system events"
+          icon={UserCheck}
+          variant="blue"
+        />
+        <StatCard
+          title="Platform Status"
+          value={alertCount > 0 ? 'Review Needed' : 'Nominal'}
+          subtitle="Real-time telemetry"
+          icon={ShieldCheck}
+          variant={alertCount > 0 ? 'rose' : 'emerald'}
+        />
+      </div>
 
       {/* ── 3. High-Fidelity Filtering Area ── */}
-        <div className="sticky top-0 z-40 px-2 sm:px-4 pt-3 sm:pt-4 pb-3 sm:pb-4 bg-[#f8fafc] backdrop-blur-sm w-full">
-          <div className="flex flex-col xl:flex-row items-center gap-3">
-              {/* Global Search */}
-              <div className="relative flex-1 w-full group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#9956DE] transition-colors" size={16} />
-                <Input 
-                  type="text" 
-                  placeholder="Trace user identity, action strings, or operation details..." 
-                  className="pl-11 h-12 bg-white border-slate-200/60 rounded-2xl focus-visible:ring-[#9956DE]/20 focus-visible:border-[#9956DE] transition-all text-sm font-medium shadow-md shadow-slate-200/40"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger className="w-[200px] bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 rounded-xl h-12 shadow-md shadow-slate-200/40 px-4">
-                    <span className="truncate">{recordGet(CATEGORY_LABELS, selectedCategory) ?? selectedCategory}</span>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200">
-                    <SelectItem value="All Categories" className="font-bold">All Categories</SelectItem>
-                    <SelectItem value="Auth" className="font-bold">Authentication</SelectItem>
-                    <SelectItem value="Data" className="font-bold">Data Operations</SelectItem>
-                    <SelectItem value="User" className="font-bold">User Management</SelectItem>
-                    <SelectItem value="System" className="font-bold">System Engine</SelectItem>
-                    <SelectItem value="Content" className="font-bold">Content Pipeline</SelectItem>
-                  </SelectContent>
-                </Select>
+      <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
+        <div className="flex flex-col lg:flex-row items-center gap-3">
+          {/* Global Search */}
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Input 
+              type="text" 
+              placeholder="Search by actor, action description, or details..." 
+              className="pl-10 h-11 bg-slate-50/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-700/60 rounded-xl text-xs font-medium focus-visible:ring-indigo-500/20"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-full sm:w-[170px] bg-slate-50/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-700/60 text-xs font-medium rounded-xl h-11">
+                <span className="truncate">{recordGet(CATEGORY_LABELS, selectedCategory) ?? selectedCategory}</span>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                <SelectItem value="All Categories">All Categories</SelectItem>
+                <SelectItem value="Auth">Authentication</SelectItem>
+                <SelectItem value="Data">Data Operations</SelectItem>
+                <SelectItem value="User">User Management</SelectItem>
+                <SelectItem value="System">System Engine</SelectItem>
+                <SelectItem value="Content">Content Pipeline</SelectItem>
+              </SelectContent>
+            </Select>
 
-                <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
-                  <SelectTrigger className="w-[200px] bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 rounded-xl h-12 shadow-md shadow-slate-200/40 px-4">
-                    <span className="truncate">{recordGet(SEVERITY_LABELS, selectedSeverity) ?? selectedSeverity}</span>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200">
-                    <SelectItem value="All Severities" className="font-bold">All Severities</SelectItem>
-                    <SelectItem value="Info" className="font-bold">Information</SelectItem>
-                    <SelectItem value="Warning" className="font-bold">Warning</SelectItem>
-                    <SelectItem value="Error" className="font-bold">Error</SelectItem>
-                    <SelectItem value="Critical" className="font-bold">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
+            <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
+              <SelectTrigger className="w-full sm:w-[160px] bg-slate-50/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-700/60 text-xs font-medium rounded-xl h-11">
+                <span className="truncate">{recordGet(SEVERITY_LABELS, selectedSeverity) ?? selectedSeverity}</span>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                <SelectItem value="All Severities">All Severities</SelectItem>
+                <SelectItem value="Info">Information</SelectItem>
+                <SelectItem value="Warning">Warning</SelectItem>
+                <SelectItem value="Error">Error</SelectItem>
+                <SelectItem value="Critical">Critical</SelectItem>
+              </SelectContent>
+            </Select>
 
-                <Select value={selectedRole} onValueChange={setSelectedRole}>
-                  <SelectTrigger className="w-[200px] bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 rounded-xl h-12 shadow-md shadow-slate-200/40 px-4">
-                    <span className="truncate">{recordGet(ROLE_LABELS, selectedRole) ?? selectedRole}</span>
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200">
-                    <SelectItem value="All Roles" className="font-bold">All Roles</SelectItem>
-                    <SelectItem value="Admin" className="font-bold">Administrator</SelectItem>
-                    <SelectItem value="Teacher" className="font-bold">Educator</SelectItem>
-                    <SelectItem value="Student" className="font-bold">Student</SelectItem>
-                  </SelectContent>
-                </Select>
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger className="w-full sm:w-[150px] bg-slate-50/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-700/60 text-xs font-medium rounded-xl h-11">
+                <span className="truncate">{recordGet(ROLE_LABELS, selectedRole) ?? selectedRole}</span>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                <SelectItem value="All Roles">All Roles</SelectItem>
+                <SelectItem value="Admin">Administrator</SelectItem>
+                <SelectItem value="Teacher">Educator</SelectItem>
+                <SelectItem value="Student">Student</SelectItem>
+              </SelectContent>
+            </Select>
 
-                <Button 
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedCategory('All Categories');
-                    setSelectedSeverity('All Severities');
-                    setSelectedRole('All Roles');
-                  }}
-                  disabled={!searchTerm && selectedCategory === 'All Categories' && selectedSeverity === 'All Severities' && selectedRole === 'All Roles'}
-                  className="h-12 w-12 rounded-2xl border-slate-200/60 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-sm"
-                  title="Reset Filters"
-                  aria-label="Reset Filters"
-                >
-                  <FilterX size={18} />
-                </Button>
-              </div>
+            <Button 
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('All Categories');
+                setSelectedSeverity('All Severities');
+                setSelectedRole('All Roles');
+              }}
+              disabled={!searchTerm && selectedCategory === 'All Categories' && selectedSeverity === 'All Severities' && selectedRole === 'All Roles'}
+              className="h-11 w-11 rounded-xl border-slate-200/80 dark:border-slate-700/60 text-slate-500 hover:text-indigo-600 disabled:opacity-40"
+              title="Reset Filters"
+              aria-label="Reset Filters"
+            >
+              <FilterX size={16} />
+            </Button>
           </div>
         </div>
+      </div>
 
-        {/* ── 4. Main Table Area ── */}
-        <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/40 relative">
-          <div className="rounded-[32px]">
-            <table className="w-full text-left border-collapse min-w-[1000px]">
-              <thead className="sticky top-[80px] z-30 bg-[#f8fafc] backdrop-blur-sm shadow-[0_-12px_0_0_#f8fafc]">
-                <tr className="border-b border-[#8b5cf6]">
-                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest whitespace-nowrap rounded-tl-[20px]">Incident Level</th>
-                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest whitespace-nowrap">Timestamp</th>
-                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">User Actor</th>
-                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">Action Performed</th>
-                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest">Component</th>
-                  <th className="bg-[#9956DE] px-8 py-5 text-[11px] font-black text-white uppercase tracking-widest text-right whitespace-nowrap rounded-tr-[20px]">Review</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  Array(10).fill(0).map((_, idx) => (
-                    <tr key={idx}>
-                      <td colSpan={6} className="h-20 p-8">
-                         <div className="flex items-center gap-4">
-                           <div className="w-10 h-10 rounded-xl bg-slate-50 animate-pulse" />
-                           <div className="space-y-2">
-                             <div className="w-32 h-3 bg-slate-50 animate-pulse rounded" />
-                             <div className="w-48 h-2 bg-slate-50 animate-pulse rounded" />
-                           </div>
-                         </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : paginatedLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="h-64 text-center">
-                      <div className="flex flex-col items-center justify-center">
-                        <Shield size={48} className="text-slate-100 mb-4" />
-                        <p className="text-[16px] font-black text-[#1e293b]">No audit trails captured</p>
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Try adjusting your tracking filters</p>
+      {/* ── 4. Main Table Area ── */}
+      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[850px]">
+            <thead>
+              <tr className="bg-slate-50/90 dark:bg-slate-800/90 border-b border-slate-200/80 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                <th className="px-5 py-3.5">Severity</th>
+                <th className="px-5 py-3.5">Timestamp</th>
+                <th className="px-5 py-3.5">Actor</th>
+                <th className="px-5 py-3.5">Action & Scope</th>
+                <th className="px-5 py-3.5">Component</th>
+                <th className="px-5 py-3.5 text-right">Details</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+              {loading ? (
+                Array(6).fill(0).map((_, idx) => (
+                  <tr key={idx}>
+                    <td colSpan={6} className="h-16 px-5 py-4">
+                      <div className="flex items-center gap-4 animate-pulse">
+                        <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-700" />
+                        <div className="space-y-1.5 flex-1">
+                          <div className="w-32 h-3 bg-slate-100 dark:bg-slate-700 rounded" />
+                          <div className="w-48 h-2 bg-slate-100 dark:bg-slate-700 rounded" />
+                        </div>
                       </div>
                     </td>
                   </tr>
-                ) : (
-                  paginatedLogs.map((log) => (
-                    <tr key={log.id} className="group hover:bg-purple-50/20 transition-colors">
-                      <td className="px-8 py-5">
-                        <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${getSeverityStyle(log.severity)}`}>
-                          {getSeverityIcon(log.severity)}
-                          {log.severity}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                            <Clock size={14} />
-                          </div>
-                          <span className="text-[13px] font-bold text-[#1e293b]">{log.timestamp}</span>
+                ))
+              ) : paginatedLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="h-56 text-center">
+                    <div className="flex flex-col items-center justify-center p-8">
+                      <Shield size={36} className="text-slate-300 dark:text-slate-600 mb-2" />
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No audit events match current criteria</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Try widening your filters or clearing search parameters</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                paginatedLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/20 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${getSeverityStyle(log.severity)}`}>
+                        {getSeverityIcon(log.severity)}
+                        {log.severity}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 font-medium">
+                        <Clock size={13} className="text-slate-400 shrink-0" />
+                        <span className="tabular-nums">{log.timestamp}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center overflow-hidden shrink-0 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
+                          {log.user.name?.charAt(0).toUpperCase() || 'S'}
                         </div>
-                      </td>
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0">
-                            {log.user.avatar ? (
-                              <img src={log.user.avatar} alt={log.user.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <Shield size={16} className="text-slate-300" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-black text-[#1e293b] leading-none group-hover:text-[#9956DE] transition-colors truncate">{log.user.name || 'SYSTEM'}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">{log.user.role || 'System'}</p>
-                          </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{log.user.name || 'System'}</p>
+                          <p className="text-[10px] text-slate-400 font-medium capitalize">{log.user.role || 'Service'}</p>
                         </div>
-                      </td>
-                      <td className="px-8 py-5">
-                        <p className="text-sm font-bold text-[#1e293b] truncate max-w-[250px]" title={log.details}>{log.action}</p>
-                        <p className="text-[10px] text-slate-400 font-medium truncate max-w-[250px] mt-0.5">{log.details}</p>
-                      </td>
-                      <td className="px-8 py-5">
-                        <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100 uppercase tracking-widest">
-                          {log.category}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                         <div className="flex justify-end">
-                           <button
-                            onClick={() => setSelectedLog(log)}
-                            className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-[#9956DE] hover:border-[#9956DE]/30 hover:bg-purple-50 transition-all "
-                          >
-                            <Eye size={16} />
-                          </button>
-                         </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate max-w-[280px]" title={log.action}>{log.action}</p>
+                      <p className="text-[11px] text-slate-400 truncate max-w-[280px] mt-0.5" title={log.details}>{log.details}</p>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300">
+                        {log.category}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <button
+                        onClick={() => setSelectedLog(log)}
+                        className="p-2 min-w-[36px] min-h-[36px] inline-flex items-center justify-center rounded-lg border border-slate-200/80 dark:border-slate-700/60 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-colors"
+                        aria-label={`View details for ${log.action}`}
+                      >
+                        <Eye size={15} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
+      </div>
 
-
-      {/* ── 5. Standardized Sticky Footer Pagination ── */}
-      <div className="sticky bottom-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-12 py-3 bg-white border-t-2 border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] -mx-[24px] xl:-mx-[32px] w-[calc(100%+48px)] xl:w-[calc(100%+64px)]">
-        <p className="text-[12px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-4">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#9956DE] animate-pulse shadow-[0_0_12px_rgba(153,86,222,0.6)]"></span>
-          Showing <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">{visibleRangeStart}–{visibleRangeEnd}</span>
-          <span className="text-slate-300 font-bold mx-1">/</span>
-          <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">{filteredLogs.length}</span>
-          <span className="text-slate-400 ml-1">Total System Records</span>
+      {/* ── 5. Standardized Pagination Footer ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          Showing <span className="font-semibold text-slate-900 dark:text-white tabular-nums">{visibleRangeStart}–{visibleRangeEnd}</span> of <span className="font-semibold text-slate-900 dark:text-white tabular-nums">{filteredLogs.length}</span> recorded events
         </p>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
           <Select
             value={String(pageSize)}
             onValueChange={(val) => {
@@ -466,45 +447,41 @@ const AdminAuditLog: React.FC = () => {
               setCurrentPage(1);
             }}
           >
-            <SelectTrigger className="h-10 w-[140px] bg-white border border-slate-300 text-[11px] font-black uppercase tracking-wider text-slate-900 rounded-xl hover:border-[#9956DE] transition-all px-4 shadow-sm">
-              <span className="truncate">{pageSize} / Page</span>
+            <SelectTrigger className="h-10 w-[120px] bg-slate-50/50 dark:bg-slate-900/50 border-slate-200/80 dark:border-slate-700/60 text-xs font-medium rounded-xl px-3">
+              <span className="truncate">{pageSize} / page</span>
             </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200">
+            <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
               {PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectItem key={size} value={String(size)} className="font-bold">{size} / Page</SelectItem>
+                <SelectItem key={size} value={String(size)} className="text-xs">{size} / page</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
+          <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
               size="sm"
-              className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-lg shadow-purple-200/60"
+              className="h-10 w-10 p-0 rounded-xl border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40"
               disabled={currentPage <= 1 || loading}
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               aria-label="Previous page"
             >
-              <ChevronLeft size={18} strokeWidth={3} />
+              <ChevronLeft size={16} />
             </Button>
 
-            <div className="px-5 py-2 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center min-w-[130px]">
-              <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
-                Page <span className="text-[#9956DE] mx-1">{currentPage}</span>
-                <span className="text-slate-300 mx-1">OF</span>
-                <span className="text-slate-500">{Math.max(totalPages, 1)}</span>
-              </span>
-            </div>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 px-2 tabular-nums">
+              {currentPage} / {Math.max(totalPages, 1)}
+            </span>
 
             <Button
               variant="outline"
               size="sm"
-              className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-lg shadow-purple-200/60"
+              className="h-10 w-10 p-0 rounded-xl border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40"
               disabled={currentPage >= totalPages || loading}
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
               aria-label="Next page"
             >
-              <ChevronRight size={18} strokeWidth={3} />
+              <ChevronRight size={16} />
             </Button>
           </div>
         </div>
@@ -512,60 +489,57 @@ const AdminAuditLog: React.FC = () => {
 
       {/* ── 6. Log Detail Modal ── */}
       <Dialog open={Boolean(selectedLog)} onOpenChange={(open) => { if (!open) setSelectedLog(null); }}>
-        <DialogContent className="sm:max-w-[600px] rounded-[32px] border-none shadow-2xl p-0 overflow-hidden">
-          <div className={`h-2 w-full ${selectedLog ? getSeverityStyle(selectedLog.severity).split(' ')[0].replace('bg-', 'bg-').replace('-50', '-500') : 'bg-purple-600'}`}></div>
-          <div className="p-8 space-y-6">
-            <DialogHeader className="text-left">
-               <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-[#9956DE] border border-slate-100">
-                    <ShieldCheck size={24} />
-                 </div>
-                 <div>
-                    <DialogTitle className="text-xl font-black text-[#1e293b] leading-tight">
-                      {selectedLog?.action || 'Audit Event Details'}
-                    </DialogTitle>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
-                      Platform Operational Integrity Trail
-                    </p>
-                 </div>
-               </div>
-            </DialogHeader>
-            
-            {selectedLog && (
-              <div className="grid grid-cols-2 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-100">
-                <div className="space-y-1">
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Incident Severity</p>
-                   <p className="text-sm font-black text-[#1e293b]">{selectedLog.severity}</p>
-                </div>
-                <div className="space-y-1">
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Timestamp</p>
-                   <p className="text-sm font-black text-[#1e293b]">{selectedLog.timestamp}</p>
-                </div>
-                <div className="space-y-1">
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Component</p>
-                   <p className="text-sm font-black text-[#1e293b]">{selectedLog.category}</p>
-                </div>
-                 <div className="space-y-1">
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">User Actor</p>
-                   <p className="text-sm font-black text-[#1e293b]">{selectedLog?.user.name}</p>
-                </div>
-                <div className="col-span-2 space-y-1 mt-2">
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Full Operation Details</p>
-                   <p className="text-sm font-medium text-[#1e293b] leading-relaxed bg-white p-4 rounded-xl border border-slate-100">
-                     {selectedLog.details}
-                   </p>
-                </div>
+        <DialogContent className="sm:max-w-[560px] rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-2xl">
+          <DialogHeader className="text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                <ShieldCheck size={20} />
               </div>
-            )}
-
-            <div className="flex justify-end pt-2">
-              <Button 
-                onClick={() => setSelectedLog(null)}
-                className="bg-[#9956DE] hover:bg-[#8b5cf6] text-white rounded-xl px-8 font-black uppercase text-[11px] tracking-widest shadow-lg shadow-purple-100 transition-all"
-              >
-                Dismiss Review
-              </Button>
+              <div>
+                <DialogTitle className="text-base font-bold text-slate-900 dark:text-white leading-tight">
+                  {selectedLog?.action || 'Audit Event Details'}
+                </DialogTitle>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                  Platform operational integrity trail
+                </p>
+              </div>
             </div>
+          </DialogHeader>
+          
+          {selectedLog && (
+            <div className="grid grid-cols-2 gap-4 bg-slate-50/70 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Severity</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-200">{selectedLog.severity}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Timestamp</p>
+                <p className="font-medium text-slate-700 dark:text-slate-300 tabular-nums">{selectedLog.timestamp}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Component</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-200">{selectedLog.category}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Actor</p>
+                <p className="font-medium text-slate-700 dark:text-slate-300">{selectedLog.user.name} ({selectedLog.user.role || 'Service'})</p>
+              </div>
+              <div className="col-span-2 space-y-1 mt-1">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Details</p>
+                <p className="font-medium text-slate-800 dark:text-slate-200 leading-relaxed bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200/80 dark:border-slate-800">
+                  {selectedLog.details}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <Button 
+              onClick={() => setSelectedLog(null)}
+              className="rounded-xl px-5 text-xs font-semibold"
+            >
+              Close
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -574,3 +548,4 @@ const AdminAuditLog: React.FC = () => {
 };
 
 export default AdminAuditLog;
+

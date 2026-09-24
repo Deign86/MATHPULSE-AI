@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X, Crown, Star, Flame, Trophy, BookOpen, Target, Swords,
   CheckCircle2, ChevronRight, Sparkles, ArrowRight, Award,
@@ -104,8 +105,8 @@ export const RewardsModal: React.FC<RewardsModalProps> = ({
     },
   ];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+  const modalElement = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 rounded-[28px] sm:rounded-[32px] w-[calc(100%-1rem)] max-w-[360px] sm:max-w-md overflow-hidden shadow-2xl border border-purple-200/60 dark:border-purple-900/40 flex flex-col max-h-[92dvh] sm:max-h-[90vh]">
         {/* Header Banner */}
         <div className="relative bg-gradient-to-br from-purple-600 via-indigo-600 to-sky-600 p-4 sm:p-6 text-white overflow-hidden shrink-0">
@@ -273,6 +274,11 @@ export const RewardsModal: React.FC<RewardsModalProps> = ({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+  return modalElement;
 };
 
 export default RewardsModal;

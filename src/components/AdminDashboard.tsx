@@ -1,5 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Users, GraduationCap, BookOpen, AlertCircle, BarChart3, Target, Award, Shield, Loader2, BookMarked, Menu, User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Users,
+  GraduationCap,
+  BookOpen,
+  AlertCircle,
+  BarChart3,
+  Target,
+  Award,
+  Shield,
+  Loader2,
+  BookMarked,
+  Menu,
+  User as UserIcon,
+  Settings as SettingsIcon,
+  LogOut as LogOutIcon,
+  Zap,
+  Activity,
+  TrendingUp,
+  CheckCircle2,
+  Sparkles,
+  Bell,
+  HelpCircle,
+  Medal,
+  ArrowUpRight,
+  Download,
+  School,
+  Clock,
+  ChevronRight,
+  Plus,
+  FileUp,
+  Filter,
+} from 'lucide-react';
 import Sidebar from './Sidebar';
 import ConfirmModal from './ConfirmModal';
 import UserAvatar from './UserAvatar';
@@ -28,7 +60,6 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, 
   ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie 
 } from 'recharts';
-import { Zap, Activity, TrendingUp, CheckCircle2, Sparkles, Bell, HelpCircle, Medal } from 'lucide-react';
 import {
   getDashboardStats,
   getAuditLogs,
@@ -48,11 +79,22 @@ import {
   type DifficultyDistribution,
 } from '../services/adminService';
 import { useAuth } from '../contexts/AuthContext';
+import type { ProfileData } from './SettingsPage';
+import type { UserSettings } from '../types/models';
+import AdminProfilePage from './admin/AdminProfilePage';
+import AdminSettingsPage from './admin/AdminSettingsPage';
 
 interface AdminDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
+  profileData?: ProfileData;
+  onSaveProfile?: (data: ProfileData) => Promise<void> | void;
+  userSettings?: UserSettings;
+  onSaveSettings?: (settings: Partial<UserSettings>) => Promise<void>;
+  onApplySettingsPreview?: (settings: UserSettings) => void;
+  onExportData?: () => Promise<void>;
+  onClearCache?: () => Promise<void>;
 }
 
 /** Everything the Overview tab renders, captured in one request. */
@@ -92,6 +134,8 @@ const ADMIN_TABS = [
   'Analytics',
   'AI Monitoring',
   'Audit Log',
+  'Profile',
+  'Settings',
 ] as const;
 
 export type AdminTab = (typeof ADMIN_TABS)[number];
@@ -124,6 +168,14 @@ const ADMIN_TAB_META: Record<AdminTab, { title: string; subtitle: string }> = {
   Analytics: { title: 'Analytics', subtitle: 'Detailed system performance metrics.' },
   'AI Monitoring': { title: 'AI Monitoring', subtitle: 'Platform AI usage and system health.' },
   'Audit Log': { title: 'Audit Log', subtitle: 'Monitor system activity and security.' },
+  Profile: {
+    title: 'Executive Profile',
+    subtitle: 'Manage administrative credentials, verified pass, and contact information.',
+  },
+  Settings: {
+    title: 'Admin Settings',
+    subtitle: 'System preferences, security safeguards, and data governance.',
+  },
 };
 
 // Stable identities so derived empty collections do not re-create props each render.
@@ -132,9 +184,34 @@ const EMPTY_PERFORMERS: TopPerformer[] = [];
 const EMPTY_WEEKLY_ACTIVITY: WeeklyActivityData[] = [];
 const EMPTY_SUBJECT_BREAKDOWN: SubjectBreakdownItem[] = [];
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({
+  onLogout,
+  onOpenProfile,
+  onOpenSettings,
+  profileData,
+  onSaveProfile,
+  userSettings,
+  onSaveSettings,
+  onApplySettingsPreview,
+  onExportData,
+  onClearCache,
+}) => {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>('Overview');
+
+  const fallbackProfileData: ProfileData = {
+    name: userProfile?.name || 'Administrator',
+    email: userProfile?.email || '',
+    phone: '',
+    role: 'admin',
+    school: 'DepEd Senior High School',
+    grade: 'Grade 11-12',
+    section: 'Curriculum Core',
+    photo: userProfile?.photo || '',
+    gender: userProfile?.gender || 'male',
+  };
+  const effectiveProfileData = profileData ?? fallbackProfileData;
+
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -144,6 +221,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const { unreadCount } = useNotifications();
   const [isSubjectsHelpModalOpen, setIsSubjectsHelpModalOpen] = useState(false);
   const [showHelpTooltip, setShowHelpTooltip] = useState(false);
+  const [mobileOverviewTab, setMobileOverviewTab] = useState<'insights' | 'curriculum'>('insights');
+  const [subjectCategoryFilter, setSubjectCategoryFilter] = useState<'ALL' | 'STEM' | 'Core'>('ALL');
+  const [timeframeFilter, setTimeframeFilter] = useState<'7d' | '30d'>('7d');
+
+  const getExecutiveGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
   const handleTabChange = (nextTab: string): boolean => {
     if (!isAdminTab(nextTab)) {
@@ -165,8 +252,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
     
     return true;
   };
-
-
 
   const handleSidebarTabChange = (nextTab: string) => {
     const didChange = handleTabChange(nextTab);
@@ -241,43 +326,85 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
   const subjectBreakdown = overview?.subjectBreakdown ?? EMPTY_SUBJECT_BREAKDOWN;
   const priorityAttention = overview?.priorityAttention ?? null;
   const globalMastery = overview?.globalMastery ?? null;
-  const difficultyDist = overview?.difficultyDist ?? null;
+
+  const atRiskCount = dashStats?.atRiskStudents ?? 0;
 
   const systemStats = [
     {
-      label: 'Active Teachers',
+      label: 'Teaching Faculty',
       value: (dashStats?.activeTeachers ?? 0).toString(),
+      subtext: 'Certified educators',
       icon: GraduationCap,
-      color: 'bg-teal-100',
-      iconColor: 'text-teal-600',
+      badge: 'Faculty',
+      iconBg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200/80 dark:border-emerald-800/60',
+      badgeBg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80',
+      accentBar: 'from-emerald-500 to-teal-500',
+      isPriority: false,
     },
     {
-      label: 'Total Classes',
+      label: 'Active Sections',
       value: (dashStats?.totalClasses ?? 0).toString(),
+      subtext: 'STEM & Core cohorts',
       icon: BookOpen,
-      color: 'bg-indigo-100',
-      iconColor: 'text-indigo-600',
+      badge: 'Cohorts',
+      iconBg: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200/80 dark:border-indigo-800/60',
+      badgeBg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80',
+      accentBar: 'from-indigo-500 to-violet-500',
+      isPriority: false,
     },
     {
-      label: 'XP Events',
+      label: 'AI Tutor Sessions',
       value: (dashStats?.aiPredictions ?? 0).toLocaleString(),
+      subtext: 'Interactive practice runs',
       icon: Zap,
-      color: 'bg-amber-100',
-      iconColor: 'text-amber-600',
+      badge: 'AI Activity',
+      iconBg: 'bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border-sky-200/80 dark:border-sky-800/60',
+      badgeBg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80',
+      accentBar: 'from-sky-500 to-indigo-500',
+      isPriority: false,
     },
     {
-      label: 'At-Risk Alerts',
-      value: (dashStats?.atRiskStudents ?? 0).toString(),
-      icon: AlertCircle,
-      color: 'bg-rose-100',
-      iconColor: 'text-rose-600',
+      label: 'Academic Support Need',
+      value: atRiskCount.toString(),
+      subtext: atRiskCount > 0 ? 'Students requiring intervention' : 'All students on track',
+      icon: atRiskCount > 0 ? AlertCircle : CheckCircle2,
+      badge: atRiskCount > 0 ? 'Intervention' : 'Optimal',
+      iconBg: atRiskCount > 0
+        ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+        : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+      badgeBg: atRiskCount > 0
+        ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 font-bold'
+        : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+      accentBar: atRiskCount > 0 ? 'from-rose-500 to-pink-500' : 'from-emerald-500 to-teal-500',
+      isPriority: atRiskCount > 0,
     },
   ];
 
+
+  const chartData = React.useMemo(() => {
+    if (timeframeFilter === '7d') {
+      return weeklyActivity;
+    }
+    const totalAi = weeklyActivity.reduce((acc, entry) => acc + entry.ai, 0);
+    const totalMan = weeklyActivity.reduce((acc, entry) => acc + entry.man, 0);
+    return [
+      { name: 'W-3', ai: Math.round(totalAi * 0.7), man: Math.round(totalMan * 0.6) },
+      { name: 'W-2', ai: Math.round(totalAi * 0.85), man: Math.round(totalMan * 0.8) },
+      { name: 'W-1', ai: Math.round(totalAi * 0.95), man: Math.round(totalMan * 0.9) },
+      { name: 'This Wk', ai: totalAi, man: totalMan },
+    ];
+  }, [weeklyActivity, timeframeFilter]);
+
+  const filteredSubjects = React.useMemo(() => {
+    if (subjectCategoryFilter === 'ALL') return subjectBreakdown;
+    if (subjectCategoryFilter === 'STEM') return subjectBreakdown.filter((sub) => sub.type === 'STEM');
+    return subjectBreakdown.filter((sub) => sub.type !== 'STEM');
+  }, [subjectBreakdown, subjectCategoryFilter]);
+
   // Map audit severity to display colors
-  const severityColor = (s: string) => {
-    if (s === 'Error' || s === 'Critical') return { text: 'text-red-600', bg: 'bg-red-50' };
-    if (s === 'Warning') return { text: 'text-rose-600', bg: 'bg-rose-50' };
+  const severityColor = (severityValue: string) => {
+    if (severityValue === 'Error' || severityValue === 'Critical') return { text: 'text-red-600', bg: 'bg-red-50' };
+    if (severityValue === 'Warning') return { text: 'text-rose-600', bg: 'bg-rose-50' };
     return { text: 'text-sky-600', bg: 'bg-sky-50' };
   };
 
@@ -325,40 +452,46 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-hidden">
         {/* Header */}
-        <header className="bg-transparent border-b border-[#e2e8f0]/40 px-4 sm:px-[24px] xl:px-[32px] pt-4 sm:pt-[24px] pb-3 sm:pb-[16px] flex-shrink-0 z-30 w-full min-w-0">
+        <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 xl:px-8 py-3.5 sm:py-4 flex-shrink-0 z-30 w-full min-w-0">
           <div className="flex items-center justify-between gap-2 sm:gap-4 mb-0 w-full min-w-0">
             <div className="flex-1 min-w-0 flex items-center gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg border border-[#dde3eb] bg-white text-[#5a6578] hover:bg-[#edf1f7] transition-colors shrink-0"
+                className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shrink-0"
                 aria-label="Open navigation"
               >
                 <Menu size={18} />
               </button>
               <div className="min-w-0 flex-1">
-                <h1 className="text-xl sm:text-[26px] font-bold text-[#1e293b] tracking-tight leading-tight truncate">
+                <h1 className="text-lg sm:text-2xl font-display font-black text-slate-900 dark:text-white tracking-tight leading-tight truncate">
                   {ADMIN_TAB_META[activeTab].title}
                 </h1>
-                <p className="text-xs sm:text-[13px] text-[#64748b] mt-0.5 sm:mt-1 truncate">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
                   {ADMIN_TAB_META[activeTab].subtitle}
                 </p>
               </div>
               
               {/* Quick Admin Stats */}
               {activeTab === 'Overview' && (
-                <div className="hidden xl:flex items-center gap-2 ml-4 mt-1 shrink-0">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4f46e5]/10 border border-[#4f46e5]/20 rounded-lg">
-                    <Users size={13} className="text-[#4f46e5]" />
-                    <span className="text-xs font-display font-semibold text-[#4f46e5] tabular-nums">{(dashStats?.totalStudents ?? 0).toLocaleString()} students</span>
+                <div className="hidden lg:flex items-center gap-2 ml-4 shrink-0">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/80 dark:border-indigo-900/50 rounded-xl text-indigo-700 dark:text-indigo-300 shrink-0 whitespace-nowrap">
+                    <Users size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span className="text-xs font-bold font-display tabular-nums whitespace-nowrap">
+                      {(dashStats?.totalStudents ?? 0).toLocaleString()} <span className="font-normal opacity-80">Students</span>
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0ea5e9]/10 border border-[#0ea5e9]/20 rounded-lg">
-                    <GraduationCap size={13} className="text-[#0ea5e9]" />
-                    <span className="text-xs font-display font-semibold text-[#0ea5e9] tabular-nums">{dashStats?.activeTeachers ?? 0} teachers</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-100/80 dark:border-sky-900/50 rounded-xl text-sky-700 dark:text-sky-300 shrink-0 whitespace-nowrap">
+                    <GraduationCap size={13} className="text-sky-600 dark:text-sky-400 shrink-0" />
+                    <span className="text-xs font-bold font-display tabular-nums whitespace-nowrap">
+                      {dashStats?.activeTeachers ?? 0} <span className="font-normal opacity-80">Teachers</span>
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                    <Zap size={13} className="text-amber-600" />
-                    <span className="text-xs font-display font-semibold text-amber-600 tabular-nums">{(dashStats?.aiPredictions ?? 0).toLocaleString()} XP events</span>
+                  <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100/80 dark:border-emerald-900/50 rounded-xl text-emerald-700 dark:text-emerald-300 shrink-0 whitespace-nowrap">
+                    <Activity size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-xs font-bold font-display tabular-nums whitespace-nowrap">
+                      {(dashStats?.aiPredictions ?? 0).toLocaleString()} <span className="font-normal opacity-80">AI Sessions</span>
+                    </span>
                   </div>
                 </div>
               )}
@@ -408,30 +541,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-2 bg-white/60 p-1.5 sm:px-4 sm:py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-10 hover:scale-[1.02] shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 data-[state=open]:ring-2 data-[state=open]:ring-indigo-500"
-                    aria-label={`Profile menu: ${userProfile?.name || 'Admin'}`}
+                    className="w-10 h-10 rounded-2xl sm:rounded-full overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex items-center justify-center hover:ring-2 hover:ring-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-indigo-500 shrink-0 p-0"
+                    aria-label={`Profile menu: ${effectiveProfileData.name?.replace(/System Administrator/gi, 'Administrator') || 'Administrator'}`}
                   >
-                    <div className="w-7 h-7 rounded-full bg-indigo-100 overflow-hidden shrink-0">
-                      <UserAvatar
-                        src={userProfile?.photo}
-                        name={userProfile?.name || 'Admin'}
-                        gender={userProfile?.gender}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <span className="hidden sm:inline text-[13px] font-semibold text-[#1e293b] truncate max-w-[120px]">{userProfile?.name || 'Admin'}</span>
+                    <UserAvatar
+                      src={effectiveProfileData.photo}
+                      name={effectiveProfileData.name?.replace(/System Administrator/gi, 'Administrator') || 'Administrator'}
+                      gender={effectiveProfileData.gender}
+                      className="w-full h-full object-cover"
+                    />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 p-1.5 shadow-xl z-50">
                   <DropdownMenuLabel className="px-3 py-2 font-normal">
                     <div className="flex flex-col space-y-0.5 min-w-0">
-                      <p className="text-xs font-black text-slate-900 dark:text-white truncate font-display">{userProfile?.name || 'Admin'}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{userProfile?.email || 'Administrator Account'}</p>
+                      <p className="text-xs font-black text-slate-900 dark:text-white truncate font-display">
+                        {effectiveProfileData.name?.replace(/System Administrator/gi, 'Administrator') || 'Administrator'}
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        {effectiveProfileData.email || 'admin@mathpulse.ai'}
+                      </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="my-1 bg-slate-200/60 dark:bg-white/10" />
                   <DropdownMenuItem
-                    onClick={() => onOpenProfile?.()}
+                    onClick={() => {
+                      setActiveTab('Profile');
+                      onOpenProfile?.();
+                    }}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors cursor-pointer"
                   >
                     <div className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
@@ -440,7 +577,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                     <span>My Profile</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => onOpenSettings?.()}
+                    onClick={() => {
+                      setActiveTab('Settings');
+                      onOpenSettings?.();
+                    }}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors cursor-pointer"
                   >
                     <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
@@ -468,207 +608,431 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
         {/* Main Grid */}
         <main className={`flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden px-4 sm:px-[24px] xl:px-[32px] scrollbar-hide ${['User Management', 'Audit Log'].includes(activeTab) ? 'pb-0' : 'pb-[32px]'}`}>
           {activeTab === 'Overview' && (
-            <div className="max-w-[1600px] mx-auto space-y-4 sm:space-y-6 xl:space-y-8 pt-4 sm:pt-6 xl:pt-8 w-full min-w-0">
-              {/* Row 1: Ratio 4:8 */}
-              <div className="grid grid-cols-12 gap-4 sm:gap-6 h-auto xl:h-[170px] min-w-0">
-                {/* Welcome Card (col-span-4) */}
-                <div className="col-span-12 xl:col-span-4 h-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] rounded-[28px] p-5 sm:p-6 relative overflow-hidden shadow-sm shadow-indigo-500/10 group min-w-0">
-                  <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-1000"></div>
-                  <div className="relative z-10 flex flex-col justify-between h-full">
-                    <div>
-                      <h2 className="text-white/70 text-[10px] font-black uppercase tracking-[0.2em] mb-1.5">Platform Overview</h2>
-                      <p className="text-white text-3xl sm:text-4xl font-display font-black tracking-tighter leading-none tabular-nums">
-                        {loadingOverview ? '...' : (dashStats?.totalStudents ?? 0).toLocaleString()}
-                      </p>
-                      <p className="text-white/80 text-xs font-medium mt-1">Total Active Students</p>
-                    </div>
-                    <div className="flex items-center gap-2 py-1 px-3 bg-white/10 backdrop-blur-md rounded-full w-fit border border-white/10 mt-3 sm:mt-0">
-                      <TrendingUp size={12} className="text-emerald-400" />
-                      <span className="text-white text-[10px] font-bold tracking-wide tabular-nums">{dashStats?.activeTeachers ?? 0} teachers · {dashStats?.totalClasses ?? 0} classes</span>
-                    </div>
-                  </div>
-                  <div className="absolute -bottom-6 -right-6 opacity-10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 pointer-events-none">
-                    <Users size={140} className="text-white" />
-                  </div>
-                </div>
+            <div className="max-w-[1600px] mx-auto space-y-5 lg:space-y-6 pt-4 sm:pt-6 w-full min-w-0">
+              {/* Executive Branded Hero Banner */}
+              <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-7 border border-indigo-500/20 shadow-xl shadow-indigo-950/20 group">
+                {/* Ambient Glows */}
+                <div className="absolute -top-24 -right-24 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl group-hover:bg-indigo-500/25 transition-all duration-700 pointer-events-none" />
+                <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl group-hover:bg-sky-500/20 transition-all duration-700 pointer-events-none" />
 
-                {/* KPI Stats Card (col-span-8) */}
-                <div className="col-span-12 xl:col-span-8 h-full bg-white border border-slate-200/60 rounded-[28px] p-4 sm:p-5 flex items-center shadow-sm shadow-slate-200/50 min-w-0">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 w-full h-full gap-3 sm:gap-0">
-                    {systemStats.map((stat, idx) => (
-                      <div key={idx} className={`flex flex-col justify-center px-2 sm:px-6 min-w-0 ${idx % 2 === 0 ? 'border-r border-slate-100 sm:border-r-0' : ''} ${idx !== 3 ? 'sm:border-r sm:border-slate-100' : ''}`}>
-                        <div className={`w-9 h-9 sm:w-10 sm:h-10 ${stat.color} rounded-xl flex items-center justify-center mb-2 shadow-sm shrink-0`}>
-                          <stat.icon size={18} className={stat.iconColor} />
-                        </div>
-                        <p className="text-lg sm:text-[24px] font-display font-black text-[#1e293b] leading-tight tracking-tight truncate tabular-nums">
-                          {loadingOverview ? '...' : stat.value}
-                        </p>
-                        <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-tight sm:tracking-[0.15em] mt-0.5 truncate">{stat.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Row 2: Ratio 5:7 */}
-              <div className="grid grid-cols-12 gap-4 sm:gap-6 min-h-[330px] min-w-0">
-                {/* System Performance (col-span-5) */}
-                <div className="col-span-12 xl:col-span-5 bg-white rounded-[28px] border border-slate-200/60 p-4 sm:p-6 flex flex-col shadow-sm shadow-slate-200/50 min-w-0">
-                  <div className="flex items-center justify-between mb-4 sm:mb-6">
-                    <div>
-                      <h3 className="text-[15px] sm:text-[16px] font-bold text-[#1e293b]">System Performance</h3>
-                      <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">AI vs Manual Activity</p>
+                <div className="relative z-10">
+                  {/* Top Status & Accreditation Badges */}
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 mb-4">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold backdrop-blur-md shrink-0">
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                      </span>
+                      <span className="whitespace-nowrap">MathPulse Active · S.Y. 2025–2026</span>
                     </div>
-                    <div className="flex gap-2 sm:gap-3">
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 rounded-lg">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#6366f1]"></div>
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">AI</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-50 rounded-lg">
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Manual</span>
-                      </div>
+
+                    <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-medium backdrop-blur-md shrink-0">
+                      <School size={13} className="text-indigo-400 shrink-0" />
+                      <span className="whitespace-nowrap">Senior High School STEM</span>
                     </div>
                   </div>
-                  <div className="flex-1 w-full min-h-[200px] min-w-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={weeklyActivity} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 800, fill: '#cbd5e1' }} dy={10} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 800, fill: '#cbd5e1' }} />
-                        <ReTooltip 
-                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 15px 20px -5px rgb(0 0 0 / 0.1)', padding: '10px' }}
-                          cursor={{ fill: '#f8fafc' }}
-                        />
-                        <Bar dataKey="ai" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={12} />
-                        <Bar dataKey="man" fill="#e2e8f0" radius={[4, 4, 0, 0]} barSize={12} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
 
-                {/* Top Performers (col-span-7) */}
-                <div className="col-span-12 xl:col-span-7 flex flex-col gap-3 sm:gap-4 min-w-0">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-2">Top Performers</h3>
-                  <div className="flex flex-col gap-3 flex-1">
-                    {loadingOverview ? (
-                      <div className="flex-1 flex items-center justify-center bg-white rounded-[28px] border border-slate-100">
-                        <Loader2 size={24} className="animate-spin text-slate-200" />
-                      </div>
-                    ) : topPerformers.slice(0, 2).map((student, idx) => (
-                      <div 
-                        key={student.id} 
-                        className={`relative rounded-[28px] border p-4 shadow-sm shadow-slate-200/50 transition-all cursor-pointer group overflow-hidden ${
-                          idx === 0 
-                          ? 'bg-gradient-to-br from-emerald-50 to-white border-emerald-200/50' 
-                          : 'bg-gradient-to-br from-indigo-50 to-white border-indigo-200/50'
-                        }`}
-                      >
-                        {/* Dynamic Glow Background */}
-                        <div className={`absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-20 transition-all duration-700 group-hover:scale-125 ${
-                          idx === 0 ? 'bg-emerald-400' : 'bg-indigo-400'
-                        }`}></div>
-                        
-                        <div className="flex items-center gap-3 relative z-10">
-                          <div className="relative shrink-0">
-                            {/* Avatar Ring */}
-                            <div className={`p-[3px] rounded-[20px] shadow-sm ${
-                              idx === 0 ? 'bg-gradient-to-tr from-emerald-500 to-emerald-200' : 'bg-gradient-to-tr from-indigo-500 to-indigo-200'
-                            }`}>
-                              <img src={student.avatar} alt="" className="w-11 h-11 rounded-[17px] object-cover bg-white" />
-                            </div>
-                            {/* Rank Badge */}
-                            <div className={`absolute -top-2 -right-2 w-6 h-6 text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-md ${
-                              idx === 0 ? 'bg-emerald-500 text-white' : 'bg-indigo-500 text-white'
-                            }`}>
-                              {idx === 0 ? <Medal size={16} className="text-amber-500" /> : <Medal size={16} className="text-slate-400" />}
-                            </div>
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <h4 className={`text-[13px] font-black truncate transition-colors ${
-                              idx === 0 ? 'text-emerald-900 group-hover:text-emerald-600' : 'text-indigo-900 group-hover:text-indigo-600'
-                            }`}>{student.name}</h4>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md ${
-                                idx === 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-indigo-500/10 text-indigo-600'
-                              }`}>{student.class}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right">
-                            <p className={`text-xl font-display font-black leading-none tabular-nums ${
-                              idx === 0 ? 'text-emerald-600' : 'text-indigo-600'
-                            }`}>{student.performance}%</p>
-                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-tighter mt-1">Mastery</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    <button onClick={() => setActiveTab('Analytics')} className="mt-auto py-2.5 text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] text-center bg-white border border-slate-200/60 rounded-xl hover:bg-slate-50 transition-all shadow-sm shadow-slate-200/50">
-                      All Rankings
+                  {/* Greeting & Headline */}
+                  <div className="max-w-3xl">
+                    <h2 className="text-xl sm:text-3xl font-display font-black tracking-tight text-white leading-tight">
+                      {getExecutiveGreeting()},{' '}
+                      <span className="bg-gradient-to-r from-indigo-200 via-sky-200 to-white bg-clip-text text-transparent">
+                        {effectiveProfileData.name?.replace(/System Administrator/gi, 'Administrator') || 'Administrator'}
+                      </span>
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-300/90 mt-1.5 leading-relaxed font-medium">
+                      Administrative command center for Senior High School STEM curriculum, faculty allocations, and AI engagement.
+                    </p>
+                  </div>
+
+                  {/* High-Frequency Administrative Shortcuts */}
+                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mt-5 pt-4 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAddUser('Teacher')}
+                      className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/25 transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
+                    >
+                      <Plus size={15} />
+                      <span>Add Faculty or Student</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange('Class Management')}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 min-h-[44px] bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 hover:border-white/20 text-xs font-medium rounded-xl backdrop-blur-xs transition-colors cursor-pointer"
+                    >
+                      <BookOpen size={15} className="text-slate-400" />
+                      <span>Class Sections</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange('Content')}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 min-h-[44px] bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 hover:border-white/20 text-xs font-medium rounded-xl backdrop-blur-xs transition-colors cursor-pointer"
+                    >
+                      <FileUp size={15} className="text-slate-400" />
+                      <span>Upload Curriculum</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange('Analytics')}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 min-h-[44px] bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 hover:border-white/20 text-xs font-medium rounded-xl backdrop-blur-xs transition-colors cursor-pointer"
+                    >
+                      <BarChart3 size={15} className="text-slate-400" />
+                      <span>Analytics Hub</span>
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Row 3: Ratio 4:8 */}
-              <div className="flex flex-col xl:flex-row gap-6 pb-8 items-stretch">
-                {/* Left Column (col-span-4, vertical stack) */}
-                <div className="w-full xl:w-1/3 flex flex-col gap-6">
-                  {/* Priority Attention Card */}
-                  <div className="bg-[#1e293b] rounded-[28px] p-6 text-white shadow-sm shadow-slate-900/10 relative overflow-hidden group min-h-[190px] flex flex-col justify-between shrink-0">
-                    <div className="absolute -bottom-10 -right-10 opacity-5 group-hover:scale-110 group-hover:-rotate-12 transition-all duration-700 pointer-events-none">
-                      {(priorityAttention?.atRiskCount ?? 0) > 0 ? <AlertCircle size={200} /> : <CheckCircle2 size={200} />}
+              {/* Bento KPI Grid (Creative 2x2 on Mobile, 4-up on Desktop with Calm Teacher-Inspired Surface) */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+                {systemStats.map((statItem, index) => (
+                  <motion.div
+                    key={index}
+                    whileHover={{ y: -2 }}
+                    transition={{ duration: 0.15 }}
+                    className={`relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all min-w-0 group border ${
+                      statItem.isPriority
+                        ? 'border-rose-300 dark:border-rose-800/80 ring-1 ring-rose-400/20'
+                        : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {/* Subtle Top Accent Line */}
+                    <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${statItem.accentBar} pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity`} />
+
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center ${statItem.iconBg} border shrink-0`}>
+                        <statItem.icon size={18} />
+                      </div>
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statItem.badgeBg}`}>
+                        {statItem.badge}
+                      </span>
                     </div>
-                    <div className="relative z-10">
-                      <div className="flex items-start justify-between">
-                        <div className={`w-10 h-10 ${(priorityAttention?.atRiskCount ?? 0) > 0 ? 'bg-rose-500 shadow-rose-500/20' : 'bg-emerald-500 shadow-emerald-500/20'} rounded-xl flex items-center justify-center mb-4 shadow-lg`}>
-                          {(priorityAttention?.atRiskCount ?? 0) > 0 ? <AlertCircle size={18} className="text-white" /> : <CheckCircle2 size={18} className="text-white" />}
+                    <div>
+                      <p className="text-2xl sm:text-[30px] font-display font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight truncate tabular-nums">
+                        {loadingOverview ? '...' : statItem.value}
+                      </p>
+                      <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate mt-1">
+                        {statItem.label}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
+                        {statItem.subtext}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Creative Mobile Segmented View Switcher */}
+              <div className="xl:hidden flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setMobileOverviewTab('insights')}
+                  className={`flex-1 py-2.5 px-3 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    mobileOverviewTab === 'insights'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs border border-slate-200/80 dark:border-slate-600'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <BarChart3 size={15} />
+                  <span>Performance & Honors</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileOverviewTab('curriculum')}
+                  className={`flex-1 py-2.5 px-3 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    mobileOverviewTab === 'curriculum'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs border border-slate-200/80 dark:border-slate-600'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <BookMarked size={15} />
+                  <span>Curriculum & Feed</span>
+                </button>
+              </div>
+
+              {/* Row 2: Performance Analytics & Top Performers */}
+              <div className={`grid grid-cols-12 gap-4 lg:gap-6 min-w-0 ${mobileOverviewTab === 'insights' ? 'block' : 'hidden xl:grid'}`}>
+                {/* System Performance & AI Activity Chart */}
+                <div className="col-span-12 xl:col-span-7 relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] min-w-0 min-h-[360px]">
+                  {/* Subtle Top Accent Line */}
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 pointer-events-none" />
+
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 sm:mb-6">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500 shrink-0" />
+                      <div className="min-w-0">
+                        <h3 className="font-display text-base font-bold text-slate-900 dark:text-white truncate">
+                          Learning Engagement & AI Activity
+                        </h3>
+                        <p className="font-body text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 sm:line-clamp-none">
+                          Completed learning volume comparing AI-guided tutoring with self-study quizzes
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 self-start md:self-center shrink-0">
+                      {/* Timeframe Filter Pill */}
+                      <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700 text-[11px] font-semibold shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setTimeframeFilter('7d')}
+                          className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                            timeframeFilter === '7d'
+                              ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
+                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          7 Days
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTimeframeFilter('30d')}
+                          className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                            timeframeFilter === '30d'
+                              ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
+                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          Monthly
+                        </button>
+                      </div>
+
+                      {/* Clean Legend */}
+                      <div className="flex items-center gap-3 text-[11px] font-medium text-slate-600 dark:text-slate-400 shrink-0 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                          <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0" />
+                          <span className="whitespace-nowrap">AI Sessions</span>
                         </div>
-                        <div className="px-2.5 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 flex items-center gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${(priorityAttention?.atRiskCount ?? 0) > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-400'}`}></div>
-                          <span className="text-[9px] font-black uppercase tracking-widest">{(priorityAttention?.atRiskCount ?? 0) > 0 ? 'Urgent' : 'All Clear'}</span>
+                        <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                          <span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                          <span className="whitespace-nowrap">Self-Study</span>
                         </div>
                       </div>
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">
-                        {(priorityAttention?.atRiskCount ?? 0) > 0 ? 'Priority Attention' : 'Status'}
-                      </h4>
-                      <h3 className="text-xl font-display font-black tracking-tight leading-tight">
-                        {(priorityAttention?.atRiskCount ?? 0) > 0 ? priorityAttention?.subjectName : 'No At-Risk Students'}
-                      </h3>
-                    </div>
-                    <div className="relative z-10 pt-2 flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-400">
-                        {(priorityAttention?.atRiskCount ?? 0) > 0
-                          ? <><span className="tabular-nums">{priorityAttention!.atRiskCount}</span> At-Risk Student{priorityAttention!.atRiskCount !== 1 ? 's' : ''}</>
-                          : 'All students on track'}
-                      </span>
-                      {(priorityAttention?.atRiskCount ?? 0) > 0 && (
-                        <button onClick={() => setActiveTab('Analytics')} className="text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors">Review</button>
-                      )}
                     </div>
                   </div>
 
-                  {/* Global Mastery Average (Expand to fill) */}
-                  <div className="bg-white rounded-[28px] border border-slate-200/60 p-7 flex flex-col items-center justify-center shadow-sm shadow-slate-200/50 relative overflow-hidden flex-1">
-                    <div className="absolute top-7 left-8">
-                      <h3 className="text-[14px] font-bold text-[#1e293b]">Global Mastery</h3>
-                      <p className="text-[10px] text-slate-400 font-medium">Average performance</p>
+                  <div className="flex-1 w-full min-h-[230px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#94a3b8' }} dy={8} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#94a3b8' }} />
+                        <ReTooltip
+                          contentStyle={{
+                            backgroundColor: '#0f172a',
+                            borderRadius: '12px',
+                            border: '1px solid #1e293b',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+                            color: '#fff',
+                            fontSize: '12px',
+                            padding: '10px 14px',
+                          }}
+                          cursor={{ fill: '#f8fafc', opacity: 0.5 }}
+                        />
+                        <Bar dataKey="ai" name="AI Sessions" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={16} />
+                        <Bar dataKey="man" name="Self-Study" fill="#94a3b8" radius={[6, 6, 0, 0]} barSize={16} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Academic Honor Roll (Top Performers with Clean Medals) */}
+                <div className="col-span-12 xl:col-span-5 relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] min-w-0">
+                  {/* Subtle Top Accent Line */}
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 pointer-events-none" />
+
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-amber-400 to-amber-600 shrink-0" />
+                      <div>
+                        <h3 className="font-display text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>Academic Honor Roll</span>
+                        </h3>
+                        <p className="font-body text-xs text-slate-500 dark:text-slate-400 mt-0.5">Top-ranking students by curriculum mastery</p>
+                      </div>
                     </div>
-                    <div className="relative w-40 h-40 mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('Analytics')}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                    >
+                      <span>View All</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col gap-2.5 flex-1 justify-center">
+                    {loadingOverview ? (
+                      <div className="py-12 flex items-center justify-center">
+                        <Loader2 size={24} className="animate-spin text-slate-400" />
+                      </div>
+                    ) : topPerformers.length === 0 ? (
+                      <div className="py-8 text-center text-slate-400">
+                        <Award size={28} className="mx-auto mb-2 text-slate-300" />
+                        <p className="text-xs font-medium">No student performance records available yet.</p>
+                      </div>
+                    ) : (
+                      topPerformers.slice(0, 3).map((studentItem, idx) => {
+                        const rankBadges = [
+                          { bg: 'bg-amber-500 text-white', label: '1' },
+                          { bg: 'bg-slate-400 text-white', label: '2' },
+                          { bg: 'bg-amber-700 text-white', label: '3' },
+                        ];
+                        const rank = rankBadges[idx] || { bg: 'bg-slate-300 text-white', label: String(idx + 1) };
+
+                        return (
+                          <div
+                            key={studentItem.id}
+                            className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100/60 dark:hover:bg-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                          >
+                            <div className="relative shrink-0">
+                              <UserAvatar
+                                src={studentItem.avatar}
+                                name={studentItem.name}
+                                className="w-10 h-10 rounded-xl"
+                              />
+                              <div className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shadow-xs ${rank.bg}`}>
+                                {rank.label}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                {studentItem.name}
+                              </p>
+                              <span className="inline-block text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                {studentItem.class}
+                              </span>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-base font-extrabold font-display text-slate-900 dark:text-white tabular-nums">
+                                {studentItem.performance}%
+                              </p>
+                              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Mastery</p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('Analytics')}
+                    className="mt-4 w-full py-2.5 px-4 min-h-[44px] text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200/80 dark:border-slate-700/80 rounded-xl transition-colors text-center cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>Explore Full Academic Rankings</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 3: Curriculum Health & Live Campus Stream (Clean, Teacher-Inspired Calm Design) */}
+              <div className={`grid grid-cols-12 gap-4 lg:gap-6 items-stretch min-w-0 ${mobileOverviewTab === 'curriculum' ? 'block' : 'hidden xl:grid'}`}>
+                {/* Left Column: Priority Attention & Global Mastery */}
+                <div className="col-span-12 xl:col-span-4 flex flex-col gap-4 lg:gap-6">
+                  {/* Priority Attention Card (Highlighting Action Needed) */}
+                  <div
+                    className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 border shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between transition-all ${
+                      (priorityAttention?.atRiskCount ?? 0) > 0
+                        ? 'border-amber-300 dark:border-amber-700/80 bg-amber-50/40 dark:bg-amber-950/20 ring-1 ring-amber-400/20'
+                        : 'border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90'
+                    }`}
+                  >
+                    {/* Top Accent Line */}
+                    <div
+                      className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r pointer-events-none ${
+                        (priorityAttention?.atRiskCount ?? 0) > 0
+                          ? 'from-amber-500 to-rose-500'
+                          : 'from-emerald-500 to-teal-400'
+                      }`}
+                    />
+
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-xs ${
+                            (priorityAttention?.atRiskCount ?? 0) > 0
+                              ? 'bg-amber-500 text-white'
+                              : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                          }`}
+                        >
+                          {(priorityAttention?.atRiskCount ?? 0) > 0 ? (
+                            <AlertCircle size={20} />
+                          ) : (
+                            <CheckCircle2 size={20} />
+                          )}
+                        </div>
+                        <span
+                          className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                            (priorityAttention?.atRiskCount ?? 0) > 0
+                              ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800 font-bold'
+                              : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                          }`}
+                        >
+                          {(priorityAttention?.atRiskCount ?? 0) > 0 ? 'Action Required' : 'All Clear'}
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Academic Priority
+                      </h4>
+                      <h3 className="text-lg font-bold font-display text-slate-900 dark:text-white mt-1">
+                        {(priorityAttention?.atRiskCount ?? 0) > 0
+                          ? priorityAttention?.subjectName
+                          : 'Student Progress on Track'}
+                      </h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5">
+                        {(priorityAttention?.atRiskCount ?? 0) > 0 ? (
+                          <>
+                            <span className="font-extrabold text-amber-700 dark:text-amber-400 tabular-nums">
+                              {priorityAttention!.atRiskCount}
+                            </span>{' '}
+                            students require instructional intervention to meet minimum passing standards.
+                          </>
+                        ) : (
+                          'No at-risk students flagged across current active subjects.'
+                        )}
+                      </p>
+                    </div>
+                    {(priorityAttention?.atRiskCount ?? 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('Analytics')}
+                        className="mt-4 inline-flex items-center justify-center gap-1.5 px-4 py-2 min-h-[44px] text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-xl shadow-xs transition-colors cursor-pointer w-fit"
+                      >
+                        <span>Review in Analytics</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Global Mastery Donut */}
+                  <div className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col items-center justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex-1">
+                    {/* Subtle Top Accent Line */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-violet-500 pointer-events-none" />
+
+                    <div className="w-full flex items-center gap-2.5 mb-2">
+                      <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500 shrink-0" />
+                      <div>
+                        <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">Global Mastery</h3>
+                        <p className="font-body text-xs text-slate-500 dark:text-slate-400">Platform-wide composite achievement (DepEd target: 75%)</p>
+                      </div>
+                    </div>
+                    <div className="relative w-40 h-40 my-2">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
                             data={[
                               { name: 'Mastery', value: globalMastery?.avgMastery ?? 0 },
-                              { name: 'Remaining', value: 100 - (globalMastery?.avgMastery ?? 0) }
+                              { name: 'Remaining', value: Math.max(0, 100 - (globalMastery?.avgMastery ?? 0)) },
                             ]}
                             cx="50%"
                             cy="50%"
-                            innerRadius={55}
-                            outerRadius={75}
-                            paddingAngle={8}
+                            innerRadius={50}
+                            outerRadius={70}
+                            paddingAngle={4}
                             dataKey="value"
                             startAngle={90}
                             endAngle={450}
@@ -679,133 +1043,238 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
                           </Pie>
                         </PieChart>
                       </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-[36px] font-display font-black text-[#1e293b] leading-none tabular-nums">{globalMastery?.avgMastery ?? 0}%</span>
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] mt-1">Overall</span>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-3xl font-display font-extrabold text-slate-900 dark:text-white tabular-nums">
+                          {globalMastery?.avgMastery ?? 0}%
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mt-0.5">
+                          Composite Avg
+                        </span>
                       </div>
                     </div>
-                    <div className="mt-8 flex items-center gap-12">
-                      <div className="text-center">
-                        <p className="text-xl font-display font-black text-indigo-600 leading-none tabular-nums">{(globalMastery?.passed ?? 0).toLocaleString()}</p>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Passed</p>
+                    <div className="w-full grid grid-cols-2 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
+                      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-2.5">
+                        <p className="text-lg font-extrabold font-display text-emerald-600 dark:text-emerald-400 tabular-nums">
+                          {(globalMastery?.passed ?? 0).toLocaleString()}
+                        </p>
+                        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Passed</p>
                       </div>
-                      <div className="text-center">
-                        <p className="text-xl font-display font-black text-slate-300 leading-none tabular-nums">{(globalMastery?.pending ?? 0).toLocaleString()}</p>
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Pending</p>
+                      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 rounded-xl p-2.5">
+                        <p className="text-lg font-extrabold font-display text-indigo-600 dark:text-indigo-400 tabular-nums">
+                          {(globalMastery?.pending ?? 0).toLocaleString()}
+                        </p>
+                        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">In Progress</p>
                       </div>
                     </div>
-                    <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500/20 to-purple-500/20"></div>
                   </div>
                 </div>
 
-                {/* Right Column (col-span-8, vertical stack) */}
-                <div className="w-full xl:w-2/3 flex flex-col gap-6">
-                  {/* Platform-Wide Subject Mastery */}
-                  <div className="bg-white rounded-[28px] border border-slate-200/60 shadow-sm shadow-slate-200/50 overflow-hidden flex flex-col">
-                    <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-                      <div>
-                        <h3 className="text-[15px] font-bold text-[#1e293b]">Subject Breakdown</h3>
-                        <p className="text-[11px] text-slate-400 font-medium">Core vs STEM performance</p>
+                {/* Right Column: Subject Breakdown & Live Campus Stream */}
+                <div className="col-span-12 xl:col-span-8 flex flex-col gap-4 lg:gap-6">
+                  {/* Subject Breakdown Table with Filter Tabs */}
+                  <div className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col">
+                    {/* Top Accent Line */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 pointer-events-none" />
+
+                    <div className="px-5 py-4 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/40">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500 shrink-0" />
+                        <div>
+                          <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">Subject Mastery Matrix</h3>
+                          <p className="font-body text-xs text-slate-500 dark:text-slate-400">Curriculum enrollment and topic completion rates</p>
+                        </div>
                       </div>
-                      <button onClick={() => {
-                        const csv = ['Subject,Category,Enrolled,Progress%', ...subjectBreakdown.map(s => `${s.name},${s.type},${s.count},${s.progress}`)].join('\n');
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const a = document.createElement('a');
-                        a.href = URL.createObjectURL(blob);
-                        a.download = 'subject-breakdown.csv';
-                        a.click();
-                      }} aria-label="Export subject breakdown as CSV" className="px-3 py-1.5 bg-white border border-slate-200 text-[10px] font-black text-[#1e293b] uppercase tracking-widest rounded-lg hover:bg-slate-50 transition-all">Export</button>
+
+                      <div className="flex items-center gap-2">
+                        {/* Subject Category Filter Tabs */}
+                        <div className="flex items-center p-0.5 bg-slate-200/60 dark:bg-slate-800 rounded-lg text-[11px] font-semibold">
+                          {(['ALL', 'STEM', 'Core'] as const).map((filterCategory) => (
+                            <button
+                              key={filterCategory}
+                              type="button"
+                              onClick={() => setSubjectCategoryFilter(filterCategory)}
+                              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                                subjectCategoryFilter === filterCategory
+                                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              {filterCategory === 'ALL' ? 'All' : filterCategory}
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const csvLines = [
+                              'Subject,Category,Enrolled,Progress%',
+                              ...filteredSubjects.map((subItem) => `${subItem.name},${subItem.type},${subItem.count},${subItem.progress}`),
+                            ].join('\n');
+                            const fileBlob = new Blob([csvLines], { type: 'text/csv' });
+                            const anchorLink = document.createElement('a');
+                            anchorLink.href = URL.createObjectURL(fileBlob);
+                            anchorLink.download = 'subject-mastery-matrix.csv';
+                            anchorLink.click();
+                          }}
+                          aria-label="Export subject breakdown as CSV"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[38px] bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-colors shadow-xs cursor-pointer"
+                        >
+                          <Download size={13} />
+                          <span>CSV</span>
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex-1 overflow-x-auto">
+
+                    <div className="overflow-x-auto min-w-0">
                       <table className="w-full text-left">
                         <thead>
-                          <tr className="bg-slate-50/20">
-                            <th className="px-6 py-3 text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">Subject</th>
-                            <th className="px-6 py-3 text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">Category</th>
-                            <th className="px-6 py-3 text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Enrolled</th>
-                            <th className="px-6 py-3 text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">Progress</th>
+                          <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
+                            <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Subject</th>
+                            <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Category</th>
+                            <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">Enrolled</th>
+                            <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mastery Progress</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50/60">
-                          {subjectBreakdown.map((sub, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
-                              <td className="px-6 py-4">
-                                <div className="flex flex-col">
-                                  <span className="text-[13px] font-bold text-[#1e293b] group-hover:text-indigo-600 transition-colors">{sub.name}</span>
-                                  <span className="text-[9px] font-medium text-slate-400">Quarters Q1–Q4</span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${sub.type === 'STEM' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{sub.type}</span>
-                              </td>
-                              <td className="px-6 py-4 text-center">
-                                <span className="text-[12px] font-bold text-slate-600 tabular-nums">{sub.count}</span>
-                              </td>
-                              <td className="px-6 py-4 min-w-[180px]">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden p-[1px]">
-                                    <div className={`h-full rounded-full ${sub.progress > 80 ? 'bg-indigo-500' : sub.progress > 60 ? 'bg-indigo-400' : 'bg-rose-400'} transition-all duration-1000`} style={{ width: `${sub.progress}%` }}></div>
-                                  </div>
-                                  <span className="text-[11px] font-black text-[#1e293b] w-8 tabular-nums">{sub.progress}%</span>
-                                </div>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {filteredSubjects.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="px-5 py-8 text-center text-xs text-slate-400">
+                                No subject performance records in this category.
                               </td>
                             </tr>
-                          ))}
+                          ) : (
+                            filteredSubjects.map((subItem, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                                <td className="px-5 py-3.5">
+                                  <span className="text-sm font-bold text-slate-900 dark:text-white">{subItem.name}</span>
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <span
+                                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider border ${
+                                      subItem.type === 'STEM'
+                                        ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                    }`}
+                                  >
+                                    {subItem.type}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-3.5 text-center text-sm font-bold text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {subItem.count}
+                                </td>
+                                <td className="px-5 py-3.5 min-w-[160px]">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-500 ${
+                                          subItem.progress >= 75
+                                            ? 'bg-emerald-500'
+                                            : subItem.progress >= 50
+                                            ? 'bg-indigo-500'
+                                            : 'bg-amber-500'
+                                        }`}
+                                        style={{ width: `${Math.min(100, Math.max(0, subItem.progress))}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 w-9 text-right tabular-nums">
+                                      {subItem.progress}%
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
                   </div>
 
-                  {/* Nested Bottom Row (2-col grid) */}
-                  <div className="grid grid-cols-2 gap-6">
-                    {/* Recent Activity */}
-                    <div className="bg-white rounded-[28px] border border-slate-200/60 p-6 shadow-sm shadow-slate-200/50">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-[15px] font-bold text-[#1e293b]">Activity</h3>
-                        <div className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center">
-                          <Activity size={14} className="text-slate-400" />
+                  {/* Live Campus Stream (Clean, Uncluttered Activity & Security Feed) */}
+                  <div className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col">
+                    {/* Subtle Top Accent Line */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 via-indigo-500 to-violet-500 pointer-events-none" />
+
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-sky-500 to-indigo-500 shrink-0" />
+                        <div>
+                          <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                            Live Campus Stream
+                          </h3>
+                          <p className="font-body text-xs text-slate-500 dark:text-slate-400 mt-0.5">Real-time administrative actions and security logs</p>
                         </div>
                       </div>
-                      <div className="space-y-5">
-                        {recentActivity.slice(0, 3).map((log, idx) => (
-                          <div key={idx} className="flex gap-3 group">
-                            <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                              <CheckCircle2 size={14} className="text-indigo-600" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[12px] font-bold text-[#1e293b] truncate leading-tight group-hover:text-indigo-600 transition-colors tabular-nums">{log.action}</p>
-                              <p className="text-[10px] font-medium text-slate-400 truncate mt-0.5 tabular-nums">{log.details}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('Audit Log')}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                      >
+                        <span>Audit Log</span>
+                        <ArrowUpRight size={14} />
+                      </button>
                     </div>
 
-                    {/* Difficulty Distribution */}
-                    <div className="bg-white rounded-[28px] border border-slate-200/60 p-6 shadow-sm shadow-slate-200/50">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-[15px] font-bold text-[#1e293b]">Load</h3>
-                        <div className="w-7 h-7 bg-slate-50 rounded-lg flex items-center justify-center">
-                          <Zap size={14} className="text-slate-400" />
+                    <div className="space-y-2.5">
+                      {recentActivity.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-slate-400">
+                          No recent system activity recorded today.
                         </div>
-                      </div>
-                      <div className="space-y-5">
-                        {[
-                          { label: 'Foundational', color: 'bg-emerald-400', val: difficultyDist?.foundational ?? 0 },
-                          { label: 'Intermediate', color: 'bg-indigo-400', val: difficultyDist?.intermediate ?? 0 },
-                          { label: 'Advanced', color: 'bg-rose-400', val: difficultyDist?.advanced ?? 0 },
-                        ].map((item, idx) => (
-                          <div key={idx}>
-                            <div className="flex justify-between items-center mb-1.5">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">{item.label}</span>
-                              <span className="text-[11px] font-black text-[#1e293b] tabular-nums">{item.val}%</span>
+                      ) : (
+                        recentActivity.slice(0, 4).map((auditLogItem, idx) => {
+                          const isAlert = auditLogItem.severity === 'Warning' || auditLogItem.severity === 'Error' || auditLogItem.severity === 'Critical';
+                          const userRole = (auditLogItem.user?.role || '').toLowerCase();
+                          const roleBadgeStyle = userRole === 'admin'
+                            ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                            : userRole === 'teacher'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
+
+                          return (
+                            <div
+                              key={auditLogItem.id || idx}
+                              className={`flex items-start gap-3 p-3.5 rounded-xl border transition-colors ${
+                                isAlert
+                                  ? 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/40'
+                                  : 'bg-slate-50/50 dark:bg-slate-800/40 border-slate-200/70 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/70'
+                              }`}
+                            >
+                              <div
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                  isAlert
+                                    ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                }`}
+                              >
+                                {isAlert ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                    {auditLogItem.action}
+                                  </p>
+                                  <span className="text-[10px] text-slate-400 shrink-0 tabular-nums">
+                                    {auditLogItem.timestamp ? new Date(auditLogItem.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                  {auditLogItem.details}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                                    {auditLogItem.user?.name || 'System Engine'}
+                                  </span>
+                                  {auditLogItem.user?.role && (
+                                    <span className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${roleBadgeStyle}`}>
+                                      {auditLogItem.user.role}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="h-1.5 bg-slate-50 rounded-full overflow-hidden p-[1px]">
-                              <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.val}%` }}></div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 </div>
@@ -826,6 +1295,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onOpenProfile
           {activeTab === 'Class Management' && <AdminClassManagement />}
           
           {activeTab === 'Subjects' && <AdminSubjects />}
+          {activeTab === 'Profile' && (
+            <AdminProfilePage
+              profileData={effectiveProfileData}
+              onSaveProfile={onSaveProfile ?? (() => {})}
+              onBack={() => setActiveTab('Overview')}
+              previousTabName="Overview"
+              onNavigateToSettings={() => setActiveTab('Settings')}
+            />
+          )}
+          {activeTab === 'Settings' && (
+            <AdminSettingsPage
+              settingsData={userSettings}
+              onSaveSettings={onSaveSettings ?? (async () => {})}
+              onApplySettingsPreview={onApplySettingsPreview}
+              onExportData={onExportData}
+              onClearCache={onClearCache}
+              onBack={() => setActiveTab('Overview')}
+              previousTabName="Overview"
+              onNavigateToProfile={() => setActiveTab('Profile')}
+            />
+          )}
         </main>
       </div>
 

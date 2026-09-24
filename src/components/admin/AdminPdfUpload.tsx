@@ -239,35 +239,32 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
     : [];
 
   return (
-    <div className="space-y-4 pt-2 xl:pt-4 pb-4 max-w-[1200px] mx-auto">
-      {/* 1. Tab Switcher & Stats Bar (Compact & System Colors) */}
+    <div className="space-y-5 pt-2 pb-6 max-w-[1200px] mx-auto min-w-0">
+      {/* 1. Tab Switcher & Stats Bar */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
           <button
             onClick={() => setActiveTab('upload')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[12px] font-black transition-all duration-300 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
               activeTab === 'upload' 
-                ? 'bg-[#9956DE] text-white shadow-lg shadow-purple-200' 
-                : 'text-slate-400 hover:text-purple-600 hover:bg-purple-50'
+                ? 'bg-indigo-600 text-white shadow-sm' 
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Upload size={14} />
-            Import
+            Import Modules
           </button>
           <button
             onClick={() => setActiveTab('inventory')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[12px] font-black transition-all duration-300 ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
               activeTab === 'inventory' 
-                ? 'bg-[#9956DE] text-white shadow-lg shadow-purple-200' 
-                : 'text-slate-400 hover:text-purple-600 hover:bg-purple-50'
+                ? 'bg-indigo-600 text-white shadow-sm' 
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Database size={14} />
-            Inventory
+            File Inventory
           </button>
-        </div>
-
-        <div className="flex items-center gap-3">
         </div>
       </div>
 
@@ -280,28 +277,28 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-4"
           >
-            <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden group">
-              {/* Card Header (Pulse Purple Theme) */}
-              <div className="p-6 border-b border-slate-50 bg-gradient-to-br from-white to-purple-50/20 relative">
+            <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm overflow-hidden group">
+              {/* Card Header */}
+              <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/60 relative">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-black text-[#1e293b] tracking-tight">Learning Module Upload</h3>
-                    <p className="text-[11px] text-slate-500 font-medium italic">Provide curriculum context for AI tutoring logic.</p>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Learning Module Upload</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Provide official DepEd curriculum PDF context for AI tutoring logic.</p>
                   </div>
-                  <div className="w-10 h-10 bg-[#9956DE] rounded-xl flex items-center justify-center text-white shadow-md transition-transform group-hover:scale-110">
-                    <Upload size={20} />
+                  <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                    <Upload size={18} />
                   </div>
                 </div>
 
-                <div className="mt-6">
+                <div className="mt-5">
                   <div
                     onDrop={handleDrop}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onClick={() => !uploading && fileInputRef.current?.click()}
                     className={`
-                      relative border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-300 group/drop
-                      ${dragOver ? 'border-[#9956DE] bg-purple-50 scale-[0.99]' : 'border-slate-200 hover:border-[#9956DE] bg-white hover:bg-purple-50/30'}
+                      relative border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 group/drop
+                      ${dragOver ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-400 bg-white dark:bg-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-700/40'}
                       ${uploading ? 'cursor-not-allowed opacity-60' : ''}
                       min-h-[160px] flex flex-col items-center justify-center
                     `}
@@ -316,46 +313,46 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                     
                     {selectedFile ? (
                       <div className="flex items-center gap-4 text-left">
-                        <div className="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 border border-purple-100 shadow-sm shrink-0">
-                          <FileText size={28} />
+                        <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/50 shadow-sm shrink-0">
+                          <FileText size={24} />
                         </div>
-                        <div className="space-y-0.5">
-                          <p className="font-black text-[14px] text-[#1e293b] truncate max-w-[300px]">{selectedFile.name}</p>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-purple-500 font-black uppercase">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">PDF Source</span>
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="font-bold text-sm text-slate-900 dark:text-white truncate max-w-[320px]">{selectedFile.name}</p>
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-indigo-600 dark:text-indigo-400 font-semibold tabular-nums">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</span>
+                            <span className="text-slate-400">PDF Document</span>
                           </div>
                           <button
                             onClick={e => { e.stopPropagation(); setSelectedFile(null); }}
-                            className="text-[10px] font-black text-rose-500 hover:text-rose-600 mt-1 flex items-center gap-1"
+                            className="text-xs font-semibold text-rose-500 hover:text-rose-600 mt-1 flex items-center gap-1"
                           >
-                            <Trash2 size={10} /> Replace
+                            Remove file
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 mb-4 group-hover/drop:text-purple-500 group-hover/drop:bg-purple-50 transition-all">
-                          <Upload size={24} />
+                      <div className="space-y-1">
+                        <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700/60 flex items-center justify-center mx-auto mb-2 text-slate-400">
+                          <Upload size={22} />
                         </div>
-                        <h4 className="text-[14px] font-black text-[#1e293b]">Drop PDF or click to browse</h4>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Max 50MB (SLM, Textbook, Guide)</p>
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Drop PDF or click to browse</h4>
+                        <p className="text-xs text-slate-400">Standard DepEd learning modules, textbooks, or curriculum guides (max 50MB)</p>
                       </div>
                     )}
 
                     {uploadProgress > 0 && (
-                      <div className="absolute inset-0 bg-white/95 backdrop-blur-[1px] rounded-2xl flex flex-col items-center justify-center p-8 z-20">
+                      <div className="absolute inset-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 z-20">
                         <div className="w-full max-w-xs space-y-3 text-center">
-                          <div className="w-12 h-12 bg-[#9956DE] rounded-xl flex items-center justify-center mx-auto mb-2 animate-bounce">
-                            <Sparkles size={24} className="text-white" />
+                          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-1 text-white">
+                            <Sparkles size={20} />
                           </div>
-                          <div className="space-y-0.5">
-                            <h5 className="text-sm font-black text-[#1e293b]">{uploading ? 'Analyzing Curriculum...' : 'Complete!'}</h5>
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Platform Ingestion</p>
+                          <div>
+                            <h5 className="text-sm font-bold text-slate-900 dark:text-white">{uploading ? 'Ingesting Curriculum...' : 'Complete!'}</h5>
+                            <p className="text-xs text-slate-400 mt-0.5">Platform Vectorization</p>
                           </div>
-                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200 mt-2">
+                          <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                             <motion.div
-                              className="h-full bg-gradient-to-r from-purple-500 to-sky-500 rounded-full"
+                              className="h-full bg-indigo-600 rounded-full"
                               initial={{ width: 0 }}
                               animate={{ width: `${uploadProgress}%` }}
                               transition={{ duration: 0.3 }}
@@ -368,17 +365,17 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                 </div>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-5 sm:p-6 space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Curriculum Subject</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Curriculum Subject</label>
                     <Select value={subjectId} onValueChange={handleSubjectChange} disabled={uploading}>
-                      <SelectTrigger className="w-full h-10 bg-slate-50/50 border-slate-200 rounded-xl text-[12px] font-bold focus:ring-purple-500/20">
+                      <SelectTrigger className="w-full h-11 bg-white dark:bg-slate-700 border-slate-200/80 dark:border-slate-600 rounded-xl text-xs font-medium">
                         <SelectValue placeholder="Select subject" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-200">
+                      <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
                         {SHS_MATH_SUBJECTS.map((s) => {
-                          // SAFETY: s is an SHS_MATH_SUBJECTS item with optional termStructure and quarters metadata.
+                          // SAFETY: Subject objects from SHS_MATH_SUBJECTS optionally define termStructure and quarters metadata.
                           const subject = s as { termStructure?: string; quarters?: readonly string[] };
                           const quarterText =
                             subject.termStructure === 'year-long'
@@ -387,8 +384,8 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                           return (
                             <SelectItem key={s.id} value={s.id} className="rounded-lg py-2">
                               <div className="flex flex-col items-start">
-                                <span className="font-black text-[12px]">{s.name}</span>
-                                <span className="text-[9px] text-slate-400 font-bold uppercase">
+                                <span className="font-semibold text-xs">{s.name}</span>
+                                <span className="text-[10px] text-slate-400">
                                   {s.gradeLevel} • {quarterText}
                                 </span>
                               </div>
@@ -399,26 +396,26 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Display Label</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Display Label</label>
                     <Input
                       value={subjectName}
                       onChange={e => setSubjectName(e.target.value)}
                       placeholder="e.g. General Mathematics"
                       disabled={uploading}
-                      className="h-10 bg-slate-50/50 border-slate-200 rounded-xl text-[12px] font-bold px-4 focus-visible:ring-purple-500/20"
+                      className="h-11 bg-white dark:bg-slate-700 border-slate-200/80 dark:border-slate-600 rounded-xl text-xs font-medium px-3"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Quarter</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Target Quarter</label>
                     <Select value={quarter} onValueChange={setQuarter} disabled={uploading}>
-                      <SelectTrigger className="w-full h-10 bg-slate-50/50 border-slate-200 rounded-xl text-[12px] font-bold focus:ring-purple-500/20">
+                      <SelectTrigger className="w-full h-11 bg-white dark:bg-slate-700 border-slate-200/80 dark:border-slate-600 rounded-xl text-xs font-medium">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-slate-200">
-                        <SelectItem value="1" className="rounded-lg text-[12px] font-bold">First Quarter</SelectItem>
-                        <SelectItem value="2" className="rounded-lg text-[12px] font-bold">Second Quarter</SelectItem>
-                        <SelectItem value="3" className="rounded-lg text-[12px] font-bold">Third Quarter</SelectItem>
-                        <SelectItem value="4" className="rounded-lg text-[12px] font-bold">Fourth Quarter</SelectItem>
+                      <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                        <SelectItem value="1" className="text-xs">First Quarter (Q1)</SelectItem>
+                        <SelectItem value="2" className="text-xs">Second Quarter (Q2)</SelectItem>
+                        <SelectItem value="3" className="text-xs">Third Quarter (Q3)</SelectItem>
+                        <SelectItem value="4" className="text-xs">Fourth Quarter (Q4)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -427,10 +424,10 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                 <Button
                   onClick={handleUpload}
                   disabled={uploading || !selectedFile || !subjectId || !subjectName.trim()}
-                  className="w-full h-12 gap-2 bg-[#9956DE] hover:bg-[#8b5cf6] text-white rounded-2xl shadow-lg shadow-purple-100 transition-all hover:scale-[1.01] active:scale-95 text-[14px] font-black"
+                  className="w-full h-11 gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm transition-all text-xs font-semibold min-h-[44px]"
                 >
                   {uploading ? (
-                    <><Loader2 size={16} className="animate-spin" /> Ingesting...</>
+                    <><Loader2 size={16} className="animate-spin" /> Ingesting Knowledge Source...</>
                   ) : (
                     <><Upload size={16} /> Deploy Knowledge Source</>
                   )}
@@ -465,17 +462,17 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-4"
           >
-            <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden relative">
+            <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm overflow-hidden relative">
               <Table className="w-full text-left border-collapse">
                 <TableHeader>
-                  <TableRow className="bg-[#9956DE] hover:bg-[#9956DE] border-b border-[#8b5cf6] sticky top-0 z-20 shadow-sm">
-                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">File Name</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Uploaded By</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Type</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto">Date</TableHead>
-                    <TableHead className="px-6 py-4 text-[10px] font-black text-white uppercase tracking-widest h-auto text-right">
-                      <Button variant="ghost" size="sm" className="h-8 px-2 bg-white/10 text-white hover:bg-white/20 rounded-lg" onClick={loadUploadedFiles} disabled={loadingFiles}>
-                        <RefreshCw size={12} className={loadingFiles ? 'animate-spin' : ''} />
+                  <TableRow className="bg-slate-50/90 dark:bg-slate-800/90 border-b border-slate-200/80 dark:border-slate-700/60 sticky top-0 z-20">
+                    <TableHead className="px-5 py-3.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider h-auto">File Name</TableHead>
+                    <TableHead className="px-5 py-3.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider h-auto">Uploaded By</TableHead>
+                    <TableHead className="px-5 py-3.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider h-auto">Type</TableHead>
+                    <TableHead className="px-5 py-3.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider h-auto">Date</TableHead>
+                    <TableHead className="px-5 py-3.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider h-auto text-right">
+                      <Button variant="ghost" size="sm" className="h-8 px-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg" onClick={loadUploadedFiles} disabled={loadingFiles}>
+                        <RefreshCw size={13} className={loadingFiles ? 'animate-spin' : ''} />
                       </Button>
                     </TableHead>
                   </TableRow>

@@ -1123,40 +1123,19 @@ const App = () => {
     authenticatedContent = (
       <NotificationProvider>
       <RequireRole allowed={['admin']} userRole={userRole} loading={loading} onGoToLogin={handleLogout}>
-      <>
-        <Suspense fallback={<AppLoadingScreen message="Loading admin dashboard..." />}>
-          <AdminDashboard 
-            onLogout={handleLogout}
-            onOpenProfile={() => setActiveModal('profile')}
-            onOpenSettings={() => setActiveModal('settings')}
-          />
-        </Suspense>
-        {activeModal === 'profile' && (
-          <Suspense fallback={null}>
-            <ProfileModal
-              isOpen={activeModal === 'profile'}
-              onClose={() => setActiveModal(null)}
+        <>
+          <Suspense fallback={<AppLoadingScreen message="Loading admin dashboard..." />}>
+            <AdminDashboard 
+              onLogout={handleLogout}
               profileData={profileData}
-              onSave={handleSaveProfile}
-            />
-          </Suspense>
-        )}
-        {activeModal === 'settings' && (
-          <Suspense fallback={null}>
-            <SettingsModal
-              isOpen={activeModal === 'settings'}
-              onClose={() => setActiveModal(null)}
-              profileData={profileData}
-              onSave={handleSaveProfile}
-              settingsData={userSettings}
+              onSaveProfile={handleSaveProfile}
+              userSettings={userSettings}
               onSaveSettings={handleSaveSettings}
               onApplySettingsPreview={setUserSettings}
               onExportData={handleExportData}
               onClearCache={handleClearCache}
-              onResetData={handleResetTestingData}
             />
           </Suspense>
-        )}
           <Toaster position="top-right" richColors closeButton />
         </>
       </RequireRole>
@@ -1732,142 +1711,6 @@ const App = () => {
             />
           </Suspense>
 
-          {/* Rewards Modal */}
-          {activeModal === 'rewards' && (
-            <Suspense fallback={null}>
-              <RewardsModal
-                isOpen={activeModal === 'rewards'}
-                onClose={() => setActiveModal(null)}
-                userLevel={userLevel}
-                currentXP={progressXPInLevel}
-                xpToNextLevel={xpToNextLevel}
-                totalXP={totalXP}
-                userId={userProfile?.uid || ''}
-                onViewAllRewards={() => {
-                  setActiveModal(null);
-                  handleStudentNavigation('Rewards');
-                }}
-              />
-            </Suspense>
-          )}
-
-          {/* Profile Modal */}
-          {activeModal === 'profile' && (
-            <Suspense fallback={null}>
-              <ProfileModal
-                isOpen={activeModal === 'profile'}
-                onClose={() => setActiveModal(null)}
-                profileData={profileData}
-                onSave={handleSaveProfile}
-              />
-            </Suspense>
-          )}
-
-          {/* Logout Confirmation Modal */}
-          {activeModal === 'logout_confirm' && (
-            <Suspense fallback={null}>
-              <ConfirmModal
-                isOpen={activeModal === 'logout_confirm'}
-                onClose={() => setActiveModal(null)}
-                onConfirm={handleLogout}
-                title="Confirm Logout"
-                message="Are you sure you want to log out? Your progress is saved automatically."
-                confirmText="Logout"
-                cancelText="Stay"
-                type="warning"
-                icon="logout"
-              />
-            </Suspense>
-          )}
-
-          {/* Settings Modal */}
-          {activeModal === 'settings' && (
-            <Suspense fallback={null}>
-              <SettingsModal
-                isOpen={activeModal === 'settings'}
-                onClose={() => setActiveModal(null)}
-                profileData={profileData}
-                onSave={handleSaveProfile}
-                settingsData={userSettings}
-                onSaveSettings={handleSaveSettings}
-                onApplySettingsPreview={setUserSettings}
-                onExportData={handleExportData}
-                onClearCache={handleClearCache}
-                onResetData={handleResetTestingData}
-              />
-            </Suspense>
-          )}
-
-          {/* Scientific Calculator */}
-          {activeModal === 'calculator' && (
-            <Suspense fallback={null}>
-              <ScientificCalculator
-                isOpen={activeModal === 'calculator'}
-                onClose={() => setActiveModal(null)}
-              />
-            </Suspense>
-          )}
-
-          {/* Initial Assessment Modal */}
-          {showDiagnosticModal && !showAssessmentPage && (
-            <Suspense fallback={null}>
-              <InitialAssessmentModal
-                isOpen={showDiagnosticModal && !showAssessmentPage}
-                onClose={() => setShowDiagnosticModal(false)}
-                onDismiss={() => {
-                  setShowDiagnosticModal(false);
-                  setAssessmentDismissed(true);
-                }}
-                userId={userProfile?.uid || ''}
-                strand={studentProfile?.major || 'STEM'}
-                gradeLevel={studentProfile?.grade || 'Grade 11'}
-                onAssessmentStart={handleDiagnosticStart}
-                onAssessmentComplete={handleAssessmentComplete}
-              />
-            </Suspense>
-          )}
-
-          {/* Assessment Page (full-screen question-by-question) */}
-          {showAssessmentPage && (
-            <Suspense fallback={null}>
-              <AssessmentPage
-                testId={assessmentTestId}
-                questions={assessmentQuestions}
-                userName={firstName}
-                onComplete={handleAssessmentComplete}
-                onCancel={() => {
-                  setShowAssessmentPage(false);
-                  setActiveTab('Dashboard');
-                }}
-              />
-            </Suspense>
-          )}
-
-          {/* Assessment results & history (deep-link landing for assessed students) */}
-          {showAssessmentResults && userProfile?.uid && (
-            <Suspense fallback={null}>
-              <AssessmentResultsModal
-                isOpen={showAssessmentResults}
-                onClose={() => setShowAssessmentResults(false)}
-                studentId={userProfile.uid}
-              />
-            </Suspense>
-          )}
-
-          {/* Diagnostic Breakdown (full-screen after completion) */}
-          {activeModal === 'diagnostic_breakdown' && userProfile?.uid && (
-            <Suspense fallback={null}>
-              <DiagnosticBreakdown
-                userId={userProfile.uid}
-                mode="fullscreen"
-                onClose={() => {
-                  setActiveModal(null);
-                  setActiveTab('Dashboard');
-                }}
-              />
-            </Suspense>
-          )}
-
           {/* Mobile Bottom Navigation Bar (Hidden during full-screen assessment and active quizzes) */}
           {(!showAssessmentPage && !isInQuizMode) && (
             <MobileBottomNav
@@ -1882,6 +1725,143 @@ const App = () => {
           )}
         </div>
       </div>
+
+      {/* Global Modals rendered at root level outside stacking contexts */}
+      {/* Rewards Modal */}
+      {activeModal === 'rewards' && (
+        <Suspense fallback={null}>
+          <RewardsModal
+            isOpen={activeModal === 'rewards'}
+            onClose={() => setActiveModal(null)}
+            userLevel={userLevel}
+            currentXP={progressXPInLevel}
+            xpToNextLevel={xpToNextLevel}
+            totalXP={totalXP}
+            userId={userProfile?.uid || ''}
+            onViewAllRewards={() => {
+              setActiveModal(null);
+              handleStudentNavigation('Rewards');
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* Profile Modal */}
+      {activeModal === 'profile' && (
+        <Suspense fallback={null}>
+          <ProfileModal
+            isOpen={activeModal === 'profile'}
+            onClose={() => setActiveModal(null)}
+            profileData={profileData}
+            onSave={handleSaveProfile}
+          />
+        </Suspense>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {activeModal === 'logout_confirm' && (
+        <Suspense fallback={null}>
+          <ConfirmModal
+            isOpen={activeModal === 'logout_confirm'}
+            onClose={() => setActiveModal(null)}
+            onConfirm={handleLogout}
+            title="Confirm Logout"
+            message="Are you sure you want to log out? Your progress is saved automatically."
+            confirmText="Logout"
+            cancelText="Stay"
+            type="warning"
+            icon="logout"
+          />
+        </Suspense>
+      )}
+
+      {/* Settings Modal */}
+      {activeModal === 'settings' && (
+        <Suspense fallback={null}>
+          <SettingsModal
+            isOpen={activeModal === 'settings'}
+            onClose={() => setActiveModal(null)}
+            profileData={profileData}
+            onSave={handleSaveProfile}
+            settingsData={userSettings}
+            onSaveSettings={handleSaveSettings}
+            onApplySettingsPreview={setUserSettings}
+            onExportData={handleExportData}
+            onClearCache={handleClearCache}
+            onResetData={handleResetTestingData}
+          />
+        </Suspense>
+      )}
+
+      {/* Scientific Calculator */}
+      {activeModal === 'calculator' && (
+        <Suspense fallback={null}>
+          <ScientificCalculator
+            isOpen={activeModal === 'calculator'}
+            onClose={() => setActiveModal(null)}
+          />
+        </Suspense>
+      )}
+
+      {/* Initial Assessment Modal */}
+      {showDiagnosticModal && !showAssessmentPage && (
+        <Suspense fallback={null}>
+          <InitialAssessmentModal
+            isOpen={showDiagnosticModal && !showAssessmentPage}
+            onClose={() => setShowDiagnosticModal(false)}
+            onDismiss={() => {
+              setShowDiagnosticModal(false);
+              setAssessmentDismissed(true);
+            }}
+            userId={userProfile?.uid || ''}
+            strand={studentProfile?.major || 'STEM'}
+            gradeLevel={studentProfile?.grade || 'Grade 11'}
+            onAssessmentStart={handleDiagnosticStart}
+            onAssessmentComplete={handleAssessmentComplete}
+          />
+        </Suspense>
+      )}
+
+      {/* Assessment Page (full-screen question-by-question) */}
+      {showAssessmentPage && (
+        <Suspense fallback={null}>
+          <AssessmentPage
+            testId={assessmentTestId}
+            questions={assessmentQuestions}
+            userName={firstName}
+            onComplete={handleAssessmentComplete}
+            onCancel={() => {
+              setShowAssessmentPage(false);
+              setActiveTab('Dashboard');
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* Assessment results & history (deep-link landing for assessed students) */}
+      {showAssessmentResults && userProfile?.uid && (
+        <Suspense fallback={null}>
+          <AssessmentResultsModal
+            isOpen={showAssessmentResults}
+            onClose={() => setShowAssessmentResults(false)}
+            studentId={userProfile.uid}
+          />
+        </Suspense>
+      )}
+
+      {/* Diagnostic Breakdown (full-screen after completion) */}
+      {activeModal === 'diagnostic_breakdown' && userProfile?.uid && (
+        <Suspense fallback={null}>
+          <DiagnosticBreakdown
+            userId={userProfile.uid}
+            mode="fullscreen"
+            onClose={() => {
+              setActiveModal(null);
+              setActiveTab('Dashboard');
+            }}
+          />
+        </Suspense>
+      )}
     </ChatProvider>
     <Toaster position="top-right" richColors closeButton />
     </>
