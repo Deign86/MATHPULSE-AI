@@ -125,69 +125,84 @@ const AdminSubjects: React.FC = () => {
       )}
 
       {/* Stats Grid - Executive Bento Style */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
           { 
             label: 'Total Subjects', 
             value: SUBJECT_ROWS.length, 
-            subtext: 'Senior high math subjects',
+            subtext: 'Senior high math modules',
+            badge: 'Curriculum',
             icon: BookOpen, 
-            color: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50'
+            gradient: 'bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED]',
+            shadow: 'shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.52)]',
           },
           { 
             label: 'Available', 
             value: SUBJECT_ROWS.filter(s => availability[s.id]?.available !== false).length, 
             subtext: 'Active curriculum access',
+            badge: 'Active',
             icon: Unlock, 
-            color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50'
+            gradient: 'bg-gradient-to-br from-[#75D06A] via-[#52B847] to-[#36962C]',
+            shadow: 'shadow-[0_8px_24px_-6px_rgba(82,184,71,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(82,184,71,0.52)]',
           },
           { 
             label: 'Locked / Shelved', 
             value: SUBJECT_ROWS.filter(s => availability[s.id]?.available === false).length, 
             subtext: 'Pending PDF materials',
+            badge: 'Locked',
             icon: Lock, 
-            color: 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/50'
+            gradient: 'bg-gradient-to-br from-[#FB7185] via-[#F43F5E] to-[#E11D48]',
+            shadow: 'shadow-[0_8px_24px_-6px_rgba(244,63,94,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(244,63,94,0.52)]',
           },
           { 
             label: 'RAG Sources', 
             value: SUBJECT_ROWS.filter(s => availability[s.id]?.pdfPath).length, 
             subtext: 'Vectorized knowledge docs',
+            badge: 'AI Vector',
             icon: FileText, 
-            color: 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border-violet-100 dark:border-violet-900/50'
+            gradient: 'bg-gradient-to-br from-[#38BDF8] via-[#0284C7] to-[#0369A1]',
+            shadow: 'shadow-[0_8px_24px_-6px_rgba(2,132,199,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(2,132,199,0.52)]',
           },
         ].map((stat, idx) => (
-          <div key={idx} className="bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/60 p-4 sm:p-5 rounded-2xl flex flex-col justify-between shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-colors min-w-0">
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${stat.color} shrink-0`}>
-                <stat.icon size={18} />
+          <div key={idx} className={`group relative ${stat.gradient} ${stat.shadow} border border-white/25 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 flex flex-col justify-between transition-all duration-300 ease-out overflow-hidden min-h-[58px] sm:min-h-[120px]`}>
+            <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white/15 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+
+            <div className="flex items-center justify-between relative z-10 mb-1.5 sm:mb-3">
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                <stat.icon size={14} className="sm:hidden" />
+                <stat.icon size={18} className="hidden sm:block" />
               </div>
+              <span className="px-1.5 sm:px-2.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
+                {stat.badge}
+              </span>
             </div>
-            <div>
-              <h3 className="text-2xl font-bold font-display text-slate-900 dark:text-white leading-none tracking-tight tabular-nums">{stat.value}</h3>
-              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1 truncate">{stat.label}</p>
-              <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-0.5 truncate">{stat.subtext}</p>
+            <div className="relative z-10 min-w-0">
+              <h3 className="text-lg sm:text-3xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{stat.value}</h3>
+              <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-1 sm:mt-1.5 truncate">{stat.label}</p>
+              <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">{stat.subtext}</p>
             </div>
           </div>
         ))}
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 flex items-center gap-3 animate-in shake duration-500">
-          <AlertCircle className="text-rose-600" size={20} />
-          <p className="text-sm font-bold text-rose-700">{error}</p>
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 dark:bg-rose-950/40 dark:border-rose-900/60 px-6 py-4 flex items-center gap-3 animate-in shake duration-500">
+          <AlertCircle className="text-rose-600 dark:text-rose-400" size={20} />
+          <p className="text-sm font-bold text-rose-700 dark:text-rose-300">{error}</p>
         </div>
       )}
 
-      {/* Subject Table - Premium Integrated */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm overflow-hidden overflow-x-auto relative w-full">
+      {/* Subject Table - Teacher-Inspired Integrated Design */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden overflow-x-auto relative w-full">
         <Table className="w-full text-left border-collapse min-w-[720px]">
           <TableHeader>
-            <TableRow className="bg-slate-50/90 dark:bg-slate-800/90 border-b border-slate-200/80 dark:border-slate-700/60 sticky top-0 z-20">
-              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Subject Identity</TableHead>
-              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Grade / Quarters</TableHead>
-              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Access Status</TableHead>
-              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Toggle Access</TableHead>
-              <TableHead className="px-5 py-4 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">RAG Resource Mapping</TableHead>
+            <TableRow className="bg-gradient-to-r from-purple-50/80 via-indigo-50/50 to-slate-50 dark:from-purple-950/30 dark:via-slate-800 dark:to-slate-800 border-b border-purple-100 dark:border-slate-700 sticky top-0 z-20">
+              <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Subject Identity</TableHead>
+              <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Grade / Quarters</TableHead>
+              <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Access Status</TableHead>
+              <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Toggle Access</TableHead>
+              <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">RAG Resource Mapping</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-slate-50">

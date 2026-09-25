@@ -54,8 +54,8 @@ import AdminClassManagement from './admin/AdminClassManagement';
 import SubjectsHelpModal from './admin/SubjectsHelpModal';
 import MasteryHeatmap from './MasteryHeatmap';
 import AdminPriorityModules from './AdminPriorityModules';
-import NotificationDropdown from './NotificationDropdown';
-import { useNotifications } from '@/features/notifications';
+import { NotificationBell } from '@/features/notifications';
+import AdminMobileBottomNav from './admin/AdminMobileBottomNav';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, 
   ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie 
@@ -214,11 +214,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [createIntentRole, setCreateIntentRole] = useState<'Teacher' | 'Student' | null>(null);
   const [overviewState, setOverviewState] = useState<AdminOverviewState>({ status: 'loading' });
-  const [showNotifications, setShowNotifications] = useState(false);
-  const { unreadCount } = useNotifications();
   const [isSubjectsHelpModalOpen, setIsSubjectsHelpModalOpen] = useState(false);
   const [showHelpTooltip, setShowHelpTooltip] = useState(false);
   const [mobileOverviewTab, setMobileOverviewTab] = useState<'insights' | 'curriculum'>('insights');
@@ -254,10 +251,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleSidebarTabChange = (nextTab: string) => {
-    const didChange = handleTabChange(nextTab);
-    if (didChange) {
-      setIsMobileSidebarOpen(false);
-    }
+    handleTabChange(nextTab);
   };
 
   const handleQuickAddUser = (role: 'Teacher' | 'Student') => {
@@ -423,46 +417,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         />
       </div>
 
-      {/* Mobile Sidebar Overlay */}
-      {isMobileSidebarOpen && (
-        <>
-          <button
-            aria-label="Close navigation"
-            className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px] lg:hidden"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-          <div className="fixed inset-y-0 left-0 z-50 p-3 lg:hidden" style={{ paddingLeft: 'calc(0.75rem + env(safe-area-inset-left, 0px))' }}>
-            <Sidebar
-              mode="mobile"
-              onRequestClose={() => setIsMobileSidebarOpen(false)}
-              activeTab={activeTab}
-              setActiveTab={handleSidebarTabChange}
-              userRole="admin"
-              onOpenSettings={() => onOpenSettings?.()}
-              onLogout={() => {
-                setShowLogoutConfirm(true);
-                setIsMobileSidebarOpen(false);
-              }}
-              sidebarCollapsed={false}
-            />
-          </div>
-        </>
-      )}
-
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-hidden">
         {/* Header */}
         <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 xl:px-8 py-3.5 sm:py-4 flex-shrink-0 z-30 w-full min-w-0">
           <div className="flex items-center justify-between gap-2 sm:gap-4 mb-0 w-full min-w-0">
             <div className="flex-1 min-w-0 flex items-center gap-2.5 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => setIsMobileSidebarOpen(true)}
-                className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shrink-0"
-                aria-label="Open navigation"
-              >
-                <Menu size={18} />
-              </button>
               <div className="min-w-0 flex-1">
                 <h1 className="text-lg sm:text-2xl font-display font-black text-slate-900 dark:text-white tracking-tight leading-tight truncate">
                   {ADMIN_TAB_META[activeTab].title}
@@ -475,22 +435,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Quick Admin Stats */}
               {activeTab === 'Overview' && (
                 <div className="hidden lg:flex items-center gap-2 ml-4 shrink-0">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/80 dark:border-indigo-900/50 rounded-xl text-indigo-700 dark:text-indigo-300 shrink-0 whitespace-nowrap">
-                    <Users size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    <span className="text-xs font-bold font-display tabular-nums whitespace-nowrap">
-                      {(dashStats?.totalStudents ?? 0).toLocaleString()} <span className="font-normal opacity-80">Students</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-b from-indigo-50 to-indigo-100/90 dark:from-indigo-950/60 dark:to-indigo-900/40 border border-indigo-200/80 dark:border-indigo-800/60 shadow-[0_2px_0_#c7d2fe,0_3px_8px_rgba(99,102,241,0.08)] rounded-xl text-indigo-700 dark:text-indigo-300 shrink-0 whitespace-nowrap">
+                    <Users size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0 drop-shadow-xs" />
+                    <span className="text-xs font-black font-display tabular-nums whitespace-nowrap">
+                      {(dashStats?.totalStudents ?? 0).toLocaleString()} <span className="font-semibold opacity-80">Students</span>
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-100/80 dark:border-sky-900/50 rounded-xl text-sky-700 dark:text-sky-300 shrink-0 whitespace-nowrap">
-                    <GraduationCap size={13} className="text-sky-600 dark:text-sky-400 shrink-0" />
-                    <span className="text-xs font-bold font-display tabular-nums whitespace-nowrap">
-                      {dashStats?.activeTeachers ?? 0} <span className="font-normal opacity-80">Teachers</span>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-b from-sky-50 to-sky-100/90 dark:from-sky-950/60 dark:to-sky-900/40 border border-sky-200/80 dark:border-sky-800/60 shadow-[0_2px_0_#bae6fd,0_3px_8px_rgba(14,165,233,0.08)] rounded-xl text-sky-700 dark:text-sky-300 shrink-0 whitespace-nowrap">
+                    <GraduationCap size={13} className="text-sky-600 dark:text-sky-400 shrink-0 drop-shadow-xs" />
+                    <span className="text-xs font-black font-display tabular-nums whitespace-nowrap">
+                      {dashStats?.activeTeachers ?? 0} <span className="font-semibold opacity-80">Teachers</span>
                     </span>
                   </div>
-                  <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100/80 dark:border-emerald-900/50 rounded-xl text-emerald-700 dark:text-emerald-300 shrink-0 whitespace-nowrap">
-                    <Activity size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span className="text-xs font-bold font-display tabular-nums whitespace-nowrap">
-                      {(dashStats?.aiPredictions ?? 0).toLocaleString()} <span className="font-normal opacity-80">AI Sessions</span>
+                  <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-b from-emerald-50 to-emerald-100/90 dark:from-emerald-950/60 dark:to-emerald-900/40 border border-emerald-200/80 dark:border-emerald-800/60 shadow-[0_2px_0_#a7f3d0,0_3px_8px_rgba(16,185,129,0.08)] rounded-xl text-emerald-700 dark:text-emerald-300 shrink-0 whitespace-nowrap">
+                    <Activity size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0 drop-shadow-xs" />
+                    <span className="text-xs font-black font-display tabular-nums whitespace-nowrap">
+                      {(dashStats?.aiPredictions ?? 0).toLocaleString()} <span className="font-semibold opacity-80">AI Sessions</span>
                     </span>
                   </div>
                 </div>
@@ -518,30 +478,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               )}
 
-              {/* Notification Bell */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative w-10 h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer hover:scale-[1.02]"
-                  aria-label="View notifications"
-                >
-                  <Bell size={18} />
-                  {unreadCount > 0 && <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>}
-                </button>
-
-                <NotificationDropdown 
-                  isOpen={showNotifications} 
-                  onClose={() => setShowNotifications(false)}
-                  onViewAll={() => handleTabChange('Audit Log')}
-                />
-              </div>
+              {/* Notification Bell (Portaled z-[250] with wiggle animation & unread badge) */}
+              <NotificationBell />
 
               {/* Profile Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="w-10 h-10 rounded-2xl sm:rounded-full overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 shadow-[0_1px_4px_rgba(0,0,0,0.04)] flex items-center justify-center hover:ring-2 hover:ring-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-indigo-500 shrink-0 p-0"
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-indigo-500 shrink-0 p-0"
                     aria-label={`Profile menu: ${effectiveProfileData.name?.replace(/System Administrator/gi, 'Administrator') || 'Administrator'}`}
                   >
                     <UserAvatar
@@ -606,7 +551,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </header>
 
         {/* Main Grid */}
-        <main className={`flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden px-4 sm:px-[24px] xl:px-[32px] scrollbar-hide ${['User Management', 'Audit Log'].includes(activeTab) ? 'pb-0' : 'pb-[32px]'}`}>
+        <main className={`flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden px-4 sm:px-[24px] xl:px-[32px] scrollbar-hide pb-24 sm:pb-28 lg:pb-8`}>
           {activeTab === 'Overview' && (
             <div className="max-w-[1600px] mx-auto space-y-5 lg:space-y-6 pt-4 sm:pt-6 w-full min-w-0">
               {/* Executive Branded Hero Banner */}
@@ -687,13 +632,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               {/* Bento KPI Grid (Creative 2x2 on Mobile, 4-up on Desktop with Calm Teacher-Inspired Surface) */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 min-w-0">
                 {systemStats.map((statItem, index) => (
                   <motion.div
                     key={index}
                     whileHover={{ y: -2 }}
                     transition={{ duration: 0.15 }}
-                    className={`relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all min-w-0 group border ${
+                    className={`relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-xl sm:rounded-3xl p-2.5 sm:p-5 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all min-w-0 group border min-h-[58px] sm:min-h-[120px] ${
                       statItem.isPriority
                         ? 'border-rose-300 dark:border-rose-800/80 ring-1 ring-rose-400/20'
                         : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
@@ -702,22 +647,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {/* Subtle Top Accent Line */}
                     <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${statItem.accentBar} pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity`} />
 
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center ${statItem.iconBg} border shrink-0`}>
-                        <statItem.icon size={18} />
+                    <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+                      <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center ${statItem.iconBg} border shrink-0`}>
+                        <statItem.icon size={14} className="sm:hidden" />
+                        <statItem.icon size={18} className="hidden sm:block" />
                       </div>
-                      <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statItem.badgeBg}`}>
+                      <span className={`text-[8px] sm:text-[10px] font-semibold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full border ${statItem.badgeBg}`}>
                         {statItem.badge}
                       </span>
                     </div>
                     <div>
-                      <p className="text-2xl sm:text-[30px] font-display font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight truncate tabular-nums">
+                      <p className="text-lg sm:text-[30px] font-display font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight truncate tabular-nums">
                         {loadingOverview ? '...' : statItem.value}
                       </p>
-                      <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate mt-1">
+                      <p className="text-[10px] sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate mt-0.5 sm:mt-1">
                         {statItem.label}
                       </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium hidden sm:block">
                         {statItem.subtext}
                       </p>
                     </div>
@@ -1336,7 +1282,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         cancelText="Cancel"
       />
 
-
+      {/* Admin Mobile Bottom Navbar (Replaces hamburger sidebar on mobile & tablet) */}
+      <AdminMobileBottomNav
+        activeTab={activeTab}
+        onSelectTab={(tab) => handleTabChange(tab)}
+        onOpenProfile={() => {
+          setActiveTab('Profile');
+          onOpenProfile?.();
+        }}
+        onOpenSettings={() => {
+          setActiveTab('Settings');
+          onOpenSettings?.();
+        }}
+        onLogout={() => setShowLogoutConfirm(true)}
+        profilePhoto={effectiveProfileData.photo}
+        profileName={effectiveProfileData.name}
+        profileEmail={effectiveProfileData.email}
+      />
     </div>
   );
 };

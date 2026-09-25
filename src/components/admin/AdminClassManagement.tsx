@@ -111,81 +111,107 @@ const AdminClassManagement: React.FC = () => {
   const unassignedCount = classes.filter(c => !c.managerId).length;
 
   return (
-    <div className="space-y-6 pt-2 pb-6 max-w-[1400px] mx-auto min-w-0">
-      {/* Stats Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-              <School size={18} />
+    <div className="space-y-6 pt-4 pb-6 max-w-[1400px] mx-auto min-w-0 animate-in fade-in duration-500">
+      {/* ── Teacher-Inspired Stats Bento Grid ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 px-1">
+        {/* Card 1: Total Sections (Purple Gradient) */}
+        <div className="group relative bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.52)] border border-white/25 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 flex col-span-2 sm:col-span-1 flex-row items-center justify-between min-h-0 sm:min-h-[120px] sm:flex-col sm:items-start sm:justify-between transition-all duration-300 ease-out overflow-hidden">
+          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white/15 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+
+          {/* Mobile Left / Desktop Top */}
+          <div className="flex items-center gap-2.5 sm:justify-between sm:w-full relative z-10 sm:mb-3">
+            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+              <School size={14} className="sm:hidden" />
+              <School size={18} className="hidden sm:block" />
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Total Sections</span>
+            <div className="sm:hidden">
+              <p className="text-xs font-bold text-white leading-tight">Total Sections</p>
+            </div>
+            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
+              Rosters
+            </span>
           </div>
-          <div>
-            <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums">{classes.length}</p>
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">Class Sections</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Configured academic rosters</p>
+
+          {/* Mobile Right / Desktop Bottom */}
+          <div className="flex items-center gap-2 sm:block relative z-10 min-w-0">
+            <p className="text-xl sm:text-3xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{classes.length}</p>
+            <span className="sm:hidden px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
+              Rosters
+            </span>
+            <p className="text-xs font-bold text-white/95 mt-1.5 truncate hidden sm:block">Total Class Sections</p>
+            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Configured academic cohorts</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-              <UserCheck size={18} />
+        {/* Card 2: Assigned Sections (Green Gradient) */}
+        <div className="group relative bg-gradient-to-br from-[#75D06A] via-[#52B847] to-[#36962C] shadow-[0_8px_24px_-6px_rgba(82,184,71,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(82,184,71,0.52)] border border-white/25 rounded-xl sm:rounded-2xl p-2 sm:p-5 flex flex-col justify-between col-span-1 min-h-[58px] sm:min-h-[120px] transition-all duration-300 ease-out overflow-hidden">
+          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white/15 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+
+          <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-3">
+            <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+              <UserCheck size={13} className="sm:hidden" />
+              <UserCheck size={18} className="hidden sm:block" />
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+            <span className="px-1.5 sm:px-2.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
               Assigned
             </span>
           </div>
-          <div>
-            <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums">{withManagerCount}</p>
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">With Assigned Manager</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Faculty ownership active</p>
+          <div className="relative z-10 min-w-0">
+            <p className="text-lg sm:text-3xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{withManagerCount}</p>
+            <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-0.5 sm:mt-1.5 truncate">With Manager</p>
+            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Active teacher ownership</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
-              <Users size={18} />
+        {/* Card 3: Unassigned Sections (Amber Gradient) */}
+        <div className="group relative bg-gradient-to-br from-[#FFB356] via-[#F29424] to-[#D97706] shadow-[0_8px_24px_-6px_rgba(242,148,36,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(242,148,36,0.52)] border border-white/25 rounded-xl sm:rounded-2xl p-2 sm:p-5 flex flex-col justify-between col-span-1 min-h-[58px] sm:min-h-[120px] transition-all duration-300 ease-out overflow-hidden">
+          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white/15 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+
+          <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-3">
+            <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+              <Users size={13} className="sm:hidden" />
+              <Users size={18} className="hidden sm:block" />
             </div>
-            <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-              unassignedCount > 0 
-                ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800' 
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600'
-            }`}>
-              {unassignedCount > 0 ? 'Pending Action' : 'All Set'}
+            <span className="px-1.5 sm:px-2.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
+              {unassignedCount > 0 ? 'Pending' : 'Clear'}
             </span>
           </div>
-          <div>
-            <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums">{unassignedCount}</p>
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">Unassigned Sections</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Awaiting teacher assignment</p>
+          <div className="relative z-10 min-w-0">
+            <p className="text-lg sm:text-3xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{unassignedCount}</p>
+            <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-0.5 sm:mt-1.5 truncate">Unassigned</p>
+            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Awaiting teacher assignment</p>
           </div>
         </div>
       </div>
 
-      {/* Class List & Filter Container */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm overflow-hidden flex flex-col">
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/60">
+      {/* ── Class List & Filter Container ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+        <div className="p-4 sm:p-5 border-b border-purple-100/70 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-purple-50/60 via-indigo-50/30 to-slate-50 dark:from-purple-950/20 dark:via-slate-800/80 dark:to-slate-800/80">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Class Roster & Section Managers</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Assign faculty managers to supervise grade level sections</p>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#9956DE]" />
+              Class Rosters & Faculty Assignments
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Assign faculty managers to supervise grade level sections</p>
           </div>
           
-          <div className="relative w-full sm:w-[260px]">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <div className="relative w-full sm:w-[280px]">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Filter classes or managers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+              className="w-full pl-9 pr-8 py-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#9956DE] focus:ring-1 focus:ring-[#9956DE] text-slate-800 dark:text-slate-100 placeholder:text-slate-400 font-medium transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                aria-label="Clear filter"
               >
                 <FilterX size={14} />
               </button>
@@ -193,52 +219,61 @@ const AdminClassManagement: React.FC = () => {
           </div>
         </div>
 
-        <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {filteredClasses.length === 0 ? (
-            <div className="px-6 py-14 text-center text-slate-400">
-              <School size={32} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-              <p className="text-xs font-medium">No class sections match your filter.</p>
+            <div className="px-6 py-16 text-center text-slate-400">
+              <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center mx-auto mb-3 text-[#9956DE]">
+                <School size={28} />
+              </div>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No class sections match your filter.</p>
+              <p className="text-[11px] text-slate-400 mt-1">Try broadening your search term.</p>
             </div>
           ) : filteredClasses.map(cls => (
-            <div key={cls.id} className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors">
+            <div
+              key={cls.id}
+              className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 hover:bg-purple-50/30 dark:hover:bg-purple-950/15 transition-all group relative border-l-4 border-l-transparent hover:border-l-[#9956DE]"
+            >
               <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{cls.name}</p>
+                <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-[#8643C8] dark:group-hover:text-purple-400 transition-colors">{cls.name}</p>
                   {cls.gradeLevel && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-[#9956DE] dark:text-purple-300 border border-purple-200/70 dark:border-purple-800/60 shadow-xs">
                       {cls.gradeLevel}
                     </span>
                   )}
                   {cls.section && (
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/60 shadow-xs">
                       Section {cls.section}
                     </span>
                   )}
                 </div>
                 
-                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                   {cls.studentCount !== undefined && (
-                    <span className="tabular-nums font-medium">{cls.studentCount} enrolled students</span>
+                    <span className="tabular-nums font-bold text-slate-700 dark:text-slate-300">{cls.studentCount} enrolled learners</span>
                   )}
                   {cls.managerName ? (
-                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                      <CheckCircle2 size={13} />
+                    <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                      <CheckCircle2 size={12} />
                       Manager: {cls.managerName}
                     </span>
                   ) : (
-                    <span className="text-amber-600 dark:text-amber-400 font-medium">No manager assigned</span>
+                    <span className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/60">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Pending Manager Assignment
+                    </span>
                   )}
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                <div className="relative flex-1 sm:w-[240px]">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
+                <div className="relative flex-1 sm:w-[250px]">
                   <select
                     value={selectedManagers[cls.id] || ''}
                     onChange={(e) => setSelectedManagers(prev => ({ ...prev, [cls.id]: e.target.value }))}
-                    className="appearance-none bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-xl pl-3 pr-8 py-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 w-full min-h-[44px]"
+                    className="appearance-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl pl-3 pr-8 py-2.5 outline-none focus:border-[#9956DE] focus:ring-1 focus:ring-[#9956DE] w-full min-h-[44px] transition-all"
                   >
-                    <option value="">Select teacher...</option>
+                    <option value="">Select faculty educator...</option>
                     {teachers.map(t => (
                       <option key={t.uid} value={t.uid}>{t.name} ({t.email})</option>
                     ))}
@@ -248,7 +283,7 @@ const AdminClassManagement: React.FC = () => {
                 <button
                   onClick={() => handleAssignManager(cls.id)}
                   disabled={!selectedManagers[cls.id] || assigning === cls.id}
-                  className="px-4 py-2.5 min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl disabled:opacity-50 transition-colors whitespace-nowrap flex items-center justify-center shrink-0 shadow-sm"
+                  className="px-4 py-2.5 min-h-[44px] bg-gradient-to-r from-[#9956DE] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-all whitespace-nowrap flex items-center justify-center shrink-0 shadow-sm shadow-purple-500/25 active:scale-95"
                 >
                   {assigning === cls.id ? 'Assigning...' : 'Assign Manager'}
                 </button>
