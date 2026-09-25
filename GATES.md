@@ -868,3 +868,25 @@ Scope: Wire the existing Wave-1 unlock selector, MicroLessonDeck, and honest-XP 
 
 ABANDON: T6-G5 The TypeScript LSP server is not installed and the existing user preference declines installation; scoped tsc validation is recorded instead.
 
+## Teacher Profile & Settings UI Overhaul (Mirroring Admin Redesign)
+
+- [ ] T-G1: Create `TeacherIDCard.tsx` with 3D flip card, STEM faculty badge, DepEd accreditation, photo cell with upload trigger, and QR verification.
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+
+- [ ] T-G2: Create `TeacherProfilePage.tsx` with back navigation, discard modal guard, 2-column layout, and teacher academic credentials editor.
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+
+- [ ] T-G3: Create `TeacherSettingsPage.tsx` with 4 tabs (Appearance, Notifications, Security, Data Management) and dirty save handling.
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+
+- [ ] T-G4: Integrate `TeacherProfilePage` and `TeacherSettingsPage` into `TeacherDashboard.tsx` and `src/App.tsx` replacing modal popups with full-page navigation.
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+
+- [ ] T-G5: Full verification: TypeScript typecheck and oxlint anti-slop pass with 0 errors.
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+

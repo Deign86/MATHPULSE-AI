@@ -107,12 +107,15 @@ import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsE
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 import DataImportView from '../features/DataImport/DataImportView';
 import { subscribeToUserCalendarEvents } from '../services/calendarService';
-import type { CalendarEvent } from '../types/models';
+import type { CalendarEvent, UserSettings, TeacherProfile } from '../types/models';
 import CreateStudentAccountModal, {
   type CreateStudentAccountSeed,
 } from './CreateStudentAccountModal';
 import { recordGet } from '../utils/memberOf';
 import { TeacherStatCard, RadialScoreRing } from './TeacherStatCard';
+import type { ProfileData } from './SettingsPage';
+import TeacherProfilePage from './teacher/TeacherProfilePage';
+import TeacherSettingsPage from './teacher/TeacherSettingsPage';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -122,6 +125,13 @@ interface TeacherDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
+  profileData?: ProfileData;
+  onSaveProfile?: (data: ProfileData) => Promise<void> | void;
+  userSettings?: UserSettings;
+  onSaveSettings?: (settings: Partial<UserSettings>) => Promise<void>;
+  onApplySettingsPreview?: (settings: UserSettings) => void;
+  onExportData?: () => Promise<void>;
+  onClearCache?: () => Promise<void>;
 }
 
 type View =
@@ -135,7 +145,9 @@ type View =
   | 'notifications'
   | 'calendar'
   | 'quiz_maker'
-  | 'question_bank';
+  | 'question_bank'
+  | 'profile'
+  | 'settings';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -660,9 +672,57 @@ function mergeStudentViews(primary: StudentView[], imported: StudentView[]): Stu
   return Array.from(merged.values());
 }
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
+  onLogout,
+  onOpenProfile,
+  onOpenSettings,
+  profileData,
+  onSaveProfile,
+  userSettings,
+  onSaveSettings,
+  onApplySettingsPreview,
+  onExportData,
+  onClearCache,
+}) => {
   const { currentUser, userProfile } = useAuth();
   const [activeView, setActiveView] = useState<View>('dashboard');
+  const [previousView, setPreviousView] = useState<View>('dashboard');
+
+  const fallbackProfileData = useMemo<ProfileData>(() => {
+    const isTeacher = userProfile?.role === 'teacher';
+    // SAFETY: Role check validates that userProfile conforms to TeacherProfile
+    const teacherUser = isTeacher ? (userProfile as TeacherProfile) : null;
+    return {
+      uid: currentUser?.uid,
+      name: userProfile?.name || 'Mathematics Educator',
+      email: currentUser?.email || userProfile?.email || 'teacher@mathpulse.ai',
+      phone: userProfile?.phone || '',
+      role: 'teacher',
+      department: teacherUser?.department || 'Senior High School STEM Department',
+      subject: teacherUser?.subject || 'General Mathematics & Pre-Calculus',
+      position: 'Senior High School Mathematics Faculty',
+      school: 'Senior High School',
+      yearsOfExperience: teacherUser?.yearsOfExperience || '5+ Years',
+      qualification: teacherUser?.qualification || 'B.S. Secondary Education (Mathematics)',
+      lrn: teacherUser?.teacherId || (currentUser?.uid ? `TCH-${currentUser.uid.slice(0, 6).toUpperCase()}` : 'TCH-2025-001'),
+      photo: userProfile?.photo || '',
+      gender: userProfile?.gender || 'male',
+    };
+  }, [currentUser?.uid, currentUser?.email, userProfile]);
+
+  const effectiveProfileData = profileData ?? fallbackProfileData;
+
+  const handleNavigateToProfile = useCallback(() => {
+    setPreviousView((prev) => (prev !== 'profile' && prev !== 'settings' ? prev : 'dashboard'));
+    setActiveView('profile');
+    onOpenProfile?.();
+  }, [onOpenProfile]);
+
+  const handleNavigateToSettings = useCallback(() => {
+    setPreviousView((prev) => (prev !== 'profile' && prev !== 'settings' ? prev : 'dashboard'));
+    setActiveView('settings');
+    onOpenSettings?.();
+  }, [onOpenSettings]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -1833,7 +1893,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator className="my-1 bg-slate-200/60 dark:bg-white/10" />
                       <DropdownMenuItem
-                        onClick={onOpenProfile}
+                        onClick={handleNavigateToProfile}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 transition-colors cursor-pointer"
                       >
                         <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
@@ -1842,7 +1902,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                         <span>My Profile</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={onOpenSettings}
+                        onClick={handleNavigateToSettings}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 transition-colors cursor-pointer"
                       >
                         <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
@@ -1919,7 +1979,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     managerUpdating={managerUpdating}
                     onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     classColor={effectiveClassColor}
                     insightDismissed={insightDismissed}
                     onOpenInsightModal={() => setInsightModalOpen(true)}
@@ -1979,7 +2039,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   <TopicMasteryView
                     classSectionId={selectedClassSectionId}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     activeTab={topicMasteryTab}
                     onTabChange={setTopicMasteryTab}
                     teacherId={currentUser?.uid || ''}
@@ -1992,7 +2052,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     fallbackStudents={students}
                     onBack={() => setSelectedClass(null)}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     insightDismissed={insightDismissed}
                     onOpenInsightModal={() => setInsightModalOpen(true)}
                   />
@@ -2002,7 +2062,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     classes={managedClasses}
                     onSelectClass={(cls) => setSelectedClass(cls)}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     insightDismissed={insightDismissed}
                     onOpenInsightModal={() => setInsightModalOpen(true)}
                     viewType="competency"
@@ -2027,7 +2087,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     onStudentsUpdated={(updated) => setStudents(updated)}
                     onBackToClasses={() => setActiveView('dashboard')}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
                     onNavigateToModuleAvailability={() => {
@@ -2080,7 +2140,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       .filter(s => s.riskLevel === 'high')
                       .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
                     teacherName={teacherName}
@@ -2103,7 +2163,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
                     }}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
                     teacherName={teacherName}
@@ -2112,10 +2172,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 {activeView === 'question_bank' && (
                   <QuestionBankPanel
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
                     teacherName={teacherName}
+                  />
+                )}
+                {activeView === 'profile' && (
+                  <TeacherProfilePage
+                    profileData={effectiveProfileData}
+                    onSaveProfile={onSaveProfile ?? (() => {})}
+                    onBack={() => setActiveView(previousView || 'dashboard')}
+                    previousTabName="Dashboard"
+                    onNavigateToSettings={handleNavigateToSettings}
+                  />
+                )}
+                {activeView === 'settings' && (
+                  <TeacherSettingsPage
+                    settingsData={userSettings}
+                    onSaveSettings={onSaveSettings ?? (async () => {})}
+                    onApplySettingsPreview={onApplySettingsPreview}
+                    onExportData={onExportData}
+                    onClearCache={onClearCache}
+                    onBack={() => setActiveView(previousView || 'dashboard')}
+                    previousTabName="Dashboard"
+                    onNavigateToProfile={handleNavigateToProfile}
                   />
                 )}
               </motion.div>
@@ -2381,7 +2462,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   type="button"
                   onClick={() => {
                     setOpenMobileMenu(null);
-                    if (onOpenProfile) onOpenProfile();
+                    handleNavigateToProfile();
                   }}
                   className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
                 >
@@ -2398,7 +2479,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   type="button"
                   onClick={() => {
                     setOpenMobileMenu(null);
-                    if (onOpenSettings) onOpenSettings();
+                    handleNavigateToSettings();
                   }}
                   className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
                 >
@@ -2563,7 +2644,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             >
               <DashboardRightSidebar
                 onViewCalendar={() => { setActiveView('calendar'); setShowMobileCalendar(false); }}
-                onOpenProfile={() => { onOpenProfile?.(); setShowMobileCalendar(false); }}
+                onOpenProfile={() => { handleNavigateToProfile(); setShowMobileCalendar(false); }}
                 onClose={() => setShowMobileCalendar(false)}
                 userProfile={userProfile}
                 teacherName={teacherName}
