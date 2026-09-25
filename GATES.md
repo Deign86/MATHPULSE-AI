@@ -868,3 +868,31 @@ Scope: Wire the existing Wave-1 unlock selector, MicroLessonDeck, and honest-XP 
 
 ABANDON: T6-G5 The TypeScript LSP server is not installed and the existing user preference declines installation; scoped tsc validation is recorded instead.
 
+## Teacher Profile & Settings UI Overhaul (Mirroring Admin Redesign)
+
+- [x] T-G1: Create `TeacherIDCard.tsx` with 3D flip card, STEM faculty badge, DepEd accreditation, photo cell with upload trigger, and QR verification.
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Created TeacherIDCard.tsx with interactive 3D rotation, DepEd SSHS STEM faculty pass design, QR code, and photo upload trigger.
+
+- [x] T-G2: Create `TeacherProfilePage.tsx` with back navigation, discard modal guard, 2-column layout, and teacher academic credentials editor.
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Created TeacherProfilePage.tsx with breadcrumbs, dirty change detection, discard confirmation modal, and academic credentials fields.
+
+- [x] T-G3: Create `TeacherSettingsPage.tsx` with 4 tabs (Appearance, Notifications, Security, Data Management) and dirty save handling.
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Created TeacherSettingsPage.tsx with Theme selection cards, At-Risk & Quiz notification switches, Password update with reauth, and class records export.
+
+- [x] T-G4: Integrate `TeacherProfilePage` and `TeacherSettingsPage` into `TeacherDashboard.tsx` and `src/App.tsx` replacing modal popups with full-page navigation.
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Integrated full-page views seamlessly into TeacherDashboard across desktop header, mobile bottom nav popups, and quick drawers with breadcrumb back navigation.
+
+- [x] T-G5: Full verification: TypeScript typecheck, oxlint anti-slop, and test suite pass with 0 errors.
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Both tsc and oxlint passed with exit code 0 and 0 errors; full test suite passed 56/56 test files (347 tests).
+
+

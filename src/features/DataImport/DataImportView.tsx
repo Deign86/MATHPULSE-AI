@@ -396,13 +396,13 @@ export default function DataImportView({
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed transition-all duration-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center cursor-pointer group relative overflow-hidden min-h-[195px] sm:min-h-[230px] md:h-[270px] active:scale-[0.99] ${
                   dragOver1
-                    ? 'border-[#1FA7E1] bg-[#1FA7E1]/15 shadow-md'
-                    : 'border-[#1FA7E1]/40 hover:border-[#1FA7E1] bg-gradient-to-b from-[#1FA7E1]/[0.06] via-white to-[#1FA7E1]/[0.03] hover:bg-[#1FA7E1]/10 shadow-[0_4px_16px_rgba(31,167,225,0.06)] hover:shadow-[0_8px_24px_rgba(31,167,225,0.15)] hover:-translate-y-0.5'
+                    ? 'border-[#1FA7E1] bg-sky-50 shadow-md'
+                    : 'border-slate-200 hover:border-[#1FA7E1] bg-white hover:bg-slate-50/80 shadow-xs hover:shadow-md hover:-translate-y-0.5'
                 }`}
               >
                 <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleFileUpload(f); }} className="hidden" />
 
-                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl bg-[#1FA7E1]/10 flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 shadow-xs border border-[#1FA7E1]/25 shrink-0">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl bg-sky-50 flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 shadow-xs border border-sky-100 shrink-0">
                   {uploadingClassRecords ? <span className="animate-spin text-[#1FA7E1] font-bold">...</span> : <Table className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-[#1FA7E1]" />}
                 </div>
 
@@ -419,8 +419,8 @@ export default function DataImportView({
                     <span>Choose Spreadsheet</span>
                   </div>
                   <div className="flex items-center justify-center gap-1">
-                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.csv</span>
-                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.xlsx</span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.csv</span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.xlsx</span>
                   </div>
                 </div>
               </div>
@@ -436,13 +436,13 @@ export default function DataImportView({
                 onClick={() => materialInputRef.current?.click()}
                 className={`border-2 border-dashed transition-all duration-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center cursor-pointer group relative overflow-hidden min-h-[195px] sm:min-h-[230px] md:h-[270px] active:scale-[0.99] ${
                   dragOver2
-                    ? 'border-[#9956DE] bg-[#9956DE]/15 shadow-md'
-                    : 'border-[#9956DE]/40 hover:border-[#9956DE] bg-gradient-to-b from-[#9956DE]/[0.06] via-white to-[#9956DE]/[0.03] hover:bg-[#9956DE]/10 shadow-[0_4px_16px_rgba(153,86,222,0.06)] hover:shadow-[0_8px_24px_rgba(153,86,222,0.15)] hover:-translate-y-0.5'
+                    ? 'border-[#9956DE] bg-purple-50 shadow-md'
+                    : 'border-slate-200 hover:border-[#9956DE] bg-white hover:bg-slate-50/80 shadow-xs hover:shadow-md hover:-translate-y-0.5'
                 }`}
               >
                 <input ref={materialInputRef} type="file" accept=".pdf,.docx,.txt" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleCourseMaterialUpload(f); }} className="hidden" />
 
-                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl bg-[#9956DE]/10 flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 shadow-xs border border-[#9956DE]/25 shrink-0">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 shadow-xs border border-purple-100 shrink-0">
                   {uploadingCourseMaterials ? <span className="animate-spin text-[#9956DE] font-bold">...</span> : <FileText className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-[#9956DE]" />}
                 </div>
 
@@ -459,9 +459,9 @@ export default function DataImportView({
                     <span>Choose Document</span>
                   </div>
                   <div className="flex items-center justify-center gap-1">
-                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.pdf</span>
-                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.docx</span>
-                    <span className="px-2 py-0.5 bg-slate-100/80 text-slate-500 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.txt</span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.pdf</span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.docx</span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.txt</span>
                   </div>
                 </div>
               </div>
@@ -469,9 +469,9 @@ export default function DataImportView({
 
             {/* Quick Link to Module Availability Control in Topic Mastery */}
             {onNavigateToModuleAvailability && (
-              <div className="bg-gradient-to-r from-purple-50/80 via-indigo-50/70 to-purple-50/80 rounded-[18px] p-4 border border-purple-100 shadow-[0_1px_4px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-white rounded-[18px] p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 border border-purple-100">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
@@ -482,7 +482,7 @@ export default function DataImportView({
                 <button
                   type="button"
                   onClick={onNavigateToModuleAvailability}
-                  className="self-start sm:self-auto px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-[12px] font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 shrink-0"
+                  className="self-start sm:self-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0"
                 >
                   Manage Availability
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -490,36 +490,33 @@ export default function DataImportView({
               </div>
             )}
 
-            {/* How AI Uses Data Feature Cards (Vibrant Gradients) */}
+            {/* How AI Uses Data Feature Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px]">
               {/* Smart Parsing (Blue) */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#0ea5e9] to-[#0284c7] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(14,165,233,0.2)] flex flex-col text-white group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-500/30">
-                <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full"></div>
-                <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center shrink-0 mb-3 relative z-10 transition-transform group-hover:scale-110">
-                  <ScanLine className="w-5 h-5 text-white" />
+              <div className="bg-white rounded-[16px] p-[20px] shadow-xs border border-slate-200 flex flex-col group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-200">
+                <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0 mb-3 text-sky-600 transition-transform group-hover:scale-105">
+                  <ScanLine className="w-5 h-5" />
                 </div>
-                <h4 className="font-bold text-[14px] mb-1.5 relative z-10">Smart Parsing</h4>
-                <p className="text-[12px] text-white/90 leading-relaxed relative z-10">AI automatically understands varied spreadsheet formats and maps column names securely.</p>
+                <h4 className="font-bold text-[14px] text-slate-800 mb-1.5">Smart Parsing</h4>
+                <p className="text-[12px] text-slate-500 leading-relaxed">AI automatically understands varied spreadsheet formats and maps column names securely.</p>
               </div>
               
               {/* Risk Prediction (Orange) */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#f97316] to-[#ea580c] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(249,115,22,0.2)] flex flex-col text-white group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/30">
-                <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full"></div>
-                <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center shrink-0 mb-3 relative z-10 transition-transform group-hover:scale-110">
-                  <TrendingDown className="w-5 h-5 text-white" />
+              <div className="bg-white rounded-[16px] p-[20px] shadow-xs border border-slate-200 flex flex-col group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-200">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0 mb-3 text-amber-600 transition-transform group-hover:scale-105">
+                  <TrendingDown className="w-5 h-5" />
                 </div>
-                <h4 className="font-bold text-[14px] mb-1.5 relative z-10">Risk Prediction</h4>
-                <p className="text-[12px] text-white/90 leading-relaxed relative z-10">Analyzes historical performance patterns across your data to predict at-risk students.</p>
+                <h4 className="font-bold text-[14px] text-slate-800 mb-1.5">Risk Prediction</h4>
+                <p className="text-[12px] text-slate-500 leading-relaxed">Analyzes historical performance patterns across your data to predict at-risk students.</p>
               </div>
               
               {/* Contextual AI (Purple) */}
-              <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-[16px] p-[20px] shadow-[0_4px_12px_rgba(168,85,247,0.2)] flex flex-col text-white group transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/30">
-                <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full"></div>
-                <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center shrink-0 mb-3 relative z-10 transition-transform group-hover:scale-110">
-                  <Sparkles className="w-5 h-5 text-white" />
+              <div className="bg-white rounded-[16px] p-[20px] shadow-xs border border-slate-200 flex flex-col group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-purple-200">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 mb-3 text-purple-600 transition-transform group-hover:scale-105">
+                  <Sparkles className="w-5 h-5" />
                 </div>
-                <h4 className="font-bold text-[14px] mb-1.5 relative z-10">Contextual AI</h4>
-                <p className="text-[12px] text-white/90 leading-relaxed relative z-10">Maps curriculum topics to generate highly personalized remedial lesson paths.</p>
+                <h4 className="font-bold text-[14px] text-slate-800 mb-1.5">Contextual AI</h4>
+                <p className="text-[12px] text-slate-500 leading-relaxed">Maps curriculum topics to generate highly personalized remedial lesson paths.</p>
               </div>
             </div>
 
