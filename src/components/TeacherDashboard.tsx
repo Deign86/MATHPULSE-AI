@@ -2896,8 +2896,8 @@ const DashboardView: React.FC<{
           badgeText="Active"
           icon={Users}
           value={totalStudents}
-          subtitle="Enrolled Roster"
-          footerLabel="Enrolled Roster"
+          subtitle="Enrolled Students"
+          footerLabel="Enrolled Students"
           footerBadge="Active"
           onClick={onViewAllClasses}
         />
@@ -2958,7 +2958,7 @@ const DashboardView: React.FC<{
             <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-[#9956DE] to-[#7274ED] shrink-0" />
             <div>
               <h2 className="font-display text-base sm:text-lg font-bold text-slate-900 dark:text-white">My Classes</h2>
-              <p className="font-body text-xs text-slate-500 mt-0.5 hidden sm:block">Select any class to manage rosters and student analytics</p>
+              <p className="font-body text-xs text-slate-500 mt-0.5 hidden sm:block">Select any class to manage students and class analytics</p>
             </div>
           </div>
           <button onClick={onViewAllClasses} className="font-body text-xs text-violet-600 hover:text-indigo-600 font-extrabold cursor-pointer hover:underline flex items-center gap-1 shrink-0">

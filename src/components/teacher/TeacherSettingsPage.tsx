@@ -578,7 +578,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
                         Clear Browser Cache
                       </h4>
                       <p className="text-[11px] text-rose-700/80 dark:text-rose-300/80 mt-1">
-                        Purge cached student roster indices, lesson drafts, and offline analytics. Will reload the workspace.
+                        Purge cached student indices, lesson drafts, and offline analytics. Will reload the workspace.
                       </p>
                     </div>
                     {onClearCache && (
