@@ -107,12 +107,15 @@ import { DETECTION_CONFIDENCE_THRESHOLD } from '../features/import/services/shsE
 import { parseShsWorkbook } from '../features/import/services/shsExcel/parser';
 import DataImportView from '../features/DataImport/DataImportView';
 import { subscribeToUserCalendarEvents } from '../services/calendarService';
-import type { CalendarEvent } from '../types/models';
+import type { CalendarEvent, UserSettings, TeacherProfile } from '../types/models';
 import CreateStudentAccountModal, {
   type CreateStudentAccountSeed,
 } from './CreateStudentAccountModal';
 import { recordGet } from '../utils/memberOf';
 import { TeacherStatCard, RadialScoreRing } from './TeacherStatCard';
+import type { ProfileData } from './SettingsPage';
+import TeacherProfilePage from './teacher/TeacherProfilePage';
+import TeacherSettingsPage from './teacher/TeacherSettingsPage';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -122,6 +125,13 @@ interface TeacherDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
+  profileData?: ProfileData;
+  onSaveProfile?: (data: ProfileData) => Promise<void> | void;
+  userSettings?: UserSettings;
+  onSaveSettings?: (settings: Partial<UserSettings>) => Promise<void>;
+  onApplySettingsPreview?: (settings: UserSettings) => void;
+  onExportData?: () => Promise<void>;
+  onClearCache?: () => Promise<void>;
 }
 
 type View =
@@ -135,7 +145,9 @@ type View =
   | 'notifications'
   | 'calendar'
   | 'quiz_maker'
-  | 'question_bank';
+  | 'question_bank'
+  | 'profile'
+  | 'settings';
 
 // Local view types mapped from service types
 interface ClassView {
@@ -660,9 +672,57 @@ function mergeStudentViews(primary: StudentView[], imported: StudentView[]): Stu
   return Array.from(merged.values());
 }
 
-const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenProfile, onOpenSettings }) => {
+const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
+  onLogout,
+  onOpenProfile,
+  onOpenSettings,
+  profileData,
+  onSaveProfile,
+  userSettings,
+  onSaveSettings,
+  onApplySettingsPreview,
+  onExportData,
+  onClearCache,
+}) => {
   const { currentUser, userProfile } = useAuth();
   const [activeView, setActiveView] = useState<View>('dashboard');
+  const [previousView, setPreviousView] = useState<View>('dashboard');
+
+  const fallbackProfileData = useMemo<ProfileData>(() => {
+    const isTeacher = userProfile?.role === 'teacher';
+    // SAFETY: Role check validates that userProfile conforms to TeacherProfile
+    const teacherUser = isTeacher ? (userProfile as TeacherProfile) : null;
+    return {
+      uid: currentUser?.uid,
+      name: userProfile?.name || 'Mathematics Educator',
+      email: currentUser?.email || userProfile?.email || 'teacher@mathpulse.ai',
+      phone: userProfile?.phone || '',
+      role: 'teacher',
+      department: teacherUser?.department || 'Senior High School STEM Department',
+      subject: teacherUser?.subject || 'General Mathematics & Pre-Calculus',
+      position: 'Senior High School Mathematics Faculty',
+      school: 'Senior High School',
+      yearsOfExperience: teacherUser?.yearsOfExperience || '5+ Years',
+      qualification: teacherUser?.qualification || 'B.S. Secondary Education (Mathematics)',
+      lrn: teacherUser?.teacherId || (currentUser?.uid ? `TCH-${currentUser.uid.slice(0, 6).toUpperCase()}` : 'TCH-2025-001'),
+      photo: userProfile?.photo || '',
+      gender: userProfile?.gender || 'male',
+    };
+  }, [currentUser?.uid, currentUser?.email, userProfile]);
+
+  const effectiveProfileData = profileData ?? fallbackProfileData;
+
+  const handleNavigateToProfile = useCallback(() => {
+    setPreviousView((prev) => (prev !== 'profile' && prev !== 'settings' ? prev : 'dashboard'));
+    setActiveView('profile');
+    onOpenProfile?.();
+  }, [onOpenProfile]);
+
+  const handleNavigateToSettings = useCallback(() => {
+    setPreviousView((prev) => (prev !== 'profile' && prev !== 'settings' ? prev : 'dashboard'));
+    setActiveView('settings');
+    onOpenSettings?.();
+  }, [onOpenSettings]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -1833,7 +1893,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator className="my-1 bg-slate-200/60 dark:bg-white/10" />
                       <DropdownMenuItem
-                        onClick={onOpenProfile}
+                        onClick={handleNavigateToProfile}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 transition-colors cursor-pointer"
                       >
                         <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
@@ -1842,7 +1902,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                         <span>My Profile</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={onOpenSettings}
+                        onClick={handleNavigateToSettings}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-600 dark:hover:text-purple-300 transition-colors cursor-pointer"
                       >
                         <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
@@ -1919,7 +1979,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     managerUpdating={managerUpdating}
                     onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     classColor={effectiveClassColor}
                     insightDismissed={insightDismissed}
                     onOpenInsightModal={() => setInsightModalOpen(true)}
@@ -1979,7 +2039,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   <TopicMasteryView
                     classSectionId={selectedClassSectionId}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     activeTab={topicMasteryTab}
                     onTabChange={setTopicMasteryTab}
                     teacherId={currentUser?.uid || ''}
@@ -1992,7 +2052,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     fallbackStudents={students}
                     onBack={() => setSelectedClass(null)}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     insightDismissed={insightDismissed}
                     onOpenInsightModal={() => setInsightModalOpen(true)}
                   />
@@ -2002,7 +2062,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     classes={managedClasses}
                     onSelectClass={(cls) => setSelectedClass(cls)}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     insightDismissed={insightDismissed}
                     onOpenInsightModal={() => setInsightModalOpen(true)}
                     viewType="competency"
@@ -2027,7 +2087,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                     onStudentsUpdated={(updated) => setStudents(updated)}
                     onBackToClasses={() => setActiveView('dashboard')}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
                     onNavigateToModuleAvailability={() => {
@@ -2080,7 +2140,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       .filter(s => s.riskLevel === 'high')
                       .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
                     teacherName={teacherName}
@@ -2103,7 +2163,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                       setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
                     }}
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
                     teacherName={teacherName}
@@ -2112,10 +2172,31 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                 {activeView === 'question_bank' && (
                   <QuestionBankPanel
                     onOpenNotifications={() => setActiveView('notifications')}
-                    onOpenProfile={onOpenProfile}
+                    onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
                     teacherName={teacherName}
+                  />
+                )}
+                {activeView === 'profile' && (
+                  <TeacherProfilePage
+                    profileData={effectiveProfileData}
+                    onSaveProfile={onSaveProfile ?? (() => {})}
+                    onBack={() => setActiveView(previousView || 'dashboard')}
+                    previousTabName="Dashboard"
+                    onNavigateToSettings={handleNavigateToSettings}
+                  />
+                )}
+                {activeView === 'settings' && (
+                  <TeacherSettingsPage
+                    settingsData={userSettings}
+                    onSaveSettings={onSaveSettings ?? (async () => {})}
+                    onApplySettingsPreview={onApplySettingsPreview}
+                    onExportData={onExportData}
+                    onClearCache={onClearCache}
+                    onBack={() => setActiveView(previousView || 'dashboard')}
+                    previousTabName="Dashboard"
+                    onNavigateToProfile={handleNavigateToProfile}
                   />
                 )}
               </motion.div>
@@ -2381,7 +2462,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   type="button"
                   onClick={() => {
                     setOpenMobileMenu(null);
-                    if (onOpenProfile) onOpenProfile();
+                    handleNavigateToProfile();
                   }}
                   className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
                 >
@@ -2398,7 +2479,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
                   type="button"
                   onClick={() => {
                     setOpenMobileMenu(null);
-                    if (onOpenSettings) onOpenSettings();
+                    handleNavigateToSettings();
                   }}
                   className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
                 >
@@ -2563,7 +2644,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({ onLogout, onOpenPro
             >
               <DashboardRightSidebar
                 onViewCalendar={() => { setActiveView('calendar'); setShowMobileCalendar(false); }}
-                onOpenProfile={() => { onOpenProfile?.(); setShowMobileCalendar(false); }}
+                onOpenProfile={() => { handleNavigateToProfile(); setShowMobileCalendar(false); }}
                 onClose={() => setShowMobileCalendar(false)}
                 userProfile={userProfile}
                 teacherName={teacherName}
@@ -2815,8 +2896,8 @@ const DashboardView: React.FC<{
           badgeText="Active"
           icon={Users}
           value={totalStudents}
-          subtitle="Enrolled Roster"
-          footerLabel="Enrolled Roster"
+          subtitle="Enrolled Students"
+          footerLabel="Enrolled Students"
           footerBadge="Active"
           onClick={onViewAllClasses}
         />
@@ -2877,7 +2958,7 @@ const DashboardView: React.FC<{
             <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-[#9956DE] to-[#7274ED] shrink-0" />
             <div>
               <h2 className="font-display text-base sm:text-lg font-bold text-slate-900 dark:text-white">My Classes</h2>
-              <p className="font-body text-xs text-slate-500 mt-0.5 hidden sm:block">Select any class to manage rosters and student analytics</p>
+              <p className="font-body text-xs text-slate-500 mt-0.5 hidden sm:block">Select any class to manage students and class analytics</p>
             </div>
           </div>
           <button onClick={onViewAllClasses} className="font-body text-xs text-violet-600 hover:text-indigo-600 font-extrabold cursor-pointer hover:underline flex items-center gap-1 shrink-0">
@@ -3701,21 +3782,67 @@ const AnalyticsView: React.FC<{
         className="p-3 sm:p-[24px] xl:p-[32px] space-y-3 sm:space-y-[24px] h-full overflow-y-auto pb-32 sm:pb-36 lg:pb-12"
       >
         {/* Analytics Sub-Header Toolbar with Class Switcher */}
-        <div className="flex items-center justify-between gap-3 mb-3 sm:mb-5">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-5">
+          <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0 w-full sm:w-auto">
             <button
               onClick={onBack}
-              className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-slate-700 hover:text-indigo-600 bg-white/90 hover:bg-white px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-slate-200/80 shadow-sm backdrop-blur-md transition-all active:scale-95 shrink-0"
+              className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-slate-700 hover:text-indigo-600 bg-white/90 hover:bg-white px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-slate-200/80 shadow-xs backdrop-blur-md transition-all active:scale-95 shrink-0"
             >
               <ChevronLeft size={15} />
               <span>Dashboard</span>
             </button>
 
-            {/* Class Switcher Pill */}
+            {/* Class Switcher Pill on desktop */}
+            <div className="hidden sm:flex items-center min-w-0">
+              {allClasses.length > 1 ? (
+                <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-1.5 sm:py-2 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 max-w-[260px] sm:max-w-xs min-w-0">
+                  <BookOpen size={14} className="text-indigo-600 mr-2 shrink-0" />
+                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1.5 hidden md:inline shrink-0">Class:</span>
+                  <select
+                    value={selectedClass.id}
+                    onChange={(e) => {
+                      const match = allClasses.find((c) => c.id === e.target.value);
+                      if (match && onSelectClass) {
+                        onSelectClass(match);
+                      }
+                    }}
+                    aria-label="Select class to view analytics"
+                    className="appearance-none bg-transparent text-xs sm:text-[13px] font-bold text-slate-800 border-none focus:outline-none cursor-pointer pr-6 truncate w-full min-w-0"
+                  >
+                    {allClasses.map((c) => (
+                      <option key={c.id} value={c.id} className="text-slate-800 font-medium">
+                        {c.name} ({countResolvedStudentsForClass(c, allStudents)} students)
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="text-slate-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-xl px-3 py-1.5 sm:py-2 shadow-xs">
+                  <BookOpen size={14} className="text-indigo-600 shrink-0" />
+                  <span className="text-xs sm:text-[13px] font-semibold text-slate-800 truncate max-w-[200px]">{selectedClass.name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* New Class on mobile: right aligned on top row */}
+            {onCreateClass && (
+              <button
+                onClick={onCreateClass}
+                className="sm:hidden flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-3 py-1.5 rounded-xl border border-indigo-200/60 shadow-xs transition-all active:scale-95 shrink-0"
+              >
+                <Plus size={14} />
+                <span>New Class</span>
+              </button>
+            )}
+          </div>
+
+          {/* Class Switcher Pill on mobile: full width second row without overlapping */}
+          <div className="sm:hidden w-full min-w-0">
             {allClasses.length > 1 ? (
-              <div className="relative inline-flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-1.5 sm:py-2 shadow-sm transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 max-w-[260px] sm:max-w-xs">
+              <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-2 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 w-full min-w-0">
                 <BookOpen size={14} className="text-indigo-600 mr-2 shrink-0" />
-                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1.5 hidden md:inline shrink-0">Class:</span>
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1.5 shrink-0">Class:</span>
                 <select
                   value={selectedClass.id}
                   onChange={(e) => {
@@ -3725,7 +3852,7 @@ const AnalyticsView: React.FC<{
                     }
                   }}
                   aria-label="Select class to view analytics"
-                  className="appearance-none bg-transparent text-xs sm:text-[13px] font-bold text-slate-800 border-none focus:outline-none cursor-pointer pr-6 truncate w-full"
+                  className="appearance-none bg-transparent text-xs font-bold text-slate-800 border-none focus:outline-none cursor-pointer pr-6 truncate w-full min-w-0"
                 >
                   {allClasses.map((c) => (
                     <option key={c.id} value={c.id} className="text-slate-800 font-medium">
@@ -3736,18 +3863,19 @@ const AnalyticsView: React.FC<{
                 <ChevronDown size={13} className="text-slate-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
               </div>
             ) : (
-              <div className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-xl px-3 py-1.5 sm:py-2 shadow-sm">
+              <div className="flex items-center gap-1.5 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-xl px-3 py-2 shadow-xs w-full">
                 <BookOpen size={14} className="text-indigo-600 shrink-0" />
-                <span className="text-xs sm:text-[13px] font-semibold text-slate-800 truncate max-w-[200px]">{selectedClass.name}</span>
+                <span className="text-xs font-semibold text-slate-800 truncate">{selectedClass.name}</span>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          {/* New Class on desktop */}
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             {onCreateClass && (
               <button
                 onClick={onCreateClass}
-                className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-indigo-200/60 shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-indigo-200/60 shadow-xs transition-all active:scale-95"
               >
                 <Plus size={14} />
                 <span>New Class</span>
