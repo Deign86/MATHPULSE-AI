@@ -110,7 +110,7 @@ const ADMIN_TAB_META: Record<AdminTab, { title: string; subtitle: string }> = {
   'User Management': { title: 'User Management', subtitle: 'Manage all user accounts and roles.' },
   'Class Management': {
     title: 'Class Management',
-    subtitle: 'Assign section managers and manage class rosters.',
+    subtitle: 'Assign section managers and manage class students.',
   },
   Subjects: {
     title: 'Curriculum Control',

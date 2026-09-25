@@ -274,7 +274,7 @@ export const CreateStudentAccountModal: React.FC<CreateStudentAccountModalProps>
 
             <div className="px-6 py-5 space-y-4">
               <div className="bg-white border border-[#e2e8f0] rounded-2xl p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">Roster Row</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">Student Record</p>
                 <p className="text-[14px] font-semibold text-[#0a1628] mt-1">{seed.name}</p>
                 <p className="text-[12px] text-[#475569] mt-0.5">
                   {seed.lrn ? `LRN ${seed.lrn} · ` : ''}

@@ -458,10 +458,10 @@ const StudentCompetencyTable: React.FC<{
             expanded: false,
           }));
         setRows(fallbackRows);
-        setStudentsWarning('Showing recently imported students while backend roster sync catches up.');
+        setStudentsWarning('Showing recently imported students while backend student sync catches up.');
       } else {
         setRows([]);
-        setStudentsWarning('Student competency roster is unavailable right now.');
+        setStudentsWarning('Student competency list is unavailable right now.');
       }
     } finally {
       setLoading(false);
@@ -703,7 +703,7 @@ const StudentCompetencyTable: React.FC<{
           icon={User}
           value={totalStudents}
           subtitle="Enrolled in Class"
-          footerLabel="Class Roster"
+          footerLabel="Class Students"
           footerBadge={`${totalStudents} active`}
         />
 
