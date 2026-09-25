@@ -50,19 +50,20 @@ const StatCard: React.FC<{
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shrink-0 ${iconThemes[variant]}`}>
-          <Icon size={18} />
+    <div className="bg-white dark:bg-slate-800/90 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between min-h-[58px] sm:min-h-[120px]">
+      <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+        <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center border shrink-0 ${iconThemes[variant]}`}>
+          <Icon size={14} className="sm:hidden" />
+          <Icon size={18} className="hidden sm:block" />
         </div>
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Security</span>
+        <span className="text-[8px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-400">Security</span>
       </div>
       <div>
-        <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums leading-none">
+        <p className="text-lg sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums leading-none">
           {value}
         </p>
-        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-2">{title}</p>
-        <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>
+        <p className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1 sm:mt-2 truncate">{title}</p>
+        <p className="text-[11px] text-slate-400 mt-0.5 hidden sm:block truncate">{subtitle}</p>
       </div>
     </div>
   );
@@ -236,7 +237,7 @@ const AdminAuditLog: React.FC = () => {
       </div>
 
       {/* ── 2. Performance Metric Bento Pods ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <StatCard
           title="Total Events"
           value={loading ? '...' : logs.length}

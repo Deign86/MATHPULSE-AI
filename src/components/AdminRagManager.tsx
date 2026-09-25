@@ -186,34 +186,36 @@ const AdminRagManager: React.FC = () => {
   return (
     <div className="space-y-6 pt-2 pb-6 max-w-[1400px] mx-auto min-w-0">
       {/* Header Stats Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-              <Database size={18} />
+      <div className="grid grid-cols-2 gap-2 sm:gap-4">
+        <div className="bg-white dark:bg-slate-800/90 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between min-h-[58px] sm:min-h-0">
+          <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Database size={14} className="sm:hidden" />
+              <Database size={18} className="hidden sm:block" />
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Vector Knowledge Base</span>
+            <span className="text-[8px] sm:text-[10px] font-semibold uppercase tracking-wider text-slate-400">Vector Store</span>
           </div>
           <div>
-            <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums">{totalChunks.toLocaleString()}</p>
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">Total Indexed Chunks</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Parsed into BAAI/bge-small vector store</p>
+            <p className="text-lg sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums leading-none sm:leading-normal">{totalChunks.toLocaleString()}</p>
+            <p className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1 truncate">Indexed Chunks</p>
+            <p className="text-[11px] text-slate-400 mt-0.5 hidden sm:block truncate">Parsed into BAAI/bge-small vector store</p>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-              <FileText size={18} />
+        <div className="bg-white dark:bg-slate-800/90 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex flex-col justify-between min-h-[58px] sm:min-h-0">
+          <div className="flex items-center justify-between mb-1.5 sm:mb-3">
+            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <FileText size={14} className="sm:hidden" />
+              <FileText size={18} className="hidden sm:block" />
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-              Curriculum Ready
+            <span className="text-[8px] sm:text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+              Ready
             </span>
           </div>
           <div>
-            <p className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums">{subjectGroups.length}</p>
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1">Configured Subjects</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Active knowledge namespaces</p>
+            <p className="text-lg sm:text-3xl font-display font-bold text-slate-900 dark:text-white tabular-nums leading-none sm:leading-normal">{subjectGroups.length}</p>
+            <p className="text-[10px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1 truncate">Active Subjects</p>
+            <p className="text-[11px] text-slate-400 mt-0.5 hidden sm:block truncate">Active knowledge namespaces</p>
           </div>
         </div>
       </div>
