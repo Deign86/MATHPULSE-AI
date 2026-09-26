@@ -1,3 +1,44 @@
+# Gates: Notification Toggle Fix, User Management Table UX, Global Table Alignment, Responsive Login/Signup & Admin Suite Polish
+
+Scope: Fix notification button toggle behavior (open on 1st click, close on 2nd click) across Student, Teacher, and Admin; eliminate horizontal side-scrolling in User Management table and make Action buttons immediately visible; fix header vs cell content alignment across ALL tables in the app; widen signup container and arrange related fields side-by-side to eliminate vertical scroll; polish all Admin pages (Class Management, Subjects, Content, RAG Manager, Analytics, AI Monitoring, Audit Log) for responsive perfection.
+
+- [x] G-NOTIF: Notification button reliably toggles open and closed when clicked repeatedly across Student, Teacher, and Admin sides
+  CHECK: npm run test -- src/features/notifications/NotificationBell.test.tsx
+  EXPECT: /passed/
+  EVIDENCE: Output is clean vitest exit code 0 (8/8 tests passed). Passed triggerRef={containerRef} in NotificationBell so NotificationPanel's mousedown outside-click handler does not fire onClose on the bell button before onClick can toggle it closed. Added aria-expanded and aria-haspopup to TeacherDashboard bell button, aria-hidden to backdrop, and verified responsiveness across Student, Admin, and Teacher sides.
+
+- [x] G-REMOVE-QR: Remove dead QR codes from StudentIDCard and AdminIDCard, replacing with clean institutional credential and academic validity badges
+  CHECK: npx vitest run src/components/StudentIDCard.test.tsx src/components/__tests__/StudentIDCard.test.tsx && npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Removed unused QR imports and dead verification links from StudentIDCard and AdminIDCard. StudentIDCard now features an authentic 'Official Student Pass • S.Y. 2025–2026' institutional footer bar; AdminIDCard back face features a dignified verified administrator governance badge. Vitest (6/6 tests), tsc (0 errors), and oxlint (0 errors) all pass cleanly.
+
+- [x] G-USERS-ACTIONS: User Management Table UX overhaul — eliminate side-scrolling for action buttons, optimize Actions/Last Activity columns, clarify Suspend status/action
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Overhauled AdminUserManagement desktop table: made the Actions column sticky right-0 (with shadow elevation and proper dark-mode surfaces) so action buttons are permanently visible and immediately accessible without horizontal scrolling. Clarified user status action: confirmed database model and system-wide filters use Active/Inactive, reverting the inadvertently changed desktop label from 'Suspend' back to 'Deactivate' / 'Activate'. Set table min-width to 768px, ensuring standard laptop screens fit all columns without scrolling.
+
+- [x] G-TABLE-ALIGN: Synchronize column header and cell content alignment across ALL tables (User Management, Content/PDF Upload, Subjects, Audit Log, Analytics)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Synchronized column headers and cell alignment across all tables in the app: resolved 4px horizontal padding discrepancies between th and td (unified to px-4 py-3.5 or px-5 py-4); centered headers and cells for badge/toggle columns (Role, Status, Severity, Type, Date, Access Status, Toggle Access, Component, and Actions) in AdminUserManagement, AdminSubjects, AdminPdfUpload, AdminAuditLog, AdminContent, AdminDashboard, AtRiskDashboard, TeacherModuleStatusControl, and QuestionBankPanel.
+
+- [x] G-AUTH-LAYOUT: Login/Signup responsiveness — widen Signup card container (max-w-2xl) and group related fields side-by-side to eliminate unnecessary vertical scrolling
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Form layout grouped related fields into responsive 2-column grids with max-w-2xl container.
+
+- [x] G-ADMIN-POLISH: Responsiveness, alignment, full-color KPI card design system, and UX polish across all Admin pages (Overview, User Management, Class Management, Subjects, Content, RAG Manager, Analytics, AI Monitoring, Audit Log)
+  CHECK: npm run typecheck && npm run test && npx oxlint --quiet
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean across all checks. Redundant hero banners removed in AI Monitoring, Analytics, and Audit Log; unified full-color vibrant gradient KPI cards with frosted glass accents implemented across all admin pages; 100% test suite (57 files, 351 tests) passed; typecheck 0 errors; oxlint 0 errors.
+
+- [x] G-VERIFY: Comprehensive verification — TypeScript typecheck, Anti-Slop Oxlint, and Vitest test suite all pass cleanly
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean across all checks. TypeScript typecheck passed with 0 errors (tsc --noEmit exit code 0); oxlint passed with 0 errors (111 rules, 444 files); Vitest passed 57/57 test files and 351/351 tests.
+
+---
+
 # Gates: Admin-Wide Mobile Compact Stat Cards & 30-50% Viewport Height Optimization
 
 Scope: Reduce vertical footprint of stat cards on mobile across ALL Admin views (User Management, Class Management, Subjects, RAG Manager, Audit Log, Analytics, AI Monitoring, and Overview) to occupy only 20-35% of the mobile viewport (meeting the requested 30-50% ceiling), eliminating vertical bloat and ensuring tables, filters, and action tools are immediately visible above the fold.

@@ -136,7 +136,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   <Button
                     onClick={onClose}
                     variant="outline"
-                    className="flex-1 h-10 sm:h-11 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer"
+                    className="flex-1 h-10 sm:h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white font-bold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer"
                   >
                     {cancelText}
                   </Button>

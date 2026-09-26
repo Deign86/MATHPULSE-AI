@@ -94,7 +94,7 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 lg:space-y-6 min-h-[calc(100vh-80px)]">
+    <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300 min-h-[calc(100vh-80px)]">
       {/* Navigation Header */}
       {onBack && (
         <div className="flex items-center justify-between gap-3">

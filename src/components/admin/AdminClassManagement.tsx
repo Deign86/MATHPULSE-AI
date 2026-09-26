@@ -111,7 +111,7 @@ const AdminClassManagement: React.FC = () => {
   const unassignedCount = classes.filter(c => !c.managerId).length;
 
   return (
-    <div className="space-y-6 pt-4 pb-6 max-w-[1400px] mx-auto min-w-0 animate-in fade-in duration-500">
+    <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {/* ── Teacher-Inspired Stats Bento Grid ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 px-1">
         {/* Card 1: Total Sections (Purple Gradient) */}
@@ -140,7 +140,7 @@ const AdminClassManagement: React.FC = () => {
               Rosters
             </span>
             <p className="text-xs font-bold text-white/95 mt-1.5 truncate hidden sm:block">Total Class Sections</p>
-            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Configured academic cohorts</p>
+            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Registered class sections</p>
           </div>
         </div>
 
@@ -160,8 +160,8 @@ const AdminClassManagement: React.FC = () => {
           </div>
           <div className="relative z-10 min-w-0">
             <p className="text-lg sm:text-3xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{withManagerCount}</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-0.5 sm:mt-1.5 truncate">With Manager</p>
-            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Active teacher ownership</p>
+            <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-0.5 sm:mt-1.5 truncate">With Teacher</p>
+            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Have an assigned teacher</p>
           </div>
         </div>
 
@@ -181,8 +181,8 @@ const AdminClassManagement: React.FC = () => {
           </div>
           <div className="relative z-10 min-w-0">
             <p className="text-lg sm:text-3xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{unassignedCount}</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-0.5 sm:mt-1.5 truncate">Unassigned</p>
-            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Awaiting teacher assignment</p>
+            <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-0.5 sm:mt-1.5 truncate">No Teacher</p>
+            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">No teacher assigned yet</p>
           </div>
         </div>
       </div>
@@ -231,7 +231,7 @@ const AdminClassManagement: React.FC = () => {
           ) : filteredClasses.map(cls => (
             <div
               key={cls.id}
-              className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 hover:bg-purple-50/30 dark:hover:bg-purple-950/15 transition-all group relative border-l-4 border-l-transparent hover:border-l-[#9956DE]"
+              className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 hover:bg-purple-50/25 dark:hover:bg-purple-950/10 transition-all group relative border-l-2 border-l-transparent hover:border-l-[#9956DE]"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -253,27 +253,27 @@ const AdminClassManagement: React.FC = () => {
                     <span className="tabular-nums font-bold text-slate-700 dark:text-slate-300">{cls.studentCount} enrolled learners</span>
                   )}
                   {cls.managerName ? (
-                    <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200/60">
-                      <CheckCircle2 size={12} />
-                      Manager: {cls.managerName}
+                    <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/50 text-[11px]">
+                      <CheckCircle2 size={11} />
+                      {cls.managerName}
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/60">
+                    <span className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200/60 dark:border-amber-800/50 text-[11px]">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                      Pending Manager Assignment
+                      No teacher assigned
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
-                <div className="relative flex-1 sm:w-[250px]">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-2.5 border border-slate-200/60 dark:border-slate-700/40">
+                <div className="relative flex-1 sm:w-[240px]">
                   <select
                     value={selectedManagers[cls.id] || ''}
                     onChange={(e) => setSelectedManagers(prev => ({ ...prev, [cls.id]: e.target.value }))}
-                    className="appearance-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl pl-3 pr-8 py-2.5 outline-none focus:border-[#9956DE] focus:ring-1 focus:ring-[#9956DE] w-full min-h-[44px] transition-all"
+                    className="appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-lg pl-3 pr-8 py-2.5 outline-none focus:border-[#9956DE] focus:ring-1 focus:ring-[#9956DE] w-full min-h-[40px] transition-all"
                   >
-                    <option value="">Select faculty educator...</option>
+                    <option value="">Select a teacher...</option>
                     {teachers.map(t => (
                       <option key={t.uid} value={t.uid}>{t.name} ({t.email})</option>
                     ))}
@@ -283,9 +283,9 @@ const AdminClassManagement: React.FC = () => {
                 <button
                   onClick={() => handleAssignManager(cls.id)}
                   disabled={!selectedManagers[cls.id] || assigning === cls.id}
-                  className="px-4 py-2.5 min-h-[44px] bg-gradient-to-r from-[#9956DE] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-all whitespace-nowrap flex items-center justify-center shrink-0 shadow-sm shadow-purple-500/25 active:scale-95"
+                  className="px-4 py-2.5 min-h-[40px] bg-gradient-to-r from-[#9956DE] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white text-xs font-bold rounded-lg disabled:opacity-50 transition-all whitespace-nowrap flex items-center justify-center shrink-0 shadow-sm shadow-purple-500/25 active:scale-95"
                 >
-                  {assigning === cls.id ? 'Assigning...' : 'Assign Manager'}
+                  {assigning === cls.id ? 'Assigning...' : 'Assign Teacher'}
                 </button>
               </div>
             </div>
