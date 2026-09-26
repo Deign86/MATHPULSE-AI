@@ -30,13 +30,149 @@ import {
   type CompetencyScore,
   type ProficiencyProfile,
 } from '../types/assessment';
-import { apiFetch } from './apiService';
+import { apiFetch, apiService, type WeaknessDetectionQuestion } from './apiService';
 
 // ─── Firestore Collection Names ─────────────────────────────────────────
 
 const ASSESSMENTS_COLLECTION = 'assessments';
 const COMPETENCY_PROFILES_COLLECTION = 'competencyProfiles';
 const CLASS_ASSESSMENTS_COLLECTION = 'classAssessments';
+
+type PersistedDiagnosticEnrichment = {
+  flaggedTopics: string[];
+  pCorrect?: number;
+  bloomLevel?: 0 | 1 | 2 | 3;
+  updatedAt: ReturnType<typeof serverTimestamp>;
+};
+
+type CompetencyProfileUpdate = {
+  uid: string;
+  lastAssessmentDate: Timestamp;
+  lastAssessmentType: AssessmentResult['assessmentType'];
+  overallScore: number;
+  competencies: Record<string, {
+    score: number;
+    correct: number;
+    attempted: number;
+    lastAttemptedAt: ReturnType<typeof serverTimestamp>;
+  }>;
+  primaryWeakness: string | null;
+  primaryStrength: string | null;
+  suggestedModule: string;
+  flaggedTopics: string[];
+  bloomLevel?: 0 | 1 | 2 | 3;
+  pCorrect?: number;
+  updatedAt: Timestamp;
+};
+
+type UserWeaknessUpdate = {
+  flaggedTopics: string[];
+  bloomLevel?: 0 | 1 | 2 | 3;
+  pCorrect?: number;
+  updatedAt: ReturnType<typeof serverTimestamp>;
+};
+
+export async function persistDiagnosticWeakness(uid: string, questions: WeaknessDetectionQuestion[]): Promise<void> {
+  const topicStats = new Map<string, { correct: number; total: number }>();
+  for (const question of questions) {
+    const stats = topicStats.get(question.topic_id) ?? { correct: 0, total: 0 };
+    stats.total += 1;
+    if (question.is_correct) stats.correct += 1;
+    topicStats.set(question.topic_id, stats);
+  }
+
+  const heuristicTopics = [...topicStats.entries()]
+    .filter(([, stats]) => stats.correct / stats.total < 0.6)
+    .map(([topic]) => topic);
+  let flaggedTopics = heuristicTopics;
+  let pCorrect = topicStats.get(heuristicTopics[0])
+    ? topicStats.get(heuristicTopics[0])!.correct / topicStats.get(heuristicTopics[0])!.total
+    : null;
+  let bloomLevel: 0 | 1 | 2 | 3 | undefined;
+
+  if (heuristicTopics.length > 0) {
+    try {
+      const response = await apiService.detectWeakness({ student_id: uid, questions });
+      flaggedTopics = response.flagged_topics;
+      const primaryStats = topicStats.get(flaggedTopics[0]);
+      pCorrect = primaryStats ? primaryStats.correct / primaryStats.total : pCorrect;
+      const label = response.reasoning_summary.match(/Bloom Mastery:\s*(remember|understand|apply|analyze)/i)?.[1]?.toLowerCase();
+      const bloomLevels = { remember: 0, understand: 1, apply: 2, analyze: 3 } as const;
+      if (label && label in bloomLevels) {
+        // SAFETY: the preceding membership check confirms label is a bloomLevels key.
+        bloomLevel = bloomLevels[label as keyof typeof bloomLevels];
+      }
+    } catch (error) {
+      console.warn('[assessmentService] Diagnostic weakness detection unavailable; using accuracy heuristic:', error);
+    }
+  }
+
+  const enrichment: PersistedDiagnosticEnrichment = {
+    flaggedTopics,
+    updatedAt: serverTimestamp(),
+  };
+  if (pCorrect !== null) enrichment.pCorrect = pCorrect;
+  if (bloomLevel !== undefined) enrichment.bloomLevel = bloomLevel;
+  await setDoc(doc(db, COMPETENCY_PROFILES_COLLECTION, uid), enrichment, { merge: true });
+  await updateDoc(doc(db, 'users', uid), enrichment);
+}
+
+type WeaknessEnrichment = {
+  flaggedTopics: string[];
+  pCorrect: number | null;
+  bloomLevel?: 0 | 1 | 2 | 3;
+};
+
+async function detectAssessmentWeaknesses(uid: string, assessment: AssessmentResult): Promise<WeaknessEnrichment> {
+  const heuristicTopics = Object.entries(assessment.competencyScores)
+    .filter(([, score]) => score.attempted > 0 && score.correct / score.attempted < 0.6)
+    .map(([topic]) => topic);
+  const baseEnrichment: WeaknessEnrichment = {
+    flaggedTopics: heuristicTopics,
+    pCorrect: assessment.competencyScores[heuristicTopics[0]]
+      ? assessment.competencyScores[heuristicTopics[0]].score / 100
+      : null,
+  };
+
+  if (heuristicTopics.length === 0) return baseEnrichment;
+
+  const questions = Object.entries(assessment.competencyScores).flatMap(([topic, score]) =>
+    Array.from({ length: score.attempted }, (_, index) => ({
+      question_id: `${topic}-${index + 1}`,
+      topic_id: topic,
+      quarter: 1,
+      competency_code: topic,
+      is_correct: index < score.correct,
+    })),
+  );
+
+  try {
+    const response = await apiService.detectWeakness({
+      student_id: uid,
+      questions,
+    });
+    const flaggedTopics = response.flagged_topics;
+    const primaryWeaknessScore = assessment.competencyScores[flaggedTopics[0]];
+    const bloomLabel = response.reasoning_summary.match(/Bloom Mastery:\s*(remember|understand|apply|analyze)/i)?.[1]?.toLowerCase();
+    const bloomLevels = { remember: 0, understand: 1, apply: 2, analyze: 3 } as const;
+    // SAFETY: the regex restricts bloomLabel to the keys declared in bloomLevels.
+    const bloomLevel = bloomLabel && bloomLabel in bloomLevels
+      ? bloomLevels[bloomLabel as keyof typeof bloomLevels]
+      : undefined;
+
+    const enrichment: WeaknessEnrichment = {
+      flaggedTopics,
+      pCorrect: primaryWeaknessScore && primaryWeaknessScore.attempted > 0
+        ? primaryWeaknessScore.correct / primaryWeaknessScore.attempted
+        : baseEnrichment.pCorrect,
+    };
+    if (bloomLevel !== undefined) enrichment.bloomLevel = bloomLevel;
+    return enrichment;
+  } catch (error) {
+    console.warn('[assessmentService] Weakness detection unavailable; using local accuracy heuristic:', error);
+    return baseEnrichment;
+  }
+}
 
 // ─── Type Helpers ────────────────────────────────────────────────────────
 
@@ -118,6 +254,7 @@ export const completeInitialAssessment = async (result: AssessmentResult): Promi
     initialAssessmentCompletedAt: serverTimestamp(),
     iarAssessmentState: 'completed',
   });
+  await updateCompetencyProfile(result.uid, result);
 };
 
 /**
@@ -175,6 +312,7 @@ export const updateCompetencyProfile = async (
   assessmentResult: AssessmentResult
 ): Promise<void> => {
   const { strengths, weaknesses, borderline } = assessmentResult.proficiencyProfile;
+  const enrichment = await detectAssessmentWeaknesses(uid, assessmentResult);
 
   // Calculate primary strength and weakness
   const primaryStrength = strengths.length > 0 ? strengths[0] : null;
@@ -184,7 +322,7 @@ export const updateCompetencyProfile = async (
   const suggestedModule = assessmentResult.proficiencyProfile.suggestedStartingModule;
 
   // SAFETY: serverTimestamp() sentinels are stored as Firestore Timestamps on write; competencyScores mirror the result shape.
-  const competencyProfileData = {
+  const competencyProfileData: CompetencyProfileUpdate = {
     uid,
     lastAssessmentDate: serverTimestamp() as Timestamp,
     lastAssessmentType: assessmentResult.assessmentType,
@@ -203,14 +341,24 @@ export const updateCompetencyProfile = async (
     primaryWeakness,
     primaryStrength,
     suggestedModule,
+    flaggedTopics: enrichment.flaggedTopics,
     updatedAt: serverTimestamp() as Timestamp,
   };
+  if (enrichment.bloomLevel !== undefined) competencyProfileData.bloomLevel = enrichment.bloomLevel;
+  if (enrichment.pCorrect !== null) competencyProfileData.pCorrect = enrichment.pCorrect;
 
   await setDoc(
     doc(db, COMPETENCY_PROFILES_COLLECTION, uid),
     competencyProfileData,
     { merge: true }
   );
+  const userEnrichment: UserWeaknessUpdate = {
+    flaggedTopics: enrichment.flaggedTopics,
+    updatedAt: serverTimestamp(),
+  };
+  if (enrichment.bloomLevel !== undefined) userEnrichment.bloomLevel = enrichment.bloomLevel;
+  if (enrichment.pCorrect !== null) userEnrichment.pCorrect = enrichment.pCorrect;
+  await updateDoc(doc(db, 'users', uid), userEnrichment);
 };
 
 /**
