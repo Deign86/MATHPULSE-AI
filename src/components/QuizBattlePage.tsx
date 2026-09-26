@@ -1605,49 +1605,53 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
     }
   }, [lastRoundResult, pendingMatchUpdate, playBattleTone, refreshCompletedMatchProfile]);
 
+  const syncTimeoutRoundState = useCallback(async () => {
+    if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || designPauseActive) {
+      return;
+    }
+
+    setRoundLocked(true);
+    try {
+      const latest = await getQuizBattleMatchState(activeMatch.matchId);
+      setActiveMatch(latest);
+      setSelectedOptionIndex(null);
+      setRoundLocked(false);
+      if (latest.status === 'completed') {
+        setQueueActive(false);
+        setActiveRoom(null);
+        setQueueTimeoutDeadlineAtMs(null);
+        void refreshCompletedMatchProfile();
+        setLaunchState({
+          status: 'queued',
+          message: 'Match finished. Results synchronized.',
+        });
+        return;
+      }
+      setLaunchState({
+        status: 'queued',
+        message: 'Round timed out. Synced to the latest battle state.',
+      });
+    } catch {
+      autoSubmitRetryAtMsRef.current = Date.now() + 3000;
+      setRoundLocked(false);
+      setLaunchState({
+        status: 'error',
+        message: 'Round timed out. Reconnecting to the latest battle state...',
+      });
+    }
+  }, [activeMatch, designPauseActive, refreshCompletedMatchProfile, roundLocked]);
+
   const submitRoundAnswer = useCallback(
-    async (forcedSelection: number | null) => {
+    async (selectedIndex: number) => {
       if (!activeMatch || activeMatch.status !== 'in_progress' || roundLocked || designPauseActive) {
         return;
       }
       if (
-        forcedSelection !== null &&
-        (roundSecondsLeft <= 0 ||
-          (activeMatch.roundDeadlineAtMs !== undefined &&
-            activeMatch.roundDeadlineAtMs !== null &&
-            Date.now() >= activeMatch.roundDeadlineAtMs))
+        roundSecondsLeft <= 0 ||
+        (activeMatch.roundDeadlineAtMs !== undefined &&
+          activeMatch.roundDeadlineAtMs !== null &&
+          Date.now() >= activeMatch.roundDeadlineAtMs)
       ) {
-        return;
-      }
-
-      if (forcedSelection === null) {
-        setRoundLocked(true);
-        try {
-          const latest = await getQuizBattleMatchState(activeMatch.matchId);
-          setActiveMatch(latest);
-          setSelectedOptionIndex(null);
-          setRoundLocked(false);
-          if (latest.status === 'completed') {
-            setQueueActive(false);
-            setActiveRoom(null);
-            setQueueTimeoutDeadlineAtMs(null);
-            void refreshCompletedMatchProfile();
-            setLaunchState({
-              status: 'queued',
-              message: 'Match finished. Results synchronized.',
-            });
-            return;
-          }
-          setLaunchState({
-            status: 'queued',
-            message: 'Round timed out. Synced to the latest battle state.',
-          });
-        } catch {
-          setLaunchState({
-            status: 'error',
-            message: 'Round timed out. Reconnecting to the latest battle state...',
-          });
-        }
         return;
       }
 
@@ -1691,7 +1695,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
         const response = await submitQuizBattleAnswer({
           matchId: activeMatch.matchId,
           roundNumber: activeMatch.currentRound,
-          selectedOptionIndex: forcedSelection,
+          selectedOptionIndex: selectedIndex,
           responseMs: elapsedMs,
           roundId: activeMatch.currentQuestion?.roundId || undefined,
         });
@@ -1737,7 +1741,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
         // SAFETY: trusted internal value already conforms to the asserted type.
         const known = error as { message?: string };
         const message = known?.message || 'Unable to submit answer right now. Please try again.';
-        const shouldSyncLatestMatch = forcedSelection === null || isStaleRoundError(message);
+        const shouldSyncLatestMatch = isStaleRoundError(message);
 
         if (shouldSyncLatestMatch) {
           try {
@@ -1751,8 +1755,6 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
             if (advancedRound || latest.status === 'completed') {
               autoSubmitRoundRef.current = null;
               autoSubmitRetryAtMsRef.current = 0;
-            } else if (forcedSelection === null) {
-              autoSubmitRetryAtMsRef.current = Date.now() + 3000;
             }
 
             if (latest.status === 'completed') {
@@ -1777,15 +1779,11 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
           }
         }
 
-        if (forcedSelection === null) {
-          autoSubmitRetryAtMsRef.current = Date.now() + 3000;
-        } else {
-          setRoundLocked(false);
-        }
+        setRoundLocked(false);
 
         setLaunchState({
           status: 'error',
-          message: forcedSelection === null ? message : `${message} Tap an option to retry.`,
+          message: `${message} Tap an option to retry.`,
         });
       } finally {
         window.clearTimeout(submissionWatchdog);
@@ -1824,7 +1822,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
 
       autoSubmitRoundRef.current = activeMatch.currentRound;
       autoSubmitRetryAtMsRef.current = Date.now() + 3000;
-      void submitRoundAnswer(null);
+      void syncTimeoutRoundState();
       return;
     }
 
@@ -1839,7 +1837,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [activeMatch, answerSubmitting, designPauseActive, roundLocked, roundSecondsLeft, selectedOptionIndex, submitRoundAnswer]);
+  }, [activeMatch, answerSubmitting, designPauseActive, roundLocked, roundSecondsLeft, selectedOptionIndex, syncTimeoutRoundState]);
 
   const handleRequestRematch = useCallback(async () => {
     if (!activeMatch || activeMatch.mode !== 'bot') return;

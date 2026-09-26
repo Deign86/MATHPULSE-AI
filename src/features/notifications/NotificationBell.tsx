@@ -2,7 +2,7 @@
  * @file NotificationBell.tsx
  * Bell icon with unread badge and panel toggle.
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotifications } from './NotificationContext';
 import { NotificationPanel } from './NotificationPanel';
@@ -12,29 +12,6 @@ export const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // SAFETY: pointer events outside the bell always carry a DOM event target Node.
-      const target = event.target as Node;
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(target) &&
-        panelRef.current &&
-        !panelRef.current.contains(target)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
 
   const displayCount = unreadCount > 99 ? '99+' : unreadCount.toString();
 
@@ -56,7 +33,11 @@ export const NotificationBell: React.FC = () => {
       </button>
 
       {isOpen && (
-        <NotificationPanel onClose={() => setIsOpen(false)} panelRef={panelRef} />
+        <NotificationPanel
+          onClose={() => setIsOpen(false)}
+          panelRef={panelRef}
+          triggerRef={containerRef}
+        />
       )}
     </div>
   );
