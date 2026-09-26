@@ -37,14 +37,30 @@ import { useCurriculum } from '../hooks/useCurriculum';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { recordGet } from '../utils/memberOf';
+import {
+  JevBloomBadge,
+  JevConfidenceBadge,
+  isFiniteNumber,
+  isBloomLevel,
+  type BloomLevel,
+} from './CompetencyRadarChart';
 
 const DiagnosticBreakdown = lazy(() => import('./assessment/DiagnosticBreakdown'));
+
+/** JEV weakness metrics attached to a topic when persisted data exists. */
+interface WeaknessMetrics {
+  bloomLevel?: BloomLevel;
+  pCorrect?: number;
+  priority?: string;
+}
 
 interface DiagnosticSummary {
   score: number;
   riskLevel: string;
   weaknesses: string[];
   recommendation: string;
+  /** Topic name → persisted JEV fields (bloomLevel/pCorrect for the flagged weakness, priority from cached analysis). */
+  weaknessMetrics: Record<string, WeaknessMetrics>;
 }
 
 interface ExamMilestone {
@@ -191,6 +207,9 @@ const GradesPage = () => {
         let riskLevel = 'Unknown';
         let weaknesses: string[] = [];
         let recommendation = '';
+        const weaknessMetrics: Record<string, WeaknessMetrics> = {};
+
+        const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
 
         const summarySnap = await getDoc(doc(db, 'users', currentUser.uid, 'dashboardSummary', 'heroBannerModal'));
         if (summarySnap.exists()) {
@@ -201,13 +220,27 @@ const GradesPage = () => {
             weaknesses = bannerData.weaknesses || [];
             recommendation = bannerData.recommendation || '';
           }
-        } else {
-          const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
-          if (userSnap.exists()) {
-            const userData = userSnap.data();
-            if (userData.initialAssessmentCompleted || userData.hasCompletedInitialAssessment) {
-              riskLevel = (userData.atRiskSubjects?.length > 0) ? 'Moderate' : 'Low';
-              weaknesses = userData.atRiskSubjects || [];
+        } else if (userSnap.exists()) {
+          const userData = userSnap.data();
+          if (userData.initialAssessmentCompleted || userData.hasCompletedInitialAssessment) {
+            riskLevel = (userData.atRiskSubjects?.length > 0) ? 'Moderate' : 'Low';
+            weaknesses = userData.atRiskSubjects || [];
+          }
+        }
+
+        // Persisted JEV mastery fields live on the user doc (mirrored from competencyProfiles)
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const primaryTopic = weaknesses[0];
+          if (primaryTopic) {
+            if (isBloomLevel(userData.bloomLevel)) {
+              weaknessMetrics[primaryTopic] = { ...weaknessMetrics[primaryTopic], bloomLevel: userData.bloomLevel };
+            }
+            if (isFiniteNumber(userData.pCorrect)) {
+              weaknessMetrics[primaryTopic] = {
+                ...weaknessMetrics[primaryTopic],
+                pCorrect: Math.max(0, Math.min(1, userData.pCorrect)),
+              };
             }
           }
         }
@@ -222,6 +255,11 @@ const GradesPage = () => {
           const weakAreas = analysis.weakness_areas || [];
           if (weakAreas.length > 0) {
             weaknesses = weakAreas.map((w: { domain?: string }) => w.domain).filter(Boolean);
+            weakAreas.forEach((w: { domain?: string; priority?: string }) => {
+              if (w.domain && w.priority) {
+                weaknessMetrics[w.domain] = { ...weaknessMetrics[w.domain], priority: String(w.priority) };
+              }
+            });
           }
         }
 
@@ -230,6 +268,7 @@ const GradesPage = () => {
             score, 
             riskLevel, 
             weaknesses, 
+            weaknessMetrics,
             recommendation: recommendation || 'Continue with your personalized learning path.' 
           });
         }
@@ -986,20 +1025,35 @@ const GradesPage = () => {
                     {diagnosticSummary.weaknesses.length} {diagnosticSummary.weaknesses.length === 1 ? 'topic' : 'topics'}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {diagnosticSummary.weaknesses.slice(0, 3).map((weakness, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => handleStartPractice(weakness)}
-                      title={`Practice ${weakness}`}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/60 transition-all cursor-pointer shadow-2xs hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap shrink-0"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                      <span className="whitespace-nowrap">{weakness}</span>
-                      <ArrowUpRight className="w-3 h-3 text-amber-600 shrink-0 opacity-70 group-hover:opacity-100" />
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-x-1.5 gap-y-2 mt-1">
+                  {diagnosticSummary.weaknesses.slice(0, 3).map((weakness, i) => {
+                    const metrics = recordGet(diagnosticSummary.weaknessMetrics, weakness);
+                    const hasJevFields = metrics?.bloomLevel !== undefined || metrics?.pCorrect !== undefined;
+                    return (
+                      <div key={i} className="inline-flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleStartPractice(weakness)}
+                          title={
+                            metrics?.priority
+                              ? `Practice ${weakness} — ${metrics.priority} priority`
+                              : `Practice ${weakness}`
+                          }
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800/60 transition-all cursor-pointer shadow-2xs hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap shrink-0"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                          <span className="whitespace-nowrap">{weakness}</span>
+                          <ArrowUpRight className="w-3 h-3 text-amber-600 shrink-0 opacity-70 group-hover:opacity-100" />
+                        </button>
+                        {hasJevFields && (
+                          <div className="inline-flex items-center gap-1">
+                            <JevBloomBadge bloomLevel={metrics?.bloomLevel} size="xs" />
+                            <JevConfidenceBadge pCorrect={metrics?.pCorrect} size="xs" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   {diagnosticSummary.weaknesses.length === 0 && (
                     <p className="text-xs font-medium text-slate-400 italic">All foundational topics look solid!</p>
                   )}
@@ -1008,6 +1062,8 @@ const GradesPage = () => {
               {diagnosticSummary.weaknesses.length > 0 && (
                 <p className="text-[10px] font-bold text-amber-700/80 dark:text-amber-400/80 mt-2">
                   💡 Tap any topic to start practice questions
+                  {!diagnosticSummary.weaknesses.some((w) => recordGet(diagnosticSummary.weaknessMetrics, w)?.bloomLevel !== undefined)
+                    && ' — badges appear once a Jev mastery check is available'}
                 </p>
               )}
             </div>

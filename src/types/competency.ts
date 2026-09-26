@@ -122,6 +122,8 @@ export interface CachedCompetencyMatrix {
   application: number;
   engagement: number;
   consistency: number;
+  bloomLevel?: 0 | 1 | 2 | 3;
+  jevScore?: number;
   computedAt: Date;
 }
 

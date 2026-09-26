@@ -1,14 +1,178 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
 import { motion } from 'motion/react';
 import { Brain, Sparkles, BookOpen, RefreshCw } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useCompetencyMatrix } from '../hooks/useCompetencyMatrix';
+import { db } from '../lib/firebase';
+import { Badge } from './ui/badge';
+
+// ─── Shared JEV weakness-metric presentation ─────────────────────────────
+// Mirrors the persisted fields written by assessmentService into
+// competencyProfiles/{uid} and users/{uid}: bloomLevel (0-3), pCorrect (0-1).
+
+export type BloomLevel = 0 | 1 | 2 | 3;
+
+export interface JevMetrics {
+  bloomLevel?: BloomLevel;
+  pCorrect?: number;
+}
+
+/** Bloom ladder used by the JEV mastery scorer (backend/services/jev_client.py). */
+export const BLOOM_LEVEL_LABELS: readonly string[] = [
+  'Recall',
+  'Procedural',
+  'Conceptual',
+  'Metacognitive',
+];
+
+const BLOOM_BADGE_TONES: readonly string[] = [
+  'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-950/60 dark:text-violet-200 dark:border-violet-800/50',
+  'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-800/50',
+  'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-800/50',
+  'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800/50',
+];
+
+const BLOOM_LEVEL_DESCRIPTIONS: readonly string[] = [
+  'Remembers definitions or facts',
+  'Follows a familiar procedure',
+  'Applies concepts to a new problem',
+  'Explains and evaluates their own reasoning',
+];
+
+/** Narrow an arbitrary Firestore value to a JEV Bloom level. */
+export function isBloomLevel(value: unknown): value is BloomLevel {
+  return value === 0 || value === 1 || value === 2 || value === 3;
+}
+
+/** Narrow untrusted Firestore values to finite numbers. */
+export function isFiniteNumber(value: unknown): value is number {
+  return Number.isFinite(value);
+}
+
+/** Map a Bloom tag from quiz/diagnostic data onto the JEV 0-3 ladder. */
+export function bloomLevelFromLabel(label: string | null | undefined): BloomLevel | undefined {
+  const key = (label || '').trim().toLowerCase().replace(/ing$/, '');
+  switch (key) {
+    case 'remember':
+      return 0;
+    case 'understand':
+      return 1;
+    case 'apply':
+      return 2;
+    case 'analyze':
+    case 'evaluate':
+    case 'create':
+      return 3;
+    default:
+      return undefined;
+  }
+}
+
+function confidenceTone(pCorrect: number): string {
+  if (pCorrect < 0.5) return 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/50';
+  if (pCorrect < 0.8) return 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-800/50';
+  return 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:border-emerald-800/50';
+}
+
+/** Chip naming the Bloom level a JEV check estimated. Renders nothing when the level is absent. */
+export const JevBloomBadge: React.FC<{
+  bloomLevel?: BloomLevel;
+  size?: 'sm' | 'xs';
+  showIcon?: boolean;
+  className?: string;
+}> = ({ bloomLevel, size = 'sm', showIcon = true, className }) => {
+  if (bloomLevel === undefined) return null;
+  return (
+    <Badge
+      variant="secondary"
+      title={`Bloom mastery level ${bloomLevel} of 3 — ${BLOOM_LEVEL_DESCRIPTIONS[bloomLevel]}`}
+      className={`${size === 'xs' ? 'text-[9px] px-1.5 py-0 gap-1' : 'text-[10px] px-2 py-0.5 gap-1'} font-black uppercase tracking-wider rounded-full ${BLOOM_BADGE_TONES[bloomLevel]} ${className ?? ''}`}
+    >
+      {showIcon && <Brain className={size === 'xs' ? 'w-2.5 h-2.5' : 'w-3 h-3'} />}
+      {BLOOM_LEVEL_LABELS[bloomLevel]}
+    </Badge>
+  );
+};
+
+/** Chip showing the modeled probability of a correct answer. Renders nothing when pCorrect is absent. */
+export const JevConfidenceBadge: React.FC<{
+  pCorrect?: number | null;
+  size?: 'sm' | 'xs';
+  className?: string;
+}> = ({ pCorrect, size = 'sm', className }) => {
+  if (pCorrect === undefined || pCorrect === null || !Number.isFinite(pCorrect)) return null;
+  const percent = Math.round(Math.max(0, Math.min(1, pCorrect)) * 100);
+  return (
+    <Badge
+      variant="outline"
+      title="Jev estimate: modeled chance the student answers the next question on this topic correctly"
+      className={`${size === 'xs' ? 'text-[9px] px-1.5 py-0' : 'text-[10px] px-2 py-0.5'} font-black tabular-nums rounded-full border-transparent ${confidenceTone(pCorrect)} ${className ?? ''}`}
+    >
+      {percent}% ready
+    </Badge>
+  );
+};
+
+/** Read persisted JEV metrics for one student from competencyProfiles/{uid}. */
+export async function fetchJevProfile(uid: string): Promise<JevMetrics> {
+  const metricsByUid = await fetchJevProfiles([uid]);
+  return metricsByUid.get(uid) ?? {};
+}
+
+/** Batch-read persisted JEV metrics for many students from competencyProfiles. */
+export async function fetchJevProfiles(uids: readonly string[]): Promise<Map<string, JevMetrics>> {
+  const metricsByUid = new Map<string, JevMetrics>();
+  const uniqueUids = Array.from(new Set(uids.filter(Boolean)));
+  const JEV_BATCH_SIZE = 25;
+
+  for (let index = 0; index < uniqueUids.length; index += JEV_BATCH_SIZE) {
+    const batch = uniqueUids.slice(index, index + JEV_BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map((uid) => getDoc(doc(db, 'competencyProfiles', uid))),
+    );
+    results.forEach((result, batchIndex) => {
+      if (result.status !== 'fulfilled' || !result.value.exists()) return;
+      const stored = result.value.data();
+      const metrics: JevMetrics = {};
+      if (isBloomLevel(stored.bloomLevel)) metrics.bloomLevel = stored.bloomLevel;
+      if (isFiniteNumber(stored.pCorrect)) {
+        metrics.pCorrect = Math.max(0, Math.min(1, stored.pCorrect));
+      }
+      metricsByUid.set(batch[batchIndex], metrics);
+    });
+  }
+
+  return metricsByUid;
+}
+
+/** Live JEV metrics for the signed-in student profile. Null while loading or when unassessed. */
+export function useJevStudentMetrics(uid: string | undefined): JevMetrics | null {
+  const [metrics, setMetrics] = useState<JevMetrics | null>(null);
+
+  useEffect(() => {
+    if (!uid) {
+      setMetrics(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchJevProfile(uid).then((result) => {
+      if (!cancelled) setMetrics(result.bloomLevel !== undefined || result.pCorrect !== undefined ? result : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
+
+  return metrics;
+}
 
 export const CompetencyRadarChart: React.FC = () => {
   const { userProfile } = useAuth();
   const { data, modulesList, topModule, loading, error, isEmpty, refresh } =
     useCompetencyMatrix(userProfile?.uid ?? '');
+  const jevMetrics = useJevStudentMetrics(userProfile?.uid);
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -177,6 +341,25 @@ export const CompetencyRadarChart: React.FC = () => {
               </span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Jev mastery strip — shows what level the weakness check placed the student at */}
+      {!loading && !error && (
+        <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 relative z-10 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Jev mastery check
+          </span>
+          {jevMetrics ? (
+            <>
+              <JevBloomBadge bloomLevel={jevMetrics.bloomLevel} />
+              <JevConfidenceBadge pCorrect={jevMetrics.pCorrect} />
+            </>
+          ) : (
+            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+              No mastery check yet — scores shown are from your practice accuracy. Take the diagnostic to unlock it.
+            </span>
+          )}
         </div>
       )}
     </motion.div>
