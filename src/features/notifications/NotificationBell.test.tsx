@@ -15,17 +15,40 @@ vi.spyOn(notificationContextNs, 'useNotifications').mockImplementation(
   () => ({ unreadCount: unreadCountValue }) as ReturnType<typeof notificationContextNs.useNotifications>,
 );
 
-// Panel seam: rendered-but-inert stub isolates bell toggle behavior.
-// SAFETY: the stub preserves the onClose prop contract consumed by the bell.
+// Panel seam: stub mirrors panel outside-click ownership and trigger containment.
+// SAFETY: the stub preserves the panel props consumed by the bell.
 vi.spyOn(notificationPanelNs, 'NotificationPanel').mockImplementation(
-  (({ onClose, panelRef }: { onClose: () => void; panelRef?: React.RefObject<HTMLDivElement | null> }) =>
-    createPortal(
+  (({
+    onClose,
+    panelRef,
+    triggerRef,
+  }: {
+    onClose: () => void;
+    panelRef?: React.RefObject<HTMLDivElement | null>;
+    triggerRef?: React.RefObject<HTMLElement | null>;
+  }) => {
+    React.useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        // SAFETY: dispatched DOM mouse events carry a Node target.
+        const target = event.target as Node;
+        if (panelRef?.current?.contains(target) || triggerRef?.current?.contains(target)) {
+          return;
+        }
+        onClose();
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [onClose, panelRef, triggerRef]);
+
+    return createPortal(
       <div ref={panelRef} data-testid="panel">
         Panel Content
         <button onClick={onClose}>Close</button>
       </div>,
       document.body,
-    )) as typeof notificationPanelNs.NotificationPanel,
+    );
+  }) as typeof notificationPanelNs.NotificationPanel,
 );
 
 import { NotificationBell } from './NotificationBell';

@@ -37,7 +37,6 @@ import { useCurriculum } from '../hooks/useCurriculum';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { recordGet } from '../utils/memberOf';
-import { createGradesPdf } from '../utils/pdfExport';
 
 const DiagnosticBreakdown = lazy(() => import('./assessment/DiagnosticBreakdown'));
 
@@ -131,6 +130,7 @@ const GradesPage = () => {
   const [showFullGraphModal, setShowFullGraphModal] = useState(false);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
+  const [isExporting, setIsExporting] = useState(false);
 
   // Safely cast userProfile to StudentProfile to access grade
   // SAFETY: trusted internal value already conforms to the asserted type.
@@ -454,80 +454,84 @@ const GradesPage = () => {
   }, [allowedSubjectLabels, filterSubject]);
 
   const handleExportReport = async (format: ExportFormat): Promise<void> => {
-    const escapeCsvValue = (value: string | number) => {
-      const stringValue = String(value ?? '');
-      if (/[",\n]/.test(stringValue)) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
-      }
-      return stringValue;
-    };
-
-    const reportRows: string[] = [];
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    const studentName = (userProfile as StudentProfile | null)?.name || currentUser?.displayName || currentUser?.email || 'Student';
-    const exportDate = new Date().toISOString().split('T')[0];
-    const safeStudentName = studentName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'student';
-    const subjectRows = displaySubjectPerformance.map((subject) => ({
-      subject: subject.subject,
-      average: subject.average,
-    }));
-    const quizRows = filteredQuizzes.map((quiz) => ({
-      title: quiz.title,
-      subject: quiz.subject,
-      score: quiz.score,
-      date: quiz.date,
-      type: quiz.type,
-      status: quiz.status,
-    }));
-
-    reportRows.push('Grade Report');
-    reportRows.push(`Student,${escapeCsvValue(studentName)}`);
-    reportRows.push(`Export Date,${escapeCsvValue(exportDate)}`);
-    reportRows.push(`Subject Filter,${escapeCsvValue(filterSubject)}`);
-    reportRows.push(`Type Filter,${escapeCsvValue(filterType)}`);
-    reportRows.push('');
-
-    reportRows.push('Subject Performance');
-    reportRows.push('Subject,Average Score');
-    subjectRows.forEach((subject) => {
-      reportRows.push([
-        escapeCsvValue(subject.subject),
-        escapeCsvValue(subject.average)
-      ].join(','));
-    });
-
-    reportRows.push('');
-    reportRows.push('Recent Quizzes');
-    reportRows.push('Title,Subject,Score,Date,Type,Status');
-
-    if (quizRows.length === 0) {
-      reportRows.push('No quiz data available for the selected filters');
-    } else {
-      quizRows.forEach((quiz) => {
-        reportRows.push([
-          escapeCsvValue(quiz.title),
-          escapeCsvValue(quiz.subject),
-          escapeCsvValue(quiz.score),
-          escapeCsvValue(quiz.date),
-          escapeCsvValue(quiz.type),
-          escapeCsvValue(quiz.status)
-        ].join(','));
-      });
-    }
-
-    const downloadReport = (blob: Blob, extension: ExportFormat): void => {
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `grade-report-${safeStudentName}-${exportDate}.${extension}`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    };
+    if (isExporting) return;
+    setIsExporting(true);
 
     try {
+      const escapeCsvValue = (value: string | number) => {
+        const stringValue = String(value ?? '');
+        if (/[",\n]/.test(stringValue)) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      };
+
+      const reportRows: string[] = [];
+      // SAFETY: trusted internal value already conforms to the asserted type.
+      const studentName = (userProfile as StudentProfile | null)?.name || currentUser?.displayName || currentUser?.email || 'Student';
+      const exportDate = new Date().toISOString().split('T')[0];
+      const safeStudentName = studentName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'student';
+      const subjectRows = displaySubjectPerformance.map((subject) => ({
+        subject: subject.subject,
+        average: subject.average,
+      }));
+      const quizRows = filteredQuizzes.map((quiz) => ({
+        title: quiz.title,
+        subject: quiz.subject,
+        score: quiz.score,
+        date: quiz.date,
+        type: quiz.type,
+        status: quiz.status,
+      }));
+
+      reportRows.push('Grade Report');
+      reportRows.push(`Student,${escapeCsvValue(studentName)}`);
+      reportRows.push(`Export Date,${escapeCsvValue(exportDate)}`);
+      reportRows.push(`Subject Filter,${escapeCsvValue(filterSubject)}`);
+      reportRows.push(`Type Filter,${escapeCsvValue(filterType)}`);
+      reportRows.push('');
+
+      reportRows.push('Subject Performance');
+      reportRows.push('Subject,Average Score');
+      subjectRows.forEach((subject) => {
+        reportRows.push([
+          escapeCsvValue(subject.subject),
+          escapeCsvValue(subject.average)
+        ].join(','));
+      });
+
+      reportRows.push('');
+      reportRows.push('Recent Quizzes');
+      reportRows.push('Title,Subject,Score,Date,Type,Status');
+
+      if (quizRows.length === 0) {
+        reportRows.push('No quiz data available for the selected filters');
+      } else {
+        quizRows.forEach((quiz) => {
+          reportRows.push([
+            escapeCsvValue(quiz.title),
+            escapeCsvValue(quiz.subject),
+            escapeCsvValue(quiz.score),
+            escapeCsvValue(quiz.date),
+            escapeCsvValue(quiz.type),
+            escapeCsvValue(quiz.status)
+          ].join(','));
+        });
+      }
+
+      const downloadReport = (blob: Blob, extension: ExportFormat): void => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `grade-report-${safeStudentName}-${exportDate}.${extension}`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      };
+
       if (format === 'pdf') {
+        const { createGradesPdf } = await import('@/utils/pdfExport');
         const pdfBlob = await createGradesPdf({
           studentName,
           exportDate,
@@ -545,6 +549,8 @@ const GradesPage = () => {
       downloadReport(csvBlob, 'csv');
     } catch {
       toast.error('Failed to download grade report. Please try again.');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -622,13 +628,14 @@ const GradesPage = () => {
         </ToggleGroup>
 
         <Button
+          disabled={isExporting}
           className="flex-1 md:flex-none bg-gradient-to-r from-[#7C3AED] to-[#6366F1] hover:from-[#6D28D9] hover:to-[#4F46E5] text-white font-black rounded-xl h-9.5 px-4 shadow-[0_6px_16px_-4px_rgba(124,58,237,0.35)] hover:-translate-y-0.5 transition-all text-xs flex items-center gap-1.5 cursor-pointer"
           onClick={() => {
             void handleExportReport(exportFormat);
           }}
         >
           <Download className="w-3.5 h-3.5" />
-          Export Report
+          {isExporting ? 'Exporting…' : 'Export Report'}
         </Button>
       </div>
       </div>

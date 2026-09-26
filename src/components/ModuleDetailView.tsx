@@ -45,7 +45,7 @@ interface ModuleDetailViewProps {
 }
 
 const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onEarnXP, isInQuizMode = false, setIsInQuizMode }) => {
-  const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz' } | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<{ lesson: Lesson; type: 'lesson'; returnFromQuiz?: boolean } | { quiz: Quiz; type: 'quiz'; returnToLesson?: Lesson } | null>(null);
   const { userProfile } = useAuth();
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [iarCompleted, setIarCompleted] = useState(false);
@@ -221,8 +221,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return userProgress?.subjects?.[subjectId]?.modulesProgress?.[module.id] ?? null;
   }, [module.id, subjectId, userProgress?.subjects]);
 
-  const [returningToLesson, setReturningToLesson] = useState<Lesson | null>(null);
-
   const completedLessonIds = useMemo(() => {
     const ids = dbModuleProgress?.lessonsCompleted ?? [];
     return new Set(ids);
@@ -330,7 +328,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   // NOTE: These are internal callbacks, distinct from the onBack/onEarnXP props passed to the component
   const handleBack = useCallback(() => {
     setSelectedLesson(null);
-    setReturningToLesson(null);
   }, []);
 
   const handleStartPractice = useCallback(() => {
@@ -346,8 +343,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       locked: false,
       type: 'practice' as const,
     };
-    setReturningToLesson(currentLesson);
-    setSelectedLesson({ type: 'quiz', quiz: practiceQuiz });
+    setSelectedLesson({ type: 'quiz', quiz: practiceQuiz, returnToLesson: currentLesson });
     setIsInQuizMode?.(true);
   }, [setIsInQuizMode]);
 
@@ -488,9 +484,8 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           }}
           onClose={() => {
             setQuizQuestions(null);
-            if (returningToLesson) {
-              setSelectedLesson({ type: 'lesson', lesson: returningToLesson, returnFromQuiz: true });
-              setReturningToLesson(null);
+            if (selectedLesson.type === 'quiz' && selectedLesson.returnToLesson) {
+              setSelectedLesson({ type: 'lesson', lesson: selectedLesson.returnToLesson, returnFromQuiz: true });
             } else {
               setSelectedLesson(null);
             }

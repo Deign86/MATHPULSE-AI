@@ -87,9 +87,14 @@ const RequireRole = lazy(() => import('./components/RequireRole.tsx').then((m) =
 
 type ActiveAppModal = null | 'rewards' | 'profile' | 'settings' | 'calculator' | 'logout_confirm' | 'diagnostic_breakdown';
 
-const App = () => {
+interface AppProps {
+  authOverride?: ReturnType<typeof useAuth>;
+}
+
+const App = ({ authOverride }: AppProps = {}) => {
   // Get authentication state from context
-  const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = useAuth();
+  const contextAuth = useAuth();
+  const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = authOverride ?? contextAuth;
   const navigate = useNavigate();
   const location = useLocation();
   const tabLoadingFallback = (
@@ -1141,7 +1146,7 @@ const App = () => {
       </RequireRole>
       </NotificationProvider>
     );
-  } else {
+  } else if (userRole === 'student') {
     // Show Student Dashboard (existing code)
     const studentDashboard = (
     <NotificationProvider>
@@ -1868,6 +1873,12 @@ const App = () => {
   );
 
     authenticatedContent = <ProgressGate>{studentDashboard}</ProgressGate>;
+  } else {
+    authenticatedContent = (
+      <RequireRole allowed={['student']} userRole={userRole} loading={loading} onGoToLogin={handleLogout}>
+        <></>
+      </RequireRole>
+    );
   }
 
   // Exactly one lifecycle manager wraps all role branches. Settings consumes

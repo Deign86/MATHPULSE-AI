@@ -7,6 +7,13 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+# Canonical retrieval-row keys: content, subject, quarter, content_domain,
+# chunk_type, source_file, storage_path, module_id, lesson_id,
+# competency_code, page, score. Plain-dict alias (not TypedDict) so existing
+# List[Dict[str, Any]] consumers keep typechecking (list invariance).
+# ponytail: upgrade to TypedDict when callers move off Dict[str, Any].
+CurriculumChunk = Dict[str, Any]
+
 
 def _normalize_subject(subject: Optional[str]) -> Optional[str]:
     if not subject:
@@ -192,7 +199,12 @@ def _metadata_matches(
     return True
 
 
-def _row_from_chunk(content: Any, md: Dict[str, Any], distance: float, storage_path: Optional[str] = None) -> dict:
+def _row_from_chunk(
+    content: Any,
+    md: Dict[str, Any],
+    distance: float,
+    storage_path: Optional[str] = None,
+) -> CurriculumChunk:
     ret_storage = str(md.get("storage_path") or "").strip()
     ret_source_file = str(md.get("source_file") or "").strip()
     ret_source_path = str(md.get("source_path") or "").strip()
@@ -293,7 +305,7 @@ def _retrieve_exact_file_chunks(
     lesson_id: str | None,
     competency_code: str | None,
     top_k: int,
-) -> List[dict]:
+) -> List[CurriculumChunk]:
     """Exact-match retrieval for one source file via collection.get (server-side
     metadata filtering works; only id-resolving vector reads are broken)."""
     cand_paths, cand_files = _normalize_storage_candidates(storage_path)
@@ -325,7 +337,7 @@ def _retrieve_exact_file_chunks(
         ):
             continue
         kept.append((idx, md))
-    rows: List[dict] = []
+    rows: List[CurriculumChunk] = []
     if kept:
         texts = [str(documents[idx]) if idx < len(documents) else "" for idx, _ in kept]
         try:
@@ -355,7 +367,7 @@ def retrieve_curriculum_context(
     top_k: int = 8,
     grade_level: str | None = None,
     **kwargs: Any,
-) -> list[dict]:
+) -> list[CurriculumChunk]:
     from rag.vectorstore_loader import get_vectorstore_components
 
     _, collection, embedder = get_vectorstore_components()
@@ -395,7 +407,7 @@ def retrieve_curriculum_context(
     metadatas = (result.get("metadatas") or [[]])[0]
     distances = (result.get("distances") or [[]])[0]
 
-    rows: List[dict] = []
+    rows: List[CurriculumChunk] = []
     for idx, content in enumerate(documents):
         md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
         distance = float(distances[idx]) if idx < len(distances) else 1.0
@@ -463,7 +475,7 @@ def retrieve_lesson_pdf_context(
     competency_code: str | None = None,
     storage_path: str | None = None,
     top_k: int = 8,
-) -> Tuple[list[dict], str]:
+) -> Tuple[list[CurriculumChunk], str]:
     """Retrieve chunks by storage_path exact match + semantic ranking; fallback to general query.
 
     NOTE: Curriculum PDF chunks are often tagged with quarter=1 or 0 even when covering other topics.
@@ -491,7 +503,7 @@ def retrieve_lesson_pdf_context(
     else:
         search_query = stripped_topic
 
-    exact_chunks: list[dict] = []
+    exact_chunks: list[CurriculumChunk] = []
     if storage_path:
         # Try 1: Exact match with storage_path + quarter
         if quarter and quarter > 0:
@@ -693,8 +705,10 @@ def build_problem_generation_prompt(topic: str, difficulty: str, curriculum_chun
     )
 
 
-def build_analysis_curriculum_context(weak_topics: list[str], subject: str) -> list[dict]:
-    dedup: Dict[str, dict] = {}
+def build_analysis_curriculum_context(
+    weak_topics: list[str], subject: str
+) -> list[CurriculumChunk]:
+    dedup: Dict[str, CurriculumChunk] = {}
     for weak_topic in weak_topics:
         rows = retrieve_curriculum_context(
             query=f"DepEd learning competency for {weak_topic}",
