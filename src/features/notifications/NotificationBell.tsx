@@ -56,7 +56,11 @@ export const NotificationBell: React.FC = () => {
       </button>
 
       {isOpen && (
-        <NotificationPanel onClose={() => setIsOpen(false)} panelRef={panelRef} />
+        <NotificationPanel
+          onClose={() => setIsOpen(false)}
+          panelRef={panelRef}
+          triggerRef={containerRef}
+        />
       )}
     </div>
   );

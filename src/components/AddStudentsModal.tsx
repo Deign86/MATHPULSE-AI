@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Search, Check, UserPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -77,14 +78,14 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
 
   if (!open) return null;
 
-  return (
+  const modalElement = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[80dvh] flex flex-col">
-          <div className="flex items-center justify-between p-5 border-b border-[#f1f5f9]">
-            <h2 className="text-base font-semibold text-[#1e293b]">Add Students to {grade} - {section}</h2>
-            <button onClick={onClose} aria-label="Close dialog" className="p-1 rounded-lg hover:bg-[#f1f5f9]"><X size={18} className="text-[#64748b]" /></button>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={onClose} />
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80dvh] flex flex-col overflow-hidden z-10">
+          <div className="flex items-center justify-between p-5 border-b border-[#f1f5f9] dark:border-slate-800">
+            <h2 className="text-base font-semibold text-[#1e293b] dark:text-white">Add Students to {grade} - {section}</h2>
+            <button onClick={onClose} aria-label="Close dialog" className="p-1 rounded-lg hover:bg-[#f1f5f9] dark:hover:bg-slate-800"><X size={18} className="text-[#64748b] dark:text-slate-400" /></button>
           </div>
           <div className="p-4 space-y-3 flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center gap-3">
@@ -102,29 +103,29 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
                 {selected.size === filtered.length && filtered.length > 0 ? 'Deselect All' : 'Select All'}
               </button>
             </div>
-            <p className="text-xs text-[#64748b]">{selected.size} of {filtered.length} selected</p>
+            <p className="text-xs text-[#64748b] dark:text-slate-400">{selected.size} of {filtered.length} selected</p>
             <div className="flex-1 overflow-y-auto space-y-1 min-h-[300px]">
               {loading ? (
-                <p className="text-sm text-center text-[#64748b] py-6">Loading...</p>
+                <p className="text-sm text-center text-[#64748b] dark:text-slate-400 py-6">Loading...</p>
               ) : filtered.length === 0 ? (
-                <p className="text-sm text-center text-[#64748b] py-6">No students available</p>
+                <p className="text-sm text-center text-[#64748b] dark:text-slate-400 py-6">No students available</p>
               ) : (
                 filtered.map((s) => (
                   <button key={s.uid} onClick={() => setSelected((prev) => { const n = new Set(prev); n.has(s.uid) ? n.delete(s.uid) : n.add(s.uid); return n; })}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${selected.has(s.uid) ? 'bg-purple-50 border border-purple-200' : 'hover:bg-[#f8fafc] border border-transparent'}`}>
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${selected.has(s.uid) ? 'bg-[#a855f7] border-[#a855f7]' : 'border-[#cbd5e1]'}`}>
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${selected.has(s.uid) ? 'bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800' : 'hover:bg-[#f8fafc] dark:hover:bg-slate-800 border border-transparent'}`}>
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${selected.has(s.uid) ? 'bg-[#a855f7] border-[#a855f7]' : 'border-[#cbd5e1] dark:border-slate-700'}`}>
                       {selected.has(s.uid) && <Check size={12} className="text-white" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-[#1e293b] truncate">{s.name}</p>
-                      <p className="text-[11px] text-[#64748b] truncate">{s.email}</p>
+                      <p className="text-sm font-medium text-[#1e293b] dark:text-white truncate">{s.name}</p>
+                      <p className="text-[11px] text-[#64748b] dark:text-slate-400 truncate">{s.email}</p>
                     </div>
                   </button>
                 ))
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between p-4 border-t border-[#f1f5f9]">
+          <div className="flex items-center justify-between p-4 border-t border-[#f1f5f9] dark:border-slate-800">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
             <Button size="sm" onClick={handleAdd} disabled={saving || selected.size === 0} className="bg-[#a855f7] hover:bg-[#9333ea] text-white">
               <UserPlus size={14} className="mr-1.5" />{saving ? 'Adding...' : `Add ${selected.size} Student${selected.size !== 1 ? 's' : ''}`}
@@ -134,4 +135,10 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
       </div>
     </AnimatePresence>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+
+  return modalElement;
 };

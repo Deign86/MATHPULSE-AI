@@ -326,9 +326,9 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
               <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="px-4 sm:px-6 py-3.5">Module</th>
                 <th className="px-4 sm:px-6 py-3.5">Subject & Quarter</th>
-                <th className="px-4 sm:px-6 py-3.5">Availability Status</th>
+                <th className="px-4 sm:px-6 py-3.5 text-center">Availability Status</th>
                 <th className="px-4 sm:px-6 py-3.5">Material</th>
-                <th className="px-4 sm:px-6 py-3.5 text-right">Action</th>
+                <th className="px-4 sm:px-6 py-3.5 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
@@ -361,8 +361,8 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 sm:px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${config.badgeClass}`}>
+                      <td className="px-4 sm:px-6 py-4 text-center">
+                        <span className={`inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${config.badgeClass}`}>
                           {config.icon}
                           {config.label}
                         </span>
@@ -383,7 +383,7 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
                           <span className="text-slate-400 text-xs">DepEd Standard</span>
                         )}
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-right">
+                      <td className="px-4 sm:px-6 py-4 text-center">
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(bp)}

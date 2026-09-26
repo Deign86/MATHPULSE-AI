@@ -1854,6 +1854,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       onClick={() => setShowNotifications(!showNotifications)}
                       className="relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer active:scale-95 sm:hover:scale-[1.02]"
                       aria-label="View notifications"
+                      aria-expanded={showNotifications}
+                      aria-haspopup="true"
                       title="Notifications"
                     >
                       <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />

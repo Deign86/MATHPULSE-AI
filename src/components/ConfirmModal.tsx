@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, LogOut, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
@@ -26,7 +27,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   cancelText = 'Cancel',
   type = 'warning',
   icon = 'warning',
-  zIndexClass = 'z-50',
+  zIndexClass = 'z-[100]',
 }) => {
   const getIcon = () => {
     switch (icon) {
@@ -78,7 +79,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     }
   };
 
-  return (
+  const modalElement = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -135,7 +136,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   <Button
                     onClick={onClose}
                     variant="outline"
-                    className="flex-1 h-10 sm:h-11 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer"
+                    className="flex-1 h-10 sm:h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white font-bold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer"
                   >
                     {cancelText}
                   </Button>
@@ -153,6 +154,11 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
       )}
     </AnimatePresence>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+  return modalElement;
 };
 
 export default ConfirmModal;

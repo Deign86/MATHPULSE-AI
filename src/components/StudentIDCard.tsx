@@ -1,9 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { CheckCircle2, RotateCw, Sparkles, Star, Zap, GraduationCap, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
-import { QRCodeSVG } from 'qrcode.react';
 import type { ProfileData } from './SettingsPage';
-import { buildStudentIdVerificationPayload, STUDENT_ID_QR_OPTIONS } from '../utils/studentIdVerification';
 
 interface StudentIDCardProps {
   profileData: ProfileData;
@@ -111,10 +109,6 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
   const studentName = profileData.name?.trim() || 'Student Learner';
   const hasLRN = Boolean(profileData.lrn?.trim());
   const lrnDisplay = hasLRN ? profileData.lrn?.trim() : 'Pending';
-  const verificationPayload = buildStudentIdVerificationPayload(
-    window.location.host,
-    profileData.uid ?? '',
-  );
 
   const gradeText = profileData.grade
     ? (profileData.grade.startsWith('Grade') ? profileData.grade : `Grade ${profileData.grade}`)
@@ -293,30 +287,16 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
               </div>
             </div>
 
-            <div className="px-3.5 py-1 bg-slate-50 dark:bg-slate-950/90 border-t border-purple-100 dark:border-purple-950 flex items-center justify-between gap-2">
-              <span className="font-mono text-[9px] tracking-wider text-slate-500 dark:text-slate-400 font-bold">
-                Scan to verify
-              </span>
-              {verificationPayload.kind === 'ready' ? (
-                <a
-                  href={verificationPayload.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Open student ID verification in a new tab"
-                  className="inline-flex rounded-lg bg-white p-1 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <QRCodeSVG
-                    value={verificationPayload.url}
-                    {...STUDENT_ID_QR_OPTIONS}
-                    className="h-8 w-8 sm:h-9 sm:w-9"
-                  />
-                </a>
-              ) : (
-                <span className="inline-flex min-h-8 items-center rounded-lg border border-slate-200 px-2 text-[9px] font-bold text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                  Verification unavailable
+            <div className="px-3.5 py-1.5 bg-slate-50 dark:bg-slate-950/90 border-t border-purple-100 dark:border-purple-950 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="font-mono text-[9px] tracking-wider text-slate-500 dark:text-slate-400 font-bold uppercase">
+                  Official Student Pass
                 </span>
-              )}
+              </div>
+              <span className="font-mono text-[9px] font-bold text-purple-600 dark:text-purple-400">
+                S.Y. 2025–2026
+              </span>
             </div>
           </div>
 

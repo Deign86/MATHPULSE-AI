@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getDefaultAvatar } from '../utils/avatarUtils';
-import { 
+import {
   Search, Plus, Save,
   Edit, Trash2, Shield, Ban, Users, UserCheck,
-  GraduationCap, School, Loader2, RefreshCw, CheckCheck, Mail, Download, AlertCircle,
-  Eye, EyeOff, ChevronLeft, ChevronRight, RotateCcw, UserPlus, FilterX
+  GraduationCap, School, Loader2, RefreshCw, Mail, Download, AlertCircle,
+  Eye, EyeOff, ChevronLeft, ChevronRight, UserPlus, FilterX, X, SlidersHorizontal
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -13,7 +13,6 @@ import ConfirmModal from './ConfirmModal';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -49,6 +48,7 @@ import {
 interface AdminUserManagementProps {
   createIntentRole?: 'Teacher' | 'Student' | null;
   onCreateIntentConsumed?: () => void;
+  sidebarCollapsed?: boolean;
 }
 
 const buildDefaultFormData = (role: 'Student' | 'Teacher' | 'Admin' = 'Student') => ({
@@ -102,6 +102,7 @@ function csvEscape(value: string | number | boolean | null | undefined): string 
 const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   createIntentRole = null,
   onCreateIntentConsumed,
+  sidebarCollapsed = false,
 }) => {
   const { userProfile } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -773,246 +774,494 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     });
   };
 
-  // Stats — derived from server paginated view and current page composition
-  const stats = [
-    { label: 'Total Users', value: totalUsers, color: 'text-[#0a1628]' },
-    { label: 'Active (Page)', value: users.filter(u => u.status === 'Active').length, color: 'text-green-600' },
-    { label: 'Admins (Page)', value: users.filter(u => u.role === 'Admin').length, color: 'text-sky-600' },
-    { label: 'Teachers (Page)', value: users.filter(u => u.role === 'Teacher').length, color: 'text-sky-600' },
-    { label: 'Students (Page)', value: users.filter(u => u.role === 'Student').length, color: 'text-emerald-600' },
-  ];
-
   const visibleRangeStart = totalUsers === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
   const visibleRangeEnd = totalUsers === 0 ? 0 : Math.min(currentPage * pageSize, totalUsers);
 
+  // Quick-filter card definitions for the interactive KPI strip (Teacher-inspired aesthetic)
+  const kpiCards = [
+    {
+      label: 'All Users',
+      value: totalUsers,
+      subtext: 'Total registered',
+      badge: 'Total',
+      icon: Users,
+      gradient: 'bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.52)]',
+      isActive: roleFilter === 'All Roles' && statusFilter === 'All Status',
+      onClick: () => {
+        setRoleFilter('All Roles');
+        setStatusFilter('All Status');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+    {
+      label: 'Active',
+      value: users.filter(u => u.status === 'Active').length,
+      subtext: 'Online / verified',
+      badge: 'Live',
+      icon: UserCheck,
+      gradient: 'bg-gradient-to-br from-[#75D06A] via-[#52B847] to-[#36962C]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(82,184,71,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(82,184,71,0.52)]',
+      isActive: statusFilter === 'Active',
+      onClick: () => {
+        setStatusFilter(statusFilter === 'Active' ? 'All Status' : 'Active');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+    {
+      label: 'Admins',
+      value: users.filter(u => u.role === 'Admin').length,
+      subtext: 'Portal security',
+      badge: 'Security',
+      icon: Shield,
+      gradient: 'bg-gradient-to-br from-[#38BDF8] via-[#0284C7] to-[#0369A1]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(2,132,199,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(2,132,199,0.52)]',
+      isActive: roleFilter === 'Admin',
+      onClick: () => {
+        setRoleFilter(roleFilter === 'Admin' ? 'All Roles' : 'Admin');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+    {
+      label: 'Teachers',
+      value: users.filter(u => u.role === 'Teacher').length,
+      subtext: 'Faculty educators',
+      badge: 'Faculty',
+      icon: GraduationCap,
+      gradient: 'bg-gradient-to-br from-[#FFB356] via-[#F29424] to-[#D97706]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(242,148,36,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(242,148,36,0.52)]',
+      isActive: roleFilter === 'Teacher',
+      onClick: () => {
+        setRoleFilter(roleFilter === 'Teacher' ? 'All Roles' : 'Teacher');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+    {
+      label: 'Students',
+      value: users.filter(u => u.role === 'Student').length,
+      subtext: 'Active learners',
+      badge: 'Learners',
+      icon: School,
+      gradient: 'bg-gradient-to-br from-[#60A5FA] via-[#2563EB] to-[#1D4ED8]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(37,99,235,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(37,99,235,0.52)]',
+      isActive: roleFilter === 'Student',
+      onClick: () => {
+        setRoleFilter(roleFilter === 'Student' ? 'All Roles' : 'Student');
+        setCurrentPage(1);
+        clearSelection();
+      },
+    },
+  ] as const;
+
+  const hasActiveFilters = searchQuery || roleFilter !== 'All Roles' || statusFilter !== 'All Status' || sectionFilter !== 'All Sections';
+
   return (
-    <div className="flex flex-col animate-in fade-in duration-500">
-      <div className="space-y-8 pt-6 xl:pt-8 pb-6 px-1">
-        {/* Stats Cards - Bento Style */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-        {loading && users.length === 0
-          ? Array.from({ length: 5 }).map((_, idx) => (
-              <div key={`stats-skeleton-${idx}`} className="bg-white p-5 rounded-[28px] border border-slate-200/60 shadow-sm shadow-slate-200/50 animate-pulse">
-                <div className="h-4 w-20 bg-slate-100 rounded-full mb-3" />
-                <div className="h-8 w-12 bg-slate-100 rounded-lg" />
-              </div>
-            ))
-          : [
-              { label: 'Total Users', value: totalUsers, icon: Users, bg: 'bg-[#4f46e5]', shadow: 'shadow-indigo-500/20' },
-              { label: 'Active Today', value: users.filter(u => u.status === 'Active').length, icon: UserCheck, bg: 'bg-[#10b981]', shadow: 'shadow-emerald-500/20' },
-              { label: 'Admins', value: users.filter(u => u.role === 'Admin').length, icon: Shield, bg: 'bg-[#0ea5e9]', shadow: 'shadow-sky-500/20' },
-              { label: 'Teachers', value: users.filter(u => u.role === 'Teacher').length, icon: GraduationCap, bg: 'bg-[#8b5cf6]', shadow: 'shadow-purple-500/20' },
-              { label: 'Students', value: users.filter(u => u.role === 'Student').length, icon: School, bg: 'bg-[#3b82f6]', shadow: 'shadow-blue-500/20' },
-            ].map((stat, idx) => (
-              <div key={idx} className={`relative overflow-hidden ${stat.bg} ${stat.shadow} p-5 rounded-[28px] text-white flex flex-col gap-3 group hover:scale-[1.02] transition-all duration-300 shadow-lg`}>
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-white/10 group-hover:scale-[1.6] transition-transform duration-700 ease-out" />
-                <div className="absolute -left-4 -top-4 w-12 h-12 rounded-full bg-white/10 group-hover:scale-[1.4] transition-transform duration-700 delay-75 ease-out" />
-                
-                <div className="relative z-10 flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">{stat.label}</p>
-                  <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm group-hover:bg-white/30 transition-colors">
-                    <stat.icon size={14} />
-                  </div>
+    <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
+      {/* ── Interactive KPI Quick-Filter Strip (Symmetrical Non-Scrolling Bento Grid) ── */}
+      <div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+          {loading && users.length === 0
+            ? Array.from({ length: 5 }).map((_, idx) => (
+                <div
+                  key={`kpi-skel-${idx}`}
+                  className={`rounded-xl sm:rounded-2xl p-2.5 sm:p-4 bg-slate-200/60 dark:bg-slate-800 animate-pulse ${
+                    idx === 0 ? 'col-span-2 sm:col-span-4 lg:col-span-1 h-12 sm:min-h-[115px]' : 'col-span-1 h-16 sm:min-h-[115px]'
+                  }`}
+                >
+                  <div className="h-3 w-14 bg-white/40 dark:bg-slate-700 rounded-full mb-2 sm:mb-4" />
+                  <div className="h-5 sm:h-7 w-10 bg-white/40 dark:bg-slate-700 rounded-lg" />
                 </div>
-                <h3 className="relative z-10 text-3xl font-display font-black leading-none tracking-tight">{stat.value}</h3>
-              </div>
-            ))}
+              ))
+            : kpiCards.map((card, idx) => (
+                <button
+                  key={card.label}
+                  type="button"
+                  onClick={card.onClick}
+                  className={`group relative ${card.gradient} ${card.shadow} border border-white/25 hover:border-white/40 rounded-xl sm:rounded-2xl flex transition-all duration-300 ease-out text-left cursor-pointer overflow-hidden ${
+                    idx === 0
+                      ? 'col-span-2 sm:col-span-4 lg:col-span-1 flex-row items-center justify-between p-2.5 sm:p-4 min-h-0 sm:min-h-[115px] sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-start lg:justify-between'
+                      : 'col-span-1 flex-col justify-between p-2 sm:p-4 min-h-[58px] sm:min-h-[115px]'
+                  } ${
+                    card.isActive ? 'ring-2 ring-white shadow-xl scale-[1.01] sm:scale-[1.02] brightness-110' : 'hover:-translate-y-0.5'
+                  }`}
+                >
+                  {/* ambient decorative orb */}
+                  <div className="absolute -bottom-6 -right-6 w-20 sm:w-24 h-20 sm:h-24 bg-white/15 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                  {/* top shine strip */}
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+
+                  {idx === 0 ? (
+                    <>
+                      {/* Mobile Row Layout for Total Card */}
+                      <div className="flex items-center gap-2.5 relative z-10">
+                        <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <card.icon size={14} className="text-white sm:hidden" />
+                          <card.icon size={16} className="text-white hidden sm:block" />
+                        </div>
+                        <div>
+                          <p className="text-xs sm:text-[11px] font-bold text-white leading-tight">{card.label}</p>
+                          <p className="text-[10px] text-white/70 font-medium hidden sm:block">{card.subtext}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 relative z-10">
+                        <p className="text-xl sm:text-2xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{card.value}</p>
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
+                          {card.badge}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Category Cards */}
+                      <div className="flex items-center justify-between w-full relative z-10 mb-1 sm:mb-3">
+                        <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                          <card.icon size={13} className="text-white sm:hidden" />
+                          <card.icon size={16} className="text-white hidden sm:block" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {card.isActive && (
+                            <span className="flex h-1.5 w-1.5 sm:h-2 sm:w-2 relative">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/70" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-white" />
+                            </span>
+                          )}
+                          <span className="px-1.5 py-0.5 sm:px-2 rounded-full text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
+                            {card.badge}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="relative z-10 min-w-0">
+                        <p className="text-lg sm:text-2xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{card.value}</p>
+                        <p className="text-[10px] sm:text-[11px] font-bold text-white/95 mt-0.5 sm:mt-1 truncate">{card.label}</p>
+                        <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">{card.subtext}</p>
+                      </div>
+                    </>
+                  )}
+                </button>
+              ))}
+        </div>
       </div>
-      </div>      {/* Action Bar - Sticky Header */}
-      <div className="sticky top-0 z-40 px-2 sm:px-4 pt-3 sm:pt-4 pb-3 sm:pb-4 bg-[#f8fafc] backdrop-blur-sm w-full">
-        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 w-full">
-          {/* Global Search */}
-          <div className="relative flex-1 w-full group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
-            <Input 
-              placeholder="Search by name, email, or LRN..." 
-              className="pl-11 h-12 bg-white border-slate-200/60 rounded-2xl focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all text-sm font-medium shadow-md shadow-slate-200/40 w-full"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-                clearSelection();
-              }}
-            />
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-            <Select
-              value={roleFilter}
-              onValueChange={(value) => {
-                setRoleFilter(value);
-                setCurrentPage(1);
-                clearSelection();
-              }}
-            >
-              <SelectTrigger className="flex-1 sm:w-[150px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-3">
-                <span className="truncate">
-                  {roleFilter === 'All Roles' ? 'All Roles' : roleFilter === 'Admin' ? 'Admin' : roleFilter === 'Teacher' ? 'Teacher' : roleFilter}
-                </span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200">
-                <SelectItem value="All Roles" className="font-bold uppercase tracking-widest text-[10px]">All Roles</SelectItem>
-                <SelectItem value="Admin" className="font-bold uppercase tracking-widest text-[10px]">Administrator</SelectItem>
-                <SelectItem value="Teacher" className="font-bold uppercase tracking-widest text-[10px]">Educator</SelectItem>
-                <SelectItem value="Student" className="font-bold uppercase tracking-widest text-[10px]">Student</SelectItem>
-              </SelectContent>
-            </Select>
 
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => {
-                setStatusFilter(value);
-                setCurrentPage(1);
-                clearSelection();
-              }}
-            >
-              <SelectTrigger className="flex-1 sm:w-[140px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-3">
-                <span className="truncate">{statusFilter === 'All Status' ? 'All Statuses' : statusFilter}</span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200">
-                <SelectItem value="All Status" className="font-bold uppercase tracking-widest text-[10px]">All Statuses</SelectItem>
-                <SelectItem value="Active" className="font-bold uppercase tracking-widest text-[10px]">Active</SelectItem>
-                <SelectItem value="Inactive" className="font-bold uppercase tracking-widest text-[10px]">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {availableSections.length > 0 && (
-              <Select
-                value={sectionFilter}
-                onValueChange={(value) => {
-                  setSectionFilter(value);
-                  clearSelection();
-                }}
-              >
-                <SelectTrigger className="flex-1 sm:w-[140px] h-12 rounded-xl bg-white border border-slate-200 hover:border-[#9956DE] transition-all focus:ring-2 focus:ring-[#9956DE]/10 text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-md shadow-slate-200/40 px-3">
-                  <span className="truncate">{sectionFilter === 'All Sections' ? 'All Sections' : sectionFilter}</span>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
-                  <SelectItem value="All Sections" className="font-bold uppercase tracking-widest text-[10px]">All Sections</SelectItem>
-                  {availableSections.map(s => (
-                    <SelectItem key={s} value={s} className="font-bold uppercase tracking-widest text-[10px]">{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            <div className="flex items-center gap-2 ml-auto">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  setSearchQuery('');
-                  setRoleFilter('All Roles');
-                  setStatusFilter('All Status');
-                  setSectionFilter('All Sections');
+      {/* ── Compact Toolbar + Active Filters ── */}
+      <div className="sticky top-0 z-20 px-1 pt-2 pb-2.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
+        {/* Toolbar card */}
+        <div className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2.5 sm:p-3 lg:px-4 lg:py-3 shadow-sm flex flex-col gap-2.5 w-full">
+          {/* ── Line 1: Search & Filter Controls + Action Buttons ── */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 lg:gap-2 w-full">
+            {/* Search */}
+            <div className="relative flex-1 min-w-0 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 group-focus-within:text-[#9956DE] transition-colors shrink-0" size={16} />
+              <Input
+                placeholder="Search name, email, LRN…"
+                className="pl-9 pr-8 h-10 bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs font-semibold focus-visible:ring-1 focus-visible:ring-purple-400 focus-visible:border-purple-400 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-all w-full"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
                   setCurrentPage(1);
                   clearSelection();
                 }}
-                disabled={!searchQuery && roleFilter === 'All Roles' && statusFilter === 'All Status'}
-                className="h-12 w-12 rounded-xl border-slate-200 text-[#9956DE] hover:bg-purple-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md shadow-slate-200/40 shrink-0"
-                title="Reset Filters"
-                aria-label="Reset Filters"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setCurrentPage(1); clearSelection(); }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Mobile/Tablet Action Shortcuts (< lg) */}
+            <div className="flex items-center gap-1.5 shrink-0 lg:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-200/60 transition-all shrink-0"
+                onClick={() => loadUsers(currentPage)}
+                disabled={loading || isProcessingBulkAction}
+                title="Refresh"
+                aria-label="Refresh users"
               >
-                <FilterX size={18} />
+                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
               </Button>
 
               <Button
-                variant="outline"
-                size="icon"
-                className="h-12 w-12 rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 transition-all shadow-md shadow-slate-200/40 shrink-0"
-                onClick={() => loadUsers(currentPage)}
-                disabled={loading || isProcessingBulkAction}
-                title="Refresh Users"
-                aria-label="Refresh Users"
-              >
-                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-              </Button>
-
-              <Button 
-                className="h-12 gap-2 bg-[#9956DE] hover:bg-[#8b5cf6] text-white rounded-xl shadow-lg shadow-purple-200/50 transition-all px-4 sm:px-6 font-black uppercase text-[11px] tracking-widest shrink-0" 
+                className="h-10 gap-1.5 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white rounded-xl shadow-md shadow-purple-500/25 hover:shadow-purple-500/40 transition-all px-3 sm:px-4 font-bold text-xs shrink-0 border border-purple-400/30"
                 onClick={() => handleOpenAddModal()}
                 disabled={isProcessingBulkAction}
               >
-                <UserPlus size={18} />
-                <span className="hidden sm:inline">Add User</span>
-                <span className="sm:hidden">Add</span>
+                <UserPlus size={15} />
+                <span className="hidden xs:inline sm:inline">Add User</span>
               </Button>
+            </div>
+
+            {/* Desktop Divider */}
+            <div className="hidden lg:block w-px h-6 bg-slate-200 dark:bg-slate-700 shrink-0" />
+
+            {/* Filter Dropdowns (< lg: grid or flex row; >= lg: inline controls) */}
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
+              {/* Role filter */}
+              <Select
+                value={roleFilter}
+                onValueChange={(value) => { setRoleFilter(value); setCurrentPage(1); clearSelection(); }}
+              >
+                <SelectTrigger className="h-10 w-full sm:w-[130px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
+                  <span className="truncate">{roleFilter === 'All Roles' ? 'All Roles' : roleFilter}</span>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                  <SelectItem value="All Roles" className="text-xs font-medium">All Roles</SelectItem>
+                  <SelectItem value="Admin" className="text-xs font-medium">Administrator</SelectItem>
+                  <SelectItem value="Teacher" className="text-xs font-medium">Educator</SelectItem>
+                  <SelectItem value="Student" className="text-xs font-medium">Student</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Status filter */}
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => { setStatusFilter(value); setCurrentPage(1); clearSelection(); }}
+              >
+                <SelectTrigger className="h-10 w-full sm:w-[125px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
+                  <span className="truncate">{statusFilter === 'All Status' ? 'All Status' : statusFilter}</span>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                  <SelectItem value="All Status" className="text-xs font-medium">All Statuses</SelectItem>
+                  <SelectItem value="Active" className="text-xs font-medium">Active</SelectItem>
+                  <SelectItem value="Inactive" className="text-xs font-medium">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Section filter */}
+              {availableSections.length > 0 && (
+                <Select
+                  value={sectionFilter}
+                  onValueChange={(value) => { setSectionFilter(value); clearSelection(); }}
+                >
+                  <SelectTrigger className="h-10 w-full col-span-2 sm:col-span-1 sm:w-[130px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
+                    <span className="truncate">{sectionFilter === 'All Sections' ? 'All Sections' : sectionFilter}</span>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                    <SelectItem value="All Sections" className="text-xs font-medium">All Sections</SelectItem>
+                    {availableSections.map(s => (
+                      <SelectItem key={s} value={s} className="text-xs font-medium">{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Desktop Divider */}
+            <div className="hidden lg:block w-px h-6 bg-slate-200 dark:bg-slate-700 shrink-0" />
+
+            {/* Desktop Action Buttons (>= lg) */}
+            <div className="hidden lg:flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] border border-transparent hover:border-purple-200/60 transition-all shrink-0"
+                onClick={() => loadUsers(currentPage)}
+                disabled={loading || isProcessingBulkAction}
+                title="Refresh"
+                aria-label="Refresh users"
+              >
+                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              </Button>
+
+              <Button
+                className="h-10 gap-2 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white rounded-xl shadow-md shadow-purple-500/25 hover:shadow-purple-500/40 transition-all px-4 sm:px-5 font-bold text-xs shrink-0 border border-purple-400/30"
+                onClick={() => handleOpenAddModal()}
+                disabled={isProcessingBulkAction}
+              >
+                <UserPlus size={15} />
+                <span>Add User</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* ── Line 2: Context / Active Filters (Left) + Pagination (Right) ── */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            {/* Left: Active Filters or Default Range Context */}
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              {hasActiveFilters ? (
+                <>
+                  <SlidersHorizontal size={12} className="text-purple-500 shrink-0" />
+                  {searchQuery && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 text-[11px] font-bold border border-purple-200/70 dark:border-purple-900/60 shadow-xs">
+                      &quot;{searchQuery}&quot;
+                      <button type="button" onClick={() => { setSearchQuery(''); setCurrentPage(1); }} className="text-purple-400 hover:text-purple-700 ml-0.5"><X size={11} /></button>
+                    </span>
+                  )}
+                  {roleFilter !== 'All Roles' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-[11px] font-bold border border-violet-200/70 dark:border-violet-900/60 shadow-xs">
+                      Role: {roleFilter}
+                      <button type="button" onClick={() => { setRoleFilter('All Roles'); setCurrentPage(1); }} className="text-violet-400 hover:text-violet-700 ml-0.5"><X size={11} /></button>
+                    </span>
+                  )}
+                  {statusFilter !== 'All Status' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200/70 dark:border-emerald-900/60 shadow-xs">
+                      {statusFilter}
+                      <button type="button" onClick={() => { setStatusFilter('All Status'); setCurrentPage(1); }} className="text-emerald-400 hover:text-emerald-700 ml-0.5"><X size={11} /></button>
+                    </span>
+                  )}
+                  {sectionFilter !== 'All Sections' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-[11px] font-bold border border-sky-200/70 dark:border-sky-900/60 shadow-xs">
+                      &sect;&nbsp;{sectionFilter}
+                      <button type="button" onClick={() => { setSectionFilter('All Sections'); }} className="text-sky-400 hover:text-sky-700 ml-0.5"><X size={11} /></button>
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setSearchQuery(''); setRoleFilter('All Roles'); setStatusFilter('All Status'); setSectionFilter('All Sections'); setCurrentPage(1); clearSelection(); }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                  >
+                    <FilterX size={12} /> Clear all
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <span className="w-2 h-2 rounded-full bg-[#9956DE] shrink-0" />
+                  <span>Showing <strong className="text-slate-800 dark:text-slate-200 font-extrabold">{visibleRangeStart}–{visibleRangeEnd}</strong> of <strong className="text-slate-800 dark:text-slate-200 font-extrabold">{totalUsers}</strong> user records</span>
+                </div>
+              )}
+            </div>
+
+            {/* Right: Pagination Controls */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap hidden sm:inline">
+                {visibleRangeStart}–{visibleRangeEnd} of {totalUsers}
+              </span>
+
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  const nextPageSize = Number(value);
+                  if (Number.isNaN(nextPageSize)) return;
+                  setPageSize(nextPageSize);
+                  setCurrentPage(1);
+                  clearSelection();
+                }}
+              >
+                <SelectTrigger className="h-8 w-[95px] rounded-lg bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-2.5 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
+                  <SelectValue placeholder={`${pageSize}/page`} />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={size} className="text-xs font-medium">{size}/page</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex items-center gap-0.5 bg-slate-100/80 dark:bg-slate-900/60 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-[#9956DE] disabled:opacity-30 transition-all cursor-pointer"
+                  disabled={currentPage <= 1 || loading || isProcessingBulkAction}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  title="Previous page"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={14} />
+                </Button>
+                <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200 px-1.5 tabular-nums">
+                  {currentPage}/{Math.max(totalPages, 1)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-[#9956DE] disabled:opacity-30 transition-all cursor-pointer"
+                  disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
+                  title="Next page"
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={14} />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-        {/* Floating Bulk Action Bar */}
-        {selectedCount > 0 && (
-          <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-4rem)] max-w-[1100px] bg-[#2d1b69] rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-4 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl shadow-purple-900/50" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-            <div className="flex items-center gap-3 px-3 border-r border-white/10 pr-6">
-              <div className="w-8 h-8 rounded-xl bg-purple-500/30 flex items-center justify-center text-white font-black text-xs">
-                {selectedCount}
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-purple-300 uppercase tracking-widest leading-none">Selected</p>
-                <p className="text-[9px] text-white/60 font-medium mt-1">
-                  {allFilteredSelected ? 'All matching users' : `${selectedCount} users chosen`}
-                </p>
-              </div>
+      {/* Floating Bulk Action Bar */}
+      {selectedCount > 0 && (
+        <div className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-[1000px] bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md border border-purple-500/30 text-white rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-3 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div className="flex items-center gap-2.5 px-3 border-r border-slate-800 pr-5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9956DE] to-[#7274ED] flex items-center justify-center text-white font-black text-xs tabular-nums shadow-sm">
+              {selectedCount}
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-purple-300 uppercase tracking-wider leading-none">Selected</p>
+              <p className="text-[10px] text-slate-300 font-medium mt-0.5">
+                {allFilteredSelected ? 'All matching users' : `${selectedCount} chosen`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            {/* Compact Bulk Tools */}
+            <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/50">
+              <Select value={bulkRoleTarget} onValueChange={(value) => setBulkRoleTarget(memberOf(['Student', 'Teacher', 'Admin'] as const, value, 'Student'))}>
+                <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs font-medium min-w-[90px] focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-700 bg-slate-900 text-white">
+                  <SelectItem value="Student">Student</SelectItem>
+                  <SelectItem value="Teacher">Teacher</SelectItem>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="h-8 bg-gradient-to-r from-[#9956DE] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white text-xs font-semibold rounded-lg px-2.5" onClick={() => void handleBulkChangeRole()}>Apply Role</Button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 flex-1">
-              {/* Compact Bulk Tools */}
-              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                <Select value={bulkRoleTarget} onValueChange={(value) => setBulkRoleTarget(memberOf(['Student', 'Teacher', 'Admin'] as const, value, 'Student'))}>
-                  <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="Student">Student</SelectItem>
-                    <SelectItem value="Teacher">Teacher</SelectItem>
-                    <SelectItem value="Admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button size="sm" className="h-8 bg-purple-600 hover:bg-purple-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeRole()}>Apply Role</Button>
-              </div>
-
-              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl">
-                <Select value={bulkStatusTarget} onValueChange={(value) => setBulkStatusTarget(memberOf(['Active', 'Inactive'] as const, value, 'Active'))}>
-                  <SelectTrigger className="h-8 bg-transparent border-none text-white text-[10px] font-bold min-w-[90px] focus:ring-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button size="sm" className="h-8 bg-purple-600 hover:bg-purple-500 text-[10px] font-black rounded-lg" onClick={() => void handleBulkChangeStatus()}>Set Status</Button>
-              </div>
-
-              <div className="h-6 w-[1px] bg-white/10 mx-1"></div>
-
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="ghost" className="h-9 text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest gap-2" onClick={() => void handleBulkResetPassword()}>
-                  <Mail size={14} /> Reset Pass
-                </Button>
-                <Button size="sm" variant="ghost" className="h-9 text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest gap-2" onClick={() => void handleBulkExport()}>
-                  <Download size={14} /> Export
-                </Button>
-                <Button size="sm" variant="ghost" className="h-9 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-[10px] font-black uppercase tracking-widest gap-2" onClick={handleBulkDelete}>
-                  <Trash2 size={14} /> Delete
-                </Button>
-              </div>
+            <div className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/50">
+              <Select value={bulkStatusTarget} onValueChange={(value) => setBulkStatusTarget(memberOf(['Active', 'Inactive'] as const, value, 'Active'))}>
+                <SelectTrigger className="h-8 bg-transparent border-none text-white text-xs font-medium min-w-[90px] focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-700 bg-slate-900 text-white">
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg px-2.5" onClick={() => void handleBulkChangeStatus()}>Set Status</Button>
             </div>
 
-            <div className="flex items-center gap-2 pl-4 border-l border-white/10">
-               {!allFilteredSelected && selectedCount < totalUsers && (
-                <Button variant="ghost" className="h-9 text-indigo-200 hover:text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest" onClick={handleSelectAllFiltered}>
-                  Select All {totalUsers}
-                </Button>
-              )}
-              <Button size="icon" variant="ghost" className="h-9 w-9 text-white/40 hover:text-white hover:bg-white/10 rounded-xl" onClick={clearSelection}>
-                <Edit size={16} className="rotate-45" />
+            <div className="h-5 w-[1px] bg-slate-800 mx-1" />
+
+            <div className="flex items-center gap-1.5">
+              <Button size="sm" variant="ghost" className="h-8 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold gap-1.5" onClick={() => void handleBulkResetPassword()}>
+                <Mail size={13} /> Reset Pass
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold gap-1.5" onClick={() => void handleBulkExport()}>
+                <Download size={13} /> Export
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 text-rose-400 hover:bg-rose-950/40 hover:text-rose-300 text-xs font-semibold gap-1.5" onClick={handleBulkDelete}>
+                <Trash2 size={13} /> Delete
               </Button>
             </div>
           </div>
-        )}
+
+          <div className="flex items-center gap-2 pl-3 border-l border-slate-800">
+             {!allFilteredSelected && selectedCount < totalUsers && (
+              <Button variant="ghost" className="h-8 text-purple-300 hover:text-purple-200 hover:bg-slate-800 text-xs font-semibold" onClick={handleSelectAllFiltered}>
+                Select All {totalUsers}
+              </Button>
+            )}
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg" onClick={clearSelection}>
+              <FilterX size={15} />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {loadError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start justify-between gap-3">
@@ -1035,68 +1284,121 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         </div>
       ) : null}
 
-      {/* Users Table - Premium Styling */}
-      <div className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm shadow-slate-200/50 relative">
+      {/* ── Users Table ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
         {loading && users.length > 0 && (
-          <div className="absolute inset-0 bg-white/40 backdrop-blur-[1px] z-20 flex items-center justify-center">
-            <Loader2 className="animate-spin text-indigo-500" size={32} />
+          <div className="absolute inset-0 bg-white/40 dark:bg-slate-900/40 backdrop-blur-[1px] z-20 flex items-center justify-center">
+            <Loader2 className="animate-spin text-[#9956DE]" size={32} />
           </div>
         )}
         
-        <div className="md:hidden divide-y divide-slate-100">
-          <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
-            <label className="flex items-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer">
-              <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300" />
-              Select Page
+        {/* Mobile card view (< md) */}
+        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800 p-2 space-y-3">
+          <div className="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider cursor-pointer select-none">
+              <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300 dark:border-slate-600 data-[state=checked]:bg-[#9956DE] data-[state=checked]:border-[#9956DE]" />
+              <span className="text-[11px]">Select ({visibleRangeStart}–{visibleRangeEnd} of {totalUsers})</span>
             </label>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-30"
+                disabled={currentPage <= 1 || loading || isProcessingBulkAction}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={14} />
+              </Button>
+              <span className="text-[11px] font-extrabold text-[#9956DE] dark:text-purple-300 px-1.5 tabular-nums">
+                {currentPage}/{Math.max(totalPages, 1)}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-30"
+                disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
+                aria-label="Next page"
+              >
+                <ChevronRight size={14} />
+              </Button>
+            </div>
           </div>
           {loading && users.length === 0 ? (
-            <div className="px-6 py-12 text-center text-slate-400 font-medium">Loading users...</div>
+            <div className="px-6 py-12 text-center text-slate-400 font-bold">Loading user records...</div>
           ) : users.length > 0 ? (
             displayedUsers.map((user) => {
               const isPendingToggle = pendingRowActionUserId === user.id;
+              const isSelected = isUserSelected(user.id);
               return (
-                <div key={`mobile-${user.id}`} className="p-5 space-y-4 group hover:bg-slate-50/50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center self-center">
-                      <Checkbox
-                        checked={isUserSelected(user.id)}
-                        onCheckedChange={() => handleToggleUserSelection(user.id)}
-                        className="rounded-md border-slate-300"
-                      />
-                    </div>
-                    <div className="relative">
-                      <Avatar className="h-12 w-12 rounded-full border-2 border-white shadow-sm">
+                <div
+                  key={`mobile-${user.id}`}
+                  className={`p-4 rounded-2xl border shadow-xs space-y-3.5 transition-all ${
+                    isSelected
+                      ? 'bg-purple-50/60 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700'
+                      : 'bg-white dark:bg-slate-800/90 border-slate-200/80 dark:border-slate-700/60 hover:shadow-md'
+                  } border-l-4 ${
+                    user.role === 'Admin' ? 'border-l-sky-500' : user.role === 'Teacher' ? 'border-l-[#9956DE]' : 'border-l-blue-500'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => handleToggleUserSelection(user.id)}
+                      className="rounded-md border-slate-300 dark:border-slate-600 data-[state=checked]:bg-[#9956DE] data-[state=checked]:border-[#9956DE] shrink-0"
+                    />
+                    <div className="relative shrink-0">
+                      <Avatar className="h-11 w-11 rounded-full border-2 border-white dark:border-slate-800 shadow-sm ring-2 ring-purple-100 dark:ring-purple-900/40">
                         <AvatarImage src={user.photo || getDefaultAvatar(user.gender)} className="object-cover" />
-                        <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold">{user.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback className="bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 font-bold text-sm">{user.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                      <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-black text-[#1e293b] truncate text-sm">{user.name}</p>
-                      <p className="text-[11px] font-medium text-slate-400 truncate mt-0.5">{user.email}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-900 dark:text-white truncate text-sm leading-tight">{user.name}</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5">{user.email}</p>
                     </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
-                      user.role === 'Admin' ? 'bg-sky-50 text-sky-600' :
-                      user.role === 'Teacher' ? 'bg-purple-50 text-purple-600' :
-                      'bg-blue-50 text-blue-600'
-                    }`}>
-                      {user.role}
-                    </span>
-                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-slate-50 text-slate-500">
-                      {user.grade} • {user.section || user.department}
-                    </span>
                   </div>
 
-                  <div className="flex items-center gap-2 pt-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {user.role === 'Admin' && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200/60">
+                        <Shield size={11} /> Admin
+                      </span>
+                    )}
+                    {user.role === 'Teacher' && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 border border-purple-200/60">
+                        <GraduationCap size={11} /> Teacher
+                      </span>
+                    )}
+                    {user.role === 'Student' && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60">
+                        <School size={11} /> Student
+                      </span>
+                    )}
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${
+                      user.status === 'Active'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/60'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                      {user.status}
+                    </span>
+                    {(user.grade || user.section || user.department) && (
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md truncate">
+                        {user.role === 'Student'
+                          ? [user.grade, user.classSection || user.section].filter(Boolean).join(' · ')
+                          : user.department}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 h-10 min-h-[40px] rounded-xl border-slate-200 text-slate-600 font-bold text-xs gap-2"
+                      className="flex-1 h-11 min-h-[44px] rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs gap-1.5 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-[#9956DE]"
                       onClick={() => handleOpenEditModal(user)}
                     >
                       <Edit size={14} /> Edit
@@ -1104,304 +1406,310 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`flex-1 h-10 min-h-[40px] rounded-xl border-slate-200 font-bold text-xs gap-2 ${
-                        user.status === 'Active' ? 'text-slate-600' : 'text-emerald-600'
+                      className={`flex-1 h-11 min-h-[44px] rounded-xl border-slate-200 dark:border-slate-700 font-bold text-xs gap-1.5 ${
+                        user.status === 'Active'
+                          ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30'
+                          : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
                       }`}
                       onClick={() => handleToggleStatus(user)}
-                      disabled={(pendingRowActionUserId === user.id) || isProcessingBulkAction}
+                      disabled={pendingRowActionUserId === user.id || isProcessingBulkAction}
                     >
-                      {(pendingRowActionUserId === user.id) ? <Loader2 size={14} className="animate-spin" /> : user.status === 'Active' ? <Ban size={14} /> : <UserCheck size={14} />}
-                      {user.status === 'Active' ? 'Ban' : 'Active'}
+                      {pendingRowActionUserId === user.id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : user.status === 'Active' ? <Ban size={14} /> : <UserCheck size={14} />}
+                      {user.status === 'Active' ? 'Deactivate' : 'Activate'}
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-10 w-10 min-w-[40px] min-h-[40px] rounded-xl border-slate-200 text-rose-500 hover:bg-rose-50 hover:border-rose-100 flex items-center justify-center"
+                      className="h-11 w-11 min-w-[44px] min-h-[44px] rounded-xl border-slate-200 dark:border-slate-700 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-200 dark:hover:border-rose-800 flex items-center justify-center"
                       onClick={() => handleDeleteUser(user.id, user.name)}
                       disabled={isProcessingBulkAction}
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={15} />
                     </Button>
                   </div>
                 </div>
-              )
+              );
             })
           ) : (
             <div className="px-6 py-20 text-center space-y-4">
-              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
-                <Users size={32} className="text-slate-300" />
+              <div className="w-20 h-20 bg-purple-50 dark:bg-purple-950/30 rounded-full flex items-center justify-center mx-auto text-[#9956DE]">
+                <Users size={32} />
               </div>
               <div className="space-y-1">
-                <p className="font-black text-slate-600 uppercase tracking-widest text-sm">No Users Found</p>
+                <p className="font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest text-sm">No Users Found</p>
                 <p className="text-xs text-slate-400 font-medium max-w-[200px] mx-auto leading-relaxed">
                   We couldn't find any users matching your current filters. Try adjusting your search.
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="rounded-xl border-slate-200 text-indigo-600 font-bold" onClick={() => {
-                setSearchQuery('');
-                setRoleFilter('All Roles');
-                setStatusFilter('All Status');
-              }}>
-                Clear Filters
-              </Button>
             </div>
           )}
         </div>
 
-        <div className="hidden md:block">
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-[80px] z-30 bg-[#f8fafc] backdrop-blur-sm shadow-[0_-12px_0_0_#f8fafc]">
-              <tr className="border-b border-[#8b5cf6]">
-                <th className="bg-[#9956DE] px-6 py-4 w-[60px] rounded-tl-[20px]">
-                  <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-[#9956DE]" />
-                </th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">User Profile</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Role & Access</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Status</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Placement</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-[11px] font-black text-white uppercase tracking-widest">Activity</th>
-                <th className="bg-[#9956DE] px-6 py-4 text-right text-[11px] font-black text-white uppercase tracking-widest rounded-tr-[20px]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {loading && users.length === 0 ? (
+        {/* Desktop table view (≥ md) */}
+        <div className="hidden md:flex flex-col rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 relative">
+          {/* Top Brand Accent Line */}
+          <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0 rounded-t-2xl" />
+
+          {/* Table Container */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse" style={{ minWidth: '768px' }}>
+              <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-md shadow-xs border-b border-slate-200/80 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wider">
                 <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center">
-                    <Loader2 className="animate-spin text-indigo-200 mx-auto" size={40} />
-                    <p className="mt-4 text-[10px] font-black text-slate-300 uppercase tracking-widest">Loading Records...</p>
-                  </td>
+                  <th className="px-3.5 py-3.5 w-12 text-center">
+                    <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300 dark:border-slate-600 data-[state=checked]:bg-[#9956DE] data-[state=checked]:border-[#9956DE]" />
+                  </th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">User Identity</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Role</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Placement</th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Last Activity</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Actions</th>
                 </tr>
-              ) : users.length > 0 ? (
-                displayedUsers.map((user) => {
-                  const isPendingToggle = pendingRowActionUserId === user.id;
-                  return (
-                  <tr key={user.id} className="hover:bg-slate-50/50 transition-all group">
-                    <td className="px-6 py-4 align-middle">
-                      <Checkbox
-                        checked={isUserSelected(user.id)}
-                        onCheckedChange={() => handleToggleUserSelection(user.id)}
-                        className="rounded-md border-slate-300 group-hover:border-indigo-400 transition-colors"
-                      />
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {loading && users.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-20 text-center">
+                      <Loader2 className="animate-spin text-[#9956DE] mx-auto" size={36} />
+                      <p className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Loading user records...</p>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="relative shrink-0">
-                          <Avatar className="h-11 w-11 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-100">
-                            <AvatarImage src={user.photo || getDefaultAvatar(user.gender)} className="object-cover" />
-                            <AvatarFallback className="bg-indigo-50 text-indigo-600 font-bold text-sm">{user.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
+                  </tr>
+                ) : users.length > 0 ? (
+                  displayedUsers.map((user) => {
+                    const isPendingToggle = pendingRowActionUserId === user.id;
+                    const isSelected = isUserSelected(user.id);
+                    return (
+                      <tr
+                        key={user.id}
+                        className={`transition-all group relative border-b border-slate-100 dark:border-slate-800/70 border-l-2 border-l-transparent hover:border-l-[#9956DE] ${
+                          isSelected
+                            ? 'bg-purple-50/50 dark:bg-purple-950/25'
+                            : 'hover:bg-purple-50/30 dark:hover:bg-purple-950/15'
+                        }`}
+                      >
+                        <td className="px-3.5 py-3.5 align-middle text-center relative w-12">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleToggleUserSelection(user.id)}
+                            className="rounded-md border-slate-300 dark:border-slate-600 data-[state=checked]:bg-[#9956DE] data-[state=checked]:border-[#9956DE] transition-colors"
+                          />
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-3.5">
+                            <div className="relative shrink-0">
+                              <Avatar className="h-11 w-11 rounded-full border-2 border-white dark:border-slate-800 shadow-sm ring-2 ring-purple-100 dark:ring-purple-950/60 group-hover:ring-purple-300 dark:group-hover:ring-purple-600 transition-all">
+                                <AvatarImage src={user.photo || getDefaultAvatar(user.gender)} className="object-cover" />
+                                <AvatarFallback className="bg-purple-50 dark:bg-purple-950/50 text-[#9956DE] dark:text-purple-300 font-bold text-sm">{user.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${user.status === 'Active' ? 'bg-emerald-500 shadow-xs' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 dark:text-white truncate text-sm leading-tight group-hover:text-[#8643C8] dark:group-hover:text-purple-400 transition-colors">{user.name}</p>
+                              <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 truncate mt-0.5">{user.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="flex flex-col gap-1 items-center justify-center">
+                            {user.role === 'Admin' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/60 shadow-xs">
+                                <Shield size={12} className="text-sky-600 dark:text-sky-400" />
+                                Administrator
+                              </span>
+                            )}
+                            {user.role === 'Teacher' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/60 shadow-xs">
+                                <GraduationCap size={12} className="text-purple-600 dark:text-purple-400" />
+                                Teacher
+                              </span>
+                            )}
+                            {user.role === 'Student' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60 shadow-xs">
+                                <School size={12} className="text-blue-600 dark:text-blue-400" />
+                                Student
+                              </span>
+                            )}
+                            {user.lrn && (
+                              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tracking-wider">LRN: {user.lrn}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="flex items-center justify-center">
+                            {user.status === 'Active' ? (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 shadow-xs">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                </span>
+                                Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-xs">
+                                <span className="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500" />
+                                Inactive
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              {user.role === 'Student' ? (user.grade || 'Grade 11') : (user.department || 'Mathematics')}
+                            </p>
+                            <p className="text-[11px] font-medium text-purple-600 dark:text-purple-400">
+                              {user.role === 'Student' ? (user.classSection || user.section || 'Unassigned Section') : 'Academic Faculty'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="space-y-0.5">
+                            <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                              {user.lastLogin ? 'Recent Activity' : 'No Logins Yet'}
+                            </p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                              {user.lastLogin || 'Account pending setup'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Edit — icon only */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(user)}
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-purple-50 dark:bg-purple-950/50 hover:bg-[#9956DE] text-[#9956DE] hover:text-white dark:text-purple-300 dark:hover:text-white border border-purple-200/80 dark:border-purple-800/60 hover:border-[#9956DE] shadow-xs hover:shadow-md hover:shadow-purple-500/20 active:scale-95 transition-all cursor-pointer group"
+                              title={`Edit ${user.name}`}
+                              aria-label={`Edit ${user.name}`}
+                            >
+                              <Edit size={13} className="shrink-0 transition-transform group-hover:scale-110" />
+                            </button>
+
+                            {/* Deactivate / Activate — icon only */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStatus(user)}
+                              disabled={isPendingToggle || isProcessingBulkAction}
+                              className={`inline-flex items-center justify-center h-8 w-8 rounded-xl border shadow-xs active:scale-95 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed ${
+                                user.status === 'Active'
+                                  ? 'bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 text-amber-700 dark:text-amber-300 hover:text-white border-amber-200/80 dark:border-amber-800/60 hover:border-amber-500 hover:shadow-md hover:shadow-amber-500/20'
+                                  : 'bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-500 text-emerald-700 dark:text-emerald-300 hover:text-white border-emerald-200/80 dark:border-emerald-800/60 hover:border-emerald-500 hover:shadow-md hover:shadow-emerald-500/20'
+                              }`}
+                              title={user.status === 'Active' ? `Deactivate ${user.name}` : `Activate ${user.name}`}
+                              aria-label={user.status === 'Active' ? `Deactivate ${user.name}` : `Activate ${user.name}`}
+                            >
+                              {isPendingToggle ? (
+                                <Loader2 size={13} className="animate-spin shrink-0" />
+                              ) : user.status === 'Active' ? (
+                                <Ban size={13} className="shrink-0 transition-transform group-hover:scale-110" />
+                              ) : (
+                                <UserCheck size={13} className="shrink-0 transition-transform group-hover:scale-110" />
+                              )}
+                            </button>
+
+                            {/* Delete — icon only */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUser(user.id, user.name)}
+                              disabled={isProcessingBulkAction}
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200/80 dark:border-rose-800/60 hover:border-rose-500 shadow-xs hover:shadow-md hover:shadow-rose-500/20 active:scale-95 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={`Delete ${user.name}`}
+                              aria-label={`Delete ${user.name}`}
+                            >
+                              <Trash2 size={13} className="shrink-0 transition-transform group-hover:scale-110" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-32 text-center">
+                      <div className="max-w-xs mx-auto space-y-6">
+                        <div className="w-24 h-24 bg-slate-50 rounded-[32px] flex items-center justify-center mx-auto shadow-sm shadow-slate-100 group-hover:scale-110 transition-transform duration-500">
+                          <Users size={40} className="text-slate-200" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-black text-[#1e293b] truncate text-sm leading-tight group-hover:text-indigo-600 transition-colors">{user.name}</p>
-                          <p className="text-[11px] font-medium text-slate-400 truncate mt-0.5">{user.email}</p>
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-black text-slate-600 uppercase tracking-widest">No matching users</h4>
+                          <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                            We couldn't find any results for your current query. Try broadening your search or clearing filters.
+                          </p>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`
-                            text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-wider
-                            ${user.role === 'Admin' ? 'bg-sky-50 text-sky-600' : ''}
-                            ${user.role === 'Teacher' ? 'bg-purple-50 text-purple-600' : ''}
-                            ${user.role === 'Student' ? 'bg-blue-50 text-blue-600' : ''}
-                          `}>
-                            {user.role}
-                          </span>
-                        </div>
-                        {user.lrn && <p className="text-[9px] font-black text-slate-300 uppercase tracking-tighter ml-0.5">LRN: {user.lrn}</p>}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`
-                        inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-wider border
-                        ${user.status === 'Active' 
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                          : 'bg-slate-50 text-slate-400 border-slate-100'}
-                      `}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${user.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-black text-slate-600">{user.grade || 'N/A'}</p>
-                        <p className="text-[10px] font-medium text-slate-400">{user.role === 'Student' ? (user.classSection || user.section || 'Unassigned') : user.department}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                       <div className="space-y-0.5">
-                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">{user.lastLogin ? 'Recent Activity' : 'Inactive Account'}</p>
-                        <p className="text-[10px] font-medium text-slate-400">{user.lastLogin || 'No login history'}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEditModal(user)}
-                          className="h-9 w-9 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
-                          title="Edit User"
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="rounded-xl border-slate-200 text-indigo-600 font-bold px-6 h-10 hover:bg-indigo-50"
+                          onClick={() => {
+                            setSearchQuery('');
+                            setRoleFilter('All Roles');
+                            setStatusFilter('All Status');
+                          }}
                         >
-                          <Edit size={16} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleToggleStatus(user)}
-                          disabled={isPendingToggle || isProcessingBulkAction}
-                          className={`h-9 w-9 rounded-xl transition-all ${
-                            user.status === 'Active' 
-                              ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'
-                              : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
-                          }`}
-                          title={user.status === 'Active' ? 'Deactivate' : 'Activate'}
-                        >
-                          {isPendingToggle ? <Loader2 size={16} className="animate-spin" /> : user.status === 'Active' ? <Ban size={16} /> : <UserCheck size={16} />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteUser(user.id, user.name)}
-                          disabled={isProcessingBulkAction}
-                          className="h-9 w-9 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
-                          title="Delete User"
-                        >
-                          <Trash2 size={16} />
+                          Reset Filters
                         </Button>
                       </div>
                     </td>
                   </tr>
-                )
-              })
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-32 text-center">
-                    <div className="max-w-xs mx-auto space-y-6">
-                      <div className="w-24 h-24 bg-slate-50 rounded-[32px] flex items-center justify-center mx-auto shadow-sm shadow-slate-100 group-hover:scale-110 transition-transform duration-500">
-                        <Users size={40} className="text-slate-200" />
-                      </div>
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-black text-slate-600 uppercase tracking-widest">No matching users</h4>
-                        <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                          We couldn't find any results for your current query. Try broadening your search or clearing filters.
-                        </p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-xl border-slate-200 text-indigo-600 font-bold px-6 h-10 hover:bg-indigo-50"
-                        onClick={() => {
-                          setSearchQuery('');
-                          setRoleFilter('All Roles');
-                          setStatusFilter('All Status');
-                        }}
-                      >
-                        Reset Filters
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Pagination — ── Standardized Sticky Footer Pagination ── */}
-      <div className="sticky bottom-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-6 py-3 bg-white border-t-2 border-slate-100 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] w-full">
-        <p className="text-[11px] sm:text-[12px] font-black text-slate-500 uppercase tracking-wider sm:tracking-widest flex items-center gap-2 sm:gap-4 truncate">
-          <span className="w-2 h-2 rounded-full bg-[#9956DE] animate-pulse shadow-[0_0_12px_rgba(153,86,222,0.6)] shrink-0"></span>
-          Showing <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">{visibleRangeStart}–{visibleRangeEnd}</span>
-          <span className="text-slate-300 font-bold mx-0.5">/</span>
-          <span className="text-slate-900 font-black border-b-2 border-[#9956DE]/40 pb-0.5">{totalUsers}</span>
-          <span className="text-slate-400 ml-1 hidden sm:inline">Total System Records</span>
-        </p>
-
-        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 w-full sm:w-auto">
-          <Select
-            value={String(pageSize)}
-            onValueChange={(value) => {
-              const nextPageSize = Number(value);
-              if (Number.isNaN(nextPageSize)) return;
-              setPageSize(nextPageSize);
-              setCurrentPage(1);
-              clearSelection();
-            }}
-          >
-            <SelectTrigger className="h-10 w-[140px] bg-white border border-slate-300 text-[11px] font-black uppercase tracking-wider text-slate-900 rounded-xl hover:border-[#9956DE] transition-all px-4 shadow-sm">
-              <span className="truncate">{pageSize} / Page</span>
-            </SelectTrigger>
-            <SelectContent className="rounded-xl border-slate-200">
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectItem key={size} value={size} className="font-bold">{size} / Page</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-inner">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-lg shadow-purple-200/60"
-              disabled={currentPage <= 1 || loading || isProcessingBulkAction}
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            >
-              <ChevronLeft size={18} strokeWidth={3} />
-            </Button>
-
-            <div className="px-5 py-2 bg-white rounded-xl shadow-sm border border-slate-200 flex items-center justify-center min-w-[130px]">
-              <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
-                Page <span className="text-[#9956DE] mx-1">{currentPage}</span>
-                <span className="text-slate-300 mx-1">OF</span>
-                <span className="text-slate-500">{Math.max(totalPages, 1)}</span>
-              </span>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-lg shadow-purple-200/60"
-              disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
-            >
-              <ChevronRight size={18} strokeWidth={3} />
-            </Button>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      {/* Add/Edit User Modal - Premium Styling */}
+      {/* Add/Edit User Modal - Teacher & Executive Modern Styling */}
       <Dialog open={isModalOpen} onOpenChange={(open) => !saving && setIsModalOpen(open)}>
-        <DialogContent className="sm:max-w-[850px] rounded-[32px] border-none shadow-2xl p-0 overflow-hidden [&>button:last-child]:hidden">
-          <div className={`h-2 w-full bg-gradient-to-r ${editingUser ? 'from-indigo-600 to-purple-600' : 'from-emerald-600 to-indigo-600'}`}></div>
-          <div className="p-8 space-y-8">
+        <DialogContent className="sm:max-w-[850px] rounded-[32px] border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-0 overflow-hidden [&>button:last-child]:hidden">
+          <div className={`h-2 w-full bg-gradient-to-r ${editingUser ? 'from-[#9956DE] via-[#8643C8] to-[#7274ED]' : 'from-[#52B847] via-[#36962C] to-[#15803D]'}`} />
+          <div className="p-6 sm:p-8 space-y-6 sm:space-y-8">
             <DialogHeader className="text-left">
-              <div className="flex items-center gap-5">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform duration-500 hover:rotate-3 ${editingUser ? 'bg-indigo-100 text-indigo-700 shadow-indigo-200/50' : 'bg-emerald-100 text-emerald-700 shadow-emerald-200/50'}`}>
-                  {editingUser ? <Edit size={28} className="drop-shadow-sm" /> : <Plus size={28} className="drop-shadow-sm" />}
-                </div>
+              <div className="flex items-center gap-4 sm:gap-5">
+                {editingUser ? (
+                  <div className="relative shrink-0">
+                    <Avatar className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl border-2 border-white dark:border-slate-800 shadow-lg shadow-purple-500/15 ring-2 ring-purple-200 dark:ring-purple-800/60 transition-transform duration-300 hover:scale-105">
+                      <AvatarImage src={editingUser.photo || getDefaultAvatar(editingUser.gender)} className="object-cover" />
+                      <AvatarFallback className="bg-purple-100 dark:bg-purple-950/60 text-[#9956DE] dark:text-purple-300 font-black text-xl">
+                        {editingUser.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shadow-xs ${editingUser.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  </div>
+                ) : (
+                  <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shadow-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 shadow-emerald-500/20 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0">
+                    <Plus size={26} className="drop-shadow-sm" />
+                  </div>
+                )}
                 <div>
-                  <DialogTitle className="text-2xl font-display font-black text-[#1e293b] leading-tight">
-                    {editingUser ? 'Edit User Access' : 'Onboard New User'}
+                  <DialogTitle className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white leading-tight">
+                    {editingUser ? 'Edit User Credentials & Access' : 'Onboard New Academic User'}
                   </DialogTitle>
-                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                    {editingUser ? 'User Identity Management' : 'System Enrollment Pipeline'}
+                  <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#9956DE] animate-pulse" />
+                    {editingUser ? (
+                      <span>
+                        <strong className="text-slate-800 dark:text-slate-200 font-bold">{editingUser.name}</strong> • {editingUser.role} • {editingUser.email}
+                      </span>
+                    ) : (
+                      'System Enrollment Pipeline'
+                    )}
                   </p>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
               {/* Left Column: Primary Info */}
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div className="space-y-4">
-                  <h4 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.15em] pb-1 border-b border-indigo-50">Identity Details</h4>
+                  <h4 className="text-xs font-extrabold text-[#9956DE] dark:text-purple-400 uppercase tracking-wider pb-1.5 border-b border-purple-100 dark:border-purple-950/60 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#9956DE]" /> Identity Details
+                  </h4>
                   
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Full Name</label>
                     <div className="relative group">
                       <Input
                         value={formData.name}
@@ -1409,15 +1717,15 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                           setFormData({ ...formData, name: e.target.value });
                           if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: undefined }));
                         }}
-                        placeholder="Enter full name"
-                        className={`h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all font-bold text-[#1e293b] ${formErrors.name ? 'border-rose-300 bg-rose-50/20' : ''}`}
+                        placeholder="e.g. Maria Santos"
+                        className={`h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-purple-400/40 text-slate-900 dark:text-white placeholder:text-slate-400 ${formErrors.name ? 'border-rose-400 bg-rose-50/30' : ''}`}
                       />
                       {formErrors.name && <AlertCircle size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500" />}
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Email Address</label>
                     <Input
                       type="email"
                       value={formData.email}
@@ -1426,44 +1734,44 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                         setFormData({ ...formData, email: e.target.value });
                       }}
                       readOnly={Boolean(editingUser)}
-                      placeholder="name@example.com"
-                      className={`h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-500 transition-all font-bold text-[#1e293b] ${editingUser ? 'opacity-60 grayscale bg-slate-100' : ''}`}
+                      placeholder="name@school.edu.ph"
+                      className={`h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-purple-400/40 text-slate-900 dark:text-white placeholder:text-slate-400 ${editingUser ? 'opacity-60 grayscale bg-slate-100 dark:bg-slate-800/50 cursor-not-allowed' : ''}`}
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Access Role</label>
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Access Role</label>
                       <Select 
                         value={formData.role} 
                         onValueChange={(value) => {
-                          // SAFETY: trusted internal value already conforms to the asserted type.
-                          setFormData({ ...formData, role: value as 'Student' | 'Teacher' | 'Admin', lrn: value === 'Student' ? formData.lrn : '' });
+                          const nextRole = memberOf(['Student', 'Teacher', 'Admin'] as const, value, 'Student');
+                          setFormData({ ...formData, role: nextRole, lrn: nextRole === 'Student' ? formData.lrn : '' });
                         }}
                       >
-                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-200 font-black text-[#1e293b]">
+                        <SelectTrigger className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white">
                           <SelectValue placeholder="Role" />
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl border-slate-200">
-                          <SelectItem value="Student" className="font-bold">Student</SelectItem>
-                          <SelectItem value="Teacher" className="font-bold">Teacher</SelectItem>
-                          <SelectItem value="Admin" className="font-bold">Admin</SelectItem>
+                        <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                          <SelectItem value="Student" className="text-xs font-bold">Student</SelectItem>
+                          <SelectItem value="Teacher" className="text-xs font-bold">Teacher</SelectItem>
+                          <SelectItem value="Admin" className="text-xs font-bold">Administrator</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Status</label>
                       <Select 
                         value={formData.status} 
                         onValueChange={(value) => setFormData({ ...formData, status: value })}
                       >
-                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-200 font-black text-[#1e293b]">
+                        <SelectTrigger className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white">
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl border-slate-200">
-                          <SelectItem value="Active" className="font-bold">Active</SelectItem>
-                          <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
+                        <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                          <SelectItem value="Active" className="text-xs font-bold">Active</SelectItem>
+                          <SelectItem value="Inactive" className="text-xs font-bold">Inactive</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1472,45 +1780,47 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               </div>
 
               {/* Right Column: Contextual Info */}
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div className="space-y-4">
-                  <h4 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.15em] pb-1 border-b border-indigo-50">Contextual Assignment</h4>
+                  <h4 className="text-xs font-extrabold text-[#9956DE] dark:text-purple-400 uppercase tracking-wider pb-1.5 border-b border-purple-100 dark:border-purple-950/60 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#9956DE]" /> Academic Assignment
+                  </h4>
 
                   {formData.role === 'Student' ? (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade Level</label>
-                          <Input value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} placeholder="Grade 11" className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold" />
+                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Grade Level</label>
+                          <Input value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} placeholder="Grade 11" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white" />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Section</label>
-                          <Input value={formData.section} onChange={(e) => setFormData({ ...formData, section: e.target.value })} placeholder="STEM A" className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold" />
+                          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Section</label>
+                          <Input value={formData.section} onChange={(e) => setFormData({ ...formData, section: e.target.value })} placeholder="STEM A" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white" />
                         </div>
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">LRN (Learner Reference Number)</label>
-                        <Input value={formData.lrn} onChange={(e) => setFormData({ ...formData, lrn: e.target.value })} placeholder="12-digit number" className="h-12 rounded-xl bg-slate-50 border-slate-200 font-black tracking-widest" />
+                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">LRN (12 digits)</label>
+                        <Input value={formData.lrn} onChange={(e) => setFormData({ ...formData, lrn: e.target.value })} placeholder="123456789012" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold tracking-widest text-slate-900 dark:text-white" />
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-right-4 duration-500">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Department / Office</label>
-                      <Input value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} placeholder="e.g. Mathematics Department" className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold" />
+                    <div className="space-y-1.5 animate-in fade-in duration-300">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Department / Office</label>
+                      <Input value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} placeholder="Mathematics Department" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white" />
                     </div>
                   )}
 
                   {!editingUser && (
-                    <div className="space-y-1.5 pt-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Initial Password</label>
+                    <div className="space-y-1.5 pt-1">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Initial Password</label>
                       <div className="relative">
                         <Input
                           type={showPassword ? 'text' : 'password'}
                           value={formData.password}
                           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          className="h-12 rounded-xl bg-slate-50 border-slate-200 pr-10 font-black tracking-widest"
+                          className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 pr-10 text-xs font-bold tracking-widest text-slate-900 dark:text-white"
                         />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                           {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
                       </div>
@@ -1520,16 +1830,24 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               </div>
             </div>
 
-            <DialogFooter className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100">
+            <DialogFooter className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button 
                 variant="outline" 
-                className={`h-12 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all border-2 ${editingUser ? 'border-indigo-600/50 text-indigo-600 hover:bg-indigo-50' : 'border-emerald-600/50 text-emerald-600 hover:bg-emerald-50'}`} 
+                className="h-11 rounded-xl font-bold uppercase tracking-wider text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all active:scale-95" 
                 onClick={() => setIsModalOpen(false)} 
                 disabled={saving}
               >
                 Cancel
               </Button>
-              <Button onClick={handleSaveUser} className={`h-12 rounded-xl font-black uppercase tracking-widest gap-3 text-[10px] shadow-lg transition-all active:scale-95 ${editingUser ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/25'}`} disabled={saving}>
+              <Button
+                onClick={handleSaveUser}
+                className={`h-11 rounded-xl font-bold uppercase tracking-wider gap-2 text-xs shadow-md transition-all active:scale-95 ${
+                  editingUser
+                    ? 'bg-gradient-to-r from-[#9956DE] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white shadow-purple-500/25'
+                    : 'bg-gradient-to-r from-[#52B847] to-[#36962C] hover:from-[#43A047] hover:to-[#2E7D32] text-white shadow-emerald-500/25'
+                }`}
+                disabled={saving}
+              >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : editingUser ? <><Save size={16} /> Save Changes</> : <><Plus size={16} /> Onboard User</>}
               </Button>
             </DialogFooter>
