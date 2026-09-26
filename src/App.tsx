@@ -1084,38 +1084,17 @@ const App = () => {
         <Suspense fallback={<AppLoadingScreen message="Loading teacher dashboard..." />}>
           <TeacherDashboard 
             onLogout={handleLogout}
-            onOpenProfile={() => setActiveModal('profile')}
-            onOpenSettings={() => setActiveModal('settings')}
+            profileData={profileData}
+            onSaveProfile={handleSaveProfile}
+            userSettings={userSettings}
+            onSaveSettings={handleSaveSettings}
+            onApplySettingsPreview={setUserSettings}
+            onExportData={handleExportData}
+            onClearCache={handleClearCache}
           />
         </Suspense>
-        {activeModal === 'profile' && (
-          <Suspense fallback={null}>
-            <ProfileModal
-              isOpen={activeModal === 'profile'}
-              onClose={() => setActiveModal(null)}
-              profileData={profileData}
-              onSave={handleSaveProfile}
-            />
-          </Suspense>
-        )}
-        {activeModal === 'settings' && (
-          <Suspense fallback={null}>
-            <SettingsModal
-              isOpen={activeModal === 'settings'}
-              onClose={() => setActiveModal(null)}
-              profileData={profileData}
-              onSave={handleSaveProfile}
-              settingsData={userSettings}
-              onSaveSettings={handleSaveSettings}
-              onApplySettingsPreview={setUserSettings}
-              onExportData={handleExportData}
-              onClearCache={handleClearCache}
-              onResetData={handleResetTestingData}
-             />
-           </Suspense>
-         )}
-          <Toaster position="top-right" richColors closeButton />
-        </>
+        <Toaster position="top-right" richColors closeButton />
+      </>
       </RequireRole>
       </NotificationProvider>
     );
