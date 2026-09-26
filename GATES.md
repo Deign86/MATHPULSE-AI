@@ -1,3 +1,29 @@
+# Gates: Daily Rewards Modal UI/UX Redesign & Global Modal Sidebar Stacking Fix
+
+Scope: Fix modal stacking context bug where the desktop sidebar is rendered on top of the Daily Rewards modal and other un-portaled modals; portal all modals to document.body with z-[100]; completely overhaul DailyCheckInModal UI/UX with clean 7-day progression track, polished active/claimed/locked states, Day 7 finale card, decluttered headers/text, responsive mobile-to-desktop design, and dark mode support.
+
+- [x] DR1: Portal DailyCheckInModal and other nested modals to document.body with z-[100], eliminating sidebar stacking and backdrop trapping
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Converted DailyCheckInModal, BloomsTaxonomyModal, CreateClassModal, AddStudentsModal, StudentProfileModal, ProfilePictureUploader, CreateStudentAccountModal, and SettingsModal to portal directly to document.body via createPortal(..., document.body) at z-[100]. This completely prevents stacking context trapping caused by Desktop Sidebar's z-20.
+
+- [x] DR2: Overhaul DailyCheckInModal UI/UX — preserve creative top floating banner, declutter text, refine 7-day progression cards (active pulse, claimed, locked states), Day 7 Grand Finale card, and tactile 3D claim button
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Retained the user's favorite creative top floating banner (gradient with sparkles), added clean header greeting ('Welcome Back! Claim your daily reward to keep your streak alive'), 3-column days 1-6 grid with distinct status badges, full-width Day 7 Epic Reward card with gradient glow, reset countdown timer, and tactile 3D Claim button with particle celebration.
+
+- [x] DR3: Responsive layout and dark-mode polish across all device viewpoints (320px to 1920px+) with smooth touch targets and zero clipping
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Built with flex overscroll-contain container, responsive max-w-[420px], dynamic touch targets (>= 44px on primary CTA), min-h-[76px] bento cards on mobile, and full dark-mode palette support (dark:bg-slate-900, dark:border-slate-800, dark:text-white).
+
+- [x] DR4: Verification: TypeScript typecheck, Anti-Slop Oxlint, and Vitest test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean across all checks: tsc --noEmit (0 errors), oxlint --quiet (0 errors, 439 warnings across 445 files), and Vitest (58 test files passed, 356/356 tests passed).
+
+---
+
 # Gates: Notification Toggle Fix, User Management Table UX, Global Table Alignment, Responsive Login/Signup & Admin Suite Polish
 
 Scope: Fix notification button toggle behavior (open on 1st click, close on 2nd click) across Student, Teacher, and Admin; eliminate horizontal side-scrolling in User Management table and make Action buttons immediately visible; fix header vs cell content alignment across ALL tables in the app; widen signup container and arrange related fields side-by-side to eliminate vertical scroll; polish all Admin pages (Class Management, Subjects, Content, RAG Manager, Analytics, AI Monitoring, Audit Log) for responsive perfection.

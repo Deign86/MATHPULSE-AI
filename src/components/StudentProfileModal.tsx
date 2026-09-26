@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { recordGet } from '../utils/memberOf';
 import { X, Trophy, Flame, Target, BookOpen, Clock, Award, TrendingUp, Star, Crown, BadgeCheck, Loader2, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -58,16 +59,16 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
     return <User size={44} className="text-white/80" />;
   };
 
-  return (
+  const modalElement = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-4">
+      <div className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"
         />
 
         {/* Modal */}
@@ -229,6 +230,12 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
       </div>
     </AnimatePresence>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+
+  return modalElement;
 };
 
 export default StudentProfileModal;

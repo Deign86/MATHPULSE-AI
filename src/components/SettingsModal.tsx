@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bell,
   Clock,
@@ -322,8 +323,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   if (!isOpen) return null;
 
-
-  return (
+  const modalElement = (
     <AnimatePresence>
       <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
@@ -1241,6 +1241,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       </>
     </AnimatePresence>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+
+  return modalElement;
 };
 
 export default SettingsModal;
