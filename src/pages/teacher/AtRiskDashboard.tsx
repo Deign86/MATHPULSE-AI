@@ -158,7 +158,7 @@ export const AtRiskDashboard: React.FC = () => {
             icon={Users}
             value={stats.total}
             subtitle="Enrolled in system"
-            footerLabel="All Roster"
+            footerLabel="All Students"
             footerBadge={`${stats.total} active`}
           />
           <TeacherStatCard

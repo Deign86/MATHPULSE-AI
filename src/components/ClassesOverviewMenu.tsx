@@ -151,8 +151,8 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
                 badgeText="Active"
                 icon={Users}
                 value={totalStudents}
-                subtitle="Enrolled Roster"
-                footerLabel="Across Roster"
+                subtitle="Enrolled Students"
+                footerLabel="Across Classes"
                 footerBadge={`${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}
               />
               <TeacherStatCard
