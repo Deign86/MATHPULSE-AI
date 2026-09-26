@@ -516,6 +516,19 @@ export function countResolvedStudentsForClass(
   return resolvedStudents.filter((student) => isStudentInClass(student, classView)).length;
 }
 
+export function deriveResolvedClassCounts(
+  classViews: ClassView[],
+  resolvedStudents: readonly (ClassCountStudent & Pick<StudentView, 'id' | 'lrn' | 'name'>)[],
+) {
+  return {
+    classes: classViews.map((classView) => ({
+      ...classView,
+      studentCount: countResolvedStudentsForClass(classView, resolvedStudents),
+    })),
+    totalStudents: new Set(resolvedStudents.map(buildStudentMergeKey)).size,
+  };
+}
+
 export function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView[] {
   const merged = new Map<string, ClassView>();
 
@@ -573,7 +586,7 @@ export function mergeClassViews(primary: ClassView[], imported: ClassView[]): Cl
   return Array.from(merged.values());
 }
 
-function buildStudentMergeKey(student: StudentView): string {
+function buildStudentMergeKey(student: Pick<StudentView, 'id' | 'lrn' | 'name' | 'classSectionId' | 'classroomId'>): string {
   const lrnKey = (student.lrn || '').trim().toLowerCase();
   if (lrnKey) return `lrn:${lrnKey}`;
   const nameKey = student.name.trim().toLowerCase();
@@ -745,12 +758,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
   const [students, setStudents] = useState<StudentView[]>([]);
+  const resolvedClassCounts = useMemo(
+    () => deriveResolvedClassCounts(classes, students),
+    [classes, students],
+  );
+  const classesWithResolvedCounts = resolvedClassCounts.classes;
 
   // Only classes this teacher manages (managerId matches current user)
   const managedClasses = useMemo(() => {
     if (!currentUser?.uid) return classes;
     return classes.filter(c => c.managerId === currentUser.uid || c.classMetadata?.managerId === currentUser.uid);
   }, [classes, currentUser?.uid]);
+  const managedClassesWithResolvedCounts = managedClasses.map((classView) =>
+    classesWithResolvedCounts.find((resolvedClass) => resolvedClass.id === classView.id) || classView,
+  );
   const [liveActivity, setLiveActivity] = useState<{ id: string; student: string; action: string; topic: string; time: string; type: string }[]>([]);
   const [dailyInsight, setDailyInsight] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
@@ -1248,7 +1269,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   }, [students]);
 
   // Computed stats
-  const totalStudents = classes.reduce((sum, c) => sum + c.studentCount, 0);
+  const totalStudents = resolvedClassCounts.totalStudents;
   // Compute at-risk from actual student data (WRI-aware) instead of stale classrooms doc
   const totalAtRisk = students.filter(s => s.riskLevel === 'high').length;
   const avgPerformance = (() => {
@@ -1941,7 +1962,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               >
                 {activeView === 'dashboard' && (
                   <DashboardView
-                    classes={managedClasses}
+                    classes={managedClassesWithResolvedCounts}
                     liveActivity={liveActivity}
                     onViewClass={handleViewClass}
                     onViewAllClasses={() => setActiveView('analytics')}
@@ -2059,7 +2080,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 )}
                 {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
                   <ClassesOverviewMenu
-                    classes={managedClasses}
+                    classes={managedClassesWithResolvedCounts}
+                    totalStudentCount={totalStudents}
                     onSelectClass={(cls) => setSelectedClass(cls)}
                     onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
