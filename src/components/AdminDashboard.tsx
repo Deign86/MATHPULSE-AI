@@ -330,9 +330,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       subtext: 'Certified educators',
       icon: GraduationCap,
       badge: 'Faculty',
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200/80 dark:border-emerald-800/60',
-      badgeBg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80',
-      accentBar: 'from-emerald-500 to-teal-500',
+      gradient: 'bg-gradient-to-br from-[#10B981] via-[#059669] to-[#047857]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(16,185,129,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(16,185,129,0.48)]',
       isPriority: false,
     },
     {
@@ -341,9 +340,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       subtext: 'STEM & Core cohorts',
       icon: BookOpen,
       badge: 'Cohorts',
-      iconBg: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200/80 dark:border-indigo-800/60',
-      badgeBg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80',
-      accentBar: 'from-indigo-500 to-violet-500',
+      gradient: 'bg-gradient-to-br from-[#6366F1] via-[#4F46E5] to-[#4338CA]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(99,102,241,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(99,102,241,0.48)]',
       isPriority: false,
     },
     {
@@ -352,9 +350,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       subtext: 'Interactive practice runs',
       icon: Zap,
       badge: 'AI Activity',
-      iconBg: 'bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border-sky-200/80 dark:border-sky-800/60',
-      badgeBg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80',
-      accentBar: 'from-sky-500 to-indigo-500',
+      gradient: 'bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED]',
+      shadow: 'shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.48)]',
       isPriority: false,
     },
     {
@@ -363,13 +360,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       subtext: atRiskCount > 0 ? 'Students requiring intervention' : 'All students on track',
       icon: atRiskCount > 0 ? AlertCircle : CheckCircle2,
       badge: atRiskCount > 0 ? 'Intervention' : 'Optimal',
-      iconBg: atRiskCount > 0
-        ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
-        : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-      badgeBg: atRiskCount > 0
-        ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 font-bold'
-        : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-      accentBar: atRiskCount > 0 ? 'from-rose-500 to-pink-500' : 'from-emerald-500 to-teal-500',
+      gradient: atRiskCount > 0
+        ? 'bg-gradient-to-br from-[#FB7185] via-[#F43F5E] to-[#E11D48]'
+        : 'bg-gradient-to-br from-[#10B981] via-[#059669] to-[#047857]',
+      shadow: atRiskCount > 0
+        ? 'shadow-[0_8px_24px_-6px_rgba(244,63,94,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(244,63,94,0.48)]'
+        : 'shadow-[0_8px_24px_-6px_rgba(16,185,129,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(16,185,129,0.48)]',
       isPriority: atRiskCount > 0,
     },
   ];
@@ -555,10 +551,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {activeTab === 'Overview' && (
             <div className="max-w-[1600px] mx-auto space-y-5 lg:space-y-6 pt-4 sm:pt-6 w-full min-w-0">
               {/* Executive Branded Hero Banner */}
-              <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-7 border border-indigo-500/20 shadow-xl shadow-indigo-950/20 group">
-                {/* Ambient Glows */}
-                <div className="absolute -top-24 -right-24 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl group-hover:bg-indigo-500/25 transition-all duration-700 pointer-events-none" />
-                <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl group-hover:bg-sky-500/20 transition-all duration-700 pointer-events-none" />
+              <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900 dark:bg-slate-900/95 text-white p-5 sm:p-7 border border-slate-800 shadow-xl shadow-slate-950/40 group">
+                {/* Signature Brand Accent Stripe */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
+
+                {/* Subtle Ambient Brand Glows */}
+                <div className="absolute -top-24 -right-24 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl group-hover:bg-purple-600/15 transition-all duration-700 pointer-events-none" />
+                <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl group-hover:bg-indigo-600/15 transition-all duration-700 pointer-events-none" />
 
                 <div className="relative z-10">
                   {/* Top Status & Accreditation Badges */}
@@ -572,7 +571,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
 
                     <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-medium backdrop-blur-md shrink-0">
-                      <School size={13} className="text-indigo-400 shrink-0" />
+                      <School size={13} className="text-purple-400 shrink-0" />
                       <span className="whitespace-nowrap">Senior High School STEM</span>
                     </div>
                   </div>
@@ -581,7 +580,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="max-w-3xl">
                     <h2 className="text-xl sm:text-3xl font-display font-black tracking-tight text-white leading-tight">
                       {getExecutiveGreeting()},{' '}
-                      <span className="bg-gradient-to-r from-indigo-200 via-sky-200 to-white bg-clip-text text-transparent">
+                      <span className="bg-gradient-to-r from-purple-200 via-indigo-200 to-white bg-clip-text text-transparent">
                         {effectiveProfileData.name?.replace(/System Administrator/gi, 'Administrator') || 'Administrator'}
                       </span>
                     </h2>
@@ -595,7 +594,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <button
                       type="button"
                       onClick={() => handleQuickAddUser('Teacher')}
-                      className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/25 transition-all hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
+                      className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white text-xs font-bold rounded-xl shadow-md shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.98] border border-purple-400/30 cursor-pointer"
                     >
                       <Plus size={15} />
                       <span>Add Faculty or Student</span>
@@ -631,39 +630,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               </div>
 
-              {/* Bento KPI Grid (Creative 2x2 on Mobile, 4-up on Desktop with Calm Teacher-Inspired Surface) */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 min-w-0">
+              {/* Bento KPI Grid (Full Color Gradients with Glassmorphism) */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 min-w-0">
                 {systemStats.map((statItem, index) => (
                   <motion.div
                     key={index}
                     whileHover={{ y: -2 }}
                     transition={{ duration: 0.15 }}
-                    className={`relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-xl sm:rounded-3xl p-2.5 sm:p-5 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all min-w-0 group border min-h-[58px] sm:min-h-[120px] ${
-                      statItem.isPriority
-                        ? 'border-rose-300 dark:border-rose-800/80 ring-1 ring-rose-400/20'
-                        : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
+                    className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-3 sm:p-5 flex flex-col justify-between ${statItem.gradient} ${statItem.shadow} border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out min-w-0 group min-h-[110px] sm:min-h-[140px] text-white select-none`}
                   >
-                    {/* Subtle Top Accent Line */}
-                    <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${statItem.accentBar} pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity`} />
+                    {/* Ambient Glow */}
+                    <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
-                    <div className="flex items-center justify-between mb-1.5 sm:mb-3">
-                      <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center ${statItem.iconBg} border shrink-0`}>
-                        <statItem.icon size={14} className="sm:hidden" />
-                        <statItem.icon size={18} className="hidden sm:block" />
+                    <div className="relative z-10 flex items-center justify-between mb-1.5 sm:mb-3">
+                      <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-xs text-white transition-transform group-hover:scale-105">
+                        <statItem.icon size={14} className="sm:hidden text-white" />
+                        <statItem.icon size={18} className="hidden sm:block text-white" />
                       </div>
-                      <span className={`text-[8px] sm:text-[10px] font-semibold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full border ${statItem.badgeBg}`}>
+                      <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
                         {statItem.badge}
                       </span>
                     </div>
-                    <div>
-                      <p className="text-lg sm:text-[30px] font-display font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight truncate tabular-nums">
+                    <div className="relative z-10">
+                      <p className="text-lg sm:text-[30px] font-display font-black text-white leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">
                         {loadingOverview ? '...' : statItem.value}
                       </p>
-                      <p className="text-[10px] sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate mt-0.5 sm:mt-1">
+                      <p className="text-[10px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">
                         {statItem.label}
                       </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium hidden sm:block">
+                      <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">
                         {statItem.subtext}
                       </p>
                     </div>
@@ -1077,7 +1073,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <thead>
                           <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
                             <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Subject</th>
-                            <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Category</th>
+                            <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">Category</th>
                             <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">Enrolled</th>
                             <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mastery Progress</th>
                           </tr>
@@ -1095,9 +1091,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <td className="px-5 py-3.5">
                                   <span className="text-sm font-bold text-slate-900 dark:text-white">{subItem.name}</span>
                                 </td>
-                                <td className="px-5 py-3.5">
+                                <td className="px-5 py-3.5 text-center">
                                   <span
-                                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider border ${
+                                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider border inline-block ${
                                       subItem.type === 'STEM'
                                         ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60'
                                         : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
@@ -1234,6 +1230,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <AdminUserManagement
               createIntentRole={createIntentRole}
               onCreateIntentConsumed={() => setCreateIntentRole(null)}
+              sidebarCollapsed={sidebarCollapsed}
             />
           )}
           {activeTab === 'Analytics' && <AdminAnalytics />}

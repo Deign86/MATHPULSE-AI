@@ -72,12 +72,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
     <AnimatePresence>
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden="true" />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -10, x: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10, x: 10 }}
-            className="fixed top-[80px] right-[24px] xl:right-[32px] w-[380px] bg-white/95 backdrop-blur-xl rounded-[20px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white z-50 flex flex-col overflow-hidden origin-top-right"
+            className="fixed top-[80px] right-4 sm:right-[24px] xl:right-[32px] w-[calc(100vw-2rem)] sm:w-[380px] bg-white/95 backdrop-blur-xl rounded-[20px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white z-50 flex flex-col overflow-hidden origin-top-right"
           >
             {/* Header */}
             <div className="p-4 border-b border-[#f1f5f9] flex justify-between items-center bg-white/50">

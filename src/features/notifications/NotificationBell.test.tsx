@@ -18,7 +18,11 @@ vi.spyOn(notificationContextNs, 'useNotifications').mockImplementation(
 // Panel seam: rendered-but-inert stub isolates bell toggle behavior.
 // SAFETY: the stub preserves the onClose prop contract consumed by the bell.
 vi.spyOn(notificationPanelNs, 'NotificationPanel').mockImplementation(
-  (({ onClose, panelRef }: { onClose: () => void; panelRef?: React.RefObject<HTMLDivElement | null> }) =>
+  (({ onClose, panelRef, triggerRef }: {
+    onClose: () => void;
+    panelRef?: React.RefObject<HTMLDivElement | null>;
+    triggerRef?: React.RefObject<HTMLElement | null>;
+  }) =>
     createPortal(
       <div ref={panelRef} data-testid="panel">
         Panel Content
@@ -111,5 +115,23 @@ describe('NotificationBell', () => {
     // Click 2: close
     fireEvent.click(bellBtn);
     expect(screen.queryByTestId('panel')).not.toBeInTheDocument();
+  });
+
+  it('passes triggerRef to NotificationPanel so outside click does not intercept bell button', () => {
+    unreadCountValue = 3;
+    let receivedTriggerRef: React.RefObject<HTMLElement | null> | undefined;
+    vi.spyOn(notificationPanelNs, 'NotificationPanel').mockImplementationOnce(
+      // SAFETY: stub isolates triggerRef forwarding inspection.
+      (({ triggerRef }: { triggerRef?: React.RefObject<HTMLElement | null> }) => {
+        receivedTriggerRef = triggerRef;
+        return <div data-testid="panel" />;
+      }) as typeof notificationPanelNs.NotificationPanel,
+    );
+
+    render(<NotificationBell />);
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }));
+
+    expect(receivedTriggerRef).toBeDefined();
+    expect(receivedTriggerRef?.current).toBeInstanceOf(HTMLElement);
   });
 });

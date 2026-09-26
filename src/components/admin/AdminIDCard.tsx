@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Shield, RotateCw, CheckCircle2, Building, Award, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
-import { QRCodeSVG } from 'qrcode.react';
 import type { ProfileData } from '../SettingsPage';
 
 export interface AdminIDCardProps {
@@ -91,9 +90,6 @@ export const AdminIDCard: React.FC<AdminIDCardProps> = ({ profileData, onPhotoUp
   const positionTitle = profileData.position || 'Curriculum Administrator';
   const divisionOffice = profileData.school || profileData.department || 'Senior High School Mathematics';
 
-  const verificationUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/verify/admin?id=${encodeURIComponent(adminIdDisplay)}`
-    : `https://mathpulse.ai/verify/admin?id=${encodeURIComponent(adminIdDisplay)}`;
 
   return (
     <div
@@ -198,7 +194,7 @@ export const AdminIDCard: React.FC<AdminIDCardProps> = ({ profileData, onPhotoUp
             </span>
             <span className="flex items-center gap-1 text-indigo-300 font-medium">
               <RotateCw size={10} />
-              Flip for QR Pass
+              Flip for Governance Pass
             </span>
           </div>
         </div>
@@ -220,18 +216,17 @@ export const AdminIDCard: React.FC<AdminIDCardProps> = ({ profileData, onPhotoUp
             </span>
           </div>
 
-          {/* QR Verification Centerpiece */}
+          {/* Governance Pass Centerpiece */}
           <div className="my-auto py-2 flex flex-col items-center justify-center text-center">
-            <div className="p-2.5 rounded-2xl bg-white shadow-xl shadow-indigo-950/40 border-2 border-indigo-200">
-              <QRCodeSVG
-                value={verificationUrl}
-                size={110}
-                level="M"
-                includeMargin={false}
-              />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500/20 via-sky-500/20 to-violet-500/20 border border-indigo-400/30 flex items-center justify-center shadow-inner">
+              <Shield size={28} className="text-sky-300 drop-shadow" />
             </div>
-            <p className="text-[10px] text-slate-300 font-medium mt-2">
-              Scan for administrative credential authentication
+            <span className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Verified Administrator
+            </span>
+            <p className="text-[10px] text-slate-300 font-medium mt-1.5 max-w-[240px]">
+              Institutional credential active for Senior High School STEM curriculum management.
             </p>
           </div>
 

@@ -92,6 +92,25 @@ describe('NotificationPanel', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
+  it('does not call onClose when clicking on the trigger element', () => {
+    const mockOnClose = vi.fn();
+    notificationsValue = [];
+    isLoadingValue = false;
+
+    const triggerElement = document.createElement('button');
+    document.body.appendChild(triggerElement);
+    const triggerRef = { current: triggerElement };
+
+    render(<NotificationPanel onClose={mockOnClose} triggerRef={triggerRef} />);
+
+    fireEvent(triggerElement, new MouseEvent('mousedown', {
+      bubbles: true,
+    }));
+
+    expect(mockOnClose).not.toHaveBeenCalled();
+    document.body.removeChild(triggerElement);
+  });
+
   it('calls markAllAsRead when button clicked', () => {
     notificationsValue = [
       { id: 'notif-1', userId: 'user-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },

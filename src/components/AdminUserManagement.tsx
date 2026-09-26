@@ -48,6 +48,7 @@ import {
 interface AdminUserManagementProps {
   createIntentRole?: 'Teacher' | 'Student' | null;
   onCreateIntentConsumed?: () => void;
+  sidebarCollapsed?: boolean;
 }
 
 const buildDefaultFormData = (role: 'Student' | 'Teacher' | 'Admin' = 'Student') => ({
@@ -101,6 +102,7 @@ function csvEscape(value: string | number | boolean | null | undefined): string 
 const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   createIntentRole = null,
   onCreateIntentConsumed,
+  sidebarCollapsed = false,
 }) => {
   const { userProfile } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -858,9 +860,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const hasActiveFilters = searchQuery || roleFilter !== 'All Roles' || statusFilter !== 'All Status' || sectionFilter !== 'All Sections';
 
   return (
-    <div className="flex flex-col animate-in fade-in duration-500">
+    <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {/* ── Interactive KPI Quick-Filter Strip (Symmetrical Non-Scrolling Bento Grid) ── */}
-      <div className="pt-1.5 sm:pt-2 pb-2.5 sm:pb-4 px-1">
+      <div>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
           {loading && users.length === 0
             ? Array.from({ length: 5 }).map((_, idx) => (
@@ -949,9 +951,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       {/* ── Compact Toolbar + Active Filters ── */}
       <div className="sticky top-0 z-20 px-1 pt-2 pb-2.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
         {/* Toolbar card */}
-        <div className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2.5 sm:p-3 lg:px-3.5 lg:py-2 shadow-sm flex flex-col lg:flex-row lg:items-center gap-2.5 lg:gap-2 w-full">
-          {/* Top Row on Mobile/Tablet (< lg) & Left Search on Desktop (>= lg) */}
-          <div className="flex items-center gap-2 w-full lg:flex-1 lg:min-w-0">
+        <div className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2.5 sm:p-3 lg:px-4 lg:py-3 shadow-sm flex flex-col gap-2.5 w-full">
+          {/* ── Line 1: Search & Filter Controls + Action Buttons ── */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 lg:gap-2 w-full">
             {/* Search */}
             <div className="relative flex-1 min-w-0 group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 group-focus-within:text-[#9956DE] transition-colors shrink-0" size={16} />
@@ -1000,130 +1002,193 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 <span className="hidden xs:inline sm:inline">Add User</span>
               </Button>
             </div>
-          </div>
 
-          {/* Desktop Divider */}
-          <div className="hidden lg:block w-px h-6 bg-slate-200 dark:bg-slate-700 shrink-0" />
+            {/* Desktop Divider */}
+            <div className="hidden lg:block w-px h-6 bg-slate-200 dark:bg-slate-700 shrink-0" />
 
-          {/* Filter Dropdowns (< lg: grid or flex row; >= lg: inline controls) */}
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
-            {/* Role filter */}
-            <Select
-              value={roleFilter}
-              onValueChange={(value) => { setRoleFilter(value); setCurrentPage(1); clearSelection(); }}
-            >
-              <SelectTrigger className="h-10 w-full sm:w-[130px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
-                <span className="truncate">{roleFilter === 'All Roles' ? 'All Roles' : roleFilter}</span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
-                <SelectItem value="All Roles" className="text-xs font-medium">All Roles</SelectItem>
-                <SelectItem value="Admin" className="text-xs font-medium">Administrator</SelectItem>
-                <SelectItem value="Teacher" className="text-xs font-medium">Educator</SelectItem>
-                <SelectItem value="Student" className="text-xs font-medium">Student</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Status filter */}
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => { setStatusFilter(value); setCurrentPage(1); clearSelection(); }}
-            >
-              <SelectTrigger className="h-10 w-full sm:w-[125px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
-                <span className="truncate">{statusFilter === 'All Status' ? 'All Status' : statusFilter}</span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
-                <SelectItem value="All Status" className="text-xs font-medium">All Statuses</SelectItem>
-                <SelectItem value="Active" className="text-xs font-medium">Active</SelectItem>
-                <SelectItem value="Inactive" className="text-xs font-medium">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Section filter */}
-            {availableSections.length > 0 && (
+            {/* Filter Dropdowns (< lg: grid or flex row; >= lg: inline controls) */}
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
+              {/* Role filter */}
               <Select
-                value={sectionFilter}
-                onValueChange={(value) => { setSectionFilter(value); clearSelection(); }}
+                value={roleFilter}
+                onValueChange={(value) => { setRoleFilter(value); setCurrentPage(1); clearSelection(); }}
               >
-                <SelectTrigger className="h-10 w-full col-span-2 sm:col-span-1 sm:w-[130px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
-                  <span className="truncate">{sectionFilter === 'All Sections' ? 'All Sections' : sectionFilter}</span>
+                <SelectTrigger className="h-10 w-full sm:w-[130px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
+                  <span className="truncate">{roleFilter === 'All Roles' ? 'All Roles' : roleFilter}</span>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
-                  <SelectItem value="All Sections" className="text-xs font-medium">All Sections</SelectItem>
-                  {availableSections.map(s => (
-                    <SelectItem key={s} value={s} className="text-xs font-medium">{s}</SelectItem>
+                  <SelectItem value="All Roles" className="text-xs font-medium">All Roles</SelectItem>
+                  <SelectItem value="Admin" className="text-xs font-medium">Administrator</SelectItem>
+                  <SelectItem value="Teacher" className="text-xs font-medium">Educator</SelectItem>
+                  <SelectItem value="Student" className="text-xs font-medium">Student</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Status filter */}
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => { setStatusFilter(value); setCurrentPage(1); clearSelection(); }}
+              >
+                <SelectTrigger className="h-10 w-full sm:w-[125px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
+                  <span className="truncate">{statusFilter === 'All Status' ? 'All Status' : statusFilter}</span>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                  <SelectItem value="All Status" className="text-xs font-medium">All Statuses</SelectItem>
+                  <SelectItem value="Active" className="text-xs font-medium">Active</SelectItem>
+                  <SelectItem value="Inactive" className="text-xs font-medium">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Section filter */}
+              {availableSections.length > 0 && (
+                <Select
+                  value={sectionFilter}
+                  onValueChange={(value) => { setSectionFilter(value); clearSelection(); }}
+                >
+                  <SelectTrigger className="h-10 w-full col-span-2 sm:col-span-1 sm:w-[130px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
+                    <span className="truncate">{sectionFilter === 'All Sections' ? 'All Sections' : sectionFilter}</span>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                    <SelectItem value="All Sections" className="text-xs font-medium">All Sections</SelectItem>
+                    {availableSections.map(s => (
+                      <SelectItem key={s} value={s} className="text-xs font-medium">{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Desktop Divider */}
+            <div className="hidden lg:block w-px h-6 bg-slate-200 dark:bg-slate-700 shrink-0" />
+
+            {/* Desktop Action Buttons (>= lg) */}
+            <div className="hidden lg:flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] border border-transparent hover:border-purple-200/60 transition-all shrink-0"
+                onClick={() => loadUsers(currentPage)}
+                disabled={loading || isProcessingBulkAction}
+                title="Refresh"
+                aria-label="Refresh users"
+              >
+                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              </Button>
+
+              <Button
+                className="h-10 gap-2 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white rounded-xl shadow-md shadow-purple-500/25 hover:shadow-purple-500/40 transition-all px-4 sm:px-5 font-bold text-xs shrink-0 border border-purple-400/30"
+                onClick={() => handleOpenAddModal()}
+                disabled={isProcessingBulkAction}
+              >
+                <UserPlus size={15} />
+                <span>Add User</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* ── Line 2: Context / Active Filters (Left) + Pagination (Right) ── */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            {/* Left: Active Filters or Default Range Context */}
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              {hasActiveFilters ? (
+                <>
+                  <SlidersHorizontal size={12} className="text-purple-500 shrink-0" />
+                  {searchQuery && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 text-[11px] font-bold border border-purple-200/70 dark:border-purple-900/60 shadow-xs">
+                      &quot;{searchQuery}&quot;
+                      <button type="button" onClick={() => { setSearchQuery(''); setCurrentPage(1); }} className="text-purple-400 hover:text-purple-700 ml-0.5"><X size={11} /></button>
+                    </span>
+                  )}
+                  {roleFilter !== 'All Roles' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-[11px] font-bold border border-violet-200/70 dark:border-violet-900/60 shadow-xs">
+                      Role: {roleFilter}
+                      <button type="button" onClick={() => { setRoleFilter('All Roles'); setCurrentPage(1); }} className="text-violet-400 hover:text-violet-700 ml-0.5"><X size={11} /></button>
+                    </span>
+                  )}
+                  {statusFilter !== 'All Status' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200/70 dark:border-emerald-900/60 shadow-xs">
+                      {statusFilter}
+                      <button type="button" onClick={() => { setStatusFilter('All Status'); setCurrentPage(1); }} className="text-emerald-400 hover:text-emerald-700 ml-0.5"><X size={11} /></button>
+                    </span>
+                  )}
+                  {sectionFilter !== 'All Sections' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-[11px] font-bold border border-sky-200/70 dark:border-sky-900/60 shadow-xs">
+                      &sect;&nbsp;{sectionFilter}
+                      <button type="button" onClick={() => { setSectionFilter('All Sections'); }} className="text-sky-400 hover:text-sky-700 ml-0.5"><X size={11} /></button>
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setSearchQuery(''); setRoleFilter('All Roles'); setStatusFilter('All Status'); setSectionFilter('All Sections'); setCurrentPage(1); clearSelection(); }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                  >
+                    <FilterX size={12} /> Clear all
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <span className="w-2 h-2 rounded-full bg-[#9956DE] shrink-0" />
+                  <span>Showing <strong className="text-slate-800 dark:text-slate-200 font-extrabold">{visibleRangeStart}–{visibleRangeEnd}</strong> of <strong className="text-slate-800 dark:text-slate-200 font-extrabold">{totalUsers}</strong> user records</span>
+                </div>
+              )}
+            </div>
+
+            {/* Right: Pagination Controls */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap hidden sm:inline">
+                {visibleRangeStart}–{visibleRangeEnd} of {totalUsers}
+              </span>
+
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  const nextPageSize = Number(value);
+                  if (Number.isNaN(nextPageSize)) return;
+                  setPageSize(nextPageSize);
+                  setCurrentPage(1);
+                  clearSelection();
+                }}
+              >
+                <SelectTrigger className="h-8 w-[95px] rounded-lg bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-2.5 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
+                  <SelectValue placeholder={`${pageSize}/page`} />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={size} className="text-xs font-medium">{size}/page</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            )}
-          </div>
 
-          {/* Desktop Divider */}
-          <div className="hidden lg:block w-px h-6 bg-slate-200 dark:bg-slate-700 shrink-0" />
-
-          {/* Desktop Action Buttons (>= lg) */}
-          <div className="hidden lg:flex items-center gap-2 shrink-0">
-            {/* Refresh */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] border border-transparent hover:border-purple-200/60 transition-all shrink-0"
-              onClick={() => loadUsers(currentPage)}
-              disabled={loading || isProcessingBulkAction}
-              title="Refresh"
-              aria-label="Refresh users"
-            >
-              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            </Button>
-
-            {/* Add User */}
-            <Button
-              className="h-10 gap-2 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white rounded-xl shadow-md shadow-purple-500/25 hover:shadow-purple-500/40 transition-all px-4 sm:px-5 font-bold text-xs shrink-0 border border-purple-400/30"
-              onClick={() => handleOpenAddModal()}
-              disabled={isProcessingBulkAction}
-            >
-              <UserPlus size={15} />
-              <span>Add User</span>
-            </Button>
+              <div className="flex items-center gap-0.5 bg-slate-100/80 dark:bg-slate-900/60 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-[#9956DE] disabled:opacity-30 transition-all cursor-pointer"
+                  disabled={currentPage <= 1 || loading || isProcessingBulkAction}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  title="Previous page"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={14} />
+                </Button>
+                <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-200 px-1.5 tabular-nums">
+                  {currentPage}/{Math.max(totalPages, 1)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-[#9956DE] disabled:opacity-30 transition-all cursor-pointer"
+                  disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
+                  title="Next page"
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={14} />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Active filter pills */}
-        {hasActiveFilters && (
-          <div className="flex items-center gap-1.5 mt-2 flex-wrap px-1">
-            <SlidersHorizontal size={12} className="text-purple-500 shrink-0" />
-            {searchQuery && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 text-[11px] font-bold border border-purple-200/70 dark:border-purple-900/60 shadow-xs">
-                &quot;{searchQuery}&quot;
-                <button type="button" onClick={() => { setSearchQuery(''); setCurrentPage(1); }} className="text-purple-400 hover:text-purple-700 ml-0.5"><X size={11} /></button>
-              </span>
-            )}
-            {roleFilter !== 'All Roles' && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-[11px] font-bold border border-violet-200/70 dark:border-violet-900/60 shadow-xs">
-                Role: {roleFilter}
-                <button type="button" onClick={() => { setRoleFilter('All Roles'); setCurrentPage(1); }} className="text-violet-400 hover:text-violet-700 ml-0.5"><X size={11} /></button>
-              </span>
-            )}
-            {statusFilter !== 'All Status' && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200/70 dark:border-emerald-900/60 shadow-xs">
-                {statusFilter}
-                <button type="button" onClick={() => { setStatusFilter('All Status'); setCurrentPage(1); }} className="text-emerald-400 hover:text-emerald-700 ml-0.5"><X size={11} /></button>
-              </span>
-            )}
-            {sectionFilter !== 'All Sections' && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-[11px] font-bold border border-sky-200/70 dark:border-sky-900/60 shadow-xs">
-                &sect;&nbsp;{sectionFilter}
-                <button type="button" onClick={() => { setSectionFilter('All Sections'); }} className="text-sky-400 hover:text-sky-700 ml-0.5"><X size={11} /></button>
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => { setSearchQuery(''); setRoleFilter('All Roles'); setStatusFilter('All Status'); setSectionFilter('All Sections'); setCurrentPage(1); clearSelection(); }}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-            >
-              <FilterX size={12} /> Clear all
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Floating Bulk Action Bar */}
@@ -1229,12 +1294,36 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         
         {/* Mobile card view (< md) */}
         <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800 p-2 space-y-3">
-          <div className="px-4 py-3 bg-slate-50/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
-            <label className="flex items-center gap-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider cursor-pointer select-none">
+          <div className="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
+            <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider cursor-pointer select-none">
               <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300 dark:border-slate-600 data-[state=checked]:bg-[#9956DE] data-[state=checked]:border-[#9956DE]" />
-              Select page
+              <span className="text-[11px]">Select ({visibleRangeStart}–{visibleRangeEnd} of {totalUsers})</span>
             </label>
-            <span className="text-[11px] font-extrabold text-[#9956DE] dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-2.5 py-0.5 rounded-full border border-purple-200/60">p. {currentPage}/{totalPages}</span>
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-30"
+                disabled={currentPage <= 1 || loading || isProcessingBulkAction}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={14} />
+              </Button>
+              <span className="text-[11px] font-extrabold text-[#9956DE] dark:text-purple-300 px-1.5 tabular-nums">
+                {currentPage}/{Math.max(totalPages, 1)}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-30"
+                disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
+                aria-label="Next page"
+              >
+                <ChevronRight size={14} />
+              </Button>
+            </div>
           </div>
           {loading && users.length === 0 ? (
             <div className="px-6 py-12 text-center text-slate-400 font-bold">Loading user records...</div>
@@ -1354,285 +1443,219 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   We couldn't find any users matching your current filters. Try adjusting your search.
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="rounded-xl border-purple-200 text-[#9956DE] font-bold" onClick={() => {
-                setSearchQuery('');
-                setRoleFilter('All Roles');
-                setStatusFilter('All Status');
-              }}>
-                Clear Filters
-              </Button>
             </div>
           )}
         </div>
 
         {/* Desktop table view (≥ md) */}
-        <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <table className="w-full text-left border-collapse" style={{ minWidth: '880px' }}>
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white border-b border-purple-700/60 shadow-xs">
-                <th className="px-5 py-3.5 w-[50px]">
-                  <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-white/70 bg-white/10 data-[state=checked]:bg-white data-[state=checked]:text-[#9956DE] data-[state=checked]:border-white" />
-                </th>
-                <th className="px-5 py-3.5 text-[11px] font-extrabold text-white uppercase tracking-wider whitespace-nowrap">User Identity</th>
-                <th className="px-5 py-3.5 text-[11px] font-extrabold text-white uppercase tracking-wider whitespace-nowrap">Role</th>
-                <th className="px-5 py-3.5 text-[11px] font-extrabold text-white uppercase tracking-wider whitespace-nowrap">Status</th>
-                <th className="px-5 py-3.5 text-[11px] font-extrabold text-white uppercase tracking-wider whitespace-nowrap">Placement</th>
-                <th className="px-5 py-3.5 text-[11px] font-extrabold text-white uppercase tracking-wider whitespace-nowrap">Last Activity</th>
-                <th className="px-5 py-3.5 text-right text-[11px] font-extrabold text-white uppercase tracking-wider whitespace-nowrap">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loading && users.length === 0 ? (
+        <div className="hidden md:flex flex-col rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 relative">
+          {/* Top Brand Accent Line */}
+          <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0 rounded-t-2xl" />
+
+          {/* Table Container */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse" style={{ minWidth: '768px' }}>
+              <thead className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-md shadow-xs border-b border-slate-200/80 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wider">
                 <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center">
-                    <Loader2 className="animate-spin text-[#9956DE] mx-auto" size={36} />
-                    <p className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Loading user records...</p>
-                  </td>
+                  <th className="px-3.5 py-3.5 w-12 text-center">
+                    <Checkbox checked={allVisibleSelected} onCheckedChange={handleToggleSelectVisible} className="rounded-md border-slate-300 dark:border-slate-600 data-[state=checked]:bg-[#9956DE] data-[state=checked]:border-[#9956DE]" />
+                  </th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">User Identity</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Role</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Placement</th>
+                  <th className="px-4 py-3.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Last Activity</th>
+                  <th className="px-4 py-3.5 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Actions</th>
                 </tr>
-              ) : users.length > 0 ? (
-                displayedUsers.map((user) => {
-                  const isPendingToggle = pendingRowActionUserId === user.id;
-                  const isSelected = isUserSelected(user.id);
-                  return (
-                    <tr
-                      key={user.id}
-                      className={`transition-all group relative border-b border-slate-100 dark:border-slate-800/70 ${
-                        isSelected
-                          ? 'bg-purple-50/50 dark:bg-purple-950/25'
-                          : 'hover:bg-purple-50/30 dark:hover:bg-purple-950/15'
-                      }`}
-                    >
-                      <td className="px-6 py-4 align-middle relative">
-                        {/* Hover indicator strip */}
-                        <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-transparent group-hover:bg-[#9956DE] transition-colors" />
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => handleToggleUserSelection(user.id)}
-                          className="rounded-md border-slate-300 dark:border-slate-600 data-[state=checked]:bg-[#9956DE] data-[state=checked]:border-[#9956DE] transition-colors"
-                        />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3.5">
-                          <div className="relative shrink-0">
-                            <Avatar className="h-11 w-11 rounded-full border-2 border-white dark:border-slate-800 shadow-sm ring-2 ring-purple-100 dark:ring-purple-950/60 group-hover:ring-purple-300 dark:group-hover:ring-purple-600 transition-all">
-                              <AvatarImage src={user.photo || getDefaultAvatar(user.gender)} className="object-cover" />
-                              <AvatarFallback className="bg-purple-50 dark:bg-purple-950/50 text-[#9956DE] dark:text-purple-300 font-bold text-sm">{user.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${user.status === 'Active' ? 'bg-emerald-500 shadow-xs' : 'bg-slate-300 dark:bg-slate-600'}`} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-900 dark:text-white truncate text-sm leading-tight group-hover:text-[#8643C8] dark:group-hover:text-purple-400 transition-colors">{user.name}</p>
-                            <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 truncate mt-0.5">{user.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1 items-start">
-                          {user.role === 'Admin' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/60 shadow-xs">
-                              <Shield size={12} className="text-sky-600 dark:text-sky-400" />
-                              Administrator
-                            </span>
-                          )}
-                          {user.role === 'Teacher' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/60 shadow-xs">
-                              <GraduationCap size={12} className="text-purple-600 dark:text-purple-400" />
-                              Teacher
-                            </span>
-                          )}
-                          {user.role === 'Student' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60 shadow-xs">
-                              <School size={12} className="text-blue-600 dark:text-blue-400" />
-                              Student
-                            </span>
-                          )}
-                          {user.lrn && (
-                            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tracking-wider">LRN: {user.lrn}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {user.status === 'Active' ? (
-                          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 shadow-xs">
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                            </span>
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-xs">
-                            <span className="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500" />
-                            Inactive
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-0.5">
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            {user.role === 'Student' ? (user.grade || 'Grade 11') : (user.department || 'Mathematics')}
-                          </p>
-                          <p className="text-[11px] font-medium text-purple-600 dark:text-purple-400">
-                            {user.role === 'Student' ? (user.classSection || user.section || 'Unassigned Section') : 'Academic Faculty'}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-0.5">
-                          <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                            {user.lastLogin ? 'Recent Activity' : 'No Logins Yet'}
-                          </p>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                            {user.lastLogin || 'Account pending setup'}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Edit Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditModal(user)}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/50 hover:bg-[#9956DE] text-[#9956DE] hover:text-white dark:text-purple-300 dark:hover:text-white border border-purple-200/80 dark:border-purple-800/60 hover:border-[#9956DE] text-xs font-bold shadow-xs hover:shadow-md hover:shadow-purple-500/20 active:scale-95 transition-all cursor-pointer group"
-                            title={`Edit ${user.name}`}
-                            aria-label={`Edit ${user.name}`}
-                          >
-                            <Edit size={13} className="shrink-0 transition-transform group-hover:scale-110" />
-                            <span className="hidden xl:inline">Edit</span>
-                          </button>
-
-                          {/* Status Toggle Button (Active: Amber Suspend, Inactive: Emerald Activate) */}
-                          <button
-                            type="button"
-                            onClick={() => handleToggleStatus(user)}
-                            disabled={isPendingToggle || isProcessingBulkAction}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shadow-xs active:scale-95 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed ${
-                              user.status === 'Active'
-                                ? 'bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 text-amber-700 dark:text-amber-300 hover:text-white border-amber-200/80 dark:border-amber-800/60 hover:border-amber-500 hover:shadow-md hover:shadow-amber-500/20'
-                                : 'bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-500 text-emerald-700 dark:text-emerald-300 hover:text-white border-emerald-200/80 dark:border-emerald-800/60 hover:border-emerald-500 hover:shadow-md hover:shadow-emerald-500/20'
-                            }`}
-                            title={user.status === 'Active' ? `Suspend ${user.name}` : `Activate ${user.name}`}
-                            aria-label={user.status === 'Active' ? `Suspend ${user.name}` : `Activate ${user.name}`}
-                          >
-                            {isPendingToggle ? (
-                              <Loader2 size={13} className="animate-spin shrink-0" />
-                            ) : user.status === 'Active' ? (
-                              <Ban size={13} className="shrink-0 transition-transform group-hover:scale-110" />
-                            ) : (
-                              <UserCheck size={13} className="shrink-0 transition-transform group-hover:scale-110" />
-                            )}
-                            <span className="hidden xl:inline">{user.status === 'Active' ? 'Suspend' : 'Activate'}</span>
-                          </button>
-
-                          {/* Delete Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteUser(user.id, user.name)}
-                            disabled={isProcessingBulkAction}
-                            className="p-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200/80 dark:border-rose-800/60 hover:border-rose-500 text-xs font-bold shadow-xs hover:shadow-md hover:shadow-rose-500/20 active:scale-95 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={`Delete ${user.name}`}
-                            aria-label={`Delete ${user.name}`}
-                          >
-                            <Trash2 size={13} className="shrink-0 transition-transform group-hover:scale-110" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-32 text-center">
-                    <div className="max-w-xs mx-auto space-y-6">
-                      <div className="w-24 h-24 bg-slate-50 rounded-[32px] flex items-center justify-center mx-auto shadow-sm shadow-slate-100 group-hover:scale-110 transition-transform duration-500">
-                        <Users size={40} className="text-slate-200" />
-                      </div>
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-black text-slate-600 uppercase tracking-widest">No matching users</h4>
-                        <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                          We couldn't find any results for your current query. Try broadening your search or clearing filters.
-                        </p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-xl border-slate-200 text-indigo-600 font-bold px-6 h-10 hover:bg-indigo-50"
-                        onClick={() => {
-                          setSearchQuery('');
-                          setRoleFilter('All Roles');
-                          setStatusFilter('All Status');
-                        }}
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {loading && users.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-20 text-center">
+                      <Loader2 className="animate-spin text-[#9956DE] mx-auto" size={36} />
+                      <p className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Loading user records...</p>
+                    </td>
+                  </tr>
+                ) : users.length > 0 ? (
+                  displayedUsers.map((user) => {
+                    const isPendingToggle = pendingRowActionUserId === user.id;
+                    const isSelected = isUserSelected(user.id);
+                    return (
+                      <tr
+                        key={user.id}
+                        className={`transition-all group relative border-b border-slate-100 dark:border-slate-800/70 border-l-2 border-l-transparent hover:border-l-[#9956DE] ${
+                          isSelected
+                            ? 'bg-purple-50/50 dark:bg-purple-950/25'
+                            : 'hover:bg-purple-50/30 dark:hover:bg-purple-950/15'
+                        }`}
                       >
-                        Reset Filters
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>{/* end overflow-x-auto */}
+                        <td className="px-3.5 py-3.5 align-middle text-center relative w-12">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleToggleUserSelection(user.id)}
+                            className="rounded-md border-slate-300 dark:border-slate-600 data-[state=checked]:bg-[#9956DE] data-[state=checked]:border-[#9956DE] transition-colors"
+                          />
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-3.5">
+                            <div className="relative shrink-0">
+                              <Avatar className="h-11 w-11 rounded-full border-2 border-white dark:border-slate-800 shadow-sm ring-2 ring-purple-100 dark:ring-purple-950/60 group-hover:ring-purple-300 dark:group-hover:ring-purple-600 transition-all">
+                                <AvatarImage src={user.photo || getDefaultAvatar(user.gender)} className="object-cover" />
+                                <AvatarFallback className="bg-purple-50 dark:bg-purple-950/50 text-[#9956DE] dark:text-purple-300 font-bold text-sm">{user.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${user.status === 'Active' ? 'bg-emerald-500 shadow-xs' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 dark:text-white truncate text-sm leading-tight group-hover:text-[#8643C8] dark:group-hover:text-purple-400 transition-colors">{user.name}</p>
+                              <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 truncate mt-0.5">{user.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="flex flex-col gap-1 items-center justify-center">
+                            {user.role === 'Admin' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/60 shadow-xs">
+                                <Shield size={12} className="text-sky-600 dark:text-sky-400" />
+                                Administrator
+                              </span>
+                            )}
+                            {user.role === 'Teacher' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/60 shadow-xs">
+                                <GraduationCap size={12} className="text-purple-600 dark:text-purple-400" />
+                                Teacher
+                              </span>
+                            )}
+                            {user.role === 'Student' && (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60 shadow-xs">
+                                <School size={12} className="text-blue-600 dark:text-blue-400" />
+                                Student
+                              </span>
+                            )}
+                            {user.lrn && (
+                              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 tracking-wider">LRN: {user.lrn}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="flex items-center justify-center">
+                            {user.status === 'Active' ? (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 shadow-xs">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                </span>
+                                Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-xs">
+                                <span className="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500" />
+                                Inactive
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              {user.role === 'Student' ? (user.grade || 'Grade 11') : (user.department || 'Mathematics')}
+                            </p>
+                            <p className="text-[11px] font-medium text-purple-600 dark:text-purple-400">
+                              {user.role === 'Student' ? (user.classSection || user.section || 'Unassigned Section') : 'Academic Faculty'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="space-y-0.5">
+                            <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                              {user.lastLogin ? 'Recent Activity' : 'No Logins Yet'}
+                            </p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                              {user.lastLogin || 'Account pending setup'}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Edit — icon only */}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(user)}
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-purple-50 dark:bg-purple-950/50 hover:bg-[#9956DE] text-[#9956DE] hover:text-white dark:text-purple-300 dark:hover:text-white border border-purple-200/80 dark:border-purple-800/60 hover:border-[#9956DE] shadow-xs hover:shadow-md hover:shadow-purple-500/20 active:scale-95 transition-all cursor-pointer group"
+                              title={`Edit ${user.name}`}
+                              aria-label={`Edit ${user.name}`}
+                            >
+                              <Edit size={13} className="shrink-0 transition-transform group-hover:scale-110" />
+                            </button>
 
-        {/* Pagination — Integrated Card Footer */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-6 py-3.5 bg-slate-50/70 dark:bg-slate-900/90 border-t border-slate-200/80 dark:border-slate-800 w-full">
-          <p className="text-[11px] sm:text-[12px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider sm:tracking-widest flex items-center gap-2 sm:gap-4 truncate">
-            <span className="w-2 h-2 rounded-full bg-[#9956DE] animate-pulse shadow-[0_0_12px_rgba(153,86,222,0.6)] shrink-0" />
-            Showing <span className="text-slate-900 dark:text-white font-black border-b-2 border-[#9956DE]/40 pb-0.5">{visibleRangeStart}–{visibleRangeEnd}</span>
-            <span className="text-slate-300 dark:text-slate-600 font-bold mx-0.5">/</span>
-            <span className="text-slate-900 dark:text-white font-black border-b-2 border-[#9956DE]/40 pb-0.5">{totalUsers}</span>
-            <span className="text-slate-400 dark:text-slate-500 ml-1 hidden sm:inline">Total System Records</span>
-          </p>
+                            {/* Deactivate / Activate — icon only */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStatus(user)}
+                              disabled={isPendingToggle || isProcessingBulkAction}
+                              className={`inline-flex items-center justify-center h-8 w-8 rounded-xl border shadow-xs active:scale-95 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed ${
+                                user.status === 'Active'
+                                  ? 'bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-500 text-amber-700 dark:text-amber-300 hover:text-white border-amber-200/80 dark:border-amber-800/60 hover:border-amber-500 hover:shadow-md hover:shadow-amber-500/20'
+                                  : 'bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-500 text-emerald-700 dark:text-emerald-300 hover:text-white border-emerald-200/80 dark:border-emerald-800/60 hover:border-emerald-500 hover:shadow-md hover:shadow-emerald-500/20'
+                              }`}
+                              title={user.status === 'Active' ? `Deactivate ${user.name}` : `Activate ${user.name}`}
+                              aria-label={user.status === 'Active' ? `Deactivate ${user.name}` : `Activate ${user.name}`}
+                            >
+                              {isPendingToggle ? (
+                                <Loader2 size={13} className="animate-spin shrink-0" />
+                              ) : user.status === 'Active' ? (
+                                <Ban size={13} className="shrink-0 transition-transform group-hover:scale-110" />
+                              ) : (
+                                <UserCheck size={13} className="shrink-0 transition-transform group-hover:scale-110" />
+                              )}
+                            </button>
 
-          <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6 w-full sm:w-auto">
-            <Select
-              value={String(pageSize)}
-              onValueChange={(value) => {
-                const nextPageSize = Number(value);
-                if (Number.isNaN(nextPageSize)) return;
-                setPageSize(nextPageSize);
-                setCurrentPage(1);
-                clearSelection();
-              }}
-            >
-              <SelectTrigger className="h-10 w-[140px] bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 text-[11px] font-black uppercase tracking-wider text-slate-900 dark:text-white rounded-xl hover:border-[#9956DE] transition-all px-4 shadow-sm">
-                <span className="truncate">{pageSize} / Page</span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem key={size} value={size} className="font-bold">{size} / Page</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-inner">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-md shadow-purple-500/20"
-                disabled={currentPage <= 1 || loading || isProcessingBulkAction}
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              >
-                <ChevronLeft size={18} strokeWidth={3} />
-              </Button>
-
-              <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200/80 dark:border-slate-700 flex items-center justify-center min-w-[120px]">
-                <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-widest">
-                  Page <span className="text-[#9956DE] mx-1">{currentPage}</span>
-                  <span className="text-slate-300 dark:text-slate-600 mx-1">OF</span>
-                  <span className="text-slate-500 dark:text-slate-400">{Math.max(totalPages, 1)}</span>
-                </span>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 w-9 p-0 rounded-xl bg-[#9956DE] border-none text-white hover:bg-[#8b5cf6] hover:scale-105 active:scale-95 disabled:opacity-30 transition-all shadow-md shadow-purple-500/20"
-                disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
-              >
-                <ChevronRight size={18} strokeWidth={3} />
-              </Button>
-            </div>
+                            {/* Delete — icon only */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUser(user.id, user.name)}
+                              disabled={isProcessingBulkAction}
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-500 text-rose-600 dark:text-rose-400 hover:text-white border border-rose-200/80 dark:border-rose-800/60 hover:border-rose-500 shadow-xs hover:shadow-md hover:shadow-rose-500/20 active:scale-95 transition-all cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={`Delete ${user.name}`}
+                              aria-label={`Delete ${user.name}`}
+                            >
+                              <Trash2 size={13} className="shrink-0 transition-transform group-hover:scale-110" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-32 text-center">
+                      <div className="max-w-xs mx-auto space-y-6">
+                        <div className="w-24 h-24 bg-slate-50 rounded-[32px] flex items-center justify-center mx-auto shadow-sm shadow-slate-100 group-hover:scale-110 transition-transform duration-500">
+                          <Users size={40} className="text-slate-200" />
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-black text-slate-600 uppercase tracking-widest">No matching users</h4>
+                          <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                            We couldn't find any results for your current query. Try broadening your search or clearing filters.
+                          </p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="rounded-xl border-slate-200 text-indigo-600 font-bold px-6 h-10 hover:bg-indigo-50"
+                          onClick={() => {
+                            setSearchQuery('');
+                            setRoleFilter('All Roles');
+                            setStatusFilter('All Status');
+                          }}
+                        >
+                          Reset Filters
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -1644,20 +1667,34 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
           <div className="p-6 sm:p-8 space-y-6 sm:space-y-8">
             <DialogHeader className="text-left">
               <div className="flex items-center gap-4 sm:gap-5">
-                <div className={`w-13 h-13 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform duration-500 hover:rotate-3 shrink-0 ${
-                  editingUser
-                    ? 'bg-purple-50 dark:bg-purple-950/50 text-[#9956DE] dark:text-purple-300 shadow-purple-500/20 border border-purple-200/60 dark:border-purple-800/60'
-                    : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 shadow-emerald-500/20 border border-emerald-200/60 dark:border-emerald-800/60'
-                }`}>
-                  {editingUser ? <Edit size={26} className="drop-shadow-sm" /> : <Plus size={26} className="drop-shadow-sm" />}
-                </div>
+                {editingUser ? (
+                  <div className="relative shrink-0">
+                    <Avatar className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl border-2 border-white dark:border-slate-800 shadow-lg shadow-purple-500/15 ring-2 ring-purple-200 dark:ring-purple-800/60 transition-transform duration-300 hover:scale-105">
+                      <AvatarImage src={editingUser.photo || getDefaultAvatar(editingUser.gender)} className="object-cover" />
+                      <AvatarFallback className="bg-purple-100 dark:bg-purple-950/60 text-[#9956DE] dark:text-purple-300 font-black text-xl">
+                        {editingUser.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 shadow-xs ${editingUser.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  </div>
+                ) : (
+                  <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shadow-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300 shadow-emerald-500/20 border border-emerald-200/60 dark:border-emerald-800/60 shrink-0">
+                    <Plus size={26} className="drop-shadow-sm" />
+                  </div>
+                )}
                 <div>
                   <DialogTitle className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white leading-tight">
                     {editingUser ? 'Edit User Credentials & Access' : 'Onboard New Academic User'}
                   </DialogTitle>
                   <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#9956DE] animate-pulse" />
-                    {editingUser ? 'Account & Permission Control' : 'System Enrollment Pipeline'}
+                    {editingUser ? (
+                      <span>
+                        <strong className="text-slate-800 dark:text-slate-200 font-bold">{editingUser.name}</strong> • {editingUser.role} • {editingUser.email}
+                      </span>
+                    ) : (
+                      'System Enrollment Pipeline'
+                    )}
                   </p>
                 </div>
               </div>
@@ -1796,7 +1833,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <DialogFooter className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button 
                 variant="outline" 
-                className="h-11 rounded-xl font-bold uppercase tracking-wider text-xs border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all" 
+                className="h-11 rounded-xl font-bold uppercase tracking-wider text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all active:scale-95" 
                 onClick={() => setIsModalOpen(false)} 
                 disabled={saving}
               >

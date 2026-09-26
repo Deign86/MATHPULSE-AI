@@ -72,21 +72,36 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (userRole === 'admin') {
       return [
         {
-          label: 'Management',
+          label: 'Core',
           items: [
             { icon: LayoutDashboard, label: 'Overview' },
-            { icon: Users, label: 'User Management' },
-            { icon: School, label: 'Class Management' },
-            { icon: GraduationCap, label: 'Subjects' },
-            { icon: BookOpen, label: 'Content' },
-            { icon: Database, label: 'RAG Manager' },
           ],
         },
         {
-          label: 'Insights',
+          label: 'Management',
+          items: [
+            { icon: Users, label: 'User Management' },
+            { icon: School, label: 'Class Management' },
+          ],
+        },
+        {
+          label: 'AI & Intelligence',
+          items: [
+            { icon: Database, label: 'RAG Manager' },
+            { icon: Cpu, label: 'AI Monitoring' },
+          ],
+        },
+        {
+          label: 'Curriculum',
+          items: [
+            { icon: GraduationCap, label: 'Subjects' },
+            { icon: BookOpen, label: 'Content' },
+          ],
+        },
+        {
+          label: 'Insights & Security',
           items: [
             { icon: BarChart3, label: 'Analytics' },
-            { icon: Cpu, label: 'AI Monitoring' },
             { icon: Shield, label: 'Audit Log' },
           ],
         },
