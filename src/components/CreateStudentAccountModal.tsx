@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, Copy, Loader2, RefreshCw, ShieldAlert, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -218,18 +219,19 @@ export const CreateStudentAccountModal: React.FC<CreateStudentAccountModalProps>
 
   const visiblePassword = createdResult?.temporaryPassword || temporaryPassword;
 
-  return (
+  const modalElement = (
     <AnimatePresence>
       {isOpen && seed && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={() => {
-            if (!isSubmitting) onClose();
-          }}
-        >
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            onClick={() => {
+              if (!isSubmitting) onClose();
+            }}
+          />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -420,10 +422,16 @@ export const CreateStudentAccountModal: React.FC<CreateStudentAccountModalProps>
               )}
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+
+  return modalElement;
 };
 
 export default CreateStudentAccountModal;
