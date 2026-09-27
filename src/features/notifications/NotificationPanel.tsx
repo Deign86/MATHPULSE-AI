@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, CheckCheck, ChevronDown, X } from 'lucide-react';
+import { Bell, CheckCheck, ChevronDown } from 'lucide-react';
 import { useNotifications } from './NotificationContext';
 import { NotificationItem } from './NotificationItem';
 import { NOTIFICATION_PAGE_SIZE, paginateNotifications } from './types';
@@ -42,58 +42,42 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   }, [onClose, triggerRef, panelRef]);
 
   const panel = (
-    <>
-      {/* Mobile Backdrop to click outside easily on small screens */}
-      <div
-        className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[240]"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+    <div
+      ref={panelRef}
+      data-testid="notification-panel"
+      className="fixed right-2.5 sm:right-6 top-14 sm:top-18 w-[calc(100vw-1.25rem)] max-w-sm sm:w-[390px] bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 max-h-[min(82dvh,560px)] overflow-hidden z-[250] flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
+    >
+      {/* Brand Accent Top Line */}
+      <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0" />
 
-      <div
-        ref={panelRef}
-        data-testid="notification-panel"
-        className="fixed right-2.5 sm:right-6 top-14 sm:top-18 w-[calc(100vw-1.25rem)] max-w-sm sm:w-[390px] bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/90 dark:border-slate-800 max-h-[min(82dvh,560px)] overflow-hidden z-[250] flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200"
-      >
-        {/* Brand Accent Top Line */}
-        <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0" />
-
-        {/* Header */}
-        <div className="p-3.5 sm:p-4 border-b border-purple-100/70 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-slate-50 dark:from-purple-950/40 dark:via-slate-800 dark:to-slate-800/90 shrink-0">
-          <div className="min-w-0 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#9956DE]/15 dark:bg-[#9956DE]/30 text-[#9956DE] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-2xs">
-              <Bell size={15} />
-            </div>
-            <div className="min-w-0">
-              <h3 className="font-display font-extrabold text-slate-900 dark:text-white text-sm tracking-tight leading-tight">Notifications</h3>
-              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
-                {unreadCount > 0 ? `${unreadCount} unread alert${unreadCount === 1 ? '' : 's'}` : 'All caught up'}
-              </p>
-            </div>
+      {/* Header */}
+      <div className="p-3.5 sm:p-4 border-b border-purple-100/70 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-slate-50 dark:from-purple-950/40 dark:via-slate-800 dark:to-slate-800/90 shrink-0">
+        <div className="min-w-0 flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[#9956DE]/15 dark:bg-[#9956DE]/30 text-[#9956DE] dark:text-purple-300 flex items-center justify-center shrink-0 shadow-2xs">
+            <Bell size={15} />
           </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={markAllAsRead}
-                className="text-[11px] text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-white font-bold transition-all flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-[#9956DE] focus-visible:outline-none rounded-lg px-2.5 py-1 bg-purple-100/70 dark:bg-purple-950/60 hover:bg-purple-200/80 active:scale-95 cursor-pointer shadow-2xs"
-                aria-label="Mark all notifications as read"
-              >
-                <CheckCheck size={13} aria-hidden="true" />
-                <span>Mark read</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
-              aria-label="Close notification panel"
-            >
-              <X size={15} />
-            </button>
+          <div className="min-w-0">
+            <h3 className="font-display font-extrabold text-slate-900 dark:text-white text-sm tracking-tight leading-tight">Notifications</h3>
+            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
+              {unreadCount > 0 ? `${unreadCount} unread alert${unreadCount === 1 ? '' : 's'}` : 'All caught up'}
+            </p>
           </div>
         </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={markAllAsRead}
+              className="text-[11px] text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-white font-bold transition-all flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-[#9956DE] focus-visible:outline-none rounded-lg px-2.5 py-1 bg-purple-100/70 dark:bg-purple-950/60 hover:bg-purple-200/80 active:scale-95 cursor-pointer shadow-2xs"
+              aria-label="Mark all notifications as read"
+            >
+              <CheckCheck size={13} aria-hidden="true" />
+              <span>Mark read</span>
+            </button>
+          )}
+        </div>
+      </div>
 
         {/* Content */}
         <div className="overflow-y-auto flex-1 divide-y divide-slate-100 dark:divide-slate-800">
@@ -141,7 +125,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           </div>
         )}
       </div>
-    </>
   );
 
   return createPortal(panel, document.body);
