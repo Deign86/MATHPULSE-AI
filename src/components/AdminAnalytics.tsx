@@ -768,10 +768,74 @@ export const AdminAnalytics: React.FC = () => {
                 </span>
               </div>
 
-              {/* Subject Table */}
-              <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/60 overflow-hidden">
+              {/* Subject Table & Cards Container */}
+              <div className="rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
                 <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
-                <div className="overflow-x-auto">
+
+                {/* Mobile Bento Cards (< md) */}
+                <div className="md:hidden space-y-3 p-3.5">
+                  {SUBJECT_LIST.map((subj) => (
+                    <div
+                      key={`mobile-analytics-subj-${subj.id}`}
+                      className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3 relative overflow-hidden border-l-4 border-l-[#9956DE]"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 ${subj.bgLight}`}>
+                            {subj.code.slice(0, 2)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 dark:text-white text-sm truncate">{subj.name}</p>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{subj.code} • {subj.grade}</p>
+                          </div>
+                        </div>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                          subj.status === 'Mastered'
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-900/40'
+                            : subj.status === 'On Track'
+                            ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200/60 dark:border-indigo-900/40'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200/60 dark:border-amber-900/40'
+                        }`}>
+                          {subj.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 py-2 px-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800 text-center">
+                        <div>
+                          <p className="text-[10px] font-medium text-slate-400">Enrolled</p>
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 tabular-nums">{subj.enrolled}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium text-slate-400">Submissions</p>
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 tabular-nums">{subj.quizAttempts.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-medium text-slate-400">Avg Score</p>
+                          <p className="text-xs font-bold text-[#9956DE] dark:text-purple-300 mt-0.5 tabular-nums">{subj.avgScore}%</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                          <span>Completion ({subj.completedPercent}%)</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">{subj.trend}</span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-slate-200/70 dark:bg-slate-700 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{
+                              width: `${subj.completedPercent}%`,
+                              backgroundColor: subj.color,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View (≥ md) */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50/90 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700/60 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
