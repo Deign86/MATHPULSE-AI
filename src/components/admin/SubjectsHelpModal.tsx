@@ -88,34 +88,42 @@ const SubjectsHelpModal: React.FC<SubjectsHelpModalProps> = ({ isOpen, onClose }
   if (!isOpen) return null;
 
   const modalElement = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="subjects-help-modal-title"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 md:p-8"
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-slate-950/65 backdrop-blur-md animate-in fade-in duration-300"
         onClick={onClose}
       />
 
-      {/* Modal Container */}
-      <div className="relative bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[92dvh] rounded-3xl sm:rounded-[36px] shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden flex flex-col animate-in zoom-in-95 slide-in-from-bottom-8 duration-300">
+      {/* Modal Container — bounded max-h so it never completely covers the screen */}
+      <div className="relative bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[85dvh] sm:max-h-[88dvh] rounded-2xl sm:rounded-[32px] shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden flex flex-col animate-in zoom-in-95 slide-in-from-bottom-6 duration-300">
         {/* Top Brand Gradient Strip */}
         <div className="h-1.5 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0" />
 
         {/* Header */}
-        <div className="px-5 sm:px-8 pt-5 sm:pt-7 pb-4 sm:pb-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#9956DE] to-[#7274ED] flex items-center justify-center text-white shadow-md shadow-purple-500/25 shrink-0">
-              <Sparkles size={20} className="animate-pulse" />
+        <div className="px-4.5 sm:px-8 pt-4.5 sm:pt-6 pb-3.5 sm:pb-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#9956DE] to-[#7274ED] flex items-center justify-center text-white shadow-md shadow-purple-500/25 shrink-0">
+              <Sparkles size={18} className="animate-pulse" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider font-display">
+                <h3
+                  id="subjects-help-modal-title"
+                  className="text-sm sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider font-display truncate"
+                >
                   How It Works: Curriculum Control
                 </h3>
                 <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-purple-50 dark:bg-purple-950/60 text-[#9956DE] dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/50">
                   Protocol
                 </span>
               </div>
-              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-[10.5px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                 4-Stage Curriculum Governance & RAG Knowledge Pipeline
               </p>
             </div>
@@ -123,19 +131,19 @@ const SubjectsHelpModal: React.FC<SubjectsHelpModalProps> = ({ isOpen, onClose }
 
           <button
             onClick={onClose}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all border border-slate-200/80 dark:border-slate-700 shadow-xs group cursor-pointer shrink-0"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all border border-slate-200/80 dark:border-slate-700 shadow-xs group cursor-pointer shrink-0 ml-2"
             aria-label="Close modal"
           >
-            <X size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+            <X size={17} className="group-hover:rotate-90 transition-transform duration-300" />
           </button>
         </div>
 
         {/* Modal Body: Mobile Timeline vs Desktop Flow */}
-        <div className="p-4 sm:p-8 overflow-y-auto flex-1 space-y-6">
+        <div className="p-3.5 sm:p-6 md:p-8 overflow-y-auto overscroll-contain flex-1 space-y-4 sm:space-y-6">
           {/* ── Mobile View (< md): Interactive Vertical Connected Timeline ── */}
-          <div className="md:hidden relative pl-4 space-y-4">
+          <div className="md:hidden relative pl-3 space-y-3.5">
             {/* Left Connecting Gradient Line */}
-            <div className="absolute left-[27px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-purple-500 via-amber-500 to-sky-500 opacity-40 pointer-events-none" />
+            <div className="absolute left-[23px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-purple-500 via-amber-500 to-sky-500 opacity-40 pointer-events-none" />
 
             {STEPS.map((item, idx) => (
               <div key={`mob-step-${idx}`} className="relative flex items-start gap-3.5 group">
