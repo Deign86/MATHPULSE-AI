@@ -1,0 +1,513 @@
+import type { Module, Lesson } from './subjects';
+import { CURRICULUM_LESSONS, getFirebaseStoragePdfUrl, type CurriculumSourceMeta } from './curriculum/types.ts';
+
+export type { CurriculumSourceMeta };
+
+export type GradeLevel = 'Grade 11'; // Serving Grade 11 only
+export type CurriculumQuarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+export type CurriculumSubjectId =
+  | 'gen-math'
+  | 'business-math'
+  | 'stats-prob'
+  | 'finite-math';
+
+export const COMPETENCY_TO_LESSON: Record<string, { lessonId: string; storagePath: string; sourceFile: string }> =
+  Object.fromEntries(
+    CURRICULUM_LESSONS.map((l) => [
+      l.competencyCode,
+      { lessonId: l.lessonId, storagePath: l.storagePath, sourceFile: l.sourceFile },
+    ])
+  );
+
+/** Invariant: every blueprint competency must resolve to an authored lesson. */
+export function assertCompetencyJoin(blueprint: CurriculumModuleBlueprint): void {
+  for (const comp of blueprint.competencies) {
+    if (!COMPETENCY_TO_LESSON[comp.code]) {
+      console.warn(`[curriculumModules] Missing authored lesson for competency: ${comp.code} in ${blueprint.id}`);
+    }
+  }
+}
+
+export interface CurriculumAssessmentMeta {
+  id: string;
+  title: string;
+  competencyCodes: string[];
+  type: 'practice' | 'module';
+}
+
+export interface CurriculumModuleBlueprint {
+  id: string;
+  subjectId: CurriculumSubjectId;
+  subject: string;
+  quarter: CurriculumQuarter;
+  moduleTitle: string;
+  moduleDescription: string;
+  contentDomain: string;
+  competencyGroup: string;
+  competencies: Array<{
+    code: string;
+    outcome: string;
+  }>;
+  performanceStandard: string;
+  realWorldTheme: string;
+  grade_level_availability: GradeLevel[];
+  recommended_grade_level: GradeLevel;
+  sources: CurriculumSourceMeta[];
+  isAvailable?: boolean;
+}
+
+export interface TeacherUploadedModule {
+  moduleId: string;
+  title: string;
+  gradeLevel: string;
+  subject: string;
+  quarter: string;
+  strandOrTrack: string | null;
+  competencyTags: string[];
+  moduleType: 'teacher_uploaded';
+  sourceLabel: 'Teacher Upload';
+  summary: string;
+  learningObjectives: string[];
+  sections: Array<{ title: string; content: string; stepType?: string; stepNumber?: number; topic?: string; durationMinutes?: number; numItems?: number | null; difficulty?: string; competencyTag?: string; youtubeQuery?: string; isCompleted?: boolean }>;
+  practice: Array<{
+    question: string;
+    options: Array<{ label: string; text: string }>;
+    answer: string;
+    explanation: string;
+  }>;
+  teacherId: string;
+  createdAt: any; // using any or timestamp, since Firebase is not imported here natively. Better to just use any or import Timestamp if available. Wait, FirebaseFirestore.Timestamp is in the instructions, but we can't easily import it without bringing in firebase-admin or firebase/firestore. Let's use `any` or `{ seconds: number; nanoseconds: number } | null` or just `Date | any`. I will use `any` or `Date | null | { seconds: number, nanoseconds: number }` for safety without imports.
+}
+
+export type ModuleStatus = 'available' | 'coming_soon' | 'teacher_uploaded' | 'unavailable';
+
+export type CurriculumModuleRuntime = Module & {
+  subjectId: CurriculumSubjectId;
+  subject: string;
+  subjectColor: string;
+  subjectAccentColor: string;
+  grade_level_availability: GradeLevel[];
+  recommended_grade_level: GradeLevel;
+  active_grade_level: GradeLevel;
+  quarter: CurriculumQuarter;
+  content_domain: string;
+  competency_group: string;
+  competencies: Array<{ code: string; outcome: string }>;
+  performance_standard: string;
+  real_world_theme: string;
+  lesson_count: number;
+  quiz_count: number;
+  is_visible_for_grade: boolean;
+  curriculum_aligned_label: string;
+  module_sources: CurriculumSourceMeta[];
+  module_assessments: CurriculumAssessmentMeta[];
+  isAvailable: boolean;
+  /** Granular content availability status */
+  moduleStatus: ModuleStatus;
+};
+
+export interface SubjectMeta {
+  id: CurriculumSubjectId;
+  label: string;
+  color: string;
+  accent: string;
+}
+
+function source(id: string, title: string, storagePath: string): CurriculumSourceMeta {
+  return {
+    id,
+    title,
+    storagePath,
+    url: getFirebaseStoragePdfUrl(storagePath),
+  };
+}
+
+const CURRICULUM_SOURCES: CurriculumSourceMeta[] = [
+  source(
+    'deped-strengthened-gm',
+    'DepEd Strengthened SHS General Mathematics Guide',
+    'curriculum/sshs_learning_resources/General Mathematics/Curriculum & Budget of Work/PDF/GENERAL-MATHEMATICS-1.pdf',
+  ),
+  source(
+    'deped-approved-exemplars',
+    'Approved SHS Lesson Exemplars and Activity Sheets',
+    'curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf',
+  ),
+];
+
+const SUBJECT_META = {
+  'gen-math': {
+    id: 'gen-math',
+    label: 'General Mathematics',
+    color: '#1f4ea8',
+    accent: '#3f7cff',
+  },
+  'business-math': {
+    id: 'business-math',
+    label: 'Business Mathematics',
+    color: '#166534',
+    accent: '#22c55e',
+  },
+  'stats-prob': {
+    id: 'stats-prob',
+    label: 'Statistics and Probability',
+    color: '#6b21a8',
+    accent: '#a855f7',
+  },
+  'finite-math': {
+    id: 'finite-math',
+    label: 'Finite Mathematics',
+    color: '#0e7490',
+    accent: '#22d3ee',
+  },
+} satisfies Record<CurriculumSubjectId, SubjectMeta>;
+
+const SCHOOL_PROGRAM_DEFAULT_SUBJECTS_BY_GRADE = {
+  // Shelved until PDFs land: business-math, stats-prob (blueprints + meta kept).
+  'Grade 11': ['gen-math', 'finite-math'],
+} satisfies Record<GradeLevel, CurriculumSubjectId[]>;
+
+const COMPETENCY_VERBS_G11 = 'Foundational competency flow with guided examples, step-by-step vocabulary support, and scaffolded checkpoints.';
+
+const b = (
+  id: string,
+  subjectId: CurriculumSubjectId,
+  quarter: CurriculumQuarter,
+  moduleTitle: string,
+  moduleDescription: string,
+  contentDomain: string,
+  competencyGroup: string,
+  competencies: Array<{ code: string; outcome: string }>,
+  performanceStandard: string,
+  realWorldTheme: string,
+  grade_level_availability: GradeLevel[],
+  recommended_grade_level: GradeLevel,
+  sources: CurriculumSourceMeta[],
+): CurriculumModuleBlueprint => ({
+  id,
+  subjectId,
+  subject: SUBJECT_META[subjectId].label,
+  quarter,
+  moduleTitle,
+  moduleDescription,
+  contentDomain,
+  competencyGroup,
+  competencies,
+  performanceStandard,
+  realWorldTheme,
+  grade_level_availability,
+  recommended_grade_level,
+  sources,
+});
+
+export const CURRICULUM_MODULE_BLUEPRINTS: CurriculumModuleBlueprint[] = [
+  b('gm-q1-business-finance', 'gen-math', 'Q1', 'Business and Finance', 'Interpret business contexts using mathematical models for pricing, savings, and financial planning.', 'Business Mathematics', 'GM-Q1-BF', [
+    { code: 'GM11-BF-1', outcome: 'Represent business transactions and financial goals using variables and equations.' },
+    { code: 'GM11-BF-2', outcome: 'Analyze financial options using ratio, percent change, and margin reasoning.' },
+    { code: 'GM11-BF-3', outcome: 'Justify practical decisions with mathematically sound comparisons.' },
+  ], 'Produces a finance decision brief that explains and defends a chosen option using quantitative evidence.', 'Household budgeting and MSME pricing', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q1-le1', 'DepEd SSHS General Mathematics Q1 Lesson Exemplar 1 (Business & Finance)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE1.pdf'),
+    source('shs-gm-q1-las1', 'DepEd SSHS General Mathematics Q1 Learning Activity Sheet 1', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/PDF/SHS_GM_Q1_LAS1.pdf'),
+    source('shs-gm-complete-le', 'DepEd SSHS General Mathematics Complete Course Lesson Exemplar', 'curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf'),
+  ]),
+  b('gm-q1-patterns-sequences-series', 'gen-math', 'Q1', 'Patterns, Sequences, and Series', 'Investigate arithmetic and geometric patterns, then model recurring structures in real settings.', 'Patterns and Algebraic Thinking', 'GM-Q1-PSS', [
+    { code: 'GM11-PSS-1', outcome: 'Identify and describe arithmetic and geometric patterns in data.' },
+    { code: 'GM11-PSS-2', outcome: 'Construct explicit and recursive rules for sequences.' },
+    { code: 'GM11-PSS-3', outcome: 'Solve contextual problems involving finite series.' },
+  ], 'Creates a pattern model with formula, table, and verbal interpretation for a real-life process.', 'Savings goals and production growth', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q1-le2', 'DepEd SSHS General Mathematics Q1 Lesson Exemplar 2 (Sequences & Series)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE2.pdf'),
+    source('shs-gm-q1-las2', 'DepEd SSHS General Mathematics Q1 Learning Activity Sheet 2', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/PDF/SHS_GM_Q1_LAS2.pdf'),
+    source('shs-gm-complete-le', 'DepEd SSHS General Mathematics Complete Course Lesson Exemplar', 'curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf'),
+  ]),
+  b('gm-q1-financial-application-sequences-series', 'gen-math', 'Q1', 'Financial Application of Sequences and Series', 'Apply sequence and series models in annuities, installment planning, and long-term savings behavior.', 'Financial Applications', 'GM-Q1-FASS', [
+    { code: 'GM11-FASS-1', outcome: 'Use arithmetic and geometric series to estimate cumulative financial outcomes.' },
+    { code: 'GM11-FASS-2', outcome: 'Compare payment plans and saving schemes using sequence-based models.' },
+  ], 'Builds a comparative recommendation report for financial plans grounded in sequence and series computations.', 'Installment plans and savings projections', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q1-le3', 'DepEd SSHS General Mathematics Q1 Lesson Exemplar 3 (Financial Applications of Sequences)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Lesson Exemplars/PDF/SHS_GM_Q1_LE3.pdf'),
+    source('shs-gm-q1-las4', 'DepEd SSHS General Mathematics Q1 Learning Activity Sheet 4', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 1/Learning Activity Sheets/PDF/SHS_GM_Q1_LAS4.pdf'),
+    source('shs-gm-complete-le', 'DepEd SSHS General Mathematics Complete Course Lesson Exemplar', 'curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf'),
+  ]),
+  b('gm-q2-measurement-conversion', 'gen-math', 'Q2', 'Measurement and Conversion', 'Convert and validate units in practical settings involving length, area, volume, and rate.', 'Measurement', 'GM-Q2-MC', [
+    { code: 'GM11-MC-1', outcome: 'Perform unit conversions accurately across metric and mixed contexts.' },
+    { code: 'GM11-MC-2', outcome: 'Evaluate measurement precision and reasonableness in applied tasks.' },
+  ], 'Produces an accurate conversion workflow with checks for reasonableness and precision.', 'Construction estimates and food production', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q2-le4', 'DepEd SSHS General Mathematics Q2 Lesson Exemplar 4 (Measurement and Conversion)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE4.pdf'),
+    source('genmath-q2-mod1', 'DepEd General Mathematics Q2 Module 1: Simple and Compound Interests', 'curriculum/general_math/genmath_q2_mod1_simpleandcompoundinterests_v2.pdf'),
+  ]),
+  b('gm-q2-functions-graphs', 'gen-math', 'Q2', 'Functions and Their Graphs', 'Model relationships using function notation, tables, and graphs to explain changing quantities.', 'Functions', 'GM-Q2-FG', [
+    { code: 'GM11-FG-1', outcome: 'Represent real-life relationships as functions and interpret domain/range.' },
+    { code: 'GM11-FG-2', outcome: 'Analyze function behavior from tables, equations, and graphs.' },
+    { code: 'GM11-FG-3', outcome: 'Use graph interpretation to support contextual conclusions.' },
+  ], 'Submits a function modeling portfolio with equation selection and graph-based interpretation.', 'Transport fare, utility consumption, and growth trends', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q2-le5', 'DepEd SSHS General Mathematics Q2 Lesson Exemplar 5 (Functions and Their Graphs)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE5.pdf'),
+    source('shs-gm-q2-las2', 'DepEd SSHS General Mathematics Q2 Learning Activity Sheet 2', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Learning Activity Sheets/PDF/SHS_GM_Q2_LAS2.pdf'),
+  ]),
+  b('gm-q2-piecewise-functions', 'gen-math', 'Q2', 'Piecewise Functions', 'Use piecewise definitions to model tiered pricing, conditional rates, and policy thresholds.', 'Functions', 'GM-Q2-PF', [
+    { code: 'GM11-PF-1', outcome: 'Translate threshold-based scenarios into piecewise functions.' },
+    { code: 'GM11-PF-2', outcome: 'Evaluate and graph piecewise functions for decision-making.' },
+  ], 'Constructs and defends a piecewise model for a threshold-driven policy scenario.', 'Electricity billing tiers and shipping rates', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q2-le5-pf', 'DepEd SSHS General Mathematics Q2 Lesson Exemplar 5 (Piecewise Functions in Practical Contexts)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE5.pdf'),
+    source('shs-gm-q2-las2-pf', 'DepEd SSHS General Mathematics Q2 Learning Activity Sheet 2', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Learning Activity Sheets/PDF/SHS_GM_Q2_LAS2.pdf'),
+  ]),
+  b('gm-q2-statistical-variables', 'gen-math', 'Q2', 'Statistical Variables', 'Differentiate variable types and build data representations suitable for statistical analysis.', 'Data and Statistics', 'GM-Q2-SV', [
+    { code: 'GM11-SV-1', outcome: 'Classify variables and choose appropriate data representations.' },
+    { code: 'GM11-SV-2', outcome: 'Interpret variable distributions and detect potential data issues.' },
+  ], 'Prepares a data profile report with justified variable treatment and representation choices.', 'School survey dashboards', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q2-le6', 'DepEd SSHS General Mathematics Q2 Lesson Exemplar 6 (Statistical Variables and Data Distributions)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 2/Lesson Exemplars/PDF/SHS_GM_Q2_LE6.pdf'),
+    source('genmath-q2-mod2', 'DepEd General Mathematics Q2 Module 2: Interest, Maturity, and Present Values', 'curriculum/general_math/genmath_q2_mod2_interestmaturityfutureandpresentvaluesinsimpleandcompoundinterests_v2.pdf'),
+  ]),
+  b('gm-q3-basic-trigonometry', 'gen-math', 'Q3', 'Basic Trigonometry', 'Solve right-triangle and angle problems using trigonometric ratios in practical contexts.', 'Geometry and Trigonometry', 'GM-Q3-BT', [
+    { code: 'GM11-BT-1', outcome: 'Apply trigonometric ratios to solve angle and distance problems.' },
+    { code: 'GM11-BT-2', outcome: 'Interpret trigonometric results in measurement contexts.' },
+  ], 'Creates a field-measurement solution set that justifies method and interpretation.', 'Building height and slope analysis', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q3-le7', 'DepEd SSHS General Mathematics Q3 Lesson Exemplar 7 (Basic Trigonometry)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE7.pdf'),
+    source('shs-gm-q3-las-le7', 'DepEd SSHS General Mathematics Q3 Learning Activity Sheet (Trigonometry Applications)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE7.pdf'),
+  ]),
+  b('gm-q3-practical-applications-measurement', 'gen-math', 'Q3', 'Practical Applications of Measurement', 'Integrate measurement methods to solve multi-step tasks in planning, costing, and logistics.', 'Measurement Applications', 'GM-Q3-PAM', [
+    { code: 'GM11-PAM-1', outcome: 'Select and apply measurement methods in practical multi-step tasks.' },
+    { code: 'GM11-PAM-2', outcome: 'Estimate uncertainty and communicate justified approximations.' },
+  ], 'Delivers a practical measurement plan with justified estimates and assumptions.', 'Project costing and logistics planning', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q3-le8', 'DepEd SSHS General Mathematics Q3 Lesson Exemplar 8 (Practical Applications of Measurement)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE8.pdf'),
+    source('shs-gm-q3-las-le8', 'DepEd SSHS General Mathematics Q3 Learning Activity Sheet (Measurement and Cost Planning)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE8.pdf'),
+  ]),
+  b('gm-q3-transformational-geometry-volume-capacity', 'gen-math', 'Q3', 'Transformational Geometry / Volume and Capacity', 'Use geometric transformations and solid measurement to solve design and storage problems.', 'Geometry', 'GM-Q3-TGVC', [
+    { code: 'GM11-TGVC-1', outcome: 'Analyze geometric transformations in patterned and engineered layouts.' },
+    { code: 'GM11-TGVC-2', outcome: 'Compute volume and capacity for practical container and space tasks.' },
+  ], 'Produces a geometry-based layout and capacity justification for a real constraint.', 'Packaging and facility layout', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q3-le8-tgvc', 'DepEd SSHS General Mathematics Q3 Lesson Exemplar 8 (Transformational Geometry, Volume and Capacity)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE8.pdf'),
+    source('shs-gm-q3-las-le8-tgvc', 'DepEd SSHS General Mathematics Q3 Learning Activity Sheet (Volume & Capacity Estimations)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE8.pdf'),
+  ]),
+  b('gm-q3-random-variables-sampling', 'gen-math', 'Q3', 'Random Variables and Sampling', 'Model uncertainty and sampling behavior to support evidence-based conclusions.', 'Probability and Sampling', 'GM-Q3-RVS', [
+    { code: 'GM11-RVS-1', outcome: 'Define random variables and compute basic expected outcomes.' },
+    { code: 'GM11-RVS-2', outcome: 'Explain sampling methods and sampling bias in practical studies.' },
+    { code: 'GM11-RVS-3', outcome: 'Interpret sampling outcomes in context.' },
+  ], 'Presents a sampling design and interpretation memo for a study question.', 'Consumer preference and public opinion studies', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q3-le9', 'DepEd SSHS General Mathematics Q3 Lesson Exemplar 9 (Random Variables and Sampling Distributions)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Lesson Exemplars/PDF/SHS_GM_Q3_LE9.pdf'),
+    source('shs-gm-q3-las-le9', 'DepEd SSHS General Mathematics Q3 Learning Activity Sheet (Normal Distribution & Sampling)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 3/Learning Activity Sheets/PDF/SHS_GM_Q3_LAS_LE9.pdf'),
+  ]),
+  b('gm-q4-compound-interest-annuities-loans', 'gen-math', 'Q4', 'Compound Interest, Annuities, and Loans', 'Evaluate long-term financial commitments using compound growth and annuity structures.', 'Financial Mathematics', 'GM-Q4-CIAL', [
+    { code: 'GM11-CIAL-1', outcome: 'Compute and compare compound interest outcomes across periods and rates.' },
+    { code: 'GM11-CIAL-2', outcome: 'Model annuity and loan payment structures for planning decisions.' },
+    { code: 'GM11-CIAL-3', outcome: 'Assess affordability and sustainability of borrowing plans.' },
+  ], 'Builds a defensible personal finance plan covering savings and borrowing scenarios.', 'Education financing and long-term savings', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q4-le10', 'DepEd SSHS General Mathematics Q4 Lesson Exemplar 10 (Compound Interest, Annuities, and Loans)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/PDF/SHS_GM_Q4_LE10.pdf'),
+    source('shs-gm-q4-las-le10', 'DepEd SSHS General Mathematics Q4 Learning Activity Sheet (Annuities and Loans)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE10.pdf'),
+    source('genmath-q2-mod4', 'DepEd General Mathematics Q2 Module 4: Simple and General Annuities', 'curriculum/general_math/genmath_q2_mod4_simpleandgeneralannuities_v2.pdf'),
+  ]),
+  b('gm-q4-hypothesis-testing-regression', 'gen-math', 'Q4', 'Hypothesis Testing and Regression', 'Use inferential reasoning and regression modeling to evaluate data-driven claims.', 'Statistics', 'GM-Q4-HTR', [
+    { code: 'GM11-HTR-1', outcome: 'Formulate and interpret hypotheses using context-appropriate tests.' },
+    { code: 'GM11-HTR-2', outcome: 'Develop and interpret regression models for trend analysis.' },
+  ], 'Produces an evidence report with hypothesis decision and regression-backed interpretation.', 'School performance and market trend analysis', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q4-le11', 'DepEd SSHS General Mathematics Q4 Lesson Exemplar 11 (Hypothesis Testing and Regression)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/PDF/SHS_GM_Q4_LE11.pdf'),
+    source('shs-gm-q4-las-le11', 'DepEd SSHS General Mathematics Q4 Learning Activity Sheet (Hypothesis Testing & Correlation)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE11.pdf'),
+  ]),
+  b('gm-q4-propositions-syllogisms-fallacies', 'gen-math', 'Q4', 'Logical Propositions, Syllogisms, and Fallacies', 'Evaluate arguments using formal logic, syllogistic forms, and fallacy detection.', 'Logic and Reasoning', 'GM-Q4-PSF', [
+    { code: 'GM11-PSF-1', outcome: 'Translate statements into logical propositions and evaluate validity.' },
+    { code: 'GM11-PSF-2', outcome: 'Test syllogistic arguments and identify common fallacies.' },
+    { code: 'GM11-PSF-3', outcome: 'Construct sound arguments supported by formal reasoning.' },
+  ], 'Submits a logic audit that classifies validity and fallacies in real arguments.', 'Media literacy and policy argument review', ['Grade 11'], 'Grade 11', [
+    source('shs-gm-q4-le12', 'DepEd SSHS General Mathematics Q4 Lesson Exemplar 12 (Logical Propositions, Syllogisms, and Fallacies)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Lesson Exemplars/PDF/SHS_GM_Q4_LE12.pdf'),
+    source('shs-gm-q4-las-le12', 'DepEd SSHS General Mathematics Q4 Learning Activity Sheet (Logic and Syllogisms)', 'curriculum/sshs_learning_resources/General Mathematics/Quarter 4/Learning Activity Sheets/PDF/SHS_GM_Q4_LAS_LE12.pdf'),
+  ]),
+
+  b('gm-q2-compound-interest', 'gen-math', 'Q2', 'Compound Interest and Present Values', 'Compute simple and compound interest, maturity values, and present values for real-life decisions.', 'Financial Mathematics', 'GM-Q2-CI', [
+    { code: 'GM11-Q2-CI-1', outcome: 'Compute and compare simple and compound interest, maturity, and present values.' },
+    { code: 'GM11-Q2-CI-2', outcome: 'Solve real-life problems involving maturity value and present value of simple and compound interests.' },
+  ], 'Solves interest and present-value problems with complete accurate solutions.', 'Savings accounts and loan planning', ['Grade 11'], 'Grade 11', [
+    source('genmath-q2-mod1', 'DepEd General Mathematics Q2 Module 1: Simple and Compound Interests', 'curriculum/general_math/genmath_q2_mod1_simpleandcompoundinterests_v2.pdf'),
+    source('genmath-q2-mod2', 'DepEd General Mathematics Q2 Module 2: Interest, Maturity, and Present Values', 'curriculum/general_math/genmath_q2_mod2_interestmaturityfutureandpresentvaluesinsimpleandcompoundinterests_v2.pdf'),
+  ]),
+  b('gm-q2-annuities', 'gen-math', 'Q2', 'Annuities', 'Illustrate simple and general annuities and compute their future and present values.', 'Financial Mathematics', 'GM-Q2-ANN', [
+    { code: 'GM11-Q2-ANN-1', outcome: 'Illustrate and calculate future and present values of simple and general annuities.' },
+  ], 'Computes annuity values accurately for saving and payment plans.', 'Installment saving and pension planning', ['Grade 11'], 'Grade 11', [
+    source('genmath-q2-mod4', 'DepEd General Mathematics Q2 Module 4: Simple and General Annuities', 'curriculum/general_math/genmath_q2_mod4_simpleandgeneralannuities_v2.pdf'),
+  ]),
+  b('bm-q1-business-math', 'business-math', 'Q1', 'Business Mathematics Foundations', 'Model business scenarios with linear equations and inequalities for pricing and planning.', 'Business Mathematics', 'BM-Q1-FOUND', [
+    { code: 'ABM_BM11BS-Ia-b-1', outcome: 'Translate verbal phrases to mathematical expressions; model business scenarios using linear equations and inequalities.' },
+  ], 'Builds a business pricing model with equations and justified recommendations.', 'MSME pricing and budgeting', ['Grade 11'], 'Grade 11', [
+    source('shs-bm-complete-le', 'DepEd SSHS Business Mathematics Lesson Exemplar', 'curriculum/sshs_learning_resources/General Mathematics/Complete Course (Term 1)/PDF/General Mathematics_LE.pdf'),
+  ]),
+  b('stat-q1-probability', 'stats-prob', 'Q1', 'Random Variables and Sampling Distributions', 'Describe random variables, compute distribution statistics, and apply normal and sampling theory.', 'Probability and Statistics', 'SP-Q1-RV', [
+    { code: 'SP_SHS11-Ia-1', outcome: 'Define and describe random variables and their types.' },
+    { code: 'SP_SHS11-Ia-2', outcome: 'Calculate mean, variance, and standard deviation of discrete random variables.' },
+    { code: 'SP_SHS11-Ia-3', outcome: 'Illustrate normal distributions and compute standard probabilities using z-scores.' },
+    { code: 'SP_SHS11-Ia-4', outcome: 'Illustrate the Central Limit Theorem and apply sampling distribution theory.' },
+  ], 'Produces a statistics brief with computed probabilities and interpreted results.', 'School surveys and quality checks', ['Grade 11'], 'Grade 11', [
+    source('statprob-full', 'DepEd Statistics and Probability Full Module', 'curriculum/stat_prob/Full.pdf'),
+  ]),
+  b('fm-q1-finite-math', 'finite-math', 'Q1', 'Systems and Matrices', 'Model and solve systems of linear equations using matrix representations and operations.', 'Matrices and Systems', 'FM-Q1-MS', [
+    { code: 'FM11-MS-1', outcome: 'Model and solve systems of linear equations using matrix representations and operations.' },
+  ], 'Solves a real allocation problem with a documented matrix solution.', 'Resource allocation and scheduling', ['Grade 11'], 'Grade 11', [
+    source('fm-1-le', 'DepEd SSHS Finite Mathematics 1 Lesson Exemplar', 'curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 1/PDF/Finite Math 1_LE.pdf'),
+  ]),
+  b('fm-q2-finite-math', 'finite-math', 'Q2', 'Linear Optimization', 'Solve real-world optimization problems using geometric methods and the simplex algorithm.', 'Optimization', 'FM-Q2-LP', [
+    { code: 'FM11-LP-1', outcome: 'Solve real-world optimization problems using geometric methods and the simplex algorithm.' },
+  ], 'Delivers an optimization report with the best feasible solution justified.', 'Production planning and logistics', ['Grade 11'], 'Grade 11', [
+    source('fm-2-le', 'DepEd SSHS Finite Mathematics 2 Lesson Exemplar', 'curriculum/sshs_learning_resources/Finite Mathematics/Finite Math 2/PDF/Finite Math 2_LE.pdf'),
+  ]),
+  // Serving Grade 11 only.
+];
+
+function adaptDescriptionForGrade(module: CurriculumModuleBlueprint, _activeGradeLevel: GradeLevel): string {
+  return `${module.moduleDescription} ${COMPETENCY_VERBS_G11}`;
+}
+
+function makeLessons(module: CurriculumModuleBlueprint, _activeGradeLevel: GradeLevel) {
+  const duration = '22 min';
+  return module.competencies.map((competency, index) => {
+    const curriculumMatch = COMPETENCY_TO_LESSON[competency.code];
+    const fallbackStoragePath = module.sources[0]?.storagePath ?? '';
+    const fallbackSourceFile = fallbackStoragePath ? fallbackStoragePath.split('/').pop() || '' : '';
+    const storagePath = curriculumMatch?.storagePath ?? fallbackStoragePath;
+    const sourceFile = curriculumMatch?.sourceFile ?? fallbackSourceFile;
+
+    return {
+      id: curriculumMatch?.lessonId ?? `${module.id}-l${index + 1}`,
+      title: competency.outcome,
+      duration,
+      completed: false,
+      locked: false,
+      description: `${competency.code} · ${competency.outcome}`,
+      competencyCode: competency.code,
+      // SAFETY: module subject ids are constrained to the Lesson subject union at build time.
+      subjectId: module.subjectId as Lesson['subjectId'],
+      subject: module.subject,
+      quarter: parseInt(module.quarter.replace('Q', '')),
+      learningCompetency: competency.outcome,
+      storagePath,
+      sourceFile,
+    };
+  });
+}
+
+function makeAssessments(module: CurriculumModuleBlueprint): CurriculumAssessmentMeta[] {
+  const chunks: CurriculumAssessmentMeta[] = [];
+  const chunkSize = 2;
+  let chunkIndex = 0;
+
+  for (let i = 0; i < module.competencies.length; i += chunkSize) {
+    const subset = module.competencies.slice(i, i + chunkSize);
+    chunkIndex += 1;
+    chunks.push({
+      id: `${module.id}-a${chunkIndex}`,
+      title: `Competency Check ${chunkIndex}`,
+      competencyCodes: subset.map((entry) => entry.code),
+      type: chunkIndex === Math.ceil(module.competencies.length / chunkSize) ? 'module' : 'practice',
+    });
+  }
+
+  return chunks;
+}
+
+function makeQuizzes(module: CurriculumModuleBlueprint, assessments: CurriculumAssessmentMeta[]) {
+  // All Grade 11 subjects are finalized DepEd-sourced modules: fully unlocked, no sequential gating.
+  return assessments.map((assessment, index) => ({
+    id: `${module.id}-q${index + 1}`,
+    title: assessment.title,
+    questions: Math.max(8, assessment.competencyCodes.length * 5),
+    duration: assessment.type === 'module' ? '22 min' : '15 min',
+    completed: false,
+    locked: false,
+    type: assessment.type,
+  }));
+}
+
+function normalizeGradeLevel(_rawGrade?: string | null): GradeLevel {
+  // Only Grade 11 is supported in this curriculum version
+  return 'Grade 11';
+}
+
+function normalizeSubjectAssignments(assignedSubjects: string[] | undefined): CurriculumSubjectId[] | null {
+  if (!Array.isArray(assignedSubjects) || assignedSubjects.length === 0) return null;
+  // Shelved until PDFs land: business-math, stats-prob (kept in map for return path).
+  const allowed = new Set<CurriculumSubjectId>([
+    'gen-math',
+    'finite-math',
+  ]);
+  const normalized = assignedSubjects
+    .map((entry) => entry.trim().toLowerCase())
+    .map((entry) => {
+      if (entry === 'gen-math' || entry === 'general-mathematics' || entry === 'general mathematics') return 'gen-math';
+      if (entry === 'business-math' || entry === 'business mathematics' || entry === 'bm') return 'business-math';
+      if (entry === 'stats-prob' || entry === 'statistics and probability' || entry === 'statistics') return 'stats-prob';
+      if (entry === 'finite-math' || entry === 'finite mathematics' || entry === 'fm') return 'finite-math';
+      return null;
+    })
+    .filter((entry): entry is CurriculumSubjectId => entry !== null && allowed.has(entry));
+
+  return normalized.length > 0 ? normalized : null;
+}
+
+export function resolveLearnerGradeLevel(rawGrade?: string | null): GradeLevel {
+  return normalizeGradeLevel(rawGrade);
+}
+
+export function getCurriculumSubjectsForGrade(
+  activeGradeLevel: GradeLevel,
+  assignedSubjects?: string[],
+): CurriculumSubjectId[] {
+  const parsedAssignments = normalizeSubjectAssignments(assignedSubjects);
+  const defaults = SCHOOL_PROGRAM_DEFAULT_SUBJECTS_BY_GRADE[activeGradeLevel];
+
+  if (!parsedAssignments) {
+    return defaults;
+  }
+
+  return defaults.filter((subjectId) => parsedAssignments.includes(subjectId));
+}
+
+export function getCurriculumModulesForLearner(
+  activeGradeLevel: GradeLevel,
+  assignedSubjects?: string[],
+): CurriculumModuleRuntime[] {
+  const visibleSubjects = getCurriculumSubjectsForGrade(activeGradeLevel, assignedSubjects);
+
+  return CURRICULUM_MODULE_BLUEPRINTS
+    .filter((module) => module.grade_level_availability.includes(activeGradeLevel))
+    .filter((module) => visibleSubjects.includes(module.subjectId))
+    .map((module) => {
+      const assessments = makeAssessments(module);
+      const lessons = makeLessons(module, activeGradeLevel);
+      const quizzes = makeQuizzes(module, assessments);
+      const subjectMeta = SUBJECT_META[module.subjectId];
+
+      // All Grade 11 modules are finalized published content: always available.
+      const isAvailable = true;
+      const moduleStatus: ModuleStatus = 'available';
+
+      return {
+        id: module.id,
+        title: module.moduleTitle,
+        description: adaptDescriptionForGrade(module, activeGradeLevel),
+        lessons,
+        quizzes,
+        progress: 0,
+        color: 'bg-white',
+        iconColor: 'text-slate-700',
+        accentColor: 'bg-slate-700',
+        subjectId: module.subjectId,
+        subject: module.subject,
+        subjectColor: subjectMeta.color,
+        subjectAccentColor: subjectMeta.accent,
+        grade_level_availability: module.grade_level_availability,
+        recommended_grade_level: module.recommended_grade_level,
+        active_grade_level: activeGradeLevel,
+        quarter: module.quarter,
+        content_domain: module.contentDomain,
+        competency_group: module.competencyGroup,
+        competencies: module.competencies,
+        performance_standard: module.performanceStandard,
+        real_world_theme: module.realWorldTheme,
+        lesson_count: lessons.length,
+        quiz_count: quizzes.length,
+        is_visible_for_grade: module.grade_level_availability.includes(activeGradeLevel),
+        curriculum_aligned_label: 'Curriculum-aligned',
+        module_sources: module.sources,
+        module_assessments: assessments,
+        isAvailable,
+        moduleStatus,
+      };
+    });
+}
+
+export const CURRICULUM_SUBJECT_META = SUBJECT_META;

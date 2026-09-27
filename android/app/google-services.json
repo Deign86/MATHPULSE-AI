@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "441656461",
+    "firebase_url": "https://mathpulse-ai-2026-default-rtdb.firebaseio.com",
+    "project_id": "mathpulse-ai-2026",
+    "storage_bucket": "mathpulse-ai-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:441656461:android:124a4c637d593b61ec2ec4",
+        "android_client_info": {
+          "package_name": "com.deign86.mathpulse"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "441656461-t1sdr2ko4iqj7febil46c9h080hd3a0r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.deign86.mathpulse",
+            "certificate_hash": "57f556f4b926045b32c0a547d5f140fa7f1e285a"
+          }
+        },
+        {
+          "client_id": "441656461-oko1pj01jo4h1gah81p2mbcn1auhqgcr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA_d3LJXGen48L-BE4PjujMQeIbsX9Apq4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "441656461-oko1pj01jo4h1gah81p2mbcn1auhqgcr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

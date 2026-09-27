@@ -1,0 +1,314 @@
+import React, { useState, useMemo } from 'react';
+import { Search, Bell, Users, Target, AlertCircle, TrendingDown, FileText, BookOpen, Sparkles, Plus } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { TeacherStatCard } from './TeacherStatCard';
+
+export interface ClassView {
+  id: string;
+  name: string;
+  classSectionId?: string;
+  gradeLevel?: string;
+  schedule: string;
+  studentCount: number;
+  avgScore: number;
+  atRiskCount: number;
+  riskLevel: 'high' | 'medium' | 'low';
+}
+
+interface ClassesOverviewMenuProps {
+  classes: ClassView[];
+  totalStudentCount: number;
+  onSelectClass: (classItem: ClassView) => void;
+  onOpenNotifications?: () => void;
+  onOpenProfile?: () => void;
+  insightDismissed?: boolean;
+  onOpenInsightModal?: () => void;
+  viewType?: 'analytics' | 'competency';
+  onCreateClass?: () => void;
+}
+
+export const CLASS_COLORS = [
+  { hex: '#9956DE', bg: 'bg-[#9956DE]/10', border: 'border-[#9956DE]/20', borderLeft: 'border-l-[#9956DE]', text: 'text-[#9956DE]', groupHover: 'group-hover:text-[#9956DE]' }, // Amethyst
+  { hex: '#7274ED', bg: 'bg-[#7274ED]/10', border: 'border-[#7274ED]/20', borderLeft: 'border-l-[#7274ED]', text: 'text-[#7274ED]', groupHover: 'group-hover:text-[#7274ED]' }, // Slate Blue
+  { hex: '#1FA7E1', bg: 'bg-[#1FA7E1]/10', border: 'border-[#1FA7E1]/20', borderLeft: 'border-l-[#1FA7E1]', text: 'text-[#1FA7E1]', groupHover: 'group-hover:text-[#1FA7E1]' }, // Summer Sky
+  { hex: '#6ED1CF', bg: 'bg-[#6ED1CF]/10', border: 'border-[#6ED1CF]/20', borderLeft: 'border-l-[#6ED1CF]', text: 'text-[#6ED1CF]', groupHover: 'group-hover:text-[#6ED1CF]' }, // Downy
+  { hex: '#FFB356', bg: 'bg-[#FFB356]/10', border: 'border-[#FFB356]/20', borderLeft: 'border-l-[#FFB356]', text: 'text-[#FFB356]', groupHover: 'group-hover:text-[#FFB356]' }, // Texas Rose
+];
+
+export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
+  classes,
+  totalStudentCount,
+  onSelectClass,
+  onOpenNotifications,
+  onOpenProfile,
+  insightDismissed,
+  onOpenInsightModal,
+  viewType = 'analytics',
+  onCreateClass,
+}) => {
+  const { currentUser, userProfile } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const isCompetency = viewType === 'competency';
+
+  // Global Stats calculation
+  const totalStudents = totalStudentCount;
+  const totalAtRisk = classes.reduce((sum, c) => sum + (c.atRiskCount || 0), 0);
+  const avgPerformance = classes.length > 0
+    ? (classes.reduce((sum, c) => sum + (c.avgScore || 0), 0) / classes.length).toFixed(1)
+    : 0;
+
+  // AI Action Items — derived from real class data
+  const aiActionItems = useMemo(() => {
+    const items: { icon: typeof TrendingDown; text: React.ReactNode }[] = [];
+    const atRiskClasses = classes.filter(c => c.atRiskCount > 0);
+    if (atRiskClasses.length > 0) {
+      const worst = [...atRiskClasses].sort((a, b) => b.atRiskCount - a.atRiskCount)[0];
+      items.push({ icon: TrendingDown, text: <><span className="font-bold text-white">{worst.name}</span> has {worst.atRiskCount} at-risk student{worst.atRiskCount > 1 ? 's' : ''} needing intervention.</> });
+    }
+    const lowAvgClasses = classes.filter(c => c.avgScore > 0 && c.avgScore < 60);
+    if (lowAvgClasses.length > 0) {
+      items.push({ icon: TrendingDown, text: <><span className="font-bold text-white">{lowAvgClasses.length} class{lowAvgClasses.length > 1 ? 'es' : ''}</span> below 60% average — consider review sessions.</> });
+    }
+    if (totalAtRisk === 0 && totalStudents > 0) {
+      items.push({ icon: Sparkles, text: <>All <span className="font-bold text-white">{totalStudents} students</span> are on track. Great work!</> });
+    }
+    if (classes.length > 0 && Number(avgPerformance) === 0) {
+      items.push({ icon: BookOpen, text: <>No quiz data yet. <span className="font-bold text-white">Assign assessments</span> to start tracking progress.</> });
+    }
+    if (items.length === 0) {
+      items.push({ icon: Sparkles, text: <>No action items right now. Check back after students complete activities.</> });
+    }
+    return items;
+  }, [classes, totalAtRisk, totalStudents, avgPerformance]);
+
+  // Filter classes by global search query
+  const filteredClasses = classes.filter(c =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.gradeLevel || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  return (
+    <div className="h-full overflow-y-auto w-full block">
+      <div className="max-w-[1400px] mx-auto p-3 sm:p-[24px] xl:p-[32px] space-y-3 sm:space-y-[24px] pb-28 sm:pb-8">
+
+        {/* Global Search Bar - Redesigned for content area */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex-1 max-w-xl">
+            <div className="flex items-center bg-white/80 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-[16px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white backdrop-blur-[12px] group focus-within:ring-2 focus-within:ring-[#a855f7]/20 transition-all">
+              <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#a855f7] transition-colors" />
+              <input
+                type="text"
+                placeholder="Global search for a student across all classes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none focus:outline-none ml-2.5 sm:ml-3 text-xs sm:text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Global Stats & Alerts Row (Vibrant Palette) */}
+        {isCompetency ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <TeacherStatCard
+              color="green"
+              title="Total Students"
+              badgeText="Active"
+              icon={Users}
+              value={totalStudents}
+              subtitle="Active across classes"
+              footerLabel="Classes Active"
+              footerBadge={`${classes.length} classes`}
+            />
+            <TeacherStatCard
+              color="purple"
+              title="Avg Competency"
+              badgeText={Number(avgPerformance) >= 75 ? 'On Track' : 'Needs Boost'}
+              icon={Target}
+              value={`${avgPerformance}%`}
+              subtitle="Cohort Competency"
+              scorePercent={Number(avgPerformance)}
+              footerLabel="Evaluated"
+              footerBadge={`${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}
+            />
+            <TeacherStatCard
+              color="amber"
+              title="Universal Weakness"
+              badgeText="Priority"
+              icon={Target}
+              value="Foundations"
+              subtitle="Curriculum Focus"
+              footerLabel="Affects"
+              footerBadge={`${classes.length} classes`}
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+            {/* Global Stats Cards (3 columns across all screen sizes) */}
+            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <TeacherStatCard
+                color="green"
+                title="Total Students"
+                badgeText="Active"
+                icon={Users}
+                value={totalStudents}
+                subtitle="Enrolled Students"
+                footerLabel="Across Classes"
+                footerBadge={`${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}
+              />
+              <TeacherStatCard
+                color="purple"
+                title="Class Average"
+                badgeText={Number(avgPerformance) >= 75 ? 'Passing' : 'Needs Boost'}
+                icon={Target}
+                value={`${avgPerformance}%`}
+                subtitle="Cohort Score"
+                scorePercent={Number(avgPerformance)}
+                footerLabel="Cohort Score"
+                footerBadge={`${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`}
+              />
+              <TeacherStatCard
+                color="amber"
+                title="Needs Attention"
+                badgeText={totalAtRisk > 0 ? 'Priority' : 'Clear'}
+                icon={AlertCircle}
+                value={totalAtRisk}
+                subtitle="At-Risk Students"
+                scorePercent={totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}
+                footerLabel="Attention Rate"
+                footerBadge={`${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%`}
+              />
+            </div>
+
+            {/* AI Action Items (Purple Theme with matching vibrant gradient) */}
+            <div className="lg:col-span-4 relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] flex flex-col text-white border border-white/20">
+              <div className="absolute -bottom-8 -right-8 w-36 h-36 bg-white/10 rounded-full blur-xl pointer-events-none" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+
+              <div className="flex justify-between items-center mb-2.5 sm:mb-4 relative z-10 border-b border-white/20 pb-2 sm:pb-3">
+                <h3 className="font-display text-xs sm:text-[14px] font-bold text-white flex items-center gap-1.5 sm:gap-2">
+                  <div className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                  AI Action Items
+                </h3>
+                <span className="font-body text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-purple-900 bg-white px-2.5 py-0.5 rounded-full shadow-2xs">
+                  {aiActionItems.length} Pending
+                </span>
+              </div>
+
+              <div className="space-y-2 flex-1 overflow-y-auto no-scrollbar relative z-10">
+                {aiActionItems.map((item, i) => (
+                  <div key={i} className="bg-white/15 hover:bg-white/25 rounded-xl p-2.5 sm:p-3 text-[11px] sm:text-xs border border-white/15 transition-colors backdrop-blur-sm group cursor-pointer flex gap-2.5 items-start">
+                    <div className="mt-0.5 shrink-0 text-white/85 group-hover:text-white transition-colors">
+                      <item.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </div>
+                    <div className="leading-snug text-white/95">{item.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* My Classes Grid Section */}
+        <div className="bg-white/60 backdrop-blur-[12px] rounded-[24px] p-3 sm:p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white mt-3 sm:mt-[24px]">
+          <div className="mb-6 border-b border-[#f1f5f9] pb-4 flex items-center justify-between">
+            <h2 className="text-[18px] font-semibold text-[#1e293b]">
+              {isCompetency ? 'Select a Class' : 'My Classes'}
+            </h2>
+            {onCreateClass && !isCompetency && (
+              <button
+                onClick={onCreateClass}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-[#9956DE] bg-[#9956DE]/10 rounded-lg hover:bg-[#9956DE]/20 transition-colors"
+              >
+                <Plus size={14} />Create Class
+              </button>
+            )}
+          </div>
+
+          {/* Grid of Classes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[16px]">
+            {filteredClasses.map((classItem, idx) => {
+              const color = CLASS_COLORS[idx % CLASS_COLORS.length];
+
+              let riskBadge = null;
+              if (classItem.riskLevel === 'high') {
+                riskBadge = (
+                  <span className="inline-flex px-2 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-md border border-rose-100/50 uppercase">
+                    High Risk
+                  </span>
+                );
+              } else if (classItem.riskLevel === 'medium') {
+                riskBadge = (
+                  <span className="inline-flex px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-md border border-amber-100/50 uppercase">
+                    Medium Risk
+                  </span>
+                );
+              } else {
+                riskBadge = (
+                  <span className="inline-flex px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-md border border-emerald-100/50 uppercase">
+                    On Track
+                  </span>
+                );
+              }
+
+              return (
+                <div
+                  key={classItem.id}
+                  onClick={() => onSelectClass(classItem)}
+                  className="flex flex-col p-4 bg-white dark:bg-slate-800/90 shadow-sm hover:shadow-md hover:-translate-y-1 rounded-2xl sm:rounded-3xl transition-all duration-300 cursor-pointer group border border-slate-200/80 dark:border-slate-700/80 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b from-[#9956DE] to-[#7274ED] opacity-80 group-hover:opacity-100 group-hover:w-2 transition-all" />
+                  <div className="flex justify-between items-start mb-3.5 pl-1">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white flex items-center justify-center shadow-sm shadow-purple-500/25 group-hover:scale-105 transition-transform">
+                        <BookOpen className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-0.5 transition-colors group-hover:text-violet-600">
+                          {classItem.name}
+                        </h4>
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                          {classItem.gradeLevel || 'Senior High'}
+                        </p>
+                      </div>
+                    </div>
+                    {riskBadge}
+                  </div>
+                  <div className="flex items-center justify-between text-[13px] text-slate-600 dark:text-slate-300 bg-slate-50/80 dark:bg-slate-750 rounded-xl p-3 border border-slate-100 dark:border-slate-700/60 mt-auto">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Students</span>
+                      <span className="font-bold text-slate-800 dark:text-white tabular-nums">{classItem.studentCount}</span>
+                    </div>
+                    <div className="w-px h-7 bg-slate-200 dark:bg-slate-700" />
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
+                        {isCompetency ? 'Avg Comp.' : 'Average'}
+                      </span>
+                      <span className="font-bold text-slate-800 dark:text-white tabular-nums">{classItem.avgScore}%</span>
+                    </div>
+                    {!isCompetency && (
+                      <>
+                        <div className="w-px h-7 bg-slate-200 dark:bg-slate-700" />
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Schedule</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-200 text-xs truncate max-w-[90px]">{classItem.schedule || 'Mon-Fri'}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredClasses.length === 0 && (
+              <div className="col-span-full py-8 text-center text-[#64748b] text-[13px] bg-[#f8fafc] rounded-[18px] border border-[#e2e8f0]">
+                No classes match your search.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -1,0 +1,147 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+out/
+functions/lib/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.staging
+.env.production
+!.env.example
+
+# Editor / IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python artifacts
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.npy
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Tool / runtime caches
+.tmp/
+tmp/
+temp/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Local curriculum PDF staging (not committed)
+.local/
+.local/**
+.automation_cache/
+.kaggle-kernels/
+**/_kaggle_outputs/
+kaggle_llm_api_job/
+kaggle_merge_job/
+datasets/vectorstore/*
+# EXCEPT the ChromaDB sqlite file (needed for RAG at runtime)
+!datasets/vectorstore/chroma.sqlite3
+!datasets/vectorstore/ingest_summary.json
+backend/datasets/vectorstore/*
+!backend/datasets/vectorstore/chroma.sqlite3
+!backend/datasets/vectorstore/ingest_summary.json
+!backend/datasets/vectorstore/teacher_materials/
+
+# Curriculum binaries are hosted on HF storage, not in git
+datasets/curriculum/*.pdf
+backend/datasets/curriculum/*.pdf
+
+# Local curriculum PDFs (extracted for analysis, not committed)
+documents/
+
+# Secrets — service accounts, credentials, API keys (NEVER commit)
+.secrets/
+*.key
+*.pem
+service-account*.json
+serviceAccountKey*.json
+**/serviceAccountKey.json
+
+# Memory bank — local agent notes only, never commit
+memory-bank/
+
+# Graphify — generated knowledge graph artifacts
+.graphify*
+graphify-out/
+graphify-out/cache/
+
+# GitNexus
+.gitnexus/
+gitnexus.db
+
+# Agent / AI tooling — never commit
+.claude/
+CLAUDE.md
+.opencode/
+.sisyphus/
+.pr-body.md
+
+# Temp scratch files
+scratch.txt
+patch_sidebar_index.js
+deploy-trigger.txt
+eslint_output.txt
+.lint-out.txt
+.lint-temp.txt
+docs/ui-standardization-summary.md
+
+# Local pi agent state — never commit
+.pi/
+
+# Android / Capacitor build artifacts & signing credentials
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml
+android/captures/
+android/.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+

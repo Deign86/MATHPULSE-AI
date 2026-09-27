@@ -1,0 +1,810 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Defensive role function - handles missing user documents
+    function role() {
+      return isSignedIn() && userDoc() != null && userDoc().data.role != null
+        ? userDoc().data.role
+        : 'student';  // Default to student role for unauthenticated or missing role
+    }
+
+    function isAdmin() {
+      return isSignedIn() && role() == 'admin';
+    }
+
+    function isTeacher() {
+      return isSignedIn() && role() == 'teacher';
+    }
+
+    function isTeacherOrAdmin() {
+      return isSignedIn() && (role() == 'teacher' || role() == 'admin');
+    }
+
+    // Role is server-guarded (issue #156): a non-admin can never grant,
+    // change, or drop the role field — self role-escalation writes are
+    // denied. Only an admin may set a role, and only to a known value.
+    function roleWriteAllowed() {
+      return !request.resource.data.keys().hasAny(['role'])
+        || (resource != null && request.resource.data.role == resource.data.role)
+        || (isAdmin() && request.resource.data.role in ['student', 'teacher', 'admin']);
+    }
+
+    // Teacher-only notification types carry other users' data and are
+    // backend-only. Clients may never place them in another user's inbox.
+    function teacherOnlyNotificationType() {
+      return request.resource.data.type is string
+        && request.resource.data.type in ['risk_alert'];
+    }
+
+    // Teachers/admins may create student-appropriate items in a student's
+    // scoped inbox (e.g. quiz assignments). Self-writes always stay scoped
+    // to the writer's own inbox with a matching userId field.
+    function teacherCreatableNotification(userId) {
+      return isTeacherOrAdmin()
+        && request.resource.data.userId == userId
+        && !teacherOnlyNotificationType();
+    }
+
+    // Single owner-predicate family. `isSelf` covers "this document is mine",
+    // the field variants cover "this document is mine by a stored field", and
+    // `ownerByField` composes them so no rule hand-rolls raw uid comparisons.
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(field) {
+      return resource != null && resource.data[field] == request.auth.uid;
+    }
+
+    function isClaimingOwner(field) {
+      return request.resource != null && request.resource.data[field] == request.auth.uid;
+    }
+
+    function isPreservingOwner(field) {
+      return isExistingOwner(field) && request.resource.data[field] == resource.data[field];
+    }
+
+    function ownerByField(field) {
+      return isSignedIn() && (isExistingOwner(field) || isClaimingOwner(field));
+    }
+
+    function validPushPreferences() {
+      let p = request.resource.data.pushPreferences;
+      return p is map
+        && p.keys().hasOnly(['pushEnabled', 'achievement', 'quiz_battle', 'daily_reward', 'assignment', 'grade_posted', 'streak_reminder', 'leaderboard', 'system'])
+        && (!p.keys().hasAny(['pushEnabled']) || p.pushEnabled is bool)
+        && (!p.keys().hasAny(['achievement']) || p.achievement is bool)
+        && (!p.keys().hasAny(['quiz_battle']) || p.quiz_battle is bool)
+        && (!p.keys().hasAny(['daily_reward']) || p.daily_reward is bool)
+        && (!p.keys().hasAny(['assignment']) || p.assignment is bool)
+        && (!p.keys().hasAny(['grade_posted']) || p.grade_posted is bool)
+        && (!p.keys().hasAny(['streak_reminder']) || p.streak_reminder is bool)
+        && (!p.keys().hasAny(['leaderboard']) || p.leaderboard is bool)
+        && (!p.keys().hasAny(['system']) || p.system is bool);
+    }
+
+    function validQuietHours() {
+      let n = request.resource.data.notifications;
+      return n is map && (!n.keys().hasAny(['quietHours']) || (
+        n.quietHours is map
+        && n.quietHours.keys().hasOnly(['start', 'end', 'timeZone'])
+        && (!n.quietHours.keys().hasAny(['start']) || (n.quietHours.start is string && n.quietHours.start.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')))
+        && (!n.quietHours.keys().hasAny(['end']) || (n.quietHours.end is string && n.quietHours.end.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')))
+        && (!n.quietHours.keys().hasAny(['timeZone']) || n.quietHours.timeZone is string)
+      ));
+    }
+
+    function validPreferencesSettings() {
+      return (!request.resource.data.keys().hasAny(['pushPreferences']) || validPushPreferences())
+        && (!request.resource.data.keys().hasAny(['notifications']) || validQuietHours());
+    }
+
+    match /users/{userId} {
+      allow create: if isSelf(userId)
+        && (!request.resource.data.keys().hasAny(['role']) || request.resource.data.role in ['student', 'teacher']);
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow update: if (isSelf(userId) || isTeacherOrAdmin()) && roleWriteAllowed();
+      allow delete: if isAdmin();
+    }
+
+    // ── Tutor Memory (profile, sessions, working state — written by backend, read by self) ──
+    // Backend writes via Firebase Admin SDK (bypasses rules); students can read their own
+    // Write restricted to teachers/admins — backend Admin SDK bypasses rules, so it still works
+    match /users/{userId}/tutorMemory/{memoryPath=**} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if isTeacherOrAdmin();
+    }
+
+    // ── User Assessments (subcollection — written by student, read self + teachers/admins) ──
+    match /users/{userId}/assessments/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId);
+      allow delete: if isSelf(userId) || isAdmin();
+    }
+
+    // ── User Grade Summary (subcollection — rolling averages maintained by student write) ──
+    match /users/{userId}/gradeSummary/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId);
+      allow delete: if isSelf(userId) || isAdmin();
+    }
+
+    // Leaderboard collection - publicly readable, written only by backend
+    match /leaderboard/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;  // Backend/admin only via firebase-admin
+    }
+
+    match /users/{userId}/settings/{settingsId} {
+      allow read: if isSelf(userId) || isAdmin();
+      allow create, update: if (isSelf(userId) || isAdmin())
+        && (settingsId != 'preferences' || validPreferencesSettings());
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId}/dashboardSummary/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isAdmin();
+      allow delete: if isSelf(userId) || isAdmin();
+    }
+
+    // ── FCM Tokens (per-user, per-device — used by Cloud Functions to fan out push) ──
+    // Each device writes its own token doc. Cloud Functions read with the
+    // Admin SDK (bypasses rules), so we only need to scope client access here.
+    match /users/{userId}/fcmTokens/{tokenId} {
+      allow read: if isSelf(userId) || isAdmin();
+      allow create: if isSelf(userId)
+        && request.resource.data.userId is string
+        && request.resource.data.userId == userId
+        && request.resource.data.token is string
+        && request.resource.data.token.size() > 0
+        && request.resource.data.token.size() <= 4096
+        && request.resource.data.platform is string
+        && request.resource.data.platform in ['web', 'ios', 'android']
+        && request.resource.data.active is bool;
+      allow update: if isSelf(userId)
+        && resource.data.userId is string
+        && resource.data.userId == userId
+        && request.resource.data.userId is string
+        && request.resource.data.userId == resource.data.userId
+        && resource.data.token is string
+        && request.resource.data.token is string
+        && request.resource.data.token == resource.data.token
+        && request.resource.data.platform is string
+        && request.resource.data.platform in ['web', 'ios', 'android']
+        && request.resource.data.active is bool;
+      allow delete: if isSelf(userId);
+    }
+
+    // ── Daily Rewards (users can only claim their own, must change lastClaimedDate) ──
+    match /users/{userId}/dailyRewards/{rewardId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId)
+                    && request.resource.data.lastClaimedDate != resource.data.lastClaimedDate;
+      allow delete: if isAdmin();
+    }
+
+    // ── Login Streak Rewards (parallel system — fixed 7-day cycle) ──
+    match /users/{userId}/loginStreakRewards/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId)
+                    && request.resource.data.lastClaimedDate != resource.data.lastClaimedDate;
+      allow delete: if isAdmin();
+    }
+
+    // ── Competency Matrix (subcollection under users) ──
+    match /users/{userId}/competencyMatrix/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if isSelf(userId) || isTeacherOrAdmin();
+    }
+
+    // ── Quiz Results (subcollection under users) ──
+    match /users/{userId}/quizResults/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if isSelf(userId) || isTeacherOrAdmin();
+    }
+
+    // ── Practice Sessions (written by backend only via Admin SDK, read by backend for submission) ──
+    // Clients access this via /api/practice/* endpoints, not directly
+    match /practice_sessions/{docId} {
+      allow read: if isAdmin();  // Backend reads via Admin SDK
+      allow write: if false;    // Backend only via Admin SDK
+    }
+
+    // ── Practice Results subcollection (written by backend, read by backend for stats) ──
+    // practice_results/{userId}/sessions/{session_id}
+    match /practice_results/{userId}/sessions/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if false;  // Backend only via Admin SDK
+    }
+
+    // ── Module Progress (subcollection under users) ──
+    match /users/{userId}/moduleProgress/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow write: if isSelf(userId) || isTeacherOrAdmin();
+    }
+
+    match /progress/{docId} {
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
+    }
+
+    match /xpActivities/{docId} {
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
+    }
+
+    match /achievements/{docId} {
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
+    }
+
+    // ── Notifications subcollection (recipient-scoped inboxes) ──────────
+    match /notifications/{userId}/items/{notificationId} {
+      allow read, update, delete: if isSelf(userId);
+      allow create: if (isSelf(userId) && request.resource.data.userId == userId)
+        || teacherCreatableNotification(userId);
+    }
+
+    // ── Tutor Nudges (proactive AI nudges per student) ───────────────
+    match /tutorNudges/{studentId}/nudges/{nudgeId} {
+      allow read, update: if isSelf(studentId);
+      allow create, delete: if false; // Only backend writes nudges
+    }
+
+    match /tasks/{docId} {
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
+    }
+
+    match /chatSessions/{docId} {
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
+    }
+
+    match /chatMessages/{docId} {
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
+    }
+
+    match /friendRequests/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow create, update: if isSignedIn() && (
+        request.resource.data.senderId == request.auth.uid ||
+        request.resource.data.receiverId == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    match /friendships/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.user1Id == request.auth.uid ||
+        resource.data.user2Id == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow create, update: if isSignedIn() && (
+        request.resource.data.user1Id == request.auth.uid ||
+        request.resource.data.user2Id == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.user1Id == request.auth.uid ||
+        resource.data.user2Id == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    match /managedStudents/{studentId} {
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
+      // This remains teacher-writable for roster/risk enrichment compatibility,
+      // but teacherId is not an authorization source for callable notifications.
+      allow create: if isTeacherOrAdmin();
+      allow update: if isAdmin() || (isTeacher() &&
+        (!request.resource.data.keys().hasAny(['teacherId']) ||
+         !resource.data.keys().hasAny(['teacherId']) ||
+         request.resource.data.teacherId == resource.data.teacherId));
+      allow delete: if isAdmin();
+    }
+
+    // Subcollection: managedStudents/{studentId}/activityScores
+    match /managedStudents/{studentId}/activityScores/{docId} {
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isTeacherOrAdmin();
+    }
+
+    // Subcollection: managedStudents/{studentId}/externalGrades
+    match /managedStudents/{studentId}/externalGrades/{docId} {
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isTeacherOrAdmin();
+    }
+
+    match /classrooms/{classroomId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update: if isAdmin() || (isTeacher() && (
+        isClaimingOwner('teacherId') ||
+        isExistingOwner('teacherId') ||
+        isClaimingOwner('ownerTeacherId') ||
+        isExistingOwner('ownerTeacherId') ||
+        isClaimingOwner('managerId') ||
+        isExistingOwner('managerId')
+      ));
+      allow delete: if isAdmin() || (isTeacher() && (
+        isExistingOwner('teacherId') ||
+        isExistingOwner('ownerTeacherId')
+      ));
+    }
+
+    match /classSectionOwnership/{classSectionId} {
+      allow read: if isTeacherOrAdmin();
+      // Ownership and roster membership are trusted authorization inputs. A
+      // teacher may maintain a section only after admin provisioning; teacher
+      // writes cannot claim or transfer ownership/manager fields.
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (isTeacher() &&
+        resource.data.ownerTeacherId == request.auth.uid &&
+        request.resource.data.ownerTeacherId == resource.data.ownerTeacherId &&
+        request.resource.data.managerId == resource.data.managerId);
+      allow delete: if isAdmin();
+    }
+
+    match /courseMaterials/{materialId} {
+      allow read: if isAdmin() || (isTeacher() && ownerByField('teacherId'));
+      allow create, update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /classRecordImports/{importId} {
+      allow read: if isAdmin() || (isTeacher() && ownerByField('teacherId'));
+      allow create, update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /normalizedClassRecords/{recordId} {
+      allow read: if isAdmin() || (isTeacher() && ownerByField('teacherId'));
+      allow create, update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /auditLogs/{docId} {
+      allow read: if isTeacherOrAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /accessAuditLogs/{auditId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /diagnosticResults/{docId} {
+      // Temporarily permissive for debugging - allow students to read their own
+      allow read: if isSelf(docId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(docId) || isTeacherOrAdmin();
+      allow delete: if isSelf(docId) || isAdmin();
+    }
+
+    // ── Diagnostic Results Cache (AI analysis cached per student) ──
+    match /diagnosticResults/{userId}/cache/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Diagnostic Sessions (backend writes, students read their own) ──
+    match /diagnosticSessions/{docId} {
+      allow read: if ownerByField('userId') || isTeacherOrAdmin();
+      allow create: if isSignedIn();  // Backend creates via firebase-admin, also allow student-initiated
+      allow update, delete: if false;  // Backend only
+    }
+    // Assessment Results — students can read their own, backend writes
+    match /assessmentResults/{studentId}/attempts/{attemptId} {
+      allow read: if isSelf(studentId);
+      allow create, update: if isSelf(studentId);
+      allow delete: if false;
+    }
+
+    // Delivery claims are server-owned; Admin SDK bypasses these rules.
+
+    match /_pushDeliveries/{deliveryId} {
+      allow read, write: if false;
+    }
+
+    match /studentProgress/{userId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isAdmin();
+    }
+    match /studentProgress/{userId}/stats/{docId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if false;  // Backend only via firebase-admin
+      allow delete: if isAdmin();
+    }
+
+    match /quizResults/{docId} {
+      allow read: if ownerByField('studentId') || isTeacherOrAdmin();
+      allow create: if isSignedIn();
+      allow update: if isSelf(docId) || isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /quizSubmissions/{docId} {
+      allow read: if isSignedIn() && (resource.data.lrn == request.auth.uid || isTeacherOrAdmin());
+      allow create: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /generatedQuizzes/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('teacherId');
+      allow create: if isTeacherOrAdmin() || isClaimingOwner('teacherId');
+      allow update, delete: if isAdmin() || isExistingOwner('teacherId');
+    }
+
+    match /quizAssignments/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('teacherId') || ownerByField('lrn');
+      allow create: if isTeacherOrAdmin() || isClaimingOwner('teacherId');
+      allow update, delete: if isAdmin() || isExistingOwner('teacherId');
+    }
+
+    match /attendance/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('studentId');
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /curriculumContent/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /learning_events/{eventId} {
+      allow read: if isSignedIn() && (ownerByField('userId') || isTeacherOrAdmin());
+      allow create: if isSignedIn() && isClaimingOwner('userId');
+      allow update, delete: if false;
+    }
+
+    match /user_streaks/{userId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if isSelf(userId) || isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /contentAuditLog/{docId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /deepDiagnosticAssignments/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('lrn');
+      allow create, update, delete: if false;
+    }
+
+    match /recommendationLogs/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('lrn') || ownerByField('userId');
+      allow create, update, delete: if false;
+    }
+
+    match /learnerMasterySnapshots/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('lrn') || ownerByField('userId');
+      allow create, update, delete: if false;
+    }
+
+    match /quizBattleQueue/{docId} {
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
+    }
+
+    match /quizBattleHistory/{docId} {
+      allow read: if isSelf(docId) || ownerByField('studentId') || isTeacherOrAdmin();
+      allow create, update: if false;
+      allow delete: if isSignedIn() && ownerByField('studentId');
+    }
+
+    match /quizBattleMatches/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.playerAId == request.auth.uid ||
+        resource.data.playerBId == request.auth.uid ||
+        isTeacherOrAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /quizBattleRooms/{docId} {
+      allow read: if isSignedIn() && (
+        resource.data.ownerStudentId == request.auth.uid ||
+        (resource.data.participantIds is list && request.auth.uid in resource.data.participantIds) ||
+        isTeacherOrAdmin()
+      );
+      allow create, update, delete: if false;
+    }
+
+    match /studentBattleStats/{userId} {
+      allow read: if isSelf(userId) || isTeacherOrAdmin();
+      allow create, update: if false;
+      allow delete: if isSelf(userId);
+    }
+
+    match /studentBattleLeaderboard/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if false;
+      allow delete: if isSelf(docId);
+    }
+
+    match /progressionAuditLog/{docId} {
+      allow read: if isTeacherOrAdmin() || ownerByField('lrn') || ownerByField('userId');
+      allow create, update, delete: if false;
+    }
+
+    // ── Video search cache (read for all authenticated users) ──
+    match /video_cache/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;  // Backend-only writes via firebase-admin
+    }
+
+    // ── Question bank (read for all authenticated users) ──
+    match /question_bank/{path=**} {
+      allow read: if isSignedIn();
+      allow write: if false; // Backend-only via firebase-admin
+    }
+
+    // ── Quiz Battle Question Bank (legacy) ──
+    match /quizBattleQuestionBank/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ── PDF processing status (read for teachers/admins) ──
+    match /pdf_processing_status/{docId} {
+      allow read: if isTeacherOrAdmin();
+      allow write: if false; // Backend-only
+    }
+
+    // ── Quiz battle sessions (read for participants) ──
+    match /quiz_battle_sessions/{sessionId} {
+      allow read: if isSignedIn() && resource.data.player_ids.hasAny([request.auth.uid]);
+      allow write: if false; // Backend-only
+    }
+
+    // ── Rate limit tracking (Cloud Functions write only) ──
+    match /_ratelimits/{uid} {
+      allow read: if isSelf(uid);
+      allow write: if false;  // Cloud Functions only via service account
+    }
+    match /_ratelimits/{uid}/{functionName} {
+      allow read: if isSelf(uid);
+      allow write: if false;  // Cloud Functions only
+    }
+
+    // ── Rate limit analytics (read for admins only) ──
+    match /_analytics/rateLimitHits/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;  // Frontend only
+    }
+
+    // ── Assessments (student's own assessment data) ──
+    match /assessments/{uid} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isSelf(uid) || isAdmin();
+    }
+
+    match /assessments/{uid}/attempts/{attemptId} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow create, update: if isSelf(uid) || isAdmin();
+      allow delete: if isSelf(uid) || isAdmin();
+    }
+
+    // ── Competency Profiles (student's competency tracking) ──
+    match /competencyProfiles/{uid} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow create, update: if isSelf(uid) || isTeacherOrAdmin() || isAdmin();
+      allow delete: if isSelf(uid) || isAdmin();
+    }
+
+    // ── Class Assessments (teacher view of class assessment summaries) ──
+    match /classAssessments/{classId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update: if isTeacherOrAdmin() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /classAssessments/{classId}/students/{uid} {
+      allow read: if resource.data.teacherUid == request.auth.uid || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ── Class Activity Feed (teacher dashboard live stream via subscribeToActivityFeed) ──
+    // Backend writes via Firebase Admin SDK (bypasses rules); teachers/admins read the feed
+    match /activities/{activityId} {
+      allow read: if isTeacherOrAdmin();
+      allow create, update: if isTeacherOrAdmin();
+      allow delete: if isAdmin();
+    }
+    // ── Platform Config (admin-managed subject availability) ──
+    match /platformConfig/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── Module Activities (student activity tracking — self write, self + teachers/admins read) ──
+    match /moduleActivities/{docId} {
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
+    }
+
+    // ── Platform Settings (admin-managed, publicly readable) ──
+    // ── Platform Settings (admin-managed, publicly readable) ──
+    match /settings/{docId} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── AI Usage Logs (written by backend/admin SDK, read by admins) ──
+    match /aiUsageLogs/{docId} {
+      allow read: if isAdmin() || isTeacherOrAdmin();
+      allow write: if false; // Backend only via firebase-admin
+    }
+
+    // ── Modules (DepEd curriculum + teacher-uploaded modules) ──
+    // moduleType field: "deped" (or absent) = curriculum, "teacher_uploaded" = teacher-created
+    // Teachers can create teacher_uploaded modules; all authenticated users can read all modules
+    match /modules/{moduleId} {
+      allow read: if isSignedIn();
+      allow create: if isTeacherOrAdmin();
+      allow update, delete: if isAdmin() || (isTeacherOrAdmin() && (
+        isExistingOwner('uploadedBy') || isExistingOwner('teacherId')
+      ));
+    }
+
+// ── Class Records (teacher-uploaded student grade data) ──
+    match /classRecords/{teacherUid} {
+      allow read: if isAdmin() || (isTeacher() && isSelf(teacherUid));
+      allow write: if false;
+      
+      match /uploads/{uploadId} {
+        allow read: if isAdmin() || (isTeacher() && teacherUid == request.auth.uid);
+        allow write: if false;
+
+        match /students/{lrn} {
+          allow read: if isAdmin() || (isTeacher() && teacherUid == request.auth.uid) || (isSignedIn() && resource.data.lrn == lrn);
+          allow write: if false;
+        }
+      }
+      
+      match /sections/{sectionId}/students/{lrn} {
+        allow read: if isAdmin() || (isTeacher() && teacherUid == request.auth.uid) || (isSignedIn() && resource.data.lrn == lrn);
+        allow write: if false;
+      }
+    }
+    // Tutor check-in messages (backend writes, student reads own)
+    match /tutorCheckins/{uid} {
+      match /messages/{msgId} {
+        allow read: if isSelf(uid);
+        allow create, update, delete: if false;
+      }
+    }
+
+    // AI-generated quizzes from modules
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow create: if isTeacherOrAdmin();
+      allow update, delete: if isTeacherOrAdmin() && isExistingOwner('teacherId');
+    }
+
+    // Personalized student recommendations (backend writes, student reads own)
+    match /studentRecommendations/{uid} {
+      allow read: if isSelf(uid);
+      allow write: if false;
+    }
+
+    // Weekly teacher digests (backend writes, teacher reads own)
+    match /teacherDigests/{teacherId} {
+      allow read: if isSelf(teacherId);
+      allow write: if false;
+    }
+
+    // Analytics cache (frontend writes, self read)
+    match /analyticsCache/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isTeacherOrAdmin();
+    }
+
+    // ── Calendar Events (user-owned) ──
+    match /calendarEvents/{docId} {
+      allow create: if isTeacherOrAdmin() || (isSignedIn() && isClaimingOwner('userId'));
+      allow update: if isTeacherOrAdmin() || (isSignedIn() && isPreservingOwner('userId'));
+      allow read, delete: if isTeacherOrAdmin() || (isSignedIn() && isExistingOwner('userId'));
+    }
+
+
+
+    // ─── Student Intelligence Pipeline Collections ────────────────────────
+
+    // student_profiles/{student_id} — backend-only writes, students read own, teachers read their class
+    match /student_profiles/{studentId} {
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // class_analytics/{class_id} — backend-only writes, teachers read
+    match /class_analytics/{classId} {
+      allow read: if isTeacherOrAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // classes/{class_id}/student_summaries/{student_id} — denormalized for Teacher Dashboard
+    match /classes/{classId}/student_summaries/{studentId} {
+      allow read: if isTeacherOrAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // intervention_plans/{student_id} — backend writes, teachers read, students read own
+    match /intervention_plans/{studentId} {
+      allow read: if isSelf(studentId) || isTeacherOrAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // pipeline_events/{event_id} — audit log, admin read only
+    match /pipeline_events/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // pipeline_jobs/{job_id} — backfill job tracking, admin read only
+    match /pipeline_jobs/{jobId} {
+      allow read: if isAdmin();
+      allow write: if false; // Backend service account only
+    }
+
+    // module_watch_requests/{docId} — students subscribe to module availability
+    match /module_watch_requests/{docId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isTeacherOrAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── At-Risk Resolution (backend writes via Admin SDK, students read own) ──
+    match /students/{uid}/flaggedTopics/{topicId} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow write: if false; // Backend only via firebase-admin
+    }
+    match /students/{uid}/atRiskFallbackContent/{topicId} {
+      allow read: if isSelf(uid) || isTeacherOrAdmin();
+      allow write: if false; // Backend only via firebase-admin
+    }
+
+    // Deny-by-default for unknown collections.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

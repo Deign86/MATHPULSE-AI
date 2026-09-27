@@ -1,0 +1,677 @@
+import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'motion/react';
+import { ChevronDown, ChevronUp, Loader2, BarChart3, CheckCircle, AlertTriangle, EyeOff, Search, Bell, BookOpen } from 'lucide-react';
+import TeacherModuleStatusControl from './TeacherModuleStatusControl';
+import { TeacherStatCard } from './TeacherStatCard';
+import { useAuth } from '../contexts/AuthContext';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { toast } from 'sonner';
+import { GRADE_LEVELS, SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
+import { cacheKeys } from '../utils/cacheKeys';
+import { useCurriculum } from '../hooks/useCurriculum';
+import { apiUrl } from '../config/env';
+import { recordGet } from '../utils/memberOf';
+
+// ─── Types ──────────────────────────────────────────────────
+
+interface TopicMasteryData {
+  topicName: string;
+  subjectId: string;
+  unit: string;
+  classAverage: number;
+  studentsAttempted: number;
+  totalStudents: number;
+  studentsAbove85: number;
+  masteryPercentage: number;
+  masteryStatus: 'mastered' | 'on_track' | 'needs_attention' | 'no_data';
+  isExcluded: boolean;
+}
+
+interface MasterySummary {
+  totalTopicsTracked: number;
+  masteredCount: number;
+  needsAttentionCount: number;
+  excludedCount: number;
+}
+
+const DEFAULT_MASTERY_SUMMARY: MasterySummary = {
+  totalTopicsTracked: 0,
+  masteredCount: 0,
+  needsAttentionCount: 0,
+  excludedCount: 0,
+};
+
+type SortField = 'topicName' | 'classAverage' | 'studentsAttempted' | 'masteryStatus';
+type SortDir = 'asc' | 'desc';
+
+const SUBJECT_BADGES = {
+  'gen-math': { label: 'General Mathematics', color: 'bg-sky-100 text-sky-700' },
+  'stats-prob': { label: 'Statistics & Probability', color: 'bg-sky-100 text-sky-700' },
+  'business-math': { label: 'Business Mathematics', color: 'bg-emerald-100 text-emerald-700' },
+  'finite-math': { label: 'Finite Mathematics', color: 'bg-cyan-100 text-cyan-700' },
+};
+
+const STATUS_BADGES = {
+  mastered: { label: 'Mastered', color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+  on_track: { label: 'On Track', color: 'text-amber-600 bg-amber-50 border-amber-100' },
+  needs_attention: { label: 'Needs Work', color: 'text-rose-600 bg-rose-50 border-rose-100' },
+  no_data: { label: 'No Data', color: 'text-slate-600 bg-slate-50 border-slate-200' },
+};
+
+const STATUS_ORDER = {
+  needs_attention: 0,
+  on_track: 1,
+  no_data: 2,
+  mastered: 3,
+};
+
+// ─── Component ──────────────────────────────────────────────
+
+export interface TopicMasteryViewProps {
+  classSectionId?: string;
+  onOpenNotifications?: () => void;
+  onOpenProfile?: () => void;
+  activeTab?: 'mastery' | 'availability';
+  onTabChange?: (tab: 'mastery' | 'availability') => void;
+  teacherId?: string;
+}
+
+const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
+  classSectionId,
+  onOpenNotifications,
+  onOpenProfile,
+  activeTab,
+  onTabChange,
+  teacherId,
+}) => {
+  const { currentUser, userProfile } = useAuth();
+  const [localTab, setLocalTab] = useState<'mastery' | 'availability'>(activeTab || 'mastery');
+  const currentTab = activeTab || localTab;
+
+  useEffect(() => {
+    if (activeTab && activeTab !== localTab) {
+      setLocalTab(activeTab);
+    }
+  }, [activeTab, localTab]);
+
+  const handleTabSwitch = (tab: 'mastery' | 'availability') => {
+    setLocalTab(tab);
+    onTabChange?.(tab);
+  };
+
+  // Data state
+  const [topics, setTopics] = useState<TopicMasteryData[]>([]);
+  const [summary, setSummary] = useState<MasterySummary>(DEFAULT_MASTERY_SUMMARY);
+  const [loading, setLoading] = useState(true);
+
+  // Filters
+  const [subjectFilter, setSubjectFilter] = useState('all');
+  const [gradeFilter, setGradeFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Sorting
+  const [sortField, setSortField] = useState<SortField>('classAverage');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  // SAFETY: trusted internal value already conforms to the asserted type.
+  const allSubjectIds = SHS_MATH_SUBJECTS.map((subject) => subject.id as SubjectId);
+  const subjectNameById = SHS_MATH_SUBJECTS.reduce<Record<string, string>>((acc, subject) => {
+    acc[subject.id] = subject.name;
+    return acc;
+  }, {});
+
+  // Load curriculum (logs source - Firestore vs static)
+  const { isLoading: curriculumLoading, refetch: refetchCurriculum } = useCurriculum();
+
+  // Log curriculum source on load
+  useEffect(() => {
+    if (!curriculumLoading) {
+      console.log('[TopicMasteryView] Curriculum ready');
+      refetchCurriculum();
+    }
+  }, [curriculumLoading, refetchCurriculum]);
+
+  // Selection for bulk actions
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
+
+  // Excluded topics from Firestore
+  const [excludedTopics, setExcludedTopics] = useState<string[]>([]);
+
+  // ─── Load topic mastery data ──────────────────────────────
+
+  const masteryQuery = useQuery({
+    queryKey: cacheKeys.topicMastery(currentUser?.uid || 'anonymous', classSectionId),
+    enabled: Boolean(currentUser),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    queryFn: async () => {
+      try {
+        if (!currentUser) {
+          return {
+            // SAFETY: trusted internal value already conforms to the asserted type.
+            excluded: [] as string[],
+            // SAFETY: trusted internal value already conforms to the asserted type.
+            topics: [] as TopicMasteryData[],
+            summary: { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: 0 },
+          };
+        }
+
+        const settingsRef = doc(db, 'teachers', currentUser.uid, 'settings', 'quizSettings');
+        const settingsSnap = await getDoc(settingsRef);
+        const excluded: string[] = settingsSnap.exists() ? settingsSnap.data()?.excludedTopics || [] : [];
+
+        const params = new URLSearchParams({ teacherId: currentUser.uid });
+        if (classSectionId) {
+          params.set('classSectionId', classSectionId);
+        }
+
+        const token = await currentUser.getIdToken();
+        const res = await fetch(apiUrl(`/api/analytics/topic-mastery?${params.toString()}`), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          return {
+            excluded,
+            // SAFETY: trusted internal value already conforms to the asserted type.
+            topics: [] as TopicMasteryData[],
+            summary: { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length },
+          };
+        }
+
+        const data = await res.json();
+        const topicsWithExclude = (data.topics || []).map((topic: TopicMasteryData) => ({
+          ...topic,
+          isExcluded: excluded.includes(topic.topicName),
+        }));
+
+        return {
+          excluded,
+          topics: topicsWithExclude,
+          summary: data.summary || { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length },
+        };
+      } catch {
+        return {
+          // SAFETY: trusted internal value already conforms to the asserted type.
+          excluded: [] as string[],
+          // SAFETY: trusted internal value already conforms to the asserted type.
+          topics: [] as TopicMasteryData[],
+          summary: { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: 0 },
+        };
+      }
+    },
+  });
+
+  useEffect(() => {
+    setLoading(masteryQuery.isLoading || masteryQuery.isFetching);
+    if (!masteryQuery.data) {
+      setExcludedTopics([]);
+      setTopics([]);
+      setSummary(DEFAULT_MASTERY_SUMMARY);
+      setSelectedTopics(new Set());
+      return;
+    }
+
+    setExcludedTopics(masteryQuery.data.excluded);
+    setTopics(masteryQuery.data.topics);
+    setSummary(masteryQuery.data.summary);
+  }, [masteryQuery.data, masteryQuery.isFetching, masteryQuery.isLoading]);
+
+  // ─── Toggle exclude ───────────────────────────────────────
+
+  const toggleExclude = async (topicName: string) => {
+    if (!currentUser) return;
+    const newExcluded = excludedTopics.includes(topicName)
+      ? excludedTopics.filter(t => t !== topicName)
+      : [...excludedTopics, topicName];
+
+    setExcludedTopics(newExcluded);
+    setTopics(prev => prev.map(t => t.topicName === topicName ? { ...t, isExcluded: !t.isExcluded } : t));
+    setSummary(prev => ({ ...prev, excludedCount: newExcluded.length }));
+
+    try {
+      const settingsRef = doc(db, 'teachers', currentUser.uid, 'settings', 'quizSettings');
+      const snap = await getDoc(settingsRef);
+      if (snap.exists()) {
+        await updateDoc(settingsRef, { excludedTopics: newExcluded });
+      } else {
+        await setDoc(settingsRef, { excludedTopics: newExcluded });
+      }
+    } catch {
+      toast.error('Failed to update excluded topics');
+    }
+  };
+
+  // ─── Bulk actions ─────────────────────────────────────────
+
+  const handleBulkExclude = async () => {
+    if (!currentUser) return;
+    const newExcluded = [...new Set([...excludedTopics, ...selectedTopics])];
+    setExcludedTopics(newExcluded);
+    setTopics(prev => prev.map(t => selectedTopics.has(t.topicName) ? { ...t, isExcluded: true } : t));
+    setSummary(prev => ({ ...prev, excludedCount: newExcluded.length }));
+    setSelectedTopics(new Set());
+
+    try {
+      const settingsRef = doc(db, 'teachers', currentUser.uid, 'settings', 'quizSettings');
+      const snap = await getDoc(settingsRef);
+      if (snap.exists()) {
+        await updateDoc(settingsRef, { excludedTopics: newExcluded });
+      } else {
+        await setDoc(settingsRef, { excludedTopics: newExcluded });
+      }
+      toast.success(`${selectedTopics.size} topics excluded from quizzes`);
+    } catch {
+      toast.error('Failed to update');
+    }
+  };
+
+  const handleBulkInclude = async () => {
+    if (!currentUser) return;
+    const newExcluded = excludedTopics.filter(t => !selectedTopics.has(t));
+    setExcludedTopics(newExcluded);
+    setTopics(prev => prev.map(t => selectedTopics.has(t.topicName) ? { ...t, isExcluded: false } : t));
+    setSummary(prev => ({ ...prev, excludedCount: newExcluded.length }));
+    setSelectedTopics(new Set());
+
+    try {
+      const settingsRef = doc(db, 'teachers', currentUser.uid, 'settings', 'quizSettings');
+      const snap = await getDoc(settingsRef);
+      if (snap.exists()) {
+        await updateDoc(settingsRef, { excludedTopics: newExcluded });
+      } else {
+        await setDoc(settingsRef, { excludedTopics: newExcluded });
+      }
+      toast.success(`${selectedTopics.size} topics re-included in quizzes`);
+    } catch {
+      toast.error('Failed to update');
+    }
+  };
+
+  // ─── Sorting ──────────────────────────────────────────────
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  // ─── Filter and sort ─────────────────────────────────────
+  const gradeScopedSubjectIds = gradeFilter === 'all'
+    ? allSubjectIds
+    : getActiveSubjectIdsForGrade(gradeFilter);
+
+  useEffect(() => {
+    if (subjectFilter === 'all') return;
+    // SAFETY: trusted internal value already conforms to the asserted type.
+    if (!gradeScopedSubjectIds.includes(subjectFilter as SubjectId)) {
+      setSubjectFilter('all');
+    }
+  }, [gradeScopedSubjectIds, subjectFilter]);
+
+  const filteredTopics = topics
+    .filter(t => {
+      if (subjectFilter !== 'all' && t.subjectId !== subjectFilter) return false;
+      // SAFETY: trusted internal value already conforms to the asserted type.
+      if (!gradeScopedSubjectIds.includes(t.subjectId as SubjectId)) return false;
+      if (searchQuery && !t.topicName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      switch (sortField) {
+        case 'topicName': return dir * a.topicName.localeCompare(b.topicName);
+        case 'classAverage': return dir * (a.classAverage - b.classAverage);
+        case 'studentsAttempted': return dir * (a.studentsAttempted - b.studentsAttempted);
+        case 'masteryStatus': return dir * ((STATUS_ORDER[a.masteryStatus] || 0) - (STATUS_ORDER[b.masteryStatus] || 0));
+        default: return 0;
+      }
+    });
+
+  const toggleSelectAll = () => {
+    if (selectedTopics.size === filteredTopics.length) {
+      setSelectedTopics(new Set());
+    } else {
+      setSelectedTopics(new Set(filteredTopics.map(t => t.topicName)));
+    }
+  };
+
+  const SortIcon: React.FC<{ field: SortField }> = ({ field }) => {
+    if (sortField !== field) return <ChevronDown size={14} className="text-white/40" />;
+    return sortDir === 'asc'
+      ? <ChevronUp size={14} className="text-white font-bold" />
+      : <ChevronDown size={14} className="text-white font-bold" />;
+  };
+
+  // ─── Render ───────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={24} className="animate-spin text-indigo-500" />
+        <span className="ml-2 text-[#64748b]">Loading topic mastery data...</span>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 pb-28 sm:pb-8"
+    >
+      {/* Tab Switcher: Student Mastery Matrix vs Module Availability & Materials */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar pb-1">
+        <button
+          type="button"
+          onClick={() => handleTabSwitch('mastery')}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+            currentTab === 'mastery'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-1 ring-indigo-600/30'
+              : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/90 shadow-2xs'
+          }`}
+        >
+          <BarChart3 size={15} className="shrink-0" />
+          <span className="sm:hidden">Mastery Matrix</span>
+          <span className="hidden sm:inline">Student Mastery Matrix</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabSwitch('availability')}
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+            currentTab === 'availability'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-1 ring-indigo-600/30'
+              : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/90 shadow-2xs'
+          }`}
+        >
+          <BookOpen size={15} className="shrink-0" />
+          <span className="sm:hidden">Module Availability</span>
+          <span className="hidden sm:inline">Module Availability & Materials</span>
+        </button>
+      </div>
+
+      {currentTab === 'availability' ? (
+        <TeacherModuleStatusControl teacherId={teacherId || currentUser?.uid || ''} />
+      ) : (
+        <>
+          {/* Search & Filters Row */}
+          <div className="flex flex-col md:flex-row gap-2.5 sm:gap-4">
+            <div className="flex items-center bg-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full md:w-64">
+              <Search size={15} className="text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
+              <input
+                type="text"
+                placeholder="Search topics..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none focus:outline-none ml-2 text-xs sm:text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full md:w-auto md:flex md:items-center">
+              <div className="relative w-full md:w-48">
+                <select
+                  value={subjectFilter}
+                  onChange={(e) => setSubjectFilter(e.target.value)}
+                  className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] font-medium rounded-[12px] pl-3 pr-8 sm:pl-4 sm:pr-10 py-2 sm:py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer truncate"
+                >
+                  <option value="all">All Subjects</option>
+                  {gradeScopedSubjectIds.map((subjectId) => (
+                    <option key={subjectId} value={subjectId}>{subjectNameById[subjectId] || subjectId}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="text-[#64748b] absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+              <div className="relative w-full md:w-48">
+                <select
+                  value={gradeFilter}
+                  onChange={(e) => setGradeFilter(e.target.value)}
+                  className="appearance-none w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] font-medium rounded-[12px] pl-3 pr-8 sm:pl-4 sm:pr-10 py-2 sm:py-2.5 outline-none focus:border-[#a855f7] focus:ring-2 focus:ring-[#a855f7]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer truncate"
+                >
+                  <option value="all">All Grades</option>
+                  {GRADE_LEVELS.map((grade) => (
+                    <option key={grade} value={grade}>{grade}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="text-[#64748b] absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* 4 Stats Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            <TeacherStatCard
+              color="purple"
+              title="Total Topics"
+              badgeText="Curriculum"
+              icon={BarChart3}
+              value={summary.totalTopicsTracked}
+              subtitle="Tracked in System"
+            />
+
+            <TeacherStatCard
+              color="green"
+              title="Mastered"
+              badgeText={summary.totalTopicsTracked > 0 ? `${Math.round((summary.masteredCount / summary.totalTopicsTracked) * 100)}%` : '0%'}
+              icon={CheckCircle}
+              value={summary.masteredCount}
+              subtitle="Mastered by Class"
+              scorePercent={summary.totalTopicsTracked > 0 ? Math.round((summary.masteredCount / summary.totalTopicsTracked) * 100) : 0}
+              footerLabel="Class Mastery Rate"
+              footerBadge={summary.totalTopicsTracked > 0 ? `${Math.round((summary.masteredCount / summary.totalTopicsTracked) * 100)}%` : '0%'}
+            />
+
+            <TeacherStatCard
+              color="rose"
+              title="Needs Work"
+              badgeText={summary.needsAttentionCount > 0 ? 'Priority' : 'Clear'}
+              icon={AlertTriangle}
+              value={summary.needsAttentionCount}
+              subtitle="Requires Intervention"
+              scorePercent={summary.totalTopicsTracked > 0 ? Math.round((summary.needsAttentionCount / summary.totalTopicsTracked) * 100) : 0}
+              footerLabel="At-Risk Rate"
+              footerBadge={summary.totalTopicsTracked > 0 ? `${Math.round((summary.needsAttentionCount / summary.totalTopicsTracked) * 100)}%` : '0%'}
+            />
+
+            <TeacherStatCard
+              color="cyan"
+              title="Excluded"
+              badgeText="Settings"
+              icon={EyeOff}
+              value={summary.excludedCount}
+              subtitle="Excluded from Quizzes"
+              footerLabel="Active Topics"
+              footerBadge={`${summary.totalTopicsTracked - summary.excludedCount}`}
+            />
+          </div>
+
+      {/* Topic Data Container */}
+      <div className="bg-white/80 backdrop-blur-[12px] rounded-[16px] sm:rounded-[24px] p-2.5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white">
+
+        {/* Bulk Actions Bar */}
+        <AnimatePresence>
+          {selectedTopics.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4 bg-indigo-50 border border-indigo-200 rounded-[12px] p-3 flex items-center gap-3 flex-wrap overflow-hidden"
+            >
+              <span className="text-[13px] font-semibold text-indigo-700">{selectedTopics.size} topics selected</span>
+              <button
+                onClick={handleBulkExclude}
+                className="px-4 py-1.5 bg-[#475569] text-white text-[11px] font-bold rounded-full hover:bg-[#334155] transition-colors shadow-sm"
+              >
+                Exclude Selected
+              </button>
+              <button
+                onClick={handleBulkInclude}
+                className="px-4 py-1.5 bg-emerald-600 text-white text-[11px] font-bold rounded-full hover:bg-emerald-700 transition-colors shadow-sm"
+              >
+                Include Selected
+              </button>
+              <button
+                onClick={() => setSelectedTopics(new Set())}
+                className="px-4 py-1.5 bg-white border border-[#e2e8f0] text-[#64748b] text-[11px] font-bold rounded-full hover:bg-[#f8fafc] transition-colors shadow-sm"
+              >
+                Clear Selection
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Mobile scroll hint */}
+        <div className="md:hidden flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mb-1.5 px-1">
+          <span>Swipe horizontally to view all columns</span>
+          <span className="text-slate-300">→</span>
+        </div>
+
+        {/* Data Grid */}
+        <div className="bg-white rounded-xl sm:rounded-[16px] border border-[#f1f5f9] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+          <div className="overflow-x-auto touch-pan-x overscroll-x-contain">
+            <div className="min-w-[800px]">
+              {/* Header Row */}
+              <div className="bg-[#9956DE] grid grid-cols-12 gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-[#8b5cf6] items-center text-[10px] sm:text-[11px] font-bold text-white tracking-wider uppercase shadow-xs relative z-10 min-h-[38px] sm:h-11">
+                <div className="col-span-1 flex justify-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedTopics.size === filteredTopics.length && filteredTopics.length > 0}
+                    onChange={toggleSelectAll}
+                    className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3.5 h-3.5 sm:w-4 sm:h-4 border-white/30 bg-white/10 cursor-pointer"
+                  />
+                </div>
+                <div 
+                  className="col-span-3 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
+                  onClick={() => handleSort('topicName')}
+                >
+                  TOPIC NAME <SortIcon field="topicName" />
+                </div>
+                <div className="col-span-2">UNIT</div>
+                <div 
+                  className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
+                  onClick={() => handleSort('classAverage')}
+                >
+                  CLASS AVG % <SortIcon field="classAverage" />
+                </div>
+                <div 
+                  className="col-span-2 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
+                  onClick={() => handleSort('studentsAttempted')}
+                >
+                  STUDENTS <SortIcon field="studentsAttempted" />
+                </div>
+                <div 
+                  className="col-span-1 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
+                  onClick={() => handleSort('masteryStatus')}
+                >
+                  STATUS <SortIcon field="masteryStatus" />
+                </div>
+                <div className="col-span-1 text-center">EXCLUDE</div>
+              </div>
+
+              {/* Body Rows */}
+              <div className="flex flex-col">
+                {filteredTopics.length === 0 ? (
+                  <div className="py-8 sm:py-12 px-4 text-center border-b border-[#f1f5f9]">
+                    {topics.length === 0 ? (
+                      <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+                        <BarChart3 size={24} className="text-[#cbd5e1] sm:w-7 sm:h-7" />
+                        <p className="text-xs sm:text-[13px] font-semibold text-[#64748b]">No topic data available yet</p>
+                        <p className="text-[10px] sm:text-[11px] text-[#94a3b8]">Import student quiz data to see class topic mastery analytics.</p>
+                      </div>
+                    ) : (
+                      <span className="text-xs sm:text-[13px] text-[#64748b]">No topics match the current filters.</span>
+                    )}
+                  </div>
+                ) : (
+                  filteredTopics.map((topic) => {
+                    const isSelected = selectedTopics.has(topic.topicName);
+                    const statusInfo = STATUS_BADGES[topic.masteryStatus] || STATUS_BADGES['no_data'];
+                    const subjectInfo = recordGet(SUBJECT_BADGES, topic.subjectId) ?? { label: topic.subjectId.toUpperCase(), color: 'bg-[#f8fafc] text-[#64748b]' };
+                    const avgColor = topic.classAverage < 60 ? 'bg-rose-500' : topic.classAverage < 85 ? 'bg-amber-500' : 'bg-emerald-500';
+
+                    const rowBg = topic.isExcluded
+                      ? 'bg-slate-50/60 opacity-70'
+                      : topic.masteryStatus === 'needs_attention'
+                      ? 'bg-rose-50/30'
+                      : topic.masteryStatus === 'mastered'
+                      ? 'bg-emerald-50/20'
+                      : '';
+
+                    return (
+                      <div
+                        key={topic.topicName}
+                        className={`grid grid-cols-12 gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 border-b border-[#f1f5f9] items-center hover:bg-slate-50/80 transition-colors group ${rowBg} ${topic.isExcluded ? 'line-through decoration-slate-400' : ''}`}
+                      >
+                        <div className="col-span-1 flex justify-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              const next = new Set(selectedTopics);
+                              if (isSelected) next.delete(topic.topicName);
+                              else next.add(topic.topicName);
+                              setSelectedTopics(next);
+                            }}
+                            className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3.5 h-3.5 sm:w-4 sm:h-4 border-gray-300 cursor-pointer"
+                          />
+                        </div>
+                        <div className="col-span-3 flex flex-col sm:flex-row sm:items-center gap-1.5 pr-2 min-w-0">
+                          <span className="font-semibold text-[#1e293b] text-xs sm:text-[13px] truncate">{topic.topicName}</span>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${subjectInfo.color}`}>
+                            {subjectInfo.label}
+                          </span>
+                        </div>
+                        <div className="col-span-2 text-[#475569] text-xs sm:text-[13px] truncate pr-2">{topic.unit}</div>
+                        <div className="col-span-2">
+                          <span className="font-bold text-[#1e293b] text-xs sm:text-[14px]">{topic.classAverage}%</span>
+                        </div>
+                        <div className="col-span-2 pr-4">
+                          <div className="flex justify-between items-center text-[11px] mb-1">
+                            <span className="font-semibold text-[#1e293b]">{topic.studentsAttempted} / {topic.totalStudents}</span>
+                          </div>
+                          <div className="w-full bg-[#f1f5f9] h-1.5 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-500 ${avgColor}`} style={{ width: `${topic.classAverage}%` }} />
+                          </div>
+                        </div>
+                        <div className="col-span-1">
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap ${statusInfo.color}`}>
+                            {statusInfo.label}
+                          </span>
+                        </div>
+                        <div className="col-span-1 flex justify-center relative">
+                          <label className="relative inline-flex items-center cursor-pointer group/toggle">
+                            <input
+                              type="checkbox"
+                              checked={topic.isExcluded}
+                              onChange={() => toggleExclude(topic.topicName)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4f46e5]"></div>
+                          </label>
+                          <div className="hidden group-hover/toggle:block absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded whitespace-nowrap shadow-lg">
+                            {topic.isExcluded ? 'Include in generation' : 'Exclude from generation'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+        </>
+      )}
+    </motion.div>
+  );
+};
+
+export default TopicMasteryView;

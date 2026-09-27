@@ -1,0 +1,174 @@
+F4 VECTORSTORE DRIFT REAUDIT
+Date: 2026-09-21
+Mode: READ-ONLY committed-range verification plus evidence receipt. No source files were edited by this task. No browser was used. No vectorstore restore, delete, checkout, or commit was performed.
+
+## Committed-range identity and vectorstore drift
+
+Command: `git rev-parse HEAD~15`
+Output:
+```text
+30361bbc7d062568dea158822f7ffb7184041c61
+```
+
+Command: `git rev-parse HEAD`
+Output:
+```text
+a70a5a6501239e7230d798613cef32de42560567
+```
+
+Command: committed and worktree vectorstore hashes
+Output:
+```text
+VECTORSTORE_HEAD~15=692b4188727cfd0e5bac441c4be48c986fc0e35e
+VECTORSTORE_HEAD=692b4188727cfd0e5bac441c4be48c986fc0e35e
+VECTORSTORE_WORKTREE=1b7ac7afdc95698df4da2f6d61ebc3966f4470ae
+```
+
+The committed vectorstore objects are identical. The `1b7ac7af...` object is worktree-only drift and was preserved exactly as found; it is not part of `git diff HEAD~15 HEAD`.
+
+Command: `git status --porcelain -- backend/datasets/vectorstore/`
+Output:
+```text
+ M backend/datasets/vectorstore/chroma.sqlite3
+```
+
+Command: `git log --oneline -3 -- backend/datasets/vectorstore/`
+Output:
+```text
+e6f5637 fix(rag): resolve Chroma embedding dimension mismatch and auto-align to collection
+93a7850 feat(rag): ingest curriculum PDFs, enable DeepSeek API and enhance lesson fallback UI
+e6c861d fix(ci): fix Deploy Firebase Functions build step, predeploy hook, and synchronize curriculum storage
+```
+
+Result: PASS. The status is pre-existing environment drift; the recent todo commits do not touch the vectorstore history.
+
+## Committed-range diff and allowlist
+
+Command: `git diff HEAD~15 HEAD --stat`
+Output:
+```text
+ .omo/evidence/fix-9-qa-issues/task-1.log           |  42 ++++
+ .omo/evidence/fix-9-qa-issues/task-1.png           | Bin 0 -> 386213 bytes
+ .omo/evidence/fix-9-qa-issues/task-10.log          |  23 ++
+ .omo/evidence/fix-9-qa-issues/task-10.png          | Bin 0 -> 3243 bytes
+ .omo/evidence/fix-9-qa-issues/task-11.log          |  60 +++++
+ .omo/evidence/fix-9-qa-issues/task-3.log           |  35 +++
+ .omo/evidence/fix-9-qa-issues/task-3.png           | Bin 0 -> 130415 bytes
+ .omo/evidence/fix-9-qa-issues/task-5.log           |  21 ++
+ .omo/evidence/fix-9-qa-issues/task-5.png           | Bin 0 -> 139993 bytes
+ .omo/evidence/fix-9-qa-issues/task-6-gates.md      |  24 ++
+ .omo/evidence/fix-9-qa-issues/task-6.log           |  35 +++
+ .omo/evidence/fix-9-qa-issues/task-7.log           |  24 ++
+ .omo/evidence/fix-9-qa-issues/task-8.log           |  35 +++
+ .omo/evidence/fix-9-qa-issues/task-9.log           |  23 ++
+ GATES.md                                           |  34 ++++
+ package-lock.json                                  |  20 ++
+ package.json                                       |   2 +
+ src/components/GradesPage.test.tsx                 | 268 +++++++++++++++++++++
+ src/components/GradesPage.tsx                      | 104 ++++++--
+ src/components/LessonViewer.tsx                    |  36 +--
+ src/components/Sidebar.test.tsx                    |  53 ++++
+ src/components/Sidebar.tsx                         |  12 +-
+ src/components/StudentIDCard.test.tsx              |  74 +++++
+ src/components/StudentIDCard.tsx                   | 112 +++------
+ src/components/TeacherDashboard.tsx                |  52 ++--
+ .../__tests__/LessonViewerGrounding.test.tsx       |  51 +---
+ .../__tests__/TeacherDashboardClassCounts.test.ts  |  43 ++++
+ .../notifications/NotificationBell.test.tsx        |  27 ++-
+ .../notifications/NotificationBell.tsx             |  11 +-
+ .../notifications/NotificationContext.test.tsx     | 110 ++++++++
+ .../notifications/NotificationContext.tsx          |  15 +-
+ .../notifications/NotificationPanel.test.tsx       |  28 +++
+ .../notifications/NotificationPanel.tsx            |  10 +-
+ src/utils/pdfExport.test.ts                        |  65 +++++
+ src/utils/pdfExport.ts                             | 132 ++++++++++
+ src/utils/studentIdVerification.test.ts            |  59 +++++
+ src/utils/studentIdVerification.ts                  |  66 +++++
+ 37 files changed, 1503 insertions(+), 203 deletions(-)
+```
+
+Command: `git diff HEAD~15 HEAD --name-only`
+Output:
+```text
+.omo/evidence/fix-9-qa-issues/task-1.log
+.omo/evidence/fix-9-qa-issues/task-1.png
+.omo/evidence/fix-9-qa-issues/task-10.log
+.omo/evidence/fix-9-qa-issues/task-10.png
+.omo/evidence/fix-9-qa-issues/task-11.log
+.omo/evidence/fix-9-qa-issues/task-3.log
+.omo/evidence/fix-9-qa-issues/task-3.png
+.omo/evidence/fix-9-qa-issues/task-5.log
+.omo/evidence/fix-9-qa-issues/task-5.png
+.omo/evidence/fix-9-qa-issues/task-6-gates.md
+.omo/evidence/fix-9-qa-issues/task-6.log
+.omo/evidence/fix-9-qa-issues/task-7.log
+.omo/evidence/fix-9-qa-issues/task-8.log
+.omo/evidence/fix-9-qa-issues/task-9.log
+GATES.md
+package-lock.json
+package.json
+src/components/GradesPage.test.tsx
+src/components/GradesPage.tsx
+src/components/LessonViewer.tsx
+src/components/Sidebar.test.tsx
+src/components/Sidebar.tsx
+src/components/StudentIDCard.test.tsx
+src/components/StudentIDCard.tsx
+src/components/TeacherDashboard.tsx
+src/components/__tests__/LessonViewerGrounding.test.tsx
+src/components/__tests__/TeacherDashboardClassCounts.test.ts
+src/features/notifications/NotificationBell.test.tsx
+src/features/notifications/NotificationBell.tsx
+src/features/notifications/NotificationContext.test.tsx
+src/features/notifications/NotificationContext.tsx
+src/features/notifications/NotificationPanel.test.tsx
+src/features/notifications/NotificationPanel.tsx
+src/utils/pdfExport.test.ts
+src/utils/pdfExport.ts
+src/utils/studentIdVerification.test.ts
+src/utils/studentIdVerification.ts
+```
+
+Allowlist command output:
+```text
+ALLOWLIST_PASS: exact committed file set (37 files); chroma.sqlite3 absent
+```
+
+Result: PASS. The committed range contains only the listed frontend/test/evidence files, package metadata for the two requested dependencies, and no `backend/datasets/vectorstore/chroma.sqlite3`.
+
+## Dependency and forbidden-scope checks
+
+Command: `git diff --unified=0 HEAD~15 HEAD -- package.json | grep -E '^\\+.*":'`
+Output:
+```text
++    "jspdf-autotable": "5.0.8",
++    "qrcode.react": "4.2.0",
+DEPS_PASS: exactly 2 additions (jspdf-autotable, qrcode.react)
+```
+
+Implementation-source content grep output (tests/fixtures excluded):
+```text
+CONTENT_GREP_PASS: GREP_CLEAN (implementation source)
+```
+
+App/Settings layout path grep output:
+```text
+LAYOUT_GREP_PASS: App.tsx and SettingsPage.tsx absent
+```
+
+Rules/auth/schema path grep output:
+```text
+RULES_GREP_PASS: rules/auth/schema paths absent
+```
+
+Command: `git diff --check HEAD~15 HEAD`
+Output:
+```text
+DIFF_CHECK_PASS
+```
+
+## Final decision
+
+VERDICT: APPROVE
+
+The committed scope is faithful. F4's prior failure came from treating worktree-only Chroma drift as part of `git diff HEAD~15`; the committed-range diff excludes it. The 83 MB vectorstore binary remains untouched and preserved exactly.

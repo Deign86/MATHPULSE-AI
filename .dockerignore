@@ -1,0 +1,17 @@
+node_modules
+build
+dist
+.git
+.github
+.firebase
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+.vscode
+.idea
+*.md
+!README.md
+__pycache__
+*.pyc
+.pytest_cache

@@ -1,0 +1,327 @@
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from 'firebase/firestore';
+import {
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updateEmail as firebaseUpdateEmail,
+  updatePassword as firebaseUpdatePassword,
+  deleteUser,
+} from 'firebase/auth';
+import { auth, db } from '../lib/firebase';
+import { clearQueryClientCache } from '../lib/queryClient';
+import { DEFAULT_USER_SETTINGS, UserSettings } from '../types/models';
+import { clearHintCache } from '../utils/hintCache';
+import type { ApiFieldValue } from './apiService';
+import {
+  AdminSystemConfig,
+  DEFAULT_ADMIN_SYSTEM_CONFIG,
+  DEFAULT_TEACHER_PREFERENCES,
+  TeacherPreferences,
+} from '../types/settings';
+
+const SETTINGS_DOC_ID = 'preferences';
+
+// SAFETY: defaults are app-defined JSON; the clone preserves the UserSettings shape.
+const deepCloneDefaults = (): UserSettings => JSON.parse(JSON.stringify(DEFAULT_USER_SETTINGS)) as UserSettings;
+
+const mergeSettings = (incoming?: Partial<UserSettings> | null): UserSettings => {
+  const defaults = deepCloneDefaults();
+  if (!incoming) return defaults;
+
+  return {
+    ...defaults,
+    ...incoming,
+    notifications: {
+      ...defaults.notifications,
+      ...incoming.notifications,
+      notificationTypes: {
+        ...defaults.notifications.notificationTypes,
+        ...incoming.notifications?.notificationTypes,
+      },
+      quietHours: {
+        ...defaults.notifications.quietHours,
+        ...incoming.notifications?.quietHours,
+      },
+    },
+    pushPreferences: {
+      ...defaults.pushPreferences,
+      ...incoming.pushPreferences,
+    },
+    appearance: {
+      ...defaults.appearance,
+      ...incoming.appearance,
+    },
+    privacy: {
+      ...defaults.privacy,
+      ...incoming.privacy,
+    },
+    learning: {
+      ...defaults.learning,
+      ...incoming.learning,
+    },
+    adminPanel: {
+      ...defaults.adminPanel,
+      ...incoming.adminPanel,
+    },
+  };
+};
+
+const settingsDocRef = (uid: string) => doc(db, 'users', uid, 'settings', SETTINGS_DOC_ID);
+
+export const getUserSettings = async (uid: string): Promise<UserSettings> => {
+  const ref = settingsDocRef(uid);
+  const snapshot = await getDoc(ref);
+
+  if (!snapshot.exists()) {
+    const defaults = deepCloneDefaults();
+    await setDoc(ref, {
+      ...defaults,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return defaults;
+  }
+
+  // SAFETY: settings docs are written by saveSettings below with the UserSettings field set.
+  return mergeSettings(snapshot.data() as Partial<UserSettings>);
+};
+
+export const upsertUserSettings = async (
+  uid: string,
+  updates: Partial<UserSettings>,
+): Promise<UserSettings> => {
+  const current = await getUserSettings(uid);
+  const merged = mergeSettings({ ...current, ...updates });
+
+  await setDoc(
+    settingsDocRef(uid),
+    {
+      ...merged,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return merged;
+};
+
+export const resetUserSettingsToDefaults = async (uid: string): Promise<UserSettings> => {
+  const defaults = deepCloneDefaults();
+  await setDoc(
+    settingsDocRef(uid),
+    {
+      ...defaults,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return defaults;
+};
+
+const APPEARANCE_CACHE_KEY = 'mathpulse_appearance';
+
+export const applyRuntimeSettings = (settings: UserSettings): void => {
+  const root = document.documentElement;
+  root.style.setProperty('--font-size', `${settings.appearance.fontSize}px`);
+  root.dataset.density = settings.appearance.compactView ? 'compact' : 'comfortable';
+
+  if (settings.appearance.reduceAnimations) {
+    root.classList.add('reduced-motion');
+  } else {
+    root.classList.remove('reduced-motion');
+  }
+
+  if (settings.appearance.darkMode) {
+    root.classList.add('smart-dark');
+  } else {
+    root.classList.remove('smart-dark');
+  }
+
+  // Cache appearance to localStorage for instant apply on next load
+  try {
+    localStorage.setItem(APPEARANCE_CACHE_KEY, JSON.stringify(settings.appearance));
+  } catch { /* quota exceeded — non-critical */ }
+};
+
+/** Apply cached appearance settings before Firestore loads to prevent flash. */
+export const applySettingsFromCache = (): void => {
+  try {
+    const cached = localStorage.getItem(APPEARANCE_CACHE_KEY);
+    if (!cached) return;
+    // SAFETY: cache entries are written by this service from a validated appearance object.
+    const appearance = JSON.parse(cached) as UserSettings['appearance'];
+    const root = document.documentElement;
+    root.style.setProperty('--font-size', `${appearance.fontSize}px`);
+    root.dataset.density = appearance.compactView ? 'compact' : 'comfortable';
+    if (appearance.reduceAnimations) root.classList.add('reduced-motion');
+    if (appearance.darkMode) root.classList.add('smart-dark');
+  } catch { /* corrupted cache — ignore */ }
+};
+
+export const clearClientCache = async (): Promise<void> => {
+  try {
+    await clearQueryClientCache();
+    clearHintCache();
+
+    localStorage.clear();
+    sessionStorage.clear();
+
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map((name) => caches.delete(name)));
+    }
+  } catch (error) {
+    console.error('Failed clearing client cache:', error);
+    throw new Error('Unable to clear cache on this device.');
+  }
+};
+
+/** JSON-ready Firestore document copy included in user data exports. */
+export interface ExportedUserDoc { [field: string]: ApiFieldValue }
+
+/** Full user data export payload serialized directly to a downloadable file. */
+export interface UserDataSnapshot {
+  exportedAt: string;
+  user: ExportedUserDoc | null;
+  settings: ExportedUserDoc | UserSettings;
+  collections: Record<string, ExportedUserDoc[]>;
+}
+
+export const exportUserDataSnapshot = async (uid: string): Promise<UserDataSnapshot> => {
+  const userRef = doc(db, 'users', uid);
+  const userSnap = await getDoc(userRef);
+  const settingsSnap = await getDoc(settingsDocRef(uid));
+
+  const ownerCollections = [
+    'progress',
+    'xpActivities',
+    'achievements',
+    'notifications',
+    'tasks',
+    'chatSessions',
+    'chatMessages',
+  ];
+
+  const byUserId = await Promise.all(
+    ownerCollections.map(async (collectionName) => {
+      const q = query(collection(db, collectionName), where('userId', '==', uid));
+      const snap = await getDocs(q);
+      return {
+        collectionName,
+        items: snap.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() })),
+      };
+    }),
+  );
+
+  return {
+    exportedAt: new Date().toISOString(),
+    user: userSnap.exists() ? { id: userSnap.id, ...userSnap.data() } : null,
+    settings: settingsSnap.exists() ? settingsSnap.data() : deepCloneDefaults(),
+    collections: byUserId.reduce<Record<string, ExportedUserDoc[]>>((acc, entry) => {
+      acc[entry.collectionName] = entry.items;
+      return acc;
+    }, {}),
+  };
+};
+
+// ─── Re-authentication ──────────────────────────────────────────────────────
+
+export const reauthenticateUser = async (currentPassword: string): Promise<void> => {
+  const user = auth.currentUser;
+  if (!user || !user.email) throw new Error('No user logged in');
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+};
+
+export const changeEmailWithReauth = async (
+  currentPassword: string,
+  newEmail: string,
+): Promise<void> => {
+  await reauthenticateUser(currentPassword);
+  if (!auth.currentUser) throw new Error('Re-auth failed');
+  await firebaseUpdateEmail(auth.currentUser, newEmail);
+};
+
+export const changePasswordWithReauth = async (
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> => {
+  await reauthenticateUser(currentPassword);
+  if (!auth.currentUser) throw new Error('Re-auth failed');
+  await firebaseUpdatePassword(auth.currentUser, newPassword);
+};
+
+export const deleteAccountWithReauth = async (
+  currentPassword: string,
+  uid: string,
+): Promise<void> => {
+  await reauthenticateUser(currentPassword);
+  if (!auth.currentUser) throw new Error('Re-auth failed');
+  await deleteUser(auth.currentUser);
+  try {
+    const { deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(doc(db, 'users', uid));
+  } catch {
+    // Auth deleted, profile cleanup is best-effort
+  }
+};
+
+// ─── Teacher Preferences ────────────────────────────────────────────────────
+
+const teacherPrefsRef = (uid: string) =>
+  doc(db, 'users', uid, 'settings', 'teacherPreferences');
+
+export const getTeacherPreferences = async (uid: string): Promise<TeacherPreferences> => {
+  const snap = await getDoc(teacherPrefsRef(uid));
+  if (!snap.exists()) return { ...DEFAULT_TEACHER_PREFERENCES };
+  // SAFETY: preference docs are written by updateTeacherPreferences with the TeacherPreferences field set.
+  return { ...DEFAULT_TEACHER_PREFERENCES, ...(snap.data() as Partial<TeacherPreferences>) };
+};
+
+export const updateTeacherPreferences = async (
+  uid: string,
+  updates: Partial<TeacherPreferences>,
+): Promise<TeacherPreferences> => {
+  const current = await getTeacherPreferences(uid);
+  const merged = {
+    ...current,
+    ...updates,
+    quizDefaults: { ...current.quizDefaults, ...updates.quizDefaults },
+    classPreferences: { ...current.classPreferences, ...updates.classPreferences },
+  };
+  await setDoc(teacherPrefsRef(uid), { ...merged, updatedAt: serverTimestamp() }, { merge: true });
+  return merged;
+};
+
+// ─── Admin System Config ────────────────────────────────────────────────────
+
+const systemConfigRef = () => doc(db, 'system', 'config');
+
+export const getAdminSystemConfig = async (): Promise<AdminSystemConfig> => {
+  const snap = await getDoc(systemConfigRef());
+  if (!snap.exists()) return { ...DEFAULT_ADMIN_SYSTEM_CONFIG };
+  // SAFETY: system config docs are written by this service with the AdminSystemConfig field set.
+  return { ...DEFAULT_ADMIN_SYSTEM_CONFIG, ...(snap.data() as Partial<AdminSystemConfig>) };
+};
+
+export const updateAdminSystemConfig = async (
+  updates: Partial<AdminSystemConfig>,
+): Promise<AdminSystemConfig> => {
+  const current = await getAdminSystemConfig();
+  const merged = {
+    ...current,
+    ...updates,
+    aiConfig: { ...current.aiConfig, ...updates.aiConfig },
+  };
+  await setDoc(systemConfigRef(), { ...merged, updatedAt: serverTimestamp() }, { merge: true });
+  return merged;
+};

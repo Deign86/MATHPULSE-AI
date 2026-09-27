@@ -1,0 +1,370 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  collection,
+  onSnapshot,
+} from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { RiskBadge } from '../../components/risk/RiskBadge';
+import { RiskDetailPanel } from '../../components/risk/RiskDetailPanel';
+import { InterventionChecklistPanel } from '../../components/risk/InterventionChecklistPanel';
+import { TeacherStatCard } from '../../components/TeacherStatCard';
+import {
+  ShieldCheck,
+  Eye,
+  AlertTriangle,
+  AlertCircle,
+  Skull,
+  Search,
+  RefreshCw,
+  ChevronDown,
+  SortAsc,
+  SortDesc,
+  Users,
+} from 'lucide-react';
+import type { ManagedStudent } from '../../services/studentService';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type FilterStatus = 'all' | 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk';
+type SortField = 'name' | 'wri' | 'updatedAt';
+
+interface DashboardStudent extends ManagedStudent {
+  wri: number | null;
+  riskStatus: 'safe' | 'watch' | 'intervene' | 'critical' | 'at_risk' | null;
+  diagnosticScore: number | null;
+  externalGradesAvg: number | null;
+  systemPerformanceAvg: number | null;
+}
+
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export const AtRiskDashboard: React.FC = () => {
+  const [students, setStudents] = useState<DashboardStudent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField>('wri');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const managedStudentsRef = collection(db, 'managedStudents');
+    const unsubscribe = onSnapshot(
+      managedStudentsRef,
+      (snapshot) => {
+        const data = snapshot.docs.map((docSnap) => {
+          const d = docSnap.data();
+          // SAFETY: trusted internal value already conforms to the asserted type.
+          return {
+            id: docSnap.id,
+            ...d,
+            // SAFETY: trusted internal value already conforms to the asserted type.
+            wri: (d.wri as number) ?? null,
+            // SAFETY: trusted internal value already conforms to the asserted type.
+            riskStatus: (d.riskStatus as DashboardStudent['riskStatus']) ?? null,
+            // SAFETY: trusted internal value already conforms to the asserted type.
+            diagnosticScore: (d.diagnosticScore as number) ?? null,
+            // SAFETY: trusted internal value already conforms to the asserted type.
+            externalGradesAvg: (d.externalGradesAvg as number) ?? null,
+            // SAFETY: trusted internal value already conforms to the asserted type.
+            systemPerformanceAvg: (d.systemPerformanceAvg as number) ?? null,
+          } as DashboardStudent;
+        });
+        setStudents(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error('[AtRiskDashboard] error:', error);
+        setLoading(false);
+      }
+    );
+    return unsubscribe;
+  }, []);
+
+  const filteredStudents = useMemo(() => {
+    let result = [...students];
+    if (filterStatus !== 'all') {
+      result = result.filter((s) => s.riskStatus === filterStatus);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (s) =>
+          (s.name || '').toLowerCase().includes(q) ||
+          (s.email || '').toLowerCase().includes(q) ||
+          (s.lrn || '').toLowerCase().includes(q)
+      );
+    }
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'name') {
+        cmp = String(a.name || a.email || '').localeCompare(String(b.name || b.email || ''));
+      } else if (sortField === 'wri') {
+        cmp = (a.wri ?? 100) - (b.wri ?? 100);
+      } else if (sortField === 'updatedAt') {
+        // SAFETY: trusted internal value already conforms to the asserted type.
+        cmp = ((a.updatedAt as { seconds?: number })?.seconds ?? 0) - ((b.updatedAt as { seconds?: number })?.seconds ?? 0);
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return result;
+  }, [students, filterStatus, searchQuery, sortField, sortDir]);
+
+  const stats = useMemo(() => {
+    const total = students.length;
+    const safe = students.filter((s) => s.riskStatus === 'safe').length;
+    const watch = students.filter((s) => s.riskStatus === 'watch').length;
+    const intervene = students.filter((s) => s.riskStatus === 'intervene').length;
+    const critical = students.filter((s) => s.riskStatus === 'critical').length;
+    const atRisk = students.filter((s) => s.riskStatus === 'at_risk').length;
+    return { total, safe, watch, intervene, critical, at_risk: atRisk };
+  }, [students]);
+
+  // SAFETY: these literals are exactly the FilterStatus members rendered by the filter pills.
+  const FILTER_STATUSES: FilterStatus[] = ['all', 'safe', 'watch', 'intervene', 'critical', 'at_risk'];
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDir === 'asc' ? <SortAsc size={12} className="text-white" /> : <SortDesc size={12} className="text-white" />;
+  };
+
+  return (
+    <div className="min-h-dvh bg-[#f8fafc]">
+      {/* Page Header */}
+      <div className="bg-white/80 backdrop-blur-[16px] border-b border-slate-200/50 px-6 py-5">
+        <h1 className="text-xl font-bold text-slate-900">At-Risk Student Monitoring</h1>
+        <p className="text-[13px] text-slate-500 mt-0.5">
+          Track student risk using the Weighted Risk Index (WRI) based on DepEd grading standards
+        </p>
+      </div>
+
+      <div className="px-6 py-6 space-y-6">
+        {/* Stats Row — Gradient Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          <TeacherStatCard
+            color="purple"
+            title="Total Students"
+            badgeText="Enrolled"
+            icon={Users}
+            value={stats.total}
+            subtitle="Enrolled in system"
+            footerLabel="All Students"
+            footerBadge={`${stats.total} active`}
+          />
+          <TeacherStatCard
+            color="green"
+            title="Safe"
+            badgeText="On Track"
+            icon={ShieldCheck}
+            value={stats.safe}
+            subtitle="Passing"
+            scorePercent={stats.total > 0 ? Math.round((stats.safe / stats.total) * 100) : 0}
+            footerLabel="Cohort Share"
+            footerBadge={`${stats.total > 0 ? Math.round((stats.safe / stats.total) * 100) : 0}%`}
+          />
+          <TeacherStatCard
+            color="cyan"
+            title="Watch"
+            badgeText="Monitor"
+            icon={Eye}
+            value={stats.watch}
+            subtitle="Needs Attention"
+            scorePercent={stats.total > 0 ? Math.round((stats.watch / stats.total) * 100) : 0}
+            footerLabel="Cohort Share"
+            footerBadge={`${stats.total > 0 ? Math.round((stats.watch / stats.total) * 100) : 0}%`}
+          />
+          <TeacherStatCard
+            color="amber"
+            title="Intervene"
+            badgeText="Priority"
+            icon={AlertTriangle}
+            value={stats.intervene}
+            subtitle="Needs Support"
+            scorePercent={stats.total > 0 ? Math.round((stats.intervene / stats.total) * 100) : 0}
+            footerLabel="Support Plan"
+            footerBadge={`${stats.intervene} students`}
+          />
+          <TeacherStatCard
+            color="rose"
+            title="Critical"
+            badgeText={stats.critical > 0 ? 'Urgent' : 'Clear'}
+            icon={AlertCircle}
+            value={stats.critical}
+            subtitle="Immediate Action"
+            scorePercent={stats.total > 0 ? Math.round((stats.critical / stats.total) * 100) : 0}
+            footerLabel="Critical Alert"
+            footerBadge={`${stats.critical} students`}
+          />
+          <TeacherStatCard
+            color="slate"
+            title="At Risk"
+            badgeText="Legacy"
+            icon={Skull}
+            value={stats.at_risk}
+            subtitle="Classification"
+            scorePercent={stats.total > 0 ? Math.round((stats.at_risk / stats.total) * 100) : 0}
+            footerLabel="Legacy Status"
+            footerBadge={`${stats.at_risk} students`}
+          />
+        </div>
+
+        {/* Sticky Filter Bar */}
+        <div className="sticky top-0 z-30 py-4 -my-4 bg-[#f8fafc]/80 backdrop-blur-[16px] border-b border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] px-2 mb-6 rounded-b-[18px]">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-center">
+              {/* Search */}
+              <div className="flex items-center bg-white px-4 py-2.5 rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full sm:w-64">
+                <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#9956DE] transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Search student..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
+                />
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar p-2 -m-2">
+                {FILTER_STATUSES.map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => setFilterStatus(status)}
+                    className={`px-4 py-1.5 text-[13px] font-semibold rounded-full whitespace-nowrap transition-colors shadow-md ${
+                      filterStatus === status
+                        ? 'bg-[#9956DE] text-white'
+                        : 'bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {status === 'all' ? 'All' : status === 'at_risk' ? 'At Risk' : status.charAt(0).toUpperCase() + status.slice(1)}
+                    {status !== 'all' && (
+                      <span className="ml-1 text-[11px] opacity-70 tabular-nums">
+                        ({stats[status]})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <span className="text-[13px] text-slate-500 font-medium shrink-0">
+              <span className="tabular-nums">{filteredStudents.length}</span> student{filteredStudents.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
+
+        {/* Students Table */}
+        <div className="bg-white rounded-[18px] border border-slate-200 overflow-hidden shadow-sm">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <RefreshCw size={20} className="animate-spin text-[#9956DE]" />
+              <span className="ml-2 text-slate-500 text-sm">Loading students...</span>
+            </div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+              <Users size={32} />
+              <p className="mt-2 text-sm">No students found</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-[#9956DE] text-[11px] font-bold text-white tracking-wider uppercase">
+                    <th className="text-left px-4 py-3.5">
+                      <button onClick={() => handleSort('name')} className="flex items-center gap-1 hover:text-white/80 transition-colors">
+                        Student <SortIcon field="name" />
+                      </button>
+                    </th>
+                    <th className="text-center px-4 py-3.5">Status</th>
+                    <th className="text-center px-4 py-3.5">
+                      <button onClick={() => handleSort('wri')} className="flex items-center justify-center gap-1 mx-auto hover:text-white/80 transition-colors">
+                        WRI <SortIcon field="wri" />
+                      </button>
+                    </th>
+                    <th className="text-center px-4 py-3.5 hidden md:table-cell">Diagnostic</th>
+                    <th className="text-center px-4 py-3.5 hidden lg:table-cell">External</th>
+                    <th className="text-center px-4 py-3.5 hidden lg:table-cell">System</th>
+                    <th className="text-center px-4 py-3.5">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredStudents.map((student) => (
+                    <React.Fragment key={student.id}>
+                      <tr
+                        className="hover:bg-slate-50/60 transition-colors cursor-pointer"
+                        onClick={() =>
+                          setExpandedStudentId((prev) => prev === student.id ? null : student.id)
+                        }
+                      >
+                        <td className="px-4 py-3.5">
+                          <div className="font-semibold text-slate-800 text-[14px]">{student.name || '—'}</div>
+                          <div className="text-[11px] text-slate-400">{student.email}</div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <RiskBadge status={student.riskStatus} wri={student.wri} size="sm" showScore />
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <span className="font-mono font-bold text-slate-800 tabular-nums">
+                            {student.wri !== null ? student.wri.toFixed(1) : '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-600 hidden md:table-cell tabular-nums text-center">
+                          {student.diagnosticScore !== null ? `${student.diagnosticScore.toFixed(0)}%` : '—'}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-600 hidden lg:table-cell tabular-nums text-center">
+                          {student.externalGradesAvg !== null ? `${student.externalGradesAvg.toFixed(0)}%` : '—'}
+                        </td>
+                        <td className="px-4 py-3.5 text-slate-600 hidden lg:table-cell tabular-nums text-center">
+                          {student.systemPerformanceAvg !== null ? `${student.systemPerformanceAvg.toFixed(0)}%` : '—'}
+                        </td>
+                        <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => setExpandedStudentId((prev) => prev === student.id ? null : student.id)}
+                            className="text-slate-400 hover:text-[#9956DE] transition-colors"
+                            aria-label={expandedStudentId === student.id ? `Collapse details for ${student.name || 'student'}` : `Expand details for ${student.name || 'student'}`}
+                          >
+                            <ChevronDown
+                              size={14}
+                              className={`transition-transform duration-200 ${expandedStudentId === student.id ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                        </td>
+                      </tr>
+
+                      {expandedStudentId === student.id && (
+                        <tr>
+                          <td colSpan={7} className="px-5 py-4 bg-[#f5f3ff]/40 border-t border-slate-100">
+                            <RiskDetailPanel studentId={student.id!} studentName={student.name!} />
+                            {(student.riskStatus === 'critical' || student.riskStatus === 'at_risk') && (
+                              <InterventionChecklistPanel studentId={student.id!} studentName={student.name!} />
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* DepEd Attribution */}
+        <div className="text-[11px] text-slate-400 text-center">
+          WRI classification based on DepEd DO No. 8, s. 2015 (Policy Guidelines on Classroom Assessment).
+          WRI is a support tool — final academic decisions remain with the teacher.
+        </div>
+      </div>
+    </div>
+  );
+};

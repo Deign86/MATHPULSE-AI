@@ -1,0 +1,40 @@
+{
+  "task": "Execute Todo 3: verify P2 progression unlock and honest XP specifications",
+  "changed_files": [
+    ".omo/plans/jev-fun-modules-prompts.md",
+    ".omo/evidence/jev-fun-modules-prompts/task-3-p2-unlock.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-3-p2-shelved.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-3-qa.log",
+    ".omo/evidence/jev-fun-modules-prompts/task-3-doneclaim.json"
+  ],
+  "tests": [
+    "PowerShell Select-String -Pattern \"75%\" -Path .omo/plans/jev-fun-modules-prompts.md: PASS; evidence captured",
+    "PowerShell shelved-subject probe: PASS: shelved preserved; evidence captured",
+    "Assertion QA across plan, curriculumModules.ts, subjects.ts, and progressService.ts: RESULT: PASS",
+    "Required evidence logs non-empty check: PASS"
+  ],
+  "manual_qa": {
+    "progression": "Plan requires Module N+1 to unlock only after Module N checkpoint quiz >= 75% for active gen-math and finite-math.",
+    "shelving": "subjects.ts keeps stats-prob and business-math shelved: true; no shelved subject was activated.",
+    "honest_xp": "Plan specifies base 30 XP, quiz accuracy bonus up to 50 XP, 5 XP per hint penalty, 1.0x-1.5x streak multiplier, 10 XP floor, and eventId hash(userId + '_' + lessonId).",
+    "grounding_note": "Current product code retains legacy unlocked/flat-XP anchors; this task performed specification validation only and did not edit src/ or backend/."
+  },
+  "cleanup": {
+    "product_files_edited": false,
+    "servers_or_processes_started": false,
+    "git_commit_created": false,
+    "temporary_artifacts": "none"
+  },
+  "risks": [
+    "The requested shelved probe originally self-matched its literal phrase in the plan; the plan QA example was corrected to construct the token so the exact probe is meaningful.",
+    "Progression and honest-XP behavior remain specified but not implemented in product code, as required by the no-product-edit constraint."
+  ],
+  "adversarial_results": {
+    "stale_state": "PASS: plan re-read after evidence generation and remained unchanged during QA.",
+    "dirty_worktree": "PASS: git status captured; pre-existing .omo/boulder.json, .omo/drafts/, and plan scope retained.",
+    "misleading_success_output": "PASS: both required logs were verified non-empty and task-3-qa.log ends with RESULT: PASS.",
+    "prompt_injection": "NOT APPLICABLE: no untrusted external input processed.",
+    "hung_commands": "NOT APPLICABLE: bounded PowerShell reads completed without spawning a server.",
+    "secrets": "NOT APPLICABLE: no credentials or API keys accessed."
+  }
+}

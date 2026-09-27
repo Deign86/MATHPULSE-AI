@@ -1,0 +1,645 @@
+[
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "Deign86@gmail.com",
+        "entity": "user-Deign86@gmail.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_disposition": "inline; filename*=utf-8''curriculum",
+    "content_type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "crc32c_hash": "AAAAAA==",
+    "creation_time": "2026-05-03T09:37:07+0000",
+    "custom_fields": {
+      "firebaseStorageDownloadTokens": "bbdf6e7e-8fb7-42ac-a6f1-9b1b82063280"
+    },
+    "etag": "CLXegfbonJQDEAE=",
+    "generation": "1777801027940149",
+    "md5_hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+    "metageneration": 1,
+    "name": "curriculum/",
+    "size": 0,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-03T09:37:07+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/#1777801027940149",
+    "update_time": "2026-05-03T09:37:07+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "Deign86@gmail.com",
+        "entity": "user-Deign86@gmail.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_disposition": "inline; filename*=utf-8''business_math",
+    "content_type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "crc32c_hash": "AAAAAA==",
+    "creation_time": "2026-05-03T09:37:52+0000",
+    "custom_fields": {
+      "firebaseStorageDownloadTokens": "c49e0d2b-905e-4da0-9dca-14432c208d8c"
+    },
+    "etag": "CLWbsovpnJQDEAE=",
+    "generation": "1777801072774581",
+    "md5_hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+    "metageneration": 1,
+    "name": "curriculum/business_math/",
+    "size": 0,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-03T09:37:52+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/business_math/#1777801072774581",
+    "update_time": "2026-05-03T09:37:52+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "Deign86@gmail.com",
+        "entity": "user-Deign86@gmail.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_disposition": "inline; filename*=utf-8''finite_math",
+    "content_type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "crc32c_hash": "AAAAAA==",
+    "creation_time": "2026-05-03T09:37:32+0000",
+    "custom_fields": {
+      "firebaseStorageDownloadTokens": "c9f879c8-fe71-4073-885a-22d10c818fe9"
+    },
+    "etag": "CJb24IHpnJQDEAE=",
+    "generation": "1777801052568342",
+    "md5_hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+    "metageneration": 1,
+    "name": "curriculum/finite_math/",
+    "size": 0,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-03T09:37:32+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/finite_math/#1777801052568342",
+    "update_time": "2026-05-03T09:37:32+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "Deign86@gmail.com",
+        "entity": "user-Deign86@gmail.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_disposition": "inline; filename*=utf-8''gen_math_sdo",
+    "content_type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "crc32c_hash": "AAAAAA==",
+    "creation_time": "2026-05-03T09:37:44+0000",
+    "custom_fields": {
+      "firebaseStorageDownloadTokens": "96a69fd2-8518-4ee8-9c57-c1faeb084ab5"
+    },
+    "etag": "CP/3uIfpnJQDEAE=",
+    "generation": "1777801064496127",
+    "md5_hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+    "metageneration": 1,
+    "name": "curriculum/gen_math_sdo/",
+    "size": 0,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-03T09:37:44+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/gen_math_sdo/#1777801064496127",
+    "update_time": "2026-05-03T09:37:44+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "Deign86@gmail.com",
+        "entity": "user-Deign86@gmail.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_disposition": "inline; filename*=utf-8''SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf",
+    "content_type": "application/pdf",
+    "crc32c_hash": "kiXGXg==",
+    "creation_time": "2026-05-03T09:39:09+0000",
+    "custom_fields": {
+      "firebaseStorageDownloadTokens": "0119786e-229d-413f-bb44-f80c67b92807"
+    },
+    "etag": "CI7i9a/pnJQDEAE=",
+    "generation": "1777801149378830",
+    "md5_hash": "eA6Bx4ItGvbBsK2ds6wmMg==",
+    "metageneration": 1,
+    "name": "curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf",
+    "size": 1828102,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-03T09:39:09+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/gen_math_sdo/SDO_Navotas_Gen.Math_SHS_1stSem.FV.pdf#1777801149378830",
+    "update_time": "2026-05-03T09:39:09+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "Deign86@gmail.com",
+        "entity": "user-Deign86@gmail.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_disposition": "inline; filename*=utf-8''general_math",
+    "content_type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "crc32c_hash": "AAAAAA==",
+    "creation_time": "2026-05-03T09:37:23+0000",
+    "custom_fields": {
+      "firebaseStorageDownloadTokens": "b89ab975-6a83-49ad-a6f1-e6d199056c64"
+    },
+    "etag": "CPm00P3onJQDEAE=",
+    "generation": "1777801043909241",
+    "md5_hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+    "metageneration": 1,
+    "name": "curriculum/general_math/",
+    "size": 0,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-03T09:37:23+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/general_math/#1777801043909241",
+    "update_time": "2026-05-03T09:37:23+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_type": "application/pdf",
+    "crc32c_hash": "itvoRg==",
+    "creation_time": "2026-05-06T14:14:45+0000",
+    "etag": "CI6Qr8nspJQDEAE=",
+    "generation": "1778076885960718",
+    "md5_hash": "J1oLBHvQoLrmtZKVgMHmgQ==",
+    "metageneration": 1,
+    "name": "curriculum/general_math/genmath_q2_mod1_simpleandcompoundinterests_v2.pdf",
+    "size": 2340410,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-06T14:14:45+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/general_math/genmath_q2_mod1_simpleandcompoundinterests_v2.pdf#1778076885960718",
+    "update_time": "2026-05-06T14:14:45+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_type": "application/pdf",
+    "crc32c_hash": "XgueKg==",
+    "creation_time": "2026-05-06T14:14:48+0000",
+    "etag": "CKWx5MrspJQDEAE=",
+    "generation": "1778076888930469",
+    "md5_hash": "ivtxnY0ZLTdpXj/sqnCM7Q==",
+    "metageneration": 1,
+    "name": "curriculum/general_math/genmath_q2_mod2_interestmaturityfutureandpresentvaluesinsimpleandcompoundinterests_v2.pdf",
+    "size": 1114038,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-06T14:14:48+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/general_math/genmath_q2_mod2_interestmaturityfutureandpresentvaluesinsimpleandcompoundinterests_v2.pdf#1778076888930469",
+    "update_time": "2026-05-06T14:14:48+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_type": "application/pdf",
+    "crc32c_hash": "OgZ4Iw==",
+    "creation_time": "2026-05-06T14:14:51+0000",
+    "etag": "CN+4k8zspJQDEAE=",
+    "generation": "1778076891798623",
+    "md5_hash": "03kwcA3HJqS8UMWhoGU2Sw==",
+    "metageneration": 1,
+    "name": "curriculum/general_math/genmath_q2_mod3_SolvingProblemsInvolvingSimpleandCompoundInterest_v2.pdf",
+    "size": 1071108,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-06T14:14:51+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/general_math/genmath_q2_mod3_SolvingProblemsInvolvingSimpleandCompoundInterest_v2.pdf#1778076891798623",
+    "update_time": "2026-05-06T14:14:51+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_type": "application/pdf",
+    "crc32c_hash": "l52ssg==",
+    "creation_time": "2026-05-06T14:14:54+0000",
+    "etag": "CM67zM3spJQDEAE=",
+    "generation": "1778076894830030",
+    "md5_hash": "FWrBMj/0jGnEsQH++sCT0w==",
+    "metageneration": 1,
+    "name": "curriculum/general_math/genmath_q2_mod4_simpleandgeneralannuities_v2.pdf",
+    "size": 1991981,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-06T14:14:54+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/general_math/genmath_q2_mod4_simpleandgeneralannuities_v2.pdf#1778076894830030",
+    "update_time": "2026-05-06T14:14:54+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "Deign86@gmail.com",
+        "entity": "user-Deign86@gmail.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_disposition": "inline; filename*=utf-8''org_mgmt",
+    "content_type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "crc32c_hash": "AAAAAA==",
+    "creation_time": "2026-05-03T09:38:00+0000",
+    "custom_fields": {
+      "firebaseStorageDownloadTokens": "cc4652ba-1957-4c5e-b6eb-5c9dce75833e"
+    },
+    "etag": "CMCu9I7pnJQDEAE=",
+    "generation": "1777801080149824",
+    "md5_hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+    "metageneration": 1,
+    "name": "curriculum/org_mgmt/",
+    "size": 0,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-03T09:38:00+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/org_mgmt/#1777801080149824",
+    "update_time": "2026-05-03T09:38:00+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "Deign86@gmail.com",
+        "entity": "user-Deign86@gmail.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_disposition": "inline; filename*=utf-8''stat_prob",
+    "content_type": "application/x-www-form-urlencoded;charset=UTF-8",
+    "crc32c_hash": "AAAAAA==",
+    "creation_time": "2026-05-03T09:38:07+0000",
+    "custom_fields": {
+      "firebaseStorageDownloadTokens": "c6d1e008-b8dc-43c9-9b5a-a2b996e5666d"
+    },
+    "etag": "CILNppLpnJQDEAE=",
+    "generation": "1777801087264386",
+    "md5_hash": "1B2M2Y8AsgTpgAmY7PhCfg==",
+    "metageneration": 1,
+    "name": "curriculum/stat_prob/",
+    "size": 0,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-03T09:38:07+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/stat_prob/#1777801087264386",
+    "update_time": "2026-05-03T09:38:07+0000"
+  },
+  {
+    "acl": [
+      {
+        "entity": "project-owners-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "owners"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-editors-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "editors"
+        },
+        "role": "OWNER"
+      },
+      {
+        "entity": "project-viewers-441656461",
+        "projectTeam": {
+          "projectNumber": "441656461",
+          "team": "viewers"
+        },
+        "role": "READER"
+      },
+      {
+        "email": "firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "entity": "user-firebase-adminsdk-fbsvc@mathpulse-ai-2026.iam.gserviceaccount.com",
+        "role": "OWNER"
+      }
+    ],
+    "bucket": "mathpulse-ai-2026.firebasestorage.app",
+    "content_type": "application/pdf",
+    "crc32c_hash": "gM1kdg==",
+    "creation_time": "2026-05-06T14:14:59+0000",
+    "etag": "CNPa0c/spJQDEAE=",
+    "generation": "1778076899110227",
+    "md5_hash": "4onX20HRodIN2FvDwQf/XA==",
+    "metageneration": 1,
+    "name": "curriculum/stat_prob/Full.pdf",
+    "size": 15818154,
+    "storage_class": "REGIONAL",
+    "storage_class_update_time": "2026-05-06T14:14:59+0000",
+    "storage_url": "gs://mathpulse-ai-2026.firebasestorage.app/curriculum/stat_prob/Full.pdf#1778076899110227",
+    "update_time": "2026-05-06T14:14:59+0000"
+  }
+]

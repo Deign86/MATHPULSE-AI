@@ -1,0 +1,449 @@
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithCredential,
+  User as FirebaseUser,
+  updateEmail,
+  updatePassword,
+  deleteUser,
+  browserPopupRedirectResolver,
+} from 'firebase/auth';
+import { doc, setDoc, getDoc, getDocFromServer, serverTimestamp, deleteDoc, type DocumentData } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
+import { IS_NATIVE_PLATFORM } from '../config/env';
+import { z } from 'zod';
+import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models';
+
+/** Role-specific additional data passed during signup / profile creation. */
+interface AdditionalProfileData {
+  name?: string;
+  lrn?: string;
+  grade?: string;
+  section?: string;
+  classSectionId?: string;
+  adviserTeacherId?: string;
+  adviserTeacherName?: string;
+  schoolYear?: string;
+  school?: string;
+  major?: string;
+  gpa?: string;
+  department?: string;
+  subject?: string;
+  yearsOfExperience?: string;
+  qualification?: string;
+  position?: string;
+}
+
+export interface AuthServiceError extends Error {
+  code?: string;
+}
+
+// Google Auth Provider
+const googleProvider = new GoogleAuthProvider();
+if ('setCustomParameters' in googleProvider && Boolean(googleProvider.setCustomParameters)) {
+  googleProvider.setCustomParameters({ prompt: 'select_account' });
+}
+const PENDING_AUTH_ROLE_KEY = 'mathpulse.pendingAuthRole';
+const LAST_AUTH_ROLE_KEY = 'mathpulse.lastAuthRole';
+
+const ensurePublicSignupRole = (role: UserRole): void => {
+  if (role === 'admin') {
+    throw new Error('Admin account creation is restricted. Please contact an existing administrator.');
+  }
+};
+
+/** Firebase auth/Firestore error fields we read; parsing never throws. */
+const firebaseErrorContract = z
+  .looseObject({ code: z.string().optional(), message: z.string().optional() })
+  .catch({});
+
+/** Avatar layer fields persisted under users/{uid}.avatarLayers; parsing never throws. */
+const avatarLayersContract = z
+  .looseObject({
+    top: z.string().optional(),
+    bottom: z.string().optional(),
+    shoes: z.string().optional(),
+    accessory: z.string().optional(),
+  })
+  .catch({});
+
+const logFirebaseError = <E>(label: string, error: E): void => {
+  const firebaseError = firebaseErrorContract.parse(error);
+  console.error(`[ERROR] ${label}:`, {
+    code: firebaseError.code,
+    message: firebaseError.message,
+    fullError: error,
+  });
+};
+
+const toAuthServiceError = <E>(error: E, fallbackMessage: string): AuthServiceError => {
+  const firebaseError = firebaseErrorContract.parse(error);
+  // SAFETY: AuthServiceError only augments Error with the optional code field assigned below.
+  const serviceError = new Error(firebaseError.message || fallbackMessage) as AuthServiceError;
+
+  if (firebaseError.code) {
+    serviceError.code = firebaseError.code;
+  }
+
+  return serviceError;
+};
+
+export const setPendingAuthRole = (role: UserRole): void => {
+  try {
+    localStorage.setItem(PENDING_AUTH_ROLE_KEY, role);
+    localStorage.setItem(LAST_AUTH_ROLE_KEY, role);
+  } catch {
+    // Ignore storage failures; auth can still proceed with fallback role.
+  }
+};
+
+export const consumePendingAuthRole = (): UserRole | null => {
+  try {
+    const role = localStorage.getItem(PENDING_AUTH_ROLE_KEY);
+    localStorage.removeItem(PENDING_AUTH_ROLE_KEY);
+    if (role === 'student' || role === 'teacher' || role === 'admin') {
+      return role;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+export const getLastAuthRole = (): UserRole | null => {
+  try {
+    const role = localStorage.getItem(LAST_AUTH_ROLE_KEY);
+    if (role === 'student' || role === 'teacher' || role === 'admin') {
+      return role;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+// Sign up with email and password
+export const signUpWithEmail = async (
+  email: string,
+  password: string,
+  name: string,
+  role: UserRole,
+  additionalData: AdditionalProfileData = {}
+): Promise<User> => {
+  try {
+    ensurePublicSignupRole(role);
+
+    // Create auth user
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
+
+    // Update display name
+    await updateProfile(firebaseUser, { displayName: name });
+
+    // Create user profile in Firestore
+    const userProfile = await createUserProfile(firebaseUser, role, additionalData);
+
+    return userProfile;
+  } catch (error) {
+    logFirebaseError('Error signing up', error);
+    throw toAuthServiceError(error, 'Failed to create account');
+  }
+};
+
+// Sign in with email and password
+// Profile auto-creation is handled exclusively by AuthContext's onAuthStateChanged
+export const signInWithEmail = async (email: string, password: string): Promise<void> => {
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    logFirebaseError('Error signing in', error);
+    throw toAuthServiceError(error, 'Failed to sign in');
+  }
+};
+
+// Sign in with Google (native plugin on Android, popup with redirect fallback on web)
+export const signInWithGoogle = async (role: UserRole = 'student'): Promise<User> => {
+  try {
+    ensurePublicSignupRole(role);
+    setPendingAuthRole(role);
+
+    if (IS_NATIVE_PLATFORM) {
+      const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+      const nativeResult = await FirebaseAuthentication.signInWithGoogle();
+      const credential = GoogleAuthProvider.credential(nativeResult.credential?.idToken);
+      const result = await signInWithCredential(auth, credential);
+      let userProfile = await getUserProfile(result.user.uid);
+      if (!userProfile) {
+        userProfile = await createUserProfile(result.user, role, {});
+      }
+      return userProfile;
+    }
+
+    let firebaseUser;
+    try {
+      const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
+      firebaseUser = result.user;
+    } catch (popupError) {
+      const parsed = firebaseErrorContract.parse(popupError);
+      if (
+        parsed.code === 'auth/popup-blocked' ||
+        parsed.code === 'auth/cancelled-popup-request' ||
+        parsed.code === 'auth/operation-not-supported-in-this-environment'
+      ) {
+        await signInWithRedirect(auth, googleProvider, browserPopupRedirectResolver);
+        throw toAuthServiceError(
+          { code: 'auth/redirect-in-progress', message: 'Redirecting to Google sign-in…' },
+          'Redirecting to Google sign-in…',
+        );
+      }
+      throw popupError;
+    }
+
+    // Check if user profile exists
+    let userProfile = await getUserProfile(firebaseUser.uid);
+
+    // If not, create new profile
+    if (!userProfile) {
+      userProfile = await createUserProfile(firebaseUser, role, {});
+    }
+
+    return userProfile;
+  } catch (error: unknown) {
+    console.error('Error signing in with Google:', error);
+    throw toAuthServiceError(error, 'Failed to sign in with Google');
+  }
+};
+
+// Resolve a pending redirect sign-in (no-op when none). AuthContext's
+// onAuthStateChanged creates the Firestore profile on return.
+export const resolveGoogleRedirect = async (): Promise<void> => {
+  try {
+    await getRedirectResult(auth, browserPopupRedirectResolver);
+  } catch (error: unknown) {
+    logFirebaseError('Error resolving Google redirect', error);
+  }
+};
+
+// Sign out
+export const signOutUser = async (): Promise<void> => {
+  try {
+    await signOut(auth);
+  } catch (error: unknown) {
+    console.error('Error signing out:', error);
+    throw toAuthServiceError(error, 'Failed to sign out');
+  }
+};
+
+// Reset password
+export const resetPassword = async (email: string): Promise<void> => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error: unknown) {
+    console.error('Error resetting password:', error);
+    throw toAuthServiceError(error, 'Failed to send reset email');
+  }
+};
+
+// Create user profile in Firestore
+export const createUserProfile = async (
+  firebaseUser: FirebaseUser,
+  role: UserRole,
+  additionalData: AdditionalProfileData
+): Promise<User> => {
+  const generatedLrn = `${Date.now()}`.slice(-12).padStart(12, '0');
+  const baseProfile = {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email || '',
+    name: firebaseUser.displayName || additionalData.name || 'User',
+    role,
+    photo: firebaseUser.photoURL || '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  // Build role-specific profile data to persist in Firestore.
+  // serverTimestamp() returns FieldValue (not Date), so we use a plain object
+  // and cast to User on return — Firestore handles the timestamp conversion.
+  const roleFields = (() => {
+    switch (role) {
+      case 'student':
+        return {
+          lrn: additionalData.lrn || generatedLrn,
+          grade: additionalData.grade || 'Grade 11',
+          section: additionalData.section || 'Section A',
+          classSectionId: additionalData.classSectionId || '',
+          adviserTeacherId: additionalData.adviserTeacherId || '',
+          adviserTeacherName: additionalData.adviserTeacherName || '',
+          schoolYear: additionalData.schoolYear || '',
+          school: additionalData.school || '',
+          enrollmentDate: new Date().toISOString().split('T')[0],
+          major: additionalData.major || 'General',
+          gpa: additionalData.gpa || '0.00',
+          level: 1,
+          currentXP: 0,
+          totalXP: 0,
+          atRiskSubjects: [] satisfies string[],
+          hasTakenDiagnostic: false,
+          iarAssessmentState: 'not_started' as const,
+          startingQuarterG11: 'Q1' as const,
+          recommendedPace: 'normal' as const,
+        };
+      case 'teacher':
+        return {
+          teacherId: `TCH-${Date.now()}`,
+          department: additionalData.department || 'Mathematics',
+          subject: additionalData.subject || 'Mathematics',
+          yearsOfExperience: additionalData.yearsOfExperience || '0',
+          qualification: additionalData.qualification || '',
+          students: [] satisfies string[],
+        };
+      case 'admin':
+        return {
+          adminId: `ADM-${Date.now()}`,
+          position: additionalData.position || 'Administrator',
+          department: additionalData.department || 'System',
+        };
+    }
+  })();
+
+  const userProfile = { ...baseProfile, ...roleFields };
+
+  // Save to Firestore
+  await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
+
+  return asUser(userProfile);
+};
+
+function asUser<P extends object>(profile: P): User {
+  // SAFETY: createProfile writes users documents whose shape matches the User profile union.
+  return profile as User;
+}
+
+// Get user profile from Firestore
+export const getUserProfile = async (uid: string): Promise<User | null> => {
+  try {
+    const docRef = doc(db, 'users', uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      // SAFETY: users documents are written by createUserProfile to match the User profile union.
+      return { ...docSnap.data(), uid: docSnap.id } as User;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    return null;
+  }
+};
+
+/**
+ * Fetch user profile directly from the server, bypassing the persistent
+ * IndexedDB cache. Use this after mutations (e.g. profile picture upload)
+ * where the cache is likely stale.  Falls back to the cached read if the
+ * server is unreachable.
+ */
+export const getUserProfileFromServer = async (uid: string): Promise<User | null> => {
+  try {
+    const docRef = doc(db, 'users', uid);
+    const docSnap = await getDocFromServer(docRef);
+    if (docSnap.exists()) {
+      // SAFETY: users documents are written by createUserProfile to match the User profile union.
+      return { ...docSnap.data(), uid: docSnap.id } as User;
+    }
+    return null;
+  } catch (error) {
+    console.warn('[getUserProfileFromServer] Server read failed, falling back to cache:', error);
+    return getUserProfile(uid);
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (
+  uid: string,
+  updates: Partial<User> &
+  Partial<Omit<StudentProfile, keyof User | 'role'>> &
+  Partial<Omit<TeacherProfile, keyof User | 'role'>> &
+  Partial<Omit<AdminProfile, keyof User | 'role'>>
+): Promise<void> => {
+  try {
+    const currentProfile = await getUserProfile(uid);
+    if (!currentProfile) {
+      throw new Error('Profile not found');
+    }
+
+    const baseAllowed = ['name', 'email', 'phone', 'photo', 'avatarLayers', 'gender'];
+    const roleAllowedMap = {
+      student: ['lrn', 'grade', 'section', 'school', 'enrollmentDate', 'major', 'gpa'],
+      teacher: ['department', 'subject', 'yearsOfExperience', 'qualification'],
+      admin: ['department', 'position'],
+    } satisfies Record<UserRole, string[]>;
+
+    const allowedKeys = new Set([...baseAllowed, ...roleAllowedMap[currentProfile.role]]);
+    const sanitizedUpdates: DocumentData = {};
+
+    // SAFETY: only whitelisted keys from Partial<User>-shaped updates reach the payload below.
+    Object.entries(updates as DocumentData).forEach(([key, value]) => {
+      if (value === undefined || !allowedKeys.has(key)) {
+        return;
+      }
+
+      if (key === 'avatarLayers' && value instanceof Object) {
+        const avatarLayers = avatarLayersContract.parse(value);
+
+        sanitizedUpdates[key] = {
+          top: avatarLayers.top ?? '',
+          bottom: avatarLayers.bottom ?? '',
+          shoes: avatarLayers.shoes ?? '',
+          accessory: avatarLayers.accessory ?? '',
+        };
+
+        return;
+      }
+
+      sanitizedUpdates[key] = value;
+    });
+
+    const docRef = doc(db, 'users', uid);
+    await setDoc(docRef, { ...sanitizedUpdates, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+};
+
+// Update auth email
+export const updateUserEmail = async (newEmail: string): Promise<void> => {
+  if (!auth.currentUser) throw new Error('No user logged in');
+  await updateEmail(auth.currentUser, newEmail);
+};
+
+// Update auth password
+export const updateUserPassword = async (newPassword: string): Promise<void> => {
+  if (!auth.currentUser) throw new Error('No user logged in');
+  await updatePassword(auth.currentUser, newPassword);
+};
+
+// Get current user
+export const getCurrentUser = (): FirebaseUser | null => {
+  return auth.currentUser;
+};
+
+export const deleteCurrentUserAccount = async (uid: string): Promise<void> => {
+  if (!auth.currentUser) {
+    throw new Error('No user logged in');
+  }
+
+  await deleteUser(auth.currentUser);
+
+  try {
+    await deleteDoc(doc(db, 'users', uid));
+  } catch (error) {
+    console.warn('User auth deleted but profile document cleanup failed:', error);
+  }
+};

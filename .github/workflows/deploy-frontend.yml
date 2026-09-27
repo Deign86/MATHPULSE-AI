@@ -1,0 +1,149 @@
+name: Deploy MathPulse PWA
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'firebase.json'
+      - 'scripts/validate-pwa-build.mjs'
+      - '.github/workflows/deploy-frontend.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'firebase.json'
+      - 'scripts/validate-pwa-build.mjs'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  statuses: write
+  pull-requests: write
+
+concurrency:
+  group: deploy-mathpulse-pwa-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+  FIREBASE_PROJECT_ID: mathpulse-ai-2026
+
+jobs:
+  build:
+    name: Build and verify PWA
+    runs-on: ubuntu-latest
+    outputs:
+      build-version: ${{ steps.metadata.outputs.build-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci --legacy-peer-deps
+
+      - id: metadata
+        name: Set build metadata
+        shell: bash
+        run: echo "build-version=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build production PWA
+        env:
+          # Production backend is the existing FastAPI service hosted on
+          # Hugging Face. Override with repository variable VITE_API_URL only
+          # when backend hosting changes.
+          VITE_API_URL: ${{ secrets.VITE_API_URL || vars.VITE_API_URL || 'https://deign86-mathpulse-api-v3test.hf.space' }}
+          VITE_APP_VERSION: ${{ github.sha }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || vars.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID || vars.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID || vars.VITE_FIREBASE_MEASUREMENT_ID }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL || vars.VITE_FIREBASE_DATABASE_URL }}
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY || vars.VITE_FIREBASE_VAPID_KEY }}
+        run: npm run build
+
+      - name: Validate PWA output and bundle safety
+        run: npm run validate:pwa
+
+      - name: Check production bundle safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RinE 'huggingface\.co/spaces/Deign86/MathPulse-AI' build \
+            --include='*.js' --include='*.html' --include='*.json'; then
+            echo 'Retired hosted frontend reference found in build output'
+            exit 1
+          fi
+
+      - name: Upload PWA build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mathpulse-pwa-${{ github.sha }}
+          path: build
+          retention-days: 7
+
+  preview:
+    name: Firebase Hosting preview
+    needs: build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: preview/pr-${{ github.event.pull_request.number }}
+      url: ${{ steps.deploy.outputs.details_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: mathpulse-pwa-${{ github.sha }}
+          path: build
+
+      - id: deploy
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          projectId: ${{ env.FIREBASE_PROJECT_ID }}
+          channelId: pr-${{ github.event.pull_request.number }}
+
+  production:
+    name: Firebase Hosting production
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://${{ env.FIREBASE_PROJECT_ID }}.web.app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: mathpulse-pwa-${{ github.sha }}
+          path: build
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          projectId: ${{ env.FIREBASE_PROJECT_ID }}
+          channelId: live
