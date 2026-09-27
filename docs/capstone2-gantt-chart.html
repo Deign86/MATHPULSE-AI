@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathPulse AI - Capstone Gantt Chart (Jan - Oct 5)</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+
+      --color-auth: #6366f1;
+      --color-data: #0284c7;
+      --color-ai: #0d9488;
+      --color-gamify: #10b981;
+      --color-teacher: #8b5cf6;
+      --color-admin: #ec4899;
+      --color-c1-test: #f59e0b;
+      --color-c1-deploy: #64748b;
+      --color-rag: #06b6d4;
+      --color-ui: #a855f7;
+      --color-opt: #3b82f6;
+      --color-it-expert: #ea580c;
+      --color-uat-final: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      padding: 24px;
+      line-height: 1.4;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #090d16;
+        color: #f1f5f9;
+      }
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      padding: 28px;
+      overflow-x: auto;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .container {
+        background: #0f172a;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    .header {
+      margin-bottom: 24px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 16px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .header {
+        border-color: #1e293b;
+      }
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #1e1b4b;
+      letter-spacing: -0.02em;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .title {
+        color: #e0e7ff;
+      }
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .meta-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+    }
+
+    .badge-q1 {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-q2 {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+
+    .badge-q3 {
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+
+    .badge-q4 {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #f87171;
+    }
+
+    /* Numbering Mode Switcher */
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+      padding: 12px 16px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .controls-bar {
+        background: #1e293b;
+      }
+    }
+
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toggle-btn {
+      padding: 6px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+
+    .toggle-btn.active {
+      background: #4f46e5;
+      color: white;
+      border-color: #4f46e5;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .toggle-btn {
+        background: #0f172a;
+        color: #f1f5f9;
+        border-color: #334155;
+      }
+
+      .toggle-btn.active {
+        background: #6366f1;
+        border-color: #6366f1;
+      }
+    }
+
+    /* Gantt Chart Table */
+    .gantt-wrapper {
+      overflow-x: auto;
+      margin-top: 18px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .gantt-wrapper {
+        border-color: #334155;
+      }
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 1350px;
+      font-size: 11px;
+    }
+
+    th,
+    td {
+      border: 1px solid #e2e8f0;
+      padding: 4px 6px;
+      text-align: left;
+    }
+
+    @media (prefers-color-scheme: dark) {
+
+      th,
+      td {
+        border-color: #1e293b;
+      }
+    }
+
+    /* Fixed Left Columns */
+    th.col-code,
+    td.col-code {
+      width: 70px;
+      font-weight: 700;
+      font-family: monospace;
+      text-align: center;
+      background: #f8fafc;
+      position: sticky;
+      left: 0;
+      z-index: 2;
+    }
+
+    th.col-name,
+    td.col-name {
+      width: 270px;
+      font-weight: 600;
+      background: #f8fafc;
+      position: sticky;
+      left: 70px;
+      z-index: 2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    th.col-owner,
+    td.col-owner {
+      width: 90px;
+      text-align: center;
+      font-size: 10px;
+      color: #64748b;
+      background: #f8fafc;
+    }
+
+    @media (prefers-color-scheme: dark) {
+
+      th.col-code,
+      td.col-code,
+      th.col-name,
+      td.col-name,
+      th.col-owner,
+      td.col-owner {
+        background: #0f172a;
+        color: #cbd5e1;
+      }
+    }
+
+    /* Quarter Header */
+    .th-quarter {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .th-q1 {
+      background: #e0e7ff;
+      color: #1e1b4b;
+    }
+
+    .th-q2 {
+      background: #ede9fe;
+      color: #3b0764;
+    }
+
+    .th-q3 {
+      background: #cffafe;
+      color: #164e63;
+    }
+
+    .th-q4 {
+      background: #fee2e2;
+      color: #7f1d1d;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .th-q1 {
+        background: #1e1b4b;
+        color: #c7d2fe;
+      }
+
+      .th-q2 {
+        background: #2e1065;
+        color: #ddd6fe;
+      }
+
+      .th-q3 {
+        background: #083344;
+        color: #a5f3fc;
+      }
+
+      .th-q4 {
+        background: #450a0a;
+        color: #fecaca;
+      }
+    }
+
+    /* Month Header */
+    .th-month {
+      text-align: center;
+      font-weight: 700;
+      font-size: 11px;
+      background: #f1f5f9;
+      padding: 6px 2px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .th-month {
+        background: #1e293b;
+        color: #94a3b8;
+      }
+    }
+
+    /* Week Columns */
+    .th-week {
+      width: 24px;
+      min-width: 24px;
+      max-width: 26px;
+      text-align: center;
+      font-size: 10px;
+      padding: 4px 1px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .td-week {
+      width: 24px;
+      min-width: 24px;
+      max-width: 26px;
+      padding: 2px 0;
+      text-align: center;
+      background: #ffffff;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .td-week {
+        background: #0f172a;
+      }
+    }
+
+    /* Zebra / Grouping */
+    tr.group-header {
+      background: #f1f5f9;
+      font-weight: 800;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      tr.group-header {
+        background: #1e293b;
+      }
+    }
+
+    tr.group-header td {
+      font-weight: 800;
+      font-size: 12px;
+      color: #0f172a;
+      padding: 6px 8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      tr.group-header td {
+        color: #f8fafc;
+      }
+    }
+
+    /* Gantt Bars */
+    .bar {
+      height: 14px;
+      border-radius: 3px;
+      margin: 0 auto;
+      width: 95%;
+      display: block;
+      transition: transform 0.1s;
+    }
+
+    .bar:hover {
+      transform: scaleY(1.3);
+    }
+
+    .bar-auth {
+      background: #6366f1;
+    }
+
+    .bar-data {
+      background: #0284c7;
+    }
+
+    .bar-ai {
+      background: #0d9488;
+    }
+
+    .bar-content {
+      background: #059669;
+    }
+
+    .bar-work {
+      background: #14b8a6;
+    }
+
+    .bar-gamify {
+      background: #10b981;
+    }
+
+    .bar-teacher {
+      background: #8b5cf6;
+    }
+
+    .bar-admin {
+      background: #ec4899;
+    }
+
+    .bar-c1-test {
+      background: #f59e0b;
+    }
+
+    .bar-c1-deploy {
+      background: #64748b;
+    }
+
+    /* Capstone 2 Bars */
+    .bar-rag {
+      background: #06b6d4;
+    }
+
+    .bar-ui {
+      background: #9333ea;
+    }
+
+    .bar-opt {
+      background: #2563eb;
+    }
+
+    .bar-it-expert {
+      background: #ea580c;
+    }
+
+    /* ABSOLUTE CULMINATING END: UAT */
+    .bar-uat-final {
+      background: #dc2626;
+      box-shadow: 0 0 8px rgba(220, 38, 38, 0.8);
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scaleY(1);
+      }
+
+      50% {
+        opacity: 0.8;
+        transform: scaleY(1.15);
+      }
+    }
+
+    .final-phase-row {
+      background: rgba(254, 226, 226, 0.35) !important;
+      font-weight: 600;
+    }
+
+    .uat-concluding-row {
+      background: rgba(254, 202, 202, 0.6) !important;
+      font-weight: 700;
+      border-bottom: 2px solid #ef4444 !important;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .final-phase-row {
+        background: rgba(69, 10, 10, 0.25) !important;
+      }
+
+      .uat-concluding-row {
+        background: rgba(127, 29, 29, 0.45) !important;
+      }
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 24px;
+      padding: 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .legend {
+        background: #1e293b;
+        border-color: #334155;
+      }
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-box {
+      width: 16px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    .print-button {
+      padding: 8px 16px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .print-button:hover {
+      background: #4338ca;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        background: white;
+      }
+
+      .container {
+        box-shadow: none;
+        padding: 0;
+      }
+
+      .controls-bar {
+        display: none;
+      }
+
+      .bar-uat-final {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1 class="title">MathPulse AI — Capstone Project Gantt Chart (January – October 5)</h1>
+      <p class="subtitle">Weekly Schedule Aligned with Work Breakdown Structure Dictionary (WBSD) — Spanning 4 Quarters
+        (40 Weeks) with Final UAT Culminating on October 5</p>
+
+      <div class="meta-badges">
+        <span class="badge badge-q1">Quarter 1 (W1–W13): Capstone 1 Core & AI Foundation</span>
+        <span class="badge badge-q2">Quarter 2 (W14–W26): Capstone 1 Gamification, Teacher Suites & Deployment</span>
+        <span class="badge badge-q3">Quarter 3 (W27–W35): Capstone 2 SSHS Learning Resources RAG, UI Polish &
+          Optimization</span>
+        <span class="badge badge-q4">Quarter 4 (W36–W40): ABSOLUTE FINAL PHASE — IT Expert & User Acceptance Testing
+          (UAT, Concluding Oct 5)</span>
+      </div>
+    </div>
+
+    <div class="controls-bar">
+      <div class="toggle-group">
+        <span><strong>WBS Numbering Format:</strong></span>
+        <button class="toggle-btn active" id="btnHierarchical" onclick="setNumberingMode('hierarchical')">Hierarchical
+          Format (2.1.1, 2.2.1, 2.3.1, 2.4.1) [Recommended]</button>
+        <button class="toggle-btn" id="btnFlat" onclick="setNumberingMode('flat')">Flat Iteration 2 Format (2.0.1,
+          2.0.2...)</button>
+      </div>
+      <button class="print-button" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+
+    <div class="gantt-wrapper">
+      <table id="ganttTable">
+        <!-- Headers & Rows dynamically generated by JavaScript -->
+      </table>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-box" style="background:#6366f1;"></div> 1.1 Auth & Users
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#0284c7;"></div> 1.2 Data Ingestion & Diagnostics
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#0d9488;"></div> 1.3 Predictive Risk Modeling
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#059669;"></div> 1.4 AI Content & Tutoring
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#14b8a6;"></div> 1.5 Workspace & Productivity
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#10b981;"></div> 1.6 Gamification & Social
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#8b5cf6;"></div> 1.7 Teacher Tools & Reports
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#ec4899;"></div> 1.8 Admin Control
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#f59e0b;"></div> 1.9 Capstone 1 Testing
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#64748b;"></div> 1.10 Capstone 1 Deployment
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#06b6d4;"></div> 2.1 (2.0.1–3) SSHS RAG Ingestion
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#9333ea;"></div> 2.2 (2.0.4–7) UI/UX Modernization
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#2563eb;"></div> 2.3 (2.0.8–11) System Optimization
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#ea580c;"></div> 2.4.3 (2.0.14) IT Expert Testing (ISO 25010)
+      </div>
+      <div class="legend-item">
+        <div class="legend-box" style="background:#dc2626; box-shadow:0 0 5px #dc2626;"></div> <strong>2.4.4 (2.0.15)
+          User Acceptance Testing (UAT) [Concluding Oct 5]</strong>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentMode = "hierarchical"; // 'hierarchical' or 'flat'
+
+    // 40 Weeks spanning Jan 1 to Oct 5
+    // Q1: W1-W13 (Jan: W1-W4, Feb: W5-W8, Mar: W9-W13) -> 13 weeks
+    // Q2: W14-W26 (Apr: W14-W17, May: W18-W21, Jun: W22-W26) -> 13 weeks
+    // Q3: W27-W35 (Jul: W27-W30, Aug: W31-W35) -> 9 weeks
+    // Q4: W36-W40 (Sep: W36-W39, Oct 1-5: W40) -> 5 weeks (CULMINATING IN UAT BY OCT 5)
+
+    const tasks = [
+      // 1.1 Authentication & User Management
+      { hCode: "1.1.1", fCode: "1.1.1", name: "Secure Login", owner: "Lead Dev", start: 1, end: 2, barClass: "bar-auth" },
+      { hCode: "1.1.2", fCode: "1.1.2", name: "Role-Based Access", owner: "Lead Dev", start: 2, end: 3, barClass: "bar-auth" },
+      { hCode: "1.1.3", fCode: "1.1.3", name: "Student Profile", owner: "Design Lead", start: 2, end: 3, barClass: "bar-auth" },
+      { hCode: "1.1.4", fCode: "1.1.4", name: "Settings", owner: "Design Lead", start: 3, end: 4, barClass: "bar-auth" },
+
+      // 1.2 Data Ingestion & Diagnostics
+      { hCode: "1.2.1", fCode: "1.2.1", name: "Class Record Import", owner: "Design Lead", start: 3, end: 5, barClass: "bar-data" },
+      { hCode: "1.2.2", fCode: "1.2.2", name: "Diagnostic Assessment", owner: "Design Lead", start: 4, end: 6, barClass: "bar-data" },
+      { hCode: "1.2.3", fCode: "1.2.3", name: "Data Parsing", owner: "Lead Dev", start: 5, end: 7, barClass: "bar-data" },
+      { hCode: "1.2.4", fCode: "1.2.4", name: "Data Validation & Error Handling", owner: "Lead Dev", start: 7, end: 8, barClass: "bar-data" },
+
+      // 1.3 Predictive Modeling & Risk
+      { hCode: "1.3.1", fCode: "1.3.1", name: "Risk Prediction", owner: "Lead Dev", start: 7, end: 9, barClass: "bar-ai" },
+      { hCode: "1.3.2", fCode: "1.3.2", name: "Risk Classification", owner: "Lead Dev", start: 9, end: 10, barClass: "bar-ai" },
+      { hCode: "1.3.3", fCode: "1.3.3", name: "Risk Visualization", owner: "Design Lead", start: 10, end: 11, barClass: "bar-ai" },
+      { hCode: "1.3.4", fCode: "1.3.4", name: "Teacher Override", owner: "Lead Dev", start: 11, end: 12, barClass: "bar-ai" },
+
+      // 1.4 AI-Driven Content & Tutoring
+      { hCode: "1.4.1", fCode: "1.4.1", name: "Personalized Learning", owner: "Lead Dev", start: 10, end: 12, barClass: "bar-content" },
+      { hCode: "1.4.2", fCode: "1.4.2", name: "AI Chat Tutor", owner: "Lead Dev", start: 5, end: 8, barClass: "bar-content" },
+      { hCode: "1.4.3", fCode: "1.4.3", name: "Floating Widget", owner: "Design Lead", start: 8, end: 9, barClass: "bar-content" },
+      { hCode: "1.4.4", fCode: "1.4.4", name: "Remedial Content", owner: "Lead Dev", start: 11, end: 13, barClass: "bar-content" },
+      { hCode: "1.4.5", fCode: "1.4.5", name: "Subject Organization", owner: "Design Lead", start: 4, end: 6, barClass: "bar-content" },
+      { hCode: "1.4.6", fCode: "1.4.6", name: "Content Quality Review", owner: "Docu Lead", start: 12, end: 13, barClass: "bar-content" },
+
+      // 1.5 Workspace & Productivity
+      { hCode: "1.5.1", fCode: "1.5.1", name: "Task Management", owner: "Design Lead", start: 3, end: 5, barClass: "bar-work" },
+      { hCode: "1.5.2", fCode: "1.5.2", name: "Performance Viewing", owner: "Design Lead", start: 7, end: 8, barClass: "bar-work" },
+      { hCode: "1.5.3", fCode: "1.5.3", name: "Content Search", owner: "Lead Dev", start: 6, end: 7, barClass: "bar-work" },
+      { hCode: "1.5.4", fCode: "1.5.4", name: "Notifications", owner: "Lead Dev", start: 8, end: 9, barClass: "bar-work" },
+
+      // 1.6 Gamification & Social
+      { hCode: "1.6.1", fCode: "1.6.1", name: "XP & Leveling", owner: "Lead Dev", start: 12, end: 14, barClass: "bar-gamify" },
+      { hCode: "1.6.2", fCode: "1.6.2", name: "Daily Streaks", owner: "Lead Dev", start: 11, end: 12, barClass: "bar-gamify" },
+      { hCode: "1.6.3", fCode: "1.6.3", name: "Leaderboards", owner: "Design Lead", start: 14, end: 15, barClass: "bar-gamify" },
+      { hCode: "1.6.4", fCode: "1.6.4", name: "Social Networking", owner: "Design Lead", start: 14, end: 16, barClass: "bar-gamify" },
+      { hCode: "1.6.5", fCode: "1.6.5", name: "Achievements", owner: "Design Lead", start: 15, end: 16, barClass: "bar-gamify" },
+
+      // 1.7 Teacher Tools & Reporting
+      { hCode: "1.7.1", fCode: "1.7.1", name: "Class Analytics", owner: "Design Lead", start: 13, end: 15, barClass: "bar-teacher" },
+      { hCode: "1.7.2", fCode: "1.7.2", name: "Intervention Approval", owner: "Design Lead", start: 15, end: 16, barClass: "bar-teacher" },
+      { hCode: "1.7.3", fCode: "1.7.3", name: "Task Assignment", owner: "Design Lead", start: 16, end: 17, barClass: "bar-teacher" },
+      { hCode: "1.7.4", fCode: "1.7.4", name: "Report Export", owner: "Lead Dev", start: 16, end: 17, barClass: "bar-teacher" },
+
+      // 1.8 Admin & System Control
+      { hCode: "1.8.1", fCode: "1.8.1", name: "User Management", owner: "Lead Dev", start: 4, end: 6, barClass: "bar-admin" },
+      { hCode: "1.8.2", fCode: "1.8.2", name: "Curriculum Management", owner: "Docu Lead", start: 6, end: 8, barClass: "bar-admin" },
+      { hCode: "1.8.3", fCode: "1.8.3", name: "Audit Logs", owner: "Lead Dev", start: 8, end: 9, barClass: "bar-admin" },
+      { hCode: "1.8.4", fCode: "1.8.4", name: "System Configuration", owner: "Project Lead", start: 9, end: 10, barClass: "bar-admin" },
+
+      // 1.9 Capstone 1 Testing & QA
+      { hCode: "1.9.1", fCode: "1.9.1", name: "Unit Testing (C1)", owner: "Lead Dev", start: 17, end: 19, barClass: "bar-c1-test" },
+      { hCode: "1.9.2", fCode: "1.9.2", name: "Integration Testing (C1)", owner: "Lead Dev", start: 19, end: 20, barClass: "bar-c1-test" },
+      { hCode: "1.9.3", fCode: "1.9.3", name: "User Acceptance Testing (UAT 1)", owner: "Design Lead", start: 20, end: 21, barClass: "bar-c1-test" },
+      { hCode: "1.9.4", fCode: "1.9.4", name: "Bug Fixing & Regression", owner: "Lead Dev", start: 21, end: 22, barClass: "bar-c1-test" },
+      { hCode: "1.9.5", fCode: "1.9.5", name: "Performance & Security Audit", owner: "Lead Dev", start: 20, end: 21, barClass: "bar-c1-test" },
+
+      // 1.10 Capstone 1 Deployment & Launch Prep
+      { hCode: "1.10.1", fCode: "1.10.1", name: "Production Environment Setup", owner: "Lead Dev", start: 22, end: 23, barClass: "bar-c1-deploy" },
+      { hCode: "1.10.2", fCode: "1.10.2", name: "Data Migration & Seeding", owner: "Lead Dev", start: 23, end: 24, barClass: "bar-c1-deploy" },
+      { hCode: "1.10.3", fCode: "1.10.3", name: "Final Documentation (C1)", owner: "Docu Lead", start: 23, end: 25, barClass: "bar-c1-deploy" },
+      { hCode: "1.10.4", fCode: "1.10.4", name: "Stakeholder Demo & Presentation", owner: "Project Lead", start: 25, end: 26, barClass: "bar-c1-deploy" },
+      { hCode: "1.10.5", fCode: "1.10.5", name: "Post-Launch Monitoring", owner: "Lead Dev", start: 25, end: 26, barClass: "bar-c1-deploy" },
+
+      // ==========================================
+      // CAPSTONE 2 ADDITIONS (Iteration 2)
+      // ==========================================
+      // Phase 2.1: Curriculum Learning Resources & RAG Ingestion (Weeks 27-30)
+      { hCode: "2.1.1", fCode: "2.0.1", name: "SSHS Learning Resources Ingestion", owner: "Docu Lead", start: 27, end: 28, barClass: "bar-rag" },
+      { hCode: "2.1.2", fCode: "2.0.2", name: "Chroma Vector Store Indexing", owner: "Lead Dev", start: 28, end: 29, barClass: "bar-rag" },
+      { hCode: "2.1.3", fCode: "2.0.3", name: "Dual-Model DeepSeek Routing", owner: "Lead Dev", start: 29, end: 30, barClass: "bar-rag" },
+
+      // Phase 2.3 (Part): Bulk User Provisioning (Weeks 29-31)
+      { hCode: "2.3.1", fCode: "2.0.8", name: "Bulk Student Provisioning & Brevo", owner: "Lead Dev", start: 29, end: 31, barClass: "bar-opt" },
+
+      // Phase 2.2: UI/UX Modernization & Mobile Polish (Weeks 30-34)
+      { hCode: "2.2.1", fCode: "2.0.4", name: "Mobile Viewport Space Reclamation", owner: "Design Lead", start: 30, end: 32, barClass: "bar-ui" },
+      { hCode: "2.2.2", fCode: "2.0.5", name: "Avatar Studio Split-Screen Redesign", owner: "Design Lead", start: 31, end: 33, barClass: "bar-ui" },
+      { hCode: "2.2.3", fCode: "2.0.6", name: "Admin/Teacher Bento Modernization", owner: "Design Lead", start: 32, end: 34, barClass: "bar-ui" },
+      { hCode: "2.2.4", fCode: "2.0.7", name: "Quiz Battle HUD & Bell Glow Polish", owner: "Design Lead", start: 33, end: 34, barClass: "bar-ui" },
+
+      // Phase 2.3: System Hardening & Optimization (Weeks 33-35)
+      { hCode: "2.3.2", fCode: "2.0.9", name: "Fault-Tolerant Quiz Safety Fallbacks", owner: "Lead Dev", start: 33, end: 35, barClass: "bar-opt" },
+      { hCode: "2.3.3", fCode: "2.0.10", name: "Hybrid Weakness Tracking Wiring", owner: "Lead Dev", start: 34, end: 35, barClass: "bar-opt" },
+      { hCode: "2.3.4", fCode: "2.0.11", name: "PWA Offline Caching & Bundle Opt", owner: "Lead Dev", start: 34, end: 35, barClass: "bar-opt" },
+
+      // =========================================================================
+      // ABSOLUTE FINAL PHASE: CAPSTONE 2 TESTING (Weeks 36 - 40, Concluding Oct 5)
+      // =========================================================================
+      { hCode: "2.4.1", fCode: "2.0.12", name: "End-to-End Regression & Integration Testing", owner: "Lead Dev", start: 36, end: 37, barClass: "bar-rag", isFinalPhase: true },
+      { hCode: "2.4.2", fCode: "2.0.13", name: "Security Audit & Firebase Rules Verification", owner: "Lead Dev", start: 37, end: 38, barClass: "bar-opt", isFinalPhase: true },
+      { hCode: "2.4.3", fCode: "2.0.14", name: "IT Expert Testing & ISO/IEC 25010 Quality Evaluation", owner: "Project Lead", start: 38, end: 39, barClass: "bar-it-expert", isFinalPhase: true },
+      // CONCLUDING END OF GANTT CHART: USER ACCEPTANCE TESTING (UAT) FINISHING OCTOBER 5 (WEEK 40)
+      { hCode: "2.4.4", fCode: "2.0.15", name: "User Acceptance Testing (UAT) with SSHS STEM Students & Teachers", owner: "Design Lead", start: 39, end: 40, barClass: "bar-uat-final", isFinalPhase: true, isConcludingUAT: true }
+    ];
+
+    function setNumberingMode(mode) {
+      currentMode = mode;
+      document.getElementById("btnHierarchical").classList.toggle("active", mode === "hierarchical");
+      document.getElementById("btnFlat").classList.toggle("active", mode === "flat");
+      renderTable();
+    }
+
+    function renderTable() {
+      const table = document.getElementById("ganttTable");
+
+      // Row 1: Quarter Header (40 Weeks total)
+      let r1 = "<tr><th class='col-code' rowspan='3'>Task Code</th><th class='col-name' rowspan='3'>Task Name</th><th class='col-owner' rowspan='3'>Owner</th>";
+      r1 += "<th class='th-quarter th-q1' colspan='13'>QUARTER 1 (Weeks 1 – 13)</th>";
+      r1 += "<th class='th-quarter th-q2' colspan='13'>QUARTER 2 (Weeks 14 – 26)</th>";
+      r1 += "<th class='th-quarter th-q3' colspan='9'>QUARTER 3 (Weeks 27 – 35)</th>";
+      r1 += "<th class='th-quarter th-q4' colspan='5'>QUARTER 4 (Weeks 36 – 40) ★ FINAL TESTING (UNTIL OCT 5)</th>";
+      r1 += "</tr>";
+
+      // Row 2: Month Header
+      let r2 = "<tr>";
+      r2 += "<th class='th-month' colspan='4'>Jan</th>";
+      r2 += "<th class='th-month' colspan='4'>Feb</th>";
+      r2 += "<th class='th-month' colspan='5'>Mar</th>";
+      r2 += "<th class='th-month' colspan='4'>Apr</th>";
+      r2 += "<th class='th-month' colspan='4'>May</th>";
+      r2 += "<th class='th-month' colspan='5'>Jun</th>";
+      r2 += "<th class='th-month' colspan='4'>Jul</th>";
+      r2 += "<th class='th-month' colspan='5'>Aug</th>";
+      r2 += "<th class='th-month' colspan='4' style='background:#fee2e2; color:#991b1b;'>Sep (Final Testing)</th>";
+      r2 += "<th class='th-month' colspan='1' style='background:#fca5a5; color:#7f1d1d; font-weight:800;'>Oct 1-5</th>";
+      r2 += "</tr>";
+
+      // Row 3: Week Number Header (1 to 40)
+      let r3 = "<tr>";
+      for (let w = 1; w <= 40; w++) {
+        const isQ4 = w >= 36;
+        const isOct = w === 40;
+        let style = isQ4 ? "background:#fee2e2; color:#991b1b; font-weight:700;" : "";
+        if (isOct) {
+          style = "background:#fca5a5; color:#7f1d1d; font-weight:800; border-top:2px solid #dc2626;";
+        }
+        r3 += `<th class='th-week' style='${style}'>W${w}</th>`;
+      }
+      r3 += "</tr>";
+
+      let bodyHtml = "";
+
+      // Render Rows
+      tasks.forEach((t) => {
+        const code = currentMode === "hierarchical" ? t.hCode : t.fCode;
+
+        // Group headers for Capstone 2 additions
+        if (t.hCode === "2.1.1") {
+          const title = currentMode === "hierarchical"
+            ? "ITERATION 2 (CAPSTONE 2 ADDITIONS) — 2.1 RAG INGESTION, 2.2 UI POLISH & 2.3 SYSTEM OPTIMIZATIONS"
+            : "ITERATION 2 (CAPSTONE 2 ADDITIONS) — RAG INGESTION, UI POLISH & SYSTEM OPTIMIZATIONS (2.0.x)";
+          bodyHtml += `<tr class='group-header'><td colspan='43' style='background:#f3e8ff; color:#6b21a8; font-weight:800; border-top:2px solid #a855f7;'>${title}</td></tr>`;
+        }
+        // Group header for Final Testing Phase
+        if (t.hCode === "2.4.1") {
+          const title = currentMode === "hierarchical"
+            ? "ABSOLUTE FINAL PHASE: 2.4 CAPSTONE 2 TESTING & EVALUATION (CULMINATING IN UAT BY OCT 5)"
+            : "ABSOLUTE FINAL PHASE: CAPSTONE 2 TESTING & EVALUATION (CULMINATING IN UAT BY OCT 5)";
+          bodyHtml += `<tr class='group-header'><td colspan='43' style='background:#fee2e2; color:#991b1b; font-weight:800; border-top:2px solid #ef4444;'>${title}</td></tr>`;
+        }
+
+        let rowClass = "";
+        if (t.isConcludingUAT) {
+          rowClass = "uat-concluding-row";
+        } else if (t.isFinalPhase) {
+          rowClass = "final-phase-row";
+        }
+
+        bodyHtml += `<tr class='${rowClass}'>`;
+        bodyHtml += `<td class='col-code'>${code}</td>`;
+        bodyHtml += `<td class='col-name' title='${t.name}'>${t.name}</td>`;
+        bodyHtml += `<td class='col-owner'>${t.owner}</td>`;
+
+        for (let w = 1; w <= 40; w++) {
+          const active = w >= t.start && w <= t.end;
+          const isQ4 = w >= 36;
+          const isOct = w === 40;
+          const cellBg = isOct ? "background:rgba(252,165,165,0.3);" : (isQ4 ? "background:rgba(254,226,226,0.2);" : "");
+          bodyHtml += `<td class='td-week' style='${cellBg}'>`;
+          if (active) {
+            bodyHtml += `<span class='bar ${t.barClass}' title='${code} ${t.name}: Week ${t.start} - ${t.end}'></span>`;
+          }
+          bodyHtml += `</td>`;
+        }
+        bodyHtml += `</tr>`;
+      });
+
+      table.innerHTML = r1 + r2 + r3 + bodyHtml;
+    }
+
+    // Initial render
+    renderTable();
+  </script>
+
+</body>
+
+</html>
