@@ -958,6 +958,134 @@ let dashboardAnalyticsRequest: Promise<DashboardAnalytics> | undefined;
 async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
   if (!dashboardAnalyticsRequest) {
     dashboardAnalyticsRequest = apiFetch<DashboardAnalytics>('/api/admin/dashboard-analytics')
+      .catch(async error => {
+        if (!(error instanceof ApiError && error.status === 404)
+          && !(error instanceof ApiNetworkError)
+          && !(error instanceof ApiTimeoutError)) throw error;
+
+        const [usersSnap, classroomsSnap, auditSnap, managedSnap, modulesSnap, progressSnap] = await Promise.all([
+          getDocs(collection(db, 'users')),
+          getDocs(collection(db, 'classrooms')),
+          getDocs(collection(db, 'auditLogs')),
+          getDocs(collection(db, 'managedStudents')),
+          getDocs(collection(db, 'curriculumModules')),
+          getDocs(collection(db, 'progress')),
+        ]);
+        const users = new Map<string, Record<string, DocValue>>();
+        usersSnap.docs.forEach(d => {
+          const user = asDoc(d.data());
+          if (str(user.role).toLowerCase() === 'student') users.set(d.id, user);
+        });
+        managedSnap.docs.forEach(d => { if (!users.has(d.id)) users.set(d.id, asDoc(d.data())); });
+
+        const scoreOf = (data: Record<string, DocValue>): number | undefined => {
+          for (const key of ['averageScore', 'average_score', 'diagnosticScore', 'masteryScore', 'mastery_score']) {
+            const score = data[key];
+            if (isNumber(score)) return Math.max(0, Math.min(100, score));
+          }
+          return undefined;
+        };
+        const scores = [...users.values()].map(scoreOf).filter((score): score is number => score !== undefined);
+        progressSnap.docs.forEach(d => {
+          const score = scoreOf(asDoc(d.data()));
+          if (score !== undefined && !users.has(d.id)) scores.push(score);
+        });
+
+        const now = new Date();
+        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        const weeklyActivity = Array.from({ length: 7 }, (_, index) => {
+          const day = new Date(today);
+          day.setUTCDate(today.getUTCDate() - 6 + index);
+          return { name: dayNames[(day.getUTCDay() + 6) % 7], ai: 0, man: 0 };
+        });
+        auditSnap.docs.forEach(d => {
+          const entry = asDoc(d.data());
+          const timestamp = entry.timestamp ?? entry.timestampRaw ?? entry.createdAt;
+          let date: Date | undefined;
+          if (isTimestamp(timestamp)) date = timestamp.toDate();
+          else if (isString(timestamp)) {
+            const parsed = new Date(timestamp);
+            if (!Number.isNaN(parsed.getTime())) date = parsed;
+          }
+          if (!date) return;
+          const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+          const daysAgo = Math.round((today.getTime() - day.getTime()) / 86_400_000);
+          if (daysAgo < 0 || daysAgo > 6) return;
+          const action = str(entry.action || entry.eventType || entry.type).toLowerCase();
+          const activity = weeklyActivity[6 - daysAgo];
+          if (activity) activity[/ai|lesson|quiz|tutor/.test(action) ? 'ai' : 'man']++;
+        });
+
+        const moduleSubjects = new Map<string, string>();
+        modulesSnap.docs.forEach(d => {
+          const module = asDoc(d.data());
+          const subject = str(module.subjectName || module.subject || module.subject_name);
+          if (subject) moduleSubjects.set(str(module.subjectId || module.subject_id, subject), subject);
+        });
+        const enrollments = new Map<string, { count: number; progressTotal: number; progressCount: number }>();
+        classroomsSnap.docs.forEach(d => {
+          const classroom = asDoc(d.data());
+          const subjectId = str(classroom.subjectId || classroom.subject_id || classroom.subject);
+          const subject = moduleSubjects.get(subjectId) || str(classroom.subjectName || classroom.subject, subjectId);
+          if (!subject) return;
+          const roster = classroom.students || classroom.studentIds;
+          const count = Array.isArray(roster) ? roster.length : isObjectRecord(roster) ? Object.keys(roster).length : 0;
+          const current = enrollments.get(subject) ?? { count: 0, progressTotal: 0, progressCount: 0 };
+          current.count += count;
+          const progress = classroom.averageProgress || classroom.average_progress || classroom.progress;
+          if (isNumber(progress)) {
+            current.progressTotal += Math.max(0, Math.min(100, progress));
+            current.progressCount++;
+          }
+          enrollments.set(subject, current);
+        });
+        const subjectBreakdown = [...enrollments.entries()]
+          .sort((a, b) => b[1].count - a[1].count)
+          .map(([name, totals]) => ({
+            name,
+            type: name.toLowerCase().includes('stem') ? 'STEM' as const : 'Core' as const,
+            count: totals.count,
+            progress: totals.progressCount ? Math.round(totals.progressTotal / totals.progressCount) : 0,
+          }));
+
+        const riskSubjects = new Map<string, number>();
+        const atRiskIds = new Set<string>();
+        managedSnap.docs.forEach(d => {
+          const managed = asDoc(d.data());
+          const user = users.get(d.id) ?? {};
+          const riskStatus = str(managed.riskStatus || managed.risk_status).toLowerCase();
+          const overallRisk = str(user.overallRisk || user.riskLevel).toLowerCase();
+          if (['intervene', 'critical', 'at_risk', 'high'].includes(riskStatus) || overallRisk === 'high') {
+            atRiskIds.add(d.id);
+            const subject = str(managed.weakestSubject || managed.weakest_subject || managed.subject);
+            if (subject) riskSubjects.set(subject, (riskSubjects.get(subject) ?? 0) + 1);
+          }
+        });
+        users.forEach((user, id) => {
+          if (str(user.overallRisk || user.riskLevel).toLowerCase() === 'high') atRiskIds.add(id);
+        });
+        const passed = scores.filter(score => score >= 60).length;
+        const total = scores.length || 1;
+        return {
+          weeklyActivity,
+          subjectBreakdown,
+          priorityAttention: {
+            subjectName: [...riskSubjects.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'General Mathematics',
+            atRiskCount: atRiskIds.size,
+          },
+          globalMastery: {
+            avgMastery: scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0,
+            passed,
+            pending: Math.max(0, users.size - passed),
+          },
+          difficultyDistribution: {
+            foundational: Math.round(scores.filter(score => score < 50).length / total * 100),
+            intermediate: Math.round(scores.filter(score => score >= 50 && score < 80).length / total * 100),
+            advanced: Math.round(scores.filter(score => score >= 80).length / total * 100),
+          },
+        };
+      })
       .finally(() => { dashboardAnalyticsRequest = undefined; });
   }
   return dashboardAnalyticsRequest;
