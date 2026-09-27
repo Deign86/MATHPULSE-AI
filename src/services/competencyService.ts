@@ -12,6 +12,7 @@ import {
   getDoc,
   getDocs,
   query,
+  where,
   orderBy,
   limit,
   setDoc,
@@ -32,6 +33,15 @@ const numOr = <V>(v: V, fallback = 0): number => {
   const parsed = z.number().safeParse(v);
   return parsed.success ? parsed.data : fallback;
 };
+
+const moduleProgressRecordSchema = z.record(z.string(), z.object({
+  lessonsCompleted: z.array(z.string()).optional(),
+  quizzesCompleted: z.array(z.string()).optional(),
+  lastAccessedAt: z.union([z.instanceof(Timestamp), z.date(), z.string()]).optional(),
+}).passthrough());
+const subjectProgressSchema = z.record(z.string(), z.object({
+  modulesProgress: moduleProgressRecordSchema.optional(),
+}).passthrough());
 
 /** Quiz attempt record shape from Firestore. */
 interface QuizAttemptRecord {
@@ -83,17 +93,13 @@ export async function fetchQuizResults(userId: string): Promise<FirestoreQuizRes
     const q = query(quizResultsRef, orderBy('timestamp', 'desc'), limit(500));
     const snapshot = await getDocs(q);
 
-    if (snapshot.empty) {
-      // Fallback: try reading from the progress document's quizAttempts
-      return fetchQuizResultsFromProgress(userId);
-    }
-
-    return snapshot.docs.map((d) => {
+    const userResults = snapshot.docs.map((d) => {
       const data = d.data();
+      const moduleId = String(data.moduleId || findModuleIdForQuiz(d.id) || '');
       return {
         quizId: d.id,
-        moduleId: data.moduleId || '',
-        subjectId: data.subjectId || '',
+        moduleId,
+        subjectId: data.subjectId || findSubjectIdForModule(moduleId) || '',
         score: numOr(data.score),
         totalQuestions: data.totalQuestions || 0,
         correctAnswers: data.correctAnswers || 0,
@@ -104,10 +110,48 @@ export async function fetchQuizResults(userId: string): Promise<FirestoreQuizRes
         timeSpent: data.timeSpent || 0,
       } satisfies FirestoreQuizResult;
     });
+    const canonicalSnapshot = await getDocs(query(
+      collection(db, 'quizResults'),
+      where('studentId', '==', userId),
+      limit(500),
+    ));
+    const canonicalResults = canonicalSnapshot.docs.map((d) => {
+      const data = d.data();
+      const quizId = String(data.quizId || d.id);
+      const moduleId = String(data.moduleId || findModuleIdForQuiz(quizId) || '');
+      return {
+        quizId,
+        moduleId,
+        subjectId: String(data.subjectId || findSubjectIdForModule(moduleId) || ''),
+        score: numOr(data.score),
+        totalQuestions: numOr(data.totalQuestions),
+        correctAnswers: numOr(data.correctAnswers),
+        // SAFETY: the canonical quizResults writer omits questionType; multiple_choice is a valid fallback.
+        questionType: 'multiple_choice' as FirestoreQuizResult['questionType'],
+        timestamp: data.submittedAt?.toDate?.() || new Date(),
+        timeSpent: numOr(data.timeSpentSeconds),
+      } satisfies FirestoreQuizResult;
+    });
+    const combined = [...userResults, ...canonicalResults];
+    if (combined.length > 0) return combined;
+    return fetchQuizResultsFromProgress(userId);
   } catch (err) {
     console.error('[competencyService] fetchQuizResults failed, falling back:', err);
     return fetchQuizResultsFromProgress(userId);
   }
+}
+
+function findModuleIdForQuiz(quizId: string): string | undefined {
+  for (const subject of subjects) {
+    const module = subject.modules.find((entry) => entry.quizzes.some((quiz) => quiz.id === quizId));
+    if (module) return module.id;
+  }
+  return undefined;
+}
+
+function findSubjectIdForModule(moduleId: string | undefined): string | undefined {
+  if (!moduleId) return undefined;
+  return subjects.find((subject) => subject.modules.some((module) => module.id === moduleId))?.id;
 }
 
 /**
@@ -125,8 +169,8 @@ async function fetchQuizResultsFromProgress(userId: string): Promise<FirestoreQu
       const questionType = qa.questionType as FirestoreQuizResult['questionType'];
       return {
         quizId: String(qa.quizId || `attempt-${i}`),
-        moduleId: String(qa.moduleId || qa.quizId || ''),
-        subjectId: String(qa.subjectId || ''),
+        moduleId: String(qa.moduleId || findModuleIdForQuiz(String(qa.quizId || '')) || ''),
+        subjectId: String(qa.subjectId || findSubjectIdForModule(qa.moduleId || findModuleIdForQuiz(String(qa.quizId || ''))) || ''),
         score: numOr(qa.score),
         totalQuestions: numOr(qa.totalQuestions),
         correctAnswers: numOr(qa.correctAnswers),
@@ -152,8 +196,6 @@ export async function fetchModuleProgress(
     const moduleProgressRef = collection(db, 'users', userId, 'moduleProgress');
     const snapshot = await getDocs(moduleProgressRef);
 
-    if (snapshot.empty) return {};
-
     const result: Record<string, FirestoreModuleProgress> = {};
     snapshot.forEach((d) => {
       const data = d.data();
@@ -171,6 +213,29 @@ export async function fetchModuleProgress(
         quizzesCompleted: data.quizzesCompleted || [],
       };
     });
+
+    const progressSnap = await getDoc(doc(db, 'progress', userId));
+    const parsedSubjects = subjectProgressSchema.safeParse(progressSnap.data()?.subjects);
+    if (parsedSubjects.success) {
+      for (const [subjectId, subjectValue] of Object.entries(parsedSubjects.data)) {
+        for (const [moduleId, progress] of Object.entries(subjectValue.modulesProgress || {})) {
+          const previous = result[moduleId];
+          result[moduleId] = {
+            moduleId,
+            subjectId,
+            sessionsCompleted: previous?.sessionsCompleted || 0,
+            lastActive: previous?.lastActive || (progress.lastAccessedAt instanceof Timestamp
+              ? progress.lastAccessedAt.toDate()
+              : progress.lastAccessedAt instanceof Date
+                ? progress.lastAccessedAt
+                : progress.lastAccessedAt ? new Date(progress.lastAccessedAt) : new Date()),
+            moduleTitle: previous?.moduleTitle || subjects.find((subject) => subject.id === subjectId)?.modules.find((module) => module.id === moduleId)?.title || moduleId,
+            lessonsCompleted: progress.lessonsCompleted || previous?.lessonsCompleted || [],
+            quizzesCompleted: progress.quizzesCompleted || previous?.quizzesCompleted || [],
+          };
+        }
+      }
+    }
     return result;
   } catch (err) {
     console.error('[competencyService] fetchModuleProgress failed:', err);
