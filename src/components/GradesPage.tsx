@@ -1063,7 +1063,7 @@ const GradesPage = () => {
                 <p className="text-[10px] font-bold text-amber-700/80 dark:text-amber-400/80 mt-2">
                   💡 Tap any topic to start practice questions
                   {!diagnosticSummary.weaknesses.some((w) => recordGet(diagnosticSummary.weaknessMetrics, w)?.bloomLevel !== undefined)
-                    && ' — badges appear once a Jev mastery check is available'}
+                    && ' — badges appear once a mastery check is available'}
                 </p>
               )}
             </div>

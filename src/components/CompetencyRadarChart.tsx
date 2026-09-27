@@ -107,7 +107,7 @@ export const JevConfidenceBadge: React.FC<{
   return (
     <Badge
       variant="outline"
-      title="Jev estimate: modeled chance the student answers the next question on this topic correctly"
+      title="Estimated chance the student answers the next question on this topic correctly"
       className={`${size === 'xs' ? 'text-[9px] px-1.5 py-0' : 'text-[10px] px-2 py-0.5'} font-black tabular-nums rounded-full border-transparent ${confidenceTone(pCorrect)} ${className ?? ''}`}
     >
       {percent}% ready
@@ -348,7 +348,7 @@ export const CompetencyRadarChart: React.FC = () => {
       {!loading && !error && (
         <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 relative z-10 flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            Jev mastery check
+            Mastery check
           </span>
           {jevMetrics ? (
             <>
