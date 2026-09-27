@@ -1,8 +1,29 @@
-import React, { useState, useCallback } from 'react';
-import { BookOpen, Lock, Unlock, Loader2, Save, Clock, FileText, AlertCircle, Link2 } from 'lucide-react';
+import React, { useState, useCallback, useMemo } from 'react';
+import {
+  BookOpen,
+  Lock,
+  Unlock,
+  Loader2,
+  Save,
+  Clock,
+  FileText,
+  AlertCircle,
+  Link2,
+  Search,
+  X,
+  FilterX,
+  CheckCircle2,
+} from 'lucide-react';
 import { Switch } from '../ui/switch';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import {
   Table,
   TableBody,
@@ -60,11 +81,19 @@ const SUBJECT_ROWS: SubjectRowData[] = SHS_MATH_SUBJECTS.map((s) => ({
   color: s.color,
 }));
 
+const GRADE_OPTIONS = ['All Grades', 'Grade 11', 'Grade 12'] as const;
+const STATUS_OPTIONS = ['All Statuses', 'Available', 'Locked', 'With Materials'] as const;
+
 const AdminSubjects: React.FC = () => {
   const { userProfile } = useAuth();
   const { availability, loading, error } = useSubjectAvailability();
   const [savingId, setSavingId] = useState<string | null>(null);
   const [localPdfPaths, setLocalPdfPaths] = useState<Record<string, string>>({});
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedGrade, setSelectedGrade] = useState<string>('All Grades');
+  const [selectedStatus, setSelectedStatus] = useState<string>('All Statuses');
 
   const handleToggle = useCallback(
     async (subjectId: string, nextAvailable: boolean) => {
@@ -113,11 +142,50 @@ const AdminSubjects: React.FC = () => {
     [localPdfPaths, userProfile?.uid],
   );
 
+  const filteredSubjects = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return SUBJECT_ROWS.filter((subject) => {
+      const entry = availability[subject.id];
+      const isAvailable = entry?.available ?? !subject.shelved;
+      const pdfPath = localPdfPaths[subject.id] ?? entry?.pdfPath ?? '';
+
+      // Text search
+      if (
+        query &&
+        !subject.name.toLowerCase().includes(query) &&
+        !subject.code.toLowerCase().includes(query) &&
+        !subject.gradeLevel.toLowerCase().includes(query)
+      ) {
+        return false;
+      }
+
+      // Grade level filter
+      if (selectedGrade !== 'All Grades' && subject.gradeLevel !== selectedGrade) {
+        return false;
+      }
+
+      // Status filter
+      if (selectedStatus === 'Available' && !isAvailable) return false;
+      if (selectedStatus === 'Locked' && isAvailable) return false;
+      if (selectedStatus === 'With Materials' && !pdfPath) return false;
+
+      return true;
+    });
+  }, [searchTerm, selectedGrade, selectedStatus, availability, localPdfPaths]);
+
+  const hasActiveFilters = searchTerm !== '' || selectedGrade !== 'All Grades' || selectedStatus !== 'All Statuses';
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setSelectedGrade('All Grades');
+    setSelectedStatus('All Statuses');
+  };
+
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {loading && (
         <div className="flex items-center justify-end px-2">
-          <div className="flex items-center gap-3 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-2xl border border-indigo-100 animate-pulse">
+          <div className="flex items-center gap-3 px-4 py-2 bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 rounded-2xl border border-purple-100 dark:border-purple-900/40 animate-pulse shadow-xs">
             <Loader2 size={16} className="animate-spin" />
             <span className="text-[10px] font-black uppercase tracking-widest">Loading subjects...</span>
           </div>
@@ -138,7 +206,7 @@ const AdminSubjects: React.FC = () => {
           },
           {
             label: 'Available',
-            value: SUBJECT_ROWS.filter(s => availability[s.id]?.available !== false).length,
+            value: SUBJECT_ROWS.filter((s) => availability[s.id]?.available !== false).length,
             subtext: 'Accessible to students',
             badge: 'Active',
             icon: Unlock,
@@ -147,7 +215,7 @@ const AdminSubjects: React.FC = () => {
           },
           {
             label: 'Locked',
-            value: SUBJECT_ROWS.filter(s => availability[s.id]?.available === false).length,
+            value: SUBJECT_ROWS.filter((s) => availability[s.id]?.available === false).length,
             subtext: 'Materials not yet linked',
             badge: 'Locked',
             icon: Lock,
@@ -156,7 +224,7 @@ const AdminSubjects: React.FC = () => {
           },
           {
             label: 'Linked Materials',
-            value: SUBJECT_ROWS.filter(s => availability[s.id]?.pdfPath).length,
+            value: SUBJECT_ROWS.filter((s) => availability[s.id]?.pdfPath).length,
             subtext: 'Ready for AI tutoring',
             badge: 'AI Ready',
             icon: Link2,
@@ -196,117 +264,325 @@ const AdminSubjects: React.FC = () => {
         </div>
       )}
 
-      {/* Subject Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden overflow-x-auto relative w-full">
-        <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
-        <Table className="w-full text-left border-collapse min-w-[720px]">
-          <TableHeader>
-            <TableRow className="bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-xs border-b border-slate-200/80 dark:border-slate-700 sticky top-0 z-20">
-              <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Subject</TableHead>
-              <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Grade / Term</TableHead>
-              <TableHead className="px-5 py-4 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</TableHead>
-              <TableHead className="px-5 py-4 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Access</TableHead>
-              <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Learning Material Link</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody className="divide-y divide-slate-50 dark:divide-slate-800">
-            {SUBJECT_ROWS.map((subject) => {
-              const entry = availability[subject.id];
-              // Shelved subjects (no PDFs) default to locked until PDFs land.
-              const isAvailable = entry?.available ?? !subject.shelved;
-              const pdfPath = localPdfPaths[subject.id] ?? entry?.pdfPath ?? '';
-              const lastUpdated = entry?.lastUpdated;
-              const isSaving = savingId === subject.id;
+      {/* ── Search & Filter Toolbar ── */}
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2 sm:p-3 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+        <div className="relative flex-1 min-w-0 group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 group-focus-within:text-[#9956DE] transition-colors" size={15} />
+          <Input
+            type="text"
+            placeholder="Search by subject name or code (e.g. Pre-Calculus, GMATH)..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8.5 pr-8 h-10 bg-slate-50/70 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 rounded-xl text-xs font-semibold focus-visible:ring-1 focus-visible:ring-purple-400 w-full"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+              aria-label="Clear subject search"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
 
-              return (
-                <TableRow key={subject.id} className="group hover:bg-purple-50/20 dark:hover:bg-purple-950/10 border-l-2 border-l-transparent hover:border-l-[#9956DE] transition-all">
-                  <TableCell className="px-5 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform duration-300`}>
-                        <BookOpen size={18} className="drop-shadow-sm" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-800 dark:text-white truncate text-sm leading-tight group-hover:text-[#9956DE] dark:group-hover:text-purple-300 transition-colors">{subject.name}</p>
-                        <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">{subject.code}</p>
-                      </div>
-                    </div>
-                  </TableCell>
+        <div className="flex items-center gap-2">
+          {/* Grade filter */}
+          <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+            <SelectTrigger className="h-10 text-xs font-bold bg-slate-50/70 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 rounded-xl min-w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl">
+              {GRADE_OPTIONS.map((grade) => (
+                <SelectItem key={grade} value={grade} className="text-xs font-bold">
+                  {grade}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-                  <TableCell className="px-5 py-4">
-                    <div className="space-y-1">
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{subject.gradeLevel}</p>
-                      <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{subject.quarterLabel}</p>
-                      {subject.shelved && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/50">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                          Materials pending
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
+          {/* Status filter */}
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="h-10 text-xs font-bold bg-slate-50/70 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 rounded-xl min-w-[130px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl">
+              {STATUS_OPTIONS.map((status) => (
+                <SelectItem key={status} value={status} className="text-xs font-bold">
+                  {status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-                  <TableCell className="px-5 py-4 text-center">
-                    <div className="flex flex-col items-center justify-center gap-1.5">
-                      <span className={`
-                        inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-[10px] font-bold uppercase tracking-wider border
-                        ${isAvailable
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/50'
-                          : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'}
-                      `}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-500'}`} />
-                        {isAvailable ? 'Available' : 'Locked'}
-                      </span>
-                      {lastUpdated && (
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                          <Clock size={9} />
-                          {lastUpdated.toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                  </TableCell>
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetFilters}
+              className="h-10 px-3 rounded-xl border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-[#9956DE] hover:bg-purple-50 dark:hover:bg-purple-950/40 text-xs font-bold gap-1.5 shrink-0"
+              title="Reset all filters"
+            >
+              <FilterX size={14} />
+              <span className="hidden sm:inline">Reset</span>
+            </Button>
+          )}
+        </div>
+      </div>
 
-                  <TableCell className="px-5 py-4 text-center">
-                    <div className="flex items-center justify-center gap-3 min-h-[44px] min-w-[44px]">
-                      <Switch
-                        checked={isAvailable}
-                        onCheckedChange={(checked: boolean) => handleToggle(subject.id, checked)}
-                        disabled={isSaving}
-                        className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200"
-                        aria-label={`Toggle ${subject.name} availability`}
-                      />
-                      {isSaving && <Loader2 size={16} className="animate-spin text-purple-500" />}
-                    </div>
-                  </TableCell>
+      {/* ── Mobile Bento Cards View (< md) ── */}
+      <div className="md:hidden space-y-3">
+        <div className="flex items-center justify-between px-1 text-xs font-bold text-slate-500 dark:text-slate-400">
+          <span>{filteredSubjects.length} of {SUBJECT_ROWS.length} Subjects</span>
+          {hasActiveFilters && (
+            <span className="text-[#9956DE] dark:text-purple-300 font-extrabold text-[11px]">Filtered</span>
+          )}
+        </div>
 
-                  <TableCell className="px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1 group/input">
-                        <FileText size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-[#9956DE] transition-colors" />
-                        <Input
-                          value={pdfPath}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePdfPathChange(subject.id, e.target.value)}
-                          placeholder="File path (e.g. rag/calculus.pdf)"
-                          className="pl-9 h-10 text-xs font-semibold rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus-visible:ring-1 focus-visible:ring-purple-400 focus-visible:border-purple-400 transition-all"
-                          disabled={isSaving}
-                        />
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-10 w-10 rounded-xl text-slate-400 hover:text-[#9956DE] dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-transparent hover:border-purple-200/60 dark:hover:border-purple-800/60 active:scale-95 transition-all"
-                        onClick={() => handleSavePdfPath(subject.id)}
-                        disabled={isSaving}
-                        title="Save material link"
-                      >
-                        {isSaving ? <Loader2 size={18} className="animate-spin text-purple-500" /> : <Save size={18} />}
-                      </Button>
+        {filteredSubjects.length === 0 ? (
+          <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2">
+            <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] flex items-center justify-center mx-auto">
+              <BookOpen size={22} />
+            </div>
+            <p className="font-bold text-sm text-slate-800 dark:text-slate-200">No subjects match your filter</p>
+            <p className="text-xs text-slate-400 max-w-xs mx-auto">Try clearing search or changing the grade/status filters.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetFilters}
+              className="mt-2 text-xs font-bold rounded-xl border-slate-200 text-[#9956DE]"
+            >
+              Reset Filters
+            </Button>
+          </div>
+        ) : (
+          filteredSubjects.map((subject) => {
+            const entry = availability[subject.id];
+            const isAvailable = entry?.available ?? !subject.shelved;
+            const pdfPath = localPdfPaths[subject.id] ?? entry?.pdfPath ?? '';
+            const lastUpdated = entry?.lastUpdated;
+            const isSaving = savingId === subject.id;
+
+            return (
+              <div
+                key={`mobile-subject-${subject.id}`}
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs space-y-3 relative overflow-hidden border-l-4 border-l-[#9956DE]"
+              >
+                {/* Header row with icon, title, code, and switch */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-white shadow-sm shrink-0`}>
+                      <BookOpen size={18} className="drop-shadow-sm" />
                     </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 dark:text-white text-sm leading-snug truncate">{subject.name}</p>
+                      <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{subject.code}</p>
+                    </div>
+                  </div>
+
+                  {/* Toggle Switch */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Switch
+                      checked={isAvailable}
+                      onCheckedChange={(checked: boolean) => handleToggle(subject.id, checked)}
+                      disabled={isSaving}
+                      className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200"
+                      aria-label={`Toggle ${subject.name} availability`}
+                    />
+                    {isSaving && <Loader2 size={14} className="animate-spin text-purple-500" />}
+                  </div>
+                </div>
+
+                {/* Grade, Quarter, and Availability Badges */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+                    {subject.gradeLevel}
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                    {subject.quarterLabel}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${
+                      isAvailable
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/50'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                    {isAvailable ? 'Available' : 'Locked'}
+                  </span>
+                  {subject.shelved && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-200/60">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Pending
+                    </span>
+                  )}
+                </div>
+
+                {/* Learning Material File Link Input & Save Button */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                  <div className="relative flex-1 min-w-0">
+                    <FileText size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      value={pdfPath}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePdfPathChange(subject.id, e.target.value)}
+                      placeholder="Material link (e.g. rag/calc.pdf)"
+                      className="pl-8 h-9 text-xs font-semibold rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus-visible:ring-1 focus-visible:ring-purple-400"
+                      disabled={isSaving}
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs gap-1.5 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-[#9956DE] shrink-0"
+                    onClick={() => handleSavePdfPath(subject.id)}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? <Loader2 size={13} className="animate-spin text-purple-500" /> : <Save size={13} />}
+                    <span>Save</span>
+                  </Button>
+                </div>
+
+                {lastUpdated && (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                    <Clock size={10} />
+                    Last updated: {lastUpdated.toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ── Desktop Table View (≥ md) ── */}
+      <div className="hidden md:flex flex-col rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 relative overflow-hidden">
+        {/* Top Brand Accent Line */}
+        <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0" />
+
+        <div className="overflow-x-auto">
+          <Table className="w-full text-left border-collapse min-w-[720px]">
+            <TableHeader>
+              <TableRow className="bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-xs border-b border-slate-200/80 dark:border-slate-700 sticky top-0 z-20">
+                <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Subject</TableHead>
+                <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Grade / Term</TableHead>
+                <TableHead className="px-5 py-4 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</TableHead>
+                <TableHead className="px-5 py-4 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Access</TableHead>
+                <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Learning Material Link</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {filteredSubjects.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-16 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] flex items-center justify-center mx-auto mb-3">
+                      <BookOpen size={24} />
+                    </div>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white">No subjects found</p>
+                    <p className="text-xs text-slate-400 mt-1">Try clearing your search query or changing active filters.</p>
                   </TableCell>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              ) : (
+                filteredSubjects.map((subject) => {
+                  const entry = availability[subject.id];
+                  const isAvailable = entry?.available ?? !subject.shelved;
+                  const pdfPath = localPdfPaths[subject.id] ?? entry?.pdfPath ?? '';
+                  const lastUpdated = entry?.lastUpdated;
+                  const isSaving = savingId === subject.id;
+
+                  return (
+                    <TableRow key={subject.id} className="group hover:bg-purple-50/20 dark:hover:bg-purple-950/10 border-l-2 border-l-transparent hover:border-l-[#9956DE] transition-all">
+                      <TableCell className="px-5 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${subject.color} flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform duration-300`}>
+                            <BookOpen size={18} className="drop-shadow-sm" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800 dark:text-white truncate text-sm leading-tight group-hover:text-[#9956DE] dark:group-hover:text-purple-300 transition-colors">{subject.name}</p>
+                            <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">{subject.code}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="px-5 py-4">
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{subject.gradeLevel}</p>
+                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{subject.quarterLabel}</p>
+                          {subject.shelved && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-800/50">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                              Materials pending
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="px-5 py-4 text-center">
+                        <div className="flex flex-col items-center justify-center gap-1.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-[10px] font-bold uppercase tracking-wider border ${
+                              isAvailable
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/50'
+                                : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isAvailable ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-500'}`} />
+                            {isAvailable ? 'Available' : 'Locked'}
+                          </span>
+                          {lastUpdated && (
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                              <Clock size={9} />
+                              {lastUpdated.toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="px-5 py-4 text-center">
+                        <div className="flex items-center justify-center gap-3 min-h-[44px] min-w-[44px]">
+                          <Switch
+                            checked={isAvailable}
+                            onCheckedChange={(checked: boolean) => handleToggle(subject.id, checked)}
+                            disabled={isSaving}
+                            className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200"
+                            aria-label={`Toggle ${subject.name} availability`}
+                          />
+                          {isSaving && <Loader2 size={16} className="animate-spin text-purple-500" />}
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1 group/input">
+                            <FileText size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-[#9956DE] transition-colors" />
+                            <Input
+                              value={pdfPath}
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePdfPathChange(subject.id, e.target.value)}
+                              placeholder="File path (e.g. rag/calculus.pdf)"
+                              className="pl-9 h-10 text-xs font-semibold rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus-visible:ring-1 focus-visible:ring-purple-400 focus-visible:border-purple-400 transition-all"
+                              disabled={isSaving}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 rounded-xl text-slate-400 hover:text-[#9956DE] dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-transparent hover:border-purple-200/60 dark:hover:border-purple-800/60 active:scale-95 transition-all"
+                            onClick={() => handleSavePdfPath(subject.id)}
+                            disabled={isSaving}
+                            title="Save material link"
+                          >
+                            {isSaving ? <Loader2 size={18} className="animate-spin text-purple-500" /> : <Save size={18} />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
