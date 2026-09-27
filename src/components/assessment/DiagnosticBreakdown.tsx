@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -9,6 +9,14 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { apiFetch } from '../../services/apiService';
+import {
+  JevBloomBadge,
+  JevConfidenceBadge,
+  bloomLevelFromLabel,
+  fetchJevProfile,
+  type BloomLevel,
+  type JevMetrics,
+} from '../CompetencyRadarChart';
 
 interface DiagnosticResponse {
   question_id: string;
@@ -69,11 +77,34 @@ interface RiskProfileSummary {
   overall_risk?: string;
 }
 
+/**
+ * Bloom level where a domain's wrong answers concentrate.
+ * Derived from persisted per-response bloom_level — the level the student broke down at.
+ */
+function weakestBloomForDomain(responses: QuestionWithText[], domain: string): BloomLevel | undefined {
+  const tally = new Map<BloomLevel, number>();
+  responses.forEach(r => {
+    if (r.domain !== domain || r.is_correct) return;
+    const level = bloomLevelFromLabel(r.bloom_level);
+    if (level !== undefined) tally.set(level, (tally.get(level) ?? 0) + 1);
+  });
+  let best: BloomLevel | undefined;
+  let bestCount = 0;
+  tally.forEach((count, level) => {
+    if (count > bestCount) {
+      best = level;
+      bestCount = count;
+    }
+  });
+  return best;
+}
+
 const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode, isOpen = true, onClose }) => {
   const [responses, setResponses] = useState<QuestionWithText[]>([]);
   const [domainScores, setDomainScores] = useState<Record<string, DomainScoreSummary>>({});
   const [riskProfile, setRiskProfile] = useState<RiskProfileSummary>({});
   const [analysis, setAnalysis] = useState<DiagnosticAnalysis | null>(null);
+  const [jevMetrics, setJevMetrics] = useState<JevMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'insights' | 'domains' | 'questions'>('insights');
@@ -126,6 +157,9 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
       setResponses(rawResponses.map(r => ({ ...r, question_text: questionTexts[r.question_id] })));
       setLoading(false);
 
+      // Persisted Jev mastery metrics for this student (bloomLevel + pCorrect)
+      void fetchJevProfile(userId).then(setJevMetrics);
+
       // Fetch AI analysis (backend caches after first generation)
       setAnalysisLoading(true);
       try {
@@ -166,6 +200,16 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
     if (questionFilter === 'incorrect') return !r.is_correct;
     return true;
   });
+
+  /** Domain → Bloom level where its wrong answers concentrate (undefined when untagged). */
+  const bloomByDomain = useMemo(() => {
+    const domains = new Set<string>();
+    (analysis?.weakness_areas ?? []).forEach(w => domains.add(w.domain));
+    Object.keys(domainScores).forEach(d => domains.add(d));
+    const map = new Map<string, BloomLevel | undefined>();
+    domains.forEach(domain => map.set(domain, weakestBloomForDomain(responses, domain)));
+    return map;
+  }, [analysis, domainScores, responses]);
 
   if (!isOpen) return null;
 

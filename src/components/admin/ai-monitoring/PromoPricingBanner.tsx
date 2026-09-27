@@ -46,7 +46,7 @@ export const PromoPricingBanner: React.FC<PromoPricingBannerProps> = ({
             </div>
 
             <p className="text-xs text-amber-900/80 dark:text-amber-200/90 leading-relaxed">
-              Discounted pricing: <strong className="font-bold text-slate-900 dark:text-white">$0.435/1M</strong> (cache-miss input) & <strong className="font-bold text-slate-900 dark:text-white">$0.87/1M</strong> (output). 
+              Discounted pricing: <strong className="font-bold text-slate-900 dark:text-white">$0.435/1M</strong> (cache-miss input) & <strong className="font-bold text-slate-900 dark:text-white">$0.87/1M</strong> (output).
               Standard rates resume after May 31, 2026 (${fullPriceInputRate}/1M input · ${fullPriceOutputRate}/1M output).
             </p>
           </div>

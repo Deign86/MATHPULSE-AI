@@ -1,6 +1,5 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
-import os
 import re
 from typing import Any
 
@@ -33,12 +32,6 @@ class MasteryRecordRequest(BaseModel):
     score: float = Field(ge=0, le=1)
 
 
-class JevVerifyRequest(BaseModel):
-    referenceText: str = Field(min_length=1)
-    generatedText: str = Field(min_length=1)
-    claimType: str = Field(min_length=1)
-
-
 class GenerateModuleResponse(BaseModel):
     moduleId: str
     title: str
@@ -50,13 +43,6 @@ class MasteryRecordResponse(BaseModel):
     masteryProbability: float
     unlockedModules: list[str]
     xpAwarded: int
-
-
-class JevVerifyResponse(BaseModel):
-    verified: bool
-    pCorrect: float
-    pLeak: float
-    action: str
 
 
 def _api_error(status_code: int, error: str, error_type: str) -> HTTPException:
@@ -143,19 +129,4 @@ async def record_mastery(payload: MasteryRecordRequest) -> dict[str, Any]:
         "masteryProbability": probability,
         "unlockedModules": [],
         "xpAwarded": 30 if payload.correct else 0,
-    }
-
-
-@router.post("/jev/verify", response_model=JevVerifyResponse)
-async def verify_with_jev(payload: JevVerifyRequest) -> dict[str, Any]:
-    os.getenv("TYPESAFE_API_KEY")
-    reference = " ".join(payload.referenceText.lower().split())
-    generated = " ".join(payload.generatedText.lower().split())
-    verified = reference == generated or reference in generated
-    leak = "answer" in generated and payload.claimType.lower() in {"hint", "practice"}
-    return {
-        "verified": verified,
-        "pCorrect": 0.95 if verified else 0.35,
-        "pLeak": 0.9 if leak else 0.05,
-        "action": "allow_with_fallback",
     }

@@ -51,10 +51,12 @@ async def verify_jev(request: JevVerifyRequest) -> JevVerifyResponse:
             status_code=502,
             detail="JEV verification service unavailable",
         ) from exc
+    # This endpoint checks factuality only; claimType does not trigger leak detection.
+    # The probability values are conservative fail-open defaults when TypeSafe omits them.
     verified = bool(verification.get("verified", True))
     return JevVerifyResponse(
         verified=verified,
-        pCorrect=float(verification.get("pCorrect", 1.0 if verified else 0.0)),
+        pCorrect=float(verification.get("pCorrect", 1.0)),
         pLeak=float(verification.get("pLeak", 0.0)),
-        action=str(verification.get("action", "verified")),
+        action=str(verification.get("action", "fallback_disabled")),
     )

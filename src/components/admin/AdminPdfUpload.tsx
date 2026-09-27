@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   Upload, FileText, CheckCircle, XCircle, RefreshCw,
-  Loader2, AlertTriangle, Trash2, BarChart3, 
+  Loader2, AlertTriangle, Trash2, BarChart3,
   Sparkles, Database, BookOpen, Search, Info,
   ChevronDown, ArrowUpRight, CheckCircle2,
   Cpu, FileSpreadsheet, Layers, Activity, Clock
@@ -305,8 +305,8 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
             <button
               onClick={() => setActiveTab('upload')}
               className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
-                activeTab === 'upload' 
-                  ? 'bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white shadow-sm shadow-purple-500/20' 
+                activeTab === 'upload'
+                  ? 'bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white shadow-sm shadow-purple-500/20'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
               }`}
             >
@@ -316,8 +316,8 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
             <button
               onClick={() => setActiveTab('inventory')}
               className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
-                activeTab === 'inventory' 
-                  ? 'bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white shadow-sm shadow-purple-500/20' 
+                activeTab === 'inventory'
+                  ? 'bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white shadow-sm shadow-purple-500/20'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
               }`}
             >
@@ -385,7 +385,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                       className="hidden"
                       onChange={e => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
                     />
-                    
+
                     {selectedFile ? (
                       <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left w-full max-w-lg p-3 bg-purple-50/60 dark:bg-purple-950/30 rounded-2xl border border-purple-200/70 dark:border-purple-800/60">
                         <div className="w-13 h-13 bg-gradient-to-br from-[#9956DE] to-[#7274ED] rounded-xl flex items-center justify-center text-white shadow-md shadow-purple-500/20 shrink-0">

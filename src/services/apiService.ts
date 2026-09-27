@@ -1011,6 +1011,27 @@ export interface RagHealthResponse {
   activeModel: string; isSequentialModel?: boolean; warning?: string;
 }
 
+export interface WeaknessDetectionQuestion {
+  question_id: string;
+  topic_id: string;
+  quarter: number;
+  competency_code: string;
+  is_correct: boolean;
+}
+
+export interface WeaknessDetectionRequest {
+  student_id: string;
+  subject?: string;
+  questions: WeaknessDetectionQuestion[];
+}
+
+export interface WeaknessDetectionResponse {
+  flagged_topics: string[];
+  confidence: Record<string, number>;
+  reasoning_summary: string;
+  source: 'deepseek' | 'rule_based';
+}
+
 // ─── RAG API Functions ──────────────────────────────────────
 // All `/api/rag/*` calls route through the authed `apiFetch` client so the
 // Firebase bearer token is attached (with 401-refresh retry), matching every
@@ -1482,6 +1503,13 @@ function extractTaskErrorMessage(cause: unknown): string {
 // ─── Public API ──────────────────────────────────────────────
 
 export const apiService = {
+  async detectWeakness(payload: WeaknessDetectionRequest): Promise<WeaknessDetectionResponse> {
+    return apiFetch<WeaknessDetectionResponse>('/api/deepseek/weakness-detection', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   getImportGroundedRolloutFlags(): ImportGroundedRolloutFlags {
     return {
       quizEnabled: IMPORT_GROUNDED_QUIZ_ENABLED,

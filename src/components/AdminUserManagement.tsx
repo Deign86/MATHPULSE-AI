@@ -1283,7 +1283,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <Loader2 className="animate-spin text-[#9956DE]" size={32} />
           </div>
         )}
-        
+
         {/* Mobile card view (< md) */}
         <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800 p-2 space-y-3">
           <div className="px-4 py-2.5 bg-slate-50/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
@@ -1630,9 +1630,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                             We couldn't find any results for your current query. Try broadening your search or clearing filters.
                           </p>
                         </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="rounded-xl border-slate-200 text-indigo-600 font-bold px-6 h-10 hover:bg-indigo-50"
                           onClick={() => {
                             setSearchQuery('');
@@ -1757,7 +1757,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   <h4 className="text-xs font-extrabold text-[#9956DE] dark:text-purple-400 uppercase tracking-wider pb-1.5 border-b border-purple-100 dark:border-purple-950/60 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#9956DE]" /> Identity Details
                   </h4>
-                  
+
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Full Name</label>
                     <div className="relative group">
@@ -1792,8 +1792,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Access Role</label>
-                      <Select 
-                        value={formData.role} 
+                      <Select
+                        value={formData.role}
                         onValueChange={(value) => {
                           const nextRole = memberOf(['Student', 'Teacher', 'Admin'] as const, value, 'Student');
                           setFormData({ ...formData, role: nextRole, lrn: nextRole === 'Student' ? formData.lrn : '' });
@@ -1812,8 +1812,8 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Status</label>
-                      <Select 
-                        value={formData.status} 
+                      <Select
+                        value={formData.status}
                         onValueChange={(value) => setFormData({ ...formData, status: value })}
                       >
                         <SelectTrigger className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white">
@@ -1881,10 +1881,10 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             </div>
 
             <DialogFooter className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <Button 
-                variant="outline" 
-                className="h-11 rounded-xl font-bold uppercase tracking-wider text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all active:scale-95" 
-                onClick={() => setIsModalOpen(false)} 
+              <Button
+                variant="outline"
+                className="h-11 rounded-xl font-bold uppercase tracking-wider text-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white transition-all active:scale-95"
+                onClick={() => setIsModalOpen(false)}
                 disabled={saving}
               >
                 Cancel

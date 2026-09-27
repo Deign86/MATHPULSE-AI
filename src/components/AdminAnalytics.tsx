@@ -367,7 +367,7 @@ export const AdminAnalytics: React.FC = () => {
 
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-8 animate-in fade-in duration-300">
-      
+
       {/* ── Top Utility & Action Toolbar ── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
@@ -535,7 +535,7 @@ export const AdminAnalytics: React.FC = () => {
 
       {/* ── Tab Views ── */}
       <AnimatePresence mode="wait">
-        
+
         {/* ── Tab 1: Outcomes & Trajectory ── */}
         {activeTab === 'outcomes' && (
           <motion.div
@@ -869,7 +869,7 @@ export const AdminAnalytics: React.FC = () => {
             className="space-y-5"
           >
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-5">
-              
+
               {/* Gamification Drivers (5 cols) */}
               <div className="xl:col-span-5 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
                 <div>

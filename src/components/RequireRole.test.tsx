@@ -14,6 +14,16 @@ import { RequireRole } from './RequireRole';
 afterEach(() => cleanup());
 
 describe('RequireRole guard (issue #156)', () => {
+  it('shows a loading state while access is being verified', () => {
+    render(
+      <RequireRole allowed={['admin']} userRole="admin" loading onGoToLogin={vi.fn()}>
+        <div>Admin dashboard content</div>
+      </RequireRole>,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(/verifying access/i);
+    expect(screen.queryByText('Admin dashboard content')).not.toBeInTheDocument();
+  });
+
   it('renders the dashboard when the role is allowed', () => {
     render(
       <RequireRole allowed={['admin']} userRole="admin" loading={false} onGoToLogin={vi.fn()}>
@@ -43,6 +53,22 @@ describe('RequireRole guard (issue #156)', () => {
       </RequireRole>,
     );
     expect(screen.queryByText('Teacher dashboard content')).not.toBeInTheDocument();
+    expect(screen.getByText(/access denied/i)).toBeInTheDocument();
+  });
+
+  it('blocks an invalid runtime role', () => {
+    render(
+      <RequireRole
+        allowed={['student']}
+        // SAFETY: Exercise an unchecked profile role supplied at runtime.
+        userRole={'unknown' as 'student'}
+        loading={false}
+        onGoToLogin={vi.fn()}
+      >
+        <div>Student dashboard content</div>
+      </RequireRole>,
+    );
+    expect(screen.queryByText('Student dashboard content')).not.toBeInTheDocument();
     expect(screen.getByText(/access denied/i)).toBeInTheDocument();
   });
 });

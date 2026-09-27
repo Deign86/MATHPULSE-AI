@@ -91,7 +91,7 @@ const AdminClassManagement: React.FC = () => {
   const filteredClasses = useMemo(() => {
     const queryTerm = searchQuery.trim().toLowerCase();
     if (!queryTerm) return classes;
-    return classes.filter(cls => 
+    return classes.filter(cls =>
       cls.name.toLowerCase().includes(queryTerm) ||
       (cls.gradeLevel && cls.gradeLevel.toLowerCase().includes(queryTerm)) ||
       (cls.section && cls.section.toLowerCase().includes(queryTerm)) ||
@@ -189,7 +189,7 @@ const AdminClassManagement: React.FC = () => {
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Assign faculty managers to supervise grade level sections</p>
           </div>
-          
+
           <div className="relative w-full sm:w-[280px]">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" />
             <input
@@ -239,7 +239,7 @@ const AdminClassManagement: React.FC = () => {
                     </span>
                   )}
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                   {cls.studentCount !== undefined && (
                     <span className="tabular-nums font-bold text-slate-700 dark:text-slate-300">{cls.studentCount} enrolled learners</span>
@@ -289,4 +289,3 @@ const AdminClassManagement: React.FC = () => {
 };
 
 export default AdminClassManagement;
-
