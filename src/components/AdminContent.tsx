@@ -220,8 +220,94 @@ const AdminContent: React.FC = () => {
             </div>
           </div>
 
-          {/* Table */}
-          <div className="overflow-x-auto">
+          {/* Top Brand Accent Line */}
+          <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0" />
+
+          {/* Mobile Bento Cards View (< md) */}
+          <div className="md:hidden space-y-3 p-3.5">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse space-y-3">
+                  <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-3/4" />
+                  <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/2" />
+                </div>
+              ))
+            ) : filteredRecords.length === 0 ? (
+              <div className="py-12 px-4 text-center space-y-2">
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] flex items-center justify-center mx-auto">
+                  {hasActiveFilter ? <AlertCircle size={22} /> : <Upload size={22} />}
+                </div>
+                <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                  {hasActiveFilter ? 'No results match your filter' : 'No files uploaded yet'}
+                </p>
+                <p className="text-xs text-slate-400 max-w-xs mx-auto">
+                  {hasActiveFilter ? 'Try clearing the search or type filter.' : 'Teachers can upload course materials and class records.'}
+                </p>
+                {hasActiveFilter && (
+                  <button
+                    onClick={() => { setSearchTerm(''); setFilterType('All'); }}
+                    className="text-xs font-bold text-purple-600 dark:text-purple-400 underline underline-offset-2 pt-1"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            ) : (
+              filteredRecords.map((record) => (
+                <div
+                  key={`mobile-rec-${record.id}`}
+                  className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90 shadow-xs space-y-3 relative overflow-hidden border-l-4 border-l-[#9956DE]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        record.type === 'Course Material'
+                          ? 'bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] border border-purple-100 dark:border-purple-900/40'
+                          : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border border-emerald-100 dark:border-emerald-900/40'
+                      }`}>
+                        {record.type === 'Course Material' ? <FileText size={18} /> : <FileSpreadsheet size={18} />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-900 dark:text-white text-sm leading-snug truncate">{record.title}</p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5">{record.teacherEmail}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setDeleteConfirmId(record.id)}
+                      title="Delete file"
+                      className="h-9 w-9 inline-flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200/80 dark:border-slate-700/60 transition-all shrink-0"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        record.type === 'Course Material'
+                          ? 'text-purple-600 dark:text-purple-300 border-purple-200/80 dark:border-purple-800/50 bg-purple-50 dark:bg-purple-950/40'
+                          : 'text-emerald-600 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/40'
+                      }`}>
+                        {record.type === 'Course Material' ? 'Material' : 'Record'}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                        {record.className || record.classSectionId || 'All Classes'}
+                      </span>
+                    </div>
+                    <span className="text-slate-400 dark:text-slate-500 font-medium">
+                      {record.createdAt
+                        ? new Date(record.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View (≥ md) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[640px]">
               <thead>
                 <tr className="bg-slate-50/95 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700/60">

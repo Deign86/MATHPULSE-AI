@@ -66,6 +66,8 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryType, setInventoryType] = useState('All Types');
 
   // Load teacher-uploaded files
   const loadUploadedFiles = useCallback(async () => {
@@ -578,7 +580,135 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-4"
           >
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden relative">
+            {/* Search & Filter Toolbar */}
+            <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              <div className="relative flex-1 min-w-0 group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 group-focus-within:text-[#9956DE] transition-colors" size={15} />
+                <Input
+                  type="text"
+                  placeholder="Search files by name, uploader, or class..."
+                  value={inventorySearch}
+                  onChange={(e) => setInventorySearch(e.target.value)}
+                  className="pl-8.5 pr-8 h-10 bg-slate-50/70 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 rounded-xl text-xs font-semibold focus-visible:ring-1 focus-visible:ring-purple-400 w-full"
+                />
+                {inventorySearch && (
+                  <button
+                    type="button"
+                    onClick={() => setInventorySearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                    aria-label="Clear inventory search"
+                  >
+                    <XCircle size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Select value={inventoryType} onValueChange={setInventoryType}>
+                  <SelectTrigger className="h-10 text-xs font-bold bg-slate-50/70 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 rounded-xl min-w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl">
+                    <SelectItem value="All Types" className="text-xs font-bold">All Types</SelectItem>
+                    <SelectItem value="PDF" className="text-xs font-bold">PDF Documents</SelectItem>
+                    <SelectItem value="CSV" className="text-xs font-bold">CSV Records</SelectItem>
+                    <SelectItem value="XLSX" className="text-xs font-bold">Excel Spreadsheets</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-10 px-3 text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] rounded-xl border border-slate-200/80 dark:border-slate-700/60 transition-all text-xs font-bold gap-1.5"
+                  onClick={loadUploadedFiles}
+                  disabled={loadingFiles}
+                  title="Refresh file inventory"
+                >
+                  <RefreshCw size={14} className={loadingFiles ? 'animate-spin' : ''} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Mobile Bento Cards (< md) */}
+            <div className="md:hidden space-y-3">
+              {loadingFiles ? (
+                Array.from({ length: 3 }).map((_, idx) => (
+                  <div key={idx} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 animate-pulse space-y-3">
+                    <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-3/4" />
+                    <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/2" />
+                  </div>
+                ))
+              ) : (() => {
+                const searchQ = inventorySearch.trim().toLowerCase();
+                const filtered = uploadedFiles.filter((f) => {
+                  if (searchQ && !f.fileName.toLowerCase().includes(searchQ) && !f.teacherEmail.toLowerCase().includes(searchQ) && !(f.className && f.className.toLowerCase().includes(searchQ))) {
+                    return false;
+                  }
+                  if (inventoryType !== 'All Types' && f.fileType.toUpperCase() !== inventoryType.toUpperCase()) {
+                    return false;
+                  }
+                  return true;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2">
+                      <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] flex items-center justify-center mx-auto">
+                        <FileText size={22} />
+                      </div>
+                      <p className="font-bold text-sm text-slate-800 dark:text-slate-200">No files found</p>
+                      <p className="text-xs text-slate-400 max-w-xs mx-auto">Try clearing search or changing the file type filter.</p>
+                    </div>
+                  );
+                }
+
+                return filtered.map((file) => (
+                  <div
+                    key={`mobile-file-${file.id}`}
+                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs space-y-3 relative overflow-hidden border-l-4 border-l-[#9956DE]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] flex items-center justify-center shrink-0 border border-purple-100 dark:border-purple-900/40">
+                          {file.fileType.toUpperCase() === 'CSV' || file.fileType.toUpperCase() === 'XLSX' ? (
+                            <FileSpreadsheet size={18} />
+                          ) : (
+                            <FileText size={18} />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-900 dark:text-white text-sm leading-snug truncate">{file.fileName}</p>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate mt-0.5">{file.teacherEmail || 'System upload'}</p>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 shrink-0"
+                        onClick={() => handleDeleteFile(file.id, file.collection)}
+                        title={`Delete ${file.fileName}`}
+                      >
+                        <Trash2 size={15} />
+                      </Button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+                        {file.fileType}
+                      </span>
+                      <span className="text-slate-400 dark:text-slate-500 font-medium">
+                        {file.createdAt.toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            {/* Desktop Table View (≥ md) */}
+            <div className="hidden md:flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden relative">
               {/* Brand accent strip */}
               <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
 
@@ -589,18 +719,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                     <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider h-auto">Uploaded By</TableHead>
                     <TableHead className="px-5 py-4 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider h-auto">Type</TableHead>
                     <TableHead className="px-5 py-4 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider h-auto">Date</TableHead>
-                    <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider h-auto text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2.5 text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] rounded-xl transition-all"
-                        onClick={loadUploadedFiles}
-                        disabled={loadingFiles}
-                        title="Refresh file inventory"
-                      >
-                        <RefreshCw size={14} className={loadingFiles ? 'animate-spin' : ''} />
-                      </Button>
-                    </TableHead>
+                    <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider h-auto text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -612,18 +731,33 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                         </TableCell>
                       </TableRow>
                     ))
-                  ) : uploadedFiles.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-20 text-center">
-                        <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/50 flex items-center justify-center text-[#9956DE] dark:text-purple-300 mx-auto mb-3 shadow-xs">
-                          <FileText size={28} />
-                        </div>
-                        <p className="font-bold text-base text-slate-900 dark:text-white">No uploaded files found</p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Uploaded course materials and class records will appear here.</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    uploadedFiles.map(file => (
+                  ) : (() => {
+                    const searchQ = inventorySearch.trim().toLowerCase();
+                    const filtered = uploadedFiles.filter((f) => {
+                      if (searchQ && !f.fileName.toLowerCase().includes(searchQ) && !f.teacherEmail.toLowerCase().includes(searchQ) && !(f.className && f.className.toLowerCase().includes(searchQ))) {
+                        return false;
+                      }
+                      if (inventoryType !== 'All Types' && f.fileType.toUpperCase() !== inventoryType.toUpperCase()) {
+                        return false;
+                      }
+                      return true;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <TableRow>
+                          <TableCell colSpan={5} className="py-20 text-center">
+                            <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border border-purple-100 dark:border-purple-900/50 flex items-center justify-center text-[#9956DE] dark:text-purple-300 mx-auto mb-3 shadow-xs">
+                              <FileText size={28} />
+                            </div>
+                            <p className="font-bold text-base text-slate-900 dark:text-white">No uploaded files found</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Uploaded course materials and class records will appear here.</p>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+
+                    return filtered.map((file) => (
                       <TableRow
                         key={file.id}
                         className="group hover:bg-purple-50/20 dark:hover:bg-purple-950/10 border-l-2 border-l-transparent hover:border-l-[#9956DE] transition-all"
@@ -655,8 +789,8 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </TableBody>
               </Table>
             </div>

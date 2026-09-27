@@ -565,9 +565,95 @@ const AdminAuditLog: React.FC = () => {
       </div>
 
       {/* ── Main Audit Table Area ── */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs overflow-hidden flex flex-col">
-        <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
-        <div className="overflow-x-auto">
+      <div className="bg-white dark:bg-slate-800/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs overflow-hidden flex flex-col">
+        <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0" />
+
+        {/* ── Mobile Bento Cards View (< md) ── */}
+        <div className="md:hidden space-y-3 p-3.5">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx} className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-24" />
+                  <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-16" />
+                </div>
+                <div className="h-3.5 bg-slate-100 dark:bg-slate-800 rounded-lg w-3/4" />
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/2" />
+              </div>
+            ))
+          ) : paginatedLogs.length === 0 ? (
+            <div className="py-12 px-4 text-center space-y-2">
+              <Shield size={36} className="text-slate-300 dark:text-slate-600 mx-auto" />
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No audit events match current criteria</p>
+              <p className="text-xs text-slate-400 max-w-xs mx-auto">Try clearing search parameters or adjusting severity filters</p>
+            </div>
+          ) : (
+            paginatedLogs.map((log) => {
+              const borderClass =
+                log.severity === 'Critical'
+                  ? 'border-l-red-500'
+                  : log.severity === 'Error'
+                  ? 'border-l-rose-500'
+                  : log.severity === 'Warning'
+                  ? 'border-l-amber-500'
+                  : 'border-l-sky-500';
+
+              return (
+                <div
+                  key={`mobile-audit-${log.id}`}
+                  className={`p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-900 shadow-xs space-y-3 relative overflow-hidden border-l-4 ${borderClass}`}
+                >
+                  {/* Top Bar: Severity & Component & Inspect Button */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getSeverityStyle(log.severity)}`}>
+                        {getSeverityIcon(log.severity)}
+                        {log.severity}
+                      </span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+                        {log.category}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedLog(log)}
+                      className="h-8 px-2.5 inline-flex items-center gap-1 rounded-xl text-xs font-bold text-[#9956DE] dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 border border-purple-200/60 dark:border-purple-800/50 hover:bg-purple-100 transition-all cursor-pointer shrink-0"
+                      aria-label={`View details for ${log.action}`}
+                    >
+                      <Eye size={13} />
+                      <span>Inspect</span>
+                    </button>
+                  </div>
+
+                  {/* Action & Details */}
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white leading-snug">{log.action}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">{log.details}</p>
+                  </div>
+
+                  {/* Actor & Timestamp Row */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 flex items-center justify-center shrink-0 text-[#9956DE] dark:text-purple-300 font-bold text-[10px]">
+                        {log.user.name?.charAt(0).toUpperCase() || 'S'}
+                      </div>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 truncate">{log.user.name || 'System'}</span>
+                      <span className="text-[10px] text-slate-400 capitalize">({log.user.role || 'Service'})</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-slate-400 dark:text-slate-500 shrink-0 font-medium">
+                      <Clock size={11} />
+                      <span className="tabular-nums text-[10px]">{log.timestamp}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* ── Desktop Table View (≥ md) ── */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[850px]">
             <thead className="sticky top-0 z-10">
               <tr className="bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-xs border-b border-slate-200/80 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
