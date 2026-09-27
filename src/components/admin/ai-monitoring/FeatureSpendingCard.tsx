@@ -30,4 +30,3 @@ export const FeatureSpendingCard: React.FC<FeatureSpendingCardProps> = ({ title,
     </div>
   );
 };
-

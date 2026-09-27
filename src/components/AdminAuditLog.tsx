@@ -39,7 +39,7 @@ const AdminAuditLog: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -122,13 +122,13 @@ const AdminAuditLog: React.FC = () => {
   // Filter logic
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
-      const matchesSearch = log.action.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const matchesSearch = log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             log.user.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'All Categories' || log.category === selectedCategory;
       const matchesSeverity = selectedSeverity === 'All Severities' || log.severity === selectedSeverity;
       const matchesRole = selectedRole === 'All Roles' || log.user.role === selectedRole;
-      
+
       return matchesSearch && matchesCategory && matchesSeverity && matchesRole;
     });
   }, [logs, searchTerm, selectedCategory, selectedSeverity, selectedRole]);
@@ -267,7 +267,7 @@ const AdminAuditLog: React.FC = () => {
 
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-8 animate-in fade-in duration-300">
-      
+
       {/* ── Top Utility & Action Toolbar ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
@@ -280,10 +280,10 @@ const AdminAuditLog: React.FC = () => {
             Tracking <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-300">{logs.length}</span> recorded administrative events
           </span>
         </div>
-        
+
         <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-          <button 
-            onClick={loadLogs} 
+          <button
+            onClick={loadLogs}
             disabled={loading}
             title="Synchronize logs"
             aria-label="Synchronize logs"
@@ -742,7 +742,7 @@ const AdminAuditLog: React.FC = () => {
               </div>
             </div>
           </DialogHeader>
-          
+
           {selectedLog && (
             <div className="space-y-3 mt-2">
               <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
@@ -783,7 +783,7 @@ const AdminAuditLog: React.FC = () => {
           )}
 
           <div className="flex justify-end pt-3">
-            <Button 
+            <Button
               onClick={() => setSelectedLog(null)}
               className="rounded-xl px-5 text-xs font-bold cursor-pointer"
             >

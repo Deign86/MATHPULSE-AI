@@ -129,15 +129,26 @@ def test_mastery_record_handles_incorrect_answer():
     assert response.json()["xpAwarded"] == 0
 
 
-def test_jev_verify_returns_contract():
-    response = client.post(
-        "/api/jev/verify",
-        json={
-            "referenceText": "A linear function has a constant rate of change.",
-            "generatedText": "A linear function has a constant rate of change.",
-            "claimType": "definition",
-        },
-    )
+def test_jev_verify_returns_canonical_contract():
+    with patch(
+        "routes.jev_routes.verify_lesson_factuality",
+        new=AsyncMock(
+            return_value={
+                "verified": True,
+                "pCorrect": 0.95,
+                "pLeak": 0.05,
+                "action": "verified",
+            }
+        ),
+    ):
+        response = client.post(
+            "/api/jev/verify",
+            json={
+                "referenceText": "A linear function has a constant rate of change.",
+                "generatedText": "A linear function has a constant rate of change.",
+                "claimType": "definition",
+            },
+        )
 
     assert response.status_code == 200
     assert set(response.json()) == {"verified", "pCorrect", "pLeak", "action"}
@@ -153,18 +164,31 @@ def test_jev_verify_fails_open_without_secret():
         )
 
     assert response.status_code == 200
-    assert response.json()["action"] == "allow_with_fallback"
+    assert response.json() == {
+        "verified": True,
+        "pCorrect": 1.0,
+        "pLeak": 0.0,
+        "action": "fallback_disabled",
+    }
 
 
-def test_jev_verify_marks_mismatched_claim_for_fallback():
-    response = client.post(
-        "/api/jev/verify",
-        json={"referenceText": "linear function", "generatedText": "quadratic function", "claimType": "definition"},
-    )
+def test_jev_verify_is_factuality_only_for_claim_types():
+    with patch(
+        "routes.jev_routes.verify_lesson_factuality",
+        new=AsyncMock(return_value={"action": "fallback_disabled", "verified": True}),
+    ):
+        response = client.post(
+            "/api/jev/verify",
+            json={"referenceText": "linear function", "generatedText": "quadratic function", "claimType": "hint"},
+        )
 
     assert response.status_code == 200
-    assert response.json()["verified"] is False
-    assert response.json()["pCorrect"] < 0.5
+    assert response.json() == {
+        "verified": True,
+        "pCorrect": 1.0,
+        "pLeak": 0.0,
+        "action": "fallback_disabled",
+    }
 
 
 def test_errors_use_identical_keys_and_never_return_secret():

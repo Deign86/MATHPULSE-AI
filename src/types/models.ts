@@ -61,6 +61,9 @@ export interface StudentProfile extends User {
   atRiskSubjects: string[];
   /** Module IDs flagged as weak from topic-level diagnostic scoring */
   flaggedTopics?: string[];
+  bloomLevel?: 0 | 1 | 2 | 3;
+  jevScore?: number;
+  pCorrect?: number;
   hasTakenDiagnostic: boolean;
   iarAssessmentState?:
     | 'not_started'

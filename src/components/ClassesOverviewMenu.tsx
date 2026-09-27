@@ -17,6 +17,7 @@ export interface ClassView {
 
 interface ClassesOverviewMenuProps {
   classes: ClassView[];
+  totalStudentCount: number;
   onSelectClass: (classItem: ClassView) => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
@@ -36,6 +37,7 @@ export const CLASS_COLORS = [
 
 export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
   classes,
+  totalStudentCount,
   onSelectClass,
   onOpenNotifications,
   onOpenProfile,
@@ -50,7 +52,7 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
   const isCompetency = viewType === 'competency';
 
   // Global Stats calculation
-  const totalStudents = classes.reduce((sum, c) => sum + (c.studentCount || 0), 0);
+  const totalStudents = totalStudentCount;
   const totalAtRisk = classes.reduce((sum, c) => sum + (c.atRiskCount || 0), 0);
   const avgPerformance = classes.length > 0
     ? (classes.reduce((sum, c) => sum + (c.avgScore || 0), 0) / classes.length).toFixed(1)

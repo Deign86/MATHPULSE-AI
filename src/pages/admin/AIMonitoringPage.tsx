@@ -56,7 +56,7 @@ const AIMonitoringPage: React.FC = () => {
 
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-8 animate-in fade-in duration-300">
-      
+
       {/* ── Promo Pricing Alert Banner ── */}
       {data.promotionalPricingActive && (
         <PromoPricingBanner
@@ -145,11 +145,11 @@ const AIMonitoringPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FeatureSpendingCard title="Top Spending Feature" feature={topSpending} />
         <FeatureSpendingCard title="Most Active Feature" feature={mostActive} />
-        
+
         {/* Cost Summary Breakdown Card */}
         <div className="group rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden flex flex-col justify-between min-w-0">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-sky-500 to-indigo-500 pointer-events-none opacity-85 group-hover:opacity-100 transition-opacity" />
-          
+
           <div>
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Inference Cost Tiers</p>

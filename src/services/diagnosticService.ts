@@ -5,6 +5,9 @@
 
 import { apiFetch, ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError } from './apiService';
 import { apiUrl } from '../config/env';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { persistDiagnosticWeakness } from './assessmentService';
 
 export { ApiError, ApiTimeoutError, ApiNetworkError, ApiValidationError };
 
@@ -224,7 +227,35 @@ export async function submitDiagnostic(
       throw new Error(message);
     }
 
-    return res.json();
+    // SAFETY: a successful submit response matches the backend DiagnosticSubmitResponse schema.
+    const result = await res.json() as DiagnosticSubmitResponse;
+    try {
+      if (currentUser) {
+        const snapshot = await getDoc(doc(db, 'diagnosticResults', currentUser.uid));
+        if (snapshot.exists()) {
+          const storedResponses = snapshot.data().responses;
+          if (Array.isArray(storedResponses)) {
+            // SAFETY: diagnosticResults.responses is written by the backend scoring flow with these fields.
+            const scoredResponses = storedResponses as Array<{
+              question_id: string;
+              topic?: string;
+              competency_code: string;
+              is_correct: boolean;
+            }>;
+            await persistDiagnosticWeakness(currentUser.uid, scoredResponses.map((answer) => ({
+              question_id: answer.question_id,
+              topic_id: answer.topic || answer.competency_code,
+              quarter: 1,
+              competency_code: answer.competency_code,
+              is_correct: answer.is_correct,
+            })));
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[submitDiagnostic] Weakness enrichment failed; diagnostic submission succeeded:', error);
+    }
+    return result;
   } finally {
     clearTimeout(timeout);
   }

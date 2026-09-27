@@ -87,9 +87,14 @@ const RequireRole = lazy(() => import('./components/RequireRole.tsx').then((m) =
 
 type ActiveAppModal = null | 'rewards' | 'profile' | 'settings' | 'calculator' | 'logout_confirm' | 'diagnostic_breakdown';
 
-const App = () => {
+interface AppProps {
+  authOverride?: ReturnType<typeof useAuth>;
+}
+
+const App = ({ authOverride }: AppProps = {}) => {
   // Get authentication state from context
-  const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = useAuth();
+  const contextAuth = useAuth();
+  const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = authOverride ?? contextAuth;
   const navigate = useNavigate();
   const location = useLocation();
   const tabLoadingFallback = (
@@ -116,7 +121,7 @@ const App = () => {
   const [pendingProfileNav, setPendingProfileNav] = useState<string | null>(null);
   const constraintsRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // Sidebar State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -146,7 +151,7 @@ const App = () => {
     };
     checkMaintenance();
   }, [isLoggedIn, userRole]);
-  
+
   // Gamification State (derived from Firebase user profile)
   // SAFETY: student sessions always carry a StudentProfile; teacher/admin roles never read these fields.
   const studentProfile = userProfile as StudentProfile;
@@ -735,11 +740,11 @@ const App = () => {
 
   const handleEarnXP = async (xp: number, message: string) => {
     if (!userProfile) return;
-    
+
     try {
       const result = await awardXP(userProfile.uid, xp, 'manual', message);
-      
-      // Update local state and propagate to AuthContext's userProfile references 
+
+      // Update local state and propagate to AuthContext's userProfile references
       // so other components like AvatarShop see the accurate current XP without needing to refresh
       setCurrentXP(result.xp);
       if (result.leveledUp) {
@@ -747,10 +752,10 @@ const App = () => {
       }
       setTotalXP(prev => prev + xp);
 
-      // Refresh AuthContext profile to ensure globally read XP states are up to date 
+      // Refresh AuthContext profile to ensure globally read XP states are up to date
       // without needing to mutate Object references.
       await refreshProfile();
-      
+
       // Show notification
       setXpNotification({ show: true, xp: xp, message });
     } catch (error) {
@@ -971,7 +976,7 @@ const App = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only trigger if not typing in input/textarea
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
+
       if (e.altKey) {
         switch(e.key.toLowerCase()) {
           case 'd':
@@ -1064,7 +1069,7 @@ const App = () => {
   }
 
   const isStudentProfileHydrated = userRole !== 'student' || profileReady;
-  
+
   if (!isStudentProfileHydrated) {
     return <AppLoadingScreen message="Preparing your dashboard..." />;
   }
@@ -1082,7 +1087,7 @@ const App = () => {
       <RequireRole allowed={['teacher']} userRole={userRole} loading={loading} onGoToLogin={handleLogout}>
       <>
         <Suspense fallback={<AppLoadingScreen message="Loading teacher dashboard..." />}>
-          <TeacherDashboard 
+          <TeacherDashboard
             onLogout={handleLogout}
             profileData={profileData}
             onSaveProfile={handleSaveProfile}
@@ -1104,7 +1109,7 @@ const App = () => {
       <RequireRole allowed={['admin']} userRole={userRole} loading={loading} onGoToLogin={handleLogout}>
         <>
           <Suspense fallback={<AppLoadingScreen message="Loading admin dashboard..." />}>
-            <AdminDashboard 
+            <AdminDashboard
               onLogout={handleLogout}
               profileData={profileData}
               onSaveProfile={handleSaveProfile}
@@ -1120,7 +1125,7 @@ const App = () => {
       </RequireRole>
       </NotificationProvider>
     );
-  } else {
+  } else if (userRole === 'student') {
     // Show Student Dashboard (existing code)
     const studentDashboard = (
     <NotificationProvider>
@@ -1130,8 +1135,8 @@ const App = () => {
         {/* Desktop Sidebar */}
         <div className="hidden lg:block h-full shrink-0 relative z-20">
           <Suspense fallback={sidebarShellFallback}>
-            <Sidebar 
-              activeTab={activeTab} 
+            <Sidebar
+              activeTab={activeTab}
               setActiveTab={handleStudentNavigation}
               userRole={userRole}
               onOpenSettings={() => handleStudentNavigation('Settings')}
@@ -1184,7 +1189,7 @@ const App = () => {
               <div className="absolute inset-0 bg-math-pattern opacity-10 mix-blend-overlay pointer-events-none z-0" />
             </>
           )}
-          
+
           <OnlineOfflineBanner />
 
           {/* Invisible Universal Student Header Bar — Clean & Floating */}
@@ -1529,7 +1534,7 @@ const App = () => {
                       <div className="hidden xl:block xl:col-span-3 pt-0">
                         {dashboardShellDeferredReady ? (
                           <Suspense fallback={dashboardPanelFallback}>
-                            <RightSidebar 
+                            <RightSidebar
                               currentUserId={userProfile?.uid || ''}
                               onOpenRewards={() => setActiveModal('rewards')}
                               onOpenLeaderboard={() => setActiveTab('Leaderboard')}
@@ -1848,6 +1853,12 @@ const App = () => {
   );
 
     authenticatedContent = <ProgressGate>{studentDashboard}</ProgressGate>;
+  } else {
+    authenticatedContent = (
+      <RequireRole allowed={['student']} userRole={userRole} loading={loading} onGoToLogin={handleLogout}>
+        <></>
+      </RequireRole>
+    );
   }
 
   // Exactly one lifecycle manager wraps all role branches. Settings consumes
