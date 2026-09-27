@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Upload, CheckCircle, Clock, XCircle, FileText, Search, 
-  Check, Sparkles, ExternalLink, X, ChevronLeft, ChevronRight
+  Check, Sparkles, ExternalLink, X, ChevronLeft, ChevronRight, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { collection, getDocs } from 'firebase/firestore';
@@ -10,6 +10,7 @@ import { db, storage } from '../lib/firebase';
 import { setModuleStatus } from '../services/moduleWatchService';
 import { CURRICULUM_MODULE_BLUEPRINTS, type ModuleStatus, type CurriculumModuleBlueprint } from '../data/curriculumModules';
 import { SHS_MATH_SUBJECTS } from '../data/subjects';
+import { TeacherStatCard } from './TeacherStatCard';
 
 interface TeacherModuleStatusControlProps {
   teacherId: string;
@@ -214,14 +215,16 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Info & Stats */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-sm space-y-4">
+      <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-600" />
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2.5 font-display">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                <Sparkles size={16} />
+              </div>
               Curriculum Module Availability
             </h3>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            <p className="text-xs sm:text-[13px] text-slate-500 mt-1 max-w-2xl leading-relaxed">
               Control student access for DepEd modules or attach custom teacher PDFs when standard content is unavailable.
             </p>
           </div>
@@ -229,53 +232,58 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
             type="button"
             onClick={loadOverrides}
             disabled={loadingOverrides}
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 self-start sm:self-auto px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors"
+            className="text-xs font-semibold text-violet-700 hover:text-violet-800 self-start sm:self-auto px-3.5 py-1.5 rounded-full border border-violet-200/80 hover:bg-violet-50 transition-all cursor-pointer active:scale-95 shadow-2xs hover:shadow-xs flex items-center gap-1.5 shrink-0"
           >
-            {loadingOverrides ? 'Syncing...' : 'Refresh Statuses'}
+            <RefreshCw className={`w-3.5 h-3.5 ${loadingOverrides ? 'animate-spin' : ''}`} />
+            <span>{loadingOverrides ? 'Syncing...' : 'Refresh Statuses'}</span>
           </button>
         </div>
 
-        {/* Quick Stat Badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-              <CheckCircle size={16} />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide">Available</p>
-              <p className="text-lg font-bold text-emerald-900">{statusCounts.available}</p>
-            </div>
-          </div>
+        {/* Quick Stat Badges: Unified TeacherStatCards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 pt-1">
+          <TeacherStatCard
+            color="green"
+            title="Available"
+            badgeText={statusFilter === 'available' ? 'Filtered' : 'Active'}
+            icon={CheckCircle}
+            value={statusCounts.available}
+            subtitle="DepEd Active"
+            onClick={() => setStatusFilter(statusFilter === 'available' ? 'all' : 'available')}
+            className={`cursor-pointer transition-all ${statusFilter === 'available' ? 'ring-2 ring-emerald-400 scale-[1.02]' : ''}`}
+          />
 
-          <div className="bg-sky-50/60 border border-sky-100 rounded-xl p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center text-sky-600 shrink-0">
-              <Upload size={16} />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold text-sky-700 uppercase tracking-wide">Teacher Material</p>
-              <p className="text-lg font-bold text-sky-900">{statusCounts.teacher_uploaded}</p>
-            </div>
-          </div>
+          <TeacherStatCard
+            color="purple"
+            title="Teacher Material"
+            badgeText={statusFilter === 'teacher_uploaded' ? 'Filtered' : 'Custom'}
+            icon={Upload}
+            value={statusCounts.teacher_uploaded}
+            subtitle="Custom PDFs"
+            onClick={() => setStatusFilter(statusFilter === 'teacher_uploaded' ? 'all' : 'teacher_uploaded')}
+            className={`cursor-pointer transition-all ${statusFilter === 'teacher_uploaded' ? 'ring-2 ring-purple-400 scale-[1.02]' : ''}`}
+          />
 
-          <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-              <Clock size={16} />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide">Coming Soon</p>
-              <p className="text-lg font-bold text-amber-900">{statusCounts.coming_soon}</p>
-            </div>
-          </div>
+          <TeacherStatCard
+            color="amber"
+            title="Coming Soon"
+            badgeText={statusFilter === 'coming_soon' ? 'Filtered' : 'Queued'}
+            icon={Clock}
+            value={statusCounts.coming_soon}
+            subtitle="In Pipeline"
+            onClick={() => setStatusFilter(statusFilter === 'coming_soon' ? 'all' : 'coming_soon')}
+            className={`cursor-pointer transition-all ${statusFilter === 'coming_soon' ? 'ring-2 ring-amber-400 scale-[1.02]' : ''}`}
+          />
 
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-600 shrink-0">
-              <XCircle size={16} />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">Unavailable</p>
-              <p className="text-lg font-bold text-slate-800">{statusCounts.unavailable}</p>
-            </div>
-          </div>
+          <TeacherStatCard
+            color="slate"
+            title="Unavailable"
+            badgeText={statusFilter === 'unavailable' ? 'Filtered' : 'Hidden'}
+            icon={XCircle}
+            value={statusCounts.unavailable}
+            subtitle="Disabled"
+            onClick={() => setStatusFilter(statusFilter === 'unavailable' ? 'all' : 'unavailable')}
+            className={`cursor-pointer transition-all ${statusFilter === 'unavailable' ? 'ring-2 ring-slate-400 scale-[1.02]' : ''}`}
+          />
         </div>
       </div>
 

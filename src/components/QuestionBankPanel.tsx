@@ -296,75 +296,141 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           <div className="flex justify-between items-center mb-3 sm:mb-4">
             <h2 className="font-display text-sm sm:text-base font-bold text-[#1e293b]">Processing Status</h2>
             <button
+              type="button"
               onClick={fetchStatus}
               disabled={loading}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-2xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
+              aria-label="Refresh processing status"
+              title="Refresh processing status"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-[#f1f5f9] overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gradient-to-r from-[#a855f7] to-[#9333ea] text-white">
-                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Filename</th>
-                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Grade</th>
-                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Topic</th>
-                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-center">Questions</th>
-                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Status</th>
-                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Processed At</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#f1f5f9] bg-white">
-                  {pdfs.map((pdf) => (
-                    <tr key={pdf.filename} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="py-2.5 px-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${pdf.processed ? 'bg-purple-50 text-[#a855f7]' : 'bg-amber-50 text-amber-500'}`}>
-                            <FileText className="w-3.5 h-3.5" />
-                          </div>
-                          <span className="text-xs sm:text-[13px] font-bold text-[#1e293b] group-hover:text-[#a855f7] transition-colors line-clamp-1">{pdf.filename}</span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-3.5 text-xs sm:text-[13px] font-semibold text-[#475569]">{pdf.grade_level}</td>
-                      <td className="py-2.5 px-3.5">
-                        <span className="text-[11px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md line-clamp-1">{pdf.topic}</span>
-                      </td>
-                      <td className="py-2.5 px-3.5 text-xs sm:text-[13px] font-bold text-[#1e293b] text-center">{pdf.question_count || '-'}</td>
-                      <td className="py-2.5 px-3.5">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold rounded-full border shadow-sm ${
-                          pdf.processed
-                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200/50'
-                            : 'bg-amber-50 text-amber-600 border-amber-200/50'
-                        }`}>
-                          {pdf.processed ? <RefreshCw className="w-2.5 h-2.5" /> : <Loader2 className="w-2.5 h-2.5 animate-spin" />}
-                          {pdf.processed ? 'Completed' : 'Processing...'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3.5 text-xs sm:text-[13px] font-medium text-[#64748b]">
-                        {pdf.timestamp ? new Date(pdf.timestamp).toLocaleDateString() : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                  {pdfs.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-4 sm:py-5 px-4 text-center">
-                        <div className="flex flex-col items-center justify-center text-[#64748b]">
-                          <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center mb-1.5 border border-slate-200/60">
-                            <FileText className="w-4 h-4 text-slate-400" />
-                          </div>
-                          <p className="text-xs sm:text-[13px] font-bold text-[#1e293b]">No PDFs processed yet</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">Upload a PDF using the form above to get started.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+          {loading && pdfs.length === 0 ? (
+            <div className="flex items-center justify-center py-10 bg-white rounded-xl border border-slate-200/80">
+              <Loader2 className="w-5 h-5 animate-spin text-purple-600 mr-2" />
+              <span className="text-xs sm:text-sm text-slate-500 font-medium">Checking processing status...</span>
             </div>
-          </div>
+          ) : pdfs.length === 0 ? (
+            <div className="rounded-xl sm:rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 py-8 px-4 text-center">
+              <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center mx-auto mb-2.5 border border-slate-200 shadow-2xs text-purple-600">
+                <FileText className="w-5 h-5 text-purple-500" />
+              </div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-800 font-display">No PDFs processed yet</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 max-w-sm mx-auto leading-relaxed">
+                Upload or ingest a PDF using the form above to extract curriculum questions into the bank.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Mobile View: Clean, non-scrollable cards */}
+              <div className="md:hidden space-y-2.5">
+                {pdfs.map((pdf) => (
+                  <div
+                    key={pdf.filename}
+                    className="bg-white rounded-xl border border-slate-200/80 p-3 shadow-2xs hover:shadow-xs transition-all hover:border-purple-200"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${pdf.processed ? 'bg-purple-50 text-purple-600' : 'bg-amber-50 text-amber-500'}`}>
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs sm:text-[13px] font-bold text-slate-800 truncate" title={pdf.filename}>
+                            {pdf.filename}
+                          </h4>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-blue-600">
+                              Grade {pdf.grade_level}
+                            </span>
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 truncate max-w-[140px]">
+                              {pdf.topic}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700">
+                              {pdf.question_count || 0} questions
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full border shadow-2xs ${
+                        pdf.processed
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                          : 'bg-amber-50 text-amber-700 border-amber-200/60'
+                      }`}>
+                        {pdf.processed ? <RefreshCw className="w-2.5 h-2.5" /> : <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                        {pdf.processed ? 'Completed' : 'Processing...'}
+                      </span>
+                    </div>
+
+                    {pdf.timestamp && (
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                        <span>Processed</span>
+                        <span className="font-medium text-slate-500">{new Date(pdf.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop View: Modern table-fixed without horizontal overflow */}
+              <div className="hidden md:block bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-2xs">
+                <table className="w-full text-left border-collapse table-fixed">
+                  <thead>
+                    <tr className="bg-slate-50/90 border-b border-slate-200/80 text-slate-600">
+                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-4/12">Filename</th>
+                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-1/12 text-center">Grade</th>
+                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-3/12">Topic</th>
+                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-1/12 text-center">Questions</th>
+                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-2/12 text-center">Status</th>
+                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-1/12 text-right">Processed</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {pdfs.map((pdf) => (
+                      <tr key={pdf.filename} className="hover:bg-slate-50/60 transition-colors group">
+                        <td className="py-2.5 px-3.5 truncate">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${pdf.processed ? 'bg-purple-50 text-purple-600' : 'bg-amber-50 text-amber-500'}`}>
+                              <FileText className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="text-xs sm:text-[13px] font-bold text-slate-800 group-hover:text-purple-600 transition-colors truncate" title={pdf.filename}>
+                              {pdf.filename}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-xs font-semibold text-slate-600 text-center">
+                          Grade {pdf.grade_level}
+                        </td>
+                        <td className="py-2.5 px-3.5 truncate">
+                          <span className="text-[11px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md truncate inline-block max-w-full" title={pdf.topic}>
+                            {pdf.topic}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-xs font-bold text-slate-800 text-center tabular-nums">
+                          {pdf.question_count || '-'}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full border shadow-2xs ${
+                            pdf.processed
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
+                              : 'bg-amber-50 text-amber-700 border-amber-200/60'
+                          }`}>
+                            {pdf.processed ? <RefreshCw className="w-2.5 h-2.5" /> : <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                            {pdf.processed ? 'Completed' : 'Processing...'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-xs font-medium text-slate-500 text-right tabular-nums whitespace-nowrap">
+                          {pdf.timestamp ? new Date(pdf.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Browse Questions Section */}

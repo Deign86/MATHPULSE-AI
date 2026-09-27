@@ -1,3 +1,66 @@
+# Gates: Teacher Module Status Cards Alignment & Data Import Modernization
+
+Scope: Modernize and align module status cards and the data import experience with the Teacher Dashboard design language:
+1. Module Status Cards Alignment: In `TeacherModuleStatusControl.tsx`, replace the custom pastel badge blocks with unified `TeacherStatCard` components (Available, Teacher Material, Coming Soon, Unavailable) in a responsive `grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4` layout with interactive status filtering and active indicator rings.
+2. Data Import Page Modernization: Overhaul `DataImportView.tsx` to match the frosted glass/bento design system:
+   - Modern Context Selector banner with frosted glass backdrop and styled class badge.
+   - Prominent Drag & Drop visual affordances with animated dashed borders, explicit "DRAG & DROP FILES HERE" banner/copy, tactile dragover glowing states, and clear format badges (.csv, .xlsx, .pdf, .docx).
+   - Bento-style Feature cards (Smart Parsing, Risk Prediction, Contextual AI) and modern Data Health cards.
+3. Quality & Safety: Zero TypeScript errors (`npm run typecheck`) and zero Oxlint anti-slop violations (`npm run lint:anti-slop`).
+
+- [x] G1: Module status cards updated to use TeacherStatCard with interactive status filtering
+  CHECK: git diff src/components/TeacherModuleStatusControl.tsx
+  EXPECT: /TeacherStatCard/
+  EVIDENCE: Output verified via `git diff src/components/TeacherModuleStatusControl.tsx`: replaced legacy custom pastel badge boxes with unified `TeacherStatCard` components (Available in green, Teacher Material in purple, Coming Soon in amber, Unavailable in slate) in a responsive `grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4` layout. Cards include active ring highlight (`ring-2 ring-... scale-[1.02]`), status subtitles, and interactive filter toggling (`setStatusFilter`).
+
+- [x] G2: Data import upload zones redesigned with prominent dashed border and active drop states
+  CHECK: git diff src/features/DataImport/DataImportView.tsx
+  EXPECT: /border-dashed|dragOver/
+  EVIDENCE: Output verified via `git diff src/features/DataImport/DataImportView.tsx`: redesigned spreadsheet and teacher material upload zones with a clean dashed border (`border-2 border-dashed border-slate-300 hover:border-...`), soft icon container, clear titles ("Upload Class Spreadsheet", "Upload Curriculum Documents"), neat format badges (.CSV, .XLSX, .XLS / .PDF, .DOCX, .TXT), without nested card clutter or redundant "drag and drop" text, and smooth glowing active drop state (`ring-4 ring-.../20`).
+
+- [x] G3: Data import layout modernized with frosted cards and bento styling
+  CHECK: git diff src/features/DataImport/DataImportView.tsx
+  EXPECT: /backdrop-blur/
+  EVIDENCE: Output verified via `git diff src/features/DataImport/DataImportView.tsx`: upgraded Target Class context selector to frosted banner (`bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-2xs`), modernized feature cards into a sleek Bento grid with micro-interactions (`hover:-translate-y-1 hover:shadow-md hover:border-...`), and polished Data Health status cards with frosted glass backing.
+
+- [x] G4: Zero TypeScript errors or anti-slop violations
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Clean `npm run typecheck` (`tsc --noEmit` exited with code 0) and clean `npm run lint:anti-slop` (`oxlint --quiet` exited with code 0 across 442 files).
+
+---
+
+# Gates: QuestionBankPanel Processing Status Non-Scrollable Card & Table Redesign
+
+Scope: Redesign the "Processing Status" section in `QuestionBankPanel.tsx` to eliminate horizontal scrolling and present information cleanly:
+1. Empty State (`pdfs.length === 0`): Eliminate the overflowing 6-column table header and replace with a dedicated, friendly dashed card container with centered file icon, bold title, and instructional text without any table headers.
+2. Mobile / Touch View (`md:hidden`): Render clean, touch-friendly interactive cards presenting filename, grade level pill, topic tag, question count, status badge (Completed/Processing), and processed date with zero horizontal scrolling.
+3. Desktop View (`hidden md:block`): Render a sleek, non-scrollable modern table with calm slate/violet header styling (replacing the harsh clipped gradient bar) and proportional column widths (`table-fixed w-full`) that fit 100% of the container without horizontal overflow.
+4. Refresh Trigger: Maintain accessible refresh trigger with smooth loading spinner and tactile hover/press states.
+5. Static Analysis: 0 TypeScript errors (`npm run typecheck`) and 0 Oxlint anti-slop violations (`npm run lint:anti-slop`).
+
+- [x] G1: Empty state displays clean card without clipped or scrolling 6-column table headers
+  CHECK: git diff src/components/QuestionBankPanel.tsx
+  EXPECT: /No PDFs processed yet/
+  EVIDENCE: Output verified via `git diff src/components/QuestionBankPanel.tsx`: eliminated the 6-column table header during empty state, replacing it with an elegant dashed card container (`border-dashed border-slate-200 bg-slate-50/60 py-8 px-4 text-center`) with soft icon circle, bold "No PDFs processed yet" title, and clear instructional copy.
+
+- [x] G2: Mobile view renders touch cards with zero horizontal scroll, displaying all PDF metadata
+  CHECK: git diff src/components/QuestionBankPanel.tsx
+  EXPECT: /md:hidden/
+  EVIDENCE: Output verified via `git diff src/components/QuestionBankPanel.tsx`: added `md:hidden` card layout rendering touch-friendly cards containing file icon, filename, grade level pill, topic tag, question count pill, status badge (Completed/Processing), and processed timestamp without any horizontal scrolling.
+
+- [x] G3: Desktop view renders modern table-fixed layout without horizontal overflow
+  CHECK: git diff src/components/QuestionBankPanel.tsx
+  EXPECT: /hidden md:block/
+  EVIDENCE: Output verified via `git diff src/components/QuestionBankPanel.tsx`: replaced harsh solid gradient header with clean `bg-slate-50/90 border-b border-slate-200/80` header styling, using `table-fixed w-full` and proportional percentage column widths (`w-4/12`, `w-1/12`, `w-3/12`, `w-1/12`, `w-2/12`, `w-1/12`) that fit 100% of the desktop container without overflow.
+
+- [x] G4: Zero TypeScript errors or anti-slop violations
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean `npm run typecheck` (`tsc --noEmit` exited with code 0) and clean `npm run lint:anti-slop` (`oxlint --quiet` exited with code 0 across 442 files).
+
+---
+
 # Gates: Teacher Header, Pills & Notification Behavior Optimization
 
 Scope: Final visual and interactive optimization pass across all teacher pages:
