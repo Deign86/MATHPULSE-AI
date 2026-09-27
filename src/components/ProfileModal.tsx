@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Mail, Phone, Calendar, BookOpen, Award, Users, Building, Globe, Save, Venus, Mars, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -126,7 +127,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
 
   const currentUserLeaderboardEntry = leaderboardEntries.find((entry) => entry.userId === editedData.uid);
 
-  return (
+  const modalElement = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -136,7 +137,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]"
           />
 
           {/* Modal */}
@@ -145,20 +146,20 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', duration: 0.5 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90dvh] overflow-hidden border border-[#dde3eb]">
+            <div className="bg-[#f7f9fc] dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-3xl max-h-[85dvh] sm:max-h-[88dvh] overflow-hidden border border-[#dde3eb] dark:border-slate-800 flex flex-col">
               {/* Header */}
-              <div className="bg-gradient-to-r from-[#a855f7] to-[#9333ea] p-6 relative overflow-hidden">
+              <div className="bg-gradient-to-r from-[#a855f7] to-[#9333ea] p-4.5 sm:p-6 relative overflow-hidden shrink-0">
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24"></div>
                 <div className="absolute bottom-0 left-0 w-36 h-36 bg-white/5 rounded-full -ml-18 -mb-18"></div>
                 
                 <div className="relative z-10 flex items-start justify-between">
                   <div className="flex-1">
-                    <h2 className="text-xl font-display font-bold text-white mb-1">Profile Settings</h2>
-                    <p className="text-white/90 text-sm font-body">Manage your account information</p>
+                    <h2 className="text-lg sm:text-xl font-display font-bold text-white mb-1">Profile Settings</h2>
+                    <p className="text-white/90 text-xs sm:text-sm font-body">Manage your account information</p>
                   </div>
                   <button
                     onClick={onClose}
@@ -170,7 +171,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
               </div>
 
               {/* Content */}
-              <div className="overflow-y-auto max-h-[calc(90vh-200px)] p-6 scrollbar-thin scrollbar-thumb-[#d1cec6] scrollbar-track-[#edf1f7]">
+              <div className="overflow-y-auto overscroll-contain flex-1 p-4.5 sm:p-6 space-y-6 scrollbar-thin scrollbar-thumb-[#d1cec6] scrollbar-track-[#edf1f7]">
                 {/* Profile Photo Section */}
                 <div className="mb-8 space-y-4">
                   <ProfilePictureUploader
@@ -550,6 +551,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
       )}
     </AnimatePresence>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+  return modalElement;
 };
 
 export default ProfileModal;

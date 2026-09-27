@@ -19,12 +19,6 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
   const isRafActive = useRef<boolean>(false);
 
   const [isReady, setIsReady] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  useEffect(() => {
-    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    setIsTouchDevice(isTouch);
-  }, []);
 
   // Main RAF tick: smoothly tracks cursor position at consistent, natural velocity
   const step = useCallback((now: number) => {
@@ -68,67 +62,61 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
     }
   }, [step]);
 
-  const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  // Pointer move handler across the entire window viewport
+  // Pointer & mouse & touch move handler across the entire window viewport
   useEffect(() => {
-    if (isTouchDevice || reduceMotion) return;
-
-    const handlePointerMove = (e: MouseEvent | PointerEvent) => {
-      const normalizedX = e.clientX / window.innerWidth;
+    const updateTarget = (clientX: number) => {
+      const normalizedX = clientX / window.innerWidth;
       const clampedX = Math.max(0, Math.min(1, normalizedX));
 
       // Monotonic mapping: 0% (Left) -> 0.0s, 50% (Center) -> 1.15s, 100% (Right) -> 2.3s
       const newTarget = SCRUB_START + clampedX * (SCRUB_END - SCRUB_START);
       targetTimeRef.current = newTarget;
 
+      const video = videoRef.current;
+      if (video && !video.paused) {
+        video.pause();
+      }
+
       startLoop();
     };
 
-    // Single pointer listener: pointermove already covers mouse input.
+    const handlePointerMove = (e: PointerEvent) => {
+      updateTarget(e.clientX);
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      updateTarget(e.clientX);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        updateTarget(e.touches[0].clientX);
+      }
+    };
+
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
 
     startLoop();
 
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
     };
-  }, [isTouchDevice, reduceMotion, startLoop]);
+  }, [startLoop]);
 
   const handleLoadedMetadata = () => {
     const video = videoRef.current;
     if (video) {
-      if (isTouchDevice) {
-        video.loop = true;
-        // Issue #159, justified silent catch: muted autoplay rejections are a
-        // routine browser signal (autoplay policy), not an error — the poster
-        // frame stays visible and no user action is needed.
-        video.play().catch(() => { /* autoplay blocked; poster frame remains */ });
-      } else {
-        video.pause();
-        video.currentTime = targetTimeRef.current;
-        startLoop();
-      }
+      video.pause();
+      video.currentTime = targetTimeRef.current;
+      startLoop();
       setIsReady(true);
       onLoaded?.();
     }
   };
-
-  // Reduced motion: static poster only, no video decode or scrub loop.
-  if (reduceMotion) {
-    return (
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0 bg-[#3a236a]"
-      >
-        <img
-          src={mascotPoster}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover object-[24%_center] sm:object-[28%_center] lg:object-[25%_center] xl:object-[28%_center]"
-        />
-      </div>
-    );
-  }
 
   return (
     <div
@@ -144,7 +132,15 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
         controls={false}
         poster={mascotPoster}
         onLoadedMetadata={handleLoadedMetadata}
-        onCanPlay={() => setIsReady(true)}
+        onCanPlay={() => {
+          setIsReady(true);
+          const video = videoRef.current;
+          if (video) {
+            video.pause();
+            video.currentTime = targetTimeRef.current;
+            startLoop();
+          }
+        }}
         className={`w-full h-full object-cover object-[24%_center] sm:object-[28%_center] lg:object-[25%_center] xl:object-[28%_center] transition-opacity duration-500 ${
           isReady ? 'opacity-100' : 'opacity-0'
         }`}
