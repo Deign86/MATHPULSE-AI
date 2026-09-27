@@ -1,6 +1,26 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Lock, Zap, Coins, Lightbulb, Shield, Timer, CheckCircle2, Gift, Star, Sparkles, Rocket, Flame, Sprout, Search, BookOpen, Flashlight, Castle } from 'lucide-react';
+import {
+  X,
+  Lock,
+  Zap,
+  Coins,
+  Lightbulb,
+  Shield,
+  Timer,
+  CheckCircle2,
+  Gift,
+  Star,
+  Sparkles,
+  Rocket,
+  Flame,
+  Sprout,
+  Search,
+  BookOpen,
+  Castle,
+  Loader2,
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { RewardDefinition } from '../types/rewards';
 import { recordGet } from '../utils/memberOf';
@@ -18,35 +38,39 @@ interface DailyCheckInModalProps {
   timeUntilReset: string;
 }
 
-const rewardIcons = {
-  zap: <Zap size={18} className="text-amber-500" />, star: <Star size={18} className="text-yellow-500" />, sparkles: <Sparkles size={18} className="text-amber-500" />, shield: <Shield size={18} className="text-blue-500" />, lightbulb: <Lightbulb size={18} className="text-violet-500" />, flashlight: <Flashlight size={18} className="text-violet-500" />, timer: <Timer size={18} className="text-pink-500" />, rocket: <Rocket size={18} className="text-pink-500" />, flame: <Flame size={18} className="text-red-500" />, sprout: <Sprout size={18} className="text-emerald-500" />, search: <Search size={18} className="text-violet-500" />, castle: <Castle size={18} className="text-blue-500" />, 'book-open': <BookOpen size={18} className="text-violet-500" />,
+const rewardIconMap = {
+  zap: <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />,
+  star: <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />,
+  sparkles: <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />,
+  shield: <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />,
+  lightbulb: <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />,
+  flashlight: <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />,
+  timer: <Timer className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500" />,
+  rocket: <Rocket className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500" />,
+  flame: <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-rose-500" />,
+  sprout: <Sprout className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />,
+  search: <Search className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />,
+  castle: <Castle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />,
+  'book-open': <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />,
 };
 
-const typeIcons = {
-  xp: <Zap size={18} className="text-amber-500" />,
-  coins: <Coins size={18} className="text-yellow-500" />,
-  hint_token: <Lightbulb size={18} className="text-violet-500" />,
-  streak_shield: <Shield size={18} className="text-blue-500" />,
-  xp_multiplier: <Timer size={18} className="text-pink-500" />,
-  badge_unlock: <Zap size={18} className="text-emerald-500" />,
+const rewardTypeIconMap = {
+  xp: <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />,
+  coins: <Coins className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />,
+  hint_token: <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />,
+  streak_shield: <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />,
+  xp_multiplier: <Timer className="w-4 h-4 sm:w-5 sm:h-5 text-pink-500" />,
+  badge_unlock: <Star className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />,
 };
 
-const rarityBadge = {
-  common: 'bg-slate-100 text-slate-500',
-  uncommon: 'bg-emerald-50 text-emerald-500',
-  rare: 'bg-blue-50 text-blue-500',
-  epic: 'bg-amber-50 text-amber-500',
+const renderRewardIcon = (reward: RewardDefinition) => {
+  return (
+    recordGet(rewardIconMap, reward.icon) ??
+    recordGet(rewardTypeIconMap, reward.type) ?? (
+      <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+    )
+  );
 };
-
-const headerColors = [
-  'bg-[#1FA7E1]/80 text-white',
-  'bg-[#9956DE]/80 text-white',
-  'bg-[#FFB356]/90 text-white',
-  'bg-[#7274ED]/80 text-white',
-  'bg-[#1FA7E1]/80 text-white',
-  'bg-[#9956DE]/80 text-white',
-  'bg-gradient-to-r from-[#FFB356] to-[#FF8C00] text-white',
-];
 
 const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
   isOpen,
@@ -65,234 +89,239 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
   if (!isOpen) return null;
 
   const handleClaim = () => {
-    if (!canClaim || localClaiming) return;
+    if (!canClaim || localClaiming || isClaiming) return;
     setLocalClaiming(true);
 
     const isEpic = todayReward?.rarity === 'epic';
 
     if (isEpic) {
       confetti({
-        particleCount: 150,
+        particleCount: 130,
         spread: 80,
         origin: { y: 0.6 },
-        colors: ['#FFD700', '#FFA500', '#FF8C00', '#FF6B6B', '#4ade80'],
+        colors: ['#FFD700', '#FFA500', '#9956DE', '#7274ED', '#10B981'],
       });
     } else {
       confetti({
-        particleCount: 100,
-        spread: 70,
+        particleCount: 85,
+        spread: 65,
         origin: { y: 0.6 },
-        colors: ['#FFD700', '#FFA500', '#FF8C00'],
+        colors: ['#FFD700', '#FFA500', '#FF8C00', '#10B981'],
       });
     }
 
     setTimeout(() => {
       setLocalClaiming(false);
       onClaim();
-    }, 1200);
+    }, 900);
   };
-
-  const displayDay = (idx: number) => idx + 1;
-  const isToday = (idx: number) => idx === currentDayIndex;
-  const isClaimed = (idx: number) => claimedDays.includes(idx);
-  const isLocked = (idx: number) => idx > currentDayIndex;
 
   const days1to6 = weekRewards.slice(0, 6);
   const day7 = weekRewards[6];
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-6 py-8 sm:py-10">
-      {/* Backdrop */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
-            onClick={onClose}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Modal Container */}
+  const modalElement = (
+    <div
+      className="fixed inset-0 z-[100] overflow-y-auto overscroll-contain flex items-center justify-center p-3 sm:p-6 py-10 sm:py-12 bg-slate-950/65 backdrop-blur-sm animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="daily-rewards-modal-title"
+      onClick={onClose}
+    >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative my-auto w-full max-w-[420px] bg-[#f7f9fc] dark:bg-slate-900 rounded-3xl border border-[#dde3eb] dark:border-slate-800 shadow-2xl flex flex-col items-center p-4 sm:p-5 pt-8 sm:pt-9 overflow-visible"
+        initial={{ opacity: 0, scale: 0.93, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.93, y: 16 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative my-auto w-full max-w-[420px] bg-[#f7f9fc] dark:bg-slate-900 rounded-[28px] sm:rounded-[32px] border border-[#dde3eb] dark:border-slate-800 shadow-2xl flex flex-col items-center p-4 sm:p-5 pt-7 sm:pt-8 overflow-visible"
       >
-        {/* Header Ribbon Decoration */}
-        <div className="absolute -top-5 sm:-top-6 w-[85%] h-11 sm:h-12 bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] rounded-xl shadow-lg flex items-center justify-center z-20">
-          <div className="absolute -left-2.5 -z-10 w-5 h-8 bg-[#633299] rounded-l-full rotate-12 top-1.5"></div>
-          <div className="absolute -right-2.5 -z-10 w-5 h-8 bg-[#10709b] rounded-r-full -rotate-12 top-1.5"></div>
-          <h2 className="text-white font-black text-base sm:text-lg tracking-wide uppercase drop-shadow-sm font-display">Daily Rewards</h2>
+        {/* Creative Top Floating Banner (User favorite) */}
+        <div className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 w-[82%] sm:w-[78%] h-11 sm:h-12 bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] rounded-2xl shadow-xl flex items-center justify-center gap-2 border border-white/30 z-20 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
+          <Sparkles size={16} className="text-amber-300 drop-shadow-sm animate-pulse" />
+          <h2
+            id="daily-rewards-modal-title"
+            className="text-white font-black text-sm sm:text-base tracking-wider uppercase drop-shadow-sm font-display leading-none"
+          >
+            Daily Rewards
+          </h2>
+          <Sparkles size={16} className="text-amber-300 drop-shadow-sm animate-pulse" />
         </div>
 
+        {/* Floating Close Button */}
         <button
+          type="button"
           onClick={onClose}
           aria-label="Close daily rewards"
-          className="absolute -right-2 sm:-right-3 -top-2 sm:-top-3 w-8 h-8 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white rounded-full flex items-center justify-center z-30 shadow-md transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+          className="absolute -right-2 sm:-right-3 -top-2 sm:-top-3 w-8 h-8 sm:w-9 sm:h-9 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white rounded-full flex items-center justify-center z-30 shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer"
         >
-          <X size={16} strokeWidth={3} />
+          <X size={16} strokeWidth={2.5} />
         </button>
 
-        <div className="mt-4 sm:mt-5 mb-2 text-center w-full">
-          <h3 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white font-display mt-1">Welcome Back!</h3>
-          <p className="text-slate-500 dark:text-slate-400 font-medium text-xs mt-0.5">Claim your daily reward for today.</p>
+        {/* Header Greeting */}
+        <div className="mt-3 sm:mt-4 mb-2 text-center w-full">
+          <h3 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white font-display leading-tight">
+            Welcome Back!
+          </h3>
+          <p className="text-slate-500 dark:text-slate-400 font-medium text-xs mt-0.5">
+            Claim your daily reward to keep your streak alive.
+          </p>
         </div>
 
-        {/* Rewards Grid */}
-        <div className="grid grid-cols-3 gap-2 w-full mb-5 relative z-10">
+        {/* Rewards Grid: Days 1 to 6 (3 Columns) */}
+        <div className="grid grid-cols-3 gap-2 w-full mb-3 relative z-10">
           {days1to6.map((reward, idx) => {
-            const dayNum = displayDay(idx);
-            const claimed = isClaimed(idx);
-            const today = isToday(idx);
-            const locked = isLocked(idx);
+            const dayNum = idx + 1;
+            const isClaimed = claimedDays.includes(idx);
+            const isToday = idx === currentDayIndex;
+            const isLocked = idx > currentDayIndex;
+            const canClaimToday = isToday && canClaim;
 
             return (
               <div
-                key={reward.id}
-                className={`relative rounded-xl flex flex-col overflow-hidden border-[1.5px] transition-all ${
-                  today && !claimed ? 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.25)] scale-105 z-10 bg-amber-50 dark:bg-amber-950/30' :
-                  claimed ? 'border-[#dde3eb] dark:border-slate-800 bg-slate-200/50 dark:bg-slate-800/40' :
-                  'border-[#dde3eb] dark:border-slate-700/80 bg-white dark:bg-slate-800/80'
+                key={reward.id || `day-${dayNum}`}
+                className={`rounded-2xl flex flex-col overflow-hidden border transition-all ${
+                  canClaimToday
+                    ? 'border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/30 shadow-md shadow-amber-500/15 scale-[1.03] z-10 bg-amber-50/90 dark:bg-amber-950/40'
+                    : isClaimed
+                    ? 'border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/20'
+                    : 'border-[#dde3eb] dark:border-slate-700/80 bg-white dark:bg-slate-800/80'
                 }`}
               >
-                {/* Day Header */}
-                <div className={`py-0.5 text-center font-black text-[10px] uppercase tracking-wider ${
-                  today && !claimed ? 'bg-amber-400 text-amber-900' :
-                  headerColors[idx]
-                }`}>
-                  Day {dayNum}
+                {/* Day Header Strip */}
+                <div
+                  className={`py-0.5 text-center font-black text-[9.5px] uppercase tracking-wider ${
+                    canClaimToday
+                      ? 'bg-gradient-to-r from-[#FFB356] to-[#FF8C00] text-white shadow-xs'
+                      : isClaimed
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {canClaimToday ? 'Today' : `Day ${dayNum}`}
                 </div>
 
-                {/* Rarity badge */}
-                <div className="absolute top-5 right-1 z-10">
-                  <span className={`text-[8px] font-bold uppercase px-1 rounded ${recordGet(rarityBadge, reward.rarity) ?? ''}`}>
-                    {reward.rarity}
+                {/* Reward Card Body */}
+                <div className="p-2 flex flex-col items-center justify-between text-center min-h-[76px] sm:min-h-[82px] relative">
+                  {/* Icon */}
+                  <div
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center my-0.5 transition-transform ${
+                      canClaimToday
+                        ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 scale-105'
+                        : isClaimed
+                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-slate-100 dark:bg-slate-700/50 text-slate-400'
+                    }`}
+                  >
+                    {renderRewardIcon(reward)}
+                  </div>
+
+                  {/* Label */}
+                  <span
+                    className={`text-[10.5px] font-bold line-clamp-1 leading-tight ${
+                      canClaimToday
+                        ? 'text-amber-950 dark:text-amber-100 font-black'
+                        : isClaimed
+                        ? 'text-emerald-900 dark:text-emerald-200'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    {reward.label}
                   </span>
-                </div>
 
-                {/* Reward Content */}
-                <div className="flex-1 p-2 flex flex-col items-center justify-center relative min-h-[75px]">
-                  {/* Claimed Stamp Overlay - prominent "CLAIMED" badge */}
-                  {claimed && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', bounce: 0.5 }}
-                      className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
-                    >
-                      {/* Outer glow ring for extra visibility */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-full bg-emerald-200/50" />
-                      </div>
-                      <div className="relative w-14 h-14 rounded-full border-[3px] border-emerald-500 bg-emerald-100 flex items-center justify-center transform -rotate-12 shadow-lg">
-                        <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-                        <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 rounded-md px-2 py-0.5 border-2 border-emerald-300 shadow-md">
-                          <span className="text-[9px] font-black text-white uppercase tracking-wider leading-none whitespace-nowrap">Claimed</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {locked && (
-                    <div className="absolute top-1 right-1 bg-slate-200 dark:bg-slate-700 rounded-full p-0.5 z-10">
-                      <Lock size={8} className="text-slate-400 dark:text-slate-300" />
-                    </div>
-                  )}
-
-                  {/* Faded background content if claimed */}
-                  <div className={`flex flex-col items-center transition-all w-full ${claimed ? 'opacity-30 grayscale' : ''}`}>
-                    {/* Icon */}
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center border-2 mb-1"
-                      style={{
-                        backgroundColor: reward.color + '20',
-                        borderColor: reward.color + '40',
-                      }}
-                    >
-                      <span className="text-lg">{recordGet(rewardIcons, reward.icon) ?? recordGet(typeIcons, reward.type)}</span>
-                    </div>
-
-                    <div className={`font-black text-xs leading-none mt-0.5 text-center ${today ? 'text-amber-600 dark:text-amber-400' : claimed ? 'text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>
-                      {reward.label}
-                    </div>
+                  {/* Status */}
+                  <div className="mt-0.5">
+                    {isClaimed ? (
+                      <span className="inline-flex items-center gap-0.5 text-[9px] font-black text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 size={10} className="stroke-[3]" />
+                        Claimed
+                      </span>
+                    ) : canClaimToday ? (
+                      <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 animate-pulse">
+                        Ready!
+                      </span>
+                    ) : isLocked ? (
+                      <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-slate-400">
+                        <Lock size={8} />
+                        Locked
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-medium text-slate-400">Available</span>
+                    )}
                   </div>
                 </div>
               </div>
             );
           })}
 
-          {/* Day 7 (Full Width) */}
+          {/* Day 7: Grand Finale Reward Card (Full Width) */}
           {day7 && (
-            <div className={`col-span-3 relative rounded-xl flex flex-col overflow-hidden border-[1.5px] transition-all mt-1 ${
-                isToday(6) && !isClaimed(6) ? 'border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-[1.02] z-10 bg-amber-50 dark:bg-amber-950/30' :
-                isClaimed(6) ? 'border-[#dde3eb] dark:border-slate-800 bg-slate-200/50 dark:bg-slate-800/40' :
-                'border-[#dde3eb] dark:border-slate-700/80 bg-white dark:bg-slate-800/80'
+            <div
+              className={`col-span-3 rounded-2xl flex flex-col overflow-hidden border transition-all mt-0.5 ${
+                currentDayIndex === 6 && canClaim
+                  ? 'border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/30 shadow-lg shadow-amber-500/15 scale-[1.01] bg-amber-50/90 dark:bg-amber-950/40'
+                  : claimedDays.includes(6)
+                  ? 'border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/20'
+                  : 'border-purple-200/70 dark:border-purple-900/40 bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-sky-50/40 dark:from-purple-950/25 dark:via-slate-800/50 dark:to-slate-800/50'
               }`}
             >
-              <div className={`py-1 text-center font-black text-[10px] uppercase tracking-widest ${
-                isToday(6) && !isClaimed(6) ? 'bg-amber-400 text-amber-900' :
-                headerColors[6]
-              }`}>
-                Day 7 • Epic Reward
+              {/* Day 7 Header Strip */}
+              <div
+                className={`py-1 text-center font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 ${
+                  currentDayIndex === 6 && canClaim
+                    ? 'bg-gradient-to-r from-[#FFB356] to-[#FF8C00] text-white shadow-xs'
+                    : claimedDays.includes(6)
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] text-white'
+                }`}
+              >
+                <Sparkles size={11} className="text-amber-300" />
+                <span>Day 7 • Epic Reward</span>
+                <Sparkles size={11} className="text-amber-300" />
               </div>
 
-              {/* Rarity badge */}
-              <div className="absolute top-6 right-2 z-10">
-                <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded ${recordGet(rarityBadge, day7.rarity) ?? ''}`}>
-                  {day7.rarity}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-center gap-3 sm:gap-5 p-2.5 sm:p-3 relative">
-                {/* Claimed Stamp Overlay for Day 7 */}
-                {isClaimed(6) && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', bounce: 0.5 }}
-                    className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
+              {/* Day 7 Body */}
+              <div className="p-2.5 sm:p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
+                      claimedDays.includes(6)
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] text-white'
+                    }`}
                   >
-                    {/* Outer glow ring for extra visibility */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-rose-200/50" />
-                    </div>
-                    <div className="relative w-20 h-20 rounded-full border-[4px] border-rose-500 bg-rose-100 flex items-center justify-center transform rotate-12 shadow-lg">
-                      <img src="/avatar/avatar_icon.png" alt="Claimed" className="w-14 h-14 object-contain drop-shadow-md" />
-                      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-rose-500 rounded-md px-2.5 py-1 border-2 border-rose-300 shadow-md">
-                        <span className="text-[10px] font-black text-white uppercase tracking-wider leading-none whitespace-nowrap">Claimed</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                <div className={`flex items-center justify-center gap-3 sm:gap-5 w-full transition-all ${isClaimed(6) ? 'opacity-30 grayscale' : ''}`}>
-                  <div className="flex flex-col items-center">
-                    <div
-                      className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center border-2 shadow-sm mb-0.5"
-                      style={{
-                        backgroundColor: day7.color + '20',
-                        borderColor: day7.color + '40',
-                      }}
-                    >
-                      <span className="text-xl sm:text-2xl">{recordGet(rewardIcons, day7.icon) ?? recordGet(typeIcons, day7.type)}</span>
-                    </div>
-                    <span className={`font-black text-xs sm:text-sm ${isToday(6) ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-300'}`}>{day7.label}</span>
+                    {claimedDays.includes(6) ? (
+                      <CheckCircle2 size={20} className="stroke-[2.5]" />
+                    ) : (
+                      <Gift size={20} className="text-amber-200" />
+                    )}
                   </div>
 
-                  {/* Avatar reward image for epic/legendary */}
-                  {day7.rarity === 'epic' && (
-                    <div className="relative mt-1 shrink-0">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-purple-50 dark:bg-purple-950/40 rounded-xl flex items-center justify-center border-2 border-purple-200 dark:border-purple-800 shadow-sm">
-                        <Gift className="w-7 h-7 sm:w-8 sm:h-8 text-purple-500 drop-shadow-md" />
-                      </div>
-                      <div className="absolute -right-3 sm:-right-5 -bottom-3 sm:-bottom-4 w-12 h-12 sm:w-14 sm:h-14 bg-white dark:bg-slate-800 rounded-xl p-1 border-2 border-amber-300 shadow-lg transform rotate-[-5deg]">
-                        <img src="/avatar/crown_thumbnail.png" alt="Crown" className="w-full h-full object-contain drop-shadow-md" />
-                      </div>
-                    </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs sm:text-sm font-black text-slate-800 dark:text-white truncate leading-tight">
+                      {day7.label}
+                    </h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                      {day7.description || 'Weekly streak completion bonus'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0">
+                  {claimedDays.includes(6) ? (
+                    <span className="inline-flex items-center gap-1 text-[9.5px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-1 rounded-xl">
+                      <CheckCircle2 size={11} className="stroke-[3]" />
+                      Claimed
+                    </span>
+                  ) : currentDayIndex === 6 && canClaim ? (
+                    <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-1 rounded-xl animate-pulse">
+                      Ready!
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-xl">
+                      <Lock size={9} />
+                      Final Goal
+                    </span>
                   )}
                 </div>
               </div>
@@ -300,30 +329,51 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
           )}
         </div>
 
-        {/* Countdown */}
-        <div className="mb-3 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-          <Timer size={14} />
-          <span className="font-mono font-medium">{timeUntilReset}</span>
+        {/* Countdown Timer */}
+        <div className="mb-3 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+          <Timer size={13} />
+          <span className="font-mono font-medium text-slate-600 dark:text-slate-300">
+            {timeUntilReset}
+          </span>
           <span>until next reset</span>
         </div>
 
-        {/* Claim Button */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleClaim}
-          disabled={!canClaim || isClaiming || localClaiming}
-          className={`w-[90%] sm:w-[85%] py-3 rounded-full font-black text-sm sm:text-base tracking-wide uppercase shadow-lg transition-all mt-1 cursor-pointer ${
-            !canClaim || isClaiming || localClaiming
-              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border border-slate-300 dark:border-slate-700'
-              : 'bg-gradient-to-r from-[#FFB356] to-[#FF8C00] text-white hover:from-[#FFA500] hover:to-[#FF7F00] border-b-4 border-[#e67e00]'
-          }`}
-        >
-          {isClaiming || localClaiming ? 'Claiming...' : !canClaim ? 'Claimed' : 'Claim!'}
-        </motion.button>
+        {/* Tactile Claim Button */}
+        {canClaim ? (
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleClaim}
+            disabled={localClaiming || isClaiming}
+            className="w-full sm:w-[90%] py-3 sm:py-3.5 rounded-full font-black font-display text-sm sm:text-base tracking-wide uppercase shadow-lg shadow-amber-500/25 bg-gradient-to-r from-[#FFB356] to-[#FF8C00] text-white hover:from-[#FFA500] hover:to-[#FF7F00] border-b-4 border-[#e67e00] active:border-b-0 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            {localClaiming || isClaiming ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Claiming...</span>
+              </>
+            ) : (
+              <>
+                <span>Claim!</span>
+                <Sparkles size={16} />
+              </>
+            )}
+          </motion.button>
+        ) : (
+          <div className="w-full sm:w-[90%] py-3 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-bold flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span>Claimed for today</span>
+          </div>
+        )}
       </motion.div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+
+  return modalElement;
 };
 
 export default DailyCheckInModal;
