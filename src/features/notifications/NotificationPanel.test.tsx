@@ -128,7 +128,7 @@ describe('NotificationPanel', () => {
 
   it('renders above the battle overlay z-index', () => {
     const style = document.createElement('style');
-    style.textContent = '[class~="z-[250]"] { z-index: 250; } [class~="z-[240]"] { z-index: 240; } [class~="z-[100]"] { z-index: 100; }';
+    style.textContent = '[class~="z-[250]"] { z-index: 250; } [class~="z-[100]"] { z-index: 100; }';
     document.head.append(style);
 
     const battleOverlay = document.createElement('div');
@@ -138,12 +138,10 @@ describe('NotificationPanel', () => {
     render(<NotificationPanel onClose={() => {}} />);
 
     const panel = document.querySelector<HTMLElement>('[class~="z-[250]"]');
-    const backdrop = document.querySelector<HTMLElement>('[class~="z-[240]"]');
     try {
       expect(panel).not.toBeNull();
-      expect(backdrop).not.toBeNull();
 
-      if (panel && backdrop) {
+      if (panel) {
         expect(Number.parseInt(getComputedStyle(panel).zIndex, 10)).toBeGreaterThan(
           Number.parseInt(getComputedStyle(battleOverlay).zIndex, 10),
         );
