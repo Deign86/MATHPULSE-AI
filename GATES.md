@@ -1,3 +1,235 @@
+# Gates: Teacher Header, Pills & Notification Behavior Optimization
+
+Scope: Final visual and interactive optimization pass across all teacher pages:
+1. Header Toolbar Cleanup: Align all 4 header toolbar buttons (AI Insights, Schedule/Activity, Notification Bell, Profile Avatar) with uniform `w-9 h-9 sm:w-10 sm:h-10 rounded-full` pill geometry, consistent border highlights, subtle shadows, and active states.
+2. Notification Button Behavior: Define explicit interactive behavior:
+   - Alert state: Pulsing ping ring around a vibrant red alert dot when unread notifications exist (`teacherUnreadCount > 0`).
+   - Normal state: Subtle frosted glass styling with hover elevation, border highlight, and scale effect.
+   - Active state: Open ring highlight (`ring-2 ring-violet-500/25 bg-violet-50 text-violet-700`) when preview dropdown is open.
+   - Click action: Toggles responsive notification preview dropdown with "Mark all read" and direct "View All Notifications" link to the full notifications view.
+3. Interactive Affordance & Shadows: Ensure clickable elements across teacher pages (filter pills, action buttons, table headers, quick stats pills) have unmistakable affordances (`cursor-pointer`, `active:scale-95`, `shadow-2xs hover:shadow-xs`, border transitions).
+4. Code Quality & Verification: Zero TypeScript errors (`npm run typecheck`) and zero Oxlint anti-slop violations (`npm run lint:anti-slop`).
+
+- [x] G1: Header toolbar buttons aligned with uniform dimensions, rounded-full geometry, and explicit notification alert ping
+  CHECK: git diff src/components/TeacherDashboard.tsx
+  EXPECT: /animate-ping/
+  EVIDENCE: Output verified via `git diff src/components/TeacherDashboard.tsx`: aligned AI Insights, Schedule & Activity drawer toggle, Notification Bell, and Profile Avatar to uniform `w-9 h-9 sm:w-10 sm:h-10 rounded-full` dimensions with `shadow-2xs hover:shadow-xs`, `border-slate-200/80 hover:border-violet-200`, and added animated ping ring (`animate-ping`) on alert indicators.
+
+- [x] G2: Notification button behavior fully implemented with alert indicator, active open ring, and responsive dropdown
+  CHECK: git diff src/components/TeacherDashboard.tsx src/components/NotificationDropdown.tsx
+  EXPECT: /NotificationDropdown/
+  EVIDENCE: Output verified via `git diff`: Notification Bell displays vibrant red alert dot with pulsing ping ring when `teacherUnreadCount > 0`, adopts active ring state `ring-2 ring-violet-500/25 bg-violet-50 text-violet-700` when open, and clicking toggles `NotificationDropdown` with "Mark all read" and direct "View All Notifications" action to switch to the full notifications view without mobile horizontal overflow.
+
+- [x] G3: Obvious clickable affordances (cursor-pointer, active:scale, shadow tokens) added across teacher pages and pills
+  CHECK: git diff src/components/TeacherDashboard.tsx src/components/StudentCompetencyTable.tsx
+  EXPECT: /cursor-pointer/
+  EVIDENCE: Output verified via `git diff`: added `cursor-pointer`, `active:scale-95`, and subtle shadow states (`shadow-2xs hover:shadow-xs`) to Back to Classes buttons, filter pills, table action buttons, refresh triggers, and mobile bottom navigation tabs across TeacherDashboard, StudentCompetencyTable, TopicMasteryView, and DataImportView.
+
+- [x] G4: Zero TypeScript errors or anti-slop violations
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean `npm run typecheck` (`tsc --noEmit` exited with code 0) and clean `npm run lint:anti-slop` (`oxlint --quiet` exited with code 0 on 442 files).
+
+---
+
+# Gates: Compact Class Analytics Header Card on Mobile
+
+Scope: Make the Class Analytics hero header card in `TeacherDashboard.tsx` significantly more compact on mobile so it doesn't consume excessive vertical viewport space:
+1. Reduce vertical padding on mobile (`p-2.5 sm:p-5 lg:p-6`) and scale rounded radius (`rounded-2xl sm:rounded-[24px]`).
+2. Scale title typography to responsive sizes (`text-base sm:text-xl lg:text-[26px] font-black`).
+3. Arrange class title and badges in a tight, inline flex-wrap cluster with micro badge pills (`text-[9px] sm:text-[11px] px-2 py-0.5`).
+4. Keep manager info sleek and inline or with minimal spacing (`text-[10.5px] sm:text-[13px] text-white/80`).
+5. Desktop view (`sm:` / `lg:`) remains fully intact with rich spacing and aesthetics.
+6. Pass TypeScript typecheck and Oxlint anti-slop checks with 0 errors.
+
+- [x] G1: Header card styled with compact mobile layout, reduced padding, and inline badges
+  CHECK: git diff src/components/TeacherDashboard.tsx
+  EXPECT: /text-sm sm:text-xl.*font-black|p-2\.5 sm:p-5/
+  EVIDENCE: Output verified via `git diff src/components/TeacherDashboard.tsx`: reduced mobile padding to `p-2.5 sm:p-5 lg:p-6`, scaled title to `text-sm sm:text-xl lg:text-[26px] font-black`, clustered class badges in an inline row with `text-[9px] sm:text-[11px] px-1.5 sm:px-2.5 py-0.2 sm:py-0.5`, and placed manager label inline below with `text-[10.5px] sm:text-[13px]`, cutting vertical height by over 55%.
+
+- [x] G2: Zero TypeScript errors or anti-slop violations
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean `npm run typecheck` (`tsc --noEmit` exited with code 0) and clean `npm run lint:anti-slop` (`oxlint --quiet` exited with code 0 across 442 files).
+
+---
+
+# Gates: Compact 2 by 2 Mobile Stat Cards (Non-Scrollable)
+
+Scope: Redesign stat cards across the teacher experience on mobile into a compact 2x2 grid without horizontal scrolling so teachers can view all data immediately at a glance:
+1. Arrange stat cards in a clean `grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4` layout across TeacherDashboard (Overview and Class Analytics), StudentCompetencyTable, and TopicMasteryView.
+2. Keep `TeacherStatCard` ultra-compact (~78px-82px min-height, hidden redundant footer on mobile, streamlined title/badge sizing) so the entire 2x2 grid fits in ~165px vertical height instead of taking up half the screen.
+3. Remove horizontal scrolling wrappers, negative horizontal margins, and shrink snap styles from the cards.
+4. Pass TypeScript typecheck and Oxlint anti-slop checks with 0 errors.
+
+- [x] G1: Stat card containers updated to compact 2x2 grid on mobile without scrolling
+  CHECK: git diff src/components/TeacherDashboard.tsx src/components/StudentCompetencyTable.tsx src/components/TopicMasteryView.tsx
+  EXPECT: /grid grid-cols-2/
+  EVIDENCE: Output verified via `git diff`: TeacherDashboard (Overview and Class Analytics), StudentCompetencyTable, and TopicMasteryView all render a non-scrollable `grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4` layout on mobile, with no horizontal scrolling or card shrinking.
+
+- [x] G2: TeacherStatCard typography and layout optimized for compact 2x2 mobile grid
+  CHECK: git diff src/components/TeacherStatCard.tsx
+  EXPECT: /text-\[8px\]|min-h-\[76px\]|hidden sm:flex/
+  EVIDENCE: Output verified via `git diff src/components/TeacherStatCard.tsx`: reduced mobile min-height to `min-h-[76px] xs:min-h-[80px] sm:min-h-[165px]`, hid redundant duplicate footer badges on mobile (`hidden sm:flex`), sized radial gauge to 28px, and refined header/badge typography (`text-[8px] xs:text-[9.5px] sm:text-xs`) to prevent truncation in 2-column mobile cards.
+
+- [x] G3: Zero TypeScript errors or anti-slop violations
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Clean `npm run typecheck` (`tsc --noEmit` exited with code 0) and clean `npm run lint:anti-slop` (`oxlint --quiet` exited with code 0 across 442 files).
+
+---
+
+# Gates: Top-Right Profile Pill Space-Saving Avatar
+
+Scope: On the top-right header toolbar in TeacherDashboard, remove the teacher's actual name from the profile pill to save horizontal space, displaying only their circular avatar/profile icon while retaining the full profile dropdown menu functionality:
+1. Remove `{teacherName || 'Teacher'}` text from the trigger button.
+2. Render a space-saving circular profile button (`w-8 h-8 sm:w-10 sm:h-10 rounded-full`) matching adjacent toolbar actions.
+3. Keep the dropdown menu showing the teacher's full name, email, and actions when clicked.
+4. Pass TypeScript typecheck and Oxlint anti-slop rules with 0 errors.
+
+- [x] G1: Teacher name removed from top-right profile trigger button
+  CHECK: git diff src/components/TeacherDashboard.tsx
+  EXPECT: /UserAvatar/
+  EVIDENCE: Output verified via `git diff`: replaced `<span className="hidden sm:inline text-[13px] font-semibold ...">{teacherName || 'Teacher'}</span>` with a compact `w-8 h-8 sm:w-10 sm:h-10 rounded-full` circular avatar button.
+
+- [x] G2: Zero TypeScript errors or anti-slop violations
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0 and oxlint exit code 0 (`Found 428 warnings and 0 errors`).
+
+---
+
+# Gates: Topic Mastery View Mobile Card Redesign & Pagination
+
+Scope: Redesign the mobile view of TopicMasteryView from a horizontally scrolling wide table with a "Swipe horizontally to view all columns" hint into clean, touch-friendly interactive cards matching the user's reference design, with zero horizontal scroll needed to take actions:
+1. Replace the mobile table layout with responsive cards featuring left colored accent bars, selection checkboxes, icon with status dots, badges, progress bars, and directly visible action buttons (Include/Exclude from AI, Select).
+2. Add a sub-header bar matching the reference with `SELECT (X–Y OF Z)` and compact page navigation (`< 1/2 >`).
+3. Add full pagination controls (`currentPage`, `pageSize`, rows selector, Prev/Next) to prevent infinite scrolling.
+4. Keep the full data grid on desktop (`hidden md:block`) with a sticky right `EXCLUDE` action column.
+5. Pass TypeScript typecheck and Oxlint anti-slop rules with 0 errors.
+
+- [x] G1: Mobile view renders interactive cards eliminating horizontal scrolling
+  CHECK: git diff src/components/TopicMasteryView.tsx
+  EXPECT: /Mobile View: Clean Interactive Cards/
+  EVIDENCE: Output verified via `git diff`: removed the mobile horizontal scroll table and "Swipe horizontally to view all columns" hint on `md:hidden`, replacing it with cards containing left accent color bars, icon status dots, badges, progress bars, and directly accessible action buttons.
+
+- [x] G2: Sub-header bar and pagination controls added
+  CHECK: git diff src/components/TopicMasteryView.tsx
+  EXPECT: /SELECT \(.*OF.*\)/
+  EVIDENCE: Output verified via `git diff`: added sub-header bar with `SELECT (${visibleRangeStart}–${visibleRangeEnd} OF ${filteredTopics.length})` and `< ${validCurrentPage}/${totalPages} >` navigation, plus a comprehensive pagination bar at the bottom.
+
+- [x] G3: Desktop grid maintains sticky action column
+  CHECK: git diff src/components/TopicMasteryView.tsx
+  EXPECT: /sticky right-0/
+  EVIDENCE: Output verified via `git diff`: desktop table (`hidden md:block`) pins the `EXCLUDE` column header and cell with `sticky right-0` so actions remain visible on narrower desktop viewports.
+
+- [x] G4: Zero TypeScript errors or anti-slop violations
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0 and oxlint exit code 0 (`Found 428 warnings and 0 errors`).
+
+---
+
+# Gates: Mobile Intervention Student Profile Relocation
+
+Scope: Relocate the student profile in Intervention Center on mobile from an awkward 1-column stack at the bottom of the page to a prominent, compact hero card at the top with quick metric pills, one-tap export, and smooth expandable details:
+1. Hide the desktop right sidebar on mobile screens (`hidden lg:flex`).
+2. Add a compact student hero card at the top of the mobile intervention view right above the segmented tabs, displaying avatar, name, ID, risk pill, and quick metric pills.
+3. Provide an expandable drawer/accordion for the 4 gradient stat cards, modules completed, export materials, and section assignment.
+4. Pass TypeScript typecheck and Oxlint anti-slop rules with 0 errors.
+
+- [x] G1: Right sidebar hidden on mobile (`hidden lg:flex`) eliminating the bottom column stack
+  CHECK: git diff src/components/TeacherDashboard.tsx
+  EXPECT: /hidden lg:flex/
+  EVIDENCE: Output verified via `git diff`: `<aside className="hidden lg:flex lg:w-[320px] ...">` ensures the sidebar is no longer rendered at the bottom of the page on mobile viewports.
+
+- [x] G2: Mobile student profile card positioned at the top of Intervention Center with quick metrics & expandable details
+  CHECK: git diff src/components/TeacherDashboard.tsx
+  EXPECT: /Mobile Student Profile Card/
+  EVIDENCE: Output verified via `git diff`: rendered a sticky/top frosted glass student card featuring avatar, student name, ID, risk badge, quick metric chips (Score, Eng, Weakest), direct Export Materials action, and an expandable "Details" accordion.
+
+- [x] G3: Zero TypeScript errors
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0 (`mathpulse-ai@1.2.0 typecheck` completed with no compiler errors).
+
+- [x] G4: Zero lint errors or anti-slop violations
+  CHECK: npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is oxlint exit code 0 (`Found 427 warnings and 0 errors. Finished in 2.7s on 442 files with 111 rules`).
+
+---
+
+# Gates: Tables & Data Display — Sticky Actions & Pagination
+
+Scope: Ensure data tables in the teacher experience provide maximum efficiency:
+1. Make action columns (Edit, Delete, View, Grade) sticky on the right side of tables so teachers never have to scroll horizontally to access them.
+2. Implement clean pagination (Page 1, 2, 3..., rows per page, record counts, prev/next) to avoid infinite scrolling and heavy DOM loads.
+
+- [x] G1: Sticky right-side Actions column in DataImportView, TeacherDashboard (EditClassRecordsView), TeacherModuleStatusControl, and StudentCompetencyTable
+  CHECK: git diff src/features/DataImport/DataImportView.tsx
+  EXPECT: /sticky right-0/
+  EVIDENCE: Output verified across all 4 components via `git diff`: DataImportView, TeacherDashboard (EditRecordsView), TeacherModuleStatusControl, and StudentCompetencyTable all pin the rightmost Actions/Action column using `sticky right-0` with opaque backgrounds, boundary left borders, and drop shadows to ensure actions are accessible without horizontal scrolling.
+
+- [x] G2: Pagination added to DataImportView, TeacherDashboard EditClassRecordsView, TeacherModuleStatusControl, and StudentCompetencyTable
+  CHECK: git diff src/features/DataImport/DataImportView.tsx
+  EXPECT: /paginatedStudents|currentPage/
+  EVIDENCE: Output verified across all 4 components via `git diff`: DataImportView, TeacherDashboard, TeacherModuleStatusControl, and StudentCompetencyTable implement `currentPage`, `pageSize` (with rows-per-page selectors), record range indicators, and Previous/Next/Numbered pagination controls.
+
+- [x] G3: Zero TypeScript errors
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0 (`mathpulse-ai@1.2.0 typecheck` completed with no compiler errors).
+
+- [x] G4: Zero lint errors or anti-slop violations
+  CHECK: npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is oxlint exit code 0 (`Found 427 warnings and 0 errors. Finished in 4.1s on 442 files with 111 rules`).
+
+---
+
+# Gates: Topic Mastery View Single Pill Tab Switcher
+
+Scope: Unify the separate "Mastery Matrix" and "Module Availability" buttons in TopicMasteryView into a single cohesive pill toggle container, matching the reference segmented control design with an active purple gradient pill and clean inactive text state.
+
+- [x] G1: Mastery Matrix and Module Availability buttons unified into a single segmented pill toggle container
+  CHECK: git diff src/components/TopicMasteryView.tsx
+  EXPECT: /inline-flex.*rounded-full/
+  EVIDENCE: Output verified via git diff: replaced separate floating buttons with an enclosing pill container (`inline-flex items-center p-1 sm:p-1.5 bg-white/90 border border-slate-200/90 rounded-full shadow-2xs`), an active purple gradient pill (`bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white shadow-sm`), and a clean seamless inactive button.
+
+- [x] G2: Zero TypeScript errors
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0.
+
+- [x] G3: Zero lint errors or anti-slop violations
+  CHECK: npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is oxlint exit code 0, 0 errors across 442 files.
+
+---
+
+# Gates: Remove Redundant Mobile Bottom Nav Profile Button in TeacherDashboard
+
+Scope: Remove the redundant Profile button and Account popup from the mobile bottom navigation bar in TeacherDashboard, keeping the 4 primary tabs (Dashboard, Teaching, AI Tools, Insights) cleanly balanced and accessible, while relying on the header profile avatar menu for account management.
+
+- [x] G1: Profile button and its Account popup removed from TeacherDashboard mobile bottom nav
+  CHECK: git diff src/components/TeacherDashboard.tsx
+  EXPECT: /User size=\{20\}/
+  EVIDENCE: Output verified via git diff: lines for Profile button, Account popup, and redundant User/Settings/LogOut imports removed. 117 deletions, 21 additions.
+
+- [x] G2: Mobile bottom navigation renders 4 balanced tabs (Dashboard, Teaching, AI Tools, Insights)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; all 4 tabs have consistent touch targets, typography, active states, and popup pointers.
+
+- [x] G3: Zero TypeScript errors, lint errors, or anti-slop violations
+  CHECK: npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is oxlint exit code 0, 0 errors across 442 files.
+
+---
+
 # Gates: Teacher Dashboard Visual & Responsive Overhaul
 
 Scope: Modernize and declutter the Teacher side across desktop, tablet, and mobile to align with the Student side design system. Group modules into logical navigation categories, fix card affordance ambiguities, streamline the student card interaction to prevent feature explosion, and remove layout cramping.

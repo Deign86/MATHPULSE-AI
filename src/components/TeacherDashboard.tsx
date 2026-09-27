@@ -7,8 +7,8 @@ import {
   CheckCircle, BarChart3, Clock, AlertCircle, ChevronRight, Menu, X,
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
-  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Settings, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck,
-  User, LogOut, User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon, ArrowUpRight
+  ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck,
+  User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon, ArrowUpRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -770,7 +770,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   }>>(new Map());
 
   // Expandable popup state for mobile bottom navigation (student-aligned)
-  const [openMobileMenu, setOpenMobileMenu] = useState<'teaching' | 'insights' | 'tools' | 'profile' | null>(null);
+  const [openMobileMenu, setOpenMobileMenu] = useState<'teaching' | 'insights' | 'tools' | null>(null);
   const mobileNavRef = useRef<HTMLElement>(null);
 
   // Track mobile viewport (< 1024px = below lg breakpoint)
@@ -1794,18 +1794,33 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   {/* Quick teacher stats */}
                   {activeView === 'dashboard' && (
                     <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
-                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f3e8ff] dark:bg-purple-950/40 border border-[#e9d5ff] dark:border-purple-800/60 rounded-full shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setActiveView('competency')}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f3e8ff] dark:bg-purple-950/40 border border-[#e9d5ff] dark:border-purple-800/60 rounded-full shadow-2xs hover:shadow-xs hover:bg-[#ede9fe] hover:border-purple-300 cursor-pointer transition-all active:scale-95"
+                        title="View student competency matrix"
+                      >
                         <Users size={13} className="text-[#9333ea] dark:text-purple-300" />
                         <span className="text-xs font-display font-bold text-[#9333ea] dark:text-purple-300 tabular-nums">{totalStudents} students</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#ffe4e6] dark:bg-rose-950/40 border border-[#fecdd3] dark:border-rose-800/60 rounded-full shadow-2xs">
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveView('intervention')}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#ffe4e6] dark:bg-rose-950/40 border border-[#fecdd3] dark:border-rose-800/60 rounded-full shadow-2xs hover:shadow-xs hover:bg-[#fecdd3]/70 hover:border-rose-300 cursor-pointer transition-all active:scale-95"
+                        title="View at-risk intervention"
+                      >
                         <AlertTriangle size={13} className="text-[#e11d48] dark:text-rose-300" />
                         <span className="text-xs font-display font-bold text-[#e11d48] dark:text-rose-300 tabular-nums">{totalAtRisk} at risk</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#dcfce7] dark:bg-emerald-950/40 border border-[#bbf7d0] dark:border-emerald-800/60 rounded-full shadow-2xs">
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveView('analytics')}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#dcfce7] dark:bg-emerald-950/40 border border-[#bbf7d0] dark:border-emerald-800/60 rounded-full shadow-2xs hover:shadow-xs hover:bg-[#bbf7d0]/70 hover:border-emerald-300 cursor-pointer transition-all active:scale-95"
+                        title="View class analytics"
+                      >
                         <TrendingUp size={13} className="text-[#15803d] dark:text-emerald-300" />
                         <span className="text-xs font-display font-bold text-[#15803d] dark:text-emerald-300 tabular-nums">{avgPerformance}% avg</span>
-                      </div>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1814,30 +1829,36 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   {/* AI Insights Button */}
                   <div className="relative group">
                     <button
+                      type="button"
                       onClick={() => {
                         setInsightModalOpen(true);
                         setInsightDismissed(true);
                       }}
-                      className="relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-[#f3e8ff]/80 hover:bg-[#ede9fe] rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#d8b4fe]/60 text-[#a855f7] hover:border-[#c084fc] transition-colors cursor-pointer active:scale-95 sm:hover:scale-[1.02]"
+                      className="relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-[#f3e8ff]/80 hover:bg-[#ede9fe] rounded-full backdrop-blur-xl shadow-2xs hover:shadow-xs border border-[#d8b4fe]/60 text-[#a855f7] hover:border-[#c084fc] transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shrink-0"
                       aria-label="View AI Insight"
                     >
                       <Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
                       {!insightDismissed && dailyInsight && (
-                        <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white animate-pulse" />
+                        <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border border-white" />
+                        </span>
                       )}
                     </button>
                     <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] bg-[#1e293b] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
                       AI Insight
                     </span>
                   </div>
+
                   {/* Schedule & Activity Drawer Toggle — available on dashboard */}
                   {activeView === 'dashboard' && (
                     <button
+                      type="button"
                       onClick={() => setShowMobileCalendar((v) => !v)}
-                      className={`relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-2xl backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shadow-sm ${
+                      className={`relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shadow-2xs hover:shadow-xs shrink-0 ${
                         showMobileCalendar
-                          ? 'bg-violet-600 border-violet-600 text-white shadow-md'
-                          : 'bg-white/80 hover:bg-white border-slate-200/80 text-slate-600 hover:text-slate-900'
+                          ? 'bg-violet-600 border-violet-600 text-white shadow-xs ring-2 ring-violet-500/20'
+                          : 'bg-white/80 hover:bg-white border-slate-200/80 hover:border-violet-200 text-slate-600 hover:text-violet-600'
                       }`}
                       aria-label={showMobileCalendar ? 'Close schedule and activity panel' : 'Open schedule and activity panel'}
                       title={showMobileCalendar ? 'Close schedule' : 'Schedule & Activity'}
@@ -1848,16 +1869,27 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       )}
                     </button>
                   )}
+
                   {/* Notification Bell */}
                   <div className="relative">
                     <button
+                      type="button"
                       onClick={() => setShowNotifications(!showNotifications)}
-                      className="relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-white/60 hover:bg-white/80 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 text-[#64748b] hover:text-[#1e293b] transition-colors cursor-pointer active:scale-95 sm:hover:scale-[1.02]"
+                      className={`relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shadow-2xs hover:shadow-xs shrink-0 ${
+                        showNotifications
+                          ? 'bg-violet-50 border-violet-300 text-violet-700 ring-2 ring-violet-500/25 shadow-xs'
+                          : 'bg-white/80 hover:bg-white border-slate-200/80 hover:border-violet-200 text-slate-600 hover:text-violet-600'
+                      }`}
                       aria-label="View notifications"
-                      title="Notifications"
+                      title={teacherUnreadCount > 0 ? `${teacherUnreadCount} unread notifications` : 'Notifications'}
                     >
                       <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />
-                      {teacherUnreadCount > 0 && <span className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>}
+                      {teacherUnreadCount > 0 && (
+                        <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border border-white" />
+                        </span>
+                      )}
                     </button>
 
                     <NotificationDropdown
@@ -1866,22 +1898,23 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       onViewAll={() => setActiveView('notifications')}
                     />
                   </div>
+
                   {/* Profile Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center gap-2 bg-white/60 p-1 sm:px-4 sm:py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50 cursor-pointer hover:bg-white/80 transition-colors h-8 sm:h-10 active:scale-95 sm:hover:scale-[1.02] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-purple-500 data-[state=open]:ring-2 data-[state=open]:ring-purple-500"
+                        className="relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white/80 hover:bg-white rounded-full backdrop-blur-xl shadow-2xs hover:shadow-xs border border-slate-200/80 hover:border-violet-200 cursor-pointer transition-all active:scale-95 sm:hover:scale-[1.02] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-purple-500 data-[state=open]:ring-2 data-[state=open]:ring-purple-500 p-0.5 sm:p-1 shrink-0"
                         aria-label={`Profile menu: ${teacherName || 'Teacher'}`}
+                        title={teacherName || 'Teacher'}
                       >
-                        <div className="w-6 h-6 rounded-full bg-[#f3e8ff] overflow-hidden shrink-0">
+                        <div className="w-full h-full rounded-full bg-[#f3e8ff] overflow-hidden shrink-0">
                           <UserAvatar
                             src={userProfile?.photo}
                             name={teacherName || 'Teacher'}
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <span className="hidden sm:inline text-[13px] font-semibold text-[#1e293b]">{teacherName || 'Teacher'}</span>
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 p-1.5 shadow-xl z-50">
@@ -2231,7 +2264,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
                 transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute bottom-[calc(100%+12px)] left-6 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+                className="absolute bottom-[calc(100%+12px)] left-4 sm:left-8 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
               >
                 <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
                   Teaching
@@ -2284,12 +2317,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 </button>
 
                 {/* Triangle pointer */}
-                <div className="absolute -bottom-2 left-10 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+                <div className="absolute -bottom-2 left-20 sm:left-24 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* 2. CENTER HERO: AI & TOOLS Popup (AI Quiz Maker + Question Bank + Data Import) */}
+          {/* 2. AI & TOOLS Popup (AI Quiz Maker + Question Bank + Data Import) */}
           <AnimatePresence>
             {openMobileMenu === 'tools' && (
               <motion.div
@@ -2297,7 +2330,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
                 transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+                className="absolute bottom-[calc(100%+12px)] right-16 sm:right-24 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
               >
                 <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
                   AI & Tools
@@ -2373,7 +2406,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 </button>
 
                 {/* Triangle pointer */}
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+                <div className="absolute -bottom-2 right-20 sm:right-24 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -2386,7 +2419,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
                 transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute bottom-[calc(100%+12px)] right-16 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
+                className="absolute bottom-[calc(100%+12px)] right-3 sm:right-6 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
               >
                 <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
                   Insights
@@ -2439,85 +2472,12 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 </button>
 
                 {/* Triangle pointer */}
-                <div className="absolute -bottom-2 right-12 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
+                <div className="absolute -bottom-2 right-8 sm:right-10 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* 4. PROFILE & ACCOUNT Popup (Profile + Settings + Notifications + Logout) */}
-          <AnimatePresence>
-            {openMobileMenu === 'profile' && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute bottom-[calc(100%+12px)] right-3 z-40 bg-white/95 backdrop-blur-xl border border-violet-200 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-52"
-              >
-                <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-0.5">
-                  Account
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMobileMenu(null);
-                    handleNavigateToProfile();
-                  }}
-                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
-                      <User size={16} aria-hidden="true" />
-                    </div>
-                    <span>Teacher Profile</span>
-                  </div>
-                  <ChevronRight size={14} className="opacity-70" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMobileMenu(null);
-                    handleNavigateToSettings();
-                  }}
-                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-slate-700 hover:bg-violet-50 transition-all active:scale-95"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-                      <Settings size={16} aria-hidden="true" />
-                    </div>
-                    <span>Settings</span>
-                  </div>
-                  <ChevronRight size={14} className="opacity-70" />
-                </button>
-
-                <div className="h-[1px] bg-slate-100 my-0.5" />
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpenMobileMenu(null);
-                    setShowLogoutConfirm(true);
-                  }}
-                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold text-rose-600 hover:bg-rose-50 transition-all active:scale-95"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center">
-                      <LogOut size={16} aria-hidden="true" />
-                    </div>
-                    <span>Log Out</span>
-                  </div>
-                  <ChevronRight size={14} className="opacity-70" />
-                </button>
-
-                {/* Triangle pointer */}
-                <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white border-r border-b border-violet-200 rotate-45" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* 5 Primary Mobile Bottom Bar Buttons */}
+          {/* 4 Primary Mobile Bottom Bar Buttons */}
           <div className="flex items-center justify-around max-w-md mx-auto relative z-30">
             {/* 1. Dashboard */}
             <button
@@ -2528,7 +2488,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               }}
               aria-label="Dashboard"
               aria-current={activeView === 'dashboard' ? 'page' : undefined}
-              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all cursor-pointer active:scale-95 ${
                 activeView === 'dashboard'
                   ? 'text-violet-600 font-bold bg-violet-50'
                   : 'text-slate-500 font-medium hover:text-slate-900'
@@ -2545,7 +2505,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               aria-label="Teaching Options: My Classes and Calendar"
               aria-expanded={openMobileMenu === 'teaching'}
               aria-haspopup="true"
-              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all cursor-pointer active:scale-95 ${
                 activeView === 'analytics' || activeView === 'intervention' || activeView === 'calendar' || openMobileMenu === 'teaching'
                   ? 'text-violet-600 font-bold bg-violet-50'
                   : 'text-slate-500 font-medium hover:text-slate-900'
@@ -2555,20 +2515,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               <span className="text-[10px] mt-1 leading-none truncate font-display">Teaching</span>
             </button>
 
-            {/* 3. AI & Tools (Center Hero Button - Dedicated AI Tools Iconography) */}
+            {/* 3. AI & Tools (Expandable: Quiz Maker, Question Bank, Data Import) */}
             <button
               type="button"
               onClick={() => setOpenMobileMenu(prev => prev === 'tools' ? null : 'tools')}
               aria-label="AI Tools: Quiz Maker, Question Bank, Data Import"
               aria-expanded={openMobileMenu === 'tools'}
               aria-haspopup="true"
-              className="relative -top-3 flex flex-col items-center justify-center w-14 h-14 sm:w-15 sm:h-15 rounded-2xl transition-all focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none active:scale-[0.94] bg-gradient-to-tr from-violet-600 via-indigo-600 to-purple-600 text-white shadow-xl shadow-purple-500/40 ring-2 ring-purple-300 shrink-0"
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all cursor-pointer active:scale-95 ${
+                activeView === 'quiz_maker' || activeView === 'question_bank' || activeView === 'import' || openMobileMenu === 'tools'
+                  ? 'text-violet-600 font-bold bg-violet-50'
+                  : 'text-slate-500 font-medium hover:text-slate-900'
+              }`}
             >
-              <div className="relative flex items-center justify-center">
-                <Wand2 size={24} className="stroke-[2.2] text-white drop-shadow-md" aria-hidden="true" />
-                <Sparkles size={12} className="absolute -top-1 -right-1 text-amber-300 animate-pulse" aria-hidden="true" />
+              <div className="relative">
+                <Wand2 size={20} className={activeView === 'quiz_maker' || activeView === 'question_bank' || activeView === 'import' || openMobileMenu === 'tools' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+                <Sparkles size={10} className="absolute -top-1 -right-1.5 text-amber-500" aria-hidden="true" />
               </div>
-              <span className="text-[9px] font-extrabold tracking-tight text-white/95 mt-0.5 leading-none">AI Tools</span>
+              <span className="text-[10px] mt-1 leading-none truncate font-display">AI Tools</span>
             </button>
 
             {/* 4. Insights (Expandable: Topic Mastery & Competency Matrix) */}
@@ -2578,7 +2542,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               aria-label="Insights Options: Topic Mastery and Competency Matrix"
               aria-expanded={openMobileMenu === 'insights'}
               aria-haspopup="true"
-              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all cursor-pointer active:scale-95 ${
                 activeView === 'topic_mastery' || activeView === 'competency' || openMobileMenu === 'insights'
                   ? 'text-violet-600 font-bold bg-violet-50'
                   : 'text-slate-500 font-medium hover:text-slate-900'
@@ -2586,33 +2550,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             >
               <Target size={20} className={activeView === 'topic_mastery' || activeView === 'competency' || openMobileMenu === 'insights' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
               <span className="text-[10px] mt-1 leading-none truncate font-display">Insights</span>
-            </button>
-
-            {/* 5. Profile / Account (Teacher Photo or User Icon) */}
-            <button
-              type="button"
-              onClick={() => setOpenMobileMenu(prev => prev === 'profile' ? null : 'profile')}
-              aria-label={`Teacher Profile: ${teacherName}`}
-              aria-expanded={openMobileMenu === 'profile'}
-              aria-haspopup="true"
-              className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
-                openMobileMenu === 'profile'
-                  ? 'text-violet-600 font-bold bg-violet-50'
-                  : 'text-slate-500 font-medium hover:text-slate-900'
-              }`}
-            >
-              {userProfile?.photo ? (
-                <img
-                  src={userProfile.photo}
-                  alt={teacherName}
-                  className={`w-5 h-5 rounded-full object-cover border ${
-                    openMobileMenu === 'profile' ? 'border-violet-600 ring-1 ring-violet-400' : 'border-slate-200'
-                  }`}
-                />
-              ) : (
-                <User size={20} className={openMobileMenu === 'profile' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
-              )}
-              <span className="text-[10px] mt-1 leading-none truncate font-display">Profile</span>
             </button>
           </div>
         </nav>
@@ -2888,7 +2825,7 @@ const DashboardView: React.FC<{
       {/* STAT CARDS (4 Unified Cards in 2x2 Mobile / 4x1 Desktop Bento Grid)*/}
       {/* Styled with student-side vibrant gradients and frosted glass badges*/}
       {/* ------------------------------------------------------------------ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* CARD 1: Total Students */}
         <TeacherStatCard
           color="green"
@@ -3889,26 +3826,37 @@ const AnalyticsView: React.FC<{
           style={{
             backgroundColor: classColor?.hex || '#6366f1'
           }}
-          className="rounded-[20px] sm:rounded-[24px] p-3.5 sm:p-5 lg:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-6 relative overflow-hidden group text-white"
+          className="rounded-2xl sm:rounded-[24px] p-2.5 sm:p-5 lg:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.06)] flex flex-col lg:flex-row lg:items-center justify-between gap-1.5 sm:gap-6 relative overflow-hidden group text-white"
         >
           {/* Decorative Circles */}
-          <div className="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-white/10 group-hover:scale-[1.3] transition-transform duration-700 ease-out pointer-events-none" />
-          <div className="absolute -left-10 -top-10 w-32 h-32 rounded-full bg-white/10 group-hover:scale-[1.2] transition-transform duration-700 delay-75 ease-out pointer-events-none" />
+          <div className="absolute -right-10 -bottom-10 w-32 sm:w-48 h-32 sm:h-48 rounded-full bg-white/10 group-hover:scale-[1.3] transition-transform duration-700 ease-out pointer-events-none" />
+          <div className="absolute -left-10 -top-10 w-24 sm:w-32 h-24 sm:h-32 rounded-full bg-white/10 group-hover:scale-[1.2] transition-transform duration-700 delay-75 ease-out pointer-events-none" />
 
           {/* Left Side Info */}
-          <div className="shrink-0 relative z-10">
-            <h1 className="font-display text-xl sm:text-[26px] font-extrabold sm:font-black mb-1.5 sm:mb-2 tracking-tight text-balance">{selectedClass.name}</h1>
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-              {classBadges.map((badge) => (
-                <span key={badge} className="px-2.5 py-0.5 bg-white/20 backdrop-blur-md text-white text-[11px] font-bold uppercase tracking-wider rounded-full shadow-sm border border-white/20">{badge}</span>
-              ))}
+          <div className="shrink-0 relative z-10 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1 sm:mb-2">
+              <h1 className="font-display text-sm sm:text-xl lg:text-[26px] font-black tracking-tight text-balance text-white leading-tight">
+                {selectedClass.name}
+              </h1>
+              <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+                {classBadges.map((badge) => (
+                  <span
+                    key={badge}
+                    className="px-1.5 sm:px-2.5 py-0.2 sm:py-0.5 bg-white/20 backdrop-blur-md text-white text-[9px] sm:text-[11px] font-bold uppercase tracking-wider rounded-full shadow-2xs border border-white/20"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
             </div>
-            <p className="font-body text-[12px] sm:text-[13px] text-white/80 font-medium">Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}</p>
+            <p className="font-body text-[10.5px] sm:text-[13px] text-white/80 font-medium leading-tight">
+              Manager: {selectedClass.classMetadata?.managerName || selectedClass.managerName || 'Not assigned'}
+            </p>
           </div>
 
         </header>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 w-full">
           {/* Card 1: Class Average */}
           <TeacherStatCard
             color="purple"
@@ -4299,6 +4247,7 @@ const InterventionView: React.FC<{
   const [showQuizDrawer, setShowQuizDrawer] = useState(false);
   const [drawerDirty, setDrawerDirty] = useState(false);  // true once quiz generation starts
   const [showDrawerCloseConfirm, setShowDrawerCloseConfirm] = useState(false);
+  const [mobileStudentExpanded, setMobileStudentExpanded] = useState(false);
 
   useEffect(() => {
     setGradeDraft(student.grade || 'Grade 11');
@@ -4725,18 +4674,18 @@ const InterventionView: React.FC<{
       className="w-full h-full flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative"
     >
       {/* Center Scrollable Content: Insights & Tools */}
-      <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-3.5 sm:p-6 xl:p-8 no-scrollbar">
+      <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-3.5 sm:p-6 xl:p-8 pb-28 lg:pb-8 no-scrollbar">
         <div className="max-w-[1000px] mx-auto space-y-4 sm:space-y-6">
 
-          {/* Top Navigation & Segmented Tabs */}
+          {/* Top Navigation Row: Back Button + Segmented Tabs */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 sm:mb-4">
             <button onClick={onBack} className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 hover:text-violet-600 transition-colors bg-white/80 hover:bg-white px-4 py-2 rounded-xl backdrop-blur-md shadow-sm border border-slate-200/80 w-max cursor-pointer active:scale-95">
               <ArrowLeft className="w-4 h-4" />
               Back to Classes
             </button>
 
-            {/* Clean Segmented Tabs */}
-            <div className="inline-flex p-1 bg-slate-100/90 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-inner">
+            {/* Clean Segmented Tabs (Desktop & Tablet) */}
+            <div className="hidden sm:inline-flex p-1 bg-slate-100/90 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-inner">
               <button
                 type="button"
                 onClick={() => setInterventionTab('overview')}
@@ -4746,8 +4695,7 @@ const InterventionView: React.FC<{
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                 }`}
               >
-                <span className="sm:hidden">Overview</span>
-                <span className="hidden sm:inline">Overview & Diagnosis</span>
+                Overview & Diagnosis
               </button>
               <button
                 type="button"
@@ -4758,8 +4706,7 @@ const InterventionView: React.FC<{
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                 }`}
               >
-                <span className="sm:hidden">Path</span>
-                <span className="hidden sm:inline">Learning Path</span>
+                Learning Path
               </button>
               <button
                 type="button"
@@ -4770,34 +4717,210 @@ const InterventionView: React.FC<{
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
                 }`}
               >
-                <span className="sm:hidden">Lesson</span>
-                <span className="hidden sm:inline">AI Lesson Plan</span>
+                AI Lesson Plan
               </button>
             </div>
+          </div>
+
+          {/* Mobile Student Profile Card (Replaces the bottom column on mobile) */}
+          <div className="lg:hidden bg-white/95 dark:bg-slate-900/90 backdrop-blur-[16px] rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-sm transition-all">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <img
+                  src={student.avatar}
+                  alt={student.name}
+                  className="w-11 h-11 rounded-full object-cover shadow-xs border-2 border-white dark:border-slate-800 ring-2 ring-violet-200 dark:ring-violet-800 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">{student.name}</h2>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      (interventionPlan?.risk_level || '').includes('Critical')
+                        ? 'text-red-700 bg-red-50 border-red-200 animate-pulse'
+                        : student.riskLevel === 'high' || (interventionPlan?.risk_level || '').includes('High')
+                          ? 'text-rose-600 bg-rose-50 border-rose-100'
+                          : student.riskLevel === 'medium' || (interventionPlan?.risk_level || '').includes('Medium')
+                            ? 'text-amber-600 bg-amber-50 border-amber-100'
+                            : 'text-emerald-600 bg-emerald-50 border-emerald-100'
+                    }`}>
+                      {interventionPlan?.risk_level || (student.riskLevel === 'high' ? 'High Risk' : student.riskLevel === 'medium' ? 'Medium Risk' : 'Low Risk')}
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                    ID: {student.id.substring(0, 8)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action buttons on mobile header */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setExportModalStep('choose');
+                    setShowExportModal(true);
+                  }}
+                  className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-violet-50 text-slate-600 dark:text-slate-300 hover:text-violet-600 flex items-center justify-center transition-colors border border-slate-200/80 dark:border-slate-700 active:scale-95"
+                  title="Export Materials"
+                  aria-label="Export materials"
+                >
+                  <Printer className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileStudentExpanded((prev) => !prev)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-violet-50 dark:bg-violet-950/60 hover:bg-violet-100 text-violet-700 dark:text-violet-300 font-bold text-xs transition-colors border border-violet-200/60 dark:border-violet-800/60 active:scale-95 cursor-pointer"
+                  aria-expanded={mobileStudentExpanded}
+                >
+                  <span>{mobileStudentExpanded ? 'Close' : 'Details'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${mobileStudentExpanded ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics Strip */}
+            <div className="flex items-center gap-2 mt-2.5 overflow-x-auto no-scrollbar pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 font-bold shrink-0">
+                Score: {interventionPlan?.avg_score || studentProgressScore || student.avgScore}%
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 font-bold shrink-0">
+                Eng: {interventionPlan?.engagement_level || ((studentProgressScore || student.avgScore) > 80 ? 'High' : (studentProgressScore || student.avgScore) > 50 ? 'Medium' : 'Low')}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold shrink-0 truncate max-w-[200px]" title={interventionPlan?.weakest_topic || effectiveWeakestTopic}>
+                Weakest: {normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}
+              </span>
+            </div>
+
+            {/* Expandable Full Profile & Tools on Mobile */}
+            <AnimatePresence>
+              {mobileStudentExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden pt-3.5 mt-3 border-t border-slate-200/80 dark:border-slate-800 space-y-3"
+                >
+                  {/* 4 Stats Grid */}
+                  <div className="w-full grid grid-cols-2 gap-2.5">
+                    <div className="relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] rounded-xl p-3 text-white shadow-sm border border-white/20">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-0.5">Avg Score</p>
+                      <p className="text-lg font-display font-black text-white tabular-nums">{interventionPlan?.avg_score || studentProgressScore || student.avgScore}%</p>
+                    </div>
+                    <div className="relative overflow-hidden bg-gradient-to-br from-[#38BDF8] via-[#0284C7] to-[#0369A1] rounded-xl p-3 text-white shadow-sm border border-white/20">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-0.5">Engagement</p>
+                      <p className="text-lg font-display font-black text-white">{interventionPlan?.engagement_level || ((studentProgressScore || student.avgScore) > 80 ? 'High' : (studentProgressScore || student.avgScore) > 50 ? 'Medium' : 'Low')}</p>
+                    </div>
+                    <div className="relative overflow-hidden bg-gradient-to-br from-[#75D06A] via-[#52B847] to-[#36962C] rounded-xl p-3 text-white shadow-sm border border-white/20">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-0.5">Last Active</p>
+                      <p className="text-xs font-bold text-white mt-0.5 truncate">{interventionPlan?.last_active ? new Date(interventionPlan.last_active).toLocaleDateString() : student.lastActive}</p>
+                    </div>
+                    <div className="relative overflow-hidden bg-gradient-to-br from-[#FB7185] via-[#F43F5E] to-[#E11D48] rounded-xl p-3 text-white shadow-sm border border-white/20">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-white/90 mb-0.5">Weakest Topic</p>
+                      <p className="text-xs font-bold text-white mt-0.5 leading-snug truncate" title={interventionPlan?.weakest_topic || effectiveWeakestTopic}>{normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}</p>
+                    </div>
+                  </div>
+
+                  {/* Modules Completed */}
+                  {studentModulesCompleted && studentModulesCompleted.total > 0 && (
+                    <div className="w-full bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700 flex items-center gap-3">
+                      <BadgeCheck size={18} className={studentModulesCompleted.completed === studentModulesCompleted.total ? 'text-emerald-500' : 'text-slate-400'} />
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Modules Completed</p>
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">{studentModulesCompleted.completed}/{studentModulesCompleted.total}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Export Materials Full Button */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setExportModalStep('choose');
+                      setShowExportModal(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-xl py-2.5 shadow-2xs active:scale-[0.99] transition-transform"
+                  >
+                    <Printer className="w-4 h-4 text-violet-600" /> Export Materials for {student.name}
+                  </button>
+
+                  {/* Section Assignment */}
+                  <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700">
+                    <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 mb-2.5">Section Assignment</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Grade</label>
+                        <Input
+                          value={gradeDraft}
+                          onChange={(e) => setGradeDraft(e.target.value)}
+                          placeholder="Grade"
+                          className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs h-9 rounded-lg px-3"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Section</label>
+                        <Input
+                          value={sectionDraft}
+                          onChange={(e) => setSectionDraft(e.target.value)}
+                          placeholder="Section"
+                          className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs h-9 rounded-lg px-3"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveSectionAssignment}
+                      disabled={savingSection || (!gradeDraft.trim() || !sectionDraft.trim())}
+                      className="w-full mt-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg py-2 transition-colors shadow-2xs active:scale-[0.99]"
+                    >
+                      {savingSection ? 'Updating...' : 'Update Assignment'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Clean Segmented Tabs (Mobile only, placed directly below student card) */}
+          <div className="sm:hidden flex w-full p-1 bg-slate-100/90 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-inner">
+            <button
+              type="button"
+              onClick={() => setInterventionTab('overview')}
+              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                interventionTab === 'overview'
+                  ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setInterventionTab('path')}
+              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                interventionTab === 'path'
+                  ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+              }`}
+            >
+              Path
+            </button>
+            <button
+              type="button"
+              onClick={() => setInterventionTab('lesson')}
+              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                interventionTab === 'lesson'
+                  ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+              }`}
+            >
+              AI Lesson
+            </button>
           </div>
 
           {/* TAB 1: OVERVIEW & DIAGNOSIS */}
           {interventionTab === 'overview' && (
             <>
-              {/* Mobile-only Student Metric Highlights */}
-              <div className="lg:hidden grid grid-cols-2 gap-2.5 mb-3">
-                <TeacherStatCard
-                  color="purple"
-                  title="Avg Score"
-                  value={`${interventionPlan?.avg_score || studentProgressScore || student.avgScore}%`}
-                  subtitle="Current Score"
-                  scorePercent={Number(interventionPlan?.avg_score || studentProgressScore || student.avgScore)}
-                  className="min-h-[120px] p-2.5"
-                />
-                <TeacherStatCard
-                  color="rose"
-                  title="Weakest Topic"
-                  badgeText="Focus"
-                  value={normalizeTopicDisplay(interventionPlan?.weakest_topic || effectiveWeakestTopic)}
-                  subtitle="Needs Intervention"
-                  className="min-h-[120px] p-2.5"
-                />
-              </div>
 
               {/* AI Analysis Banner — light mint green */}
               <div className="bg-gradient-to-br from-[#ecfdf5] via-[#f0fdf4] to-[#f7fdf9] backdrop-blur-[12px] rounded-[20px] p-[24px] border border-emerald-100 shadow-[0_4px_16px_rgba(16,185,129,0.08)] relative overflow-hidden">
@@ -5140,8 +5263,8 @@ const InterventionView: React.FC<{
         </div>
       </div>
 
-      {/* RIGHT SIDEBAR: Student Profile & Actions (Responsive Stack on Mobile) */}
-      <aside className="w-full lg:w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-t lg:border-t-0 lg:border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex flex-col shrink-0 lg:h-full lg:overflow-y-auto z-10 no-scrollbar relative">
+      {/* RIGHT SIDEBAR: Student Profile & Actions (Desktop only — Mobile uses dedicated top card) */}
+      <aside className="hidden lg:flex lg:w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex-col shrink-0 lg:h-full lg:overflow-y-auto z-10 no-scrollbar relative">
         <div className="p-4 sm:p-[24px] space-y-4 sm:space-y-[24px] flex flex-col items-center">
 
           {/* Profile Block */}
@@ -6305,6 +6428,22 @@ const EditRecordsView: React.FC<{
     );
   }, [getSectionDraftKey, initialStudents]);
 
+  // Pagination for Edit Records Table
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
+  const totalPages = Math.max(1, Math.ceil(students.length / pageSize));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (validCurrentPage - 1) * pageSize;
+    return students.slice(startIndex, startIndex + pageSize);
+  }, [students, validCurrentPage, pageSize]);
+
+  const visibleRangeStart = students.length === 0 ? 0 : (validCurrentPage - 1) * pageSize + 1;
+  const visibleRangeEnd = Math.min(validCurrentPage * pageSize, students.length);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -6409,7 +6548,7 @@ const EditRecordsView: React.FC<{
             <span className="text-sm">Click on any field to edit</span>
           </div>
           <div className="text-sm text-muted-foreground">
-            Showing <span className="tabular-nums">{students.length}</span> records
+            Showing <span className="tabular-nums font-bold text-foreground">{students.length === 0 ? 0 : `${visibleRangeStart}–${visibleRangeEnd} of ${students.length}`}</span> records
           </div>
         </div>
 
@@ -6424,11 +6563,11 @@ const EditRecordsView: React.FC<{
                 <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Avg Score</th>
                 <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Risk Level</th>
                 <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Weakest Topic</th>
-                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background">Actions</th>
+                <th className="p-4 font-semibold text-muted-foreground border-b border-border bg-background sticky right-0 z-20 border-l shadow-[-2px_0_4px_rgba(0,0,0,0.02)]">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => {
+              {paginatedStudents.map((student) => {
                 const rowDraftKey = getSectionDraftKey(student);
 
                 return (
@@ -6479,10 +6618,11 @@ const EditRecordsView: React.FC<{
                       <RiskBadge status={student.riskStatus} wri={student.wri} size="sm" />
                     </td>
                     <td className="p-4 text-muted-foreground">{student.weakestTopic}</td>
-                    <td className="p-4">
+                    <td className="p-4 sticky right-0 z-10 bg-background group-hover:bg-[#a855f7]/12 border-l border-border/50 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] transition-colors">
                       <button
+                        type="button"
                         aria-label={`Edit record for ${student.name}`}
-                        className="p-2 hover:bg-muted rounded-lg text-slate-500 hover:text-[#a855f7] transition-colors"
+                        className="p-2 hover:bg-muted rounded-lg text-slate-500 hover:text-[#a855f7] transition-colors cursor-pointer"
                       >
                         <Edit3 size={16} />
                       </button>
@@ -6493,6 +6633,62 @@ const EditRecordsView: React.FC<{
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {students.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-3 bg-card border-t border-border shadow-[0_-4px_16px_rgba(0,0,0,0.03)] shrink-0">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-violet-600 animate-pulse"></span>
+              <span>
+                Showing <strong className="text-foreground">{visibleRangeStart}–{visibleRangeEnd}</strong> of <strong className="text-foreground">{students.length}</strong> records
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="hidden sm:inline">Rows:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-background border border-border text-foreground text-xs font-semibold rounded-lg px-2 py-1 outline-none focus:border-violet-500 cursor-pointer shadow-2xs"
+                >
+                  {PAGE_SIZE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt} / page</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-xl border border-border">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={validCurrentPage <= 1}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-background text-foreground hover:bg-muted border border-border shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                  aria-label="Previous Page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                <div className="px-3 py-1 text-xs font-bold text-foreground">
+                  Page {validCurrentPage} of {totalPages}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={validCurrentPage >= totalPages}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-background text-foreground hover:bg-muted border border-border shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                  aria-label="Next Page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );

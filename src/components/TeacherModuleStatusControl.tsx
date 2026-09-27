@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Upload, CheckCircle, Clock, XCircle, FileText, Search, 
-  Check, Sparkles, ExternalLink, X
+  Check, Sparkles, ExternalLink, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { collection, getDocs } from 'firebase/firestore';
@@ -181,6 +181,26 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
     });
   }, [overrides, subjectFilter, quarterFilter, statusFilter, searchQuery]);
 
+  // Pagination for Modules Table
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [subjectFilter, quarterFilter, statusFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredModules.length / pageSize));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedModules = useMemo(() => {
+    const startIndex = (validCurrentPage - 1) * pageSize;
+    return filteredModules.slice(startIndex, startIndex + pageSize);
+  }, [filteredModules, validCurrentPage, pageSize]);
+
+  const visibleRangeStart = filteredModules.length === 0 ? 0 : (validCurrentPage - 1) * pageSize + 1;
+  const visibleRangeEnd = Math.min(validCurrentPage * pageSize, filteredModules.length);
+
   // Status counts for summary banner
   const statusCounts = useMemo(() => {
     const counts = { total: CURRICULUM_MODULE_BLUEPRINTS.length, available: 0, teacher_uploaded: 0, coming_soon: 0, unavailable: 0 };
@@ -328,7 +348,7 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
                 <th className="px-4 sm:px-6 py-3.5">Subject & Quarter</th>
                 <th className="px-4 sm:px-6 py-3.5">Availability Status</th>
                 <th className="px-4 sm:px-6 py-3.5">Material</th>
-                <th className="px-4 sm:px-6 py-3.5 text-right">Action</th>
+                <th className="px-4 sm:px-6 py-3.5 text-right sticky right-0 z-20 bg-slate-50/95 backdrop-blur-sm border-l border-slate-100 shadow-[-2px_0_4px_rgba(0,0,0,0.02)]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
@@ -339,14 +359,14 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredModules.map((bp) => {
+                paginatedModules.map((bp) => {
                   const override = overrides[bp.id];
                   const currentStatus: ModuleStatus = override?.status || 'available';
                   const config = STATUS_CONFIG[currentStatus];
                   const subjectName = SUBJECT_NAMES[bp.subjectId] || bp.subjectId;
 
                   return (
-                    <tr key={bp.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={bp.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-4 sm:px-6 py-4">
                         <p className="font-bold text-slate-900">{bp.moduleTitle}</p>
                         <p className="text-[11px] text-slate-400 font-mono mt-0.5">{bp.id}</p>
@@ -383,11 +403,11 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
                           <span className="text-slate-400 text-xs">DepEd Standard</span>
                         )}
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-right">
+                      <td className="px-4 sm:px-6 py-4 text-right sticky right-0 z-10 bg-white group-hover:bg-slate-50/50 border-l border-slate-100 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] transition-colors">
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(bp)}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors inline-flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
                         >
                           Configure
                         </button>
@@ -399,6 +419,62 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {filteredModules.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-3 bg-white border-t border-slate-100 shadow-[0_-4px_16px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+              <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+              <span>
+                Showing <strong className="text-slate-900 font-bold">{visibleRangeStart}–{visibleRangeEnd}</strong> of <strong className="text-slate-900 font-bold">{filteredModules.length}</strong> modules
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="hidden sm:inline">Rows:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2 py-1 outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
+                >
+                  {PAGE_SIZE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt} / page</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={validCurrentPage <= 1}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                  aria-label="Previous Page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                <div className="px-3 py-1 text-xs font-bold text-slate-800">
+                  Page {validCurrentPage} of {totalPages}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={validCurrentPage >= totalPages}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                  aria-label="Next Page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Edit Status Modal Dialog */}

@@ -77,18 +77,25 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             initial={{ opacity: 0, scale: 0.95, y: -10, x: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10, x: 10 }}
-            className="fixed top-[80px] right-[24px] xl:right-[32px] w-[380px] bg-white/95 backdrop-blur-xl rounded-[20px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white z-50 flex flex-col overflow-hidden origin-top-right"
+            className="fixed top-[62px] sm:top-[76px] right-3 sm:right-6 xl:right-8 w-[calc(100vw-24px)] sm:w-[380px] max-w-[380px] bg-white/95 backdrop-blur-xl rounded-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.16)] border border-slate-200/80 z-50 flex flex-col overflow-hidden origin-top-right"
           >
             {/* Header */}
-            <div className="p-4 border-b border-[#f1f5f9] flex justify-between items-center bg-white/50">
-              <h3 className="text-[16px] font-bold text-[#1e293b]">Notifications</h3>
+            <div className="p-3.5 sm:p-4 border-b border-slate-100 flex justify-between items-center bg-white/60">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-[15px] font-bold text-slate-800">Notifications</h3>
+                {unreadCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-600 text-[10px] font-bold">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
               <button 
                 onClick={() => markAllAsRead()} 
                 disabled={unreadCount === 0}
                 aria-label="Mark all notifications as read"
-                className="text-[12px] font-bold text-[#a855f7] hover:text-[#9333ea] transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-[#a855f7] focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none rounded px-1"
+                className="text-xs font-bold text-violet-600 hover:text-violet-800 transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer rounded px-1"
               >
-                <CheckCheck className="w-3.5 h-3.5" aria-hidden="true" /> Mark all as read
+                <CheckCheck className="w-3.5 h-3.5" aria-hidden="true" /> Mark all read
               </button>
             </div>
 
@@ -100,22 +107,21 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                     key={notif.id}
                     onClick={() => {
                       markAsRead(notif.id);
-                      // If there's an action URL, we could navigate there.
                     }}
-                    className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3 ${!notif.isRead ? getColors(notif.type).split(' ')[2] : 'opacity-70'}`}
+                    className={`p-3.5 sm:p-4 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3 ${!notif.isRead ? getColors(notif.type).split(' ')[2] : 'opacity-70'}`}
                   >
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${getColors(notif.type).split(' ').slice(0, 2).join(' ')}`}>
                       {getIcon(notif.type)}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start mb-0.5">
-                        <h4 className="text-[13px] font-bold text-[#1e293b]">{notif.title}</h4>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-0.5 gap-2">
+                        <h4 className="text-[13px] font-bold text-slate-800 truncate">{notif.title}</h4>
                         {!notif.isRead && (
-                          <span className="w-2 h-2 rounded-full bg-[#a855f7] shadow-[0_0_4px_rgba(168,85,247,0.6)] mt-1"></span>
+                          <span className="w-2 h-2 rounded-full bg-violet-600 shadow-[0_0_4px_rgba(168,85,247,0.6)] mt-1 shrink-0" />
                         )}
                       </div>
-                      <p className="text-[12px] text-[#475569] line-clamp-2 leading-relaxed">{notif.message}</p>
-                      <span className={`text-[10px] font-bold mt-1 block tabular-nums ${!notif.isRead ? 'text-[#a855f7]' : 'text-[#94a3b8]'}`}>
+                      <p className="text-[12px] text-slate-600 line-clamp-2 leading-relaxed">{notif.message}</p>
+                      <span className={`text-[10px] font-bold mt-1 block tabular-nums ${!notif.isRead ? 'text-violet-600' : 'text-slate-400'}`}>
                         {formatDistanceToNow(notif.createdAt)} ago
                       </span>
                     </div>
@@ -123,22 +129,23 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                 ))
               ) : (
                 <div className="p-8 text-center">
-                  <Bell className="w-8 h-8 text-[#94a3b8] mx-auto mb-2 opacity-20" />
-                  <p className="text-[13px] font-medium text-[#64748b]">No new notifications</p>
+                  <Bell className="w-8 h-8 text-slate-400 mx-auto mb-2 opacity-30" />
+                  <p className="text-[13px] font-medium text-slate-500">No new notifications</p>
                 </div>
               )}
             </div>
 
             {/* Footer */}
-            <div className="p-3 border-t border-[#f1f5f9] bg-white">
+            <div className="p-2.5 sm:p-3 border-t border-slate-100 bg-white">
               <button 
                 onClick={() => {
                   onViewAll();
                   onClose();
                 }} 
-                className="w-full py-2 bg-purple-50 text-[#9333ea] hover:bg-purple-100 transition-colors rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-none"
+                className="w-full py-2 bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200/60 transition-colors rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                View All Notifications <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                <span>View All Notifications</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </motion.div>

@@ -33,6 +33,34 @@ function buildStudentViewKey(student: StudentView): string {
   return `${classSectionKey}|anonymous`;
 }
 
+type PaginationItem = { kind: 'page'; page: number } | { kind: 'ellipsis'; id: string };
+
+function createPaginationItems(total: number, current: number): PaginationItem[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => ({ kind: 'page', page: i + 1 }));
+  }
+
+  const items: PaginationItem[] = [{ kind: 'page', page: 1 }];
+
+  if (current > 3) {
+    items.push({ kind: 'ellipsis', id: 'start-dots' });
+  }
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  for (let p = start; p <= end; p += 1) {
+    items.push({ kind: 'page', page: p });
+  }
+
+  if (current < total - 2) {
+    items.push({ kind: 'ellipsis', id: 'end-dots' });
+  }
+
+  items.push({ kind: 'page', page: total });
+  return items;
+}
+
 export interface DataImportViewProps {
   classSectionId?: string;
   className?: string;
@@ -291,6 +319,26 @@ export default function DataImportView({
     return filtered;
   }, [localStudents, classSectionId, availableClasses]);
 
+  // Pagination for Class Records Table
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredStudents.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (validCurrentPage - 1) * pageSize;
+    return filteredStudents.slice(startIndex, startIndex + pageSize);
+  }, [filteredStudents, validCurrentPage, pageSize]);
+
+  const visibleRangeStart = filteredStudents.length === 0 ? 0 : (validCurrentPage - 1) * pageSize + 1;
+  const visibleRangeEnd = Math.min(validCurrentPage * pageSize, filteredStudents.length);
+
   useEffect(() => {
     setLocalStudents(initialStudents);
     setSectionDrafts(Object.fromEntries(
@@ -533,14 +581,16 @@ export default function DataImportView({
                 </div>
                 <div className="flex flex-col gap-2 mt-4">
                   <button
+                    type="button"
                     onClick={() => setCurrentImportView('edit-records')}
-                    className="w-full flex items-center justify-center gap-2 bg-[#1e293b] hover:bg-black text-white text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]"
+                    className="w-full flex items-center justify-center gap-2 bg-[#1e293b] hover:bg-black text-white text-[13px] font-semibold rounded-full px-4 py-3 shadow-2xs hover:shadow-md transition-all cursor-pointer active:scale-98"
                   >
                     <Edit3 className="w-4 h-4" /> Edit Class Records
                   </button>
                   <button
+                    type="button"
                     onClick={() => setCurrentImportView('mapping-logs')}
-                    className="w-full flex items-center justify-center gap-2 bg-white text-[#475569] border border-slate-300 hover:bg-slate-50 text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-colors"
+                    className="w-full flex items-center justify-center gap-2 bg-white text-[#475569] border border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-[13px] font-semibold rounded-full px-4 py-3 shadow-2xs transition-all cursor-pointer active:scale-98"
                   >
                     View Mapping Logs
                   </button>
@@ -551,8 +601,9 @@ export default function DataImportView({
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-[16px] font-semibold text-[#1e293b]">Recent Uploads</h2>
                   <button 
+                    type="button"
                     onClick={() => setCurrentImportView('mapping-logs')}
-                    className="text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors"
+                    className="text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors cursor-pointer"
                   >
                     View All
                   </button>
@@ -574,8 +625,9 @@ export default function DataImportView({
           <div className="space-y-[16px]">
             <div className="shrink-0 mb-2">
               <button
+                type="button"
                 onClick={() => setCurrentImportView('main')}
-                className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors w-max bg-white px-[18px] py-2 rounded-full shadow-sm border border-slate-200"
+                className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-all w-max bg-white px-[18px] py-2 rounded-full shadow-2xs hover:shadow-xs border border-slate-200 hover:border-indigo-200 cursor-pointer active:scale-95"
               >
                 <ArrowLeft className="w-4 h-4" /> Back to Uploads
               </button>
@@ -636,7 +688,9 @@ export default function DataImportView({
                 <span className="flex items-center gap-2 font-medium">
                   <Info className="w-4 h-4" /> Click on any field to edit
                 </span>
-                <span>Showing {filteredStudents.length} records</span>
+                <span>
+                  Showing {filteredStudents.length === 0 ? 0 : `${visibleRangeStart}–${visibleRangeEnd} of ${filteredStudents.length}`} records
+                </span>
               </div>
               
               <div className="overflow-auto flex-1 table-scrollbar bg-white relative">
@@ -652,8 +706,11 @@ export default function DataImportView({
                       <div className="w-[100px] shrink-0 px-4 h-full flex items-center justify-center">Avg Score</div>
                       <div className="w-[120px] shrink-0 px-4 h-full flex items-center justify-center">Risk Level</div>
                       <div className="flex-1 min-w-[180px] px-4 h-full flex items-center justify-center">Weakest Topic</div>
-                        <div className="w-[80px] shrink-0 px-4 h-full flex items-center justify-center border-r border-transparent">Action</div>
+                      {/* Sticky Right Action Column */}
+                      <div className="w-[90px] shrink-0 px-4 h-full flex items-center justify-center sticky right-0 z-30 bg-slate-100/95 backdrop-blur-sm border-l border-slate-200 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] font-bold text-slate-600">
+                        Action
                       </div>
+                    </div>
                   {/* Editable Rows */}
                   <div className="flex flex-col w-full pb-4">
                     {filteredStudents.length === 0 ? (
@@ -664,7 +721,7 @@ export default function DataImportView({
                         <h3 className="text-[16px] font-bold text-slate-700 mb-2">No managed classes found</h3>
                         <p className="text-[13px] text-slate-500 max-w-sm">You don't currently manage any classes. Ask your administrator to assign you as a section manager, or create a new class from the Dashboard.</p>
                       </div>
-                    ) : filteredStudents.map((student, i) => {
+                    ) : paginatedStudents.map((student, i) => {
                       const rowKey = buildStudentViewKey(student);
                       
                       // Derive Initials
@@ -688,57 +745,140 @@ export default function DataImportView({
                       return (
                           <div key={rowKey} className="flex items-center w-full border-b border-slate-100 hover:bg-slate-50 transition-colors group min-h-[64px]">
                             <div className="flex-[1.5] min-w-[240px] px-6 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-r border-slate-100 h-full flex items-center gap-4 shadow-[2px_0_4px_rgba(0,0,0,0.01)]">
-                            <div className={`w-8 h-8 rounded-full ${color} text-white flex items-center justify-center font-bold text-[12px] shrink-0`}>
-                              {initials}
+                              <div className={`w-8 h-8 rounded-full ${color} text-white flex items-center justify-center font-bold text-[12px] shrink-0`}>
+                                {initials}
+                              </div>
+                              <span className="font-semibold text-slate-800 text-[14px] truncate">{student.name}</span>
                             </div>
-                            <span className="font-semibold text-slate-800 text-[14px] truncate">{student.name}</span>
-                          </div>
-                          <div className="w-[100px] shrink-0 px-4 flex justify-center text-[13px] text-slate-500">
-                            {student.lrn || '—'}
-                          </div>
-                          <div className="w-[140px] shrink-0 px-4 flex justify-center">
-                            <input 
-                              type="text" 
-                              value={sectionDrafts[rowKey]?.grade || student.grade || ''} 
-                              onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], grade: e.target.value } }))}
-                              readOnly={editingRowKey !== rowKey}
-                              className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
-                            />
-                          </div>
-                          <div className="w-[140px] shrink-0 px-4 flex justify-center">
-                            <input 
-                              type="text" 
-                              value={sectionDrafts[rowKey]?.section || student.section || ''} 
-                              onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], section: e.target.value } }))}
-                              readOnly={editingRowKey !== rowKey}
-                              className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
-                            />
-                          </div>
-                          <div className="w-[100px] shrink-0 px-4 flex justify-center">
-                            <span className={`${scoreColor} font-bold text-[14px]`}>{student.avgScore}%</span>
-                          </div>
-                          <div className="w-[120px] shrink-0 px-4 flex justify-center">
-                            <span className={`px-3 py-1 text-[10px] font-bold rounded uppercase border ${riskStyles}`}>
-                              {student.riskLevel || 'Unknown'}
-                            </span>
-                          </div>
+                            <div className="w-[100px] shrink-0 px-4 flex justify-center text-[13px] text-slate-500">
+                              {student.lrn || '—'}
+                            </div>
+                            <div className="w-[140px] shrink-0 px-4 flex justify-center">
+                              <input 
+                                type="text" 
+                                value={sectionDrafts[rowKey]?.grade || student.grade || ''} 
+                                onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], grade: e.target.value } }))}
+                                readOnly={editingRowKey !== rowKey}
+                                className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
+                              />
+                            </div>
+                            <div className="w-[140px] shrink-0 px-4 flex justify-center">
+                              <input 
+                                type="text" 
+                                value={sectionDrafts[rowKey]?.section || student.section || ''} 
+                                onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], section: e.target.value } }))}
+                                readOnly={editingRowKey !== rowKey}
+                                className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
+                              />
+                            </div>
+                            <div className="w-[100px] shrink-0 px-4 flex justify-center">
+                              <span className={`${scoreColor} font-bold text-[14px]`}>{student.avgScore}%</span>
+                            </div>
+                            <div className="w-[120px] shrink-0 px-4 flex justify-center">
+                              <span className={`px-3 py-1 text-[10px] font-bold rounded uppercase border ${riskStyles}`}>
+                                {student.riskLevel || 'Unknown'}
+                              </span>
+                            </div>
                             <div className="flex-1 min-w-[180px] px-4 flex justify-center text-[13px] text-slate-600 truncate">
                               {student.weakestTopic || 'Foundational Skills'}
                             </div>
-                            <div className="w-[80px] shrink-0 px-4 flex justify-center border-r border-transparent">
-                            <button
-                              onClick={() => setEditingRowKey(editingRowKey === rowKey ? null : rowKey)}
-                              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${editingRowKey === rowKey ? 'bg-purple-100 text-purple-600' : 'hover:bg-slate-200 text-slate-400'}`}
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
+                            {/* Sticky Right Action Cell */}
+                            <div className="w-[90px] shrink-0 px-4 h-full min-h-[64px] flex items-center justify-center sticky right-0 z-10 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] transition-colors">
+                              <button
+                                type="button"
+                                onClick={() => setEditingRowKey(editingRowKey === rowKey ? null : rowKey)}
+                                title={editingRowKey === rowKey ? "Done editing" : "Edit student record"}
+                                aria-label={`Edit record for ${student.name}`}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                                  editingRowKey === rowKey
+                                    ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-400/40 shadow-xs'
+                                    : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'
+                                }`}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
                       );
                     })}
                   </div>
                 </div>
               </div>
+
+              {/* Pagination Controls */}
+              {filteredStudents.length > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-3 bg-white border-t border-slate-200 shadow-[0_-4px_16px_rgba(0,0,0,0.03)] shrink-0">
+                  <div className="flex items-center gap-2 text-[12px] font-semibold text-slate-500">
+                    <span className="w-2 h-2 rounded-full bg-violet-600 animate-pulse"></span>
+                    <span>
+                      Showing <strong className="text-slate-800">{visibleRangeStart}–{visibleRangeEnd}</strong> of <strong className="text-slate-800">{filteredStudents.length}</strong> records
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+                    {/* Rows per page selector */}
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <span className="hidden sm:inline">Rows:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2 py-1 outline-none focus:border-violet-500 cursor-pointer shadow-2xs"
+                      >
+                        {PAGE_SIZE_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>{opt} / page</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Page Navigation */}
+                    <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={validCurrentPage <= 1}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-violet-50 hover:text-violet-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                        aria-label="Previous Page"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+
+                      <div className="flex items-center gap-1 px-1">
+                        {createPaginationItems(totalPages, validCurrentPage).map((item) =>
+                          item.kind === 'ellipsis' ? (
+                            <span key={item.id} className="px-1 text-slate-400 text-xs">...</span>
+                          ) : (
+                            <button
+                              key={`page-${item.page}`}
+                              type="button"
+                              onClick={() => setCurrentPage(item.page)}
+                              className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                validCurrentPage === item.page
+                                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs'
+                                  : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+                              }`}
+                            >
+                              {item.page}
+                            </button>
+                          )
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={validCurrentPage >= totalPages}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-violet-50 hover:text-violet-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                        aria-label="Next Page"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
