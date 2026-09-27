@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Brain, BookOpen, Zap, BarChart2, ExternalLink, GraduationCap } from 'lucide-react';
 
@@ -57,14 +58,14 @@ const BLOOM_CARDS = [
 const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  return (
+  const modalElement = (
     <AnimatePresence>
       {isOpen && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
           onClick={onClose}
         >
           <motion.div
@@ -192,6 +193,12 @@ const BloomsTaxonomyModal: React.FC<BloomsTaxonomyModalProps> = ({ isOpen, onClo
       )}
     </AnimatePresence>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+
+  return modalElement;
 };
 
 export default BloomsTaxonomyModal;

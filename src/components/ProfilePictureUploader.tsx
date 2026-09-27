@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { Camera, Plus, Minus, Upload, X } from 'lucide-react';
@@ -277,108 +278,110 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
         />
       </section>
 
-      <AnimatePresence>
-        {selectedPreview && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
-              onClick={clearSelection}
-            />
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {selectedPreview && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-slate-950/65 backdrop-blur-sm"
+                  onClick={clearSelection}
+                />
 
-            {/* Modal */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
-              className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[92dvh] overflow-y-auto flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-100 shrink-0">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900">Update profile picture</h3>
-                  <button
-                    onClick={clearSelection}
-                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
-                    aria-label="Close modal"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                {/* Cropper area */}
-                <div className="p-3 sm:p-6 bg-slate-50 flex flex-col items-center">
-                  <div className="relative h-[250px] sm:h-[380px] w-full max-w-[380px] aspect-square mx-auto overflow-hidden rounded-xl bg-slate-100 ring-1 ring-inset ring-slate-200 shadow-inner">
-                    <Cropper
-                      image={selectedPreview}
-                      crop={crop}
-                      zoom={zoom}
-                      aspect={1}
-                      {...AVATAR_CROP_FRAME}
-                      showGrid={false}
-                      objectFit="cover"
-                      restrictPosition={true}
-                      onCropChange={setCrop}
-                      onZoomChange={setZoom}
-                      onCropComplete={(_, nextCroppedAreaPixels) => setCroppedAreaPixels(nextCroppedAreaPixels)}
-                      style={{ containerStyle: { backgroundColor: '#f8fafc' } }}
-                    />
+                {/* Modal */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
+                  className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg max-h-[92dvh] overflow-y-auto flex flex-col z-10 border border-slate-200 dark:border-slate-800"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Update profile picture</h3>
+                    <button
+                      onClick={clearSelection}
+                      className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
+                      aria-label="Close modal"
+                    >
+                      <X size={20} />
+                    </button>
                   </div>
 
-                  {/* Zoom controls */}
-                  <div className="mt-6 w-full max-w-xs flex items-center gap-4">
-                    <Minus size={18} className="text-slate-500" />
-                    <Slider
-                      value={[zoom]}
-                      min={1}
-                      max={3}
-                      step={0.05}
-                      onValueChange={(values) => setZoom(values[0] || 1)}
-                      aria-label="Profile picture zoom"
-                      className="flex-1 cursor-pointer"
-                    />
-                    <Plus size={18} className="text-slate-500" />
-                  </div>
-                  <p className="mt-4 text-xs text-slate-500 text-center">{helperText}</p>
-                </div>
+                  {/* Cropper area */}
+                  <div className="p-3 sm:p-6 bg-slate-50 dark:bg-slate-950/40 flex flex-col items-center">
+                    <div className="relative h-[250px] sm:h-[380px] w-full max-w-[380px] aspect-square mx-auto overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-900 ring-1 ring-inset ring-slate-200 dark:ring-slate-800 shadow-inner">
+                      <Cropper
+                        image={selectedPreview}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={1}
+                        {...AVATAR_CROP_FRAME}
+                        showGrid={false}
+                        objectFit="cover"
+                        restrictPosition={true}
+                        onCropChange={setCrop}
+                        onZoomChange={setZoom}
+                        onCropComplete={(_, nextCroppedAreaPixels) => setCroppedAreaPixels(nextCroppedAreaPixels)}
+                        style={{ containerStyle: { backgroundColor: '#0f172a' } }}
+                      />
+                    </div>
 
-                {/* Footer */}
-                <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-3 bg-white">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={clearSelection}
-                    disabled={isUploading}
-                    className="font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-5"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleUpload}
-                    disabled={isUploading || !selectedFile}
-                    className="bg-[#a855f7] hover:bg-[#9333ea] text-white min-w-[120px] gap-2 shadow-sm transition-colors"
-                  >
-                    {isUploading ? (
-                      <>
-                        <Upload size={16} className="animate-pulse" />
-                        Saving...
-                      </>
-                    ) : (
-                      'Save picture'
-                    )}
-                  </Button>
-                </div>
+                    {/* Zoom controls */}
+                    <div className="mt-6 w-full max-w-xs flex items-center gap-4">
+                      <Minus size={18} className="text-slate-500" />
+                      <Slider
+                        value={[zoom]}
+                        min={1}
+                        max={3}
+                        step={0.05}
+                        onValueChange={(values) => setZoom(values[0] || 1)}
+                        aria-label="Profile picture zoom"
+                        className="flex-1 cursor-pointer"
+                      />
+                      <Plus size={18} className="text-slate-500" />
+                    </div>
+                    <p className="mt-4 text-xs text-slate-500 text-center">{helperText}</p>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 bg-white dark:bg-slate-900">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={clearSelection}
+                      disabled={isUploading}
+                      className="font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 px-5"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleUpload}
+                      disabled={isUploading || !selectedFile}
+                      className="bg-[#a855f7] hover:bg-[#9333ea] text-white min-w-[120px] gap-2 shadow-sm transition-colors cursor-pointer"
+                    >
+                      {isUploading ? (
+                        <>
+                          <Upload size={16} className="animate-pulse" />
+                          Saving...
+                        </>
+                      ) : (
+                        'Save picture'
+                      )}
+                    </Button>
+                  </div>
+                </motion.div>
               </div>
-            </motion.div>
-          </>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
     </>
   );
 };

@@ -5,12 +5,55 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, TypedDict
 
 logger = logging.getLogger(__name__)
 
 CLIENT_TIMEOUT_SECONDS = 5.0
 _REQUEST_LIMIT = asyncio.Semaphore(10)
+
+
+class IntentSuccess(TypedDict):
+    choice: Any
+    confidence: Any
+    probabilities: Any
+
+
+class IntentFallback(TypedDict):
+    action: Any
+    choice: Any
+
+
+class FactualitySuccess(TypedDict):
+    verified: bool
+    confidence: float
+
+
+class FactualityFallback(TypedDict):
+    action: str
+    verified: bool
+
+
+class MasterySuccess(TypedDict):
+    level: Any
+    pCorrect: Any
+
+
+class MasteryFallback(TypedDict):
+    action: Any
+    pCorrect: Any
+    level: Any
+
+
+class SafetySuccess(TypedDict):
+    pLeak: Any
+    safe: Any
+
+
+class SafetyFallback(TypedDict):
+    action: Any
+    pLeak: Any
+    safe: Any
 
 try:
     from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
@@ -72,19 +115,19 @@ PEDAGOGICAL_LEAK = _build_noul(
 BLOOM_MASTERY_SCORE = _build_score()
 
 
-def _fallback_intent() -> dict[str, Any]:
+def _fallback_intent() -> IntentFallback:
     return {"action": "fallback_disabled", "choice": "conceptual_confusion"}
 
 
-def _fallback_factuality() -> dict[str, Any]:
+def _fallback_factuality() -> FactualityFallback:
     return {"action": "fallback_disabled", "verified": True}
 
 
-def _fallback_mastery() -> dict[str, Any]:
+def _fallback_mastery() -> MasteryFallback:
     return {"action": "fallback_disabled", "pCorrect": 1.0, "level": 0}
 
 
-def _fallback_safety() -> dict[str, Any]:
+def _fallback_safety() -> SafetyFallback:
     return {"action": "fallback_disabled", "pLeak": 0.0, "safe": True}
 
 
@@ -117,7 +160,7 @@ async def _system_one(state: dict[str, Any], questions: dict[str, Any]) -> objec
 async def _call_or_fallback(
     state: dict[str, Any],
     questions: dict[str, Any],
-    fallback: Callable[[], dict[str, Any]],
+    fallback: Callable[[], object],
 ) -> object | dict[str, Any]:
     if _api_key() is None:
         return fallback()
@@ -130,7 +173,9 @@ async def _call_or_fallback(
     return fallback()
 
 
-async def route_student_intent(message: str) -> dict[str, Any]:
+async def route_student_intent(
+    message: str,
+) -> IntentSuccess | IntentFallback | dict[str, Any]:
     """Classify a student's message into the tutoring intent taxonomy."""
     response = await _call_or_fallback(
         {"message": message}, {"intent": INTENT_ROUTING}, _fallback_intent
@@ -138,16 +183,17 @@ async def route_student_intent(message: str) -> dict[str, Any]:
     if isinstance(response, dict):
         return response
     answer = _answers(response).get("intent")
-    return {
+    success: IntentSuccess = {
         "choice": _answer_field(answer, "choice", "conceptual_confusion"),
         "confidence": _answer_field(answer, "confidence", 0.0),
         "probabilities": _answer_field(answer, "probabilities", {}),
     }
+    return success
 
 
 async def verify_lesson_factuality(
     reference_text: str, generated_text: str
-) -> dict[str, Any]:
+) -> FactualitySuccess | FactualityFallback | dict[str, Any]:
     """Check generated lesson claims against the supplied reference."""
     response = await _call_or_fallback(
         {"reference_text": reference_text, "generated_text": generated_text},
@@ -158,15 +204,16 @@ async def verify_lesson_factuality(
         return response
     answer = _answers(response).get("factual_alignment")
     alignment_probability = _answer_field(answer, "noul", 1.0)
-    return {
+    success: FactualitySuccess = {
         "verified": float(alignment_probability) >= 0.5,
         "confidence": abs(float(alignment_probability) - 0.5) * 2,
     }
+    return success
 
 
 async def score_student_mastery(
     student_answers: list[dict[str, Any]], topic: str
-) -> dict[str, Any]:
+) -> MasterySuccess | MasteryFallback | dict[str, Any]:
     """Estimate mastery from answers using four Bloom levels."""
     response = await _call_or_fallback(
         {"student_answers": student_answers, "topic": topic},
@@ -177,12 +224,16 @@ async def score_student_mastery(
         return response
     answer = _answers(response).get("bloom_mastery_score")
     level = _answer_field(answer, "score", _answer_field(answer, "level", 0))
-    return {"level": level, "pCorrect": _answer_field(answer, "confidence", 0.0)}
+    success: MasterySuccess = {
+        "level": level,
+        "pCorrect": _answer_field(answer, "confidence", 0.0),
+    }
+    return success
 
 
 async def verify_solution_safety(
     reference_steps: str, student_steps: str
-) -> dict[str, Any]:
+) -> SafetySuccess | SafetyFallback | dict[str, Any]:
     """Check whether student-facing steps reveal the final solution."""
     response = await _call_or_fallback(
         {"reference_steps": reference_steps, "student_steps": student_steps},
@@ -193,7 +244,11 @@ async def verify_solution_safety(
         return response
     answer = _answers(response).get("pedagogical_leak")
     leak_probability = _answer_field(answer, "noul", 0.0)
-    return {"pLeak": leak_probability, "safe": not bool(leak_probability)}
+    success: SafetySuccess = {
+        "pLeak": leak_probability,
+        "safe": not bool(leak_probability),
+    }
+    return success
 
 
 __all__ = [

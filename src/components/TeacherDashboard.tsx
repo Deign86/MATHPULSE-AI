@@ -516,6 +516,19 @@ export function countResolvedStudentsForClass(
   return resolvedStudents.filter((student) => isStudentInClass(student, classView)).length;
 }
 
+export function deriveResolvedClassCounts(
+  classViews: ClassView[],
+  resolvedStudents: readonly (ClassCountStudent & Pick<StudentView, 'id' | 'lrn' | 'name'>)[],
+) {
+  return {
+    classes: classViews.map((classView) => ({
+      ...classView,
+      studentCount: countResolvedStudentsForClass(classView, resolvedStudents),
+    })),
+    totalStudents: new Set(resolvedStudents.map(buildStudentMergeKey)).size,
+  };
+}
+
 export function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView[] {
   const merged = new Map<string, ClassView>();
 
@@ -573,7 +586,7 @@ export function mergeClassViews(primary: ClassView[], imported: ClassView[]): Cl
   return Array.from(merged.values());
 }
 
-function buildStudentMergeKey(student: StudentView): string {
+function buildStudentMergeKey(student: Pick<StudentView, 'id' | 'lrn' | 'name' | 'classSectionId' | 'classroomId'>): string {
   const lrnKey = (student.lrn || '').trim().toLowerCase();
   if (lrnKey) return `lrn:${lrnKey}`;
   const nameKey = student.name.trim().toLowerCase();
@@ -745,12 +758,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
   const [students, setStudents] = useState<StudentView[]>([]);
+  const resolvedClassCounts = useMemo(
+    () => deriveResolvedClassCounts(classes, students),
+    [classes, students],
+  );
+  const classesWithResolvedCounts = resolvedClassCounts.classes;
 
   // Only classes this teacher manages (managerId matches current user)
   const managedClasses = useMemo(() => {
     if (!currentUser?.uid) return classes;
     return classes.filter(c => c.managerId === currentUser.uid || c.classMetadata?.managerId === currentUser.uid);
   }, [classes, currentUser?.uid]);
+  const managedClassesWithResolvedCounts = managedClasses.map((classView) =>
+    classesWithResolvedCounts.find((resolvedClass) => resolvedClass.id === classView.id) || classView,
+  );
   const [liveActivity, setLiveActivity] = useState<{ id: string; student: string; action: string; topic: string; time: string; type: string }[]>([]);
   const [dailyInsight, setDailyInsight] = useState<string>('');
   const [dataLoading, setDataLoading] = useState(true);
@@ -1248,7 +1269,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   }, [students]);
 
   // Computed stats
-  const totalStudents = classes.reduce((sum, c) => sum + c.studentCount, 0);
+  const totalStudents = resolvedClassCounts.totalStudents;
   // Compute at-risk from actual student data (WRI-aware) instead of stale classrooms doc
   const totalAtRisk = students.filter(s => s.riskLevel === 'high').length;
   const avgPerformance = (() => {
@@ -1875,19 +1896,25 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowNotifications(!showNotifications)}
-                      className={`relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shadow-2xs hover:shadow-xs shrink-0 ${
+                      className={`relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-2xl backdrop-blur-xl transition-all duration-200 cursor-pointer group active:scale-95 border ${
                         showNotifications
-                          ? 'bg-violet-50 border-violet-300 text-violet-700 ring-2 ring-violet-500/25 shadow-xs'
-                          : 'bg-white/80 hover:bg-white border-slate-200/80 hover:border-violet-200 text-slate-600 hover:text-violet-600'
-                      }`}
+                          ? 'bg-amber-50/90 dark:bg-amber-950/70 border-amber-400 ring-2 ring-amber-400/40 text-amber-500 dark:text-amber-400 shadow-md shadow-amber-500/25'
+                          : 'bg-white/70 dark:bg-slate-900/60 border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/95 dark:hover:bg-slate-800/80 hover:border-amber-300/80 dark:hover:border-amber-500/50 hover:shadow-[0_6px_20px_rgba(245,158,11,0.22)] text-slate-700 dark:text-slate-200 hover:text-amber-500 dark:hover:text-amber-400'
+                      } focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none`}
                       aria-label="View notifications"
+                      aria-expanded={showNotifications}
+                      aria-haspopup="true"
                       title={teacherUnreadCount > 0 ? `${teacherUnreadCount} unread notifications` : 'Notifications'}
                     >
-                      <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />
+                      <Bell
+                        size={18}
+                        className={`transition-transform duration-200 stroke-[2.2] group-hover:rotate-12 ${
+                          showNotifications ? 'rotate-12 text-amber-500 dark:text-amber-400' : ''
+                        }`}
+                      />
                       {teacherUnreadCount > 0 && (
-                        <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex h-2.5 w-2.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 border border-white" />
+                        <span className="absolute -top-1 -right-1 bg-gradient-to-r from-rose-500 to-rose-600 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 tabular-nums border-2 border-white dark:border-slate-900 shadow-sm shadow-rose-500/30 animate-pulse">
+                          {teacherUnreadCount > 99 ? '99+' : teacherUnreadCount}
                         </span>
                       )}
                     </button>
@@ -1974,7 +2001,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               >
                 {activeView === 'dashboard' && (
                   <DashboardView
-                    classes={managedClasses}
+                    classes={managedClassesWithResolvedCounts}
                     liveActivity={liveActivity}
                     onViewClass={handleViewClass}
                     onViewAllClasses={() => setActiveView('analytics')}
@@ -2092,7 +2119,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 )}
                 {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
                   <ClassesOverviewMenu
-                    classes={managedClasses}
+                    classes={managedClassesWithResolvedCounts}
+                    totalStudentCount={totalStudents}
                     onSelectClass={(cls) => setSelectedClass(cls)}
                     onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}

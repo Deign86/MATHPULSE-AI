@@ -72,7 +72,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
     <AnimatePresence>
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden="true" />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -10, x: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
