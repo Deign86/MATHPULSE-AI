@@ -17,8 +17,7 @@ import { Input } from './ui/input';
 import ConfirmModal from './ConfirmModal';
 import { CreateClassModal } from './CreateClassModal';
 import { AddStudentsModal } from './AddStudentsModal';
-import NotificationDropdown from './NotificationDropdown';
-import { useNotifications } from '@/features/notifications';
+import { NotificationBell } from '@/features/notifications';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -744,14 +743,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [showAddStudentsModal, setShowAddStudentsModal] = useState(false);
 
-  const STUDENT_ONLY_NOTIF_TYPES = ['streak_reminder', 'daily_checkin', 'streak_milestone', 'achievement_unlocked', 'level_up', 'xp_earned', 'quiz_result'];
-  const { notifications: allNotifications } = useNotifications();
-  const teacherUnreadCount = allNotifications.filter((n) => !n.isRead && !STUDENT_ONLY_NOTIF_TYPES.includes(n.type)).length;
   const [selectedClass, setSelectedClass] = useState<ClassView | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentView | null>(null);
   const [insightDismissed, setInsightDismissed] = useState(false);
   const [insightModalOpen, setInsightModalOpen] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showMobileCalendar, setShowMobileCalendar] = useState(false);
   const [topicMasteryTab, setTopicMasteryTab] = useState<'mastery' | 'availability'>('mastery');
 
@@ -1783,11 +1778,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Header */}
           {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery', 'calendar', 'notifications', 'question_bank', 'import', 'quiz_maker'].includes(activeView) && (
-            <header className="bg-transparent border-b border-[#e2e8f0]/40 px-3.5 sm:px-6 xl:px-8 pt-3 sm:pt-6 pb-2 sm:pb-4 flex-shrink-0 z-30">
-              <div className="flex flex-row items-center justify-between gap-2 mb-0">
+            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3.5 sm:px-6 xl:px-8 py-3 sm:py-4 flex-shrink-0 z-30 w-full min-w-0 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+              <div className="flex flex-row items-center justify-between gap-2 sm:gap-4 mb-0 w-full min-w-0">
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
                   <div className="min-w-0 flex-1">
-                    <h1 className="font-display text-base sm:text-xl lg:text-[26px] font-extrabold sm:font-black text-[#1e293b] tracking-tight leading-tight truncate text-balance">
+                    <h1 className="font-display text-base sm:text-xl lg:text-[24px] font-black text-slate-900 dark:text-white tracking-tight leading-tight truncate">
                       {activeView === 'dashboard' && 'Teacher Dashboard'}
                       {activeView === 'analytics' && 'Class Analytics'}
                       {activeView === 'intervention' && 'Intervention Center'}
@@ -1799,17 +1794,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       {activeView === 'import' && 'Data Import'}
                       {activeView === 'quiz_maker' && 'AI Quiz Maker'}
                     </h1>
-                    <p className="font-body text-xs sm:text-[13px] font-medium text-[#64748b] mt-0.5 sm:mt-1 line-clamp-1 sm:line-clamp-none">
+                    <p className="font-body text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
                       {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
-                      {activeView === 'analytics' && 'Analyze performance and risk across your classes.'}
-                      {activeView === 'intervention' && 'Identify and support students who need immediate help.'}
-                      {activeView === 'competency' && 'Track individual student progress against learning goals.'}
-                      {activeView === 'topic_mastery' && 'Overview of student mastery levels across different math topics.'}
-                      {activeView === 'calendar' && 'Manage your schedules and academic events.'}
-                      {activeView === 'notifications' && 'Stay updated with student activity and system alerts.'}
-                      {activeView === 'question_bank' && 'Manage and create math questions for your quizzes.'}
-                      {activeView === 'import' && 'Upload class records and materials to power AI analytics.'}
-                      {activeView === 'quiz_maker' && 'Create AI-powered quizzes based on your curriculum.'}
+                      {activeView === 'analytics' && 'Analyze class performance and risk metrics.'}
+                      {activeView === 'intervention' && 'Identify and support at-risk students.'}
+                      {activeView === 'competency' && 'Track student learning competencies.'}
+                      {activeView === 'topic_mastery' && 'Mastery breakdown across math topics.'}
+                      {activeView === 'calendar' && 'Schedules, deadlines, and events.'}
+                      {activeView === 'notifications' && 'Recent student and system alerts.'}
+                      {activeView === 'question_bank' && 'Manage curriculum quiz questions.'}
+                      {activeView === 'import' && 'Upload spreadsheets and curriculum docs.'}
+                      {activeView === 'quiz_maker' && 'Create AI-generated curriculum quizzes.'}
                     </p>
                   </div>
                   {/* Quick teacher stats */}
@@ -1846,7 +1841,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
                   {/* AI Insights Button */}
                   <div className="relative group">
                     <button
@@ -1855,7 +1850,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         setInsightModalOpen(true);
                         setInsightDismissed(true);
                       }}
-                      className="relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-[#f3e8ff]/80 hover:bg-[#ede9fe] rounded-full backdrop-blur-xl shadow-2xs hover:shadow-xs border border-[#d8b4fe]/60 text-[#a855f7] hover:border-[#c084fc] transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shrink-0"
+                      className="relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center bg-white/70 hover:bg-white dark:bg-slate-900/60 rounded-2xl backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/10 text-[#a855f7] hover:border-purple-200 transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shrink-0"
                       aria-label="View AI Insight"
                     >
                       <Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
@@ -1876,10 +1871,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowMobileCalendar((v) => !v)}
-                      className={`relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shadow-2xs hover:shadow-xs shrink-0 ${
+                      className={`relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-2xl backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shrink-0 ${
                         showMobileCalendar
                           ? 'bg-violet-600 border-violet-600 text-white shadow-xs ring-2 ring-violet-500/20'
-                          : 'bg-white/80 hover:bg-white border-slate-200/80 hover:border-violet-200 text-slate-600 hover:text-violet-600'
+                          : 'bg-white/70 dark:bg-slate-900/60 border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/95 text-slate-700 hover:text-violet-600'
                       }`}
                       aria-label={showMobileCalendar ? 'Close schedule and activity panel' : 'Open schedule and activity panel'}
                       title={showMobileCalendar ? 'Close schedule' : 'Schedule & Activity'}
@@ -1891,57 +1886,24 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     </button>
                   )}
 
-                  {/* Notification Bell */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowNotifications(!showNotifications)}
-                      className={`relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-2xl backdrop-blur-xl transition-all duration-200 cursor-pointer group active:scale-95 border ${
-                        showNotifications
-                          ? 'bg-amber-50/90 dark:bg-amber-950/70 border-amber-400 ring-2 ring-amber-400/40 text-amber-500 dark:text-amber-400 shadow-md shadow-amber-500/25'
-                          : 'bg-white/70 dark:bg-slate-900/60 border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/95 dark:hover:bg-slate-800/80 hover:border-amber-300/80 dark:hover:border-amber-500/50 hover:shadow-[0_6px_20px_rgba(245,158,11,0.22)] text-slate-700 dark:text-slate-200 hover:text-amber-500 dark:hover:text-amber-400'
-                      } focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none`}
-                      aria-label="View notifications"
-                      aria-expanded={showNotifications}
-                      aria-haspopup="true"
-                      title={teacherUnreadCount > 0 ? `${teacherUnreadCount} unread notifications` : 'Notifications'}
-                    >
-                      <Bell
-                        size={18}
-                        className={`transition-transform duration-200 stroke-[2.2] group-hover:rotate-12 ${
-                          showNotifications ? 'rotate-12 text-amber-500 dark:text-amber-400' : ''
-                        }`}
-                      />
-                      {teacherUnreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-gradient-to-r from-rose-500 to-rose-600 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 tabular-nums border-2 border-white dark:border-slate-900 shadow-sm shadow-rose-500/30 animate-pulse">
-                          {teacherUnreadCount > 99 ? '99+' : teacherUnreadCount}
-                        </span>
-                      )}
-                    </button>
-
-                    <NotificationDropdown
-                      isOpen={showNotifications}
-                      onClose={() => setShowNotifications(false)}
-                      onViewAll={() => setActiveView('notifications')}
-                    />
-                  </div>
+                  {/* Notification Bell (Portaled z-[250] with wiggle animation & unread badge) */}
+                  <NotificationBell />
 
                   {/* Profile Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white/80 hover:bg-white rounded-full backdrop-blur-xl shadow-2xs hover:shadow-xs border border-slate-200/80 hover:border-violet-200 cursor-pointer transition-all active:scale-95 sm:hover:scale-[1.02] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-purple-500 data-[state=open]:ring-2 data-[state=open]:ring-purple-500 p-0.5 sm:p-1 shrink-0"
+                        className="w-9 h-9 sm:w-11 sm:h-11 rounded-full overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-purple-400 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-purple-500 shrink-0 p-0"
                         aria-label={`Profile menu: ${teacherName || 'Teacher'}`}
                         title={teacherName || 'Teacher'}
                       >
-                        <div className="w-full h-full rounded-full bg-[#f3e8ff] overflow-hidden shrink-0">
-                          <UserAvatar
-                            src={userProfile?.photo}
-                            name={teacherName || 'Teacher'}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                        <UserAvatar
+                          src={userProfile?.photo}
+                          name={teacherName || 'Teacher'}
+                          gender={userProfile?.gender}
+                          className="w-full h-full object-cover"
+                        />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 p-1.5 shadow-xl z-50">
