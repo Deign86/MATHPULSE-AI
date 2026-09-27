@@ -112,77 +112,69 @@ const AdminClassManagement: React.FC = () => {
 
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
-      {/* ── Teacher-Inspired Stats Bento Grid ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 px-1">
+      {/* ── Teacher-Inspired Stats Bento Grid (Unified Highlight Cards) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 px-1">
         {/* Card 1: Total Sections (Purple Gradient) */}
-        <div className="group relative bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.52)] border border-white/25 rounded-xl sm:rounded-2xl p-2.5 sm:p-5 flex col-span-2 sm:col-span-1 flex-row items-center justify-between min-h-0 sm:min-h-[120px] sm:flex-col sm:items-start sm:justify-between transition-all duration-300 ease-out overflow-hidden">
-          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white/15 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+        <div className="group relative overflow-hidden rounded-2xl sm:rounded-3xl p-3 sm:p-5 flex flex-col justify-between bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.48)] border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out min-w-0 min-h-[110px] sm:min-h-[140px] text-white select-none">
+          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
-          {/* Mobile Left / Desktop Top */}
-          <div className="flex items-center gap-2.5 sm:justify-between sm:w-full relative z-10 sm:mb-3">
-            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-              <School size={14} className="sm:hidden" />
-              <School size={18} className="hidden sm:block" />
+          <div className="relative z-10 flex items-center justify-between mb-1.5 sm:mb-3">
+            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-xs text-white transition-transform group-hover:scale-105">
+              <School size={14} className="sm:hidden text-white" />
+              <School size={18} className="hidden sm:block text-white" />
             </div>
-            <div className="sm:hidden">
-              <p className="text-xs font-bold text-white leading-tight">Total Sections</p>
-            </div>
-            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
+            <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
               Rosters
             </span>
           </div>
 
-          {/* Mobile Right / Desktop Bottom */}
-          <div className="flex items-center gap-2 sm:block relative z-10 min-w-0">
-            <p className="text-xl sm:text-3xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{classes.length}</p>
-            <span className="sm:hidden px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
-              Rosters
-            </span>
-            <p className="text-xs font-bold text-white/95 mt-1.5 truncate hidden sm:block">Total Class Sections</p>
-            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Registered class sections</p>
+          <div className="relative z-10 min-w-0">
+            <p className="text-lg sm:text-[30px] font-display font-black text-white leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{classes.length}</p>
+            <p className="text-[10px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">Total Sections</p>
+            <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">Registered class sections</p>
           </div>
         </div>
 
         {/* Card 2: Assigned Sections (Green Gradient) */}
-        <div className="group relative bg-gradient-to-br from-[#75D06A] via-[#52B847] to-[#36962C] shadow-[0_8px_24px_-6px_rgba(82,184,71,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(82,184,71,0.52)] border border-white/25 rounded-xl sm:rounded-2xl p-2 sm:p-5 flex flex-col justify-between col-span-1 min-h-[58px] sm:min-h-[120px] transition-all duration-300 ease-out overflow-hidden">
-          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white/15 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+        <div className="group relative overflow-hidden rounded-2xl sm:rounded-3xl p-3 sm:p-5 flex flex-col justify-between bg-gradient-to-br from-[#10B981] via-[#059669] to-[#047857] shadow-[0_8px_24px_-6px_rgba(16,185,129,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(16,185,129,0.48)] border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out min-w-0 min-h-[110px] sm:min-h-[140px] text-white select-none">
+          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
-          <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-3">
-            <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-              <UserCheck size={13} className="sm:hidden" />
-              <UserCheck size={18} className="hidden sm:block" />
+          <div className="relative z-10 flex items-center justify-between mb-1.5 sm:mb-3">
+            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-xs text-white transition-transform group-hover:scale-105">
+              <UserCheck size={14} className="sm:hidden text-white" />
+              <UserCheck size={18} className="hidden sm:block text-white" />
             </div>
-            <span className="px-1.5 sm:px-2.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
+            <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
               Assigned
             </span>
           </div>
           <div className="relative z-10 min-w-0">
-            <p className="text-lg sm:text-3xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{withManagerCount}</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-0.5 sm:mt-1.5 truncate">With Teacher</p>
-            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">Have an assigned teacher</p>
+            <p className="text-lg sm:text-[30px] font-display font-black text-white leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{withManagerCount}</p>
+            <p className="text-[10px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">With Teacher</p>
+            <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">Assigned faculty advisers</p>
           </div>
         </div>
 
         {/* Card 3: Unassigned Sections (Amber Gradient) */}
-        <div className="group relative bg-gradient-to-br from-[#FFB356] via-[#F29424] to-[#D97706] shadow-[0_8px_24px_-6px_rgba(242,148,36,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(242,148,36,0.52)] border border-white/25 rounded-xl sm:rounded-2xl p-2 sm:p-5 flex flex-col justify-between col-span-1 min-h-[58px] sm:min-h-[120px] transition-all duration-300 ease-out overflow-hidden">
-          <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white/15 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+        <div className="group relative overflow-hidden rounded-2xl sm:rounded-3xl p-3 sm:p-5 flex flex-col justify-between bg-gradient-to-br from-[#FFB356] via-[#F29424] to-[#D97706] shadow-[0_8px_24px_-6px_rgba(242,148,36,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(242,148,36,0.48)] border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out min-w-0 min-h-[110px] sm:min-h-[140px] text-white select-none">
+          <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
-          <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-3">
-            <div className="w-6 h-6 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-              <Users size={13} className="sm:hidden" />
-              <Users size={18} className="hidden sm:block" />
+          <div className="relative z-10 flex items-center justify-between mb-1.5 sm:mb-3">
+            <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-xs text-white transition-transform group-hover:scale-105">
+              <Users size={14} className="sm:hidden text-white" />
+              <Users size={18} className="hidden sm:block text-white" />
             </div>
-            <span className="px-1.5 sm:px-2.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
-              {unassignedCount > 0 ? 'Pending' : 'Clear'}
+            <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
+              {unassignedCount > 0 ? 'Pending' : 'Optimal'}
             </span>
           </div>
           <div className="relative z-10 min-w-0">
-            <p className="text-lg sm:text-3xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">{unassignedCount}</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-0.5 sm:mt-1.5 truncate">No Teacher</p>
-            <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">No teacher assigned yet</p>
+            <p className="text-lg sm:text-[30px] font-display font-black text-white leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{unassignedCount}</p>
+            <p className="text-[10px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">No Teacher</p>
+            <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">Sections requiring adviser</p>
           </div>
         </div>
       </div>

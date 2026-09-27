@@ -4,7 +4,7 @@ import {
   Eye, Loader2, RefreshCw, Lock,
   FileText, ShieldAlert, UserCheck, ChevronLeft, ChevronRight,
   Clock, ShieldCheck, Activity,
-  FilterX, Download, Copy, Check, type LucideIcon
+  FilterX, Download, Copy, Check, SlidersHorizontal, X, type LucideIcon
 } from 'lucide-react';
 import { recordGet } from '../utils/memberOf';
 import { Button } from './ui/button';
@@ -38,6 +38,7 @@ const AdminAuditLog: React.FC = () => {
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -301,60 +302,61 @@ const AdminAuditLog: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Top Executive KPI Bento Cards (Full Color Gradients) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {kpis.map((kpi, idx) => {
+      {/* ── Top Executive KPI Bento Cards (Compact 2x2 on mobile, 4-col on desktop) ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
             <div
               key={kpi.title}
-              className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 ${kpi.gradient} ${kpi.shadow} border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out flex flex-col justify-between group min-w-0 text-white select-none`}
+              className={`relative overflow-hidden rounded-xl sm:rounded-3xl p-2.5 sm:p-5 ${kpi.gradient} ${kpi.shadow} border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out flex flex-col justify-between group min-w-0 text-white select-none min-h-[100px] sm:min-h-[140px]`}
             >
               {/* Ambient Glow */}
-              <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
+              <div className="absolute -bottom-6 -right-6 w-20 sm:w-36 h-20 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
-              <div className="relative z-10 flex items-start justify-between gap-2 mb-3">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 truncate">
+              <div className="relative z-10 flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
+                <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                    <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 truncate">
                       {kpi.title}
                     </span>
                     {kpi.badge && (
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
+                      <span className="inline-flex items-center rounded-full px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
                         {kpi.badge}
                       </span>
                     )}
                   </div>
-                  <div className="mt-1">
+                  <div className="mt-0.5 sm:mt-1">
                     {loading ? (
-                      <div className="h-7 w-20 bg-white/20 rounded-lg animate-pulse" />
+                      <div className="h-6 sm:h-7 w-16 sm:w-20 bg-white/20 rounded-lg animate-pulse" />
                     ) : (
-                      <p className="text-2xl sm:text-3xl font-display font-black text-white tabular-nums tracking-tight leading-none drop-shadow-xs">
+                      <p className="text-lg sm:text-3xl font-display font-black text-white tabular-nums tracking-tight leading-none drop-shadow-xs">
                         {kpi.value}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="w-10 h-10 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-xs text-white">
-                  <Icon size={18} />
+                <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-xs text-white">
+                  <Icon size={14} className="sm:hidden" />
+                  <Icon size={18} className="hidden sm:block" />
                 </div>
               </div>
 
               {/* Subtext and Progress Bar */}
-              <div className="relative z-10 space-y-2 mt-2 pt-2.5 border-t border-white/20">
-                <div className="flex items-center justify-between text-[11px] gap-2">
-                  <span className="text-white/90 font-medium truncate drop-shadow-xs">
+              <div className="relative z-10 space-y-1.5 sm:space-y-2 mt-1 sm:mt-2 pt-1.5 sm:pt-2.5 border-t border-white/20">
+                <div className="flex items-center justify-between text-[10px] sm:text-[11px] gap-1.5">
+                  <span className="text-white/90 font-medium truncate drop-shadow-xs hidden sm:inline">
                     {kpi.subValue}
                   </span>
-                  <span className="inline-flex items-center gap-0.5 font-black text-white text-[10px] bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/25 shadow-2xs shrink-0">
+                  <span className="inline-flex items-center gap-0.5 font-black text-white text-[9px] sm:text-[10px] bg-white/20 backdrop-blur-md px-1.5 sm:px-2 py-0.5 rounded-full border border-white/25 shadow-2xs shrink-0">
                     {kpi.trend}
                   </span>
                 </div>
 
                 {/* Micro Progress Bar */}
-                <div className="w-full h-1.5 rounded-full bg-white/20 overflow-hidden">
+                <div className="w-full h-1 sm:h-1.5 rounded-full bg-white/20 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-white transition-all duration-500 shadow-xs"
                     style={{ width: `${Math.min(Math.max(kpi.progressPercent, 0), 100)}%` }}
@@ -366,145 +368,204 @@ const AdminAuditLog: React.FC = () => {
         })}
       </div>
 
-      {/* ── High-Fidelity Filtering Area ── */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700/60 shadow-xs space-y-3">
-        {/* Line 1: Search and Dropdowns */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5">
-          {/* Global Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-            <input
-              type="text"
-              placeholder="Search by actor, action description, or event details..."
-              className="w-full pl-10 pr-3 h-10 bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/60 rounded-xl text-xs font-medium outline-none focus:border-[#9956DE] focus:ring-1 focus:ring-[#9956DE]/30 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full sm:w-[155px] bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-medium rounded-xl h-10">
-                <span className="truncate">{recordGet(CATEGORY_LABELS, selectedCategory) ?? selectedCategory}</span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
-                <SelectItem value="All Categories">All Categories</SelectItem>
-                <SelectItem value="Auth">Authentication</SelectItem>
-                <SelectItem value="Data">Data Operations</SelectItem>
-                <SelectItem value="User">User Management</SelectItem>
-                <SelectItem value="System">System Engine</SelectItem>
-                <SelectItem value="Content">Content Pipeline</SelectItem>
-              </SelectContent>
-            </Select>
+      {/* ── Ultra-Compact Sticky Toolbar + Collapsible Filters ── */}
+      <div className="sticky top-0 z-20 px-1 pt-1.5 pb-2 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
+        <div className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2 sm:p-2.5 lg:px-4 lg:py-3 shadow-sm flex flex-col gap-2 w-full">
+          {/* Line 1: Search, Filter Toggle & Action Buttons */}
+          <div className="flex items-center gap-1.5 sm:gap-2 w-full">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-0 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 group-focus-within:text-[#9956DE] transition-colors shrink-0" size={15} />
+              <input
+                type="text"
+                placeholder="Search actor, action, or event details…"
+                className="w-full pl-8.5 pr-7 h-9 sm:h-10 bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs font-semibold focus:border-purple-400 focus:ring-1 focus:ring-purple-400 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-all outline-none"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  aria-label="Clear search"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
 
-            <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
-              <SelectTrigger className="w-full sm:w-[145px] bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-medium rounded-xl h-10">
-                <span className="truncate">{recordGet(SEVERITY_LABELS, selectedSeverity) ?? selectedSeverity}</span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
-                <SelectItem value="All Severities">All Severities</SelectItem>
-                <SelectItem value="Info">Information</SelectItem>
-                <SelectItem value="Warning">Warning</SelectItem>
-                <SelectItem value="Error">Error</SelectItem>
-                <SelectItem value="Critical">Critical</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="w-full sm:w-[140px] bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-medium rounded-xl h-10">
-                <span className="truncate">{recordGet(ROLE_LABELS, selectedRole) ?? selectedRole}</span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
-                <SelectItem value="All Roles">All Roles</SelectItem>
-                <SelectItem value="Admin">Administrator</SelectItem>
-                <SelectItem value="Teacher">Educator</SelectItem>
-                <SelectItem value="Student">Student</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button 
+            {/* Mobile/Tablet Filter Drawer Toggle (< lg) */}
+            <Button
+              type="button"
               variant="outline"
-              size="icon"
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedCategory('All Categories');
-                setSelectedSeverity('All Severities');
-                setSelectedRole('All Roles');
-              }}
-              disabled={!searchTerm && selectedCategory === 'All Categories' && selectedSeverity === 'All Severities' && selectedRole === 'All Roles'}
-              className="h-10 w-10 rounded-xl border-slate-200/80 dark:border-slate-700/60 text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 hover:border-purple-300 disabled:opacity-40 shrink-0"
-              title="Reset Filters"
-              aria-label="Reset Filters"
+              size="sm"
+              className={`h-9 sm:h-10 px-2.5 rounded-xl border font-bold text-xs gap-1.5 shrink-0 lg:hidden transition-all ${
+                mobileFiltersOpen || (selectedCategory !== 'All Categories' || selectedSeverity !== 'All Severities' || selectedRole !== 'All Roles')
+                  ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-700 text-[#9956DE] dark:text-purple-300 shadow-2xs'
+                  : 'border-slate-200/80 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+              onClick={() => setMobileFiltersOpen((prev) => !prev)}
+              title="Toggle filter options"
+              aria-label="Toggle filter options"
             >
-              <FilterX size={15} />
+              <SlidersHorizontal size={13} />
+              <span className="hidden xs:inline">Filters</span>
+              {((selectedCategory !== 'All Categories' ? 1 : 0) + (selectedSeverity !== 'All Severities' ? 1 : 0) + (selectedRole !== 'All Roles' ? 1 : 0)) > 0 && (
+                <span className="w-4 h-4 rounded-full bg-[#9956DE] text-white text-[9.5px] font-black flex items-center justify-center">
+                  {(selectedCategory !== 'All Categories' ? 1 : 0) + (selectedSeverity !== 'All Severities' ? 1 : 0) + (selectedRole !== 'All Roles' ? 1 : 0)}
+                </span>
+              )}
             </Button>
-          </div>
-        </div>
 
-        {/* Line 2: Context Bar & Inline Pagination Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
-          <div className="flex items-center gap-2">
-            <span>
-              Showing <strong className="text-slate-800 dark:text-slate-200">{visibleRangeStart}–{visibleRangeEnd}</strong> of <strong className="text-slate-800 dark:text-slate-200">{filteredLogs.length}</strong> events
-            </span>
+            {/* Reset Filters Button */}
             {(searchTerm || selectedCategory !== 'All Categories' || selectedSeverity !== 'All Severities' || selectedRole !== 'All Roles') && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-200/60 dark:border-purple-800/40">
-                Filtered View
-              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedCategory('All Categories');
+                  setSelectedSeverity('All Severities');
+                  setSelectedRole('All Roles');
+                  setCurrentPage(1);
+                }}
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl border-slate-200/80 dark:border-slate-700/60 text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 hover:border-purple-300 shrink-0 cursor-pointer"
+                title="Reset Filters"
+                aria-label="Reset Filters"
+              >
+                <FilterX size={14} />
+              </Button>
             )}
-          </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <Select
-              value={String(pageSize)}
-              onValueChange={(val) => {
-                setPageSize(Number(val));
-                setCurrentPage(1);
-              }}
+            {/* Refresh Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-200/60 transition-all shrink-0 cursor-pointer"
+              onClick={loadLogs}
+              disabled={loading}
+              title="Refresh logs"
+              aria-label="Refresh logs"
             >
-              <SelectTrigger className="h-8 w-[105px] bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-semibold rounded-lg px-2.5">
-                <span className="truncate">{pageSize} / page</span>
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem key={size} value={String(size)} className="text-xs">{size} / page</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <RefreshCw size={14} className={loading ? 'animate-spin text-[#9956DE]' : ''} />
+            </Button>
 
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0 rounded-lg border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40 cursor-pointer"
-                disabled={currentPage <= 1 || loading}
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={14} />
-              </Button>
+            {/* Export CSV Button */}
+            <Button
+              className="h-9 sm:h-10 gap-1.5 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white rounded-xl shadow-md shadow-purple-500/25 hover:shadow-purple-500/40 transition-all px-3 sm:px-4 font-bold text-xs shrink-0 border border-purple-400/30 cursor-pointer"
+              onClick={handleExportCSV}
+              disabled={isExporting || loading || filteredLogs.length === 0}
+            >
+              {isExporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              <span className="hidden xs:inline">Export</span>
+            </Button>
 
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2 tabular-nums">
-                {currentPage} / {Math.max(totalPages, 1)}
-              </span>
+            {/* Desktop Filter Dropdowns (>= lg inline) */}
+            <div className="hidden lg:flex items-center gap-2 shrink-0">
+              <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 shrink-0 mx-1" />
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 w-8 p-0 rounded-lg border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40 cursor-pointer"
-                disabled={currentPage >= totalPages || loading}
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
-                aria-label="Next page"
-              >
-                <ChevronRight size={14} />
-              </Button>
+              <Select value={selectedCategory} onValueChange={(val) => { setSelectedCategory(val); setCurrentPage(1); }}>
+                <SelectTrigger className="h-10 w-[140px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 focus:ring-1 focus:ring-purple-400">
+                  <span className="truncate">{recordGet(CATEGORY_LABELS, selectedCategory) ?? selectedCategory}</span>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                  <SelectItem value="All Categories" className="text-xs font-medium">All Categories</SelectItem>
+                  <SelectItem value="Auth" className="text-xs font-medium">Authentication</SelectItem>
+                  <SelectItem value="Data" className="text-xs font-medium">Data Operations</SelectItem>
+                  <SelectItem value="User" className="text-xs font-medium">User Management</SelectItem>
+                  <SelectItem value="System" className="text-xs font-medium">System Engine</SelectItem>
+                  <SelectItem value="Content" className="text-xs font-medium">Content Pipeline</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedSeverity} onValueChange={(val) => { setSelectedSeverity(val); setCurrentPage(1); }}>
+                <SelectTrigger className="h-10 w-[130px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 focus:ring-1 focus:ring-purple-400">
+                  <span className="truncate">{recordGet(SEVERITY_LABELS, selectedSeverity) ?? selectedSeverity}</span>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                  <SelectItem value="All Severities" className="text-xs font-medium">All Severities</SelectItem>
+                  <SelectItem value="Info" className="text-xs font-medium">Information</SelectItem>
+                  <SelectItem value="Warning" className="text-xs font-medium">Warning</SelectItem>
+                  <SelectItem value="Error" className="text-xs font-medium">Error</SelectItem>
+                  <SelectItem value="Critical" className="text-xs font-medium">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedRole} onValueChange={(val) => { setSelectedRole(val); setCurrentPage(1); }}>
+                <SelectTrigger className="h-10 w-[125px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 focus:ring-1 focus:ring-purple-400">
+                  <span className="truncate">{recordGet(ROLE_LABELS, selectedRole) ?? selectedRole}</span>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                  <SelectItem value="All Roles" className="text-xs font-medium">All Roles</SelectItem>
+                  <SelectItem value="Admin" className="text-xs font-medium">Administrator</SelectItem>
+                  <SelectItem value="Teacher" className="text-xs font-medium">Educator</SelectItem>
+                  <SelectItem value="Student" className="text-xs font-medium">Student</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
+
+          {/* ── Collapsible Mobile Filters Drawer (< lg) ── */}
+          {mobileFiltersOpen && (
+            <div className="lg:hidden pt-2 border-t border-slate-100 dark:border-slate-700/60 grid grid-cols-1 sm:grid-cols-3 gap-2 animate-in slide-in-from-top-1 duration-200">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Category</label>
+                <Select value={selectedCategory} onValueChange={(val) => { setSelectedCategory(val); setCurrentPage(1); }}>
+                  <SelectTrigger className="h-9 w-full rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-semibold">
+                    <span className="truncate">{recordGet(CATEGORY_LABELS, selectedCategory) ?? selectedCategory}</span>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                    <SelectItem value="All Categories">All Categories</SelectItem>
+                    <SelectItem value="Auth">Authentication</SelectItem>
+                    <SelectItem value="Data">Data Operations</SelectItem>
+                    <SelectItem value="User">User Management</SelectItem>
+                    <SelectItem value="System">System Engine</SelectItem>
+                    <SelectItem value="Content">Content Pipeline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Severity</label>
+                <Select value={selectedSeverity} onValueChange={(val) => { setSelectedSeverity(val); setCurrentPage(1); }}>
+                  <SelectTrigger className="h-9 w-full rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-semibold">
+                    <span className="truncate">{recordGet(SEVERITY_LABELS, selectedSeverity) ?? selectedSeverity}</span>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                    <SelectItem value="All Severities">All Severities</SelectItem>
+                    <SelectItem value="Info">Information</SelectItem>
+                    <SelectItem value="Warning">Warning</SelectItem>
+                    <SelectItem value="Error">Error</SelectItem>
+                    <SelectItem value="Critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Actor Role</label>
+                <Select value={selectedRole} onValueChange={(val) => { setSelectedRole(val); setCurrentPage(1); }}>
+                  <SelectTrigger className="h-9 w-full rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-semibold">
+                    <span className="truncate">{recordGet(ROLE_LABELS, selectedRole) ?? selectedRole}</span>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                    <SelectItem value="All Roles">All Roles</SelectItem>
+                    <SelectItem value="Admin">Administrator</SelectItem>
+                    <SelectItem value="Teacher">Educator</SelectItem>
+                    <SelectItem value="Student">Student</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── Main Audit Table Area ── */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs overflow-hidden flex flex-col">
         <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[850px]">
@@ -599,6 +660,67 @@ const AdminAuditLog: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* ── Standardized Card Footer Pagination ── */}
+        <div className="px-4 py-3 bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-2">
+            <span>
+              Showing <strong className="text-slate-800 dark:text-slate-200">{visibleRangeStart}–{visibleRangeEnd}</strong> of <strong className="text-slate-800 dark:text-slate-200">{filteredLogs.length}</strong> events
+            </span>
+            {(searchTerm || selectedCategory !== 'All Categories' || selectedSeverity !== 'All Severities' || selectedRole !== 'All Roles') && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-[10px] font-bold border border-purple-200/60 dark:border-purple-800/40">
+                Filtered View
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Select
+              value={String(pageSize)}
+              onValueChange={(val) => {
+                setPageSize(Number(val));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="h-8 w-[105px] bg-white dark:bg-slate-800 border-slate-200/80 dark:border-slate-700/60 text-xs font-semibold rounded-lg px-2.5">
+                <span className="truncate">{pageSize} / page</span>
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200/80 dark:border-slate-700/60">
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={String(size)} className="text-xs">{size} / page</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-lg border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40 cursor-pointer"
+                disabled={currentPage <= 1 || loading}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={14} />
+              </Button>
+
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 px-2 tabular-nums">
+                {currentPage} / {Math.max(totalPages, 1)}
+              </span>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-lg border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40 cursor-pointer"
+                disabled={currentPage >= totalPages || loading}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
+                aria-label="Next page"
+              >
+                <ChevronRight size={14} />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 

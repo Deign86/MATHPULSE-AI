@@ -213,21 +213,21 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
 
       {/* Main Settings Grid */}
       <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
-        {/* Left Column: Settings Navigation Sidebar */}
-        <div className="w-full lg:w-[260px] xl:w-[280px] shrink-0 space-y-2">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-2 shadow-xs space-y-1">
+        {/* Left Column: Settings Navigation Sidebar (Sticky on mobile & desktop) */}
+        <div className="w-full lg:w-[260px] xl:w-[280px] shrink-0 space-y-2 lg:sticky lg:top-4 z-20">
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-1.5 sm:p-2 shadow-xs flex lg:flex-col gap-1 overflow-x-auto scrollbar-none sticky top-0 lg:static z-20">
             {tabs.map((tabItem) => (
               <button
                 key={tabItem.id}
                 type="button"
                 onClick={() => setActiveTab(tabItem.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-2.5 sm:gap-3 px-3.5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 lg:shrink ${
                   activeTab === tabItem.id
                     ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white border border-transparent'
                 }`}
               >
-                <tabItem.icon size={16} />
+                <tabItem.icon size={16} className="shrink-0" />
                 <span>{tabItem.label}</span>
               </button>
             ))}
@@ -238,7 +238,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
               type="button"
               variant="outline"
               onClick={onNavigateToProfile}
-              className="w-full h-11 px-4 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all cursor-pointer"
+              className="w-full h-11 px-4 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all cursor-pointer hidden lg:flex"
             >
               Go to Admin Profile
             </Button>

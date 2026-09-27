@@ -667,32 +667,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 ))}
               </div>
 
-              {/* Creative Mobile Segmented View Switcher */}
-              <div className="xl:hidden flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700">
-                <button
-                  type="button"
-                  onClick={() => setMobileOverviewTab('insights')}
-                  className={`flex-1 py-2.5 px-3 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    mobileOverviewTab === 'insights'
-                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs border border-slate-200/80 dark:border-slate-600'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <BarChart3 size={15} />
-                  <span>Performance & Honors</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMobileOverviewTab('curriculum')}
-                  className={`flex-1 py-2.5 px-3 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    mobileOverviewTab === 'curriculum'
-                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs border border-slate-200/80 dark:border-slate-600'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <BookMarked size={15} />
-                  <span>Curriculum & Feed</span>
-                </button>
+              {/* Creative Mobile Segmented View Switcher (Sticky Header) */}
+              <div className="xl:hidden sticky top-0 z-20 py-1.5 -mx-1 px-1 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+                <div className="flex items-center p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setMobileOverviewTab('insights')}
+                    className={`flex-1 py-2.5 px-3 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      mobileOverviewTab === 'insights'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs border border-slate-200/80 dark:border-slate-600'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <BarChart3 size={15} />
+                    <span>Performance & Honors</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobileOverviewTab('curriculum')}
+                    className={`flex-1 py-2.5 px-3 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      mobileOverviewTab === 'curriculum'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs border border-slate-200/80 dark:border-slate-600'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <BookMarked size={15} />
+                    <span>Curriculum & Feed</span>
+                  </button>
+                </div>
               </div>
 
               {/* Row 2: Performance Analytics & Top Performers */}
