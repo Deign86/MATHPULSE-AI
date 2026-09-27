@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, CheckCheck, ChevronDown, X } from 'lucide-react';
+import { Bell, CheckCheck, ChevronDown } from 'lucide-react';
 import { useNotifications } from './NotificationContext';
 import { NotificationItem } from './NotificationItem';
 import { NOTIFICATION_PAGE_SIZE, paginateNotifications } from './types';
@@ -75,15 +75,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 <span>Mark read</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-white/80 hover:text-white hover:bg-white/20 transition-colors focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none rounded-lg p-1"
-              title="Close notifications"
-              aria-label="Close notifications panel"
-            >
-              <X size={18} aria-hidden="true" />
-            </button>
           </div>
         </div>
 

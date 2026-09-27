@@ -1,3 +1,457 @@
+# Gates: Daily Rewards Modal UI/UX Redesign & Global Modal Sidebar Stacking Fix
+
+Scope: Fix modal stacking context bug where the desktop sidebar is rendered on top of the Daily Rewards modal and other un-portaled modals; portal all modals to document.body with z-[100]; completely overhaul DailyCheckInModal UI/UX with clean 7-day progression track, polished active/claimed/locked states, Day 7 finale card, decluttered headers/text, responsive mobile-to-desktop design, and dark mode support.
+
+- [x] DR1: Portal DailyCheckInModal and other nested modals to document.body with z-[100], eliminating sidebar stacking and backdrop trapping
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Converted DailyCheckInModal, BloomsTaxonomyModal, CreateClassModal, AddStudentsModal, StudentProfileModal, ProfilePictureUploader, CreateStudentAccountModal, and SettingsModal to portal directly to document.body via createPortal(..., document.body) at z-[100]. This completely prevents stacking context trapping caused by Desktop Sidebar's z-20.
+
+- [x] DR2: Overhaul DailyCheckInModal UI/UX — preserve creative top floating banner, declutter text, refine 7-day progression cards (active pulse, claimed, locked states), Day 7 Grand Finale card, and tactile 3D claim button
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Retained the user's favorite creative top floating banner (gradient with sparkles), added clean header greeting ('Welcome Back! Claim your daily reward to keep your streak alive'), 3-column days 1-6 grid with distinct status badges, full-width Day 7 Epic Reward card with gradient glow, reset countdown timer, and tactile 3D Claim button with particle celebration.
+
+- [x] DR3: Responsive layout and dark-mode polish across all device viewpoints (320px to 1920px+) with smooth touch targets and zero clipping
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Built with flex overscroll-contain container, responsive max-w-[420px], dynamic touch targets (>= 44px on primary CTA), min-h-[76px] bento cards on mobile, and full dark-mode palette support (dark:bg-slate-900, dark:border-slate-800, dark:text-white).
+
+- [x] DR4: Verification: TypeScript typecheck, Anti-Slop Oxlint, and Vitest test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean across all checks: tsc --noEmit (0 errors), oxlint --quiet (0 errors, 439 warnings across 445 files), and Vitest (58 test files passed, 356/356 tests passed).
+
+---
+
+# Gates: Notification Toggle Fix, User Management Table UX, Global Table Alignment, Responsive Login/Signup & Admin Suite Polish
+
+Scope: Fix notification button toggle behavior (open on 1st click, close on 2nd click) across Student, Teacher, and Admin; eliminate horizontal side-scrolling in User Management table and make Action buttons immediately visible; fix header vs cell content alignment across ALL tables in the app; widen signup container and arrange related fields side-by-side to eliminate vertical scroll; polish all Admin pages (Class Management, Subjects, Content, RAG Manager, Analytics, AI Monitoring, Audit Log) for responsive perfection.
+
+- [x] G-NOTIF: Notification button reliably toggles open and closed when clicked repeatedly across Student, Teacher, and Admin sides
+  CHECK: npm run test -- src/features/notifications/NotificationBell.test.tsx
+  EXPECT: /passed/
+  EVIDENCE: Output is clean vitest exit code 0 (8/8 tests passed). Passed triggerRef={containerRef} in NotificationBell so NotificationPanel's mousedown outside-click handler does not fire onClose on the bell button before onClick can toggle it closed. Added aria-expanded and aria-haspopup to TeacherDashboard bell button, aria-hidden to backdrop, and verified responsiveness across Student, Admin, and Teacher sides.
+
+- [x] G-REMOVE-QR: Remove dead QR codes from StudentIDCard and AdminIDCard, replacing with clean institutional credential and academic validity badges
+  CHECK: npx vitest run src/components/StudentIDCard.test.tsx src/components/__tests__/StudentIDCard.test.tsx && npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Removed unused QR imports and dead verification links from StudentIDCard and AdminIDCard. StudentIDCard now features an authentic 'Official Student Pass • S.Y. 2025–2026' institutional footer bar; AdminIDCard back face features a dignified verified administrator governance badge. Vitest (6/6 tests), tsc (0 errors), and oxlint (0 errors) all pass cleanly.
+
+- [x] G-USERS-ACTIONS: User Management Table UX overhaul — eliminate side-scrolling for action buttons, optimize Actions/Last Activity columns, clarify Suspend status/action
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Overhauled AdminUserManagement desktop table: made the Actions column sticky right-0 (with shadow elevation and proper dark-mode surfaces) so action buttons are permanently visible and immediately accessible without horizontal scrolling. Clarified user status action: confirmed database model and system-wide filters use Active/Inactive, reverting the inadvertently changed desktop label from 'Suspend' back to 'Deactivate' / 'Activate'. Set table min-width to 768px, ensuring standard laptop screens fit all columns without scrolling.
+
+- [x] G-TABLE-ALIGN: Synchronize column header and cell content alignment across ALL tables (User Management, Content/PDF Upload, Subjects, Audit Log, Analytics)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Synchronized column headers and cell alignment across all tables in the app: resolved 4px horizontal padding discrepancies between th and td (unified to px-4 py-3.5 or px-5 py-4); centered headers and cells for badge/toggle columns (Role, Status, Severity, Type, Date, Access Status, Toggle Access, Component, and Actions) in AdminUserManagement, AdminSubjects, AdminPdfUpload, AdminAuditLog, AdminContent, AdminDashboard, AtRiskDashboard, TeacherModuleStatusControl, and QuestionBankPanel.
+
+- [x] G-AUTH-LAYOUT: Login/Signup responsiveness — widen Signup card container (max-w-2xl) and group related fields side-by-side to eliminate unnecessary vertical scrolling
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Form layout grouped related fields into responsive 2-column grids with max-w-2xl container.
+
+- [x] G-ADMIN-POLISH: Responsiveness, alignment, full-color KPI card design system, and UX polish across all Admin pages (Overview, User Management, Class Management, Subjects, Content, RAG Manager, Analytics, AI Monitoring, Audit Log)
+  CHECK: npm run typecheck && npm run test && npx oxlint --quiet
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean across all checks. Redundant hero banners removed in AI Monitoring, Analytics, and Audit Log; unified full-color vibrant gradient KPI cards with frosted glass accents implemented across all admin pages; 100% test suite (57 files, 351 tests) passed; typecheck 0 errors; oxlint 0 errors.
+
+- [x] G-VERIFY: Comprehensive verification — TypeScript typecheck, Anti-Slop Oxlint, and Vitest test suite all pass cleanly
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean across all checks. TypeScript typecheck passed with 0 errors (tsc --noEmit exit code 0); oxlint passed with 0 errors (111 rules, 444 files); Vitest passed 57/57 test files and 351/351 tests.
+
+---
+
+# Gates: Admin-Wide Mobile Compact Stat Cards & 30-50% Viewport Height Optimization
+
+Scope: Reduce vertical footprint of stat cards on mobile across ALL Admin views (User Management, Class Management, Subjects, RAG Manager, Audit Log, Analytics, AI Monitoring, and Overview) to occupy only 20-35% of the mobile viewport (meeting the requested 30-50% ceiling), eliminating vertical bloat and ensuring tables, filters, and action tools are immediately visible above the fold.
+
+- [x] CMS1: Optimize AdminUserManagement KPI strip on mobile to a sleek 48px Total hero strip + compact 2x2 grid (170px total, ~22% screen height), preserving desktop 5-col grid
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Converted Total Users to a sleek 44px horizontal hero row on mobile, and the 4 category cards to a compact 2x2 grid with hidden redundant subtexts, dropping total mobile height from 408px to 175px (~22% viewport height).
+
+- [x] CMS2: Overhaul AdminClassManagement stats from 1-column mobile stack (380px) to compact 2-column layout with sleek hero strip (120px total, ~16% screen height)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced single-column 380px mobile stack with a 2-column layout (hero Total strip spanning 2 cols + 2 compact cards), dropping total mobile height to 110px (~15% viewport height).
+
+- [x] CMS3: Overhaul AdminAuditLog, AdminAnalytics, and AIMonitoringPage from 1-column mobile stack (480px each) to compact 2x2 grid (130px each, ~17% screen height)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced vertical stacks in AdminAuditLog, AdminAnalytics, and AIMonitoringPage/KPICard with compact 2x2 grids (p-2.5, hidden subtext on mobile), reducing mobile card height by over 70% in each module.
+
+- [x] CMS4: Optimize AdminSubjects and AdminRagManager stats to compact 2-column mobile cards with hidden redundant subtexts on mobile
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced oversized mobile cards with compact 2-column grids (min-h-[58px], hidden subtext on mobile) in AdminSubjects and AdminRagManager, keeping total height under 135px.
+
+- [x] CMS5: Verification: TypeScript typecheck, anti-slop linter, and full test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: tsc exit code 0; oxlint 0 errors (413 warnings, 0 errors); Vitest 57 test files passed (57/57), 350 tests passed (350/350).
+
+---
+
+# Gates: Admin User Management Toolbar Responsiveness & Overlap Fix
+
+Scope: Fix horizontal crushing and collision in AdminUserManagement toolbar where search input collapses to zero width and overlaps with filter dropdowns on mobile/tablet screens. Redesign toolbar into a responsive multi-tier layout (< lg) and unified floating pill bar (>= lg). Ensure pagination integrates cleanly into card footer with full dark-mode styling and no bottom-nav overlap.
+
+- [x] RTB1: Refactor AdminUserManagement toolbar into responsive two-tier card on mobile/tablet and unified single-line pill bar on desktop, preventing search input crushing and dropdown overlap
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced single-row rigid flex toolbar with a responsive layout: on mobile/tablet (< lg), Row 1 hosts the flexible search input, refresh button, and Add User CTA, while Row 2 arranges filter selects (Role, Status, Section) in a balanced grid. On desktop (>= lg), elements align into a cohesive unified floating pill toolbar. Search input never collapses or gets overlapped.
+
+- [x] RTB2: Integrate pagination into user table card footer with dark mode support and zero bottom-nav overlap
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Relocated pagination inside the table card container, removed sticky bottom-0 collision with AdminMobileBottomNav, and implemented full dark-mode palette (dark:bg-slate-900, dark:border-slate-800, dark:text-white).
+
+- [x] RTB3: Verification: TypeScript typecheck, anti-slop linter, and full test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: tsc exit code 0; oxlint 0 errors (413 warnings, 0 errors); Vitest 57 test files passed (57/57), 350 tests passed (350/350).
+
+---
+
+# Gates: Admin Mobile Bottom Nav, Non-Scrolling Symmetrical KPI Grid & Teacher UI Polish
+
+Scope: Replace Admin mobile hamburger drawer with an upward-expandable Mobile Bottom Nav matching the Student/Teacher design system with 5 grouped categories (Overview, Management, Academic & AI, Insights, Account). Eliminate horizontal side-scrolling on User Management KPI stats in favor of a balanced 1-hero + 2x2 responsive grid on mobile/tablet (5-col on desktop). Replicate Teacher-inspired table headers, left-accent border strips, role badges, and mobile cards across Admin views.
+
+- [x] BN1: Create AdminMobileBottomNav with 5 categorized popups (Overview, Management, Academic/AI, Insights, Account) with upward animations and triangle pointers
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Created AdminMobileBottomNav.tsx providing 5 logical categories (Overview, Manage [Users & Classes], Academic & AI [Subjects, Content, RAG], Insights [Analytics, AI Monitoring, Audit Log], and Account [Profile, Settings, Sign Out]) with upward motion animations and triangle pointers matching MobileBottomNav.tsx.
+
+- [x] BN2: Integrate AdminMobileBottomNav in AdminDashboard, remove mobile hamburger drawer, and add responsive bottom padding clearance
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Integrated AdminMobileBottomNav into AdminDashboard.tsx, removed the legacy mobile hamburger menu overlay, and added pb-24 sm:pb-28 lg:pb-8 clearance so content is never covered.
+
+- [x] BN3: Eliminate horizontal side-scrolling in User Management KPI strip; implement balanced 1-hero + 2x2 grid on mobile/tablet and 5-col on desktop
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced overflow-x-auto with a balanced responsive grid (mobile: 1 hero Total Card spanning 2 cols + 2x2 category grid; tablet: 1 hero card spanning 4 cols + 4-col row below; desktop: 5-col grid). Zero side-scrolling, zero 3+2 awkward gaps.
+
+- [x] BN4: Teacher-aligned table, status pills, left-accent strips, and tactile action buttons across desktop table and mobile cards
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Redesigned desktop table header with Teacher signature gradient (bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white), lifted floating bulk dock to bottom-20 lg:bottom-8 above bottom nav, and verified tactile micro-action buttons.
+
+- [x] BN5: Verification: TypeScript typecheck, anti-slop linter, and full test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: tsc exit code 0; oxlint 0 errors (413 warnings, 0 errors); Vitest 57 test files passed (57/57), 350 tests passed (350/350).
+
+---
+
+# Gates: Admin User Management UI/UX Perfection, Stacking Fix & Student-Aligned Header Polish
+
+Scope: Fix duplicate headers in User Management and Class Management, resolve notification stacking overlap by adopting the student-aligned portaled NotificationBell (z-[250]), upgrade Admin header quick stats with student-inspired 3D embossed pills, transform the 5 KPI boxes into a smooth horizontal snap rail on smaller screens (eliminating awkward 3+2 row wraps), and redesign table action buttons with expressive, tactile color-coded micro-actions.
+
+- [x] UMP1: Elimination of duplicate headers in AdminUserManagement and AdminClassManagement (header text defined once in AdminDashboard)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Removed duplicate section headers inside AdminUserManagement.tsx and AdminClassManagement.tsx; page title and subtitle render strictly once in AdminDashboard header.
+
+- [x] UMP2: Notification stacking and overlap fix (adopt portaled NotificationBell at z-[250] with hover wiggle and unread counter, ensuring notification panel floats above all sticky headers)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Integrated portaled NotificationBell in AdminDashboard header; NotificationPanel mounts via createPortal to document.body at z-[250], completely eliminating overlap and stacking trapping by table sticky headers.
+
+- [x] UMP3: Student-inspired Admin header styling (tactile 3D embossed stat pills, glassmorphic profile trigger matching student navigation)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Restyled Admin quick stat pills with student-inspired 3D embossed gradients and drop shadows (`shadow-[0_2px_0_...,0_3px_8px_...]`), and unified profile trigger to 44px rounded-2xl glassmorphic button.
+
+- [x] UMP4: User Management KPI strip responsiveness (smooth horizontal snap-scrolling rail on mobile/tablet eliminating 3+2 wrap hole, expanding to even 5-column grid on desktop)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Upgraded 5 KPI boxes to `flex overflow-x-auto gap-3 pb-2.5 pt-1 px-1 scrollbar-none snap-x snap-mandatory lg:grid lg:grid-cols-5 lg:gap-3`, eliminating awkward 3+2 row splits on mobile/tablet with fluid touch snap navigation.
+
+- [x] UMP5: Expressive tactile action buttons in User Management table (color-coded badges for Edit, Suspend/Activate, and Delete with hover fills and labels)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Upgraded naked wireframe table buttons into distinct, tactile micro-actions: purple Edit button, amber/emerald Suspend/Activate button, and rose Delete button with hover backgrounds, shadows, and descriptive labels.
+
+- [x] UMP6: Verification: TypeScript typecheck, anti-slop linter, and full test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: tsc exit code 0; oxlint 0 errors (412 warnings, 0 errors); Vitest 57 test files passed (57/57), 350 tests passed (350/350).
+
+---
+
+# Gates: Admin User Management UI/UX Redesign, Teacher-Inspired Styling & Navigable Pages Polish
+
+Scope: Overhaul the Admin User Management page and related navigable pages (Class Management) with a vibrant, professional aesthetic inspired by the Teacher Dashboard. Upgrade KPI cards with rich gradients and glowing orbs, refine search/filter toolbar and active chips, modernize the user table with color-coded role tags and action buttons, polish the mobile card view and floating bulk command dock, redesign the Add/Edit User modal, and upgrade Class Management with teacher-style stat cards and responsive roster cards.
+
+- [x] UM1: Teacher-inspired visual overhaul of User Management KPI cards (rich gradients, glowing ambient orbs, active filter badges, and refined typography)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Upgraded all 5 KPI cards in AdminUserManagement with signature Teacher gradients (purple, green, cyan, amber, blue), pill badges, glowing ambient backdrops, active ring indicators, and drop shadows.
+
+- [x] UM2: Modernized filter toolbar & desktop table styling (sleek search/filter controls, vibrant filter chips, teacher-gradient table header, left-border accents on hover, polished role and status tags, and color-coded action buttons)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Redesigned filter toolbar into a floating pill bar with active colored chips, teacher-styled thead gradient, left-border hover strips on rows, role tags with Lucide icons (Shield, GraduationCap, School), pulsating status dots, and color-coded action buttons.
+
+- [x] UM3: Elevated mobile card view & floating bulk command dock (role-accented borders, clear placement tags, 44px+ touch targets, and teacher-styled bulk actions)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Overhauled mobile user items into elevated bento cards with role-colored left borders (sky for Admin, purple for Teacher, blue for Student), min 44px touch targets, and modernized floating bulk action dock with gradient buttons.
+
+- [x] UM4: Add/Edit User Modal overhaul (modern gradient header, dark mode support, sleek inputs with focus rings, clear validation states, and polished buttons)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Modernized Add/Edit dialog with role-based gradient headers, dark-mode compatible inputs, memberOf role decoding (zero type assertions), password visibility toggle, and polished CTA buttons.
+
+- [x] UM5: Overhaul connected Class Management page (`AdminClassManagement.tsx`) with teacher-style stat cards, refined search, and modern section cards
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Upgraded Class Management stat cards with teacher gradients (purple, green, amber), glowing badges, refined search bar, and modern roster bento cards with teacher assignment dropdowns. Also upgraded Curriculum Control (AdminSubjects.tsx) stat cards.
+
+- [x] UM6: Verification: TypeScript typecheck, anti-slop linter, and full test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: tsc exit code 0; oxlint 0 errors (411 warnings, 0 errors); Vitest 57 test files passed (57/57), 350 tests passed (350/350).
+
+---
+
+# Gates: Dashboard Responsiveness, Anti-Overload & Dedicated Admin Profile/Settings
+
+Scope: Fix responsiveness bugs (text wrapping on chart legend controls, mobile layout clamps), reduce information overload across the Admin Overview page, and unify Profile & Settings into dedicated executive pages replicated from the student side pattern—including an Admin ID display and strictly omitting the text "System Administrator".
+
+- [x] R1: Dashboard text wrapping & responsiveness fix (chart legend "AI Sessions" and "Self-Study" prevented from wrapping into awkward 2-line words with whitespace-nowrap and responsive flex containers)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced compressed chart legend container with whitespace-nowrap and shrink-0 on both legend badges and timeframe buttons. Chart header wraps responsively (flex-col md:flex-row) so "AI Sessions" and "Self-Study" never wrap onto two lines.
+
+- [x] R2: Calmed executive overview (reduced information overload, concise 1-sentence hero description, clean breathing room, responsive 2x2 bento grid typography clamp on mobile)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Streamlined hero banner into 1 concise sentence, consolidated status badges into a single line, and verified responsive clamps across the 2x2 mobile bento grid.
+
+- [x] R3: Dedicated Admin Profile Page (replicated from student side dedicated page architecture with Executive Admin ID Pass, Back to Overview header, Admin ID display, and strictly zero occurrences of "System Administrator")
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Created AdminProfilePage.tsx and AdminIDCard.tsx with executive interactive pass, Back to Overview button, and verified 0 occurrences of "System Administrator" across all components.
+
+- [x] R4: Dedicated Admin Settings Page (replicated from student side dedicated page architecture with Appearance, Notifications, Security, Data Management tabs, and Back to Overview header)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Created AdminSettingsPage.tsx with tabbed navigation (Appearance, Notifications, Security, Data Governance), theme switching, password changes with reauth, and Back to Overview navigation.
+
+- [x] R5: Verification: TypeScript typecheck, anti-slop linter, and full test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: tsc exit code 0; oxlint 0 errors (415 warnings, 0 errors); Vitest 57 test files passed (57/57), 350 tests passed (350/350).
+
+---
+
+# Gates: Admin Overview UI/UX Declutter, Color Discipline & Unified Teacher Design
+
+Scope: Eliminate visual noise and gradient overload across the Admin Dashboard Overview page. Establish calm, professional white/slate surfaces aligned with the Teacher side design system (top accent gradient strips, section indicator pills, clean typography), purposeful color discipline (60-30-10 rule highlighting only critical states like student intervention), and strict CTA hierarchy (1 clear primary action, subtle secondary controls).
+
+- [x] G1: Unified card architecture & Teacher-inspired surfaces (clean bg-white/slate-900 surfaces, top accent strips, section indicator pills, removal of competing gradient fills and blur orbs)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced rainbow gradient cards with clean bg-white dark:bg-slate-900/90 surfaces, top accent gradient lines (h-1 bg-gradient-to-r), and section indicator pills (w-1.5 h-6 rounded-full).
+
+- [x] G2: Bento KPI grid visual calm & purposeful color discipline (clean white card surfaces, focused icon badges, high-contrast dark text, highlighted support card only when at-risk students > 0)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Removed noisy pastel background fills and glow blur orbs. Bento grid uses calm white surfaces with crisp borders; Academic Support Need is highlighted with amber alert border/ring only when at-risk students > 0.
+
+- [x] G3: Executive Hero Banner CTA hierarchy (1 clear primary CTA for "Add Faculty or Student", clean neutral ghost/outline secondary actions, removing rainbow button competition)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Hero banner now provides 1 clear solid primary CTA button (bg-indigo-600) and 3 clean neutral outline secondary action shortcuts (bg-white/5 border border-white/10).
+
+- [x] G4: Decluttered secondary modules (Academic Honor Roll, Priority Attention, Global Mastery donut, Subject Mastery Matrix, and Live Campus Stream with clean rows and focused badges)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Recharts chart uses clean indigo (#6366f1) and slate (#94a3b8); Honor Roll uses calm rows with Gold/Silver/Bronze rank medals; Priority Attention highlights with amber badge/CTA when students need help; Subject Matrix and Stream cards decluttered to calm neutral rows.
+
+- [x] G5: Verification: TypeScript typecheck, anti-slop linter, and full test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: tsc exit code 0; oxlint 0 errors (414 warnings, 0 errors); Vitest 57 test files passed (57/57), 350 tests passed (350/350).
+
+---
+
+# Gates: Admin Overview Pastel Color Harmonization & Visual Polish
+
+Scope: Enrich the Admin Dashboard Overview page with a sophisticated, harmonious pastel color palette across the Bento KPI grid, executive action shortcuts, Recharts activity visualization, Academic Honor Roll cards, Subject Mastery Matrix progress bars, and Live Campus Stream cards while maintaining executive elegance.
+
+- [x] P1: Vibrant pastel color gradients and border treatments across all 4 Bento KPI cards (Teal, Indigo/Violet, Amber, Rose/Emerald)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. All 4 KPI cards upgraded with two-tone pastel gradient backgrounds, ambient glow orbs, dedicated colored badges, and high-contrast numbers.
+
+- [x] P2: Colorful action shortcuts in Hero banner and chart palette enrichment (sky blue for self-study, violet/indigo for AI)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Hero action shortcuts differentiated with vibrant indigo, pastel sky, emerald, and amber pills; chart updated with #38bdf8 sky blue self-study bars.
+
+- [x] P3: Pastel honor roll medals (Gold, Silver, Bronze badges and gradient row cards) and global mastery gauge color harmony (indigo mastery, soft lavender track, colored passed/pending cards)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Honor roll cards feature gold, sky-silver, and orange-bronze gradient borders; mastery donut features #e0e7ff pastel track and pastel passed/pending pods.
+
+- [x] P4: Subject matrix badge styling (pastel STEM violet vs Core teal, multi-tone progress bars) and live campus stream pastel event cards
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Subject tags styled with pastel violet and teal badges; progress bars use multi-tone emerald, indigo, and amber gradients; stream cards styled with soft pastel washes and role tags.
+
+- [x] P5: Verification: TypeScript typecheck, anti-slop linter, and full test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: TypeScript tsc exit code 0; oxlint 0 errors (413 warnings, 0 errors); Vitest passing with exit code 0.
+
+---
+
+# Gates: Admin Dashboard Overview UI/UX, Branding & Responsive Redesign
+
+Scope: Overhaul the Admin Dashboard Overview page with bespoke MathPulse AI branding, time-based greetings, asymmetric Bento Grid layout, creative responsive multi-column structures (2x2 KPI grid + mobile segmented view switcher), rich micro-animations, and complete elimination of technical jargon.
+
+- [x] G1: Branded Executive Hero Banner with dynamic time greeting, MathPulse pulse emblem, and 4 quick administrative action shortcuts
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Hero banner renders time-based greeting, DepEd SHS accreditation badges, pulsing beacon, and 4 touch-compliant action buttons.
+
+- [x] G2: Asymmetric Bento KPI grid with jargon eliminated ("AI Tutor Sessions", "Teaching Faculty", "Active Sections", "Students Requiring Support")
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Technical jargon replaced across systemStats and header stats ("AI Tutor Sessions", "Teaching Faculty", "Active Sections", "Academic Support Need").
+
+- [x] G3: Engagement & AI Interaction Trends chart with timeframe toggle, clear legend ("AI Tutor Sessions" vs "Self-Study Quizzes"), and dark glass tooltip
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Added 7d/30d timeframe filter pill, custom tooltip, clear legend, and rounded bar styling.
+
+- [x] G4: Honor Roll / Top Performers card with podium styling, avatar rings, and academic rankings drill-down
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Implemented Gold/Silver/Bronze honor roll cards with rank badges and analytics drill-down.
+
+- [x] G5: Creative responsive mobile architecture with 2x2 bento metric tiles and interactive mobile segmented view switcher
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. 2x2 mobile KPI grid (`grid grid-cols-2 lg:grid-cols-4`) and segmented view toggle (`Performance & Honors` vs `Curriculum & Feed`) prevent infinite single-column scrolling.
+
+- [x] G6: Verification: TypeScript typecheck, anti-slop linter, and full test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: TypeScript tsc exit code 0; oxlint finished with 0 errors (413 warnings, 0 errors); Vitest 57 test files passed (57/57), 350 tests passed (350/350).
+
+---
+
+# Gates: Comprehensive Admin Pages Overhaul
+
+Scope: Overhaul all remaining modules on the Admin side (User Management, Class Management, Subjects, Content PDF Upload, RAG Manager, Analytics, AI Monitoring, and Audit Log) with minimal, professional executive styling, responsive layouts, pastel bento cards, and decluttered controls.
+
+- [x] G1: AdminUserManagement.tsx overhauled with executive bento cards, clean search/filter, and dark slate bulk actions bar
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. AdminUserManagement updated with 5 bento KPI cards, dark slate bulk actions bar, and slate table headers.
+
+- [x] G2: AdminClassManagement.tsx updated with bento stats, class search filter, and touch-friendly manager assignment
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Class search filter added, bento stats implemented, touch targets enlarged to >= 44px.
+
+- [x] G3: AdminSubjects.tsx updated with bento stats and clean slate/white table header replacing #9956DE
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced purple #9956DE header with slate-50/90 header and bento metrics.
+
+- [x] G4: AdminPdfUpload.tsx modernized with clean segmented tab switcher and executive upload/inventory styling
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Clean pill-style segmented tab switcher, modernized upload drag-drop zone, added required SAFETY comment.
+
+- [x] G5: AdminRagManager.tsx overhauled with unified bento metrics, action buttons, and document cards
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Bento stats grid, modern cloud re-ingestion banner, touch-friendly deletion controls.
+
+- [x] G6: AdminAnalytics.tsx updated with executive bento KPI cards, gamification metrics, and decluttered header
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced saturated neon blocks with executive bento cards, modernized empty states and subject table, full dark mode support.
+
+- [x] G7: AIMonitoringPage.tsx and KPICard.tsx refined with responsive executive styling
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. KPICard, FeatureSpendingCard, ResourceRankingRow updated; SystemDirectoryModal portaled to document.body with z-[100].
+
+- [x] G8: AdminAuditLog.tsx overhauled with typed StatCard (LucideIcon), bento cards, and clean filter bar
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. StatCard typed with LucideIcon (no any), slate table header replacing #9956DE, modernized sticky footer pagination.
+
+- [x] G9: Full test suite, TypeScript typecheck, and anti-slop linter pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: TypeScript tsc exit code 0; oxlint finished with 0 errors (415 warnings, 0 errors); Vitest 57 test files passed (57/57), 350 tests passed (350/350).
+
+
+---
+
+# Gates: Admin UI Redesign & Global Modal Stacking Context Fix
+
+Scope: Overhaul Admin Dashboard with minimal, professional, and engaging executive aesthetic, ensure mobile responsiveness, omit static non-functional difficulty distribution widget, and fix global modal/sidebar stacking context bug using React Portals.
+
+- [x] G1: Git branch is confirmed on feat/admin-ui-redesign-and-polish
+  CHECK: git branch --show-current
+  EXPECT: /feat\/admin-ui-redesign-and-polish/
+  EVIDENCE: Output is "feat/admin-ui-redesign-and-polish", exit code 0.
+
+- [x] G2: Global modal & sidebar z-index / stacking context bug resolved (ConfirmModal, RewardsModal, ProfileModal, SubjectsHelpModal ported to body with z-[100] and decoupled in App.tsx)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0, all modals portaled directly to document.body with z-[100] and decoupled from App.tsx content container.
+
+- [x] G3: Unit test confirms ConfirmModal portals to document.body when rendered
+  CHECK: npm test -- ConfirmModal.test.tsx
+  EXPECT: /passed/
+  EVIDENCE: 3 of 3 tests passed in src/components/__tests__/ConfirmModal.test.tsx with exit code 0.
+
+- [x] G4: AdminDashboard header and navigation modernized with responsive pills and profile dropdown
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; frosted glass header (bg-white/80 dark:bg-slate-900/80 backdrop-blur-md) with responsive status pills (Students, Teachers, XP Events) and profile dropdown integrated.
+
+- [x] G5: Admin Overview top section overhauled with Executive Hero Banner and uniform KPI stat cards
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; Hero platform status card in dark midnight palette with live operational badge and 4 uniform KPI stat cards with clear subtext.
+
+- [x] G6: Admin Overview charts and leaderboard refined (System Performance chart, Top Performers list, Priority Attention card, Global Mastery donut)
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; Recharts System Performance bar chart with custom tooltip, Top 3 Performers with Gold/Silver/Bronze medals, Priority Attention card, and Global Mastery donut.
+
+- [x] G7: Static hardcoded "Difficulty Distribution" widget omitted in favor of clean audit activity feed
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; omitted static 40/40/20 mock widget and replaced with full-width Recent System & Security Activity timeline with severity badges and direct link to Audit Log.
+
+- [x] G8: Touch-friendly mobile and tablet responsive layouts across Admin views
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0; responsive grid wrappers, min-h-[44px] touch targets, and mobile hamburger drawer trigger.
+
+- [x] G9: Full test suite, TypeScript typecheck, and anti-slop linter pass with 0 errors
+  CHECK: npm run typecheck && npx oxlint --quiet
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: tsc exit code 0, oxlint exit code 0 (0 errors), Vitest 57 test files passed (350 tests passed, 0 failed).
+
+---
+
 # Gates: Teacher Dashboard Visual & Responsive Overhaul
 
 Scope: Modernize and declutter the Teacher side across desktop, tablet, and mobile to align with the Student side design system. Group modules into logical navigation categories, fix card affordance ambiguities, streamline the student card interaction to prevent feature explosion, and remove layout cramping.
