@@ -135,4 +135,22 @@ describe('NotificationBell', () => {
     fireEvent.click(bellBtn);
     expect(screen.queryByTestId('panel')).not.toBeInTheDocument();
   });
+
+  it('passes triggerRef to NotificationPanel so outside click does not intercept bell button', () => {
+    unreadCountValue = 3;
+    let receivedTriggerRef: React.RefObject<HTMLElement | null> | undefined;
+    vi.spyOn(notificationPanelNs, 'NotificationPanel').mockImplementationOnce(
+      // SAFETY: stub isolates triggerRef forwarding inspection.
+      (({ triggerRef }: { triggerRef?: React.RefObject<HTMLElement | null> }) => {
+        receivedTriggerRef = triggerRef;
+        return <div data-testid="panel" />;
+      }) as typeof notificationPanelNs.NotificationPanel,
+    );
+
+    render(<NotificationBell />);
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }));
+
+    expect(receivedTriggerRef).toBeDefined();
+    expect(receivedTriggerRef?.current).toBeInstanceOf(HTMLElement);
+  });
 });

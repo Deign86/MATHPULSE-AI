@@ -313,8 +313,8 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                     <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Grade</th>
                     <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Topic</th>
                     <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-center">Questions</th>
-                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Status</th>
-                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap">Processed At</th>
+                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-center">Status</th>
+                    <th className="h-8 sm:h-9 px-3.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-center">Processed At</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f1f5f9] bg-white">
@@ -333,8 +333,8 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                         <span className="text-[11px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md line-clamp-1">{pdf.topic}</span>
                       </td>
                       <td className="py-2.5 px-3.5 text-xs sm:text-[13px] font-bold text-[#1e293b] text-center">{pdf.question_count || '-'}</td>
-                      <td className="py-2.5 px-3.5">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold rounded-full border shadow-sm ${
+                      <td className="py-2.5 px-3.5 text-center">
+                        <span className={`inline-flex items-center justify-center gap-1 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold rounded-full border shadow-sm ${
                           pdf.processed
                             ? 'bg-emerald-50 text-emerald-600 border-emerald-200/50'
                             : 'bg-amber-50 text-amber-600 border-amber-200/50'
@@ -343,7 +343,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                           {pdf.processed ? 'Completed' : 'Processing...'}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3.5 text-xs sm:text-[13px] font-medium text-[#64748b]">
+                      <td className="py-2.5 px-3.5 text-xs sm:text-[13px] font-medium text-[#64748b] text-center">
                         {pdf.timestamp ? new Date(pdf.timestamp).toLocaleDateString() : '-'}
                       </td>
                     </tr>
