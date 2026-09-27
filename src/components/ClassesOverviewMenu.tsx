@@ -108,7 +108,7 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
 
         {/* Global Stats & Alerts Row (Vibrant Palette) */}
         {isCompetency ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
             <TeacherStatCard
               color="green"
               title="Total Students"
@@ -143,8 +143,8 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
-            {/* Global Stats Cards (3 columns across all screen sizes) */}
-            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            {/* Global Stats Cards (2-col grid on mobile, 3 columns on tablet/desktop) */}
+            <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
               <TeacherStatCard
                 color="green"
                 title="Total Students"
