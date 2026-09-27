@@ -1,3 +1,39 @@
+# Gates: Sticky Tabs, Compact Mobile Analytics Cards, RAG Manager Sticky Toolbar & User Management Filter Optimization
+
+Scope: Fix excessive mobile vertical scroll in Analytics page by compacting the 4 KPI stat cards (Active Learners, Mastery Average, Quizzes Taken, At-Risk Students) into a balanced 2x2 grid with slim padding; drastically reduce User Management sticky toolbar footprint on mobile from 55% screen height down to ~7% by collapsing filter dropdowns into an on-demand filter sheet and moving pagination to the card footer; make the RAG Manager search and filter controls sticky; and implement frosted sticky title tabs across multi-tab pages (Analytics, PDF Upload, Settings, Audit Log).
+
+- [x] ST1: Analytics KPI cards compacted on mobile to a sleek 2x2 grid (p-2.5, compact typography, slim progress bars) taking ~130px instead of 2 screens of scroll
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Replaced single-column full-height stack with responsive 2x2 grid (grid-cols-2 lg:grid-cols-4), compact badges, and responsive font clamping, reducing mobile vertical footprint by over 70%.
+
+- [x] ST2: User Management mobile sticky search and filter bar reduced from 55% viewport height to ~7% single-line bar with collapsible filters trigger
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Condensed mobile sticky header to a single ~44px row (Search + Filter sheet toggle + Refresh + Add User) with active filter badge counter, collapsible drawer on demand, and relocated pagination to card footer.
+
+- [x] ST3: RAG Manager control and search toolbar made sticky with frosted glass backdrop blur
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Wrapped search and control bar in sticky top-0 z-20 container with bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md styling.
+
+- [x] ST4: Sticky title tabs across multi-tab pages (Analytics, PDF Upload, Settings, Audit Log) with desktop-to-mobile responsiveness
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Implemented sticky top-0 z-20 headers with backdrop blur for Analytics focus tabs, PDF Upload segmented tabs, Settings navigation, and Audit Log filter toolbar.
+
+- [x] ST5: Unify stat card design across ALL Admin pages (Dashboard, Class Management, Subjects, RAG Manager, PDF Upload, Audit Log, AI Monitoring, Analytics) to strictly use the top line highlight, ambient glow, frosted glass icon badges, and matching typography
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Standardized all stat cards across AdminClassManagement, AdminSubjects, AdminRagManager, AdminPdfUpload, AdminAuditLog, AIMonitoringPage/KPICard, and AdminAnalytics with the signature top line highlight (absolute top-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent), rounded-2xl/3xl geometry, ambient glow orbs, frosted glass badges, and unified tabular typography.
+
+- [x] ST6: Verification: TypeScript typecheck, Anti-Slop Oxlint, and Vitest test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop && npm test -- --run
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean across all checks: tsc --noEmit (0 errors), oxlint --quiet (0 errors across 448 files), and Vitest (58 test files passed, 356/356 tests passed).
+
+---
+
 # Gates: Daily Rewards Modal UI/UX Redesign & Global Modal Sidebar Stacking Fix
 
 Scope: Fix modal stacking context bug where the desktop sidebar is rendered on top of the Daily Rewards modal and other un-portaled modals; portal all modals to document.body with z-[100]; completely overhaul DailyCheckInModal UI/UX with clean 7-day progression track, polished active/claimed/locked states, Day 7 finale card, decluttered headers/text, responsive mobile-to-desktop design, and dark mode support.

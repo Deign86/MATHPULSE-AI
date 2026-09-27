@@ -57,52 +57,52 @@ export const KPICard: React.FC<KPICardProps> = ({
   const styles = THEME_STYLES[theme] || THEME_STYLES.purple;
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 ${styles.gradient} ${styles.shadow} border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out flex flex-col justify-between group min-w-0 text-white select-none`}>
+    <div className={`relative overflow-hidden rounded-xl sm:rounded-3xl p-2.5 sm:p-5 ${styles.gradient} ${styles.shadow} border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out flex flex-col justify-between group min-w-0 text-white select-none min-h-[100px] sm:min-h-[140px]`}>
       {/* Ambient Glow */}
-      <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
+      <div className="absolute -bottom-6 -right-6 w-20 sm:w-36 h-20 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
-      <div className="relative z-10 flex items-start justify-between gap-2 mb-3">
-        <div className="space-y-1 min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 truncate">
+      <div className="relative z-10 flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
+        <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+            <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 truncate">
               {title}
             </span>
             {badge && (
-              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
+              <span className="inline-flex items-center rounded-full px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
                 {badge}
               </span>
             )}
           </div>
-          <div className="mt-1">
-            <p className="text-2xl sm:text-3xl font-display font-black text-white tabular-nums tracking-tight leading-none drop-shadow-xs">
+          <div className="mt-0.5 sm:mt-1">
+            <p className="text-lg sm:text-3xl font-display font-black text-white tabular-nums tracking-tight leading-none drop-shadow-xs">
               {value}
             </p>
           </div>
         </div>
 
-        <div className="w-10 h-10 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-xs text-white">
+        <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-xs text-white">
           {icon}
         </div>
       </div>
 
       {/* Subtext and Progress Bar */}
-      <div className="relative z-10 space-y-2 mt-2 pt-2.5 border-t border-white/20">
-        <div className="flex items-center justify-between text-[11px] gap-2">
+      <div className="relative z-10 space-y-1.5 sm:space-y-2 mt-1 sm:mt-2 pt-1.5 sm:pt-2.5 border-t border-white/20">
+        <div className="flex items-center justify-between text-[10px] sm:text-[11px] gap-1.5">
           {subValue && (
-            <span className="text-white/90 font-medium truncate drop-shadow-xs">
+            <span className="text-white/90 font-medium truncate drop-shadow-xs hidden sm:inline">
               {subValue}
             </span>
           )}
           {trend && (
-            <span className="inline-flex items-center gap-0.5 font-black text-white text-[10px] bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/25 shadow-2xs shrink-0">
+            <span className="inline-flex items-center gap-0.5 font-black text-white text-[9px] sm:text-[10px] bg-white/20 backdrop-blur-md px-1.5 sm:px-2 py-0.5 rounded-full border border-white/25 shadow-2xs shrink-0">
               {trend}
             </span>
           )}
         </div>
 
         {progressPercent !== undefined && (
-          <div className="w-full h-1.5 rounded-full bg-white/20 overflow-hidden">
+          <div className="w-full h-1 sm:h-1.5 rounded-full bg-white/20 overflow-hidden">
             <div
               className="h-full rounded-full bg-white transition-all duration-500 shadow-xs"
               style={{ width: `${Math.min(Math.max(progressPercent, 0), 100)}%` }}

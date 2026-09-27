@@ -423,8 +423,8 @@ export const AdminAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Top Executive KPI Bento Cards (Full Color Gradients) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* ── Top Executive KPI Bento Cards (Full Color Gradients - 2x2 on mobile, 4-col on desktop) ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {kpiBentos.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
@@ -433,53 +433,54 @@ export const AdminAnalytics: React.FC = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.22, delay: idx * 0.04 }}
-              className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-5 ${kpi.gradient} ${kpi.shadow} border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out flex flex-col justify-between group min-w-0 text-white select-none`}
+              className={`relative overflow-hidden rounded-xl sm:rounded-3xl p-2.5 sm:p-5 ${kpi.gradient} ${kpi.shadow} border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out flex flex-col justify-between group min-w-0 text-white select-none`}
             >
               {/* Ambient Glow */}
-              <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
+              <div className="absolute -bottom-6 -right-6 w-20 sm:w-36 h-20 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
-              <div className="relative z-10 flex items-start justify-between gap-2 mb-3">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 truncate">
+              <div className="relative z-10 flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
+                <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                    <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 truncate">
                       {kpi.title}
                     </span>
                     {kpi.badge && (
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
+                      <span className="inline-flex items-center rounded-full px-1.5 sm:px-2 py-0.5 text-[8px] sm:text-[9px] font-bold bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
                         {kpi.badge}
                       </span>
                     )}
                   </div>
-                  <div className="mt-1">
+                  <div className="mt-0.5 sm:mt-1">
                     {loadingKPIs ? (
-                      <div className="h-7 w-20 bg-white/20 rounded-lg animate-pulse" />
+                      <div className="h-6 sm:h-7 w-16 sm:w-20 bg-white/20 rounded-lg animate-pulse" />
                     ) : (
-                      <p className="text-2xl sm:text-3xl font-display font-black text-white tabular-nums tracking-tight leading-none drop-shadow-xs">
+                      <p className="text-lg sm:text-3xl font-display font-black text-white tabular-nums tracking-tight leading-none drop-shadow-xs">
                         {kpi.value}
                       </p>
                     )}
                   </div>
                 </div>
 
-                <div className="w-10 h-10 rounded-xl sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-xs text-white">
-                  <Icon size={18} />
+                <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 shadow-xs text-white">
+                  <Icon size={14} className="sm:hidden" />
+                  <Icon size={18} className="hidden sm:block" />
                 </div>
               </div>
 
               {/* Subtext and Progress Bar */}
-              <div className="relative z-10 space-y-2 mt-2 pt-2.5 border-t border-white/20">
-                <div className="flex items-center justify-between text-[11px] gap-2">
+              <div className="relative z-10 space-y-1.5 sm:space-y-2 mt-1 sm:mt-2 pt-1.5 sm:pt-2.5 border-t border-white/20">
+                <div className="flex items-center justify-between text-[10px] sm:text-[11px] gap-1.5">
                   <span className="text-white/90 font-medium truncate drop-shadow-xs">
                     {kpi.subValue}
                   </span>
-                  <span className="inline-flex items-center gap-0.5 font-black text-white text-[10px] bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/25 shadow-2xs shrink-0">
+                  <span className="inline-flex items-center gap-0.5 font-black text-white text-[9px] sm:text-[10px] bg-white/20 backdrop-blur-md px-1.5 sm:px-2 py-0.5 rounded-full border border-white/25 shadow-2xs shrink-0">
                     {kpi.trend}
                   </span>
                 </div>
 
                 {/* Micro Progress Bar */}
-                <div className="w-full h-1.5 rounded-full bg-white/20 overflow-hidden">
+                <div className="w-full h-1 sm:h-1.5 rounded-full bg-white/20 overflow-hidden">
                   <div
                     className="h-full rounded-full bg-white transition-all duration-500 shadow-xs"
                     style={{ width: `${Math.min(Math.max(kpi.progressPercent, 0), 100)}%` }}
@@ -491,43 +492,45 @@ export const AdminAnalytics: React.FC = () => {
         })}
       </div>
 
-      {/* ── Categorized Focus Navigation Tabs (Upgraded Header & Styling) ── */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 w-full sm:w-fit overflow-x-auto shadow-xs">
-        <button
-          onClick={() => setActiveTab('outcomes')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'outcomes'
-              ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <TrendingUp size={16} />
-          Learning Outcomes & Trajectory
-        </button>
+      {/* ── Categorized Focus Navigation Tabs (Sticky Header) ── */}
+      <div className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+        <div className="flex items-center gap-1.5 p-1 sm:p-1.5 bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 w-full sm:w-fit overflow-x-auto shadow-xs scrollbar-none">
+          <button
+            onClick={() => setActiveTab('outcomes')}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'outcomes'
+                ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <TrendingUp size={15} />
+            <span>Learning Outcomes & Trajectory</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('curriculum')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'curriculum'
-              ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <BookOpen size={16} />
-          Curriculum & Subject Health
-        </button>
+          <button
+            onClick={() => setActiveTab('curriculum')}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'curriculum'
+                ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <BookOpen size={15} />
+            <span>Curriculum & Subject Health</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('engagement')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeTab === 'engagement'
-              ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <Award size={16} />
-          Engagement & Leaderboards
-        </button>
+          <button
+            onClick={() => setActiveTab('engagement')}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'engagement'
+                ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <Award size={15} />
+            <span>Engagement & Leaderboards</span>
+          </button>
+        </div>
       </div>
 
       {/* ── Tab Views ── */}

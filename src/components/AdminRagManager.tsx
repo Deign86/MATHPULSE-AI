@@ -321,28 +321,28 @@ const AdminRagManager: React.FC = () => {
         ].map((stat, idx) => (
           <div
             key={idx}
-            className={`group relative ${stat.gradient} ${stat.shadow} border border-white/25 rounded-xl sm:rounded-2xl p-3 sm:p-5 flex flex-col justify-between hover:scale-[1.02] transition-all duration-300 ease-out overflow-hidden min-h-[70px] sm:min-h-[120px]`}
+            className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl p-3 sm:p-5 flex flex-col justify-between ${stat.gradient} ${stat.shadow} border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out min-w-0 min-h-[110px] sm:min-h-[140px] text-white select-none`}
           >
-            <div className="absolute -bottom-6 -right-6 w-20 h-20 bg-white/15 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
+            <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
-            <div className="flex items-center justify-between relative z-10 mb-1.5 sm:mb-3">
-              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shrink-0 group-hover:scale-105 transition-transform shadow-xs">
-                <stat.icon size={14} className="sm:hidden" />
-                <stat.icon size={18} className="hidden sm:block" />
+            <div className="relative z-10 flex items-center justify-between mb-1.5 sm:mb-3">
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-xs text-white transition-transform group-hover:scale-105">
+                <stat.icon size={14} className="sm:hidden text-white" />
+                <stat.icon size={18} className="hidden sm:block text-white" />
               </div>
-              <span className="px-1.5 sm:px-2.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-white/20 backdrop-blur-xs text-white border border-white/25">
+              <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
                 {stat.badge}
               </span>
             </div>
             <div className="relative z-10 min-w-0">
-              <h3 className="text-lg sm:text-2xl font-black font-display text-white leading-none tracking-tight tabular-nums drop-shadow-sm">
+              <h3 className="text-lg sm:text-[30px] font-display font-black text-white leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">
                 {stat.value}
               </h3>
-              <p className="text-[10px] sm:text-xs font-bold text-white/95 mt-1 sm:mt-1.5 truncate">
+              <p className="text-[10px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">
                 {stat.label}
               </p>
-              <p className="text-[10px] text-white/70 mt-0.5 truncate font-medium hidden sm:block">
+              <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">
                 {stat.subtext}
               </p>
             </div>
@@ -376,92 +376,94 @@ const AdminRagManager: React.FC = () => {
         </motion.div>
       )}
 
-      {/* ── Control & Search Bar ── */}
-      <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2.5 p-3 sm:p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-        {/* Search Box */}
-        <div className="relative flex-1 min-w-0">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search subjects or document sources..."
-            className="pl-9 pr-8 h-10 bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-purple-400 w-full"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Action Buttons: Unified responsive toolbar on a single balanced line */}
-        <div className="flex items-center gap-1.5 sm:gap-2 justify-between xl:justify-end shrink-0 w-full xl:w-auto">
-          {/* View Mode Switcher */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700 shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewLayout('master-detail')}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewLayout === 'master-detail'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-              title="Split View"
-            >
-              <Grid size={13} />
-              <span className="hidden sm:inline">Split View</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewLayout('accordion')}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewLayout === 'accordion'
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-              }`}
-              title="Accordion Overview"
-            >
-              <List size={13} />
-              <span className="hidden sm:inline">Accordion</span>
-            </button>
+      {/* ── Control & Search Bar (Sticky Toolbar) ── */}
+      <div className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2.5 p-2.5 sm:p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          {/* Search Box */}
+          <div className="relative flex-1 min-w-0">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search subjects or document sources..."
+              className="pl-9 pr-8 h-10 bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-purple-400 w-full"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
-          <Button
-            onClick={fetchDocuments}
-            disabled={loading}
-            variant="outline"
-            className="gap-1.5 h-10 px-2.5 sm:px-3 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:border-purple-300 hover:text-[#9956DE] active:scale-95 transition-all shrink-0"
-            title="Refresh Knowledge Index"
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin text-[#9956DE]' : ''} />
-            <span className="hidden md:inline">Refresh</span>
-          </Button>
+          {/* Action Buttons: Unified responsive toolbar on a single balanced line */}
+          <div className="flex items-center gap-1.5 sm:gap-2 justify-between xl:justify-end shrink-0 w-full xl:w-auto">
+            {/* View Mode Switcher */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700 shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewLayout('master-detail')}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  viewLayout === 'master-detail'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Split View"
+              >
+                <Grid size={13} />
+                <span className="hidden sm:inline">Split View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewLayout('accordion')}
+                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  viewLayout === 'accordion'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Accordion Overview"
+              >
+                <List size={13} />
+                <span className="hidden sm:inline">Accordion</span>
+              </button>
+            </div>
 
-          <Button
-            onClick={handleReingest}
-            disabled={!!actionLoading || isReingestRunning}
-            className="gap-1.5 h-10 px-3 sm:px-4 text-xs font-bold rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white shadow-sm shadow-purple-500/20 active:scale-95 transition-all border border-purple-400/30 shrink-0 whitespace-nowrap"
-          >
-            {actionLoading === 'reingest' || isReingestRunning ? (
-              <Loader2 size={13} className="animate-spin text-white shrink-0" />
-            ) : (
-              <Sparkles size={13} className="text-white shrink-0" />
-            )}
-            <span>{isReingestRunning ? 'Rebuilding...' : 'Rebuild Knowledge'}</span>
-          </Button>
+            <Button
+              onClick={fetchDocuments}
+              disabled={loading}
+              variant="outline"
+              className="gap-1.5 h-10 px-2.5 sm:px-3 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:border-purple-300 hover:text-[#9956DE] active:scale-95 transition-all shrink-0"
+              title="Refresh Knowledge Index"
+            >
+              <RefreshCw size={13} className={loading ? 'animate-spin text-[#9956DE]' : ''} />
+              <span className="hidden md:inline">Refresh</span>
+            </Button>
 
-          <Button
-            onClick={() => setPurgeModalOpen(true)}
-            variant="outline"
-            className="gap-1.5 h-10 px-2.5 sm:px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0"
-            title="Clear All Vectors"
-          >
-            <Trash2 size={13} />
-            <span className="hidden sm:inline">Clear All</span>
-          </Button>
+            <Button
+              onClick={handleReingest}
+              disabled={!!actionLoading || isReingestRunning}
+              className="gap-1.5 h-10 px-3 sm:px-4 text-xs font-bold rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white shadow-sm shadow-purple-500/20 active:scale-95 transition-all border border-purple-400/30 shrink-0 whitespace-nowrap"
+            >
+              {actionLoading === 'reingest' || isReingestRunning ? (
+                <Loader2 size={13} className="animate-spin text-white shrink-0" />
+              ) : (
+                <Sparkles size={13} className="text-white shrink-0" />
+              )}
+              <span>{isReingestRunning ? 'Rebuilding...' : 'Rebuild Knowledge'}</span>
+            </Button>
+
+            <Button
+              onClick={() => setPurgeModalOpen(true)}
+              variant="outline"
+              className="gap-1.5 h-10 px-2.5 sm:px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0"
+              title="Clear All Vectors"
+            >
+              <Trash2 size={13} />
+              <span className="hidden sm:inline">Clear All</span>
+            </Button>
+          </div>
         </div>
       </div>
 
