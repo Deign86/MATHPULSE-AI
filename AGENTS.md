@@ -61,7 +61,8 @@ npx firebase deploy --only hosting --project mathpulse-ai-2026
 npx firebase deploy --only hosting --project mathpulse-ai-2026
 
 # Backend checks/deployment are handled by the selected backend platform.
-# GitHub Actions no longer deploys or manages Hugging Face Spaces.
+# .github/workflows/deploy-backend.yml syncs backend/** to the Hugging Face Space
+# on main pushes that touch backend paths (plus manual dispatch).
 ```
 
 ## Project Structure
