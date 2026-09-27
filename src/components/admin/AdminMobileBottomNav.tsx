@@ -221,23 +221,23 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
                 Curriculum & Content
               </div>
 
-              {/* Subjects */}
+              {/* Curriculum Control */}
               <button
                 type="button"
-                onClick={() => handleSelectTabAndClose('Subjects')}
+                onClick={() => handleSelectTabAndClose('Curriculum Control')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 cursor-pointer ${
-                  activeTab === 'Subjects'
+                  activeTab === 'Curriculum Control' || activeTab === 'Subjects'
                     ? 'bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white shadow-xs'
                     : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50/80 dark:hover:bg-purple-950/40'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Subjects' ? 'bg-white/20 text-white' : 'bg-purple-100 dark:bg-purple-900/50 text-[#9956DE]'}`}>
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Curriculum Control' || activeTab === 'Subjects' ? 'bg-white/20 text-white' : 'bg-purple-100 dark:bg-purple-900/50 text-[#9956DE]'}`}>
                     <GraduationCap size={15} aria-hidden="true" />
                   </div>
                   <div className="text-left">
-                    <p className="leading-tight">Subjects</p>
-                    <p className={`text-[10px] font-normal leading-none mt-0.5 ${activeTab === 'Subjects' ? 'text-white/80' : 'text-slate-400'}`}>Senior High Strands</p>
+                    <p className="leading-tight">Curriculum Control</p>
+                    <p className={`text-[10px] font-normal leading-none mt-0.5 ${activeTab === 'Curriculum Control' || activeTab === 'Subjects' ? 'text-white/80' : 'text-slate-400'}`}>Senior High Strands</p>
                   </div>
                 </div>
                 <ChevronRight size={14} className="opacity-70" />

@@ -128,6 +128,7 @@ const ADMIN_TABS = [
   'Overview',
   'User Management',
   'Class Management',
+  'Curriculum Control',
   'Subjects',
   'Content',
   'RAG Manager',
@@ -155,6 +156,10 @@ const ADMIN_TAB_META: Record<AdminTab, { title: string; subtitle: string }> = {
   'Class Management': {
     title: 'Class Management',
     subtitle: 'Assign section managers and manage class students.',
+  },
+  'Curriculum Control': {
+    title: 'Curriculum Control',
+    subtitle: 'Manage academic subjects, availability, and RAG knowledge sources.',
   },
   Subjects: {
     title: 'Curriculum Control',
@@ -242,7 +247,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
     setActiveTab(nextTab);
 
-    if (nextTab === 'Subjects') {
+    if (nextTab === 'Curriculum Control' || nextTab === 'Subjects') {
       setShowHelpTooltip(true);
       setTimeout(() => setShowHelpTooltip(false), 2000);
     }
@@ -454,21 +459,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              {/* Help Toggle (Subjects Only) */}
-              {activeTab === 'Subjects' && (
+              {/* Help Toggle (Curriculum Control / Subjects) */}
+              {(activeTab === 'Curriculum Control' || activeTab === 'Subjects') && (
                 <div className="relative">
                   <button
                     onClick={() => setIsSubjectsHelpModalOpen(true)}
-                    className="relative w-10 h-10 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-lg shadow-indigo-200 text-white transition-all cursor-pointer hover:scale-110 active:scale-95 animate-in zoom-in duration-300"
+                    className="h-10 px-3 sm:px-3.5 flex items-center gap-1.5 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] rounded-xl shadow-md shadow-purple-500/25 text-white transition-all cursor-pointer hover:scale-105 active:scale-95 text-xs font-bold border border-purple-400/30"
                     aria-label="How it works"
                   >
-                    <HelpCircle size={20} />
+                    <HelpCircle size={16} />
+                    <span className="hidden sm:inline">How It Works</span>
                   </button>
                   
                   {showHelpTooltip && (
-                    <div className="absolute top-12 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-[#1e293b] text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-300 z-50">
+                    <div className="absolute top-12 right-0 sm:left-1/2 sm:-translate-x-1/2 px-3 py-1.5 bg-[#1e293b] dark:bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-xl whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-300 z-50 border border-slate-700">
                       How It Works?
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#1e293b] rotate-45" />
+                      <div className="absolute -top-1 right-4 sm:left-1/2 sm:-translate-x-1/2 w-2 h-2 bg-[#1e293b] dark:bg-slate-800 rotate-45 border-t border-l border-slate-700" />
                     </div>
                   )}
                 </div>
@@ -1293,7 +1299,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {activeTab === 'AI Monitoring' && <AIMonitoringPage />}
           {activeTab === 'Class Management' && <AdminClassManagement />}
           
-          {activeTab === 'Subjects' && <AdminSubjects />}
+          {(activeTab === 'Curriculum Control' || activeTab === 'Subjects') && <AdminSubjects />}
           {activeTab === 'Profile' && (
             <AdminProfilePage
               profileData={effectiveProfileData}

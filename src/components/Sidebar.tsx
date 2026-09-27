@@ -94,7 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {
           label: 'Curriculum',
           items: [
-            { icon: GraduationCap, label: 'Subjects' },
+            { icon: GraduationCap, label: 'Curriculum Control' },
             { icon: BookOpen, label: 'Content' },
           ],
         },
