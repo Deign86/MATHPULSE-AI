@@ -1,3 +1,34 @@
+# Gates: Login & Sign Up Responsiveness, Side-by-Side Groupings & Interactive Mascot Cursor Tracking
+
+Scope: Widen Sign Up container (max-w-2xl) and pair related form fields side-by-side (Name & Role, Grade & Section, Password & Confirm) with compact 2x2 checklist to prevent vertical scrolling; scale down mobile card padding, typography, and input heights to fit gracefully on phone screens; stack Google SSO below primary CTA; colorize toggle link keywords without underline; and ensure mascot video scrub tracking responds to cursor movement across all devices and touchscreens.
+
+- [x] LP1: Widen Sign Up container on desktop/tablet with side-by-side field pairings and compact checklist, preventing vertical scrolling
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Expanded signup card to max-w-xl lg:max-w-2xl with responsive 2-column groupings (Name & Account Type, Grade & Section, Password & Confirm Password, 2x2 requirements grid), allowing all signup fields to fit on a single screen without scrolling.
+
+- [x] LP2: Mobile card padding, typography, and input sizing scaled down to fit gracefully without covering full viewport
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Scaled mobile card padding to p-3.5, reduced header margins, scaled inputs to py-1.5 with text-xs, paired Password & Confirm Password into 2 columns on mobile, and stacked Google SSO below the primary CTA.
+
+- [x] LP3: Unbroken universal cursor/mouse scrub tracking in InteractiveRobotBackground across all desktop, laptop, and touchscreen devices
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Removed restrictive isTouchDevice guard (which blocked touchscreen Windows laptops), added universal pointermove, mousemove, and touchmove listeners, and ensured video pauses and scrubs smoothly with cursor X position.
+
+- [x] LP4: Toggle link keyword styling updated with bold purple color without underline
+  CHECK: npm run typecheck
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean tsc exit code 0. Formatted 'Sign in' and 'Create one' keywords in bold purple (text-purple-600 font-bold) with hover color transition (group-hover:text-pink-600) and no underline.
+
+- [x] LP5: Verification: TypeScript typecheck, Anti-Slop Oxlint, and Vitest test suite pass with 0 errors
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output is clean across all checks: tsc --noEmit (0 errors) and oxlint --quiet (0 errors across 449 files).
+
+---
+
 # Gates: Sticky Tabs, Compact Mobile Analytics Cards, RAG Manager Sticky Toolbar & User Management Filter Optimization
 
 Scope: Fix excessive mobile vertical scroll in Analytics page by compacting the 4 KPI stat cards (Active Learners, Mastery Average, Quizzes Taken, At-Risk Students) into a balanced 2x2 grid with slim padding; drastically reduce User Management sticky toolbar footprint on mobile from 55% screen height down to ~7% by collapsing filter dropdowns into an on-demand filter sheet and moving pagination to the card footer; make the RAG Manager search and filter controls sticky; and implement frosted sticky title tabs across multi-tab pages (Analytics, PDF Upload, Settings, Audit Log).
