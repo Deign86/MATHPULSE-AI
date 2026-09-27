@@ -280,21 +280,21 @@ export const AtRiskDashboard: React.FC = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-[#9956DE] text-[11px] font-bold text-white tracking-wider uppercase">
-                    <th className="text-left px-5 py-3.5">
+                    <th className="text-left px-4 py-3.5">
                       <button onClick={() => handleSort('name')} className="flex items-center gap-1 hover:text-white/80 transition-colors">
                         Student <SortIcon field="name" />
                       </button>
                     </th>
-                    <th className="text-left px-4 py-3.5">Status</th>
-                    <th className="text-left px-4 py-3.5">
-                      <button onClick={() => handleSort('wri')} className="flex items-center gap-1 hover:text-white/80 transition-colors">
+                    <th className="text-center px-4 py-3.5">Status</th>
+                    <th className="text-center px-4 py-3.5">
+                      <button onClick={() => handleSort('wri')} className="flex items-center justify-center gap-1 mx-auto hover:text-white/80 transition-colors">
                         WRI <SortIcon field="wri" />
                       </button>
                     </th>
-                    <th className="text-left px-4 py-3.5 hidden md:table-cell">Diagnostic</th>
-                    <th className="text-left px-4 py-3.5 hidden lg:table-cell">External</th>
-                    <th className="text-left px-4 py-3.5 hidden lg:table-cell">System</th>
-                    <th className="text-right px-5 py-3.5">Actions</th>
+                    <th className="text-center px-4 py-3.5 hidden md:table-cell">Diagnostic</th>
+                    <th className="text-center px-4 py-3.5 hidden lg:table-cell">External</th>
+                    <th className="text-center px-4 py-3.5 hidden lg:table-cell">System</th>
+                    <th className="text-center px-4 py-3.5">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -306,28 +306,28 @@ export const AtRiskDashboard: React.FC = () => {
                           setExpandedStudentId((prev) => prev === student.id ? null : student.id)
                         }
                       >
-                        <td className="px-5 py-3.5">
+                        <td className="px-4 py-3.5">
                           <div className="font-semibold text-slate-800 text-[14px]">{student.name || '—'}</div>
                           <div className="text-[11px] text-slate-400">{student.email}</div>
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-4 py-3.5 text-center">
                           <RiskBadge status={student.riskStatus} wri={student.wri} size="sm" showScore />
                         </td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-4 py-3.5 text-center">
                           <span className="font-mono font-bold text-slate-800 tabular-nums">
                             {student.wri !== null ? student.wri.toFixed(1) : '—'}
                           </span>
                         </td>
-                        <td className="px-4 py-3.5 text-slate-600 hidden md:table-cell tabular-nums">
+                        <td className="px-4 py-3.5 text-slate-600 hidden md:table-cell tabular-nums text-center">
                           {student.diagnosticScore !== null ? `${student.diagnosticScore.toFixed(0)}%` : '—'}
                         </td>
-                        <td className="px-4 py-3.5 text-slate-600 hidden lg:table-cell tabular-nums">
+                        <td className="px-4 py-3.5 text-slate-600 hidden lg:table-cell tabular-nums text-center">
                           {student.externalGradesAvg !== null ? `${student.externalGradesAvg.toFixed(0)}%` : '—'}
                         </td>
-                        <td className="px-4 py-3.5 text-slate-600 hidden lg:table-cell tabular-nums">
+                        <td className="px-4 py-3.5 text-slate-600 hidden lg:table-cell tabular-nums text-center">
                           {student.systemPerformanceAvg !== null ? `${student.systemPerformanceAvg.toFixed(0)}%` : '—'}
                         </td>
-                        <td className="px-5 py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 py-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setExpandedStudentId((prev) => prev === student.id ? null : student.id)}
                             className="text-slate-400 hover:text-[#9956DE] transition-colors"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Mail, Phone, Calendar, BookOpen, Award, Users, Building, Globe, Save, Venus, Mars, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -126,7 +127,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
 
   const currentUserLeaderboardEntry = leaderboardEntries.find((entry) => entry.userId === editedData.uid);
 
-  return (
+  const modalElement = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -136,7 +137,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100]"
           />
 
           {/* Modal */}
@@ -145,7 +146,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', duration: 0.5 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-[#f7f9fc] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90dvh] overflow-hidden border border-[#dde3eb]">
@@ -550,6 +551,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
       )}
     </AnimatePresence>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(modalElement, document.body);
+  }
+  return modalElement;
 };
 
 export default ProfileModal;
