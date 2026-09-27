@@ -1070,7 +1070,61 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
                     </div>
 
-                    <div className="overflow-x-auto min-w-0">
+                    {/* Mobile Bento Cards (< md) */}
+                    <div className="md:hidden space-y-3 p-4 pt-1">
+                      {filteredSubjects.length === 0 ? (
+                        <div className="px-4 py-8 text-center text-xs text-slate-400 font-medium">
+                          No subject performance records in this category.
+                        </div>
+                      ) : (
+                        filteredSubjects.map((subItem, idx) => (
+                          <div
+                            key={`mobile-sub-${idx}`}
+                            className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-2.5"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{subItem.name}</p>
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                  {subItem.count} student{subItem.count === 1 ? '' : 's'} enrolled
+                                </p>
+                              </div>
+                              <span
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider border shrink-0 ${
+                                  subItem.type === 'STEM'
+                                    ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                }`}
+                              >
+                                {subItem.type}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[11px] font-bold">
+                                <span className="text-slate-500 dark:text-slate-400">Mastery Progress</span>
+                                <span className="text-slate-700 dark:text-slate-200 tabular-nums">{subItem.progress}%</span>
+                              </div>
+                              <div className="w-full h-2 bg-slate-200/70 dark:bg-slate-700/60 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    subItem.progress >= 75
+                                      ? 'bg-emerald-500'
+                                      : subItem.progress >= 50
+                                      ? 'bg-indigo-500'
+                                      : 'bg-amber-500'
+                                  }`}
+                                  style={{ width: `${Math.min(100, Math.max(0, subItem.progress))}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Desktop Table View (≥ md) */}
+                    <div className="hidden md:block overflow-x-auto min-w-0">
                       <table className="w-full text-left">
                         <thead>
                           <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20">
