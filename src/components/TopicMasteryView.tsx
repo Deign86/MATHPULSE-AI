@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, ChevronUp, Loader2, BarChart3, CheckCircle, AlertTriangle, EyeOff, Search, Bell, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2, BarChart3, CheckCircle, AlertTriangle, EyeOff, Search, Bell, BookOpen } from 'lucide-react';
 import TeacherModuleStatusControl from './TeacherModuleStatusControl';
 import { TeacherStatCard } from './TeacherStatCard';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,6 +42,34 @@ const DEFAULT_MASTERY_SUMMARY: MasterySummary = {
   needsAttentionCount: 0,
   excludedCount: 0,
 };
+
+type PaginationItem = { kind: 'page'; page: number } | { kind: 'ellipsis'; id: string };
+
+function createPaginationItems(total: number, current: number): PaginationItem[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => ({ kind: 'page', page: i + 1 }));
+  }
+
+  const items: PaginationItem[] = [{ kind: 'page', page: 1 }];
+
+  if (current > 3) {
+    items.push({ kind: 'ellipsis', id: 'start-dots' });
+  }
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  for (let p = start; p <= end; p += 1) {
+    items.push({ kind: 'page', page: p });
+  }
+
+  if (current < total - 2) {
+    items.push({ kind: 'ellipsis', id: 'end-dots' });
+  }
+
+  items.push({ kind: 'page', page: total });
+  return items;
+}
 
 type SortField = 'topicName' | 'classAverage' | 'studentsAttempted' | 'masteryStatus';
 type SortDir = 'asc' | 'desc';
@@ -138,6 +166,8 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
 
   // Excluded topics from Firestore
   const [excludedTopics, setExcludedTopics] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // ─── Load topic mastery data ──────────────────────────────
 
@@ -335,6 +365,28 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
       }
     });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [subjectFilter, gradeFilter, searchQuery, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTopics.length / pageSize));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedTopics = filteredTopics.slice((validCurrentPage - 1) * pageSize, validCurrentPage * pageSize);
+  const visibleRangeStart = filteredTopics.length === 0 ? 0 : (validCurrentPage - 1) * pageSize + 1;
+  const visibleRangeEnd = Math.min(validCurrentPage * pageSize, filteredTopics.length);
+
+  const toggleSelectCurrentPage = () => {
+    const pageTopicNames = paginatedTopics.map((t) => t.topicName);
+    const allSelected = pageTopicNames.length > 0 && pageTopicNames.every((name) => selectedTopics.has(name));
+    const next = new Set(selectedTopics);
+    if (allSelected) {
+      pageTopicNames.forEach((name) => next.delete(name));
+    } else {
+      pageTopicNames.forEach((name) => next.add(name));
+    }
+    setSelectedTopics(next);
+  };
+
   const toggleSelectAll = () => {
     if (selectedTopics.size === filteredTopics.length) {
       setSelectedTopics(new Set());
@@ -368,15 +420,15 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
       exit={{ opacity: 0, y: -20 }}
       className="w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 pb-28 sm:pb-8"
     >
-      {/* Tab Switcher: Student Mastery Matrix vs Module Availability & Materials */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar pb-1">
+      {/* Tab Switcher: Student Mastery Matrix vs Module Availability & Materials (Unified Segmented Control Pill) */}
+      <div className="inline-flex items-center p-1 sm:p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200/90 dark:border-slate-800 rounded-full shadow-2xs gap-1 max-w-full overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => handleTabSwitch('mastery')}
-          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-display font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
             currentTab === 'mastery'
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-1 ring-indigo-600/30'
-              : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/90 shadow-2xs'
+              ? 'bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white shadow-sm shadow-purple-500/25 ring-1 ring-white/20'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/70'
           }`}
         >
           <BarChart3 size={15} className="shrink-0" />
@@ -387,10 +439,10 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
         <button
           type="button"
           onClick={() => handleTabSwitch('availability')}
-          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-display font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
             currentTab === 'availability'
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-1 ring-indigo-600/30'
-              : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200/90 shadow-2xs'
+              ? 'bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white shadow-sm shadow-purple-500/25 ring-1 ring-white/20'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/70'
           }`}
         >
           <BookOpen size={15} className="shrink-0" />
@@ -506,20 +558,23 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
             >
               <span className="text-[13px] font-semibold text-indigo-700">{selectedTopics.size} topics selected</span>
               <button
+                type="button"
                 onClick={handleBulkExclude}
-                className="px-4 py-1.5 bg-[#475569] text-white text-[11px] font-bold rounded-full hover:bg-[#334155] transition-colors shadow-sm"
+                className="px-4 py-1.5 bg-[#475569] text-white text-[11px] font-bold rounded-full hover:bg-[#334155] transition-all cursor-pointer active:scale-95 shadow-2xs hover:shadow-xs"
               >
                 Exclude Selected
               </button>
               <button
+                type="button"
                 onClick={handleBulkInclude}
-                className="px-4 py-1.5 bg-emerald-600 text-white text-[11px] font-bold rounded-full hover:bg-emerald-700 transition-colors shadow-sm"
+                className="px-4 py-1.5 bg-emerald-600 text-white text-[11px] font-bold rounded-full hover:bg-emerald-700 transition-all cursor-pointer active:scale-95 shadow-2xs hover:shadow-xs"
               >
                 Include Selected
               </button>
               <button
+                type="button"
                 onClick={() => setSelectedTopics(new Set())}
-                className="px-4 py-1.5 bg-white border border-[#e2e8f0] text-[#64748b] text-[11px] font-bold rounded-full hover:bg-[#f8fafc] transition-colors shadow-sm"
+                className="px-4 py-1.5 bg-white border border-[#e2e8f0] text-[#64748b] text-[11px] font-bold rounded-full hover:bg-[#f8fafc] hover:border-slate-300 transition-all cursor-pointer active:scale-95 shadow-2xs hover:shadow-xs"
               >
                 Clear Selection
               </button>
@@ -527,14 +582,197 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Mobile scroll hint */}
-        <div className="md:hidden flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 mb-1.5 px-1">
-          <span>Swipe horizontally to view all columns</span>
-          <span className="text-slate-300">→</span>
+        {/* Selection & Pagination Sub-Header Bar (Card Style) */}
+        <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/90 rounded-2xl border border-slate-200/80 mb-3 text-xs shadow-2xs">
+          <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-600 uppercase tracking-wider text-[11px] select-none">
+            <input
+              type="checkbox"
+              checked={filteredTopics.length > 0 && paginatedTopics.length > 0 && paginatedTopics.every(t => selectedTopics.has(t.topicName))}
+              onChange={toggleSelectCurrentPage}
+              className="rounded text-violet-600 focus:ring-violet-500 w-4 h-4 border-slate-300 cursor-pointer"
+            />
+            <span>
+              SELECT ({visibleRangeStart}–{visibleRangeEnd} OF {filteredTopics.length})
+            </span>
+          </label>
+
+          {/* Compact Page Navigation */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={validCurrentPage <= 1}
+                className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                aria-label="Previous Page"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="text-xs font-bold text-violet-700 px-1 tabular-nums">
+                {validCurrentPage}/{totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={validCurrentPage >= totalPages}
+                className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                aria-label="Next Page"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Data Grid */}
-        <div className="bg-white rounded-xl sm:rounded-[16px] border border-[#f1f5f9] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
+        {/* Mobile View: Clean Interactive Cards (No Horizontal Scrolling) */}
+        <div className="md:hidden space-y-3">
+          {paginatedTopics.length === 0 ? (
+            <div className="py-12 px-4 text-center bg-white rounded-2xl border border-slate-200 shadow-2xs">
+              <BarChart3 size={28} className="mx-auto text-slate-300 mb-2" />
+              <p className="text-sm font-semibold text-slate-600">No topic data available</p>
+              <p className="text-xs text-slate-400 mt-1">Import student quiz data or adjust filters to view topic mastery.</p>
+            </div>
+          ) : (
+            paginatedTopics.map((topic) => {
+              const isSelected = selectedTopics.has(topic.topicName);
+              const statusInfo = STATUS_BADGES[topic.masteryStatus] || STATUS_BADGES['no_data'];
+              const subjectInfo = recordGet(SUBJECT_BADGES, topic.subjectId) ?? { label: topic.subjectId.toUpperCase(), color: 'bg-[#f8fafc] text-[#64748b]' };
+              const avgColor = topic.classAverage < 60 ? 'bg-rose-500' : topic.classAverage < 85 ? 'bg-amber-500' : 'bg-emerald-500';
+
+              return (
+                <div
+                  key={topic.topicName}
+                  className={`relative overflow-hidden rounded-2xl border bg-white p-3.5 sm:p-4 shadow-sm transition-all ${
+                    isSelected ? 'ring-2 ring-violet-500/40 bg-violet-50/20 border-violet-300' : 'border-slate-200/90'
+                  }`}
+                >
+                  {/* Left accent color bar */}
+                  <div
+                    className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                      topic.isExcluded
+                        ? 'bg-slate-400'
+                        : topic.masteryStatus === 'mastered'
+                        ? 'bg-emerald-500'
+                        : topic.masteryStatus === 'needs_attention'
+                        ? 'bg-rose-500'
+                        : 'bg-violet-500'
+                    }`}
+                  />
+
+                  {/* Card Header: Checkbox + Icon + Title */}
+                  <div className="flex items-start gap-3 pl-1.5">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {
+                        const next = new Set(selectedTopics);
+                        if (isSelected) next.delete(topic.topicName);
+                        else next.add(topic.topicName);
+                        setSelectedTopics(next);
+                      }}
+                      className="mt-1 rounded text-violet-600 focus:ring-violet-500 w-4 h-4 border-slate-300 cursor-pointer shrink-0"
+                    />
+
+                    <div className="relative shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600">
+                        <BookOpen size={18} />
+                      </div>
+                      <span
+                        className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
+                          topic.isExcluded ? 'bg-slate-400' : 'bg-emerald-500'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <h4 className={`text-[14px] font-bold text-slate-800 leading-snug line-clamp-2 ${topic.isExcluded ? 'line-through text-slate-400' : ''}`}>
+                        {topic.topicName}
+                      </h4>
+                      <p className="text-[11px] font-medium text-slate-500 truncate mt-0.5">
+                        {topic.unit || 'Standard Unit'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Badges Row */}
+                  <div className="flex items-center gap-1.5 flex-wrap mt-2.5 pl-1.5">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${subjectInfo.color}`}>
+                      {subjectInfo.label}
+                    </span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusInfo.color}`}>
+                      {statusInfo.label}
+                    </span>
+                    {topic.isExcluded && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                        Excluded from AI
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Class Average & Students Row */}
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 pl-1.5 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                      <span>Class Average</span>
+                      <span className="font-bold text-slate-800">{topic.classAverage}%</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${avgColor}`} style={{ width: `${topic.classAverage}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                      <span>Students Attempted</span>
+                      <span className="text-slate-600 font-semibold">{topic.studentsAttempted} / {topic.totalStudents}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions Row at Bottom of Card (Immediately Accessible!) */}
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 pl-1.5 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleExclude(topic.topicName)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border transition-colors shadow-2xs active:scale-[0.98] cursor-pointer ${
+                        topic.isExcluded
+                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                          : 'bg-white hover:bg-rose-50 text-rose-600 border-rose-200'
+                      }`}
+                    >
+                      {topic.isExcluded ? (
+                        <>
+                          <CheckCircle size={14} />
+                          <span>Include in AI</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff size={14} />
+                          <span>Exclude from AI</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = new Set(selectedTopics);
+                        if (isSelected) next.delete(topic.topicName);
+                        else next.add(topic.topicName);
+                        setSelectedTopics(next);
+                      }}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border transition-colors shadow-2xs active:scale-[0.98] cursor-pointer ${
+                        isSelected
+                          ? 'bg-violet-600 text-white border-violet-600'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {isSelected ? 'Deselect' : 'Select'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop View: Full Data Grid with Sticky Action Column */}
+        <div className="hidden md:block bg-white rounded-xl sm:rounded-[16px] border border-[#f1f5f9] overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
           <div className="overflow-x-auto touch-pan-x overscroll-x-contain">
             <div className="min-w-[800px]">
               {/* Header Row */}
@@ -542,8 +780,8 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 <div className="col-span-1 flex justify-center">
                   <input
                     type="checkbox"
-                    checked={selectedTopics.size === filteredTopics.length && filteredTopics.length > 0}
-                    onChange={toggleSelectAll}
+                    checked={filteredTopics.length > 0 && paginatedTopics.length > 0 && paginatedTopics.every(t => selectedTopics.has(t.topicName))}
+                    onChange={toggleSelectCurrentPage}
                     className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3.5 h-3.5 sm:w-4 sm:h-4 border-white/30 bg-white/10 cursor-pointer"
                   />
                 </div>
@@ -572,12 +810,14 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 >
                   STATUS <SortIcon field="masteryStatus" />
                 </div>
-                <div className="col-span-1 text-center">EXCLUDE</div>
+                <div className="col-span-1 text-center sticky right-0 z-20 bg-[#9956DE] border-l border-[#8b5cf6] shadow-[-2px_0_4px_rgba(0,0,0,0.1)] py-2 sm:py-2.5 flex items-center justify-center">
+                  EXCLUDE
+                </div>
               </div>
 
               {/* Body Rows */}
               <div className="flex flex-col">
-                {filteredTopics.length === 0 ? (
+                {paginatedTopics.length === 0 ? (
                   <div className="py-8 sm:py-12 px-4 text-center border-b border-[#f1f5f9]">
                     {topics.length === 0 ? (
                       <div className="flex flex-col items-center gap-1.5 sm:gap-2">
@@ -590,7 +830,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                     )}
                   </div>
                 ) : (
-                  filteredTopics.map((topic) => {
+                  paginatedTopics.map((topic) => {
                     const isSelected = selectedTopics.has(topic.topicName);
                     const statusInfo = STATUS_BADGES[topic.masteryStatus] || STATUS_BADGES['no_data'];
                     const subjectInfo = recordGet(SUBJECT_BADGES, topic.subjectId) ?? { label: topic.subjectId.toUpperCase(), color: 'bg-[#f8fafc] text-[#64748b]' };
@@ -645,7 +885,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                             {statusInfo.label}
                           </span>
                         </div>
-                        <div className="col-span-1 flex justify-center relative">
+                        <div className="col-span-1 flex justify-center relative sticky right-0 z-10 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] py-2 sm:py-3 h-full">
                           <label className="relative inline-flex items-center cursor-pointer group/toggle">
                             <input
                               type="checkbox"
@@ -667,6 +907,82 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Global Pagination Bar */}
+        {filteredTopics.length > 0 && (
+          <div className="mt-3 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white rounded-2xl border border-slate-200 text-xs text-slate-600 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span>
+                Showing <span className="font-semibold text-slate-800">{visibleRangeStart}</span> to{' '}
+                <span className="font-semibold text-slate-800">{visibleRangeEnd}</span> of{' '}
+                <span className="font-semibold text-slate-800">{filteredTopics.length}</span> topics
+              </span>
+              <div className="flex items-center gap-1.5 ml-2">
+                <span className="text-slate-400 text-xs">Rows:</span>
+                <select
+                  aria-label="Rows per page"
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 text-slate-700 font-medium cursor-pointer"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={validCurrentPage === 1}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Previous
+              </button>
+
+              <div className="flex items-center gap-1 px-1">
+                {createPaginationItems(totalPages, validCurrentPage).map((item) =>
+                  item.kind === 'ellipsis' ? (
+                    <span key={item.id} className="px-1 text-xs text-slate-400">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={item.page}
+                      type="button"
+                      onClick={() => setCurrentPage(item.page)}
+                      className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                        validCurrentPage === item.page
+                          ? 'bg-[#9956DE] text-white shadow-xs font-bold'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {item.page}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={validCurrentPage === totalPages}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                aria-label="Next page"
+              >
+                Next
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
         </>
       )}

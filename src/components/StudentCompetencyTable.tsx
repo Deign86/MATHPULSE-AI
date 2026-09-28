@@ -279,6 +279,34 @@ function getMatrixScoreTone(score: number): MatrixScoreTone {
   };
 }
 
+type PaginationItem = { kind: 'page'; page: number } | { kind: 'ellipsis'; id: string };
+
+function createPaginationItems(total: number, current: number): PaginationItem[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => ({ kind: 'page', page: i + 1 }));
+  }
+
+  const items: PaginationItem[] = [{ kind: 'page', page: 1 }];
+
+  if (current > 3) {
+    items.push({ kind: 'ellipsis', id: 'start-dots' });
+  }
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  for (let p = start; p <= end; p += 1) {
+    items.push({ kind: 'page', page: p });
+  }
+
+  if (current < total - 2) {
+    items.push({ kind: 'ellipsis', id: 'end-dots' });
+  }
+
+  items.push({ kind: 'page', page: total });
+  return items;
+}
+
 // -”€-”€-”€ Component -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
 const StudentCompetencyTable: React.FC<{
@@ -305,6 +333,8 @@ const StudentCompetencyTable: React.FC<{
   const [importedTopicsLoading, setImportedTopicsLoading] = useState(false);
   const [importedTopicsWarning, setImportedTopicsWarning] = useState('');
   const [studentsWarning, setStudentsWarning] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const mapImportedStudentToCompetencyStudent = useCallback((student: ImportedStudentOverviewItem): CompetencyStudent => ({
     id: student.id,
@@ -609,6 +639,15 @@ const StudentCompetencyTable: React.FC<{
       return sortDir === 'asc' ? cmp : -cmp;
     });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, riskFilter, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const paginatedRows = filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const visibleRangeStart = filteredRows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const visibleRangeEnd = Math.min(currentPage * pageSize, filteredRows.length);
+
   // -”€-”€-”€ Summary stats -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
   const totalStudents = rows.length;
@@ -644,9 +683,13 @@ const StudentCompetencyTable: React.FC<{
     >
       {onBack && (
         <div className="flex items-center justify-between mb-2">
-          <button onClick={onBack} className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors bg-white/60 hover:bg-white/80 px-3.5 sm:px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white/50">
-              <ChevronLeft className="w-4 h-4" />
-              Back to Classes
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-all bg-white/80 hover:bg-white px-3.5 sm:px-[18px] py-2 rounded-full backdrop-blur-[12px] shadow-2xs hover:shadow-xs border border-slate-200/80 hover:border-indigo-200 cursor-pointer active:scale-95"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back to Classes
           </button>
         </div>
       )}
@@ -672,11 +715,12 @@ const StudentCompetencyTable: React.FC<{
               {['all', 'High', 'Medium', 'Low'].map(level => (
                 <button
                   key={level}
+                  type="button"
                   onClick={() => setRiskFilter(level)}
-                  className={`px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-[13px] font-semibold rounded-full whitespace-nowrap transition-colors shadow-xs ${
+                  className={`px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-[13px] font-semibold rounded-full whitespace-nowrap transition-all cursor-pointer active:scale-95 shadow-2xs ${
                     riskFilter === level
-                      ? 'bg-[#9956DE] text-white'
-                      : 'bg-white text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs'
+                      : 'bg-white/90 text-slate-600 hover:text-slate-900 hover:bg-white border border-slate-200/80 hover:border-slate-300'
                   }`}
                 >
                   {level === 'all' ? 'All' : `${level} Risk`}
@@ -686,8 +730,9 @@ const StudentCompetencyTable: React.FC<{
           </div>
           
           <button
+            type="button"
             onClick={loadStudents}
-            className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-[13px] font-semibold text-slate-500 hover:text-slate-700 transition-colors shrink-0 bg-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-xs hover:bg-slate-50 self-end sm:self-auto"
+            className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-[13px] font-semibold text-slate-600 hover:text-violet-600 transition-all shrink-0 bg-white/90 hover:bg-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-2xs hover:shadow-xs border border-slate-200/80 hover:border-violet-200 cursor-pointer active:scale-95 self-end sm:self-auto"
           >
             <RefreshCw className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Refresh
           </button>
@@ -821,6 +866,10 @@ const StudentCompetencyTable: React.FC<{
                 {item.header}
               </div>
             ))}
+            {/* Sticky Action Column Header */}
+            <div className="w-[100px] shrink-0 sticky right-0 z-30 bg-[#9956DE] backdrop-blur-sm px-3 h-full flex items-center justify-center border-l border-[#8b5cf6] shadow-[-2px_0_4px_rgba(0,0,0,0.1)]">
+              Action
+            </div>
           </div>
 
           {/* Rows */}
@@ -831,7 +880,7 @@ const StudentCompetencyTable: React.FC<{
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {filteredRows.map((row) => {
+                {paginatedRows.map((row) => {
                   const recommendationTone = row.student.riskLevel === 'High'
                     ? {
                         card: 'bg-rose-50 border-rose-200',
@@ -931,6 +980,25 @@ const StudentCompetencyTable: React.FC<{
                           </div>
                         );
                       })}
+
+                      {/* Sticky Action Column Cell */}
+                      <div className="w-[100px] shrink-0 sticky right-0 z-10 bg-white group-hover:bg-slate-50 transition-colors px-3 h-full min-h-[56px] sm:min-h-[64px] flex items-center justify-center border-l border-slate-100 shadow-[-2px_0_4px_rgba(0,0,0,0.02)]">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void toggleExpand(row.rowKey);
+                          }}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs hover:shadow-xs ${
+                            row.expanded
+                              ? 'bg-[#9956DE] text-white shadow-xs'
+                              : 'bg-purple-50 text-[#9956DE] hover:bg-purple-100 border border-purple-200 hover:border-purple-300'
+                          }`}
+                          title={row.expanded ? 'Collapse details' : 'View competency details'}
+                        >
+                          {row.expanded ? 'Close' : 'View'}
+                        </button>
+                      </div>
                     </div>
 
                 {/* Expanded competency detail */}
@@ -993,6 +1061,82 @@ const StudentCompetencyTable: React.FC<{
             )}
         </div>
       </div>
+
+      {/* Pagination Footer */}
+      {filteredRows.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-white rounded-[14px] sm:rounded-[18px] border border-slate-200 text-xs sm:text-sm text-slate-600 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span>
+              Showing <span className="font-semibold text-slate-800">{visibleRangeStart}</span> to{' '}
+              <span className="font-semibold text-slate-800">{visibleRangeEnd}</span> of{' '}
+              <span className="font-semibold text-slate-800">{filteredRows.length}</span> students
+            </span>
+            <div className="flex items-center gap-1.5 ml-2">
+              <span className="text-slate-400 text-xs">Rows:</span>
+              <select
+                aria-label="Rows per page"
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400 text-slate-700 font-medium"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              Previous
+            </button>
+
+            <div className="flex items-center gap-1 px-1">
+              {createPaginationItems(totalPages, currentPage).map((item) =>
+                item.kind === 'ellipsis' ? (
+                  <span key={item.id} className="px-1 text-xs text-slate-400">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={item.page}
+                    type="button"
+                    onClick={() => setCurrentPage(item.page)}
+                    className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
+                      currentPage === item.page
+                        ? 'bg-[#9956DE] text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {item.page}
+                  </button>
+                )
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              aria-label="Next page"
+            >
+              Next
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };
