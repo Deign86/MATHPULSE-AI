@@ -48,6 +48,8 @@ import {
   changeEmailWithReauth,
   changePasswordWithReauth,
   deleteAccountWithReauth,
+  getMaintenanceMode,
+  updateMaintenanceMode,
 } from '../services/settingsService';
 import { TeacherPreferences } from '../types/settings';
 import { validateProfileDraft } from '../utils/profileValidation';
@@ -110,6 +112,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [localSettings, setLocalSettings] = useState<UserSettings>(cloneDefaultSettings());
   const [localTeacherPrefs, setLocalTeacherPrefs] = useState<TeacherPreferences>(teacherPrefs);
   const [localAdminConfig, setLocalAdminConfig] = useState(adminConfig);
+  const [localMaintenanceMode, setLocalMaintenanceMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -165,6 +168,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     setLocalTeacherPrefs(teacherPrefs);
     setLocalAdminConfig(adminConfig);
   }, [isOpen, profileData, settingsData, teacherPrefs, adminConfig]);
+
+  useEffect(() => {
+    if (!isOpen || role !== 'admin') return;
+    let isCurrent = true;
+    getMaintenanceMode()
+      .then((maintenanceMode) => {
+        if (isCurrent) setLocalMaintenanceMode(maintenanceMode);
+      })
+      .catch(() => {
+        if (isCurrent) toast.error('Failed to load maintenance mode');
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [isOpen, role]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -271,7 +289,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       if (onSave) await onSave(accountData);
       if (onSaveSettings) await onSaveSettings(localSettings);
       if (role === 'teacher') await saveTeacherPrefs(localTeacherPrefs);
-      if (role === 'admin') await saveAdminConfig(localAdminConfig);
+      if (role === 'admin') {
+        await saveAdminConfig(localAdminConfig);
+        await updateMaintenanceMode(localMaintenanceMode);
+      }
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save settings');
@@ -967,15 +988,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <p className="text-xs text-slate-500 mt-1">Disable platform access for non-admins</p>
                     </div>
                     <Switch
-                      checked={localAdminConfig.maintenanceMode}
-                      onCheckedChange={(v) => setLocalAdminConfig((p) => ({ ...p, maintenanceMode: v }))}
+                      checked={localMaintenanceMode}
+                      onCheckedChange={setLocalMaintenanceMode}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-[#5a6578] block mb-1">Default Grade Level</label>
                       <Input
-                        value={localAdminConfig.defaultGradeLevel}
+                        value="Grade 11"
                         disabled
                       />
                     </div>

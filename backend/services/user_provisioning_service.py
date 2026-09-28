@@ -158,7 +158,7 @@ class UserProvisioningService:
 
     def _build_profile_payload(self, user_input: AdminCreateUserInput, role_lower: str, normalized_status: str) -> Dict[str, Any]:
         display_name = (user_input.name or "").strip()
-        grade = (user_input.grade or "").strip() or "Grade 11"
+        grade = "Grade 11"
         section = (user_input.section or "").strip() or "Section A"
         class_section_id = self._slugify(f"{grade}_{section}") or "grade_11_section_a"
 

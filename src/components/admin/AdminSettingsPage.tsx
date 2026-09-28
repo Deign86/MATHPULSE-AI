@@ -18,9 +18,11 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
+import { db } from '../../lib/firebase';
 import ConfirmModal from '../ConfirmModal';
 import { changePasswordWithReauth } from '../../services/settingsService';
 import type { UserSettings } from '../../types/models';
@@ -51,6 +53,10 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   const [activeTab, setActiveTab] = useState<AdminSettingsTab>('appearance');
   const [isSaving, setIsSaving] = useState(false);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [isMaintenanceLoading, setIsMaintenanceLoading] = useState(true);
+  const [hasLoadedMaintenanceMode, setHasLoadedMaintenanceMode] = useState(false);
+  const [isMaintenanceSaving, setIsMaintenanceSaving] = useState(false);
 
   // Local settings state
   const [darkMode, setDarkMode] = useState<boolean>(
@@ -91,6 +97,49 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       setEmailAlerts(settingsData.notifications.emailNotifications);
     }
   }, [settingsData]);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadMaintenanceMode = async () => {
+      try {
+        const maintenanceSnapshot = await getDoc(doc(db, 'settings', 'general'));
+        if (isCurrent) {
+          setMaintenanceMode(maintenanceSnapshot.data()?.maintenanceMode === true);
+          setHasLoadedMaintenanceMode(true);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to load maintenance mode';
+        toast.error(message);
+      } finally {
+        if (isCurrent) {
+          setIsMaintenanceLoading(false);
+        }
+      }
+    };
+
+    void loadMaintenanceMode();
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  const handleMaintenanceModeChange = async (enabled: boolean) => {
+    const previousValue = maintenanceMode;
+    setMaintenanceMode(enabled);
+    setIsMaintenanceSaving(true);
+
+    try {
+      await setDoc(doc(db, 'settings', 'general'), { maintenanceMode: enabled }, { merge: true });
+      toast.success(`Maintenance mode ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      setMaintenanceMode(previousValue);
+      const message = error instanceof Error ? error.message : 'Failed to update maintenance mode';
+      toast.error(message);
+    } finally {
+      setIsMaintenanceSaving(false);
+    }
+  };
 
   const handleDarkModeChange = (isDark: boolean) => {
     setDarkMode(isDark);
@@ -528,6 +577,36 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             {/* Tab 4: Data Governance */}
             {activeTab === 'data' && (
               <div className="space-y-4">
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    System Maintenance
+                  </h4>
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        Maintenance Mode
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Temporarily restrict platform access to administrators while maintenance is underway.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={maintenanceMode}
+                      disabled={isMaintenanceLoading || !hasLoadedMaintenanceMode || isMaintenanceSaving}
+                      onCheckedChange={handleMaintenanceModeChange}
+                      aria-label="Toggle maintenance mode"
+                    />
+                  </div>
+                  {isMaintenanceLoading && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Loading maintenance settings...</p>
+                  )}
+                  {!isMaintenanceLoading && !hasLoadedMaintenanceMode && (
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400">
+                      Maintenance settings could not be loaded; refresh to try again.
+                    </p>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
                   <div>
                     <p className="text-xs font-bold text-slate-900 dark:text-white">

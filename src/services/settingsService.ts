@@ -305,6 +305,16 @@ export const updateTeacherPreferences = async (
 // ─── Admin System Config ────────────────────────────────────────────────────
 
 const systemConfigRef = () => doc(db, 'system', 'config');
+const generalSettingsRef = () => doc(db, 'settings', 'general');
+
+export const getMaintenanceMode = async (): Promise<boolean> => {
+  const snap = await getDoc(generalSettingsRef());
+  return snap.exists() && snap.data()?.maintenanceMode === true;
+};
+
+export const updateMaintenanceMode = async (maintenanceMode: boolean): Promise<void> => {
+  await setDoc(generalSettingsRef(), { maintenanceMode, updatedAt: serverTimestamp() }, { merge: true });
+};
 
 export const getAdminSystemConfig = async (): Promise<AdminSystemConfig> => {
   const snap = await getDoc(systemConfigRef());

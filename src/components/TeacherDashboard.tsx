@@ -4479,7 +4479,7 @@ const InterventionView: React.FC<{
   const [selectedStep, setSelectedStep] = useState<import('../services/interventionService').LearningStep | null>(null);
   const [learningPath, setLearningPath] = useState<string>(initialCache?.learningPath || '');
   const [pathLoading, setPathLoading] = useState(true);
-  const [gradeDraft, setGradeDraft] = useState(initialCache?.gradeDraft || student.grade || 'Grade 11');
+  const [gradeDraft, setGradeDraft] = useState(initialCache?.gradeDraft || 'Grade 11');
   const [sectionDraft, setSectionDraft] = useState(initialCache?.sectionDraft || student.section || 'Section A');
   const [savingSection, setSavingSection] = useState(false);
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResponse | null>(initialCache?.lessonPlan ?? null);
@@ -5107,8 +5107,8 @@ const InterventionView: React.FC<{
                       <div>
                         <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Grade</label>
                         <Input
-                          value={gradeDraft}
-                          onChange={(e) => setGradeDraft(e.target.value)}
+                          value="Grade 11"
+                          disabled
                           placeholder="Grade"
                           className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs h-9 rounded-lg px-3"
                         />
@@ -6065,8 +6065,8 @@ const InterventionView: React.FC<{
                 <label className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5 block ml-1">Grade Level</label>
                 <div className="relative">
                   <Input
-                    value={gradeDraft}
-                    onChange={(e) => setGradeDraft(e.target.value)}
+                    value="Grade 11"
+                    disabled
                     placeholder="Grade"
                     className="appearance-none w-full bg-[#f8fafc] border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[14px] px-4 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] h-auto"
                   />
