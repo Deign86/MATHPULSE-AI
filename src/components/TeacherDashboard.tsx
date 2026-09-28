@@ -3305,7 +3305,7 @@ const StudentCard = React.memo(({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemoveStudent(student); }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 p-1 rounded-md shrink-0 ml-0.5"
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 focus-visible:opacity-100 transition-colors shrink-0"
               aria-label={`Remove ${student.name} from class`}
               title="Remove from class"
             >

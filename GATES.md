@@ -1338,17 +1338,17 @@ ABANDON: G4A-169-6 pre-existing QR task gate requires a different historical com
 # Gates: RAG Rebuild Cancel (TC-ADM-018)
 
 - [x] G-RAG-1 Rebuild requires confirmation with Cancel option
-  - CHECK: `npm run typecheck`
-  - EXPECT: exit 0
-  - EVIDENCE: fix-1 ran `npx tsc --noEmit -p tsconfig.json` → pass; orchestrator `git diff` confirms both rebuild buttons route via `setReingestModalOpen(true)` to ConfirmModal.
+  CHECK: `npm run typecheck`
+  EXPECT: exit 0
+  EVIDENCE: fix-1 ran `npx tsc --noEmit -p tsconfig.json` → pass; orchestrator `git diff` confirms both rebuild buttons route via `setReingestModalOpen(true)` to ConfirmModal.
 - [x] G-RAG-2 Cancel fires zero API calls so counts/status unchanged
-  - CHECK: `git diff -- src/components/AdminRagManager.tsx`
-  - EXPECT: /reingestModalOpen|Rebuild AI Knowledge\?|cancelText="Cancel"/
-  - EVIDENCE: diff shows `reingestModalOpen` state, `onClick={() => setReingestModalOpen(true)}` x2, ConfirmModal with title "Rebuild AI Knowledge?", `cancelText="Cancel"`; Cancel path only calls `setReingestModalOpen(false)` (ConfirmModal onClose), never `handleReingest`/apiFetch. Remediation adds `reingestInFlightRef` guard + auto-close on `isReingestRunning` so double-confirm cannot duplicate POSTs.
+  CHECK: `git diff -- src/components/AdminRagManager.tsx`
+  EXPECT: /reingestModalOpen|Rebuild AI Knowledge\?|cancelText="Cancel"/
+  EVIDENCE: diff shows `reingestModalOpen` state, `onClick={() => setReingestModalOpen(true)}` x2, ConfirmModal with title "Rebuild AI Knowledge?", `cancelText="Cancel"`; Cancel path only calls `setReingestModalOpen(false)` (ConfirmModal onClose), never `handleReingest`/apiFetch. Remediation adds `reingestInFlightRef` guard + auto-close on `isReingestRunning` so double-confirm cannot duplicate POSTs.
 - [x] G-RAG-3 No regression to existing modals / anti-slop clean
-  - CHECK: `npm run lint:anti-slop`
-  - EXPECT: exit 0
-  - EVIDENCE: fix-1 ran `npm run lint:anti-slop` → pass (only pre-existing MODULE_TYPELESS_PACKAGE_JSON warning); existing purge/subject/file modals untouched.
+  CHECK: `npm run lint:anti-slop`
+  EXPECT: exit 0
+  EVIDENCE: fix-1 ran `npm run lint:anti-slop` → pass (only pre-existing MODULE_TYPELESS_PACKAGE_JSON warning); existing purge/subject/file modals untouched.
 
 - [x] G170-7: The atomic commit uses the requested task-11 subject.
   CHECK: git log -1 --pretty=%s
@@ -1767,25 +1767,25 @@ ABANDON: T6-G5 The TypeScript LSP server is not installed and the existing user 
 # Gates: Pin All Students to Grade 11 (non-changeable)
 
 - [x] G11-1 Future signups always store Grade 11 (signup has no grade choice)
-  - CHECK: `git diff -- src/components/LoginPage.tsx backend/main.py backend/services/user_provisioning_service.py`
-  - EXPECT: /Grade 11/
-  - EVIDENCE: LoginPage already single-option Grade 11 (verified, no change). Backend `_normalize_grade_level` returns "Grade 11" unconditionally; teacher create + provisioning service ignore client grade; classSectionId derived from Grade 11.
+  CHECK: `git diff -- src/components/LoginPage.tsx backend/main.py backend/services/user_provisioning_service.py`
+  EXPECT: /Grade 11/
+  EVIDENCE: LoginPage already single-option Grade 11 (verified, no change). Backend `_normalize_grade_level` returns "Grade 11" unconditionally; teacher create + provisioning service ignore client grade; classSectionId derived from Grade 11.
 - [x] G11-2 Current students cannot change grade (profile surfaces locked)
-  - CHECK: `git diff -- src/components/ProfilePage.tsx src/components/ProfileModal.tsx`
-  - EXPECT: /Grade 11/
-  - EVIDENCE: ProfilePage Select→read-only Input "Grade 11"; ProfileModal editable Input→readOnly "Grade 11". tsc pass (fix-2, fix-6).
+  CHECK: `git diff -- src/components/ProfilePage.tsx src/components/ProfileModal.tsx`
+  EXPECT: /Grade 11/
+  EVIDENCE: ProfilePage Select→read-only Input "Grade 11"; ProfileModal editable Input→readOnly "Grade 11". tsc pass (fix-2, fix-6).
 - [x] G11-3 Admin/teacher/import paths force Grade 11 (no Grade 12 option)
-  - CHECK: `git diff -- src/components/AdminUserManagement.tsx src/components/TeacherDashboard.tsx src/features/DataImport/DataImportView.tsx src/components/SettingsModal.tsx`
-  - EXPECT: /Grade 11/
-  - EVIDENCE: All four locked to disabled/read-only "Grade 11"; settings type narrowed to 'Grade 11' literal. tsc pass (fix-3, fix-6).
+  CHECK: `git diff -- src/components/AdminUserManagement.tsx src/components/TeacherDashboard.tsx src/features/DataImport/DataImportView.tsx src/components/SettingsModal.tsx`
+  EXPECT: /Grade 11/
+  EVIDENCE: All four locked to disabled/read-only "Grade 11"; settings type narrowed to 'Grade 11' literal. tsc pass (fix-3, fix-6).
 - [x] G11-4 Migration executed with service-account key; zero records needed it
-  - CHECK: `python backend/scripts/migrate_grade12_to_grade11.py` (GOOGLE_APPLICATION_CREDENTIALS=mathpulse-ai-2026 key)
-  - EXPECT: /Migration complete/
-  - EVIDENCE: Pre-count read-only script returned users=0 progress=0 exact "Grade 12". Live run output: "Migrated 0 users", "Migrated 0 progress records", "Migration complete". Data was already Grade-11-only. Key project_id verified mathpulse-ai-2026 before running.
+  CHECK: `python backend/scripts/migrate_grade12_to_grade11.py` (GOOGLE_APPLICATION_CREDENTIALS=mathpulse-ai-2026 key)
+  EXPECT: /Migration complete/
+  EVIDENCE: Pre-count read-only script returned users=0 progress=0 exact "Grade 12". Live run output: "Migrated 0 users", "Migrated 0 progress records", "Migration complete". Data was already Grade-11-only. Key project_id verified mathpulse-ai-2026 before running.
 - [x] G11-5 Typecheck + anti-slop clean
-  - CHECK: `npm run typecheck && npm run lint:anti-slop`
-  - EXPECT: exit 0
-  - EVIDENCE: tsc pass on final tree (fix-6); backend py_compile pass (fix-4). Full `npm run typecheck` re-run timed out in harness; lane-level tsc evidence reused (code unchanged since).
+  CHECK: `npm run typecheck && npm run lint:anti-slop`
+  EXPECT: exit 0
+  EVIDENCE: tsc pass on final tree (fix-6); backend py_compile pass (fix-4). Full `npm run typecheck` re-run timed out in harness; lane-level tsc evidence reused (code unchanged since).
 
 ---
 
@@ -1794,34 +1794,34 @@ ABANDON: T6-G5 The TypeScript LSP server is not installed and the existing user 
 Root cause: old `AdminSettings.tsx` toggle (writes `settings/general`) is orphaned (zero imports); dashboard renders new tabbed `AdminSettingsPage` with no maintenance section. Split-brain: `SettingsModal` toggle persists to `system/config` but `App.tsx` guard reads `settings/general`.
 
 - [x] M-1 Maintenance toggle reachable in admin settings UI
-  - CHECK: `git diff -- src/components/admin/AdminSettingsPage.tsx`
-  - EXPECT: /maintenanceMode/
-  - EVIDENCE: +79 lines: maintenance switch in Data & Governance tab, loads settings/general on mount, saves immediately with toasts, disabled on load failure.
+  CHECK: `git diff -- src/components/admin/AdminSettingsPage.tsx`
+  EXPECT: /maintenanceMode/
+  EVIDENCE: +79 lines: maintenance switch in Data & Governance tab, loads settings/general on mount, saves immediately with toasts, disabled on load failure.
 - [x] M-2 Toggle persists to settings/general; App guard enforces (sign-out + overlay)
-  - CHECK: `git diff -- src/components/SettingsModal.tsx src/services/settingsService.ts`
-  - EXPECT: /settings.*general.*maintenanceMode|maintenanceMode.*general/
-  - EVIDENCE: new getMaintenanceMode/updateMaintenanceMode helpers on settings/general; modal loads/saves switch there, other fields stay on system/config. App.tsx guard + overlay untouched and now fed by both toggles.
+  CHECK: `git diff -- src/components/SettingsModal.tsx src/services/settingsService.ts`
+  EXPECT: /settings.*general.*maintenanceMode|maintenanceMode.*general/
+  EVIDENCE: new getMaintenanceMode/updateMaintenanceMode helpers on settings/general; modal loads/saves switch there, other fields stay on system/config. App.tsx guard + overlay untouched and now fed by both toggles.
 - [x] M-3 Typecheck clean, no regression to other settings tabs
-  - CHECK: `npx tsc --noEmit -p tsconfig.json`
-  - EXPECT: exit 0
-  - EVIDENCE: tsc pass in both lanes (fix-7, fix-8) on final tree.
+  CHECK: `npx tsc --noEmit -p tsconfig.json`
+  EXPECT: exit 0
+  EVIDENCE: tsc pass in both lanes (fix-7, fix-8) on final tree.
 
 ---
 
 # Gates: QA 9-28 Student Bugs (3 images)
 
 - [x] Q1 Avatar XP header matches true balance (was 0 XP vs 110 XP in warning)
-  - CHECK: `git diff -- src/components/AvatarShop.tsx`
-  - EXPECT: /result.currentXP/
-  - EVIDENCE: badge now syncs from service-returned balance on both successful and failed (insufficient-funds) purchase attempts; mount effect syncs from profile. tsc pass.
+  CHECK: `git diff -- src/components/AvatarShop.tsx`
+  EXPECT: /result.currentXP/
+  EVIDENCE: badge now syncs from service-returned balance on both successful and failed (insufficient-funds) purchase attempts; mount effect syncs from profile. tsc pass.
 - [x] Q2 Competency dropdown shows complete names, not raw codes
-  - CHECK: `git diff -- src/components/ModulesPage.tsx`
-  - EXPECT: /title/
-  - EVIDENCE: both desktop + mobile dropdowns render module titles, codes kept as filter values. tsc pass.
+  CHECK: `git diff -- src/components/ModulesPage.tsx`
+  EXPECT: /title/
+  EVIDENCE: both desktop + mobile dropdowns render module titles, codes kept as filter values. tsc pass.
 - [x] Q3 AI chat retains conversation history across turns
-  - CHECK: `git diff -- src/contexts/ChatContext.tsx backend/main.py`
-  - EXPECT: /history/
-  - EVIDENCE: frontend sends prior turns (current message no longer duplicated); backend history window 10→20 messages in standard + streaming paths. Chat suites: 91 passed.
+  CHECK: `git diff -- src/contexts/ChatContext.tsx backend/main.py`
+  EXPECT: /history/
+  EVIDENCE: frontend sends prior turns (current message no longer duplicated); backend history window 10→20 messages in standard + streaming paths. Chat suites: 91 passed.
 
 ---
 
@@ -1830,17 +1830,17 @@ Root cause: old `AdminSettings.tsx` toggle (writes `settings/general`) is orphan
 Requirement: chats must retain memory of other convos/sessions (Q3 covered same-session turns only).
 
 - [x] Q5 New conversation can reference facts from prior sessions
-  - CHECK: `git diff --stat`
-  - EXPECT: /[Cc]hat|memory|summary/
-  - EVIDENCE: ChatContext builds cross-session memory (≤3 other sessions × last 4 turns, 3000-char cap, same-user guard via sessionsOwnerId); apiService carries crossSessionMemory; backend accepts + caps it and injects into standard + streaming prompts as history. No schema migration.
+  CHECK: `git diff --stat`
+  EXPECT: /[Cc]hat|memory|summary/
+  EVIDENCE: ChatContext builds cross-session memory (≤3 other sessions × last 4 turns, 3000-char cap, same-user guard via sessionsOwnerId); apiService carries crossSessionMemory; backend accepts + caps it and injects into standard + streaming prompts as history. No schema migration.
 - [x] Q6 Typecheck + existing chat tests clean
-  - CHECK: `npx tsc --noEmit -p tsconfig.json && pytest backend/tests/test_api.py backend/tests/test_chat_jev_socratic.py`
-  - EXPECT: exit 0 / all passed
-  - EVIDENCE: tsc pass; 91 passed, 2 dep deprecation warnings.
+  CHECK: `npx tsc --noEmit -p tsconfig.json && pytest backend/tests/test_api.py backend/tests/test_chat_jev_socratic.py`
+  EXPECT: exit 0 / all passed
+  EVIDENCE: tsc pass; 91 passed, 2 dep deprecation warnings.
 - [x] Q4 Typecheck clean
-  - CHECK: `npx tsc --noEmit -p tsconfig.json`
-  - EXPECT: exit 0
-  - EVIDENCE: tsc pass in all three lanes on final tree.
+  CHECK: `npx tsc --noEmit -p tsconfig.json`
+  EXPECT: exit 0
+  EVIDENCE: tsc pass in all three lanes on final tree.
 
 - [x] T-G3: Create `TeacherSettingsPage.tsx` with 4 tabs (Appearance, Notifications, Security, Data Management) and dirty save handling.
   CHECK: npm run typecheck
