@@ -4686,7 +4686,7 @@ const InterventionView: React.FC<{
       className="w-full h-full flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative"
     >
       {/* Center Scrollable Content: Insights & Tools */}
-      <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-3.5 sm:p-6 xl:p-8 pb-28 lg:pb-8 no-scrollbar">
+      <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-3.5 sm:p-6 xl:p-8 pb-28 sm:pb-32 lg:pb-8 no-scrollbar">
         <div className="max-w-[1000px] mx-auto space-y-4 sm:space-y-6">
 
           {/* Top Navigation Row: Back Button + Segmented Tabs */}
@@ -6164,7 +6164,7 @@ const ImportView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-3.5 sm:p-6 pb-28 sm:pb-32 lg:pb-12"
     >
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">

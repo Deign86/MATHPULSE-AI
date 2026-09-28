@@ -117,7 +117,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 lg:space-y-6 min-h-[calc(100vh-80px)]">
+    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 lg:space-y-6 pb-28 sm:pb-32 lg:pb-8 min-h-[calc(100vh-80px)]">
       {/* Top Header & Navigation Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">

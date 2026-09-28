@@ -140,7 +140,7 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
 
   const modalElement = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -152,20 +152,20 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-lg max-h-[80dvh] flex flex-col overflow-hidden z-10"
+          className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-lg max-h-[85dvh] flex flex-col overflow-hidden z-10"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-[#f1f5f9] dark:border-slate-800">
-            <h2 className="text-lg font-semibold text-[#1e293b] dark:text-white">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[#f1f5f9] dark:border-slate-800 shrink-0">
+            <h2 className="text-base sm:text-lg font-semibold text-[#1e293b] dark:text-white">
               {step === 'details' ? 'Create New Class' : 'Add Students'}
             </h2>
-            <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#f1f5f9] dark:hover:bg-slate-800 transition-colors">
-              <X size={20} className="text-[#64748b] dark:text-slate-400" />
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#f1f5f9] dark:hover:bg-slate-800 transition-colors">
+              <X size={18} className="text-[#64748b] dark:text-slate-400" />
             </button>
           </div>
 
           {/* Body */}
-          <div className="p-6 overflow-y-auto flex-1">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1">
             {step === 'details' && (
               <div className="space-y-4">
                 <div>
@@ -237,21 +237,22 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between p-6 border-t border-[#f1f5f9] dark:border-slate-800">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3.5 sm:p-6 border-t border-[#f1f5f9] dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
             {step === 'details' ? (
               <>
-                <Button variant="outline" onClick={onClose}>Cancel</Button>
-                <div className="flex gap-2">
+                <Button variant="outline" onClick={onClose} className="w-full sm:w-auto h-9 sm:h-10 text-xs sm:text-sm">Cancel</Button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Button
                     variant="outline"
                     onClick={() => { if (!section.trim()) { setError('Section is required'); return; } setError(''); setStep('students'); }}
+                    className="flex-1 sm:flex-initial h-9 sm:h-10 text-xs sm:text-sm"
                   >
                     Add Students
                   </Button>
                   <Button
                     onClick={handleCreateClass}
                     disabled={creating || !section.trim()}
-                    className="bg-[#a855f7] hover:bg-[#9333ea] text-white"
+                    className="flex-1 sm:flex-initial bg-[#a855f7] hover:bg-[#9333ea] text-white h-9 sm:h-10 text-xs sm:text-sm shadow-xs"
                   >
                     {creating ? 'Creating...' : 'Create Class'}
                   </Button>
@@ -259,11 +260,11 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={() => setStep('details')}>Back</Button>
+                <Button variant="outline" onClick={() => setStep('details')} className="w-full sm:w-auto h-9 sm:h-10 text-xs sm:text-sm">Back</Button>
                 <Button
                   onClick={handleCreateClass}
                   disabled={creating}
-                  className="bg-[#a855f7] hover:bg-[#9333ea] text-white"
+                  className="w-full sm:w-auto bg-[#a855f7] hover:bg-[#9333ea] text-white h-9 sm:h-10 text-xs sm:text-sm shadow-xs"
                 >
                   <Plus size={16} className="mr-1" />
                   {creating ? 'Creating...' : `Create with ${selectedStudents.size} Student${selectedStudents.size !== 1 ? 's' : ''}`}

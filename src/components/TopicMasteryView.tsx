@@ -418,7 +418,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 pb-28 sm:pb-8"
+      className="w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8"
     >
       {/* Tab Switcher: Student Mastery Matrix vs Module Availability & Materials (Unified Segmented Control Pill) */}
       <div className="inline-flex items-center p-1 sm:p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200/90 dark:border-slate-800 rounded-full shadow-2xs gap-1 max-w-full overflow-x-auto no-scrollbar">

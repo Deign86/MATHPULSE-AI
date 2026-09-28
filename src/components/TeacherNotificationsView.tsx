@@ -116,7 +116,7 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
 
   return (
     <div className="w-full h-full flex flex-col bg-[#f8fafc]/50">
-      <div className="max-w-[900px] mx-auto w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 flex-1 overflow-y-auto no-scrollbar pb-24 sm:pb-12">
+      <div className="max-w-[900px] mx-auto w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 flex-1 overflow-y-auto no-scrollbar pb-28 sm:pb-32 lg:pb-12">
 
         {/* Filters + controls row */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
