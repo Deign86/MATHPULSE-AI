@@ -1244,7 +1244,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       </div>
 
       {/* ─── MAIN CONTENT ─── */}
-      <div className="w-full px-3.5 sm:px-6 xl:px-8 pb-8 flex-1">
+      <div className="w-full px-3.5 sm:px-6 xl:px-8 pb-28 sm:pb-32 lg:pb-8 flex-1">
 
           {/* ─── QUIZ BANK TAB ─── */}
           {activeTab === 'bank' && (

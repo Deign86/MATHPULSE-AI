@@ -1,11 +1,14 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import {
   Sparkles, Bell, Layers, ChevronDown, Table, FileText, ScanLine, TrendingDown,
   CheckCircle, Edit3, ArrowLeft, Cpu, ArrowRight, Check, Save, Info, Edit2, Search,
   FileSpreadsheet, Download, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Upload,
-  CloudUpload
+  CloudUpload, X, FileCheck
 } from 'lucide-react';
+import { Button } from '../../components/ui/button';
 
 import type { ClassSectionMetadata } from '../../types/models';
 import type { StudentView } from '../../components/TeacherDashboard';
@@ -131,8 +134,49 @@ export default function DataImportView({
     }>;
   } | null>(null);
 
+  interface PendingImportUpload {
+    file: File;
+    type: 'class_records' | 'course_materials';
+  }
+
+  const [pendingUpload, setPendingUpload] = useState<PendingImportUpload | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleSelectClassRecordsFile = (file: File) => {
+    setPendingUpload({ file, type: 'class_records' });
+  };
+
+  const handleSelectCourseMaterialFile = (file: File) => {
+    setPendingUpload({ file, type: 'course_materials' });
+  };
+
+  const handleCancelUpload = () => {
+    setPendingUpload(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (materialInputRef.current) materialInputRef.current.value = '';
+  };
+
+  const handleConfirmUpload = () => {
+    if (!pendingUpload) return;
+    const { file, type } = pendingUpload;
+    setPendingUpload(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (materialInputRef.current) materialInputRef.current.value = '';
+
+    if (type === 'class_records') {
+      void handleFileUpload(file);
+    } else {
+      void handleCourseMaterialUpload(file);
+    }
+  };
 
   const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -446,7 +490,7 @@ export default function DataImportView({
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
                 onDragOver={(e) => { e.preventDefault(); setDragOver1(true); }}
                 onDragLeave={() => setDragOver1(false)}
-                onDrop={(e) => { e.preventDefault(); setDragOver1(false); const f = e.dataTransfer.files[0]; if(f) handleFileUpload(f); }}
+                onDrop={(e) => { e.preventDefault(); setDragOver1(false); const f = e.dataTransfer.files[0]; if(f) handleSelectClassRecordsFile(f); }}
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-[3.5px] border-dotted transition-all duration-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-between text-center cursor-pointer group min-h-[230px] sm:min-h-[250px] active:scale-[0.99] ${
                   dragOver1
@@ -454,7 +498,7 @@ export default function DataImportView({
                     : 'border-sky-400 hover:border-sky-600 bg-gradient-to-b from-sky-50/40 to-sky-50/20 hover:bg-sky-50/70 shadow-2xs hover:shadow-sm hover:-translate-y-0.5'
                 }`}
               >
-                <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleFileUpload(f); }} className="hidden" />
+                <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleSelectClassRecordsFile(f); }} className="hidden" />
 
                 <div className="flex flex-col items-center justify-center my-auto py-2">
                   <div className={`w-14 h-14 rounded-2xl bg-sky-100/80 flex items-center justify-center mb-3 text-sky-600 transition-all duration-200 border-2 border-sky-300 shadow-2xs ${dragOver1 ? 'scale-110 bg-sky-200' : 'group-hover:scale-105 group-hover:bg-sky-200/80'}`}>
@@ -487,7 +531,7 @@ export default function DataImportView({
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') materialInputRef.current?.click(); }}
                 onDragOver={(e) => { e.preventDefault(); setDragOver2(true); }}
                 onDragLeave={() => setDragOver2(false)}
-                onDrop={(e) => { e.preventDefault(); setDragOver2(false); const f = e.dataTransfer.files[0]; if(f) handleCourseMaterialUpload(f); }}
+                onDrop={(e) => { e.preventDefault(); setDragOver2(false); const f = e.dataTransfer.files[0]; if(f) handleSelectCourseMaterialFile(f); }}
                 onClick={() => materialInputRef.current?.click()}
                 className={`border-[3.5px] border-dotted transition-all duration-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-between text-center cursor-pointer group min-h-[230px] sm:min-h-[250px] active:scale-[0.99] ${
                   dragOver2
@@ -495,7 +539,7 @@ export default function DataImportView({
                     : 'border-purple-400 hover:border-purple-600 bg-gradient-to-b from-purple-50/40 to-purple-50/20 hover:bg-purple-50/70 shadow-2xs hover:shadow-sm hover:-translate-y-0.5'
                 }`}
               >
-                <input ref={materialInputRef} type="file" accept=".pdf,.docx,.txt" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleCourseMaterialUpload(f); }} className="hidden" />
+                <input ref={materialInputRef} type="file" accept=".pdf,.docx,.txt" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleSelectCourseMaterialFile(f); }} className="hidden" />
 
                 <div className="flex flex-col items-center justify-center my-auto py-2">
                   <div className={`w-14 h-14 rounded-2xl bg-purple-100/80 flex items-center justify-center mb-3 text-purple-600 transition-all duration-200 border-2 border-purple-300 shadow-2xs ${dragOver2 ? 'scale-110 bg-purple-200' : 'group-hover:scale-105 group-hover:bg-purple-200/80'}`}>
@@ -910,6 +954,130 @@ export default function DataImportView({
           </div>
         )}
       </div>
+
+      {/* Upload Confirmation Modal */}
+      {typeof document !== 'undefined' && pendingUpload && createPortal(
+        <AnimatePresence>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              onClick={handleCancelUpload}
+            />
+
+            {/* Modal Dialog */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirm-upload-title"
+              className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden z-10 p-5 sm:p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${
+                    pendingUpload.type === 'class_records'
+                      ? 'bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800'
+                      : 'bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800'
+                  }`}>
+                    {pendingUpload.type === 'class_records' ? (
+                      <FileSpreadsheet className="w-5 h-5" />
+                    ) : (
+                      <FileText className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 id="confirm-upload-title" className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-display">
+                      {pendingUpload.type === 'class_records'
+                        ? 'Confirm Class Records Upload'
+                        : 'Confirm Course Material Upload'}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Review file details before initiating processing
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCancelUpload}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  aria-label="Close dialog"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* File Info Card */}
+              <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Selected File
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    {formatFileSize(pendingUpload.file.size)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-300">
+                    <FileCheck className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate" title={pendingUpload.file.name}>
+                    {pendingUpload.file.name}
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span>Target Scope:</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[200px]">
+                    {className || classSectionId || 'All Classes'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Explanatory Notice */}
+              <div className="rounded-xl p-3 bg-violet-50/60 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900/40 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                {pendingUpload.type === 'class_records' ? (
+                  <p>
+                    MathPulse AI will parse student records, auto-detect assessment and grading columns, and sync learner progress to your analytics directory.
+                  </p>
+                ) : (
+                  <p>
+                    MathPulse AI will extract topics, competencies, and unit structures from this document to ground AI lesson planning and quiz generation.
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelUpload}
+                  className="w-full sm:w-auto h-10 text-xs sm:text-sm font-bold cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmUpload}
+                  className="w-full sm:w-auto h-10 text-xs sm:text-sm font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Check className="w-4 h-4 mr-1.5" />
+                  Proceed & Process
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

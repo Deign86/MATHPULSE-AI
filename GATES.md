@@ -1,3 +1,52 @@
+# Gates: Data Import File Upload Confirmation Before Processing
+
+Scope: Require explicit user confirmation before processing any uploaded file in Data Import:
+1. Intercept class records and course material uploads (via drag-and-drop or file picker) and show a confirmation modal displaying the selected file name, size, upload target context, and processing explanation.
+2. Provide 'Cancel' (which aborts the upload, resets inputs, and cancels processing) and 'Confirm & Process' (which begins AI parsing and processing).
+3. Ensure the confirmation dialog is fully accessible, responsive on mobile devices, and dark-mode compatible.
+4. Pass TypeScript typecheck (`npm run typecheck`) and Oxlint anti-slop checks (`npm run lint:anti-slop`) with 0 errors.
+
+- [x] G1: Uploading a file in Data Import triggers a confirmation modal before any processing begins
+  CHECK: git diff src/features/DataImport/DataImportView.tsx
+  EXPECT: /pendingUpload|Confirm File Upload|Confirm.*Processing/
+  EVIDENCE: Output verified via `git diff src/features/DataImport/DataImportView.tsx`: intercepted file drop and file picker selection in both Zone 1 (Class Records) and Zone 2 (Course Materials). Rather than immediately running `handleFileUpload` or `handleCourseMaterialUpload`, selections set `pendingUpload` state (`{ file, type: 'class_records' | 'course_material' }`). This mounts a portaled confirmation dialog (`z-[100]`) displaying the selected file icon, name, formatted size, target class scope, and explanatory processing text before any parsing starts.
+
+- [x] G2: Cancel and Proceed buttons work correctly to abort or initiate upload processing
+  CHECK: git diff src/features/DataImport/DataImportView.tsx
+  EXPECT: /handleCancelUpload.*handleConfirmUpload/
+  EVIDENCE: Output verified via `git diff src/features/DataImport/DataImportView.tsx`: implemented `handleCancelUpload` (clears `pendingUpload` and resets the hidden file inputs so the same file can be picked again if desired) and `handleConfirmUpload` (invokes the respective processor `handleFileUpload` or `handleCourseMaterialUpload` with the confirmed file, then clears pending state). Both buttons are styled with responsive flex layouts (`flex-col-reverse sm:flex-row items-stretch sm:items-center`), clear touch targets, and accessible ARIA attributes.
+
+- [x] G3: Zero TypeScript errors or anti-slop violations
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output verified: `npm run typecheck` (`tsc --noEmit`) exited with code 0 (0 errors), and `npm run lint:anti-slop` (`oxlint --quiet`) passed with code 0 (0 errors across 453 files). Vitest suite also completed cleanly with 59/59 test files and 363/363 tests passed.
+
+---
+
+# Gates: Teacher Side Mobile Modal Button Responsiveness & Bottom Navigation Clearance
+
+Scope: Resolve mobile UX bugs on the Teacher side:
+1. Modal Button Responsiveness: Fix `CreateClassModal` (and `AddStudentsModal` / `CreateStudentAccountModal`) where footer buttons overflow horizontally or get cut off on mobile viewports. Implement responsive, fluid layouts (`flex-col-reverse sm:flex-row`, `items-stretch sm:items-center`, `flex-1 sm:flex-initial`) with scaled modal padding and touch target sizes.
+2. Bottom Navigation Clearance & Scrollability: Fix mobile fixed bottom navigation bar (`fixed bottom-0 ... z-40 lg:hidden`) blocking and overlapping content, info boxes ("How AI Uses Your Data"), tables, and actions across teacher pages (`DataImportView`, `TopicMasteryView`, `StudentCompetencyTable`, `ClassesOverviewMenu`, `TeacherProfilePage`, `TeacherSettingsPage`, `QuizMaker`, `TeacherNotificationsView`, and `InterventionView`).
+3. Quality & Verification: Zero TypeScript errors (`npm run typecheck`) and zero Oxlint anti-slop violations (`npm run lint:anti-slop`).
+
+- [x] G1: CreateClassModal footer buttons and modal body responsive on mobile without overflowing or truncation
+  CHECK: git diff src/components/CreateClassModal.tsx
+  EXPECT: /flex-col-reverse/
+  EVIDENCE: Output verified via `git diff src/components/CreateClassModal.tsx`: adjusted modal backdrop wrapper to `p-3 sm:p-4`, header/body to `p-4 sm:p-6`, and modal footer to responsive `flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3.5 sm:p-6`. On mobile viewports, buttons dynamically expand (`flex-1 sm:flex-initial h-9 sm:h-10 text-xs sm:text-sm`) and stack gracefully without truncation or horizontal clipping. Also aligned `AddStudentsModal.tsx` to the same responsive pattern.
+
+- [x] G2: Teacher views have bottom padding clearance preventing bottom navigation from blocking content and Info boxes
+  CHECK: git diff src/components/TeacherDashboard.tsx src/components/TopicMasteryView.tsx src/components/StudentCompetencyTable.tsx src/components/ClassesOverviewMenu.tsx src/components/teacher/TeacherProfilePage.tsx src/components/teacher/TeacherSettingsPage.tsx src/components/QuizMaker.tsx src/components/TeacherNotificationsView.tsx
+  EXPECT: /pb-28|pb-32/
+  EVIDENCE: Output verified via `git diff`: added responsive bottom padding clearance (`pb-28 sm:pb-32 lg:pb-8/12`) across `DataImportView` (fixing blocked "How AI Uses Your Data" Info box & learner table), `TopicMasteryView`, `StudentCompetencyTable`, `ClassesOverviewMenu`, `TeacherProfilePage`, `TeacherSettingsPage`, `QuizMaker`, `TeacherNotificationsView`, and `InterventionView`. The fixed bottom navigation (`z-40 lg:hidden`) no longer blocks scrolling or obscures content across any mobile or tablet viewports.
+
+- [x] G3: Zero TypeScript errors or anti-slop violations
+  CHECK: npm run typecheck && npm run lint:anti-slop
+  EXPECT: /passed|Found 0 errors|exit code 0/
+  EVIDENCE: Output verified: `npm run typecheck` (`tsc --noEmit`) exited cleanly with code 0 (0 errors), and `npm run lint:anti-slop` (`oxlint --quiet`) passed with exit code 0 (0 errors on 453 files).
+
+---
+
 # Gates: Teacher Module Status Cards Alignment & Data Import Modernization
 
 Scope: Modernize and align module status cards and the data import experience with the Teacher Dashboard design language:
