@@ -25,6 +25,7 @@ import {
   ApiNetworkError,
   ApiTimeoutError,
   apiService,
+  apiFetch,
   type AdminBulkActionApiResponse,
   type AdminBulkActionRequestApi,
   type AdminCreateUserApiRequest,
@@ -897,89 +898,17 @@ export interface DifficultyDistribution {
 /** Get weekly XP activity counts grouped by day (last 7 days). AI = xpActivities, Manual = quiz/lesson completions without XP. */
 export async function getWeeklyActivity(): Promise<WeeklyActivityData[]> {
   try {
-    const now = new Date();
-    const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const result: WeeklyActivityData[] = [];
-
-    // Initialize last 7 days
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      result.push({ name: dayNames[d.getDay()], ai: 0, man: 0 });
-    }
-
-    const xpSnap = await getDocs(collection(db, 'xpActivities'));
-    xpSnap.docs.forEach(d => {
-      const data = asDoc(d.data());
-      if (!isTimestamp(data.timestamp)) return;
-      const date = data.timestamp.toDate();
-      const daysAgo = Math.floor((now.getTime() - date.getTime()) / 86400000);
-      if (daysAgo < 0 || daysAgo > 6) return;
-      const idx = 6 - daysAgo;
-      const type = str(data.type);
-      // AI-driven activities vs manual
-      if (type === 'lesson_complete' || type === 'quiz_complete') {
-        result[idx].ai++;
-      } else {
-        result[idx].man++;
-      }
-    });
-
-    return result;
+    return (await getDashboardAnalytics()).weeklyActivity;
   } catch (err) {
     console.error('[adminService] getWeeklyActivity error:', err);
-    return [
-      { name: 'M', ai: 0, man: 0 }, { name: 'T', ai: 0, man: 0 },
-      { name: 'W', ai: 0, man: 0 }, { name: 'T', ai: 0, man: 0 },
-      { name: 'F', ai: 0, man: 0 }, { name: 'S', ai: 0, man: 0 },
-      { name: 'S', ai: 0, man: 0 },
-    ];
+    return [];
   }
 }
-
-/** Per-subject enrollment aggregation. */
-interface SubjectStat { enrolled: number; totalProgress: number }
-interface SubjectStatMap { [subId: string]: SubjectStat }
 
 /** Get subject breakdown with real enrollment and average progress from progress collection. */
 export async function getSubjectBreakdown(): Promise<SubjectBreakdownItem[]> {
   try {
-    const progressSnap = await getDocs(collection(db, 'progress'));
-    const subjectStats: SubjectStatMap = {
-      'gen-math': { enrolled: 0, totalProgress: 0 },
-      'stats-prob': { enrolled: 0, totalProgress: 0 },
-    };
-
-    progressSnap.docs.forEach(d => {
-      const data = asDoc(d.data());
-      const subjects = asProgressMap(data.subjects);
-      if (!subjects) return;
-      Object.entries(subjects).forEach(([subId, subData]) => {
-        if (subjectStats[subId]) {
-          subjectStats[subId].enrolled++;
-          subjectStats[subId].totalProgress += num(subData?.progress);
-        }
-      });
-    });
-
-    return [
-      {
-        name: 'General Mathematics',
-        type: 'Core',
-        count: subjectStats['gen-math'].enrolled,
-        progress: subjectStats['gen-math'].enrolled > 0
-          ? Math.round(subjectStats['gen-math'].totalProgress / subjectStats['gen-math'].enrolled)
-          : 0,
-      },
-      {
-        name: 'Statistics & Probability',
-        type: 'Core',
-        count: subjectStats['stats-prob'].enrolled,
-        progress: subjectStats['stats-prob'].enrolled > 0
-          ? Math.round(subjectStats['stats-prob'].totalProgress / subjectStats['stats-prob'].enrolled)
-          : 0,
-      },
-    ];
+    return (await getDashboardAnalytics()).subjectBreakdown;
   } catch (err) {
     console.error('[adminService] getSubjectBreakdown error:', err);
     return [];
@@ -989,29 +918,7 @@ export async function getSubjectBreakdown(): Promise<SubjectBreakdownItem[]> {
 /** Get priority attention data — subject with most at-risk students. */
 export async function getPriorityAttention(): Promise<PriorityAttentionData> {
   try {
-    const counted = new Set<string>();
-    let atRiskCount = 0;
-
-    const usersSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'student')));
-    usersSnap.docs.forEach(d => {
-      const data = asDoc(d.data());
-      if (data.overallRisk === 'High') { atRiskCount++; counted.add(d.id); }
-    });
-
-    // Also count WRI-based at-risk from managedStudents
-    try {
-      const managedSnap = await getDocs(collection(db, 'managedStudents'));
-      managedSnap.docs.forEach(d => {
-        const data = asDoc(d.data());
-        const rs = str(data.riskStatus);
-        if (rs && ['intervene', 'critical', 'at_risk'].includes(rs) && !counted.has(d.id)) {
-          atRiskCount++;
-          counted.add(d.id);
-        }
-      });
-    } catch { /* non-critical */ }
-
-    return { subjectName: 'General Mathematics', atRiskCount };
+    return (await getDashboardAnalytics()).priorityAttention;
   } catch (err) {
     console.error('[adminService] getPriorityAttention error:', err);
     return { subjectName: 'General Mathematics', atRiskCount: 0 };
@@ -1021,30 +928,7 @@ export async function getPriorityAttention(): Promise<PriorityAttentionData> {
 /** Get global mastery average from progress collection. */
 export async function getGlobalMastery(): Promise<GlobalMasteryData> {
   try {
-    const progressSnap = await getDocs(collection(db, 'progress'));
-    let totalScore = 0;
-    let passed = 0;
-    let pending = 0;
-    let count = 0;
-
-    progressSnap.docs.forEach(d => {
-      const data = asDoc(d.data());
-      const avg = data.averageScore;
-      if (isNumber(avg)) {
-        totalScore += avg;
-        count++;
-        if (avg >= 60) passed++;
-        else pending++;
-      } else {
-        pending++;
-      }
-    });
-
-    return {
-      avgMastery: count > 0 ? Math.round(totalScore / count) : 0,
-      passed,
-      pending,
-    };
+    return (await getDashboardAnalytics()).globalMastery;
   } catch (err) {
     console.error('[adminService] getGlobalMastery error:', err);
     return { avgMastery: 0, passed: 0, pending: 0 };
@@ -1054,30 +938,157 @@ export async function getGlobalMastery(): Promise<GlobalMasteryData> {
 /** Get difficulty distribution from progress collection quiz attempts. */
 export async function getDifficultyDistribution(): Promise<DifficultyDistribution> {
   try {
-    const progressSnap = await getDocs(collection(db, 'progress'));
-    let foundational = 0;
-    let intermediate = 0;
-    let advanced = 0;
-
-    progressSnap.docs.forEach(d => {
-      const data = asDoc(d.data());
-      const avg = data.averageScore;
-      if (!isNumber(avg)) { foundational++; return; }
-      if (avg < 50) foundational++;
-      else if (avg < 80) intermediate++;
-      else advanced++;
-    });
-
-    const total = foundational + intermediate + advanced || 1;
-    return {
-      foundational: Math.round((foundational / total) * 100),
-      intermediate: Math.round((intermediate / total) * 100),
-      advanced: Math.round((advanced / total) * 100),
-    };
+    return (await getDashboardAnalytics()).difficultyDistribution;
   } catch (err) {
     console.error('[adminService] getDifficultyDistribution error:', err);
     return { foundational: 0, intermediate: 0, advanced: 0 };
   }
+}
+
+interface DashboardAnalytics {
+  weeklyActivity: WeeklyActivityData[];
+  subjectBreakdown: SubjectBreakdownItem[];
+  priorityAttention: PriorityAttentionData;
+  globalMastery: GlobalMasteryData;
+  difficultyDistribution: DifficultyDistribution;
+}
+
+let dashboardAnalyticsRequest: Promise<DashboardAnalytics> | undefined;
+
+async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
+  if (!dashboardAnalyticsRequest) {
+    dashboardAnalyticsRequest = apiFetch<DashboardAnalytics>('/api/admin/dashboard-analytics')
+      .catch(async error => {
+        if (!(error instanceof ApiError && error.status === 404)
+          && !(error instanceof ApiNetworkError)
+          && !(error instanceof ApiTimeoutError)) throw error;
+
+        const [usersSnap, classroomsSnap, auditSnap, managedSnap, modulesSnap, progressSnap] = await Promise.all([
+          getDocs(collection(db, 'users')),
+          getDocs(collection(db, 'classrooms')),
+          getDocs(collection(db, 'auditLogs')),
+          getDocs(collection(db, 'managedStudents')),
+          getDocs(collection(db, 'curriculumModules')),
+          getDocs(collection(db, 'progress')),
+        ]);
+        const users = new Map<string, Record<string, DocValue>>();
+        usersSnap.docs.forEach(d => {
+          const user = asDoc(d.data());
+          if (str(user.role).toLowerCase() === 'student') users.set(d.id, user);
+        });
+        managedSnap.docs.forEach(d => { if (!users.has(d.id)) users.set(d.id, asDoc(d.data())); });
+
+        const scoreOf = (data: Record<string, DocValue>): number | undefined => {
+          for (const key of ['averageScore', 'average_score', 'diagnosticScore', 'masteryScore', 'mastery_score']) {
+            const score = data[key];
+            if (isNumber(score)) return Math.max(0, Math.min(100, score));
+          }
+          return undefined;
+        };
+        const scores = [...users.values()].map(scoreOf).filter((score): score is number => score !== undefined);
+        progressSnap.docs.forEach(d => {
+          const score = scoreOf(asDoc(d.data()));
+          if (score !== undefined && !users.has(d.id)) scores.push(score);
+        });
+
+        const now = new Date();
+        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        const weeklyActivity = Array.from({ length: 7 }, (_, index) => {
+          const day = new Date(today);
+          day.setUTCDate(today.getUTCDate() - 6 + index);
+          return { name: dayNames[(day.getUTCDay() + 6) % 7], ai: 0, man: 0 };
+        });
+        auditSnap.docs.forEach(d => {
+          const entry = asDoc(d.data());
+          const timestamp = entry.timestamp ?? entry.timestampRaw ?? entry.createdAt;
+          let date: Date | undefined;
+          if (isTimestamp(timestamp)) date = timestamp.toDate();
+          else if (isString(timestamp)) {
+            const parsed = new Date(timestamp);
+            if (!Number.isNaN(parsed.getTime())) date = parsed;
+          }
+          if (!date) return;
+          const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+          const daysAgo = Math.round((today.getTime() - day.getTime()) / 86_400_000);
+          if (daysAgo < 0 || daysAgo > 6) return;
+          const action = str(entry.action || entry.eventType || entry.type).toLowerCase();
+          const activity = weeklyActivity[6 - daysAgo];
+          if (activity) activity[/ai|lesson|quiz|tutor/.test(action) ? 'ai' : 'man']++;
+        });
+
+        const moduleSubjects = new Map<string, string>();
+        modulesSnap.docs.forEach(d => {
+          const module = asDoc(d.data());
+          const subject = str(module.subjectName || module.subject || module.subject_name);
+          if (subject) moduleSubjects.set(str(module.subjectId || module.subject_id, subject), subject);
+        });
+        const enrollments = new Map<string, { count: number; progressTotal: number; progressCount: number }>();
+        classroomsSnap.docs.forEach(d => {
+          const classroom = asDoc(d.data());
+          const subjectId = str(classroom.subjectId || classroom.subject_id || classroom.subject);
+          const subject = moduleSubjects.get(subjectId) || str(classroom.subjectName || classroom.subject, subjectId);
+          if (!subject) return;
+          const roster = classroom.students || classroom.studentIds;
+          const count = Array.isArray(roster) ? roster.length : isObjectRecord(roster) ? Object.keys(roster).length : 0;
+          const current = enrollments.get(subject) ?? { count: 0, progressTotal: 0, progressCount: 0 };
+          current.count += count;
+          const progress = classroom.averageProgress || classroom.average_progress || classroom.progress;
+          if (isNumber(progress)) {
+            current.progressTotal += Math.max(0, Math.min(100, progress));
+            current.progressCount++;
+          }
+          enrollments.set(subject, current);
+        });
+        const subjectBreakdown = [...enrollments.entries()]
+          .sort((a, b) => b[1].count - a[1].count)
+          .map(([name, totals]) => ({
+            name,
+            type: name.toLowerCase().includes('stem') ? 'STEM' as const : 'Core' as const,
+            count: totals.count,
+            progress: totals.progressCount ? Math.round(totals.progressTotal / totals.progressCount) : 0,
+          }));
+
+        const riskSubjects = new Map<string, number>();
+        const atRiskIds = new Set<string>();
+        managedSnap.docs.forEach(d => {
+          const managed = asDoc(d.data());
+          const user = users.get(d.id) ?? {};
+          const riskStatus = str(managed.riskStatus || managed.risk_status).toLowerCase();
+          const overallRisk = str(user.overallRisk || user.riskLevel).toLowerCase();
+          if (['intervene', 'critical', 'at_risk', 'high'].includes(riskStatus) || overallRisk === 'high') {
+            atRiskIds.add(d.id);
+            const subject = str(managed.weakestSubject || managed.weakest_subject || managed.subject);
+            if (subject) riskSubjects.set(subject, (riskSubjects.get(subject) ?? 0) + 1);
+          }
+        });
+        users.forEach((user, id) => {
+          if (str(user.overallRisk || user.riskLevel).toLowerCase() === 'high') atRiskIds.add(id);
+        });
+        const passed = scores.filter(score => score >= 60).length;
+        const total = scores.length || 1;
+        return {
+          weeklyActivity,
+          subjectBreakdown,
+          priorityAttention: {
+            subjectName: [...riskSubjects.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'General Mathematics',
+            atRiskCount: atRiskIds.size,
+          },
+          globalMastery: {
+            avgMastery: scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0,
+            passed,
+            pending: Math.max(0, users.size - passed),
+          },
+          difficultyDistribution: {
+            foundational: Math.round(scores.filter(score => score < 50).length / total * 100),
+            intermediate: Math.round(scores.filter(score => score >= 50 && score < 80).length / total * 100),
+            advanced: Math.round(scores.filter(score => score >= 80).length / total * 100),
+          },
+        };
+      })
+      .finally(() => { dashboardAnalyticsRequest = undefined; });
+  }
+  return dashboardAnalyticsRequest;
 }
 
 // ─── Analytics Summary ───────────────────────────────────────

@@ -419,6 +419,145 @@ async def delete_uploaded_file(
 
 # ─── School-Wide Analytics ─────────────────────────────────────────────────
 
+@router.get("/dashboard-analytics")
+def get_dashboard_analytics(request: Request):
+    """Aggregate dashboard metrics from current Firestore records."""
+    require_admin(request)
+
+    try:
+        import firebase_admin
+        from firebase_admin import firestore as fs
+        db = fs.client()
+        users = list(db.collection("users").stream())
+        classrooms = list(db.collection("classrooms").stream())
+        audit_logs = list(db.collection("auditLogs").stream())
+        managed_students = list(db.collection("managedStudents").stream())
+        curriculum_modules = list(db.collection("curriculumModules").stream())
+    except Exception:
+        logger.exception("Unable to read dashboard analytics from Firestore")
+        raise HTTPException(status_code=503, detail="Firestore unavailable")
+
+    from collections import Counter
+    from datetime import timedelta
+
+    def score_from(record):
+        for key in ("averageScore", "average_score", "diagnosticScore", "masteryScore", "mastery_score"):
+            value = record.get(key)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                return max(0, min(100, float(value)))
+        return None
+
+    students = {}
+    for snapshot in users:
+        record = snapshot.to_dict() or {}
+        if str(record.get("role", "")).lower() == "student":
+            students[snapshot.id] = record
+    for snapshot in managed_students:
+        students.setdefault(snapshot.id, snapshot.to_dict() or {})
+
+    scores = [score for record in students.values() if (score := score_from(record)) is not None]
+    passed = sum(score >= 60 for score in scores)
+    total_students = len(students)
+    risk_subjects = Counter()
+    at_risk_ids = set()
+    for snapshot in managed_students:
+        record = snapshot.to_dict() or {}
+        status = str(record.get("riskStatus") or record.get("risk_status") or "").lower()
+        user = students.get(snapshot.id, {})
+        overall_risk = str(user.get("overallRisk") or user.get("riskLevel") or "").lower()
+        if status in {"intervene", "critical", "at_risk", "high"} or overall_risk == "high":
+            at_risk_ids.add(snapshot.id)
+            subject = record.get("weakestSubject") or record.get("weakest_subject") or record.get("subject")
+            if subject:
+                risk_subjects[str(subject)] += 1
+    for uid, record in students.items():
+        if str(record.get("overallRisk") or record.get("riskLevel") or "").lower() == "high":
+            at_risk_ids.add(uid)
+
+    now = datetime.now(timezone.utc)
+    day_names = ["M", "T", "W", "T", "F", "S", "S"]
+    weekly = []
+    today = now.date()
+    for days_ago in range(6, -1, -1):
+        date = today - timedelta(days=days_ago)
+        weekly.append({"name": day_names[date.weekday()], "ai": 0, "man": 0})
+    for snapshot in audit_logs:
+        record = snapshot.to_dict() or {}
+        timestamp = record.get("timestamp") or record.get("timestampRaw") or record.get("createdAt")
+        if hasattr(timestamp, "to_datetime"):
+            timestamp = timestamp.to_datetime()
+        elif hasattr(timestamp, "seconds"):
+            timestamp = datetime.fromtimestamp(timestamp.seconds, tz=timezone.utc)
+        elif isinstance(timestamp, str):
+            try:
+                timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+        if not isinstance(timestamp, datetime):
+            continue
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        days_ago = (today - timestamp.astimezone(timezone.utc).date()).days
+        if not 0 <= days_ago <= 6:
+            continue
+        action = str(record.get("action") or record.get("eventType") or record.get("type") or "").lower()
+        weekly[6 - days_ago]["ai" if any(word in action for word in ("ai", "lesson", "quiz", "tutor")) else "man"] += 1
+
+    module_subjects = {}
+    for snapshot in curriculum_modules:
+        record = snapshot.to_dict() or {}
+        subject = record.get("subjectName") or record.get("subject") or record.get("subject_name")
+        if subject:
+            module_subjects[str(record.get("subjectId") or record.get("subject_id") or subject)] = str(subject)
+    enrollments = Counter()
+    progress_totals = Counter()
+    progress_counts = Counter()
+    for snapshot in classrooms:
+        record = snapshot.to_dict() or {}
+        subject_id = str(record.get("subjectId") or record.get("subject_id") or record.get("subject") or "")
+        subject_name = module_subjects.get(subject_id, str(record.get("subjectName") or record.get("subject") or subject_id))
+        roster = record.get("students") or record.get("studentIds") or []
+        enrolled = len(roster) if isinstance(roster, (list, dict)) else 0
+        if subject_name:
+            enrollments[subject_name] += enrolled
+            progress = record.get("averageProgress") or record.get("average_progress") or record.get("progress")
+            if isinstance(progress, (int, float)) and not isinstance(progress, bool):
+                progress_totals[subject_name] += max(0, min(100, progress))
+                progress_counts[subject_name] += 1
+    subject_breakdown = [
+        {
+            "name": name,
+            "type": "STEM" if "stem" in name.lower() else "Core",
+            "count": count,
+            "progress": round(progress_totals[name] / progress_counts[name]) if progress_counts[name] else 0,
+        }
+        for name, count in enrollments.most_common()
+    ]
+
+    score_count = len(scores)
+    foundational = sum(score < 50 for score in scores)
+    intermediate = sum(50 <= score < 80 for score in scores)
+    advanced = sum(score >= 80 for score in scores)
+    distribution_total = score_count or 1
+    return {
+        "weeklyActivity": weekly,
+        "subjectBreakdown": subject_breakdown,
+        "priorityAttention": {
+            "subjectName": risk_subjects.most_common(1)[0][0] if risk_subjects else "General Mathematics",
+            "atRiskCount": len(at_risk_ids),
+        },
+        "globalMastery": {
+            "avgMastery": round(sum(scores) / score_count) if score_count else 0,
+            "passed": passed,
+            "pending": max(0, total_students - passed),
+        },
+        "difficultyDistribution": {
+            "foundational": round(foundational / distribution_total * 100),
+            "intermediate": round(intermediate / distribution_total * 100),
+            "advanced": round(advanced / distribution_total * 100),
+        },
+    }
+
 @router.get("/school-analytics")
 def get_school_analytics(request: Request):
     """School-wide WRI aggregation for admin dashboard."""

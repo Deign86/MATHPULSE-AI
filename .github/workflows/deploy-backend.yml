@@ -7,6 +7,10 @@ name: Deploy FastAPI backend
 on:
   push:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - 'config/models.yaml'
+      - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
 permissions:
