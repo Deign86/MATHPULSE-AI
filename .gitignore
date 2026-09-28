@@ -130,6 +130,9 @@ docs/ui-standardization-summary.md
 # Local pi agent state — never commit
 .pi/
 
+# Deepwork local progress state — never commit
+.slim/deepwork/
+
 # Android / Capacitor build artifacts & signing credentials
 android/.gradle/
 android/build/
