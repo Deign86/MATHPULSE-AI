@@ -7595,6 +7595,23 @@ async def delete_class_section(request: Request, class_section_id: str):
     if not ownership_docs and user.role != "admin":
         raise HTTPException(status_code=403, detail="You do not own this class section")
 
+    # Include both the section ID and linked classroom IDs because analytics
+    # artifacts are keyed by classroom document ID in existing data.
+    classroom_docs = list(db.collection("classrooms").where("classSectionId", "==", class_section_id).stream())
+    class_ids = {class_section_id, *(classroom_doc.id for classroom_doc in classroom_docs)}
+    class_docs = list(db.collection("classes").where("classSectionId", "==", class_section_id).stream())
+    class_ids.update(class_doc.id for class_doc in class_docs)
+
+    for class_id in class_ids:
+        summaries = db.collection("classes").document(class_id).collection("student_summaries").stream()
+        for summary in summaries:
+            summary.reference.delete()
+            deleted += 1
+        analytics_ref = db.collection("class_analytics").document(class_id)
+        if analytics_ref.get().exists:
+            analytics_ref.delete()
+            deleted += 1
+
     # Delete associated data
     deleted += _delete_by_field("managedStudents", "classSectionId", class_section_id)
     deleted += _delete_by_field("normalizedClassRecords", "classSectionId", class_section_id)
@@ -7603,7 +7620,6 @@ async def delete_class_section(request: Request, class_section_id: str):
     deleted += _delete_by_field("importGroundedFeedbackEvents", "classSectionId", class_section_id)
 
     # Delete classrooms linked to this section
-    classroom_docs = list(db.collection("classrooms").where("classSectionId", "==", class_section_id).stream())
     for cd in classroom_docs:
         _delete_by_field("managedStudents", "classroomId", cd.id)
         cd.reference.delete()
