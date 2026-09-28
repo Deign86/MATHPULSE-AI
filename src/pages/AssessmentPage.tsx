@@ -115,7 +115,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
         ...responses,
         {
           question_id: currentQuestion.question_id,
-          student_answer: selectedAnswer || '',
+          student_answer: (selectedAnswer || '').trim().toUpperCase(),
           time_spent_seconds: timeSpentSeconds,
         },
       ];
@@ -165,7 +165,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
   }, []);
 
   const handleSelectAnswer = (letter: string) => {
-    setSelectedAnswer(letter);
+    setSelectedAnswer(letter.trim().toUpperCase());
   };
 
   const handleNext = () => {
@@ -180,7 +180,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
       ...responses,
       {
         question_id: currentQuestion.question_id,
-        student_answer: selectedAnswer,
+        student_answer: selectedAnswer.trim().toUpperCase(),
         time_spent_seconds: timeSpentSeconds,
       },
     ];

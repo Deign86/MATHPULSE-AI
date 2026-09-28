@@ -62,6 +62,33 @@ interface DiagnosticBreakdownProps {
 
 interface QuestionWithText extends DiagnosticResponse {
   question_text?: string;
+  options?: Record<string, string>;
+}
+
+function normalizeAnswerText(answer: string): string {
+  return answer.trim().toLocaleLowerCase().replace(/\s+/g, ' ');
+}
+
+function isAcceptedAnswer(response: DiagnosticResponse, options: Record<string, string> | undefined): boolean {
+  const acceptedAnswers = response.correct_answer
+    .split(/[,/;|\s]+/)
+    .map(normalizeAnswerText)
+    .filter(Boolean);
+  const studentAnswer = normalizeAnswerText(response.student_answer);
+  const studentLetter = studentAnswer.toUpperCase();
+  const selectedOption = options?.[studentLetter];
+  const selectedText = selectedOption ? normalizeAnswerText(selectedOption) : '';
+  const correctAnswerText = normalizeAnswerText(response.correct_answer);
+
+  return (selectedText !== '' && correctAnswerText === selectedText)
+    || acceptedAnswers.some(answer => {
+      const acceptedLetter = answer.toUpperCase();
+      const acceptedOption = options?.[acceptedLetter];
+      const acceptedText = acceptedOption ? normalizeAnswerText(acceptedOption) : '';
+      return answer === studentAnswer
+        || answer === selectedText
+        || (selectedText !== '' && acceptedText === selectedText);
+    });
 }
 
 /** Per-domain score block persisted in a diagnostic result document. */
@@ -143,18 +170,26 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
 
       // Fetch question texts from session
       const testId = data.testId;
-      const questionTexts: Record<string, string> = {};
+      const questionsById: Record<string, { question_text: string; options?: Record<string, string> }> = {};
       if (testId) {
         const sessionSnap = await getDoc(doc(db, 'diagnosticSessions', testId));
         if (sessionSnap.exists()) {
           const sessionData = sessionSnap.data();
           for (const q of (sessionData.questions || [])) {
-            questionTexts[q.question_id] = q.question_text;
+            questionsById[q.question_id] = { question_text: q.question_text, options: q.options };
           }
         }
       }
 
-      setResponses(rawResponses.map(r => ({ ...r, question_text: questionTexts[r.question_id] })));
+      setResponses(rawResponses.map(r => {
+        const question = questionsById[r.question_id];
+        return {
+          ...r,
+          is_correct: r.is_correct || isAcceptedAnswer(r, question?.options),
+          question_text: question?.question_text,
+          options: question?.options,
+        };
+      }));
       setLoading(false);
 
       // Persisted Jev mastery metrics for this student (bloomLevel + pCorrect)
