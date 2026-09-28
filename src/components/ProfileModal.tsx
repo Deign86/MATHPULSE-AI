@@ -177,6 +177,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                   <ProfilePictureUploader
                     uid={editedData.uid}
                     photoURL={editedData.photo}
+                    gender={editedData.gender}
                     displayName={editedData.name}
                     onUploaded={(photoURL) => setEditedData((prev) => ({ ...prev, photo: photoURL }))}
                   />

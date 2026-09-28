@@ -424,6 +424,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   <ProfilePictureUploader
                     uid={accountData.uid}
                     photoURL={accountData.photo}
+                    gender={accountData.gender}
                     displayName={accountData.name}
                     onUploaded={(photoURL) => setAccountData((prev) => ({ ...prev, photo: photoURL }))}
                   />

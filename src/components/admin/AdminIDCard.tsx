@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Shield, RotateCw, CheckCircle2, Building, Award, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ProfileData } from '../SettingsPage';
+import { DEFAULT_ID_PLACEHOLDER } from '../../utils/avatarUtils';
 
 export interface AdminIDCardProps {
   profileData: ProfileData;
@@ -12,12 +13,14 @@ export interface AdminIDCardProps {
 interface PhotoCellProps {
   photoURL?: string;
   displayName?: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   onPhotoUploaded?: (photoURL: string) => void;
 }
 
-const AdminPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPhotoUploaded }) => {
+const AdminPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gender, onPhotoUploaded }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const initials = (displayName || 'A').trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
+  const defaultPhoto = DEFAULT_ID_PLACEHOLDER;
+  const displayPhoto = photoURL || defaultPhoto;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,17 +49,16 @@ const AdminPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPho
               inputRef.current?.click();
             }}
           >
-            {photoURL ? (
-              <img
-                src={photoURL}
-                alt={`${displayName ?? 'Administrator'} photo`}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="flex items-center justify-center w-full h-full text-2xl font-black text-indigo-300 font-display select-none">
-                {initials}
-              </span>
-            )}
+            <img
+              src={displayPhoto}
+              alt={`${displayName ?? 'Administrator'} photo`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                if (e.currentTarget.src !== defaultPhoto) {
+                  e.currentTarget.src = defaultPhoto;
+                }
+              }}
+            />
           </button>
         </div>
         <span
@@ -145,6 +147,7 @@ export const AdminIDCard: React.FC<AdminIDCardProps> = ({ profileData, onPhotoUp
             <AdminPhotoCell
               photoURL={profileData.photo}
               displayName={adminName}
+              gender={profileData.gender}
               onPhotoUploaded={onPhotoUploaded}
             />
 
