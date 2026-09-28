@@ -72,7 +72,7 @@ graph LR
 
     %% Data Stores (Right Column - Open-Ended Gane & Sarson Stores)
     D1[("D1: Users (Profiles & Settings)")]
-    D2[("D2: Classrooms (Sections & Rosters)")]
+    D2[("D2: Classrooms (Sections & Classes)")]
     D3[("D3: Modules & Lessons (Curriculum)")]
     D4[("D4: Diagnostics (Results & Paths)")]
     D5[("D5: Quizzes & Attempts (Exams)")]
@@ -92,8 +92,8 @@ graph LR
     D1 --> P1
 
     %% Process 2: Classroom Management
-    Teacher -->|Class Roster & Grade Records File| P2
-    P2 -->|Enrolled Class Summary & Roster Preview| Teacher
+    Teacher -->|Class Sections & Grade Records File| P2
+    P2 -->|Enrolled Class Sections Summary & Preview| Teacher
     P2 --> D2
     D2 --> P2
 
