@@ -99,6 +99,7 @@ export interface RegisteredStudentAccount {
   email: string;
   lrn?: string;
   photo?: string;
+  gender?: ManagedStudent['gender'];
   grade?: string;
   section?: string;
   classSectionId?: string;
@@ -268,6 +269,28 @@ export async function getStudentsByTeacher(teacherId: string): Promise<ManagedSt
   return Array.from(dedupedStudents.values()).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
 }
 
+export async function getStudentsByTeacherWithPhotos(teacherId: string): Promise<ManagedStudent[]> {
+  const students = await getStudentsByTeacher(teacherId);
+  if (students.length === 0) return students;
+
+  const registeredStudents = await getAllRegisteredStudentsByTeacher(
+    teacherId,
+    students.map((student) => student.classSectionId || student.classroomId).filter(Boolean)
+  );
+  const accountsByUid = new Map(registeredStudents.map((account) => [account.uid, account]));
+
+  return students.map((student) => {
+    const account = accountsByUid.get(student.accountUid || student.id);
+    if (!account) return student;
+
+    const accountPhoto = account.photo?.trim();
+    const enrichedStudent = { ...student };
+    if (accountPhoto && !accountPhoto.includes('ui-avatars.com')) enrichedStudent.avatar = accountPhoto;
+    if (account.gender) enrichedStudent.gender = account.gender;
+    return enrichedStudent;
+  });
+}
+
 export async function getStudentsByClassroom(classroomId: string): Promise<ManagedStudent[]> {
   const studentsRef = collection(db, 'managedStudents');
   const q = query(studentsRef, where('classroomId', '==', classroomId), orderBy('name'));
@@ -308,11 +331,10 @@ export async function getAllRegisteredStudentsByTeacher(
       name: String(data.name || data.displayName || '').trim() || 'Student',
       email: String(data.email || '').trim(),
       lrn: data.lrn ? String(data.lrn).trim() || undefined : undefined,
-      photo: data.photo
-        ? String(data.photo).trim() || undefined
-        : data.photoURL
-          ? String(data.photoURL).trim() || undefined
-          : undefined,
+      photo: String(data.photo || '').trim() || String(data.photoURL || '').trim() || undefined,
+      gender: data.gender === 'male' || data.gender === 'female' || data.gender === 'prefer_not_to_say'
+        ? data.gender
+        : undefined,
       grade: data.grade ? String(data.grade).trim() || undefined : undefined,
       section: data.section ? String(data.section).trim() || undefined : undefined,
       classSectionId: data.classSectionId ? String(data.classSectionId).trim() || undefined : undefined,
