@@ -14,6 +14,7 @@ export const stableHash = (input: string): string => {
 };
 
 export const cacheKeys = {
+  classSections: () => ['class-sections'] as const,
   modules: (gradeLevel: string | null | undefined, priorityTopics: string[] = []) => [
     'modules',
     gradeLevel ?? 'all',

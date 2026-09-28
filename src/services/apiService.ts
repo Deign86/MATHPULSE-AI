@@ -377,6 +377,21 @@ export interface RiskRefreshMonitorResponse {
   warnings: string[];
 }
 
+export interface DeleteClassSectionResponse {
+  success: boolean;
+  deletedDocs: number;
+  classSectionId: string;
+}
+
+export async function deleteClassSection(classSectionId: string): Promise<DeleteClassSectionResponse> {
+  const normalizedClassSectionId = classSectionId.trim();
+  validateRequired('/api/class-section/{class_section_id}', { classSectionId: normalizedClassSectionId });
+  return apiFetch<DeleteClassSectionResponse>(
+    `/api/class-section/${encodeURIComponent(normalizedClassSectionId)}`,
+    { method: 'DELETE' },
+  );
+}
+
 export interface CourseMaterialTopic {
   topicId: string;
   title: string;
@@ -1503,6 +1518,8 @@ function extractTaskErrorMessage(cause: unknown): string {
 // ─── Public API ──────────────────────────────────────────────
 
 export const apiService = {
+  deleteClassSection,
+
   async detectWeakness(payload: WeaknessDetectionRequest): Promise<WeaknessDetectionResponse> {
     return apiFetch<WeaknessDetectionResponse>('/api/deepseek/weakness-detection', {
       method: 'POST',
