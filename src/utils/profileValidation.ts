@@ -9,6 +9,8 @@
  */
 import { z } from 'zod';
 
+export const DEFAULT_SCHOOL = 'Gen. T De Leon National High School';
+
 // Reject the bracket characters that enable HTML/script injection while
 // remaining permissive enough for international names (apostrophes, hyphens,
 // Unicode letters, accents). Names are display-only; numeric / currency-like

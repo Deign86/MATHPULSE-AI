@@ -38,6 +38,13 @@ service cloud.firestore {
         || (isAdmin() && request.resource.data.role in ['student', 'teacher', 'admin']);
     }
 
+    // LRN, section, and school are administrative fields; clients may only
+    // change them when the authenticated user's stored role is admin.
+    function protectedProfileFieldsWriteAllowed() {
+      return isAdmin()
+        || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['lrn', 'section', 'school']);
+    }
+
     // Teacher-only notification types carry other users' data and are
     // backend-only. Clients may never place them in another user's inbox.
     function teacherOnlyNotificationType() {
@@ -112,7 +119,9 @@ service cloud.firestore {
       allow create: if isSelf(userId)
         && (!request.resource.data.keys().hasAny(['role']) || request.resource.data.role in ['student', 'teacher']);
       allow read: if isSelf(userId) || isTeacherOrAdmin();
-      allow update: if (isSelf(userId) || isTeacherOrAdmin()) && roleWriteAllowed();
+      allow update: if (isSelf(userId) || isTeacherOrAdmin())
+        && roleWriteAllowed()
+        && protectedProfileFieldsWriteAllowed();
       allow delete: if isAdmin();
     }
 
