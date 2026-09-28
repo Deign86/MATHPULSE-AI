@@ -12,6 +12,8 @@ import {
   Award,
   BookOpen,
   Settings,
+  Pencil,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../ui/button';
@@ -52,6 +54,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     if (!isDirty) {
@@ -77,11 +80,19 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
   };
 
   const handleDiscardChanges = () => {
-    setIsDiscardConfirmOpen(false);
+    setAccountData(sanitizeTeacherProfile(profileData));
     setIsDirty(false);
+    setIsEditMode(false);
+    setIsDiscardConfirmOpen(false);
     if (onBack) {
       onBack();
     }
+  };
+
+  const handleCancelEdit = () => {
+    setAccountData(sanitizeTeacherProfile(profileData));
+    setIsDirty(false);
+    setIsEditMode(false);
   };
 
   const handleSave = async () => {
@@ -95,6 +106,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
     try {
       await onSaveProfile(accountData);
       setIsDirty(false);
+      setIsEditMode(false);
       toast.success('Teacher profile saved successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save profile';
@@ -138,43 +150,68 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 self-end sm:self-auto">
-          {isDirty && (
+          {!isEditMode ? (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleResetForm}
-              disabled={isSaving}
-              className="min-h-[40px] text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-xl"
+              onClick={() => setIsEditMode(true)}
+              className="min-h-[40px] px-4 text-xs font-bold rounded-xl border-violet-300 dark:border-violet-700/60 text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
             >
-              <RotateCcw size={14} className="mr-1.5" />
-              Reset Changes
+              <Pencil size={14} />
+              Edit Profile
             </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCancelEdit}
+                disabled={isSaving}
+                className="min-h-[40px] text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl flex items-center gap-1.5 cursor-pointer"
+              >
+                <X size={14} />
+                Cancel
+              </Button>
+              {isDirty && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetForm}
+                  disabled={isSaving}
+                  className="min-h-[40px] text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-xl"
+                >
+                  <RotateCcw size={14} className="mr-1.5" />
+                  Reset Changes
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`min-h-[40px] px-4 text-xs font-bold rounded-xl transition-all shadow-xs ${
+                  isDirty
+                    ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/25 active:scale-95'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCw size={14} className="mr-1.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} className="mr-1.5" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </>
           )}
-
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleSave}
-            disabled={!isDirty || isSaving}
-            className={`min-h-[40px] px-4 text-xs font-bold rounded-xl transition-all shadow-xs ${
-              isDirty
-                ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/25 active:scale-95'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            {isSaving ? (
-              <>
-                <RefreshCw size={14} className="mr-1.5 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save size={14} className="mr-1.5" />
-                Save Profile
-              </>
-            )}
-          </Button>
         </div>
       </div>
 
@@ -216,7 +253,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
         {/* Right Column: Faculty Profile Details Form */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6">
           <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
               <div>
                 <h3 className="font-display font-extrabold text-lg text-slate-900 dark:text-white">
                   Teacher Information
@@ -226,12 +263,58 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                 </p>
               </div>
 
-              {isDirty && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-[10px] font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  Unsaved Changes
-                </span>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {isDirty && isEditMode && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-[10px] font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    Unsaved Changes
+                  </span>
+                )}
+                {!isEditMode ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditMode(true)}
+                    className="h-9 px-3 rounded-xl border-violet-300 dark:border-violet-700/60 text-xs font-bold text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+                  >
+                    <Pencil size={14} />
+                    Edit Profile
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                      className="h-9 px-3 rounded-xl text-xs font-bold cursor-pointer"
+                    >
+                      <X size={14} className="mr-1" />
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className={`h-9 px-3 rounded-xl text-xs font-bold ${
+                        isDirty
+                          ? 'bg-violet-600 hover:bg-violet-700 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {isSaving ? (
+                        <RefreshCw size={14} className="mr-1 animate-spin" />
+                      ) : (
+                        <Save size={14} className="mr-1" />
+                      )}
+                      Save
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -253,6 +336,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                         onChange={(e) => handleFieldChange('name', e.target.value)}
                         maxLength={100}
                         placeholder="Faculty Name"
+                        disabled={!isEditMode}
                         className="pl-10 h-10 text-xs rounded-xl"
                       />
                     </div>
@@ -285,6 +369,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                         type="tel"
                         maxLength={20}
                         placeholder="+63 912 345 6789"
+                        disabled={!isEditMode}
                         className="pl-10 h-10 text-xs rounded-xl"
                       />
                     </div>
@@ -300,6 +385,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                         const parsedGender = val === 'male' || val === 'female' || val === 'prefer_not_to_say' ? val : null;
                         handleFieldChange('gender', parsedGender);
                       }}
+                      disabled={!isEditMode}
                     >
                       <SelectTrigger className="h-10 text-xs rounded-xl">
                         <SelectValue placeholder="Select gender" />
@@ -331,6 +417,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                         value={accountData.lrn || (accountData.uid ? `TCH-${accountData.uid.slice(0, 6).toUpperCase()}` : 'TCH-2025-001')}
                         onChange={(e) => handleFieldChange('lrn', e.target.value)}
                         placeholder="TCH-2025-001"
+                        disabled={!isEditMode}
                         className="pl-10 h-10 text-xs rounded-xl font-mono"
                       />
                     </div>
@@ -346,6 +433,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                         value={accountData.position || 'Master Teacher I / Faculty'}
                         onChange={(e) => handleFieldChange('position', e.target.value)}
                         placeholder="e.g. Master Teacher I"
+                        disabled={!isEditMode}
                         className="pl-10 h-10 text-xs rounded-xl"
                       />
                     </div>
@@ -361,6 +449,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                         value={accountData.department || accountData.school || 'Senior High School STEM Department'}
                         onChange={(e) => handleFieldChange('department', e.target.value)}
                         placeholder="e.g. STEM Department"
+                        disabled={!isEditMode}
                         className="pl-10 h-10 text-xs rounded-xl"
                       />
                     </div>
@@ -376,6 +465,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                         value={accountData.subject || 'General Mathematics & Pre-Calculus'}
                         onChange={(e) => handleFieldChange('subject', e.target.value)}
                         placeholder="e.g. General Mathematics"
+                        disabled={!isEditMode}
                         className="pl-10 h-10 text-xs rounded-xl"
                       />
                     </div>
@@ -391,6 +481,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                         value={accountData.qualification || 'B.S. Secondary Education (Mathematics)'}
                         onChange={(e) => handleFieldChange('qualification', e.target.value)}
                         placeholder="e.g. B.S. Math Education"
+                        disabled={!isEditMode}
                         className="pl-10 h-10 text-xs rounded-xl"
                       />
                     </div>
@@ -406,6 +497,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                         value={accountData.yearsOfExperience || '5+ Years'}
                         onChange={(e) => handleFieldChange('yearsOfExperience', e.target.value)}
                         placeholder="e.g. 5 Years"
+                        disabled={!isEditMode}
                         className="pl-10 h-10 text-xs rounded-xl"
                       />
                     </div>

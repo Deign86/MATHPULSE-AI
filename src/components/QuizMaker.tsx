@@ -32,7 +32,7 @@ import {
   fetchQuizzesByTeacher,
   deleteGeneratedQuiz,
 } from '../services/quizService';
-import { getStudentsByTeacher, type ManagedStudent } from '../services/studentService';
+import { getStudentsByTeacherWithPhotos, type ManagedStudent } from '../services/studentService';
 import type { GeneratedQuiz, AIQuizQuestion, GeneratedQuizStatus } from '../types/models';
 
 export function isNum<T>(value: T): value is T & number {
@@ -149,6 +149,34 @@ function asPayload<T extends object>(value: Record<string, ApiFieldValue | undef
   // SAFETY: callers validate the payload shape field-by-field immediately after this boundary cast.
   return value as T;
 }
+
+// ─── Student avatar rendering ───────────────────────────────
+
+/** Firestore student records may carry raw photo fields next to the canonical `avatar`. */
+type StudentWithPhotoFields = ManagedStudent & {
+  photo?: string;
+  photoURL?: string;
+  accountPhoto?: string;
+};
+
+function isUsablePhotoUrl(value: string | undefined): value is string {
+  const trimmed = value?.trim();
+  return Boolean(trimmed && !trimmed.includes('ui-avatars.com'));
+}
+
+/** First real profile photo for a student row; undefined when only placeholders exist. */
+function resolveStudentPhotoUrl(student: ManagedStudent): string | undefined {
+  // SAFETY: Firestore student docs may carry raw photo fields not declared on ManagedStudent.
+  const record = student as StudentWithPhotoFields;
+  return [record.avatar, record.photo, record.photoURL, record.accountPhoto].find(isUsablePhotoUrl);
+}
+
+const handleAvatarError: React.ReactEventHandler<HTMLImageElement> = (event) => {
+  const img = event.currentTarget;
+  if (img.dataset.fallbackApplied === '1') return;
+  img.dataset.fallbackApplied = '1';
+  img.src = img.dataset.fallbackSrc || getDefaultAvatar();
+};
 
 // ─── Component ──────────────────────────────────────────────
 
@@ -886,7 +914,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     if (students.length === 0 && currentUser) {
       setStudentsLoading(true);
       try {
-        const s = await getStudentsByTeacher(currentUser.uid);
+        const s = await getStudentsByTeacherWithPhotos(currentUser.uid);
         setStudents(s);
       } catch {
         toast.error('Failed to load students');
@@ -2193,28 +2221,35 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                     )}
                   </div>
                 ) : (
-                  filteredStudents.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setSelectedStudentId(s.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
-                        selectedStudentId === s.id
-                          ? 'bg-sky-50 border border-sky-300'
-                          : 'hover:bg-[#edf1f7] border border-transparent'
-                      }`}
-                    >
-                      <img
-                        src={(s.avatar && !s.avatar.includes('ui-avatars.com')) ? s.avatar : getDefaultAvatar(s.gender)}
-                        alt={s.name}
-                        className="w-8 h-8 rounded-lg object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#0a1628] truncate">{s.name}</p>
-                        <p className="text-xs text-slate-500 truncate">{s.email}</p>
-                      </div>
-                      {selectedStudentId === s.id && <Check size={16} className="text-sky-600 flex-shrink-0" />}
-                    </button>
-                  ))
+                  filteredStudents.map((s) => {
+                    const genderDefault = getDefaultAvatar(s.gender);
+                    const photoUrl = resolveStudentPhotoUrl(s) ?? genderDefault;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedStudentId(s.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
+                          selectedStudentId === s.id
+                            ? 'bg-sky-50 border border-sky-300'
+                            : 'hover:bg-[#edf1f7] border border-transparent'
+                        }`}
+                      >
+                        <img
+                          src={photoUrl}
+                          alt={s.name}
+                          loading="lazy"
+                          className="w-8 h-8 rounded-lg object-cover"
+                          data-fallback-src={genderDefault}
+                          onError={handleAvatarError}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[#0a1628] truncate">{s.name}</p>
+                          <p className="text-xs text-slate-500 truncate">{s.email}</p>
+                        </div>
+                        {selectedStudentId === s.id && <Check size={16} className="text-sky-600 flex-shrink-0" />}
+                      </button>
+                    );
+                  })
                 )}
               </div>
 
