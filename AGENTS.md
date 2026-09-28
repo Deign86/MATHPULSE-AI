@@ -303,3 +303,14 @@ Repo config: `.vscode/mcp.json` + `.cursor/mcp.json` → server `ui-skills` at `
 Tools: `list_skills` (route by topic/stack), `get_skill` (load 1 skill, max 3).
 CLI: `npx ui-skills categories`, `npx ui-skills list --category <c>`, `npx ui-skills get <slug>`.
 Before UI work: fetch `ibelick/ui-skills-root`, pick the smallest skill set, reuse `src/components/ui/*` + `motion/react`.
+
+## Repository Map
+
+A full codemap is available at `codemap.md` in the project root.
+
+Before working on any task, read `codemap.md` to understand:
+- Project architecture and entry points
+- Directory responsibilities and design patterns
+- Data flow and integration points between modules
+
+For deep work on a specific folder, also read that folder's `codemap.md`.
