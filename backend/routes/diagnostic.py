@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 import traceback
 import uuid
@@ -329,6 +330,9 @@ QUESTION RULES:
    Pag-IBIG, BIR, BDO, local schools, SM malls).
 3. Never use trick questions. Wrong options must be plausible but clearly
    incorrect to a student who knows the concept.
+   EXACTLY ONE of A, B, C, or D is correct. Every distractor must be
+   unambiguously incorrect. Do not use duplicate option texts or values.
+   correct_answer must be exactly one letter: A, B, C, or D.
 4. Include a solution_hint (1-2 sentences) -- this is for the backend
    scoring engine ONLY. NEVER include it in the client response.
 5. Cover as many different competency codes as possible across 15 items.
@@ -394,6 +398,27 @@ def _parse_questions_response(raw_response: str) -> List[Dict[str, Any]]:
     raise ValueError("Could not parse questions from AI response")
 
 
+def _validate_diagnostic_question(question: Dict[str, Any]) -> bool:
+    options = question.get("options")
+    correct_answer = question.get("correct_answer")
+    if not isinstance(options, dict) or not all(letter in options for letter in "ABCD"):
+        return False
+    if (
+        not isinstance(correct_answer, str)
+        or len(correct_answer.strip()) != 1
+        or correct_answer.strip().upper() not in "ABCD"
+    ):
+        return False
+
+    normalized_texts = []
+    for letter in "ABCD":
+        option_text = options[letter]
+        if not isinstance(option_text, str):
+            return False
+        normalized_texts.append(option_text.strip().casefold())
+    return len(set(normalized_texts)) == 4
+
+
 async def _generate_questions(
     strand: str,
     grade_level: str,
@@ -435,8 +460,15 @@ async def _generate_questions(
         try:
             raw_response = await _call_deepseek(system_prompt, user_message, temperature)
             questions = _parse_questions_response(raw_response)
-            if questions:
-                return test_id, questions[:15]
+            valid_questions = [
+                question for question in questions
+                if _validate_diagnostic_question(question)
+            ][:15]
+            if len(valid_questions) < 15 and attempt == 0:
+                logger.warning("Fewer than 15 valid diagnostic questions, retrying with temperature=0.3")
+                continue
+            if valid_questions:
+                return test_id, valid_questions
         except ValueError:
             if attempt == 0:
                 logger.warning("Malformed JSON from DeepSeek, retrying with temperature=0.3")
@@ -543,6 +575,44 @@ async def generate_diagnostic(request: DiagnosticGenerateRequest, req: Request):
 
 # ─── ENDPOINT 2: Submit and Evaluate ─────────────────────────────────
 
+def _is_diagnostic_correct(student: str, correct: str, options_dict: Dict[str, Any]) -> bool:
+    if not isinstance(student, str) or not isinstance(correct, str):
+        return False
+    student_answer = student.strip().upper()
+    correct_answer = correct.strip().upper()
+    if len(student_answer) != 1 or student_answer not in "ABCD":
+        return False
+
+    options = {
+        letter: value.strip().casefold()
+        for letter, value in (options_dict.items() if isinstance(options_dict, dict) else [])
+        if letter in "ABCD" and isinstance(value, str)
+    }
+    option_text_match = next(
+        (letter for letter, text in options.items() if text == correct.strip().casefold()),
+        None,
+    )
+    if option_text_match:
+        correct_answer = option_text_match
+
+    correct_letters = {
+        letter for letter in re.split(r"[,/;|\s]+", correct_answer)
+        if letter in "ABCD"
+    }
+    if len(correct_letters) > 1:
+        return student_answer in correct_letters
+    if len(correct_letters) == 1:
+        correct_letter = next(iter(correct_letters))
+        if student_answer == correct_letter:
+            return True
+        return (
+            correct_letter in options
+            and student_answer in options
+            and options[student_answer] == options[correct_letter]
+        )
+    return False
+
+
 def _score_responses(stored_questions: List[Dict[str, Any]], responses: List[DiagnosticResponseItem]) -> tuple:
     question_map: Dict[str, Dict[str, Any]] = {}
     for q in stored_questions:
@@ -557,7 +627,11 @@ def _score_responses(stored_questions: List[Dict[str, Any]], responses: List[Dia
     for resp in responses:
         question = question_map.get(resp.question_id, {})
         correct_answer = question.get("correct_answer", "")
-        is_correct = (resp.student_answer.strip().upper() == correct_answer.strip().upper())
+        is_correct = _is_diagnostic_correct(
+            resp.student_answer,
+            correct_answer,
+            question.get("options", {}),
+        )
 
         domain = question.get("domain", "Unknown")
         competency_code = question.get("competency_code", "")
