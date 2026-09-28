@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, query, where, deleteField, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { toast } from 'sonner';
 import { School, ChevronDown, UserCheck, Users, Search, CheckCircle2, FilterX, Loader2, Sparkles } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../ui/table';
+import ConfirmModal from '../ConfirmModal';
 
 interface ClassRecord {
   id: string;
@@ -29,6 +30,7 @@ const AdminClassManagement: React.FC = () => {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [selectedManagers, setSelectedManagers] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [pendingConfirmation, setPendingConfirmation] = useState<{ classId: string; action: 'assign' | 'unassign'; teacherUid?: string } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -60,13 +62,23 @@ const AdminClassManagement: React.FC = () => {
     }
   };
 
-  const handleAssignManager = async (classId: string) => {
+  const requestAssignManager = (classId: string) => {
     const teacherUid = selectedManagers[classId];
     if (!teacherUid) { toast.error('Select a teacher first'); return; }
 
     const teacher = teachers.find(t => t.uid === teacherUid);
     if (!teacher) return;
+    const currentManagerId = classes.find(cls => cls.id === classId)?.managerId;
+    if (currentManagerId && currentManagerId !== teacherUid) {
+      setPendingConfirmation({ classId, action: 'assign', teacherUid });
+      return;
+    }
+    void saveManagerAssignment(classId, teacherUid);
+  };
 
+  const saveManagerAssignment = async (classId: string, teacherUid: string) => {
+    const teacher = teachers.find(t => t.uid === teacherUid);
+    if (!teacher) return;
     setAssigning(classId);
     try {
       await updateDoc(doc(db, 'classrooms', classId), {
@@ -87,6 +99,38 @@ const AdminClassManagement: React.FC = () => {
     } finally {
       setAssigning(null);
     }
+  };
+
+  const unassignManager = async (classId: string) => {
+    setAssigning(classId);
+    try {
+      await updateDoc(doc(db, 'classrooms', classId), { managerId: deleteField(), managerName: deleteField() });
+      const ownershipSnap = await getDocs(query(collection(db, 'classSectionOwnership'), where('classSectionId', '==', classId)));
+      if (ownershipSnap.docs.length > 0) {
+        await Promise.all(ownershipSnap.docs.map(ownership => updateDoc(ownership.ref, { managerId: deleteField(), managerName: deleteField() })));
+      } else {
+        await setDoc(doc(db, 'classSectionOwnership', classId), { managerId: deleteField(), managerName: deleteField() }, { merge: true });
+      }
+      setClasses(prev => prev.map(cls => cls.id === classId ? { ...cls, managerId: undefined, managerName: undefined } : cls));
+      setSelectedManagers(prev => ({ ...prev, [classId]: '' }));
+      toast.success('Teacher unassigned');
+    } catch {
+      toast.error('Failed to unassign teacher');
+    } finally {
+      setAssigning(null);
+    }
+  };
+
+  const confirmPendingAction = async () => {
+    if (!pendingConfirmation) return;
+    const { classId, action } = pendingConfirmation;
+    setPendingConfirmation(null);
+    if (action === 'unassign') {
+      await unassignManager(classId);
+      return;
+    }
+    const teacherUid = pendingConfirmation.teacherUid;
+    if (teacherUid) await saveManagerAssignment(classId, teacherUid);
   };
 
   const filteredClasses = useMemo(() => {
@@ -299,8 +343,8 @@ const AdminClassManagement: React.FC = () => {
                       <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                     <button
-                      onClick={() => handleAssignManager(cls.id)}
-                      disabled={!selectedManagers[cls.id] || assigning === cls.id}
+                      onClick={() => requestAssignManager(cls.id)}
+                      disabled={!selectedManagers[cls.id] || selectedManagers[cls.id] === cls.managerId || assigning === cls.id}
                       className="w-full min-h-[44px] bg-gradient-to-r from-[#9956DE] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-sm shadow-purple-500/25 active:scale-98"
                     >
                       {assigning === cls.id ? (
@@ -309,9 +353,18 @@ const AdminClassManagement: React.FC = () => {
                           Assigning...
                         </>
                       ) : (
-                        'Assign Teacher'
+                        selectedManagers[cls.id] === cls.managerId && cls.managerId ? 'Assigned' : cls.managerId ? 'Reassign' : 'Assign Teacher'
                       )}
                     </button>
+                    {cls.managerId && (
+                      <button
+                        onClick={() => setPendingConfirmation({ classId: cls.id, action: 'unassign' })}
+                        disabled={assigning === cls.id}
+                        className="w-full min-h-[40px] border border-rose-200 text-rose-700 dark:text-rose-300 dark:border-rose-800 text-xs font-bold rounded-xl disabled:opacity-50"
+                      >
+                        Unassign Teacher
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -401,8 +454,8 @@ const AdminClassManagement: React.FC = () => {
                             <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                           </div>
                           <button
-                            onClick={() => handleAssignManager(cls.id)}
-                            disabled={!selectedManagers[cls.id] || assigning === cls.id}
+                            onClick={() => requestAssignManager(cls.id)}
+                            disabled={!selectedManagers[cls.id] || selectedManagers[cls.id] === cls.managerId || assigning === cls.id}
                             className="px-3.5 py-2 min-h-[38px] bg-gradient-to-r from-[#9956DE] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-all whitespace-nowrap flex items-center justify-center gap-1.5 shrink-0 shadow-sm shadow-purple-500/25 active:scale-95 cursor-pointer disabled:cursor-not-allowed"
                           >
                             {assigning === cls.id ? (
@@ -411,9 +464,18 @@ const AdminClassManagement: React.FC = () => {
                                 <span>Assigning...</span>
                               </>
                             ) : (
-                              <span>Assign Teacher</span>
+                              <span>{selectedManagers[cls.id] === cls.managerId && cls.managerId ? 'Assigned' : cls.managerId ? 'Reassign' : 'Assign Teacher'}</span>
                             )}
                           </button>
+                          {cls.managerId && (
+                            <button
+                              onClick={() => setPendingConfirmation({ classId: cls.id, action: 'unassign' })}
+                              disabled={assigning === cls.id}
+                              className="px-3 py-2 min-h-[38px] border border-rose-200 text-rose-700 dark:text-rose-300 dark:border-rose-800 text-xs font-bold rounded-xl disabled:opacity-50 whitespace-nowrap"
+                            >
+                              Unassign
+                            </button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -424,6 +486,17 @@ const AdminClassManagement: React.FC = () => {
           </>
         )}
       </div>
+      <ConfirmModal
+        isOpen={pendingConfirmation !== null}
+        onClose={() => setPendingConfirmation(null)}
+        onConfirm={confirmPendingAction}
+        title={pendingConfirmation?.action === 'unassign' ? 'Unassign teacher?' : 'Reassign teacher?'}
+        message={pendingConfirmation?.action === 'unassign'
+          ? 'This will remove the current teacher assignment from this class section.'
+          : 'This will replace the current teacher assigned to this class section.'}
+        confirmText={pendingConfirmation?.action === 'unassign' ? 'Unassign' : 'Reassign'}
+        type="danger"
+      />
     </div>
   );
 };
