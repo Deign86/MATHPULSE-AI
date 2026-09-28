@@ -16,6 +16,7 @@ import {
   signInWithEmail,
   signInWithGoogle,
   signUpWithEmail,
+  resetPassword,
   setPendingAuthRole,
   type AuthServiceError,
 } from '../services/authService';
@@ -129,6 +130,27 @@ const getFriendlyErrorMessage = (cause: unknown, defaultMessage: string): string
   return message || defaultMessage;
 };
 
+const getFriendlyResetErrorMessage = (cause: unknown): string => {
+  const { code, message } = extractAuthErrorDetails(cause);
+  const cleanedMessage = cleanFirebaseMessage(message);
+
+  if (code === 'auth/invalid-email') {
+    return 'Please enter a valid email address.';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'Too many reset attempts. Please try again later.';
+  }
+  if (code === 'auth/network-request-failed') {
+    return 'Network error. Please check your internet connection and try again.';
+  }
+
+  if (code.startsWith('auth/')) {
+    return cleanedMessage || 'Failed to send reset email. Please try again.';
+  }
+
+  return message || 'Failed to send reset email. Please try again.';
+};
+
 export const LoginPage: React.FC = () => {
   const GRADE_OPTIONS = ['Grade 11'];
   const SECTION_OPTIONS = {
@@ -177,7 +199,16 @@ export const LoginPage: React.FC = () => {
   const [selectedSection, setSelectedSection] = useState(SECTION_OPTIONS['Grade 11'][0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState(false);
+  const resetEmailRef = useRef<HTMLInputElement | null>(null);
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (isResettingPassword) resetEmailRef.current?.focus();
+  }, [isResettingPassword]);
 
   const passwordRuleStates = useMemo(
     () =>
@@ -274,8 +305,38 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const handlePasswordReset = async (): Promise<void> => {
+    const targetEmail = email.trim();
+    if (!targetEmail) {
+      setResetError('Please enter your email address.');
+      return;
+    }
+
+    setResetError(null);
+    setResetSuccess(false);
+    setResetLoading(true);
+    try {
+      await resetPassword(targetEmail);
+      setResetSuccess(true);
+    } catch (err: unknown) {
+      const { code } = extractAuthErrorDetails(err);
+      if (code === 'auth/user-not-found') {
+        setResetError(null);
+        setResetSuccess(true);
+        return;
+      }
+      setResetError(getFriendlyResetErrorMessage(err));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isResettingPassword) {
+      await handlePasswordReset();
+      return;
+    }
     setError(null);
     setLoading(true);
 
@@ -400,7 +461,7 @@ export const LoginPage: React.FC = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.15 }}
             >
-              {isSignUp ? 'Create Account' : 'Welcome Back'}
+              {isResettingPassword ? 'Reset password' : isSignUp ? 'Create Account' : 'Welcome Back'}
             </motion.h3>
             <motion.p
               className="text-[11px] sm:text-xs text-slate-500 font-body"
@@ -408,13 +469,13 @@ export const LoginPage: React.FC = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              {isSignUp ? 'Begin your personalized mathematics journey' : 'Sign in to continue learning'}
+              {isResettingPassword ? 'We will email you a link to set a new password.' : isSignUp ? 'Begin your personalized mathematics journey' : 'Sign in to continue learning'}
             </motion.p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3 mb-2 sm:mb-3 relative">
-            {error && !isPasswordRequirementError && (
+            {error && !isPasswordRequirementError && !isResettingPassword && (
               <motion.div
                 role="alert"
                 aria-live="assertive"
@@ -666,6 +727,56 @@ export const LoginPage: React.FC = () => {
                   <span>Sign up with Google</span>
                 </button>
               </>
+            ) : isResettingPassword ? (
+              <>
+                <p className="text-[11px] sm:text-xs text-slate-500 font-body text-center">Enter your account email and we will send you a reset link.</p>
+                <div className="space-y-0.5 sm:space-y-1 text-left">
+                  <label htmlFor="login-reset-email" className="block text-[10px] sm:text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      ref={resetEmailRef}
+                      id="login-reset-email"
+                      type="email"
+                      placeholder="your.email@school.edu"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-xs sm:text-sm font-body transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+                {resetError && (
+                  <p role="alert" className="bg-rose-50 border border-rose-200 text-rose-600 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-body">
+                    {resetError}
+                  </p>
+                )}
+                {resetSuccess && (
+                  <div role="status" className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-body">If an account exists for this email, a password reset link has been sent. Please check your inbox.</div>
+                )}
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="w-full mt-1 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-body font-semibold py-2 sm:py-2.5 min-h-[38px] sm:min-h-[42px] rounded-lg sm:rounded-xl shadow-md shadow-purple-600/20 hover:shadow-pink-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all text-xs sm:text-sm group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {resetLoading ? 'Sending...' : 'Send reset link'}
+                </button>
+                <div className="text-center pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResettingPassword(false);
+                      setResetError(null);
+                      setResetSuccess(false);
+                    }}
+                    className="text-[11px] sm:text-xs font-body py-1 px-2.5 rounded-lg hover:bg-purple-50/50 transition-all text-slate-500 group"
+                  >
+                    Back to sign in
+                  </button>
+                </div>
+              </>
             ) : (
               /* Sign In Fields: Clean Compact Layout */
               <>
@@ -715,6 +826,8 @@ export const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="flex justify-end"><button type="button" onClick={() => { setIsResettingPassword(true); setResetError(null); setResetSuccess(false); setError(null); }} className="text-[11px] sm:text-xs font-body font-semibold text-purple-600 hover:text-pink-600 transition-colors">Forgot password?</button></div>
+
                 {/* Sign In Button (Full Width) */}
                 <button
                   type="submit"
@@ -763,6 +876,7 @@ export const LoginPage: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setIsSignUp(!isSignUp);
+                  setIsResettingPassword(false);
                   setError(null);
                   setConfirmPassword('');
                   hidePassword();
