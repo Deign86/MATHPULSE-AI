@@ -683,6 +683,7 @@ interface ChatProviderProps {
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const { currentUser } = useAuth();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [sessionsOwnerId, setSessionsOwnerId] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
@@ -702,6 +703,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!currentUser) {
       setSessions([]);
+      setSessionsOwnerId(null);
       setSessionsLoaded(false);
       return;
     }
@@ -740,6 +742,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           })
         );
         setSessions(loadedSessions);
+        setSessionsOwnerId(currentUser.uid);
         setSessionsLoadError(null);
       } catch (err) {
         console.error('Error loading chat sessions:', err);
@@ -905,18 +908,29 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       let apiServiceRef: ApiServiceModule['apiService'] | null = null;
       let apiTimeoutErrorCtor: ApiServiceModule['ApiTimeoutError'] | null = null;
 
-      // Build history from current session messages
-      // We need to use the functional state update or the current 'sessions' might not have the userMsg yet,
-      // but since we just called addMessageToSession, 'sessions' hasn't updated in this closure.
-      // So we append the new message manually to the history.
+      // Build history from prior turns only; the backend appends the current message.
       const session = sessions.find(s => s.id === sessionId);
-      // The current 'sessions' state doesn't have the userMsg yet since addMessageToSession is async/state update.
-      // So we append the new message manually to the history.
-      const historyMessages = [...(session?.messages || []), userMsg];
-      const history = historyMessages.map(m => ({
+      const history = (session?.messages || []).map(m => ({
         role: m.sender === 'user' ? 'user' as const : 'assistant' as const,
         content: m.text,
       }));
+      const priorSessionMemory = currentUser && sessionsOwnerId === currentUser.uid
+        ? sessions
+            .filter(chatSession => chatSession.id !== sessionId && chatSession.messages.length > 0)
+            .slice(0, 3)
+            .map(chatSession => ({
+              title: chatSession.title,
+              turns: chatSession.messages.slice(-4),
+            }))
+            .map(({ title, turns }) => {
+              const transcript = turns
+                .map(message => `${message.sender === 'user' ? 'Student' : 'Tutor'}: ${message.text.slice(0, 400)}`)
+                .join('\n');
+              return `Conversation: ${title.slice(0, 100)}\n${transcript}`;
+            })
+            .join('\n\n')
+            .slice(0, 3000)
+        : '';
 
       const continuationIntent = isContinuationFollowupTokenInput(trimmedUserText)
         ? extractContinuationIntentFromHistory(history)
@@ -999,9 +1013,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       const shouldRunAnyRepairFlow = shouldRunHeuristicRepairFlow || Boolean(expectedEndMarker);
       const completionOptions: ChatCompletionOptions | undefined = expectedEndMarker ? {
         sessionId,
+        crossSessionMemory: priorSessionMemory,
         expectedEndMarker,
         completionMode: 'marker' as const,
-      } : { sessionId };
+      } : { sessionId, crossSessionMemory: priorSessionMemory };
 
       const isAnswerIncomplete = (answer: string): boolean =>
         isAnswerStillIncomplete(trimmedUserText, answer, expectedEndMarker, shouldRunHeuristicRepairFlow);
@@ -1249,7 +1264,7 @@ const repairedResponse = formatAssistantResponseForStorage(continuation.data.res
       setIsLoading(false);
       setLoadingSessionId(null);
     }
-  }, [sessions, addMessageToSession, currentUser]);
+  }, [sessions, sessionsOwnerId, addMessageToSession, currentUser]);
 
   const updateSessionTitle = useCallback((sessionId: string, title: string) => {
     setSessions(prev =>

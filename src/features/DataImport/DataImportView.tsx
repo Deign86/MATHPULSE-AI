@@ -827,9 +827,8 @@ export default function DataImportView({
                             <div className="w-[140px] shrink-0 px-4 flex justify-center">
                               <input 
                                 type="text" 
-                                value={sectionDrafts[rowKey]?.grade || student.grade || ''} 
-                                onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], grade: e.target.value } }))}
-                                readOnly={editingRowKey !== rowKey}
+                                value="Grade 11"
+                                readOnly
                                 className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
                               />
                             </div>

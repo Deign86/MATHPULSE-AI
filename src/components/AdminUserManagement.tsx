@@ -60,7 +60,7 @@ const buildDefaultFormData = (role: 'Student' | 'Teacher' | 'Admin' = 'Student')
   role,
   status: 'Active',
   department: role === 'Teacher' ? 'Mathematics' : role === 'Admin' ? 'System' : '',
-  grade: '',
+  grade: role === 'Student' ? 'Grade 11' : '',
   section: '',
   lrn: '',
 });
@@ -1855,7 +1855,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                       <div className="grid grid-cols-2 gap-3 sm:gap-4">
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Grade Level</label>
-                          <Input value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} placeholder="Grade 11" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white" />
+                          <Input value="Grade 11" disabled placeholder="Grade 11" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white" />
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Section</label>

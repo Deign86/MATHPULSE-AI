@@ -92,6 +92,7 @@ export interface ChatRequest {
   history: { role: 'user' | 'assistant'; content: string }[];
   userId?: string;
   sessionId?: string;
+  crossSessionMemory?: string;
   verify?: boolean;
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
@@ -101,6 +102,7 @@ export interface ChatRequest {
 
 export interface ChatCompletionOptions {
   sessionId?: string;
+  crossSessionMemory?: string;
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
   continuationMaxRounds?: number;
@@ -1579,6 +1581,7 @@ export const apiService = {
       moduleContext: options?.moduleContext,
     };
     if (options?.sessionId) requestPayload.sessionId = options.sessionId;
+    if (options?.crossSessionMemory) requestPayload.crossSessionMemory = options.crossSessionMemory;
     if (options?.expectedEndMarker) requestPayload.expectedEndMarker = options.expectedEndMarker;
     if (options?.completionMode) requestPayload.completionMode = options.completionMode;
     if (isNumber(options?.continuationMaxRounds)) {
