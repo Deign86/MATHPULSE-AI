@@ -253,8 +253,12 @@ export const AdminAnalytics: React.FC = () => {
         ...TOP_CLASSES.map(cls => [cls.rank, cls.section, cls.grade, cls.adviser, cls.students, `${cls.masteryRate}%`, cls.status]),
       ];
 
-      const csvContent = rows.map(e => e.map(item => `"${String(item).replace(/"/g, '""')}"`).join(',')).join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const columnCount = Math.max(...rows.map(row => row.length));
+      const csvContent = rows.map(row => Array.from({ length: columnCount }, (_, index) => {
+        const item = row[index] ?? '';
+        return `"${String(item).replace(/"/g, '""')}"`;
+      }).join(',')).join('\n');
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);

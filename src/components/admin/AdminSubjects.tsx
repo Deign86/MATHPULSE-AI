@@ -4,9 +4,7 @@ import {
   Lock,
   Unlock,
   Loader2,
-  Save,
   Clock,
-  FileText,
   AlertCircle,
   Link2,
   Search,
@@ -34,10 +32,7 @@ import {
 } from '../ui/table';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubjectAvailability } from '../../hooks/useSubjectAvailability';
-import {
-  toggleSubjectAvailability,
-  updateSubjectPdfPath,
-} from '../../services/platformConfigService';
+import { toggleSubjectAvailability } from '../../services/platformConfigService';
 import { SHS_MATH_SUBJECTS } from '../../data/subjects';
 import { toast } from 'sonner';
 
@@ -88,7 +83,6 @@ const AdminSubjects: React.FC = () => {
   const { userProfile } = useAuth();
   const { availability, loading, error } = useSubjectAvailability();
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [localPdfPaths, setLocalPdfPaths] = useState<Record<string, string>>({});
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -117,37 +111,12 @@ const AdminSubjects: React.FC = () => {
     [userProfile?.uid],
   );
 
-  const handlePdfPathChange = useCallback((subjectId: string, value: string) => {
-    setLocalPdfPaths((prev) => ({ ...prev, [subjectId]: value }));
-  }, []);
-
-  const handleSavePdfPath = useCallback(
-    async (subjectId: string) => {
-      if (!userProfile?.uid) {
-        toast.error('You must be logged in as admin');
-        return;
-      }
-      const path = localPdfPaths[subjectId]?.trim() || null;
-      setSavingId(subjectId);
-      try {
-        await updateSubjectPdfPath(subjectId, path, userProfile.uid);
-        toast.success('Learning material link saved');
-      } catch (err) {
-        toast.error('Failed to save material link');
-        console.error(err);
-      } finally {
-        setSavingId(null);
-      }
-    },
-    [localPdfPaths, userProfile?.uid],
-  );
-
   const filteredSubjects = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
     return SUBJECT_ROWS.filter((subject) => {
       const entry = availability[subject.id];
       const isAvailable = entry?.available ?? !subject.shelved;
-      const pdfPath = localPdfPaths[subject.id] ?? entry?.pdfPath ?? '';
+      const pdfPath = entry?.pdfPath ?? '';
 
       // Text search
       if (
@@ -171,7 +140,7 @@ const AdminSubjects: React.FC = () => {
 
       return true;
     });
-  }, [searchTerm, selectedGrade, selectedStatus, availability, localPdfPaths]);
+  }, [searchTerm, selectedGrade, selectedStatus, availability]);
 
   const hasActiveFilters = searchTerm !== '' || selectedGrade !== 'All Grades' || selectedStatus !== 'All Statuses';
 
@@ -360,7 +329,6 @@ const AdminSubjects: React.FC = () => {
           filteredSubjects.map((subject) => {
             const entry = availability[subject.id];
             const isAvailable = entry?.available ?? !subject.shelved;
-            const pdfPath = localPdfPaths[subject.id] ?? entry?.pdfPath ?? '';
             const lastUpdated = entry?.lastUpdated;
             const isSaving = savingId === subject.id;
 
@@ -420,30 +388,6 @@ const AdminSubjects: React.FC = () => {
                   )}
                 </div>
 
-                {/* Learning Material File Link Input & Save Button */}
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
-                  <div className="relative flex-1 min-w-0">
-                    <FileText size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      value={pdfPath}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePdfPathChange(subject.id, e.target.value)}
-                      placeholder="Material link (e.g. rag/calc.pdf)"
-                      className="pl-8 h-9 text-xs font-semibold rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus-visible:ring-1 focus-visible:ring-purple-400"
-                      disabled={isSaving}
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs gap-1.5 hover:bg-purple-50 dark:hover:bg-purple-950/30 hover:text-[#9956DE] shrink-0"
-                    onClick={() => handleSavePdfPath(subject.id)}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? <Loader2 size={13} className="animate-spin text-purple-500" /> : <Save size={13} />}
-                    <span>Save</span>
-                  </Button>
-                </div>
-
                 {lastUpdated && (
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
                     <Clock size={10} />
@@ -469,13 +413,12 @@ const AdminSubjects: React.FC = () => {
                 <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Grade / Term</TableHead>
                 <TableHead className="px-5 py-4 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</TableHead>
                 <TableHead className="px-5 py-4 text-center text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Access</TableHead>
-                <TableHead className="px-5 py-4 text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Learning Material Link</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredSubjects.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-16 text-center">
+                  <TableCell colSpan={4} className="py-16 text-center">
                     <div className="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] flex items-center justify-center mx-auto mb-3">
                       <BookOpen size={24} />
                     </div>
@@ -487,7 +430,6 @@ const AdminSubjects: React.FC = () => {
                 filteredSubjects.map((subject) => {
                   const entry = availability[subject.id];
                   const isAvailable = entry?.available ?? !subject.shelved;
-                  const pdfPath = localPdfPaths[subject.id] ?? entry?.pdfPath ?? '';
                   const lastUpdated = entry?.lastUpdated;
                   const isSaving = savingId === subject.id;
 
@@ -549,31 +491,6 @@ const AdminSubjects: React.FC = () => {
                             aria-label={`Toggle ${subject.name} availability`}
                           />
                           {isSaving && <Loader2 size={16} className="animate-spin text-purple-500" />}
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="relative flex-1 group/input">
-                            <FileText size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-[#9956DE] transition-colors" />
-                            <Input
-                              value={pdfPath}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePdfPathChange(subject.id, e.target.value)}
-                              placeholder="File path (e.g. rag/calculus.pdf)"
-                              className="pl-9 h-10 text-xs font-semibold rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 focus-visible:ring-1 focus-visible:ring-purple-400 focus-visible:border-purple-400 transition-all"
-                              disabled={isSaving}
-                            />
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10 rounded-xl text-slate-400 hover:text-[#9956DE] dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-transparent hover:border-purple-200/60 dark:hover:border-purple-800/60 active:scale-95 transition-all"
-                            onClick={() => handleSavePdfPath(subject.id)}
-                            disabled={isSaving}
-                            title="Save material link"
-                          >
-                            {isSaving ? <Loader2 size={18} className="animate-spin text-purple-500" /> : <Save size={18} />}
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
