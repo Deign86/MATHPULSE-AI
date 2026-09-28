@@ -72,23 +72,27 @@
 
 ---
 
-## 4. The 9 Core Functional Modules
+## 4. The Official 9 Main Modules (In Order of Sequential Priority)
+
+Per the professor's strict instructions, the processes are arranged sequentially following the **user educational lifecycle after login**:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                           THE 9 CORE FUNCTIONAL MODULES                                │
+│                        OFFICIAL MAIN MODULES & DFD 1 PROCESSES                         │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│  Module 1: User Authentication & Account Management                                    │
-│  Module 2: Academic Classroom Management                                               │
-│  Module 3: Curriculum & Content Management                                             │
-│  Module 4: Diagnostic Assessment & Learning Path (IAR Engine)                          │
-│  Module 5: Quiz Creation & Examination (AI Quiz Maker & Practice Center)               │
-│  Module 6: Learning Progress & Gamification (XP, Avatar Shop, Rewards)                 │
-│  Module 7: Real-Time Quiz Battle (1v1 PvP & Bot Matchmaking)                           │
-│  Module 8: Remedial Intervention & Risk Monitoring (WRI Engine)                        │
-│  Module 9: System Audit & AI Tutoring (L.O.L.I. RAG Tutor & Admin Logs)                │
+│  1. User Authentication & Account Management                                           │
+│  2. Academic Classroom Management                                                      │
+│  3. Curriculum & Content Management                                                    │
+│  4. Diagnostic Assessment & Learning Path (IAR Engine)                                 │
+│  5. Quiz Creation & Examination (AI Quiz Maker & Practice Center)                      │
+│  6. Learning Progress & Gamification (XP, Avatar Shop, Rewards)                        │
+│  7. Real-Time Quiz Battle (1v1 Online PvP & Bot Matchmaking)                           │
+│  8. Remedial Intervention & Risk Monitoring (WRI Engine)                               │
+│  9. System Audit & AI Tutoring (L.O.L.I. RAG Tutor & Security Logs)                    │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+> **Note on DFD 2+ & Activity Diagrams:** Exactly **9 Activity Diagrams** and **9 DFD Level 2 sub-diagrams** are created, corresponding 1-to-1 with these 9 modules.
 
 ---
 
@@ -122,66 +126,66 @@ $$WRI = (0.30 \times D) + (0.40 \times G) + (0.30 \times P)$$
 
 ---
 
-## 6. Database Architecture & 28 Core Entities
+## 6. Complete Database Schema (Grouped by Functional Domain)
 
-The system utilizes a 28-entity data schema across Cloud Firestore and Firebase Realtime Database:
+The system utilizes the 28 core entities mapped across Cloud Firestore and Firebase Realtime Database:
 
-| # | Entity Name | Primary Key | Key Foreign Keys | Purpose / Stored Fields |
-|:---:|---|---|---|---|
-| **1** | `USER` | `uid` | None | Master account, email, name, role, photo, timestamp |
-| **2** | `STUDENT_PROFILE` | `uid` | `uid` $\rightarrow$ `USER` | LRN, grade, school, XP, level, streak, risk status |
-| **3** | `TEACHER_PROFILE` | `uid` | `uid` $\rightarrow$ `USER` | Department, subject, years of experience, qualification |
-| **4** | `ADMIN_PROFILE` | `uid` | `uid` $\rightarrow$ `USER` | Position, department, administrative scope |
-| **5** | `USER_SETTINGS` | `uid` | `uid` $\rightarrow$ `USER` | Notification toggles, theme, study goals, privacy |
-| **6** | `CLASSROOM` | `classId` | `teacherId` $\rightarrow$ `TEACHER_PROFILE` | Section name, grade level, strand, subject |
-| **7** | `CURRICULUM_VERSION_SET` | `id` | None | DepEd curriculum editions (Pilot 2025, Full 2026) |
-| **8** | `DIAGNOSTIC_POLICY` | `id` | `versionSetId` | Mastery, review, and critical gap thresholds |
-| **9** | `SUBJECT` | `id` | `versionSetId` | Math subjects (General Math, Statistics) |
-| **10** | `MODULE` | `id` | `subjectId` | Topic modules within a subject |
-| **11** | `LESSON_CONTENT` | `id` | `moduleId`, `authorId` | Lesson markdown, target skills, content URL |
-| **12** | `GENERATED_QUIZ` | `id` | `teacherId` | AI-generated quiz headers and metadata |
-| **13** | `AI_QUIZ_QUESTION` | `id` | `quizId` | Question stem, options array, correct answer, Bloom level |
-| **14** | `ASSIGNED_QUIZ` | `id` | `quizId`, `lrn` | Specific quiz instances assigned to students/cohorts |
-| **15** | `DIAGNOSTIC_RESULT` | `docId` | `uid` | Raw score, percentage, proficiency level, breakdown |
-| **16** | `LEARNING_PATH_RECORD`| `id` | `userId`, `lessonId` | Dynamic adaptive learning sequences |
-| **17** | `INTERVENTION_RECORD` | `id` | `lrn`, `teacherId` | Remedial logs and teacher intervention orders |
-| **18** | `USER_PROGRESS` | `userId` | `userId` $\rightarrow$ `STUDENT_PROFILE` | Aggregated lesson & quiz completion summary |
-| **19** | `SUBJECT_PROGRESS` | `id` | `userId`, `subjectId` | Subject-level progress percentage |
-| **20** | `MODULE_PROGRESS` | `id` | `subjectProgressId`, `moduleId` | Module-level progress percentage |
-| **21** | `LESSON_PROGRESS` | `id` | `userId`, `lessonId` | Lesson-level time spent, completion status, score |
-| **22** | `QUIZ_ATTEMPT` | `attemptId` | `userId`, `quizId` | Exam attempt logs, time taken, final score |
-| **23** | `QUIZ_ANSWER` | `answerId` | `attemptId`, `questionId` | Per-question student response and correctness |
-| **24** | `ACHIEVEMENTS` | `userId` | `userId` $\rightarrow$ `STUDENT_PROFILE` | Student achievement badge unlock ledger |
-| **25** | `XP_ACTIVITY` | `activityId` | `userId` $\rightarrow$ `STUDENT_PROFILE` | Immutable transaction ledger of awarded XP points |
-| **26** | `CHAT_SESSION` | `id` | `userId` $\rightarrow$ `USER` | L.O.L.I. AI tutor conversation threads |
-| **27** | `CHAT_MESSAGE` | `id` | `sessionId` | Individual prompt/response messages with math context |
-| **28** | `AUDIT_LOG` | `id` | `userId` $\rightarrow$ `USER` | Administrative security and action event log |
+### A. User Identity & Setup
+1. **`USER`** — Master account credentials (`uid PK`, `email`, `name`, `role`, `photo`, `createdAt`).
+2. **`STUDENT_PROFILE`** — Student metrics (`uid PK, FK`, `lrn`, `grade`, `school`, `XP`, `streak`, `risk`).
+3. **`TEACHER_PROFILE`** — Teacher metadata (`uid PK, FK`, `department`, `subject`, `yearsOfExperience`, `qualification`).
+4. **`ADMIN_PROFILE`** — Administrator record (`uid PK, FK`, `position`, `department`).
+5. **`USER_SETTINGS`** — User preferences (`uid PK, FK`, `notifications`, `appearance`, `privacy`, `learning`).
+
+### B. Classroom & Cohorts
+6. **`CLASSROOM`** — Class section header (`classId PK`, `teacherId FK`, `className`, `gradeLevel`, `strand`, `subject`).
+
+### C. Curriculum & Content
+7. **`CURRICULUM_VERSION_SET`** — DepEd standards editions (`id PK`, `label`, `program`, `gradeLevel`, `isActive`).
+8. **`DIAGNOSTIC_POLICY`** — Threshold rules (`id PK`, `versionSetId FK`, `gradeLevel`, `thresholds`).
+9. **`SUBJECT`** — Math subjects (`id PK`, `versionSetId FK`, `name`, `gradeLevel`).
+10. **`MODULE`** — Curriculum modules (`id PK`, `subjectId FK`, `name`, `targetTopic`).
+11. **`LESSON_CONTENT`** — Instructional resources (`id PK`, `moduleId FK`, `authorId FK`, `title`, `targetSkill`, `contentUrl`).
+
+### D. Assessments & Quizzes
+12. **`DIAGNOSTIC_RESULT`** — Initial diagnostic scores (`docId PK`, `uid FK`, `rawScore`, `percentage`, `proficiencyLevel`).
+13. **`LEARNING_PATH_RECORD`** — Adaptive sequence (`id PK`, `userId FK`, `lessonId FK`, `source`, `reason`).
+14. **`GENERATED_QUIZ`** — Quiz headers (`id PK`, `teacherId FK`, `title`, `gradeLevel`, `status`).
+15. **`AI_QUIZ_QUESTION`** — Question items (`id PK`, `quizId FK`, `questionType`, `options`, `correctAnswer`, `bloomLevel`).
+16. **`ASSIGNED_QUIZ`** — Cohort assignments (`id PK`, `quizId FK`, `lrn FK`, `subject`, `status`, `dueDate`).
+17. **`QUIZ_ATTEMPT`** — Student exam attempts (`attemptId PK`, `userId FK`, `quizId FK`, `score`, `completedAt`).
+18. **`QUIZ_ANSWER`** — Per-item responses (`answerId PK`, `attemptId FK`, `questionId FK`, `selectedAnswer`, `isCorrect`).
+
+### E. Progress & Gamification
+19. **`USER_PROGRESS`** — Global student metrics (`userId PK, FK`, `totalLessonsCompleted`, `averageScore`).
+20. **`SUBJECT_PROGRESS`** — Subject percentage (`id PK`, `userId FK`, `subjectId FK`, `progress`).
+21. **`MODULE_PROGRESS`** — Module percentage (`id PK`, `subjectProgressId FK`, `moduleId FK`, `progress`).
+22. **`LESSON_PROGRESS`** — Lesson duration/score (`id PK`, `userId FK`, `lessonId FK`, `completed`, `timeSpent`).
+23. **`ACHIEVEMENTS`** — Student milestone badges (`userId PK, FK`, `achievements`, `totalAchievements`).
+24. **`XP_ACTIVITY`** — Experience transaction ledger (`activityId PK`, `userId FK`, `type`, `xpEarned`, `timestamp`).
+
+### F. Support, Governance & Real-Time
+25. **`INTERVENTION_RECORD`** — Teacher remedial tasks (`id PK`, `lrn FK`, `teacherId FK`, `content`, `source`).
+26. **`CHAT_SESSION`** — AI math tutor threads (`id PK`, `userId FK`, `title`, `isActive`).
+27. **`CHAT_MESSAGE`** — Chat messages (`id PK`, `sessionId FK`, `role`, `content`, `timestamp`).
+28. **`AUDIT_LOG`** — System security audit trail (`id PK`, `userId FK`, `action`, `targetType`, `timestamp`).
 
 ---
 
 ## 7. Gane & Sarson DFD Level 1 Architecture Reference
 
-* **Left Column (External Entities):** `Student (Dominant User)`, `Teacher`, `Administrator`.
-* **Center Column (Processes 1 to 9):**
-  1. `1: User Authentication & Accounts`
-  2. `2: Academic Classroom Management`
-  3. `3: Curriculum & Content Management`
-  4. `4: Diagnostic Assessment & Path`
-  5. `5: Quiz Creation & Examination`
-  6. `6: Learning Progress & Gamification`
-  7. `7: Real-Time Quiz Battle`
-  8. `8: Remedial Intervention & Risk`
-  9. `9: System Audit & AI Tutoring`
-* **Right Column (Open-Ended Data Stores):**
-  * `D1: Users` *(Profiles & Settings)*
-  * `D2: Classrooms` *(Sections & Rosters)*
-  * `D3: Modules & Lessons` *(Curriculum & Content)*
-  * `D4: Diagnostics` *(Results & Paths)*
-  * `D5: Quizzes & Attempts` *(Exams & Submissions)*
-  * `D6: Progress & Gamification` *(XP & Badges)*
-  * `D7: Battle Records` *(Live Match State)*
-  * `D8: Interventions` *(At-Risk Logs & Orders)*
-  * `D9: Chat & Audit Logs` *(Chat History & Audits)*
+### Data Store Strategy (Option A: Consolidated for Level 1 Clarity)
+Per the professor's note (*"kung ano nasa erd ayun lang dapat nasa dfd — for level 1, pwede bawasan/ibaba"*), DFD Level 1 consolidates the database into **9 Clean Open-Ended Data Stores (`D1` to `D9`)** to keep the main diagram readable, while Level 2 sub-diagrams detail the underlying tables:
+
+* **`D1: Users`** $\longrightarrow$ Maps to `USER`, `STUDENT_PROFILE`, `TEACHER_PROFILE`, `ADMIN_PROFILE`, `USER_SETTINGS`
+* **`D2: Classrooms`** $\longrightarrow$ Maps to `CLASSROOM`
+* **`D3: Modules & Lessons`** $\longrightarrow$ Maps to `CURRICULUM_VERSION_SET`, `DIAGNOSTIC_POLICY`, `SUBJECT`, `MODULE`, `LESSON_CONTENT`
+* **`D4: Diagnostics`** $\longrightarrow$ Maps to `DIAGNOSTIC_RESULT`, `LEARNING_PATH_RECORD`
+* **`D5: Quizzes & Attempts`** $\longrightarrow$ Maps to `GENERATED_QUIZ`, `AI_QUIZ_QUESTION`, `ASSIGNED_QUIZ`, `QUIZ_ATTEMPT`, `QUIZ_ANSWER`
+* **`D6: Progress & Gamification`** $\longrightarrow$ Maps to `USER_PROGRESS`, `SUBJECT_PROGRESS`, `MODULE_PROGRESS`, `LESSON_PROGRESS`, `ACHIEVEMENTS`, `XP_ACTIVITY`
+* **`D7: Battle Records`** $\longrightarrow$ Maps to Realtime Database battle matchmaking & match state
+* **`D8: Interventions`** $\longrightarrow$ Maps to `INTERVENTION_RECORD`
+* **`D9: Chat & Audit Logs`** $\longrightarrow$ Maps to `CHAT_SESSION`, `CHAT_MESSAGE`, `AUDIT_LOG`
 
 ---
 
