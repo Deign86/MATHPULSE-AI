@@ -377,6 +377,9 @@ export const updateUserProfile = async (
       throw new Error('Profile not found');
     }
 
+    const callerProfile = auth.currentUser ? await getUserProfile(auth.currentUser.uid) : null;
+    const callerIsAdmin = callerProfile?.role === 'admin';
+
     const baseAllowed = ['name', 'email', 'phone', 'photo', 'avatarLayers', 'gender'];
     const roleAllowedMap = {
       student: ['lrn', 'grade', 'section', 'school', 'enrollmentDate', 'major', 'gpa'],
@@ -384,7 +387,11 @@ export const updateUserProfile = async (
       admin: ['department', 'position'],
     } satisfies Record<UserRole, string[]>;
 
-    const allowedKeys = new Set([...baseAllowed, ...roleAllowedMap[currentProfile.role]]);
+    const allowedKeys = new Set([
+      ...baseAllowed,
+      ...roleAllowedMap[currentProfile.role],
+      ...(callerIsAdmin ? ['lrn', 'section'] : []),
+    ]);
     const sanitizedUpdates: DocumentData = {};
 
     // SAFETY: only whitelisted keys from Partial<User>-shaped updates reach the payload below.

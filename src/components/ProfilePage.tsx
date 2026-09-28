@@ -6,9 +6,10 @@ import {
   GraduationCap,
   Save,
   RefreshCw,
-  CheckCircle2,
-  RotateCcw,
   AlertTriangle,
+  Pencil,
+  Lock,
+  X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { validateProfileDraft } from '../utils/profileValidation';
+import { useAuth } from '../contexts/AuthContext';
 import { changeEmailWithReauth } from '../services/settingsService';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 import ConfirmModal from './ConfirmModal';
@@ -57,11 +59,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onConfirmLeave,
   onCancelNavigation,
 }) => {
+  const { userRole, userProfile } = useAuth();
+  const isAdmin = userRole === 'admin' || userProfile?.role === 'admin';
+
+  const DEFAULT_SCHOOL_NAME = 'Gen. T De Leon National High School';
+
   const [accountData, setAccountData] = useState<ProfileData>(profileData);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAvatarHovered, setIsAvatarHovered] = useState(false);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Email update modal states
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -98,6 +106,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     toast.info('Changes discarded');
   };
 
+  const handleCancelEdit = () => {
+    setAccountData(profileData);
+    setIsDirty(false);
+    setIsEditMode(false);
+  };
+
   const handleSave = async () => {
     const validationError = validateProfileDraft({
       name: accountData.name || '',
@@ -113,6 +127,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     try {
       await onSaveProfile(accountData);
       setIsDirty(false);
+      setIsEditMode(false);
       toast.success('Profile updated successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save profile';
@@ -273,37 +288,48 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
               {/* Header Action Buttons */}
               <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                {isDirty && (
+                {!isEditMode ? (
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsDiscardConfirmOpen(true)}
-                    className="h-10 px-3 rounded-xl border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
+                    onClick={() => setIsEditMode(true)}
+                    className="w-full sm:w-auto h-10 px-4 rounded-xl border-purple-300 dark:border-purple-700/60 text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
                   >
-                    <RotateCcw size={14} />
-                    <span>Discard</span>
+                    <Pencil size={14} />
+                    <span>Edit Profile</span>
                   </Button>
-                )}
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                      className="h-10 px-3 rounded-xl border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <X size={14} />
+                      <span>Cancel</span>
+                    </Button>
 
-                <Button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className={`w-full sm:w-auto h-10 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm cursor-pointer ${
-                    isDirty
-                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-purple-500/25 ring-2 ring-purple-500/40 animate-pulse'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  {isSaving ? (
-                    <RefreshCw size={14} className="animate-spin" />
-                  ) : isDirty ? (
-                    <Save size={14} />
-                  ) : (
-                    <CheckCircle2 size={14} className="text-emerald-500 dark:text-emerald-400" />
-                  )}
-                  <span>{isSaving ? 'Saving…' : isDirty ? 'Save Changes' : 'Saved'}</span>
-                </Button>
+                    <Button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className={`w-full sm:w-auto h-10 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm cursor-pointer ${
+                        isDirty
+                          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-purple-500/25 ring-2 ring-purple-500/40 animate-pulse'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      {isSaving ? (
+                        <RefreshCw size={14} className="animate-spin" />
+                      ) : (
+                        <Save size={14} />
+                      )}
+                      <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -334,6 +360,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       value={accountData.name || ''}
                       onChange={(e) => handleFieldChange('name', e.target.value)}
                       placeholder="Learner Full Name"
+                      readOnly={!isEditMode}
                       className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium"
                     />
                   </div>
@@ -368,6 +395,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                         value={accountData.phone || ''}
                         onChange={(e) => handleFieldChange('phone', e.target.value)}
                         placeholder="+63 912 345 6789"
+                        readOnly={!isEditMode}
                         className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium"
                       />
                     </div>
@@ -382,6 +410,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                           // SAFETY: bounded gender string literals match ProfileData gender type.
                           handleFieldChange('gender', val as ProfileData['gender'])
                         }
+                        disabled={!isEditMode}
                       >
                         <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer">
                           <SelectValue placeholder="Select gender" />
@@ -424,7 +453,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       onChange={(e) => handleFieldChange('lrn', e.target.value)}
                       placeholder="12-digit DepEd LRN"
                       maxLength={12}
+                      disabled={!isEditMode || !isAdmin}
+                      className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium"
                     />
+                    {!isAdmin && (
+                      <p className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                        <Lock size={11} />
+                        <span>Admin only</span>
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -435,6 +472,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       <Select
                         value={accountData.grade?.includes('12') ? 'Grade 12' : 'Grade 11'}
                         onValueChange={(val) => handleFieldChange('grade', val)}
+                        disabled={!isEditMode}
                       >
                         <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer">
                           <SelectValue placeholder="Grade Level" />
@@ -454,8 +492,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                         value={accountData.section || ''}
                         onChange={(e) => handleFieldChange('section', e.target.value)}
                         placeholder="e.g. STEM-11A"
+                        disabled={!isEditMode || !isAdmin}
                         className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium"
                       />
+                      {!isAdmin && (
+                        <p className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                          <Lock size={11} />
+                          <span>Admin only</span>
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -464,11 +509,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       School Name
                     </label>
                     <Input
-                      value={accountData.school || ''}
-                      onChange={(e) => handleFieldChange('school', e.target.value)}
-                      placeholder="e.g. Specialized Science High School"
-                      className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium"
+                      value={accountData.school || DEFAULT_SCHOOL_NAME}
+                      disabled
+                      className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-400"
                     />
+                    <p className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                      <Lock size={11} />
+                      <span>Locked — school records are managed by your administrator</span>
+                    </p>
                   </div>
                 </div>
               </div>

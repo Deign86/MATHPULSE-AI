@@ -37,6 +37,7 @@ import { selectDisplayXP } from './utils/display';
 import { TabErrorBoundary } from './components/TabErrorBoundary.tsx';
 import { useCapacitorBackButton } from './hooks/useCapacitorBackButton';
 import MobileBottomNav from './components/MobileBottomNav';
+import { DEFAULT_SCHOOL } from './utils/profileValidation';
 
 type ProfileSaveData = Partial<User> &
   Partial<Omit<StudentProfile, keyof User | 'role'>> &
@@ -782,6 +783,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     }
 
     const updates: Partial<ProfileSaveData> = {};
+    const isAdmin = userProfile.role === 'admin' || userRole === 'admin';
     const allowedKeys: Array<keyof ProfileSaveData> = [
       'name',
       'email',
@@ -789,10 +791,7 @@ const App = ({ authOverride }: AppProps = {}) => {
       'photo',
       'avatarLayers',
       'gender',
-      'lrn',
       'grade',
-      'section',
-      'school',
       'enrollmentDate',
       'major',
       'gpa',
@@ -808,6 +807,16 @@ const App = ({ authOverride }: AppProps = {}) => {
         Object.assign(updates, { [key]: data[key] });
       }
     });
+
+    if (isAdmin) {
+      if (data.lrn !== undefined) updates.lrn = data.lrn;
+      if (data.section !== undefined) updates.section = data.section;
+    }
+
+    // This screen cannot change school; initialize a missing value to the default.
+    if (!studentProfile?.school) {
+      updates.school = DEFAULT_SCHOOL;
+    }
 
     try {
       await updateUserProfile(userProfile.uid, updates);
@@ -949,7 +958,7 @@ const App = ({ authOverride }: AppProps = {}) => {
       lrn: studentProfile.lrn,
       grade: studentProfile.grade,
       section: studentProfile.section,
-      school: studentProfile.school,
+      school: studentProfile.school || DEFAULT_SCHOOL,
       enrollmentDate: studentProfile.enrollmentDate,
       major: studentProfile.major,
       gpa: computedGpa,

@@ -109,6 +109,17 @@ export function getNextResetTime(date?: Date): Date {
   return new Date(nextMondayPHT - PHT_OFFSET_MS);
 }
 
+/** Next midnight PHT as a JS Date. Timezone-safe via epoch arithmetic. */
+export function getNextDailyResetTime(date?: Date): Date {
+  const now = date ?? new Date();
+  const PHT_OFFSET_MS = 8 * 60 * 60 * 1000;
+  const phtEpoch = now.getTime() + PHT_OFFSET_MS;
+  const todayMidnightPHT = phtEpoch - (phtEpoch % 86400000);
+  const tomorrowMidnightPHT = todayMidnightPHT + 86400000;
+
+  return new Date(tomorrowMidnightPHT - PHT_OFFSET_MS);
+}
+
 // ── Master Reward Catalog (19 items) ────────────────────────────────────────
 
 export const REWARD_CATALOG: RewardPayload[] = [
