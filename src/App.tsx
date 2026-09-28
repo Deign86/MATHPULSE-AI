@@ -1608,7 +1608,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                       onNavigateToModules={() => handleStudentNavigation('Modules')}
                       unsavedChangesRef={avatarUnsavedRef}
                       pendingNavigation={pendingAvatarNav}
-                      onConfirmLeave={() => { const nav = pendingAvatarNav; setPendingAvatarNav(null); if (nav) setTimeout(() => handleStudentNavigation(nav), 0); }}
+                      onConfirmLeave={() => { const nav = pendingAvatarNav; avatarUnsavedRef.current = false; setPendingAvatarNav(null); if (nav) setTimeout(() => handleStudentNavigation(nav), 0); }}
                       onCancelNavigation={() => setPendingAvatarNav(null)}
                     />
                   </Suspense>
@@ -1627,6 +1627,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                       pendingNavigation={pendingProfileNav}
                       onConfirmLeave={() => {
                         const nav = pendingProfileNav;
+                        profileUnsavedRef.current = false;
                         setPendingProfileNav(null);
                         if (nav) setTimeout(() => handleStudentNavigation(nav), 0);
                       }}
