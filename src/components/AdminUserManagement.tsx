@@ -118,6 +118,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [userCounts, setUserCounts] = useState({ total: 0, active: 0, admins: 0, teachers: 0, students: 0 });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All Roles');
@@ -248,6 +249,19 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         roleFilter: filters.role,
         statusFilter: filters.status,
         sectionFilter: filters.section,
+      });
+      const allUsersFirstPage = await getAdminUsersPage({ page: 1, pageSize: 200 });
+      const allUsers = [...allUsersFirstPage.users];
+      for (let page = 2; page <= allUsersFirstPage.totalPages; page += 1) {
+        const nextPage = await getAdminUsersPage({ page, pageSize: 200 });
+        allUsers.push(...nextPage.users);
+      }
+      setUserCounts({
+        total: allUsersFirstPage.total,
+        active: allUsers.filter((user) => user.status === 'Active').length,
+        admins: allUsers.filter((user) => user.role === 'Admin').length,
+        teachers: allUsers.filter((user) => user.role === 'Teacher').length,
+        students: allUsers.filter((user) => user.role === 'Student').length,
       });
       setUsers(pageData.users);
       setCurrentPage(pageData.total === 0 ? 1 : pageData.page);
@@ -783,7 +797,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const kpiCards = [
     {
       label: 'All Users',
-      value: totalUsers,
+      value: userCounts.total,
       subtext: 'Total registered',
       badge: 'Total',
       icon: Users,
@@ -799,7 +813,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     },
     {
       label: 'Active',
-      value: users.filter(u => u.status === 'Active').length,
+      value: userCounts.active,
       subtext: 'Online / verified',
       badge: 'Live',
       icon: UserCheck,
@@ -814,7 +828,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     },
     {
       label: 'Admins',
-      value: users.filter(u => u.role === 'Admin').length,
+      value: userCounts.admins,
       subtext: 'Portal security',
       badge: 'Security',
       icon: Shield,
@@ -829,7 +843,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     },
     {
       label: 'Teachers',
-      value: users.filter(u => u.role === 'Teacher').length,
+      value: userCounts.teachers,
       subtext: 'Faculty educators',
       badge: 'Faculty',
       icon: GraduationCap,
@@ -844,7 +858,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     },
     {
       label: 'Students',
-      value: users.filter(u => u.role === 'Student').length,
+      value: userCounts.students,
       subtext: 'Active learners',
       badge: 'Learners',
       icon: School,
