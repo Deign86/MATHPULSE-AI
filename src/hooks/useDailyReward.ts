@@ -15,7 +15,7 @@ import {
   canClaimToday,
   getThisWeeksRewards,
   getTodaysReward,
-  getNextResetTime,
+  getNextDailyResetTime,
   formatCountdown,
 } from '../services/dailyRewardService';
 
@@ -77,7 +77,7 @@ export function useDailyReward(userId: string | null): UseDailyRewardResult {
   // ── Countdown timer ───────────────────────────────────────────────────────
   useEffect(() => {
     const tick = () => {
-      const nextReset = getNextResetTime();
+      const nextReset = getNextDailyResetTime();
       const remaining = nextReset.getTime() - Date.now();
       setTimeUntilReset(formatCountdown(remaining));
     };
