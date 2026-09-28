@@ -15,16 +15,6 @@ on:
       - '.github/workflows/deploy-frontend.yml'
   push:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'index.html'
-      - 'vite.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'firebase.json'
-      - 'scripts/validate-pwa-build.mjs'
-      - '.github/workflows/deploy-frontend.yml'
   workflow_dispatch:
 
 permissions:
