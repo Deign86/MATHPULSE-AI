@@ -448,7 +448,7 @@ service cloud.firestore {
     }
 
     match /quizResults/{docId} {
-      allow read: if isSelf(docId) || isTeacherOrAdmin();
+      allow read: if ownerByField('studentId') || isTeacherOrAdmin();
       allow create: if isSignedIn();
       allow update: if isSelf(docId) || isTeacherOrAdmin();
       allow delete: if isAdmin();

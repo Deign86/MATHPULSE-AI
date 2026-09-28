@@ -3501,6 +3501,7 @@ const AnalyticsView: React.FC<{
     const [filterType, setFilterType] = useState('All');
     const [backendReport, setBackendReport] = useState<ClassAnalyticsReport | null>(null);
     const [backendLoading, setBackendLoading] = useState(true);
+    const [backendError, setBackendError] = useState<string | null>(null);
     const [insightsRefreshing, setInsightsRefreshing] = useState(false);
     const [showInsights, setShowInsights] = useState(true);
 
@@ -3508,9 +3509,14 @@ const AnalyticsView: React.FC<{
     useEffect(() => {
       let cancelled = false;
       setBackendLoading(true);
+      setBackendReport(null);
+      setBackendError(null);
       getClassAnalytics(selectedClass.id)
         .then((report) => { if (!cancelled) setBackendReport(report); })
-        .catch((err) => console.warn('[AnalyticsView] Backend fetch failed, using local data:', err))
+        .catch((err) => {
+          console.warn('[AnalyticsView] Backend fetch failed, using local data:', err);
+          if (!cancelled) setBackendError('Unable to load class analytics. Try again.');
+        })
         .finally(() => { if (!cancelled) setBackendLoading(false); });
       return () => { cancelled = true; };
     }, [selectedClass.id]);
@@ -3783,9 +3789,13 @@ const AnalyticsView: React.FC<{
       setInsightsRefreshing(true);
       try {
         const newInsights = await refreshClassInsights(selectedClass.id);
-        setBackendReport(prev => prev ? { ...prev, insights: newInsights } : prev);
-      } catch (err: any) {
-        console.warn('[AnalyticsView] Refresh insights failed:', err?.message);
+        const report = await getClassAnalytics(selectedClass.id);
+        setBackendReport({ ...report, insights: newInsights });
+        setBackendError(null);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unable to generate class insights.';
+        console.warn('[AnalyticsView] Refresh insights failed:', message);
+        setBackendError(message);
       } finally {
         setInsightsRefreshing(false);
       }
@@ -4199,7 +4209,7 @@ const AnalyticsView: React.FC<{
         </div>
 
         {/* AI Class Insights Panel */}
-        {backendReport?.insights && (
+        <>
           <div className="bg-gradient-to-br from-indigo-50/80 to-purple-50/60 backdrop-blur-[12px] rounded-[18px] p-5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-indigo-100/50">
             <div className="flex items-center justify-between mb-4">
               <button
@@ -4216,10 +4226,21 @@ const AnalyticsView: React.FC<{
                 className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 bg-white/70 hover:bg-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-3 h-3 ${insightsRefreshing ? 'animate-spin' : ''}`} />
-                {insightsRefreshing ? 'Refreshing...' : 'Refresh AI Analysis'}
+                {insightsRefreshing ? 'Refreshing...' : backendReport?.insights ? 'Refresh AI Analysis' : 'Generate AI Analysis'}
               </button>
             </div>
             {showInsights && (
+              backendLoading && !backendReport?.insights ? (
+                <p className="text-[12px] text-[#475569] leading-relaxed" role="status">Loading class insights...</p>
+              ) : backendError && !backendReport?.insights ? (
+                <p className="text-[12px] text-rose-700 leading-relaxed" role="alert">{backendError}</p>
+              ) : !backendReport?.insights ? (
+                <p className="text-[12px] text-[#475569] leading-relaxed">
+                  {backendReport && backendReport.students.every((student) => student.quiz_attempt_count === 0)
+                    ? 'No assessments yet. Generate insights after students complete an assessment.'
+                    : 'Class insights are not available yet.'}
+                </p>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white/70 rounded-[14px] p-4 border border-white">
                   <div className="flex items-center gap-2 mb-2">
@@ -4250,9 +4271,10 @@ const AnalyticsView: React.FC<{
                   </ul>
                 </div>
               </div>
+              )
             )}
           </div>
-        )}
+        </>
 
         <SectionManagementPanel
           students={students}
