@@ -403,7 +403,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const availableCompetencyGroups = useMemo(() => {
     const groups = new Map<string, string>();
-    modulePool.forEach((module) => groups.set(module.competency_group, module.title));
+    modulePool.forEach((module) => {
+      const code = module.competency_group?.trim();
+      if (code && !groups.has(code)) groups.set(code, module.title);
+    });
     return Array.from(groups, ([code, title]) => ({ code, title }));
   }, [modulePool]);
 
@@ -1402,7 +1405,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             </button>
 
             {/* Reset Filters Button */}
-            {activeFilterCount > 0 && (
+            {(activeFilterCount > 0 || searchQuery.trim().length > 0) && (
               <button
                 type="button"
                 onClick={clearFilters}
@@ -2138,7 +2141,7 @@ const RecommendedModulesView: React.FC<{
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 badgeLabel="Start"
-                isRecommended={isRecommended}
+                isRecommended={isRecommended || (index === 0 && weakTopics.length > 0)}
                 onNotifyMe={onNotifyMe}
               />
             )})}
