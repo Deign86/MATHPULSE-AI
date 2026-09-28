@@ -3,7 +3,8 @@ import { toast } from 'sonner';
 import {
   Sparkles, Bell, Layers, ChevronDown, Table, FileText, ScanLine, TrendingDown,
   CheckCircle, Edit3, ArrowLeft, Cpu, ArrowRight, Check, Save, Info, Edit2, Search,
-  FileSpreadsheet, Download, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Upload
+  FileSpreadsheet, Download, Trash2, ChevronLeft, ChevronRight, CheckCircle2, Upload,
+  CloudUpload
 } from 'lucide-react';
 
 import type { ClassSectionMetadata } from '../../types/models';
@@ -31,6 +32,34 @@ function buildStudentViewKey(student: StudentView): string {
   if (lrnKey) return `lrn:${lrnKey}`;
   if (idKey && nameKey) return `id:${idKey}|name:${nameKey}`;
   return `${classSectionKey}|anonymous`;
+}
+
+type PaginationItem = { kind: 'page'; page: number } | { kind: 'ellipsis'; id: string };
+
+function createPaginationItems(total: number, current: number): PaginationItem[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => ({ kind: 'page', page: i + 1 }));
+  }
+
+  const items: PaginationItem[] = [{ kind: 'page', page: 1 }];
+
+  if (current > 3) {
+    items.push({ kind: 'ellipsis', id: 'start-dots' });
+  }
+
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  for (let p = start; p <= end; p += 1) {
+    items.push({ kind: 'page', page: p });
+  }
+
+  if (current < total - 2) {
+    items.push({ kind: 'ellipsis', id: 'end-dots' });
+  }
+
+  items.push({ kind: 'page', page: total });
+  return items;
 }
 
 export interface DataImportViewProps {
@@ -291,6 +320,26 @@ export default function DataImportView({
     return filtered;
   }, [localStudents, classSectionId, availableClasses]);
 
+  // Pagination for Class Records Table
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredStudents.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (validCurrentPage - 1) * pageSize;
+    return filteredStudents.slice(startIndex, startIndex + pageSize);
+  }, [filteredStudents, validCurrentPage, pageSize]);
+
+  const visibleRangeStart = filteredStudents.length === 0 ? 0 : (validCurrentPage - 1) * pageSize + 1;
+  const visibleRangeEnd = Math.min(validCurrentPage * pageSize, filteredStudents.length);
+
   useEffect(() => {
     setLocalStudents(initialStudents);
     setSectionDrafts(Object.fromEntries(
@@ -358,19 +407,24 @@ export default function DataImportView({
         {currentImportView === 'main' && (
           <div className="block space-y-[24px]">
             {/* Context Selector Banner */}
-            <div className="bg-white/80 backdrop-blur-[12px] rounded-[16px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100/50">
-                  <Layers className="w-5 h-5 text-indigo-500" />
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xs border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-xs shrink-0">
+                  <Layers className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-[14px] font-bold text-[#1e293b]">Upload Context</h2>
-                  <p className="text-[12px] text-[#64748b]">Select where the imported data should be applied</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-[15px] font-bold text-slate-800 font-display">Target Class Context</h2>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200/70">
+                      Scope
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">Select the section or classroom where imported records should apply</p>
                 </div>
               </div>
-              <div className="relative w-full md:w-[300px]">
+              <div className="relative w-full md:w-[320px]">
                 <select 
-                  className="appearance-none bg-[#f8fafc] border border-[#e2e8f0] text-[#1e293b] font-bold text-[13px] rounded-lg pl-4 pr-10 py-2.5 outline-none focus:border-[#4f46e5] focus:ring-2 focus:ring-[#4f46e5]/20 shadow-[0_1px_4px_rgba(0,0,0,0.02)] cursor-pointer w-full transition-colors"
+                  className="appearance-none bg-slate-50/80 hover:bg-slate-50 border border-slate-200/90 text-slate-800 font-bold text-xs sm:text-[13px] rounded-xl pl-4 pr-10 py-2.5 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 shadow-2xs cursor-pointer w-full transition-all"
                   value={className || classSectionId || 'All Classes'}
                   onChange={() => {}}
                 >
@@ -379,13 +433,13 @@ export default function DataImportView({
                     <option key={c.id} value={c.classSectionId || c.id}>{c.name}</option>
                   ))}
                 </select>
-                <ChevronDown className="w-4 h-4 text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
-            {/* Upload Zones (Side by Side) */}
+            {/* Upload Zones (Side by Side) with Prominent Colored Dotted Border */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-              {/* Zone 1: Class Records (Summer Sky Blue) */}
+              {/* Zone 1: Class Records (Vibrant Sky Blue Dotted) */}
               <div 
                 role="button"
                 tabIndex={0}
@@ -394,38 +448,39 @@ export default function DataImportView({
                 onDragLeave={() => setDragOver1(false)}
                 onDrop={(e) => { e.preventDefault(); setDragOver1(false); const f = e.dataTransfer.files[0]; if(f) handleFileUpload(f); }}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed transition-all duration-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center cursor-pointer group relative overflow-hidden min-h-[195px] sm:min-h-[230px] md:h-[270px] active:scale-[0.99] ${
+                className={`border-[3.5px] border-dotted transition-all duration-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-between text-center cursor-pointer group min-h-[230px] sm:min-h-[250px] active:scale-[0.99] ${
                   dragOver1
-                    ? 'border-[#1FA7E1] bg-sky-50 shadow-md'
-                    : 'border-slate-200 hover:border-[#1FA7E1] bg-white hover:bg-slate-50/80 shadow-xs hover:shadow-md hover:-translate-y-0.5'
+                    ? 'border-sky-600 bg-sky-100/90 shadow-md ring-4 ring-sky-400/30 scale-[1.01]'
+                    : 'border-sky-400 hover:border-sky-600 bg-gradient-to-b from-sky-50/40 to-sky-50/20 hover:bg-sky-50/70 shadow-2xs hover:shadow-sm hover:-translate-y-0.5'
                 }`}
               >
                 <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleFileUpload(f); }} className="hidden" />
 
-                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl bg-sky-50 flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 shadow-xs border border-sky-100 shrink-0">
-                  {uploadingClassRecords ? <span className="animate-spin text-[#1FA7E1] font-bold">...</span> : <Table className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-[#1FA7E1]" />}
+                <div className="flex flex-col items-center justify-center my-auto py-2">
+                  <div className={`w-14 h-14 rounded-2xl bg-sky-100/80 flex items-center justify-center mb-3 text-sky-600 transition-all duration-200 border-2 border-sky-300 shadow-2xs ${dragOver1 ? 'scale-110 bg-sky-200' : 'group-hover:scale-105 group-hover:bg-sky-200/80'}`}>
+                    {uploadingClassRecords ? <span className="animate-spin font-bold">...</span> : <CloudUpload className="w-7 h-7" />}
+                  </div>
+
+                  <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-1 font-display">
+                    {uploadingClassRecords ? 'Processing Class Records...' : 'Upload Class Spreadsheet'}
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+                    Select a spreadsheet or browse files from your computer
+                  </p>
                 </div>
 
-                <h3 className="text-[16px] sm:text-[17px] md:text-[18px] font-bold text-[#1e293b] mb-1">
-                  {uploadingClassRecords ? 'Uploading Class Records...' : 'Class Records'}
-                </h3>
-                <p className="text-[11.5px] sm:text-[12.5px] md:text-[13px] text-[#64748b] max-w-xs sm:max-w-sm mb-3 sm:mb-4 line-clamp-2">
-                  Upload student grades, attendance logs, and quiz scores to power predictive analytics.
-                </p>
-
-                <div className="flex flex-col items-center gap-2">
-                  <div className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#1FA7E1] text-white text-xs font-semibold shadow-xs group-hover:bg-[#0284c7] transition-colors">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Choose Spreadsheet</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-1">
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.csv</span>
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.xlsx</span>
+                {/* Footer Info & File Type Chips */}
+                <div className="w-full flex items-center justify-between pt-3 border-t border-sky-200/60 text-[11px] text-slate-400">
+                  <span className="font-semibold text-slate-600">Supported Formats</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 bg-white text-sky-700 font-bold text-[10px] rounded-md border border-sky-200 shadow-2xs">.CSV</span>
+                    <span className="px-2 py-0.5 bg-white text-sky-700 font-bold text-[10px] rounded-md border border-sky-200 shadow-2xs">.XLSX</span>
+                    <span className="px-2 py-0.5 bg-white text-sky-700 font-bold text-[10px] rounded-md border border-sky-200 shadow-2xs">.XLS</span>
                   </div>
                 </div>
               </div>
 
-              {/* Zone 2: Course Materials (Amethyst Purple) */}
+              {/* Zone 2: Course Materials (Vibrant Purple Dotted) */}
               <div 
                 role="button"
                 tabIndex={0}
@@ -434,34 +489,34 @@ export default function DataImportView({
                 onDragLeave={() => setDragOver2(false)}
                 onDrop={(e) => { e.preventDefault(); setDragOver2(false); const f = e.dataTransfer.files[0]; if(f) handleCourseMaterialUpload(f); }}
                 onClick={() => materialInputRef.current?.click()}
-                className={`border-2 border-dashed transition-all duration-200 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center cursor-pointer group relative overflow-hidden min-h-[195px] sm:min-h-[230px] md:h-[270px] active:scale-[0.99] ${
+                className={`border-[3.5px] border-dotted transition-all duration-200 rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-between text-center cursor-pointer group min-h-[230px] sm:min-h-[250px] active:scale-[0.99] ${
                   dragOver2
-                    ? 'border-[#9956DE] bg-purple-50 shadow-md'
-                    : 'border-slate-200 hover:border-[#9956DE] bg-white hover:bg-slate-50/80 shadow-xs hover:shadow-md hover:-translate-y-0.5'
+                    ? 'border-purple-600 bg-purple-100/90 shadow-md ring-4 ring-purple-400/30 scale-[1.01]'
+                    : 'border-purple-400 hover:border-purple-600 bg-gradient-to-b from-purple-50/40 to-purple-50/20 hover:bg-purple-50/70 shadow-2xs hover:shadow-sm hover:-translate-y-0.5'
                 }`}
               >
                 <input ref={materialInputRef} type="file" accept=".pdf,.docx,.txt" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleCourseMaterialUpload(f); }} className="hidden" />
 
-                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300 shadow-xs border border-purple-100 shrink-0">
-                  {uploadingCourseMaterials ? <span className="animate-spin text-[#9956DE] font-bold">...</span> : <FileText className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-[#9956DE]" />}
+                <div className="flex flex-col items-center justify-center my-auto py-2">
+                  <div className={`w-14 h-14 rounded-2xl bg-purple-100/80 flex items-center justify-center mb-3 text-purple-600 transition-all duration-200 border-2 border-purple-300 shadow-2xs ${dragOver2 ? 'scale-110 bg-purple-200' : 'group-hover:scale-105 group-hover:bg-purple-200/80'}`}>
+                    {uploadingCourseMaterials ? <span className="animate-spin font-bold">...</span> : <CloudUpload className="w-7 h-7" />}
+                  </div>
+
+                  <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-1 font-display">
+                    {uploadingCourseMaterials ? 'Processing Curriculum Materials...' : 'Upload Curriculum Documents'}
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+                    Select curriculum files or browse documents from your computer
+                  </p>
                 </div>
 
-                <h3 className="text-[16px] sm:text-[17px] md:text-[18px] font-bold text-[#1e293b] mb-1">
-                  {uploadingCourseMaterials ? 'Uploading Course Materials...' : 'Course Materials'}
-                </h3>
-                <p className="text-[11.5px] sm:text-[12.5px] md:text-[13px] text-[#64748b] max-w-xs sm:max-w-sm mb-3 sm:mb-4 line-clamp-2">
-                  Upload syllabus, lesson plans, and curriculum docs to ground AI lesson generation.
-                </p>
-
-                <div className="flex flex-col items-center gap-2">
-                  <div className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-[#9956DE] text-white text-xs font-semibold shadow-xs group-hover:bg-[#7c3aed] transition-colors">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Choose Document</span>
-                  </div>
-                  <div className="flex items-center justify-center gap-1">
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.pdf</span>
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.docx</span>
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] font-semibold rounded-md border border-slate-200">.txt</span>
+                {/* Footer Info & File Type Chips */}
+                <div className="w-full flex items-center justify-between pt-3 border-t border-purple-200/60 text-[11px] text-slate-400">
+                  <span className="font-semibold text-slate-600">Supported Formats</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 bg-white text-purple-700 font-bold text-[10px] rounded-md border border-purple-200 shadow-2xs">.PDF</span>
+                    <span className="px-2 py-0.5 bg-white text-purple-700 font-bold text-[10px] rounded-md border border-purple-200 shadow-2xs">.DOCX</span>
+                    <span className="px-2 py-0.5 bg-white text-purple-700 font-bold text-[10px] rounded-md border border-purple-200 shadow-2xs">.TXT</span>
                   </div>
                 </div>
               </div>
@@ -469,20 +524,20 @@ export default function DataImportView({
 
             {/* Quick Link to Module Availability Control in Topic Mastery */}
             {onNavigateToModuleAvailability && (
-              <div className="bg-white rounded-[18px] p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-white rounded-2xl p-4 sm:p-5 border border-purple-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 border border-purple-100">
+                  <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 border border-purple-100 shadow-2xs">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-[13px] font-bold text-[#1e293b]">Manage Curriculum Module Availability</h4>
-                    <p className="text-[11px] text-[#64748b]">Configure DepEd module states or attach custom teacher PDFs to curriculum topics.</p>
+                    <h4 className="text-[13px] font-bold text-slate-800 font-display">Manage Curriculum Module Availability</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Configure DepEd module states or attach custom teacher PDFs to curriculum topics.</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={onNavigateToModuleAvailability}
-                  className="self-start sm:self-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0"
+                  className="self-start sm:self-auto px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white text-[12px] font-bold rounded-xl transition-all shadow-2xs hover:shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95"
                 >
                   Manage Availability
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -490,79 +545,102 @@ export default function DataImportView({
               </div>
             )}
 
-            {/* How AI Uses Data Feature Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px]">
+            {/* How AI Uses Data Feature Cards (Aligned to Teacher Side Design System) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
               {/* Smart Parsing (Blue) */}
-              <div className="bg-white rounded-[16px] p-[20px] shadow-xs border border-slate-200 flex flex-col group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-200">
-                <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center shrink-0 mb-3 text-sky-600 transition-transform group-hover:scale-105">
-                  <ScanLine className="w-5 h-5" />
+              <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-2xs border border-slate-200/90 border-t-[3px] border-t-sky-500 flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-xs hover:border-slate-300">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center shrink-0 text-sky-600 transition-transform group-hover:scale-105 shadow-2xs">
+                    <ScanLine className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                    Auto-Parse
+                  </span>
                 </div>
-                <h4 className="font-bold text-[14px] text-slate-800 mb-1.5">Smart Parsing</h4>
-                <p className="text-[12px] text-slate-500 leading-relaxed">AI automatically understands varied spreadsheet formats and maps column names securely.</p>
+                <h4 className="font-bold text-sm text-slate-800 mb-1 font-display">Intelligent Parsing</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">AI automatically decodes varied DepEd grading sheets, ECR templates, and maps student columns securely.</p>
               </div>
               
               {/* Risk Prediction (Orange) */}
-              <div className="bg-white rounded-[16px] p-[20px] shadow-xs border border-slate-200 flex flex-col group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-200">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0 mb-3 text-amber-600 transition-transform group-hover:scale-105">
-                  <TrendingDown className="w-5 h-5" />
+              <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-2xs border border-slate-200/90 border-t-[3px] border-t-amber-500 flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-xs hover:border-slate-300">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 text-amber-600 transition-transform group-hover:scale-105 shadow-2xs">
+                    <TrendingDown className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    Early Alert
+                  </span>
                 </div>
-                <h4 className="font-bold text-[14px] text-slate-800 mb-1.5">Risk Prediction</h4>
-                <p className="text-[12px] text-slate-500 leading-relaxed">Analyzes historical performance patterns across your data to predict at-risk students.</p>
+                <h4 className="font-bold text-sm text-slate-800 mb-1 font-display">Risk Trajectory Analysis</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">Analyzes historical assessment patterns across student scores to predict at-risk students before exams.</p>
               </div>
               
               {/* Contextual AI (Purple) */}
-              <div className="bg-white rounded-[16px] p-[20px] shadow-xs border border-slate-200 flex flex-col group transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-purple-200">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 mb-3 text-purple-600 transition-transform group-hover:scale-105">
-                  <Sparkles className="w-5 h-5" />
+              <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-2xs border border-slate-200/90 border-t-[3px] border-t-purple-500 flex flex-col group transition-all duration-300 hover:-translate-y-1 hover:shadow-xs hover:border-slate-300">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center shrink-0 text-purple-600 transition-transform group-hover:scale-105 shadow-2xs">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                    Curriculum AI
+                  </span>
                 </div>
-                <h4 className="font-bold text-[14px] text-slate-800 mb-1.5">Contextual AI</h4>
-                <p className="text-[12px] text-slate-500 leading-relaxed">Maps curriculum topics to generate highly personalized remedial lesson paths.</p>
+                <h4 className="font-bold text-sm text-slate-800 mb-1 font-display">Contextual AI Grounding</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">Maps curriculum competencies to generate personalized remedial lesson paths and adaptive quiz battles.</p>
               </div>
             </div>
 
             {/* Bottom Section: Data Management */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white flex flex-col justify-between h-full">
-                <h2 className="text-[16px] font-semibold text-[#1e293b] mb-4">Data Health</h2>
-                <div className="flex-1 bg-emerald-50/50 border border-emerald-100 rounded-[16px] p-6 flex flex-col items-center justify-center text-center transition-all duration-300 hover:bg-emerald-50 hover:shadow-md hover:border-emerald-200">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-3 text-emerald-600 transition-transform duration-300 hover:scale-110 hover:-translate-y-1">
-                    <CheckCircle2 className="w-6 h-6" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xs border border-slate-200/90 flex flex-col justify-between h-full">
+                <div className="flex items-center justify-between mb-3.5">
+                  <h2 className="text-[15px] font-bold text-slate-800 font-display">Data Health</h2>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Live Status
+                  </span>
+                </div>
+                <div className="flex-1 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-5 flex flex-col items-center justify-center text-center transition-all duration-300 hover:bg-emerald-50 hover:shadow-xs">
+                  <div className="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center mb-2.5 text-emerald-600 shadow-2xs border border-emerald-200">
+                    <CheckCircle2 className="w-5 h-5" />
                   </div>
-                  <h3 className="text-emerald-700 font-bold text-[15px] mb-1">All Records Synced</h3>
-                  <p className="text-emerald-600/80 text-[12px] max-w-[200px]">AI parsing completed successfully with no anomalies detected.</p>
+                  <h3 className="text-emerald-800 font-bold text-sm mb-1">All Records Synced</h3>
+                  <p className="text-emerald-700/80 text-xs max-w-[220px] leading-relaxed">AI parsing completed successfully with no anomalies detected.</p>
                 </div>
                 <div className="flex flex-col gap-2 mt-4">
                   <button
+                    type="button"
                     onClick={() => setCurrentImportView('edit-records')}
-                    className="w-full flex items-center justify-center gap-2 bg-[#1e293b] hover:bg-black text-white text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform hover:scale-[1.02]"
+                    className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-[13px] font-semibold rounded-xl px-4 py-2.5 shadow-2xs hover:shadow-xs transition-all cursor-pointer active:scale-95"
                   >
                     <Edit3 className="w-4 h-4" /> Edit Class Records
                   </button>
                   <button
+                    type="button"
                     onClick={() => setCurrentImportView('mapping-logs')}
-                    className="w-full flex items-center justify-center gap-2 bg-white text-[#475569] border border-slate-300 hover:bg-slate-50 text-[13px] font-semibold rounded-full px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-colors"
+                    className="w-full flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-xs sm:text-[13px] font-semibold rounded-xl px-4 py-2.5 shadow-2xs transition-all cursor-pointer active:scale-95"
                   >
                     View Mapping Logs
                   </button>
                 </div>
               </div>
 
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[24px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white flex flex-col h-full">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-[16px] font-semibold text-[#1e293b]">Recent Uploads</h2>
+              <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xs border border-slate-200/90 flex flex-col justify-between h-full">
+                <div className="flex justify-between items-center mb-3.5">
+                  <h2 className="text-[15px] font-bold text-slate-800 font-display">Recent Uploads</h2>
                   <button 
+                    type="button"
                     onClick={() => setCurrentImportView('mapping-logs')}
-                    className="text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors"
+                    className="text-xs font-semibold text-violet-600 hover:text-violet-700 transition-colors cursor-pointer"
                   >
                     View All
                   </button>
                 </div>
                 
-                <div className="flex-1 space-y-[12px] overflow-y-auto no-scrollbar flex flex-col justify-center items-center h-[120px]">
-                  <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center mb-2 border border-slate-100">
-                    <FileSpreadsheet className="w-5 h-5 text-slate-300" />
+                <div className="flex-1 bg-slate-50/60 border border-slate-200/80 rounded-2xl p-5 flex flex-col justify-center items-center text-center min-h-[140px]">
+                  <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center mb-2.5 border border-slate-200 shadow-2xs text-slate-400">
+                    <FileSpreadsheet className="w-5 h-5" />
                   </div>
-                  <p className="text-[13px] font-medium text-slate-500">There are no recent uploads yet.</p>
+                  <p className="text-xs font-medium text-slate-500">There are no recent uploads yet.</p>
                 </div>
               </div>
             </div>
@@ -574,8 +652,9 @@ export default function DataImportView({
           <div className="space-y-[16px]">
             <div className="shrink-0 mb-2">
               <button
+                type="button"
                 onClick={() => setCurrentImportView('main')}
-                className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors w-max bg-white px-[18px] py-2 rounded-full shadow-sm border border-slate-200"
+                className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-all w-max bg-white px-[18px] py-2 rounded-full shadow-2xs hover:shadow-xs border border-slate-200 hover:border-indigo-200 cursor-pointer active:scale-95"
               >
                 <ArrowLeft className="w-4 h-4" /> Back to Uploads
               </button>
@@ -636,7 +715,9 @@ export default function DataImportView({
                 <span className="flex items-center gap-2 font-medium">
                   <Info className="w-4 h-4" /> Click on any field to edit
                 </span>
-                <span>Showing {filteredStudents.length} records</span>
+                <span>
+                  Showing {filteredStudents.length === 0 ? 0 : `${visibleRangeStart}–${visibleRangeEnd} of ${filteredStudents.length}`} records
+                </span>
               </div>
               
               <div className="overflow-auto flex-1 table-scrollbar bg-white relative">
@@ -652,8 +733,11 @@ export default function DataImportView({
                       <div className="w-[100px] shrink-0 px-4 h-full flex items-center justify-center">Avg Score</div>
                       <div className="w-[120px] shrink-0 px-4 h-full flex items-center justify-center">Risk Level</div>
                       <div className="flex-1 min-w-[180px] px-4 h-full flex items-center justify-center">Weakest Topic</div>
-                        <div className="w-[80px] shrink-0 px-4 h-full flex items-center justify-center border-r border-transparent">Action</div>
+                      {/* Sticky Right Action Column */}
+                      <div className="w-[90px] shrink-0 px-4 h-full flex items-center justify-center sticky right-0 z-30 bg-slate-100/95 backdrop-blur-sm border-l border-slate-200 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] font-bold text-slate-600">
+                        Action
                       </div>
+                    </div>
                   {/* Editable Rows */}
                   <div className="flex flex-col w-full pb-4">
                     {filteredStudents.length === 0 ? (
@@ -664,7 +748,7 @@ export default function DataImportView({
                         <h3 className="text-[16px] font-bold text-slate-700 mb-2">No managed classes found</h3>
                         <p className="text-[13px] text-slate-500 max-w-sm">You don't currently manage any classes. Ask your administrator to assign you as a section manager, or create a new class from the Dashboard.</p>
                       </div>
-                    ) : filteredStudents.map((student, i) => {
+                    ) : paginatedStudents.map((student, i) => {
                       const rowKey = buildStudentViewKey(student);
                       
                       // Derive Initials
@@ -688,57 +772,140 @@ export default function DataImportView({
                       return (
                           <div key={rowKey} className="flex items-center w-full border-b border-slate-100 hover:bg-slate-50 transition-colors group min-h-[64px]">
                             <div className="flex-[1.5] min-w-[240px] px-6 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-r border-slate-100 h-full flex items-center gap-4 shadow-[2px_0_4px_rgba(0,0,0,0.01)]">
-                            <div className={`w-8 h-8 rounded-full ${color} text-white flex items-center justify-center font-bold text-[12px] shrink-0`}>
-                              {initials}
+                              <div className={`w-8 h-8 rounded-full ${color} text-white flex items-center justify-center font-bold text-[12px] shrink-0`}>
+                                {initials}
+                              </div>
+                              <span className="font-semibold text-slate-800 text-[14px] truncate">{student.name}</span>
                             </div>
-                            <span className="font-semibold text-slate-800 text-[14px] truncate">{student.name}</span>
-                          </div>
-                          <div className="w-[100px] shrink-0 px-4 flex justify-center text-[13px] text-slate-500">
-                            {student.lrn || '—'}
-                          </div>
-                          <div className="w-[140px] shrink-0 px-4 flex justify-center">
-                            <input 
-                              type="text" 
-                              value={sectionDrafts[rowKey]?.grade || student.grade || ''} 
-                              onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], grade: e.target.value } }))}
-                              readOnly={editingRowKey !== rowKey}
-                              className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
-                            />
-                          </div>
-                          <div className="w-[140px] shrink-0 px-4 flex justify-center">
-                            <input 
-                              type="text" 
-                              value={sectionDrafts[rowKey]?.section || student.section || ''} 
-                              onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], section: e.target.value } }))}
-                              readOnly={editingRowKey !== rowKey}
-                              className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
-                            />
-                          </div>
-                          <div className="w-[100px] shrink-0 px-4 flex justify-center">
-                            <span className={`${scoreColor} font-bold text-[14px]`}>{student.avgScore}%</span>
-                          </div>
-                          <div className="w-[120px] shrink-0 px-4 flex justify-center">
-                            <span className={`px-3 py-1 text-[10px] font-bold rounded uppercase border ${riskStyles}`}>
-                              {student.riskLevel || 'Unknown'}
-                            </span>
-                          </div>
+                            <div className="w-[100px] shrink-0 px-4 flex justify-center text-[13px] text-slate-500">
+                              {student.lrn || '—'}
+                            </div>
+                            <div className="w-[140px] shrink-0 px-4 flex justify-center">
+                              <input 
+                                type="text" 
+                                value={sectionDrafts[rowKey]?.grade || student.grade || ''} 
+                                onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], grade: e.target.value } }))}
+                                readOnly={editingRowKey !== rowKey}
+                                className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
+                              />
+                            </div>
+                            <div className="w-[140px] shrink-0 px-4 flex justify-center">
+                              <input 
+                                type="text" 
+                                value={sectionDrafts[rowKey]?.section || student.section || ''} 
+                                onChange={(e) => setSectionDrafts(p => ({ ...p, [rowKey]: { ...p[rowKey], section: e.target.value } }))}
+                                readOnly={editingRowKey !== rowKey}
+                                className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
+                              />
+                            </div>
+                            <div className="w-[100px] shrink-0 px-4 flex justify-center">
+                              <span className={`${scoreColor} font-bold text-[14px]`}>{student.avgScore}%</span>
+                            </div>
+                            <div className="w-[120px] shrink-0 px-4 flex justify-center">
+                              <span className={`px-3 py-1 text-[10px] font-bold rounded uppercase border ${riskStyles}`}>
+                                {student.riskLevel || 'Unknown'}
+                              </span>
+                            </div>
                             <div className="flex-1 min-w-[180px] px-4 flex justify-center text-[13px] text-slate-600 truncate">
                               {student.weakestTopic || 'Foundational Skills'}
                             </div>
-                            <div className="w-[80px] shrink-0 px-4 flex justify-center border-r border-transparent">
-                            <button
-                              onClick={() => setEditingRowKey(editingRowKey === rowKey ? null : rowKey)}
-                              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${editingRowKey === rowKey ? 'bg-purple-100 text-purple-600' : 'hover:bg-slate-200 text-slate-400'}`}
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
+                            {/* Sticky Right Action Cell */}
+                            <div className="w-[90px] shrink-0 px-4 h-full min-h-[64px] flex items-center justify-center sticky right-0 z-10 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] transition-colors">
+                              <button
+                                type="button"
+                                onClick={() => setEditingRowKey(editingRowKey === rowKey ? null : rowKey)}
+                                title={editingRowKey === rowKey ? "Done editing" : "Edit student record"}
+                                aria-label={`Edit record for ${student.name}`}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                                  editingRowKey === rowKey
+                                    ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-400/40 shadow-xs'
+                                    : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'
+                                }`}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
                       );
                     })}
                   </div>
                 </div>
               </div>
+
+              {/* Pagination Controls */}
+              {filteredStudents.length > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-3 bg-white border-t border-slate-200 shadow-[0_-4px_16px_rgba(0,0,0,0.03)] shrink-0">
+                  <div className="flex items-center gap-2 text-[12px] font-semibold text-slate-500">
+                    <span className="w-2 h-2 rounded-full bg-violet-600 animate-pulse"></span>
+                    <span>
+                      Showing <strong className="text-slate-800">{visibleRangeStart}–{visibleRangeEnd}</strong> of <strong className="text-slate-800">{filteredStudents.length}</strong> records
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+                    {/* Rows per page selector */}
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <span className="hidden sm:inline">Rows:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2 py-1 outline-none focus:border-violet-500 cursor-pointer shadow-2xs"
+                      >
+                        {PAGE_SIZE_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>{opt} / page</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Page Navigation */}
+                    <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={validCurrentPage <= 1}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-violet-50 hover:text-violet-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                        aria-label="Previous Page"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+
+                      <div className="flex items-center gap-1 px-1">
+                        {createPaginationItems(totalPages, validCurrentPage).map((item) =>
+                          item.kind === 'ellipsis' ? (
+                            <span key={item.id} className="px-1 text-slate-400 text-xs">...</span>
+                          ) : (
+                            <button
+                              key={`page-${item.page}`}
+                              type="button"
+                              onClick={() => setCurrentPage(item.page)}
+                              className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                validCurrentPage === item.page
+                                  ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs'
+                                  : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+                              }`}
+                            >
+                              {item.page}
+                            </button>
+                          )
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={validCurrentPage >= totalPages}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-violet-50 hover:text-violet-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                        aria-label="Next Page"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

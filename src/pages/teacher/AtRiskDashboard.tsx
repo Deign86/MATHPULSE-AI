@@ -150,7 +150,7 @@ export const AtRiskDashboard: React.FC = () => {
 
       <div className="px-6 py-6 space-y-6">
         {/* Stats Row — Gradient Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
           <TeacherStatCard
             color="purple"
             title="Total Students"

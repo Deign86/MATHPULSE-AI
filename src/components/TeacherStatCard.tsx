@@ -140,14 +140,14 @@ export const TeacherStatCard: React.FC<TeacherStatCardProps> = ({
             <RadialScoreRing value={scorePercent} size={44} />
           </div>
           <div className="sm:hidden">
-            <RadialScoreRing value={scorePercent} size={36} strokeWidth={3.5} fontSizeClass="text-[9px]" />
+            <RadialScoreRing value={scorePercent} size={28} strokeWidth={2.75} fontSizeClass="text-[8px]" />
           </div>
         </div>
       );
     }
     if (icon) {
       return (
-        <div className="w-7 h-7 xs:w-8 xs:h-8 sm:w-11 sm:h-11 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+        <div className="w-6 h-6 xs:w-7 xs:h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-2xl bg-white/20 backdrop-blur-md border border-white/25 flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
           {React.isValidElement(icon) ? (
             icon
           ) : (
@@ -166,37 +166,37 @@ export const TeacherStatCard: React.FC<TeacherStatCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`relative rounded-2xl sm:rounded-3xl p-2.5 xs:p-3 sm:p-4.5 ${styles.gradient} ${styles.shadow} ${
+      className={`relative rounded-2xl sm:rounded-3xl p-2 xs:p-2.5 sm:p-4.5 ${styles.gradient} ${styles.shadow} ${
         isClickable ? 'hover:-translate-y-1 sm:hover:-translate-y-1.5 cursor-pointer' : 'cursor-default'
-      } border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[135px] xs:min-h-[145px] sm:min-h-[165px] group select-none ${className}`}
+      } border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between text-white min-h-[76px] xs:min-h-[80px] sm:min-h-[165px] group select-none ${className}`}
     >
       {/* Subtle Ambient Glow */}
       <div className="absolute -bottom-6 -right-6 w-24 sm:w-36 h-24 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 group-hover:bg-white/15 transition-all duration-500 ease-out" />
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
       {/* CARD HEADER */}
-      <div className="relative z-10 flex items-start justify-between gap-1 mb-1 sm:mb-2">
-        <div className="flex items-center gap-1.5 text-white/95 min-w-0 flex-1">
+      <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
+        <div className="flex items-center gap-1 sm:gap-1.5 text-white/95 min-w-0 flex-1">
           {renderIcon()}
-          <span className="text-[9px] xs:text-[10px] sm:text-xs font-black uppercase tracking-wider text-white leading-tight break-words line-clamp-2 sm:line-clamp-none">
+          <span className="text-[8px] xs:text-[9.5px] sm:text-xs font-black uppercase tracking-tight xs:tracking-wider text-white leading-tight truncate sm:whitespace-normal">
             {title}
           </span>
         </div>
         {badgeText && (
-          <span className="px-1.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[7.5px] xs:text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap shrink-0">
+          <span className="px-1 xs:px-1.5 py-0.2 xs:py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[7px] xs:text-[8px] sm:text-[10px] font-bold uppercase tracking-tight xs:tracking-wider border border-white/25 shadow-2xs whitespace-nowrap shrink-0">
             {badgeText}
           </span>
         )}
       </div>
 
       {/* CARD BODY */}
-      <div className="relative z-10 my-auto py-0.5 sm:py-1 flex items-center justify-between gap-1.5 sm:gap-2">
+      <div className="relative z-10 my-auto py-0 sm:py-1 flex items-center justify-between gap-1.5 sm:gap-2">
         <div className="min-w-0 flex-1">
-          <div className="text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-1 drop-shadow-xs">
+          <div className="text-lg xs:text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-0.5 sm:mb-1 drop-shadow-xs">
             {value}
           </div>
           {subtitle && (
-            <p className="text-white/90 text-[10px] xs:text-[11px] sm:text-xs font-medium leading-tight sm:leading-snug drop-shadow-xs break-words line-clamp-2 sm:line-clamp-none">
+            <p className="text-white/85 text-[8.5px] xs:text-[10px] sm:text-xs font-medium leading-tight sm:leading-snug drop-shadow-xs truncate sm:whitespace-normal">
               {subtitle}
             </p>
           )}
@@ -204,9 +204,9 @@ export const TeacherStatCard: React.FC<TeacherStatCardProps> = ({
         {renderRightContent()}
       </div>
 
-      {/* CARD FOOTER */}
+      {/* CARD FOOTER (Desktop only: hidden on mobile to prevent excessive vertical height) */}
       {(footerLabel || footerBadge) && (
-        <div className="relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 flex items-center justify-between text-[8.5px] xs:text-[9.5px] sm:text-[11px] gap-1">
+        <div className="hidden sm:flex relative z-10 pt-1.5 sm:pt-2 border-t border-white/20 items-center justify-between text-[8.5px] xs:text-[9.5px] sm:text-[11px] gap-1">
           <span className="text-white/85 font-medium leading-tight break-words line-clamp-1">{footerLabel}</span>
           {footerBadge && (
             <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-white/20 backdrop-blur-md text-white font-black border border-white/25 whitespace-nowrap text-[8px] xs:text-[8.5px] sm:text-[10px] shrink-0">
