@@ -373,10 +373,9 @@ service cloud.firestore {
 
     match /classSectionOwnership/{classSectionId} {
       allow read: if isTeacherOrAdmin();
-      // Ownership and roster membership are trusted authorization inputs. A
-      // teacher may maintain a section only after admin provisioning; teacher
-      // writes cannot claim or transfer ownership/manager fields.
-      allow create: if isAdmin();
+      // Teachers may self-provision a section they own; they still cannot
+      // claim or transfer ownership/manager fields on update.
+      allow create: if isAdmin() || (isTeacher() && isClaimingOwner('ownerTeacherId'));
       allow update: if isAdmin() || (isTeacher() &&
         resource.data.ownerTeacherId == request.auth.uid &&
         request.resource.data.ownerTeacherId == resource.data.ownerTeacherId &&

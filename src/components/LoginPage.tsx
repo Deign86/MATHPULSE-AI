@@ -557,7 +557,7 @@ export const LoginPage: React.FC = () => {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-7 sm:pl-9 pr-7 sm:pr-8 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-xs sm:text-sm font-body transition-all"
+                        className="password-input w-full pl-7 sm:pl-9 pr-7 sm:pr-8 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-xs sm:text-sm font-body transition-all"
                         required
                         minLength={8}
                         autoComplete="new-password"
@@ -585,7 +585,7 @@ export const LoginPage: React.FC = () => {
                         placeholder="••••••••"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full pl-7 sm:pl-9 pr-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-xs sm:text-sm font-body transition-all"
+                        className="password-input w-full pl-7 sm:pl-9 pr-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-xs sm:text-sm font-body transition-all"
                         required
                         minLength={8}
                         autoComplete="new-password"
@@ -701,7 +701,7 @@ export const LoginPage: React.FC = () => {
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-8 sm:pl-9 pr-8 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-xs sm:text-sm font-body transition-all"
+                      className="password-input w-full pl-8 sm:pl-9 pr-8 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20 focus:bg-white text-xs sm:text-sm font-body transition-all"
                       required
                     />
                     <button
