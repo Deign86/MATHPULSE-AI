@@ -1,7 +1,7 @@
 # MathPulse AI — Context Diagram (Gane & Sarson DFD Level 0)
 
 > **Methodology:** Gane & Sarson Data Flow Diagram (DFD) Notation  
-> **Target Standard:** Capstone Defense SAD & 1NF Database Architecture Alignment
+> **Target Standard:** Capstone Defense SAD & Active Codebase Alignment
 
 ---
 
@@ -9,9 +9,9 @@
 
 According to the **Gane & Sarson** DFD methodology:
 1. **External Entities (Sources / Sinks):** Represented as square/rectangular boxes with distinct boundary lines (`Student`, `Teacher`, `Administrator`).
-2. **Central System Process:** Represented as a rounded rectangle (`MathPulse AI System`). Per your professor's strict rule, the numeric identifier `"0"` is removed from the bubble header.
+2. **Central System Process:** Represented as a rounded rectangle (`MathPulse AI System`). Per the professor's rule, the numeric identifier `"0"` is removed from the bubble header.
 3. **Data Flows:** Directed arrows labeled with noun phrases representing data in motion.
-4. **Data Stores:** None at Level 0 (introduced at Level 1 as open-ended rectangles).
+4. **Data Stores:** Omitted at Level 0 (introduced at Level 1).
 
 ---
 
@@ -62,15 +62,15 @@ OUT (to Administrator): System Health & AI Usage Report
 
 ---
 
-## 3. Revisions Needed & Gane & Sarson Adjustments
+## 3. Revisions Needed & Professor Rule Compliance
 
 1. **Remove the "0" from Title and Central Process:**
    - *Professor's Rule:* *"Context Diagram (DFD 0): Remove the '0' from the diagram's name."*
-   - In Gane & Sarson, the top partition of the process box normally holds the process number; for the Context Diagram, this number is omitted, leaving the box labeled strictly **`MathPulse AI System`**.
+   - Box is labeled strictly **`MathPulse AI System`**, and the diagram is titled **`Context Diagram`**.
 2. **Add Missing Module 8 Remedial Intervention Flows (Teacher):**
-   - Added `Remedial Intervention Plan` (IN) and `Intervention Status Confirmation` (OUT) to reflect the `INTERVENTION_RECORD` table.
-3. **Add Missing Module 1 & 7 Peer Connections / Battle Invites (Student):**
-   - Added `Friend Request / Battle Invite` (IN) and `Peer Leaderboard & Friend Notifications` (OUT) to reflect `FRIENDSHIP` and `QUIZ_BATTLE_QUEUE`.
+   - Added `Remedial Intervention Plan` (IN) and `Intervention Status Confirmation` (OUT) to reflect teacher risk interventions.
+3. **Reflect 1v1 Random Online Battle (Student):**
+   - Labeled battle flows cleanly as `Quiz & 1v1 Battle Submissions` (IN) and `Quiz Evaluation & 1v1 Battle Results` (OUT).
 4. **Standardize Vague Data Flows to Tangible Reports:**
    - Changed *"Engagement, Progress & Data"* $\rightarrow$ **`Progress, XP & Milestone Achievements`**.
    - Changed *"CSV/Excel Class Records File"* $\rightarrow$ **`Class Roster & Grade Records File`**.
@@ -83,19 +83,19 @@ OUT (to Administrator): System Health & AI Usage Report
 * **IN (to System):**
   1. `Login Credentials` *(Module 1)*
   2. `Profile & Settings Updates` *(Module 1)*
-  3. `Friend Request / Battle Invite` *(Module 1 & 7)*
-  4. `Diagnostic Assessment Answers` *(Module 4)*
-  5. `Module / Lesson Selection` *(Module 3 & 6)*
-  6. `Quiz & Live Battle Submissions` *(Module 5 & 7)*
-  7. `Daily Check-In & Reward Claims` *(Module 6)*
+  3. `Diagnostic Assessment Answers` *(Module 4)*
+  4. `Module / Lesson Selection` *(Module 3 & 6)*
+  5. `Quiz & 1v1 Battle Submissions` *(Module 5 & 7)*
+  6. `Daily Check-In & Reward Claims` *(Module 6)*
+  7. `Avatar Customization & XP Purchases` *(Module 6)*
   8. `AI Tutor Query / Chat Prompt` *(Module 9)*
 * **OUT (to Student):**
   1. `Auth Token / Session State`
   2. `Diagnostic Questions & Placement`
   3. `Personalized Learning Path & Lessons`
-  4. `Quiz Evaluation & Battle Results`
+  4. `Quiz Evaluation & 1v1 Battle Results`
   5. `Progress, XP & Milestone Achievements`
-  6. `Peer Leaderboard & Friend Notifications`
+  6. `Leaderboard Rankings`
   7. `AI Tutor Explanation / Response`
 
 ---
@@ -143,23 +143,25 @@ graph LR
 
     System("MathPulse AI System")
 
+    %% Student Flows
     Student -->|Login Credentials| System
     Student -->|Profile & Settings Updates| System
-    Student -->|Friend Request / Battle Invite| System
     Student -->|Diagnostic Assessment Answers| System
     Student -->|Module / Lesson Selection| System
-    Student -->|Quiz & Live Battle Submissions| System
+    Student -->|Quiz & 1v1 Battle Submissions| System
     Student -->|Daily Check-In & Reward Claims| System
+    Student -->|Avatar Customization & XP Purchases| System
     Student -->|AI Tutor Query / Chat Prompt| System
 
     System -->|Auth Token / Session State| Student
     System -->|Diagnostic Questions & Placement| Student
     System -->|Personalized Learning Path & Lessons| Student
-    System -->|Quiz Evaluation & Battle Results| Student
+    System -->|Quiz Evaluation & 1v1 Battle Results| Student
     System -->|Progress, XP & Milestone Achievements| Student
-    System -->|Peer Leaderboard & Friend Notifications| Student
+    System -->|Leaderboard Rankings| Student
     System -->|AI Tutor Explanation / Response| Student
 
+    %% Teacher Flows
     Teacher -->|Login Credentials| System
     Teacher -->|Class Roster & Grade Records File| System
     Teacher -->|Curriculum Source Materials| System
@@ -173,6 +175,7 @@ graph LR
     System -->|Student Risk & Analytics Report| Teacher
     System -->|Intervention Status Confirmation| Teacher
 
+    %% Admin Flows
     Admin -->|Login Credentials| System
     Admin -->|User Account Modifications| System
     Admin -->|Curriculum Standards & Diagnostic Policies| System
