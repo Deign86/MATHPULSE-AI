@@ -1,11 +1,21 @@
-# MathPulse AI — DFD Level 1 (Teacher View)
+# MathPulse AI — DFD Level 1: Teacher View (Gane & Sarson)
 
-> **Document Type:** Data Flow Diagram Level 1 — Teacher Interactions Specification  
+> **Methodology:** Gane & Sarson Data Flow Diagram (DFD) Notation  
 > **Target Standard:** 1NF Relational Database & DFD Alignment for Capstone Defense
 
 ---
 
-## 1. Previous Version (Original Draft)
+## 1. Gane & Sarson Notation Standards Used
+
+In the **Gane & Sarson** DFD convention:
+1. **External Entities (Left):** Solid square/rectangular boxes representing the actor (`Teacher`).
+2. **Processes (Center):** Rounded rectangles partitioned with a whole number (`1, 2, 3, 5, 8`) in the top section and the process name below.
+3. **Data Stores (Right):** Open-ended rectangles (open on the right) with the store identifier on the left.
+4. **Data Flows:** Directed arrows carrying labeled data packets without clutter.
+
+---
+
+## 2. Previous Version (Original Draft)
 
 ```text
 MATHPULSE AI - DFD LEVEL 1 (TEACHER SIDE) ORIGINAL DRAFT
@@ -40,30 +50,25 @@ OUT: Teacher Intervention Note (to D6 Interventions)
 
 ---
 
-## 2. Revisions Needed & Professor Rule Compliance
+## 3. Revisions Needed & Gane & Sarson Adjustments
 
-1. **Whole Number Process Numbering:**
+1. **Whole-Number Process Numbering (Gane & Sarson Rule):**
    - *Professor's Rule:* *"Use whole numbers (1, 2, 3, 4, 5) instead of decimals (1.0, 2.0)."*
-   - Change `1.0, 2.0...` to the standardized global module process numbers: `1`, `2`, `3`, `5`, `8`.
-2. **Connect to Normalized 1NF Data Stores:**
-   - Replaced generic data store names with the exact ERD stores:
-     - `D3 TEACHER_PROFILE`
-     - `D7 CLASSROOM` & `D8 CLASSROOM_STUDENT`
-     - `D9 CURRICULUM_VERSION_SET`, `D11 SUBJECT`, `D12 MODULE`, `D13 LESSON_CONTENT`
-     - `D16 GENERATED_QUIZ`, `D17 AI_QUIZ_QUESTION`, `D18 QUESTION_OPTION`, `D19 ASSIGNED_QUIZ`
-     - `D32 INTERVENTION_RECORD`
-3. **Clarify Tangible Report Outputs:**
-   - Standardized output data flows to represent formal tangible reports (*"Student Risk & Analytics Report"*, *"Generated Quiz Preview"*).
+   - Standardized to the global module process IDs: `1, 2, 3, 5, 8`.
+2. **Connected to 1NF Open-Ended Data Stores:**
+   - Mapped directly to `D3 TEACHER_PROFILE`, `D7 CLASSROOM`, `D8 CLASSROOM_STUDENT`, `D9 CURRICULUM_VERSION_SET`, `D11-D13 LESSON_CONTENT`, `D16-D19 QUIZZES`, and `D32 INTERVENTION_RECORD`.
+3. **Standardized Tangible Outputs:**
+   - Outputs are named formal tangible reports (`Student Risk & Analytics Report`, `Generated Quiz & Preview`).
 
 ---
 
-## 3. New Master List (Teacher Perspective)
+## 4. Gane & Sarson Master Input/Output List (Teacher)
 
 ### **Process 1: User Authentication & Account Management**
 * **IN (from Teacher):** `Login Credentials`, `Profile Updates`
 * **IN (from Data Stores):** `D1 USER`, `D3 TEACHER_PROFILE`
 * **OUT (to Teacher):** `Auth Session & Profile State`
-* **OUT (to Data Stores):** Updates `D1 USER`, `D3 TEACHER_PROFILE`
+* **OUT (to Data Stores):** `D1 USER`, `D3 TEACHER_PROFILE`
 
 ---
 
@@ -85,7 +90,7 @@ OUT: Teacher Intervention Note (to D6 Interventions)
 
 ### **Process 5: Quiz Creation & Examination**
 * **IN (from Teacher):** `Quiz Generation Configuration & Rubrics`
-* **IN (from Data Stores):** `D13 LESSON_CONTENT` *(Curriculum items)*, `D16 GENERATED_QUIZ`
+* **IN (from Data Stores):** `D13 LESSON_CONTENT`, `D16 GENERATED_QUIZ`
 * **OUT (to Teacher):** `Generated Quiz & Question Preview`
 * **OUT (to Data Stores):** `D16 GENERATED_QUIZ`, `D17 AI_QUIZ_QUESTION`, `D18 QUESTION_OPTION`, `D19 ASSIGNED_QUIZ`
 
@@ -93,23 +98,23 @@ OUT: Teacher Intervention Note (to D6 Interventions)
 
 ### **Process 8: Remedial Intervention & Risk Monitoring**
 * **IN (from Teacher):** `Analytics & Risk Query Request`, `Remedial Intervention Plan`
-* **IN (from Data Stores):** `D2 STUDENT_PROFILE` *(WRI risk status)*, `D22 USER_PROGRESS`
+* **IN (from Data Stores):** `D2 STUDENT_PROFILE`, `D22 USER_PROGRESS`
 * **OUT (to Teacher):** `Student Risk & Analytics Report`, `Intervention Status Confirmation`
 * **OUT (to Data Stores):** `D32 INTERVENTION_RECORD`
 
 ---
 
-## 4. Mermaid Code (Draw.io Compatible)
+## 5. Mermaid Code (Gane & Sarson Format / Draw.io Safe)
 
 ```mermaid
 graph LR
     Teacher["Teacher"]
 
-    P1["1. User Authentication & Accounts"]
-    P2["2. Academic Classroom Management"]
-    P3["3. Curriculum & Content Management"]
-    P5["5. Quiz Creation & Examination"]
-    P8["8. Remedial Intervention & Risk"]
+    P1("1: User Authentication & Accounts")
+    P2("2: Academic Classroom Management")
+    P3("3: Curriculum & Content Management")
+    P5("5: Quiz Creation & Examination")
+    P8("8: Remedial Intervention & Risk")
 
     D_Auth[("D1, D3: User & Teacher Profile")]
     D_Class[("D7, D8: Classroom & Enrollment")]
