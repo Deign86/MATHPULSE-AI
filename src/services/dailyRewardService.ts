@@ -27,6 +27,7 @@ import {
   getThisWeeksRewards,
   getTodaysReward,
   getDayOfWeek,
+  getNextDailyResetTime,
   getNextResetTime,
 } from '../data/rewardCatalog';
 import { awardXP, unlockAvatarItem } from './gamificationService';
@@ -328,4 +329,4 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
 
 // ── Re-exports for convenience ──────────────────────────────────────────────
 
-export { getThisWeeksRewards, getTodaysReward, getNextResetTime };
+export { getThisWeeksRewards, getTodaysReward, getNextDailyResetTime, getNextResetTime };
