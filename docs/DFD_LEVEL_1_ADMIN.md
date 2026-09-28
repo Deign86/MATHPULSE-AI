@@ -1,11 +1,21 @@
-# MathPulse AI — DFD Level 1 (Administrator View)
+# MathPulse AI — DFD Level 1: Administrator View (Gane & Sarson)
 
-> **Document Type:** Data Flow Diagram Level 1 — Administrator Interactions Specification  
+> **Methodology:** Gane & Sarson Data Flow Diagram (DFD) Notation  
 > **Target Standard:** 1NF Relational Database & DFD Alignment for Capstone Defense
 
 ---
 
-## 1. Previous Version (Original Draft)
+## 1. Gane & Sarson Notation Standards Used
+
+In the **Gane & Sarson** DFD convention:
+1. **External Entities (Left):** Solid square/rectangular boxes representing the governance actor (`Administrator`).
+2. **Processes (Center):** Rounded rectangles partitioned with a whole number (`1, 3, 9`) in the top section and the process name below.
+3. **Data Stores (Right):** Open-ended rectangles (open on the right) with the store identifier on the left.
+4. **Data Flows:** Directed arrows carrying labeled data packets without clutter.
+
+---
+
+## 2. Previous Version (Original Draft)
 
 ```text
 MATHPULSE AI - DFD LEVEL 1 (ADMIN SIDE) ORIGINAL DRAFT
@@ -33,22 +43,19 @@ OUT: System Health & AI Usage Report (to Admin)
 
 ---
 
-## 2. Revisions Needed & Professor Rule Compliance
+## 3. Revisions Needed & Gane & Sarson Adjustments
 
-1. **Whole Number Process Numbering:**
+1. **Whole-Number Process Numbering (Gane & Sarson Rule):**
    - *Professor's Rule:* *"Use whole numbers (1, 2, 3, 4, 5) instead of decimals (1.0, 2.0)."*
-   - Change `1.0, 2.0...` to the standardized global module process numbers: `1`, `3`, `9`.
-2. **Connect to Normalized 1NF Data Stores:**
-   - Replaced generic data store names with the exact ERD stores:
-     - `D1 USER`, `D4 ADMIN_PROFILE`, `D5 USER_SETTINGS`
-     - `D9 CURRICULUM_VERSION_SET`, `D10 DIAGNOSTIC_POLICY`
-     - `D33 CHAT_SESSION`, `D34 CHAT_MESSAGE`, `D35 AUDIT_LOG`
-3. **Clarify Tangible Report Outputs:**
-   - Standardized output data flows to represent formal tangible reports (*"Security Audit Log Report"*, *"System Health & AI Usage Report"*).
+   - Standardized to global whole-number process IDs: `1`, `3`, `9`.
+2. **Connected to 1NF Open-Ended Data Stores:**
+   - Mapped directly to `D1 USER`, `D4 ADMIN_PROFILE`, `D5 USER_SETTINGS`, `D9 CURRICULUM_VERSION_SET`, `D10 DIAGNOSTIC_POLICY`, `D33 CHAT_SESSION`, `D34 CHAT_MESSAGE`, and `D35 AUDIT_LOG`.
+3. **Standardized Tangible Outputs:**
+   - Outputs are named formal tangible reports (`Security Audit Log Report`, `System Health & AI Usage Report`).
 
 ---
 
-## 3. New Master List (Administrator Perspective)
+## 4. Gane & Sarson Master Input/Output List (Administrator)
 
 ### **Process 1: User Authentication & Account Management**
 * **IN (from Admin):** `Login Credentials`, `User Account Modifications & Role Assignments`
@@ -74,15 +81,15 @@ OUT: System Health & AI Usage Report (to Admin)
 
 ---
 
-## 4. Mermaid Code (Draw.io Compatible)
+## 5. Mermaid Code (Gane & Sarson Format / Draw.io Safe)
 
 ```mermaid
 graph LR
     Admin["Administrator"]
 
-    P1["1. User Authentication & Accounts"]
-    P3["3. Curriculum & Content Management"]
-    P9["9. System Audit & AI Tutoring"]
+    P1("1: User Authentication & Accounts")
+    P3("3: Curriculum & Content Management")
+    P9("9: System Audit & AI Tutoring")
 
     D_Auth[("D1-D5: User & Role Profiles")]
     D_Curr[("D9, D10: Curriculum Standards & Policy")]

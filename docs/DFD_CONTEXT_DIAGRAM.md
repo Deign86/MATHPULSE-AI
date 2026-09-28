@@ -1,11 +1,21 @@
-# MathPulse AI — Context Diagram (DFD Level 0)
+# MathPulse AI — Context Diagram (Gane & Sarson DFD Level 0)
 
-> **Document Type:** Context Diagram Specification  
+> **Methodology:** Gane & Sarson Data Flow Diagram (DFD) Notation  
 > **Target Standard:** Capstone Defense SAD & 1NF Database Architecture Alignment
 
 ---
 
-## 1. Previous Version (Original Draft)
+## 1. Gane & Sarson Notation Standards Used
+
+According to the **Gane & Sarson** DFD methodology:
+1. **External Entities (Sources / Sinks):** Represented as square/rectangular boxes with distinct boundary lines (`Student`, `Teacher`, `Administrator`).
+2. **Central System Process:** Represented as a rounded rectangle (`MathPulse AI System`). Per your professor's strict rule, the numeric identifier `"0"` is removed from the bubble header.
+3. **Data Flows:** Directed arrows labeled with noun phrases representing data in motion.
+4. **Data Stores:** None at Level 0 (introduced at Level 1 as open-ended rectangles).
+
+---
+
+## 2. Previous Version (Original Draft)
 
 ```text
 0 MathPulse AI System
@@ -52,24 +62,24 @@ OUT (to Administrator): System Health & AI Usage Report
 
 ---
 
-## 2. Revisions Needed & Professor Rule Compliance
+## 3. Revisions Needed & Gane & Sarson Adjustments
 
-1. **Remove the "0" from Title and Bubble:**
+1. **Remove the "0" from Title and Central Process:**
    - *Professor's Rule:* *"Context Diagram (DFD 0): Remove the '0' from the diagram's name."*
-   - The number `0` was removed from the top header of the central system process bubble and from the document title. The central box is named **`MathPulse AI System`**, and the diagram is titled **`Context Diagram`**.
-2. **Add Missing Module 8 Remedial Intervention Flows for Teacher:**
-   - The previous diagram had no flow for submitting remedial interventions, leaving table `INTERVENTION_RECORD` disconnected. Added `Remedial Intervention Plan` (IN) and `Intervention Status Confirmation` (OUT).
-3. **Add Missing Module 1 & 7 Peer Social & Battle Invites for Student:**
-   - Added `Friend Request / Battle Invite` (IN) and `Peer Leaderboard & Friend Notifications` (OUT) to align with normalized tables `FRIENDSHIP` and `QUIZ_BATTLE_QUEUE`.
-4. **Standardize Vague Labels into Tangible Reports:**
-   - Changed *"Engagement, Progress & Data"* $\rightarrow$ `Progress, XP & Milestone Achievements`.
-   - Changed *"CSV/Excel Class Records File"* $\rightarrow$ `Class Roster & Grade Records File`.
+   - In Gane & Sarson, the top partition of the process box normally holds the process number; for the Context Diagram, this number is omitted, leaving the box labeled strictly **`MathPulse AI System`**.
+2. **Add Missing Module 8 Remedial Intervention Flows (Teacher):**
+   - Added `Remedial Intervention Plan` (IN) and `Intervention Status Confirmation` (OUT) to reflect the `INTERVENTION_RECORD` table.
+3. **Add Missing Module 1 & 7 Peer Connections / Battle Invites (Student):**
+   - Added `Friend Request / Battle Invite` (IN) and `Peer Leaderboard & Friend Notifications` (OUT) to reflect `FRIENDSHIP` and `QUIZ_BATTLE_QUEUE`.
+4. **Standardize Vague Data Flows to Tangible Reports:**
+   - Changed *"Engagement, Progress & Data"* $\rightarrow$ **`Progress, XP & Milestone Achievements`**.
+   - Changed *"CSV/Excel Class Records File"* $\rightarrow$ **`Class Roster & Grade Records File`**.
 
 ---
 
-## 3. New Master List (Context Diagram)
+## 4. Gane & Sarson Master Input/Output List
 
-### Interactions with STUDENT (Dominant User)
+### A. Interactions with STUDENT (Dominant User)
 * **IN (to System):**
   1. `Login Credentials` *(Module 1)*
   2. `Profile & Settings Updates` *(Module 1)*
@@ -90,7 +100,7 @@ OUT (to Administrator): System Health & AI Usage Report
 
 ---
 
-### Interactions with TEACHER
+### B. Interactions with TEACHER
 * **IN (to System):**
   1. `Login Credentials` *(Module 1)*
   2. `Profile Updates` *(Module 1)*
@@ -108,7 +118,7 @@ OUT (to Administrator): System Health & AI Usage Report
 
 ---
 
-### Interactions with ADMINISTRATOR
+### C. Interactions with ADMINISTRATOR
 * **IN (to System):**
   1. `Login Credentials` *(Module 1)*
   2. `User Account Modifications` *(Module 1)*
@@ -123,7 +133,7 @@ OUT (to Administrator): System Health & AI Usage Report
 
 ---
 
-## 4. Mermaid Code (Draw.io Compatible)
+## 5. Mermaid Code (Gane & Sarson Format / Draw.io Safe)
 
 ```mermaid
 graph LR
@@ -131,7 +141,7 @@ graph LR
     Teacher["Teacher"]
     Admin["Administrator"]
 
-    System["MathPulse AI System"]
+    System("MathPulse AI System")
 
     Student -->|Login Credentials| System
     Student -->|Profile & Settings Updates| System

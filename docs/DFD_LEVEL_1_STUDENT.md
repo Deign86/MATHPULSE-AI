@@ -1,11 +1,21 @@
-# MathPulse AI — DFD Level 1 (Student View)
+# MathPulse AI — DFD Level 1: Student View (Gane & Sarson)
 
-> **Document Type:** Data Flow Diagram Level 1 — Student Interactions Specification  
+> **Methodology:** Gane & Sarson Data Flow Diagram (DFD) Notation  
 > **Target Standard:** 1NF Relational Database & DFD Alignment for Capstone Defense
 
 ---
 
-## 1. Previous Version (Original Draft)
+## 1. Gane & Sarson Notation Standards Used
+
+In the **Gane & Sarson** DFD convention:
+1. **External Entities (Left):** Solid square/rectangular boxes representing outside user actors (`Student`).
+2. **Processes (Center):** Rounded rectangles partitioned with a whole number (`1, 2, 3...`) in the top section and the process name below.
+3. **Data Stores (Right):** Open-ended rectangles (open on the right) with the store identifier ($D1 \dots D35$) on the left.
+4. **Data Flows:** Directed arrows carrying labeled data packets without clutter.
+
+---
+
+## 2. Previous Version (Original Draft)
 
 ```text
 MATHPULSE AI - DFD LEVEL 1 (STUDENT SIDE) FINAL MASTER LIST
@@ -86,30 +96,29 @@ OUT: Avatar Layers + Deducted XP (to D1 Users)
 
 ---
 
-## 2. Revisions Needed & Professor Rule Compliance
+## 3. Revisions Needed & Gane & Sarson Adjustments
 
-1. **Eliminate Decimal Process Numbers:**
+1. **Whole-Number Process Numbering (Gane & Sarson Rule):**
    - *Professor's Rule:* *"Use whole numbers (1, 2, 3, 4, 5) instead of decimals (1.0, 2.0)."*
-   - Change `1.0, 2.0... 9.0` into whole numbers `1, 2... 9`.
-2. **Consolidate Fragmented Sub-Processes:**
-   - `User Login` (1.0) and `Manage Profile` (2.0) were merged into **`Process 1: User Authentication & Account Management`**.
-   - `Manage Avatar & Shop` (9.0) was merged into **`Process 6: Learning Progress & Gamification`**.
-   - `Take Quiz` (6.0) was unified into **`Process 5: Quiz Creation & Examination`**.
-3. **Align Data Stores with 1NF Database ($D1 \dots D35$):**
-   - The previous draft used non-normalized generic store names (`D1 Users`, `D2 Modules`, `D3 Quizzes`). These are now replaced with the exact normalized data stores from the ERD ($D1 \dots D35$).
-4. **Reduce Arrow Clutter & Deliver Tangible Reports:**
-   - *Professor's Rule:* *"Only connect a user to a process if they are receiving an actual, tangible report from it."*
-   - Consolidated multiple individual alerts from Process 7 into a single tangible flow: `Progress, XP & Milestone Analytics`.
+   - Changed all process IDs from decimal format (`1.0, 2.0...`) to single whole numbers (`1, 4, 5, 6, 7, 8, 9`).
+2. **Consolidated Fragmented Sub-Processes:**
+   - Merged `User Login` (1.0) and `Manage Profile` (2.0) into **`Process 1: User Authentication & Account Management`**.
+   - Merged `Take Quiz` (6.0) into **`Process 5: Quiz Creation & Examination`**.
+   - Merged `Manage Avatar & Shop` (9.0) into **`Process 6: Learning Progress & Gamification`**.
+3. **Aligned Open-Ended Data Stores ($D1 \dots D35$):**
+   - Connected directly to the 1NF database tables defined in the ERD.
+4. **Consolidated Output Arrows into Tangible Reports:**
+   - Unified multiple status notifications into a clean, tangible output: **`Progress, XP & Milestone Analytics`**.
 
 ---
 
-## 3. New Master List (Student Perspective)
+## 4. Gane & Sarson Master Input/Output List (Student)
 
 ### **Process 1: User Authentication & Account Management**
 * **IN (from Student):** `Login Credentials`, `Profile & Preference Updates`, `Friend Request / Peer Invite`
 * **IN (from Data Stores):** `D1 USER`, `D2 STUDENT_PROFILE`, `D5 USER_SETTINGS`, `D6 FRIENDSHIP`
 * **OUT (to Student):** `Auth Session & Profile State`, `Friend Notification & Status`
-* **OUT (to Data Stores):** Writes to `D1`, `D2`, `D5`, `D6`
+* **OUT (to Data Stores):** `D1 USER`, `D2 STUDENT_PROFILE`, `D5 USER_SETTINGS`, `D6 FRIENDSHIP`
 
 ---
 
@@ -139,7 +148,7 @@ OUT: Avatar Layers + Deducted XP (to D1 Users)
 
 ### **Process 7: Real-Time Quiz Battle**
 * **IN (from Student):** `Matchmaking Request / Room Invite`, `Live Battle Answers & Submissions`
-* **IN (from Data Stores):** `D17 AI_QUIZ_QUESTION` *(Question Pool)*
+* **IN (from Data Stores):** `D17 AI_QUIZ_QUESTION`
 * **OUT (to Student):** `Live Battle Questions & Match Results`, `Leaderboard Standings`
 * **OUT (to Data Stores):** `D29 QUIZ_BATTLE_QUEUE`, `D30 QUIZ_BATTLE_MATCH`, `D31 QUIZ_BATTLE_PARTICIPANT`
 
@@ -153,25 +162,25 @@ OUT: Avatar Layers + Deducted XP (to D1 Users)
 
 ### **Process 9: System Audit & AI Tutoring**
 * **IN (from Student):** `AI Tutor Query / Chat Prompt`
-* **IN (from Data Stores):** `D13 LESSON_CONTENT` *(Curriculum RAG Context)*, `D33 CHAT_SESSION`, `D34 CHAT_MESSAGE`
+* **IN (from Data Stores):** `D13 LESSON_CONTENT`, `D33 CHAT_SESSION`, `D34 CHAT_MESSAGE`
 * **OUT (to Student):** `AI Tutor Explanation & Hint Response`
 * **OUT (to Data Stores):** `D33 CHAT_SESSION`, `D34 CHAT_MESSAGE`, `D35 AUDIT_LOG`
 
 ---
 
-## 4. Mermaid Code (Draw.io Compatible)
+## 5. Mermaid Code (Gane & Sarson Format / Draw.io Safe)
 
 ```mermaid
 graph LR
     Student["Student (Dominant User)"]
 
-    P1["1. User Authentication & Accounts"]
-    P4["4. Diagnostic Assessment & Path"]
-    P5["5. Quiz Creation & Examination"]
-    P6["6. Learning Progress & Gamification"]
-    P7["7. Real-Time Quiz Battle"]
-    P8["8. Remedial Intervention & Risk"]
-    P9["9. AI Tutoring & System Audit"]
+    P1("1: User Authentication & Accounts")
+    P4("4: Diagnostic Assessment & Path")
+    P5("5: Quiz Creation & Examination")
+    P6("6: Learning Progress & Gamification")
+    P7("7: Real-Time Quiz Battle")
+    P8("8: Remedial Intervention & Risk")
+    P9("9: AI Tutoring & System Audit")
 
     D_Auth[("D1-D6: User & Friendship Stores")]
     D_Curr[("D10, D13: Policy & Lesson Content")]
