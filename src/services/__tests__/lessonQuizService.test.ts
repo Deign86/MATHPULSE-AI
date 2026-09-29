@@ -106,6 +106,27 @@ describe('lessonQuizService', () => {
         expect(q.correctAnswer).toBeTruthy();
       });
     });
+
+    it('uses a stable but lesson-specific fallback question selection', async () => {
+      const firstLesson = { lessonId: 'fallback-lesson-a', lessonTitle: 'Lesson A', questionCount: 6 };
+      const firstAttempt = await generateLessonQuiz(firstLesson);
+      const retry = await generateLessonQuiz(firstLesson);
+      const anotherLesson = await generateLessonQuiz({ ...firstLesson, lessonId: 'fallback-lesson-b' });
+
+      expect(retry.map((question) => question.question)).toEqual(firstAttempt.map((question) => question.question));
+      expect(anotherLesson.map((question) => question.question)).not.toEqual(firstAttempt.map((question) => question.question));
+    });
+
+    it('includes questions from the selected subject fallback bank', async () => {
+      const quiz = await generateLessonQuiz({
+        lessonId: 'business-fallback',
+        lessonTitle: 'Business lesson',
+        subjectId: 'business-math',
+        questionCount: 6,
+      });
+
+      expect(quiz.some((question) => question.question.includes('sale') || question.question.includes('discount'))).toBe(true);
+    });
   });
 
   describe('getQuestionCountForQuiz', () => {

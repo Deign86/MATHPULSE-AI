@@ -59,7 +59,7 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
     try {
       const schoolYear = String(new Date().getFullYear());
       const promises = Array.from(selected).map((uid) =>
-        assignStudentToClassSection(uid, grade, section, currentUser.uid, schoolYear, teacherName || currentUser.displayName || '')
+        assignStudentToClassSection(uid, grade, section, currentUser.uid, schoolYear, teacherName || currentUser.displayName || '', { notifyStudent: true })
       );
       await Promise.allSettled(promises);
       toast.success(`Added ${selected.size} student(s) to class`);

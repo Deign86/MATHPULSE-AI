@@ -84,6 +84,22 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
       window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
       return;
     }
+    if (notification.type === 'class_assigned') {
+      window.dispatchEvent(new CustomEvent('mathpulse:navigate', {
+        detail: { tab: 'Modules' },
+      }));
+      return;
+    }
+    if (notification.type === 'quiz_assigned') {
+      window.dispatchEvent(new CustomEvent('mathpulse:navigate', {
+        detail: {
+          tab: 'Modules',
+          section: 'assigned-quizzes',
+          quizId: notification.metadata?.quizId,
+        },
+      }));
+      return;
+    }
     if (notification.actionUrl) {
       window.location.href = notification.actionUrl;
     }

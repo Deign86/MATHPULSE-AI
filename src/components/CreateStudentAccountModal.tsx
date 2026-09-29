@@ -238,7 +238,7 @@ export const CreateStudentAccountModal: React.FC<CreateStudentAccountModalProps>
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
             onClick={(event) => event.stopPropagation()}
-            className="bg-[#f7f9fc] rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#dde3eb]"
+            className="relative z-10 bg-[#f7f9fc] rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#dde3eb]"
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-student-account-modal-title"

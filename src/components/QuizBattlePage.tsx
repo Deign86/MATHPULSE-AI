@@ -62,6 +62,7 @@ import {
   createDefaultQuizBattleSetup,
   disconnectQuizBattlePresence,
   getQuizBattleMatchState,
+  forfeitQuizBattleMatch,
   getQuizBattlePrivateRoomState,
   isStaleRoundError,
   getStudentBattleLeaderboard,
@@ -88,6 +89,16 @@ import {
   validateQuizBattleSetup,
 } from '../services/quizBattleService';
 import { Button } from './ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import {
@@ -493,6 +504,9 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
   const hallOfFamePodiumRef = useRef<HTMLDivElement>(null);
 
   const [activeMatch, setActiveMatch] = useState<QuizBattleLiveMatchState | null>(null);
+  const [leaveBattleOpen, setLeaveBattleOpen] = useState(false);
+  const [leavingBattle, setLeavingBattle] = useState(false);
+  const [leaveBattleError, setLeaveBattleError] = useState<string | null>(null);
 
   useEffect(() => {
     const isLiveMatch = Boolean(
@@ -1949,6 +1963,45 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
     }
   };
 
+  const handleLeaveBattle = async () => {
+    if (!activeMatch || leavingBattle) return;
+
+    setLeavingBattle(true);
+    setLeaveBattleError(null);
+    setLaunchState({ status: 'validating' });
+    try {
+      await forfeitQuizBattleMatch(activeMatch.matchId);
+      if (activeRoom?.roomId) {
+        await leaveQuizBattlePrivateRoom({ roomId: activeRoom.roomId });
+      }
+      await leaveQuizBattleQueue();
+      if (activeMatch.mode === 'online') {
+        await disconnectQuizBattlePresence('match', activeMatch.matchId);
+      }
+
+      setLeaveBattleOpen(false);
+      setDesignPauseActive(false);
+      setQueueActive(false);
+      setActiveRoom(null);
+      setActiveMatch(null);
+      setQueueTimeoutDeadlineAtMs(null);
+      setSelectedOptionIndex(null);
+      setRoundLocked(false);
+      setLastRoundResult(null);
+      setLaunchState({
+        status: 'queued',
+        message: 'You left the battle.',
+      });
+      setActiveTab('setup');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to leave the battle cleanly. Please try again.';
+      setLeaveBattleError(message);
+      setLaunchState({ status: 'error', message });
+    } finally {
+      setLeavingBattle(false);
+    }
+  };
+
   const submitSetup = async () => {
     setLaunchState({ status: 'validating' });
     setStartStage('Validating setup...');
@@ -2277,7 +2330,33 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
               }}
               isDesignPauseAvailable={isDesignPauseAvailable}
               onTogglePause={handleToggleDesignPause}
+              onLeave={() => {
+                setLeaveBattleError(null);
+                setLeaveBattleOpen(true);
+              }}
             />
+
+            <AlertDialog open={leaveBattleOpen} onOpenChange={(open) => {
+              if (!leavingBattle) {
+                setLeaveBattleOpen(open);
+                if (open) setLeaveBattleError(null);
+              }
+            }}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Leave battle?</AlertDialogTitle>
+                  <AlertDialogDescription>This counts as a loss.</AlertDialogDescription>
+                  {leaveBattleError ? <p role="alert" className="text-sm text-destructive">{leaveBattleError}</p> : null}
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={leavingBattle}>Keep playing</AlertDialogCancel>
+                  <AlertDialogAction onClick={(event) => { event.preventDefault(); void handleLeaveBattle(); }} disabled={leavingBattle}>
+                    {leavingBattle ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Leave
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             {/* Shrinking Timer Bar */}
             {activeMatch.status === 'in_progress' ? (

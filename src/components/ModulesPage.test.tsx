@@ -12,6 +12,7 @@ import * as ModuleFolderCardNs from './ModuleFolderCard';
 import * as ModulesMascotNs from './ModulesMascot';
 import * as DailyCheckInModalNs from './DailyCheckInModal';
 import * as PracticeCenterNs from './PracticeCenter';
+import * as quizService from '../services/quizService';
 
 // Firestore IO stubs: firebase deps are inlined in vitest.config, so these
 // namespaces are configurable. No real network/IO is touched.
@@ -80,6 +81,35 @@ describe('ModulesPage', () => {
     fireEvent.click(practiceTab);
 
     expect(await screen.findByText(/practice center stub/i, {}, { timeout: 5000 })).toBeInTheDocument();
+  });
+
+  it('shows teacher assignments above Practice topics when loaded at the assigned section URL', async () => {
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockResolvedValue([
+      {
+        generatedQuizId: 'quiz-1',
+        id: 'quiz-1',
+        title: 'Functions Review',
+        subject: 'General Mathematics',
+        difficulty: 'Medium',
+        questions: 5,
+        duration: '10 minutes',
+        xpReward: 20,
+        type: 'practice',
+        completed: false,
+        locked: false,
+        source: 'ai_generated',
+        loadedQuestions: [],
+      },
+    ]);
+    window.history.replaceState({}, '', '/modules?section=assigned-quizzes');
+
+    renderModulesPage();
+
+    expect(await screen.findAllByRole('heading', { name: /assigned by your teacher/i })).not.toHaveLength(0);
+    expect(await screen.findByText('Functions Review')).toBeInTheDocument();
+    expect(screen.getAllByText(/practice center stub/i)).not.toHaveLength(0);
+    expect(screen.queryByRole('button', { name: /^assigned$/i })).not.toBeInTheDocument();
+    expect(window.location.search).toContain('section=assigned-quizzes');
   });
 
   it('scopes teacher-uploaded modules to the signed-in student', () => {

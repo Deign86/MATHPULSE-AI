@@ -150,18 +150,6 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
             </div>
           </div>
 
-          {isAtRisk && (
-            <div className="absolute -top-3 -right-2 bg-rose-500 text-white px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg border border-rose-400 animate-pulse">
-              <AlertTriangle size={12} strokeWidth={3} /> Review
-            </div>
-          )}
-
-          {status === 'teacher_uploaded' && isAvailable && (
-            <div className="absolute -top-3 -right-2 bg-emerald-500 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-lg border border-emerald-400">
-              <GraduationCap size={11} strokeWidth={3} /> Teacher Material
-            </div>
-          )}
-
           {!isAvailable && (
             <ModuleStatusOverlay
               moduleStatus={status}
@@ -174,6 +162,20 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
           )}
         </div>
       </div>
+
+      {/* CORNER BADGES — anchored to the card root (overflow-visible), never inside the
+          clipped folder body, so they survive the dashboard carousel's scroll clipping. */}
+      {isAtRisk && (
+        <div className="absolute -top-3 -right-2 z-20 bg-rose-500 text-white px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg border border-rose-400 animate-pulse">
+          <AlertTriangle size={12} strokeWidth={3} /> Review
+        </div>
+      )}
+
+      {status === 'teacher_uploaded' && isAvailable && (
+        <div className="absolute -top-3 -right-2 z-20 bg-emerald-500 text-white px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-lg border border-emerald-400">
+          <GraduationCap size={11} strokeWidth={3} /> Teacher Material
+        </div>
+      )}
     </motion.div>
   );
 };

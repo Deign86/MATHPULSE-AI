@@ -17,6 +17,7 @@ export type NotificationType =
   | 'teacher_announcement'
   | 'new_assignment'
   | 'quiz_assigned'
+  | 'class_assigned'
   | 'xp_earned'
   | 'system_alert'
   | 'risk_alert'

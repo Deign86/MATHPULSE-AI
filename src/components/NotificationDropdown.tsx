@@ -107,6 +107,20 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                     key={notif.id}
                     onClick={() => {
                       markAsRead(notif.id);
+                      if (notif.type === 'class_assigned') {
+                        window.dispatchEvent(new CustomEvent('mathpulse:navigate', {
+                          detail: { tab: 'Modules' },
+                        }));
+                        onClose();
+                      } else if (notif.type === 'quiz_assigned') {
+                        window.dispatchEvent(new CustomEvent('mathpulse:navigate', {
+                          detail: { tab: 'Modules', section: 'assigned-quizzes', quizId: notif.metadata?.quizId },
+                        }));
+                        onClose();
+                      } else if (notif.actionUrl) {
+                        window.location.href = notif.actionUrl;
+                        onClose();
+                      }
                     }}
                     className={`p-3.5 sm:p-4 hover:bg-slate-50 transition-colors cursor-pointer flex gap-3 ${!notif.isRead ? getColors(notif.type).split(' ')[2] : 'opacity-70'}`}
                   >

@@ -14,7 +14,7 @@ import type { ClassSectionMetadata } from '../../types/models';
 import type { StudentView } from '../../components/TeacherDashboard';
 
 import type { ParseWorkbookResult } from '../import/services/shsExcel/parser/types';
-import type { StudentAccountImportPreviewResponse, UploadResponse } from '../../services/apiService';
+import type { CourseMaterialArtifactSummary, StudentAccountImportPreviewResponse, UploadResponse } from '../../services/apiService';
 import { apiService, ApiError } from '../../services/apiService';
 import { parseShsWorkbook } from '../import/services/shsExcel/parser';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../import/services/shsExcel/parser/constants';
@@ -115,6 +115,9 @@ export default function DataImportView({
   const [dragOver2, setDragOver2] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
   const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
+  const [recentMaterials, setRecentMaterials] = useState<CourseMaterialArtifactSummary[]>([]);
+  const [recentMaterialsLoading, setRecentMaterialsLoading] = useState(true);
+  const [recentMaterialsError, setRecentMaterialsError] = useState('');
   const [accountPreviewing, setAccountPreviewing] = useState(false);
   const [accountCommitting, setAccountCommitting] = useState(false);
   const [studentAccountFile, setStudentAccountFile] = useState<File | null>(null);
@@ -146,6 +149,23 @@ export default function DataImportView({
   }
 
   const [pendingUpload, setPendingUpload] = useState<PendingImportUpload | null>(null);
+
+  const refreshRecentMaterials = useCallback(async () => {
+    setRecentMaterialsLoading(true);
+    setRecentMaterialsError('');
+    try {
+      const response = await apiService.getRecentCourseMaterials({ classSectionId, limit: 5 });
+      setRecentMaterials(response.materials);
+    } catch (error: unknown) {
+      setRecentMaterialsError(error instanceof Error ? error.message : 'Could not load recent curriculum uploads.');
+    } finally {
+      setRecentMaterialsLoading(false);
+    }
+  }, [classSectionId]);
+
+  useEffect(() => {
+    void refreshRecentMaterials();
+  }, [refreshRecentMaterials]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
@@ -387,6 +407,7 @@ export default function DataImportView({
       if (result.success) {
         const topicCount = result.topics?.length ?? 0;
         toast.success(`Course material imported (${topicCount} topics extracted).`);
+        await refreshRecentMaterials();
         onDataChanged?.();
       }
     } catch (err: unknown) {
@@ -818,18 +839,43 @@ export default function DataImportView({
                   <h2 className="text-[15px] font-bold text-slate-800 font-display">Recent Uploads</h2>
                   <button 
                     type="button"
-                    onClick={() => setCurrentImportView('mapping-logs')}
+                    onClick={() => void refreshRecentMaterials()}
                     className="text-xs font-semibold text-violet-600 hover:text-violet-700 transition-colors cursor-pointer"
                   >
-                    View All
+                    Refresh
                   </button>
                 </div>
-                
-                <div className="flex-1 bg-slate-50/60 border border-slate-200/80 rounded-2xl p-5 flex flex-col justify-center items-center text-center min-h-[140px]">
-                  <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center mb-2.5 border border-slate-200 shadow-2xs text-slate-400">
-                    <FileSpreadsheet className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs font-medium text-slate-500">There are no recent uploads yet.</p>
+                <div className="flex-1 bg-slate-50/60 border border-slate-200/80 rounded-2xl p-4 min-h-[140px]" aria-live="polite">
+                  {recentMaterialsLoading ? (
+                    <p className="text-xs text-slate-500" role="status">Loading recent uploads…</p>
+                  ) : recentMaterialsError ? (
+                    <p className="text-xs text-rose-700" role="alert">{recentMaterialsError}</p>
+                  ) : recentMaterials.length === 0 ? (
+                    <p className="text-xs font-medium text-slate-500">There are no recent uploads for this class yet.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {recentMaterials.map((material) => (
+                        <li key={material.materialId} className="border-b border-slate-200 pb-3 last:border-0 last:pb-0">
+                          <p className="text-sm font-semibold text-slate-800 break-words">{material.fileName || 'Curriculum document'}</p>
+                          <p className="text-xs text-slate-500">
+                            {material.topicsCount} topic{material.topicsCount === 1 ? '' : 's'} extracted
+                            {material.className ? ` · ${material.className}` : ''}
+                          </p>
+                          {material.topicTitles.length > 0 && (
+                            <p className="text-xs text-slate-600 mt-1">{material.topicTitles.join(' · ')}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="text-xs text-slate-500 mt-3">Uploaded curriculum documents are saved here as course materials.</p>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }))}
+                    className="mt-2 text-xs font-semibold text-violet-700 hover:text-violet-800 underline"
+                  >
+                    Go to Modules
+                  </button>
                 </div>
               </div>
             </div>

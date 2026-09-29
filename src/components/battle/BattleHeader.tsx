@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Flame, Target, Volume2, VolumeX, Maximize, Minimize, Menu } from 'lucide-react';
+import { Flame, Target, Volume2, VolumeX, Maximize, Minimize, Menu, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../ui/utils';
 import type { BattleHeaderMatchView, BattleSubjectView } from './types';
@@ -17,6 +17,7 @@ interface BattleHeaderProps {
   onToggleFullscreen: () => void;
   isDesignPauseAvailable: boolean;
   onTogglePause: () => void;
+  onLeave: () => void;
 }
 
 export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
@@ -31,6 +32,7 @@ export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
   onToggleFullscreen,
   isDesignPauseAvailable,
   onTogglePause,
+  onLeave,
 }) => {
   return (
     <header className="flex items-center justify-between shrink-0 h-14 sm:h-16 relative gap-2 sm:gap-4">
@@ -81,6 +83,15 @@ export const BattleHeader: React.FC<BattleHeaderProps> = React.memo(({
 
       {/* Right: Control buttons */}
       <div className="flex items-center gap-1.5 sm:gap-3">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 sm:h-12 sm:w-12 rounded-full border-white/20 bg-black/20 hover:bg-white/10 text-white"
+          onClick={onLeave}
+          aria-label="Leave battle"
+        >
+          <X className="h-4 w-4 sm:h-5 sm:w-5" />
+        </Button>
         <Button
           variant="outline"
           size="icon"

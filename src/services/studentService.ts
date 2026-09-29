@@ -1128,7 +1128,8 @@ export async function assignStudentToClassSection(
   section: string,
   ownerTeacherId: string,
   schoolYear: string,
-  ownerTeacherName?: string
+  ownerTeacherName?: string,
+  options: { notifyStudent?: boolean } = {}
 ): Promise<void> {
   const classSectionId = buildClassSectionId(grade, section);
 
@@ -1179,6 +1180,53 @@ export async function assignStudentToClassSection(
     },
     { merge: true }
   );
+
+  // Imported roster records may use an import-row ID instead of the account UID.
+  // Update matching records too, since teacher lists query managedStudents by classroomId.
+  const managedStudentsSnapshot = await getDocs(collection(db, 'managedStudents'));
+  const studentLrn = String(userData.lrn || '').trim().toLowerCase();
+  const studentEmail = String(userData.email || '').trim().toLowerCase();
+  const studentName = normalizeName(String(userData.name || userData.displayName || ''));
+  const matchingRosterUpdates = managedStudentsSnapshot.docs
+    .filter((rosterDoc) => {
+      if (rosterDoc.id === studentUid) return false;
+      const rosterData = rosterDoc.data();
+      const rosterLrn = String(rosterData.lrn || '').trim().toLowerCase();
+      const rosterEmail = String(rosterData.email || '').trim().toLowerCase();
+      const rosterName = normalizeName(String(rosterData.name || ''));
+      return Boolean(
+        (studentLrn && rosterLrn === studentLrn)
+        || (studentEmail && rosterEmail === studentEmail)
+        || (studentName && rosterName === studentName)
+      );
+    })
+    .map((rosterDoc) => setDoc(rosterDoc.ref, {
+      accountUid: studentUid,
+      teacherId: ownerTeacherId,
+      grade,
+      gradeLevel: grade,
+      section,
+      classSectionId,
+      classroomId: classSectionId,
+      hasRegisteredAccount: true,
+      source: 'both',
+      updatedAt: serverTimestamp(),
+    }, { merge: true }));
+
+  await Promise.all(matchingRosterUpdates);
+
+  if (options.notifyStudent) {
+    const { notify } = await import('@/features/notifications');
+    await notify({
+      userId: studentUid,
+      type: 'class_assigned',
+      title: 'Class section assigned',
+      message: `You've been added to ${grade} - ${section}`,
+      metadata: { classSectionId },
+      actionUrl: '/modules',
+      recipientRole: 'student',
+    });
+  }
 }
 
 export async function getClassSectionOwnershipByTeacher(teacherId: string): Promise<ClassSectionOwnershipRecord[]> {
