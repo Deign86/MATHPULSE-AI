@@ -19,8 +19,8 @@ interface PhotoCellProps {
 
 const AdminPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gender, onPhotoUploaded }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const defaultPhoto = DEFAULT_ID_PLACEHOLDER;
-  const displayPhoto = photoURL || defaultPhoto;
+  const [photoError, setPhotoError] = useState(false);
+  const displayPhoto = (!photoError && photoURL) ? photoURL : DEFAULT_ID_PLACEHOLDER;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -29,6 +29,7 @@ const AdminPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gende
     reader.onload = () => {
       const result = reader.result;
       if (result !== null && !(result instanceof ArrayBuffer)) {
+        setPhotoError(false);
         onPhotoUploaded?.(result);
       }
     };
@@ -54,8 +55,8 @@ const AdminPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gende
               alt={`${displayName ?? 'Administrator'} photo`}
               className="w-full h-full object-cover"
               onError={(e) => {
-                if (e.currentTarget.src !== defaultPhoto) {
-                  e.currentTarget.src = defaultPhoto;
+                if (!photoError && !e.currentTarget.src.endsWith(DEFAULT_ID_PLACEHOLDER)) {
+                  setPhotoError(true);
                 }
               }}
             />

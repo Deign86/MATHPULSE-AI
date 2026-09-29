@@ -20,8 +20,8 @@ interface PhotoCellProps {
 
 const TeacherPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gender, onPhotoUploaded }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const defaultPhoto = DEFAULT_ID_PLACEHOLDER;
-  const displayPhoto = photoURL || defaultPhoto;
+  const [photoError, setPhotoError] = useState(false);
+  const displayPhoto = (!photoError && photoURL) ? photoURL : DEFAULT_ID_PLACEHOLDER;
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -30,6 +30,7 @@ const TeacherPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gen
     reader.onload = () => {
       const result = reader.result;
       if (result !== null && !(result instanceof ArrayBuffer)) {
+        setPhotoError(false);
         onPhotoUploaded?.(result);
       }
     };
@@ -55,8 +56,8 @@ const TeacherPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gen
               alt={displayName || 'Faculty Member'}
               className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-300"
               onError={(e) => {
-                if (e.currentTarget.src !== defaultPhoto) {
-                  e.currentTarget.src = defaultPhoto;
+                if (!photoError && !e.currentTarget.src.endsWith(DEFAULT_ID_PLACEHOLDER)) {
+                  setPhotoError(true);
                 }
               }}
             />

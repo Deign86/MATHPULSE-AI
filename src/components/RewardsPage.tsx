@@ -239,6 +239,10 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
     { level: 50, rank: 'MathPulse Archmage', xp: '100,000 XP', reward: 'Legendary Crown Icon + Hall of Immortals', unlocked: userLevel >= 50 },
   ];
 
+  const totalDailyBounty = useMemo(() => {
+    return dailyQuests.reduce((sum, q) => sum + (q.rewardXP || 0), 0);
+  }, [dailyQuests]);
+
   return (
     <div className="w-full flex flex-col gap-4 sm:gap-6 px-4 sm:px-6 lg:px-8 xl:px-12 py-3 sm:py-5 max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto text-slate-800 dark:text-slate-100">
       {/* Hero Header Bento Card */}
@@ -604,7 +608,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
               </div>
               <div className="p-3.5 sm:p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-center shrink-0 w-full sm:w-auto relative z-10">
                 <p className="text-[10px] font-black uppercase tracking-wider text-white/75">Total Daily Bounty</p>
-                <p className="text-2xl sm:text-3xl font-black text-amber-300 mt-0.5">+450 XP</p>
+                <p className="text-2xl sm:text-3xl font-black text-amber-300 mt-0.5">+{totalDailyBounty} XP</p>
               </div>
             </div>
 
@@ -685,7 +689,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
                   {/* Timeline Dot */}
                   <div
                     className={cn(
-                      'absolute -left-6 sm:-left-10 top-5 w-5 h-5 rounded-full border-4 transition-all flex items-center justify-center -translate-x-1/2',
+                      'absolute -left-3 sm:-left-5 top-5 w-5 h-5 rounded-full border-4 transition-all flex items-center justify-center -translate-x-1/2 z-10',
                       milestone.unlocked
                         ? 'bg-purple-600 border-purple-200 dark:border-purple-900 shadow-md shadow-purple-500/50'
                         : 'bg-slate-300 dark:bg-slate-700 border-white dark:border-slate-900'
