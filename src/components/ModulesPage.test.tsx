@@ -81,4 +81,12 @@ describe('ModulesPage', () => {
 
     expect(await screen.findByText(/practice center stub/i, {}, { timeout: 5000 })).toBeInTheDocument();
   });
+
+  it('scopes teacher-uploaded modules to the signed-in student', () => {
+    renderModulesPage();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /teacher uploaded/i })[0]);
+
+    expect(firestore.where).toHaveBeenCalledWith('assignedTo', '==', 'user-1');
+  });
 });

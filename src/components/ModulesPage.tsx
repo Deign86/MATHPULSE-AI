@@ -216,15 +216,21 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [teacherModules, setTeacherModules] = useState<TeacherUploadedModule[]>([]);
   const [teacherModulesLoading, setTeacherModulesLoading] = useState(false);
 
-  // Fetch teacher-uploaded modules from Firestore
+  // Fetch teacher-uploaded modules assigned to this student only
   useEffect(() => {
     if (activeTab !== 'teacher_uploaded') return;
-    
+
     if (!db) return;
-    
+
+    const studentUid = userProfile?.uid;
+    if (!studentUid) {
+      setTeacherModules([]);
+      return;
+    }
+
     setTeacherModulesLoading(true);
     const unsubscribe = onSnapshot(
-      query(collection(db, 'modules'), where('moduleType', '==', 'teacher_uploaded')),
+      query(collection(db, 'modules'), where('assignedTo', '==', studentUid)),
       (snapshot) => {
         const modules = snapshot.docs.map((doc) => {
           const data = doc.data();
@@ -233,7 +239,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             ...data,
             moduleId: doc.id,
           } as TeacherUploadedModule;
-        });
+        }).filter((mod) => mod.moduleType === 'teacher_uploaded');
         setTeacherModules(modules);
         setTeacherModulesLoading(false);
       },
@@ -242,9 +248,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         setTeacherModulesLoading(false);
       }
     );
-    
+
     return () => unsubscribe();
-  }, [activeTab]);
+  }, [activeTab, userProfile?.uid]);
 
   const filteredTeacherModules = useMemo(() => {
     const queryStr = searchQuery.trim().toLowerCase();

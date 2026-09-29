@@ -4541,6 +4541,8 @@ const InterventionView: React.FC<{
   }, [student.grade, student.section]);
 
   // Fetch intervention plan from backend
+  const assignedUid = student.accountUid || student.id;
+  const distinctIds = [...new Set([student.id, assignedUid])];
   useEffect(() => {
     let cancelled = false;
     setInterventionLoading(true);
@@ -4549,11 +4551,13 @@ const InterventionView: React.FC<{
       .catch((err) => console.warn('[InterventionView] Backend fetch failed:', err))
       .finally(() => { if (!cancelled) setInterventionLoading(false); });
     // Check if already assigned
-    getAssignedModuleIds(student.id)
-      .then((ids) => { if (!cancelled) setIsPathAssigned(ids.length > 0); })
+    Promise.all(distinctIds.map((id) => getAssignedModuleIds(id)))
+      .then((assignedModules) => {
+        if (!cancelled) setIsPathAssigned(assignedModules.some((modules) => modules.length > 0));
+      })
       .catch(() => { });
     return () => { cancelled = true; };
-  }, [student.id]);
+  }, [student.id, assignedUid]);
 
   // Fetch real progress data for this student (progress/{accountUid || id})
   const [studentProgressScore, setStudentProgressScore] = useState<number | null>(null);
@@ -5284,11 +5288,12 @@ const InterventionView: React.FC<{
                   if (!interventionPlan) return;
                   try {
                     if (isPathAssigned) {
-                      const count = await revokeAssignedModules(student.id);
+                      const revokedCounts = await Promise.all(distinctIds.map((id) => revokeAssignedModules(id)));
+                      const count = revokedCounts.reduce((total, revokedCount) => total + revokedCount, 0);
                       setIsPathAssigned(false);
                       toast.success(`Revoked ${count} assigned module(s) from ${student.name}.`);
                     } else {
-                      await assignLearningPathAsModule(interventionPlan, teacherId);
+                      await assignLearningPathAsModule({ ...interventionPlan, student_id: assignedUid }, teacherId);
                       setIsPathAssigned(true);
                       toast.success(`Learning path assigned to ${student.name}'s modules.`);
                     }
@@ -6129,7 +6134,7 @@ const InterventionView: React.FC<{
       {selectedStep && (
         <InterventionStepGuide
           step={selectedStep}
-          studentId={student.id}
+          studentId={assignedUid}
           studentName={student.name}
           teacherId={teacherId}
           totalSteps={interventionPlan?.learning_path?.steps?.length || 3}

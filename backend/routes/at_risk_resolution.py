@@ -82,15 +82,31 @@ def _resolve_topic(
 
     if doc.exists:
         data = doc.to_dict() or {}
-        module_id = topic.topic_id
-        module_status = data.get("moduleStatus") or data.get("status") or "unavailable"
-    else:
+        candidate_status = data.get("moduleStatus") or data.get("status") or "unavailable"
+        assigned_to = data.get("assignedTo")
+        is_teacher_uploaded = (
+            data.get("moduleType") == "teacher_uploaded"
+            or candidate_status == "teacher_uploaded"
+        )
+        if not (is_teacher_uploaded and assigned_to and assigned_to != uid):
+            module_id = topic.topic_id
+            module_status = candidate_status
+
+    if not module_id:
         # Fallback: query by topicId field
-        query = modules_ref.where("topicId", "==", topic.topic_id).limit(1).stream()
+        query = modules_ref.where("topicId", "==", topic.topic_id).stream()
         for match in query:
             data = match.to_dict() or {}
+            candidate_status = data.get("moduleStatus") or data.get("status") or "unavailable"
+            assigned_to = data.get("assignedTo")
+            is_teacher_uploaded = (
+                data.get("moduleType") == "teacher_uploaded"
+                or candidate_status == "teacher_uploaded"
+            )
+            if is_teacher_uploaded and assigned_to and assigned_to != uid:
+                continue
             module_id = match.id
-            module_status = data.get("moduleStatus") or data.get("status") or "unavailable"
+            module_status = candidate_status
             break
 
     if not module_id or not module_status:
