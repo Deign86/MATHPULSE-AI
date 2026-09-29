@@ -76,6 +76,7 @@ export interface TeacherUploadedModule {
     explanation: string;
   }>;
   teacherId: string;
+  assignedTo?: string;
   createdAt: any; // using any or timestamp, since Firebase is not imported here natively. Better to just use any or import Timestamp if available. Wait, FirebaseFirestore.Timestamp is in the instructions, but we can't easily import it without bringing in firebase-admin or firebase/firestore. Let's use `any` or `{ seconds: number; nanoseconds: number } | null` or just `Date | any`. I will use `any` or `Date | null | { seconds: number, nanoseconds: number }` for safety without imports.
 }
 

@@ -684,9 +684,16 @@ service cloud.firestore {
 
     // ── Modules (DepEd curriculum + teacher-uploaded modules) ──
     // moduleType field: "deped" (or absent) = curriculum, "teacher_uploaded" = teacher-created
-    // Teachers can create teacher_uploaded modules; all authenticated users can read all modules
+    // Teachers/admins can read all modules; students can read curriculum modules,
+    // unassigned teacher uploads, and teacher uploads assigned to them (assignedTo == uid).
     match /modules/{moduleId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (
+        isTeacherOrAdmin()
+        || !resource.data.keys().hasAny(['moduleType'])
+        || resource.data.moduleType != 'teacher_uploaded'
+        || !resource.data.keys().hasAny(['assignedTo'])
+        || isExistingOwner('assignedTo')
+      );
       allow create: if isTeacherOrAdmin();
       allow update, delete: if isAdmin() || (isTeacherOrAdmin() && (
         isExistingOwner('uploadedBy') || isExistingOwner('teacherId')
