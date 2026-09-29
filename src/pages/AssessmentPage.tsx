@@ -43,14 +43,38 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
   onCancel,
 }) => {
   const [step, setStep] = useState<Step>('testing');
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [responses, setResponses] = useState<DiagnosticResponseItem[]>(() => {
     try {
-      const saved = sessionStorage.getItem('mathpulse_diagnostic_responses');
-      return saved ? JSON.parse(saved) : [];
+      const saved = sessionStorage.getItem(`mathpulse_diagnostic_responses_${testId}`);
+      if (!saved) return [];
+      const parsed: unknown = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+      const currentQuestionIds = new Set(questions.map((question) => question.question_id));
+      const matchingResponses = parsed.filter((response): response is DiagnosticResponseItem =>
+        typeof response === 'object'
+        && response !== null
+        && 'question_id' in response
+        && typeof response.question_id === 'string'
+        && currentQuestionIds.has(response.question_id)
+        && 'student_answer' in response
+        && typeof response.student_answer === 'string'
+        && 'time_spent_seconds' in response
+        && typeof response.time_spent_seconds === 'number',
+      );
+      return matchingResponses.length === parsed.length ? matchingResponses : [];
     } catch {
       return [];
+    }
+  });
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    try {
+      const savedIndex = Number(sessionStorage.getItem(`mathpulse_diagnostic_current_index_${testId}`));
+      return Number.isInteger(savedIndex) && savedIndex >= 0
+        ? Math.min(savedIndex, Math.max(questions.length - 1, 0))
+        : 0;
+    } catch {
+      return 0;
     }
   });
   const [answerResults, setAnswerResults] = useState<boolean[]>([]);
@@ -60,6 +84,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const questionStartRef = useRef<number>(Date.now());
   const autoSkipRef = useRef(false);
+  const submissionStartedRef = useRef(false);
 
   const totalQuestions = questions.length;
   const currentQuestion = questions[currentIndex];
@@ -83,6 +108,13 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
   })));
 
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(`mathpulse_diagnostic_responses_${testId}`, JSON.stringify(responses));
+      sessionStorage.setItem(`mathpulse_diagnostic_current_index_${testId}`, String(currentIndex));
+    } catch { /* non-fatal checkpoint storage failure */ }
+  }, [testId, responses, currentIndex]);
 
   // Countdown timer with auto-skip
   useEffect(() => {
@@ -197,6 +229,8 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
   };
 
   const handleSubmit = async (finalResponses: DiagnosticResponseItem[]) => {
+    if (submissionStartedRef.current) return;
+    submissionStartedRef.current = true;
     setStep('submitting');
     setError(null);
 
@@ -208,6 +242,8 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
       const result = await submitDiagnostic(testId, finalResponses);
       sessionStorage.removeItem('mathpulse_diagnostic');
       sessionStorage.removeItem('mathpulse_diagnostic_responses');
+      sessionStorage.removeItem(`mathpulse_diagnostic_responses_${testId}`);
+      sessionStorage.removeItem(`mathpulse_diagnostic_current_index_${testId}`);
       setStep('results');
 
       // Pipeline: emit diagnostic event (fire-and-forget)
@@ -240,6 +276,8 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
         });
       }, 3000);
     } catch (err) {
+      submissionStartedRef.current = false;
+      setStep('testing');
       const message = err instanceof Error ? err.message : 'Submission failed. Your answers are saved locally.';
       setError(message);
     }

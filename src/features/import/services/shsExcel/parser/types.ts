@@ -137,6 +137,8 @@ export interface ParsedSignature {
 
 export interface ParsedLearner {
   learnerNo?: number;
+  lrn?: string;
+  email?: string;
   sex?: LearnerSex;
   fullName: string;
   sourceSheet: string;
@@ -289,6 +291,8 @@ export type ImportedShsWorkbook = {
   };
   learners: Array<{
     learnerNo?: number;
+    lrn?: string;
+    email?: string;
     sex?: LearnerSex;
     fullName: string;
     sourceSheet: string;
@@ -350,10 +354,12 @@ export interface MathPulseEntityMapping {
     fullName: string;
     learnerNo?: number;
     lrn?: string;
+    email?: string;
     sex?: LearnerSex;
     remarks?: string;
     additionalRemarks?: string;
     statuses?: string[];
+    sourceRow: number;
   }>;
   gradeEntities: Array<{
     fullName: string;

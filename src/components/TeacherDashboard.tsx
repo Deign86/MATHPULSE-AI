@@ -201,6 +201,23 @@ export interface StudentView {
   email?: string;
 }
 
+function findRosterStudent(studentId: string, students: StudentView[]): StudentView | undefined {
+  const normalizedId = studentId.trim().toLowerCase();
+  if (!normalizedId) return undefined;
+  const uidMatches = students.filter((student) =>
+    [student.accountUid, student.id]
+      .some((identifier) => identifier?.trim().toLowerCase() === normalizedId)
+  );
+  if (uidMatches.length === 1) return uidMatches[0];
+  if (uidMatches.length > 1) return undefined;
+
+  const secondaryMatches = students.filter((student) =>
+    [student.lrn, student.email]
+      .some((identifier) => identifier?.trim().toLowerCase() === normalizedId)
+  );
+  return secondaryMatches.length === 1 ? secondaryMatches[0] : undefined;
+}
+
 function toClassView(c: Classroom): ClassView {
   const riskLevel = c.atRiskCount >= 5 ? 'high' : c.atRiskCount >= 2 ? 'medium' : 'low';
   const classMetadata = resolveClassMetadata({
@@ -3807,7 +3824,7 @@ const AnalyticsView: React.FC<{
           .sort((a, b) => b.avg_score - a.avg_score)
           .slice(0, 5)
           .map(bs => {
-            const match = students.find(s => s.id === bs.student_id);
+            const match = findRosterStudent(bs.student_id, students);
             return match ? { ...match, avgScore: bs.avg_score } : null;
           })
           .filter(Boolean) as StudentView[];
@@ -3821,14 +3838,27 @@ const AnalyticsView: React.FC<{
     const attentionStudents = useMemo(() => {
       if (backendHasData) {
         // SAFETY: trusted internal value already conforms to the asserted type.
-        return backendReport!.students
+        const matchedStudents = backendReport!.students
           .filter(s => ['High Risk', 'Critical'].includes(s.risk_level))
           .sort((a, b) => a.avg_score - b.avg_score)
-          .map(bs => {
-            const match = students.find(s => s.id === bs.student_id);
-            return match ? { ...match, avgScore: bs.avg_score, _backendRisk: bs.risk_level } : null;
-          })
-          .filter(Boolean) as (StudentView & { _backendRisk?: string })[];
+          .flatMap(bs => {
+            const match = findRosterStudent(bs.student_id, students);
+            return match ? [{ ...match, avgScore: bs.avg_score, _backendRisk: bs.risk_level }] : [];
+          });
+        const matchedIds = new Set(
+          backendReport!.students
+            .map(student => findRosterStudent(student.student_id, students)?.id)
+            .filter((studentId): studentId is string => studentId !== undefined)
+        );
+        const localFallback = students
+          .filter(student => !matchedIds.has(student.id))
+          .filter((student) => {
+            const hasHighRiskSignal = student.riskLevel === 'high'
+              || ['intervene', 'critical', 'at_risk'].includes(student.riskStatus || '');
+            const isAssessed = progressScores.has(student.id) || student.avgScore > 0;
+            return hasHighRiskSignal || (isAssessed && student.avgScore < 75);
+          });
+        return [...matchedStudents, ...localFallback];
       }
       return [...students].filter((student) => student.riskLevel === 'high' || (progressScores.get(student.id) || student.avgScore) < 70 || student.assignmentCompletion < 65);
     }, [students, backendReport, backendHasData, progressScores]);

@@ -381,6 +381,7 @@ import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
+import { getUserProgress, updateLessonProgressPercent } from '../services/progressService';
 import type { MicroLessonCardProps, MicroLessonPhase } from './notebook/MicroLessonCard';
 
 interface LessonViewerProps {
@@ -1282,6 +1283,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   // Issue #164: students see assurance copy only; teacher/admin keep full RAG telemetry.
   const isStaffView = userRole === 'teacher' || userRole === 'admin';
   const [currentSection, setCurrentSection] = useState(0);
+  const [sectionProgressLoaded, setSectionProgressLoaded] = useState(false);
   const [direction, setDirection] = useState(1);
   const [showCompletion, setShowCompletion] = useState(false);
   const [expandedProblem, setExpandedProblem] = useState<number | null>(null);
@@ -1449,6 +1451,32 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }, [lesson.id]);
 
   useEffect(() => {
+    let cancelled = false;
+    setSectionProgressLoaded(false);
+    if (!userProfile?.uid || !lesson.id) {
+      setSectionProgressLoaded(true);
+      return;
+    }
+    void getUserProgress(userProfile.uid).then((progress) => {
+      if (cancelled) return;
+      const savedLessonProgress = progress?.lessons?.[lesson.id];
+      const savedSection = savedLessonProgress
+        ? Object.entries(savedLessonProgress).find(([key]) => key === 'lastSectionIndex')?.[1]
+        : undefined;
+      const savedSectionIndex = Number.isInteger(savedSection) && savedSection >= 0 ? savedSection : undefined;
+      if (initialSection >= 0 && initialSection < totalSections && savedSection !== undefined) {
+        if (savedSectionIndex !== undefined) setCurrentSection(Math.min(savedSectionIndex, totalSections - 1));
+      }
+      setSectionProgressLoaded(true);
+    }).catch((caughtError) => {
+      const restoreError = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
+      console.warn('[LessonViewer] Failed to restore lesson section:', restoreError);
+      if (!cancelled) setSectionProgressLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, [lesson.id, userProfile?.uid, totalSections]);
+
+  useEffect(() => {
     const practiceIdx = sections.findIndex((s) => s.type === 'try_it_yourself');
     if (initialSection === -1 && practiceIdx >= 0) {
       setCurrentSection(practiceIdx);
@@ -1458,7 +1486,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   useEffect(() => {
     const progress = totalSections > 0 ? ((currentSection + 1) / totalSections) * 100 : 0;
     onProgressUpdate?.(progress);
-  }, [currentSection, totalSections, onProgressUpdate]);
+    if (sectionProgressLoaded && userProfile?.uid && lesson.id) {
+      void updateLessonProgressPercent(userProfile.uid, lesson.id, progress, currentSection)
+        .catch((caughtError) => {
+          const persistError = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
+          console.warn('[LessonViewer] Failed to persist lesson section:', persistError);
+        });
+    }
+  }, [currentSection, totalSections, onProgressUpdate, sectionProgressLoaded, userProfile?.uid, lesson.id]);
 
   if (isLoading) {
     return <LoadingSkeleton />;
