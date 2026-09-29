@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { CheckCircle2, RotateCw, Sparkles, Star, Zap, GraduationCap, Camera } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ProfileData } from './SettingsPage';
+import { DEFAULT_ID_PLACEHOLDER } from '../utils/avatarUtils';
 
 interface StudentIDCardProps {
   profileData: ProfileData;
@@ -14,6 +15,7 @@ interface StudentIDCardProps {
 interface PhotoCellProps {
   photoURL?: string;
   displayName?: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   uid?: string;
   onPhotoUploaded?: (photoURL: string) => void;
 }
@@ -22,9 +24,10 @@ interface PhotoCellProps {
  *  Clicking opens a file picker; the raw data-URL is passed to onPhotoUploaded
  *  so the parent (SettingsPage) can handle the actual upload/crop flow.
  */
-const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPhotoUploaded }) => {
+const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gender, onPhotoUploaded }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const initials = (displayName || 'S').trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('');
+  const [photoError, setPhotoError] = useState(false);
+  const displayPhoto = (!photoError && photoURL) ? photoURL : DEFAULT_ID_PLACEHOLDER;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -35,6 +38,7 @@ const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPhotoUpl
       // `instanceof ArrayBuffer` eliminates the non-string branches without a runtime typeof check.
       const result = reader.result;
       if (result !== null && !(result instanceof ArrayBuffer)) {
+        setPhotoError(false);
         onPhotoUploaded?.(result);
       }
     };
@@ -58,17 +62,16 @@ const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPhotoUpl
               inputRef.current?.click();
             }}
           >
-            {photoURL ? (
-              <img
-                src={photoURL}
-                alt={`${displayName ?? 'Student'} profile`}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="flex items-center justify-center w-full h-full text-xl font-black text-purple-600 dark:text-purple-300 select-none">
-                {initials}
-              </span>
-            )}
+            <img
+              src={displayPhoto}
+              alt={`${displayName ?? 'Student'} profile`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                if (!photoError && !e.currentTarget.src.endsWith(DEFAULT_ID_PLACEHOLDER)) {
+                  setPhotoError(true);
+                }
+              }}
+            />
           </button>
         </div>
         {/* Photo Edit Badge */}
@@ -187,7 +190,7 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
                 <div>
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] sm:text-[11px] font-black tracking-wider uppercase text-white drop-shadow-xs font-sans">
-                      MathPulse Pass
+                      STUDENT PASS
                     </span>
                     <Sparkles size={11} className="text-amber-300 fill-amber-300 animate-pulse" />
                   </div>
@@ -234,6 +237,7 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
               <PhotoCell
                 photoURL={profileData.photo}
                 displayName={studentName}
+                gender={profileData.gender}
                 uid={profileData.uid}
                 onPhotoUploaded={onPhotoUploaded}
               />

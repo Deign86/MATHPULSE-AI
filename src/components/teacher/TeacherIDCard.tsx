@@ -3,6 +3,7 @@ import { RotateCw, CheckCircle2, Building, Award, Camera, GraduationCap, BookOpe
 import { motion } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import type { ProfileData } from '../SettingsPage';
+import { DEFAULT_ID_PLACEHOLDER } from '../../utils/avatarUtils';
 
 export interface TeacherIDCardProps {
   profileData: ProfileData;
@@ -13,12 +14,14 @@ export interface TeacherIDCardProps {
 interface PhotoCellProps {
   photoURL?: string;
   displayName?: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   onPhotoUploaded?: (photoURL: string) => void;
 }
 
-const TeacherPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onPhotoUploaded }) => {
+const TeacherPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gender, onPhotoUploaded }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const initials = (displayName || 'T').trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
+  const [photoError, setPhotoError] = useState(false);
+  const displayPhoto = (!photoError && photoURL) ? photoURL : DEFAULT_ID_PLACEHOLDER;
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -27,6 +30,7 @@ const TeacherPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onP
     reader.onload = () => {
       const result = reader.result;
       if (result !== null && !(result instanceof ArrayBuffer)) {
+        setPhotoError(false);
         onPhotoUploaded?.(result);
       }
     };
@@ -47,18 +51,16 @@ const TeacherPhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, onP
               inputRef.current?.click();
             }}
           >
-            {photoURL ? (
-              <img
-                src={photoURL}
-                alt={displayName || 'Faculty Member'}
-                className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-300"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-violet-900 to-indigo-950 text-white font-black text-xl sm:text-2xl select-none">
-                <span>{initials}</span>
-                <span className="text-[9px] font-medium text-violet-300 tracking-widest mt-1">FACULTY</span>
-              </div>
-            )}
+            <img
+              src={displayPhoto}
+              alt={displayName || 'Faculty Member'}
+              className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-300"
+              onError={(e) => {
+                if (!photoError && !e.currentTarget.src.endsWith(DEFAULT_ID_PLACEHOLDER)) {
+                  setPhotoError(true);
+                }
+              }}
+            />
             <div className="absolute inset-1 rounded-xl bg-black/50 opacity-0 group-hover/photo:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white">
               <Camera size={18} />
               <span className="text-[9px] font-bold uppercase tracking-wider">Change</span>
@@ -149,6 +151,7 @@ export const TeacherIDCard: React.FC<TeacherIDCardProps> = ({
             <TeacherPhotoCell
               photoURL={profileData.photo}
               displayName={teacherName}
+              gender={profileData.gender}
               onPhotoUploaded={onPhotoUploaded}
             />
 

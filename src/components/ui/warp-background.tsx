@@ -87,7 +87,7 @@ export const WarpBackground: React.FC<WarpBackgroundProps> = ({
    const leftBeams = useMemo(() => generateBeams(), [generateBeams]);
 
    return (
-      <div className={cn("relative w-full h-full", className)} {...props}>
+      <div className={cn("relative w-full min-h-full", className)} {...props}>
          {bgVideo ? (
             fixedBackground ? (
                <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
@@ -169,7 +169,7 @@ export const WarpBackground: React.FC<WarpBackgroundProps> = ({
             </div>
          </div>
          )}
-         <div className="relative z-10 w-full h-full">{children}</div>
+         <div className="relative z-10 w-full min-h-full flex flex-col">{children}</div>
       </div>
    );
 };

@@ -2450,8 +2450,8 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
   return (
     <>
       <style>{battleAnimations}</style>
-      <WarpBackground bgVideo="/videos/warp_bg.mp4" fixedBackground={true} className="w-full min-h-full px-4 sm:px-6 md:px-8 xl:px-12 pt-14 sm:pt-16 lg:pt-20 pb-6 lg:pb-10 overflow-x-hidden relative">
-        <div className="h-full flex flex-col max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full">
+      <WarpBackground bgVideo="/videos/warp_bg.mp4" fixedBackground={true} className="w-full min-h-full px-4 sm:px-6 md:px-8 xl:px-12 pt-14 sm:pt-16 lg:pt-20 pb-10 sm:pb-14 lg:pb-16 relative">
+        <div className="min-h-full flex flex-col max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full pb-4">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2540,7 +2540,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                        className="w-full h-[180px] sm:h-[240px] lg:h-[260px] bg-gradient-to-b from-[#8A3FD3] to-[#6C2BAA] rounded-3xl border border-purple-400/30 relative text-left shadow-[0_12px_32px_rgba(138,63,211,0.3)] hover:shadow-[0_16px_48px_rgba(138,63,211,0.5)] block flex-col group cursor-pointer"
+                        className="w-full h-[210px] sm:h-[240px] lg:h-[260px] bg-gradient-to-b from-[#8A3FD3] to-[#6C2BAA] rounded-3xl border border-purple-400/30 relative text-left shadow-[0_12px_32px_rgba(138,63,211,0.3)] hover:shadow-[0_16px_48px_rgba(138,63,211,0.5)] flex flex-col group cursor-pointer overflow-hidden"
                       >
                         {/* Top Highlight border / Inner Shadow effect */}
                         <div className="absolute inset-0 rounded-3xl shadow-[inset_0_4px_12px_rgba(255,255,255,0.35)] pointer-events-none z-40" />
@@ -2554,16 +2554,16 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                           </div>
                         </div>
 
-                        <div className="rounded-3xl overflow-hidden relative isolate h-full flex flex-col justify-end">
+                        <div className="rounded-3xl overflow-hidden relative isolate h-full flex flex-col justify-between">
                           {/* Shine Effect */}
                           <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
 
-                          <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
+                          <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none min-h-0">
                             {/* Expanded Full-Width Stage (Dark Purple) */}
                             <div className="absolute bottom-0 left-0 w-full h-[50px] sm:h-[95px] bg-[#662AA8] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
 
                             {/* Animated Avatar Clones (VS Match) - CSS WAAPI animations */}
-                            <div className="relative z-10 flex items-center justify-center mb-[2px] h-[80px] sm:h-[140px] w-full">
+                            <div className="relative z-10 flex items-center justify-center mb-0 sm:mb-[2px] h-[72px] sm:h-[140px] w-full">
                               {/* Left Avatar */}
                               <img
                                 src="/avatar/avatar_icon.png"
@@ -2572,7 +2572,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                               />
                               {/* Center VS */}
                               <div className="relative z-30 flex flex-col items-center mx-[-20px] scale-[1.1] animate-vs-pulse">
-                                <span className="font-black italic text-[26px] sm:text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)] webkit-text-stroke">
+                                <span className="font-black italic text-[24px] sm:text-[40px] text-gray-200 tracking-tighter leading-none drop-shadow-[-2px_3px_0px_rgba(0,0,0,0.8)] webkit-text-stroke">
                                   <span className="text-gray-300">V</span><span className="text-gray-400">S</span>
                                 </span>
                               </div>
@@ -2585,8 +2585,8 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                             </div>
                           </div>
 
-                          <div className="relative z-10 w-full px-3 sm:px-5 py-2.5 sm:py-3.5 text-center bg-[#5c219a] border-t border-white/10">
-                            <p className="text-[11px] sm:text-[13px] font-bold text-white leading-snug font-nunito">
+                          <div className="relative z-10 w-full px-2.5 sm:px-5 py-2 sm:py-3.5 text-center bg-[#5c219a] border-t border-white/10 shrink-0">
+                            <p className="text-[10px] min-[380px]:text-[11px] sm:text-[13px] font-bold text-white leading-snug font-nunito">
                               Match with a classmate or join with a room code.
                             </p>
                           </div>
@@ -2600,7 +2600,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                        className="w-full h-[180px] sm:h-[240px] lg:h-[260px] bg-gradient-to-b from-[#1FA7E1] to-[#127DA6] rounded-3xl border border-sky-400/30 relative text-left shadow-[0_12px_32px_rgba(31,167,225,0.3)] hover:shadow-[0_16px_48px_rgba(31,167,225,0.5)] block flex-col group cursor-pointer"
+                        className="w-full h-[210px] sm:h-[240px] lg:h-[260px] bg-gradient-to-b from-[#1FA7E1] to-[#127DA6] rounded-3xl border border-sky-400/30 relative text-left shadow-[0_12px_32px_rgba(31,167,225,0.3)] hover:shadow-[0_16px_48px_rgba(31,167,225,0.5)] flex flex-col group cursor-pointer overflow-hidden"
                       >
                         {/* Top Highlight border / Inner Shadow effect */}
                         <div className="absolute inset-0 rounded-3xl shadow-[inset_0_4px_12px_rgba(255,255,255,0.35)] pointer-events-none z-40" />
@@ -2614,16 +2614,16 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                           </div>
                         </div>
 
-                        <div className="rounded-3xl overflow-hidden relative isolate h-full flex flex-col justify-end">
+                        <div className="rounded-3xl overflow-hidden relative isolate h-full flex flex-col justify-between">
                           {/* Shine Effect */}
                           <div className="absolute top-0 -left-[150%] w-[100%] h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -skew-x-12 z-50 pointer-events-none transition-all duration-0 group-hover:duration-[800ms] ease-in-out group-hover:left-[150%]" />
 
-                          <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none">
+                          <div className="flex-1 w-full flex items-end justify-center relative pt-2 pointer-events-none min-h-0">
                             {/* Expanded Full-Width Stage (Dark Blue) */}
                             <div className="absolute bottom-0 left-0 w-full h-[50px] sm:h-[95px] bg-[#127DA6] rounded-[50%_50%_0_0/100%_100%_0_0] scale-[1.05] z-0" />
 
                             {/* Ghosting Avatars - CSS WAAPI for smooth compositor animation */}
-                            <div className="relative z-10 flex items-end justify-center mb-[2px] h-[85px] sm:h-[145px] w-full">
+                            <div className="relative z-10 flex items-end justify-center mb-0 sm:mb-[2px] h-[72px] sm:h-[145px] w-full">
                               {/* Left Ghost */}
                               <img
                                 src="/avatar/avatar_icon.png"
@@ -2645,8 +2645,8 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                             </div>
                           </div>
 
-                          <div className="relative z-10 w-full px-3 sm:px-5 py-2.5 sm:py-3.5 text-center bg-[#0e688b] border-t border-white/10">
-                            <p className="text-[11px] sm:text-[13px] font-bold text-white leading-snug font-nunito">
+                          <div className="relative z-10 w-full px-2.5 sm:px-5 py-2 sm:py-3.5 text-center bg-[#0e688b] border-t border-white/10 shrink-0">
+                            <p className="text-[10px] min-[380px]:text-[11px] sm:text-[13px] font-bold text-white leading-snug font-nunito">
                               Practice by yourself with adjustable bot difficulty.
                             </p>
                           </div>
