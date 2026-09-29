@@ -13,6 +13,7 @@ import { Button } from './ui/button';
 const AVATAR_CROP_FRAME = { 'cropShape': 'round' } as const;
 import { Slider } from './ui/slider';
 import { useAuth } from '../contexts/AuthContext';
+import { getDefaultAvatar } from '../utils/avatarUtils';
 import {
   PROFILE_PICTURE_ALLOWED_TYPES,
   PROFILE_PICTURE_MAX_BYTES,
@@ -24,6 +25,7 @@ interface ProfilePictureUploaderProps {
   uid?: string;
   photoURL?: string;
   displayName?: string;
+  gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   className?: string;
   onUploaded?: (photoURL: string) => void;
   syncFirestore?: boolean;
@@ -119,11 +121,13 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
   uid,
   photoURL,
   displayName,
+  gender,
   className = '',
   onUploaded,
   syncFirestore = true,
 }) => {
   const { currentUser, refreshProfile } = useAuth();
+  const defaultPhoto = getDefaultAvatar(gender);
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
@@ -146,7 +150,7 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
     return () => URL.revokeObjectURL(preview);
   }, [selectedFile]);
 
-  const activePreview = selectedPreview || photoURL || '';
+  const activePreview = selectedPreview || photoURL || defaultPhoto;
   const helperText = useMemo(() => {
     const allowedTypes = PROFILE_PICTURE_ALLOWED_TYPES.map((type) => type.replace('image/', '').toUpperCase()).join(', ');
     return `${allowedTypes} up to ${formatBytes(PROFILE_PICTURE_MAX_BYTES)}. The image will be cropped to a circular avatar.`;

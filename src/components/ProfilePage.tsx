@@ -263,9 +263,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
         {/* Right Column: Profile Details Card */}
         <div className="flex-1 w-full min-w-0 flex flex-col">
-          <div className="relative rounded-3xl bg-white dark:bg-slate-900 border-2 border-purple-500/35 dark:border-purple-500/30 shadow-xl p-5 sm:p-7 lg:p-8 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
+          <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border-2 border-purple-500/35 dark:border-purple-500/30 shadow-xl p-5 sm:p-7 lg:p-8 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
             {/* Top spine highlight */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-400 opacity-90 rounded-t-2xl" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-400 opacity-90 pointer-events-none" />
 
             {/* Card Header: Section Title + Actions */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-5 mb-6 border-b border-slate-200/70 dark:border-slate-800">

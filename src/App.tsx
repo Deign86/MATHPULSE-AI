@@ -1315,7 +1315,7 @@ const App = ({ authOverride }: AppProps = {}) => {
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : activeTab === 'Leaderboard' ? 'overflow-y-auto lg:overflow-hidden p-0 pb-28 sm:pb-32 lg:pb-0' : activeTab === 'Quiz Battle' ? 'overflow-y-auto p-0 pb-28 sm:pb-32 lg:pb-8 h-full' : 'pt-1 sm:pt-2 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
+            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : activeTab === 'Leaderboard' ? 'overflow-y-auto lg:overflow-hidden p-0 pb-28 sm:pb-32 lg:pb-0' : activeTab === 'Quiz Battle' ? 'overflow-y-auto p-0 pb-28 sm:pb-32 lg:pb-8' : 'pt-1 sm:pt-2 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -1324,7 +1324,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' || activeTab === 'Leaderboard' || activeTab === 'Quiz Battle' ? 'h-full min-h-0' : ''}
+                className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' || activeTab === 'Leaderboard' ? 'h-full min-h-0' : activeTab === 'Quiz Battle' ? 'min-h-full flex flex-col' : ''}
               >
                 {/* Per-route boundary (issue #159 item 5): a crash in one tab
                     shows a retry card instead of the app-wide fallback. */}
