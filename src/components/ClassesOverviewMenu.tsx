@@ -90,7 +90,7 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
 
   return (
     <div className="h-full overflow-y-auto w-full block">
-      <div className="max-w-[1400px] mx-auto p-3 sm:p-[24px] xl:p-[32px] space-y-3 sm:space-y-[24px] pb-28 sm:pb-8">
+      <div className="max-w-[1400px] mx-auto p-3 sm:p-[24px] xl:p-[32px] space-y-3 sm:space-y-[24px] pb-28 sm:pb-32 lg:pb-8">
 
         {/* Global Search Bar - Redesigned for content area */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

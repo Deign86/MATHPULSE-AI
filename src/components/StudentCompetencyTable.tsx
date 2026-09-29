@@ -679,7 +679,7 @@ const StudentCompetencyTable: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-8"
+      className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8"
     >
       {onBack && (
         <div className="flex items-center justify-between mb-2">

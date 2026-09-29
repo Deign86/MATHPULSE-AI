@@ -24,10 +24,55 @@ def _require_teacher(request: Request):
     return user
 
 
+def _require_class_ownership(user, class_id: str) -> None:
+    if user.role == "admin":
+        return
+
+    from services.class_analytics_engine import _get_firestore_client
+
+    client = _get_firestore_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Class ownership could not be verified")
+
+    normalized_class_id = class_id.strip().lower()
+    try:
+        classroom = client.collection("classrooms").document(class_id).get()
+        if classroom.exists:
+            classroom_data = classroom.to_dict() or {}
+            if user.uid in {
+                str(classroom_data.get("teacherId") or ""),
+                str(classroom_data.get("ownerTeacherId") or ""),
+                str(classroom_data.get("managerId") or ""),
+            }:
+                return
+            raise HTTPException(status_code=403, detail="You are not allowed to view this class report")
+
+        ownership = client.collection("classSectionOwnership").document(normalized_class_id).get()
+        if ownership.exists:
+            ownership_data = ownership.to_dict() or {}
+            if user.uid in {
+                str(ownership_data.get("ownerTeacherId") or ""),
+                str(ownership_data.get("managerId") or ""),
+            }:
+                return
+
+        for field in ("teacherId", "ownerTeacherId", "managerId"):
+            classrooms = client.collection("classrooms").where("classSectionId", "==", normalized_class_id).where(
+                field, "==", user.uid
+            ).limit(1)
+            if list(classrooms.stream()):
+                return
+    except Exception as ownership_error:
+        logger.warning("Class ownership check failed for %s: %s", class_id, ownership_error)
+
+    raise HTTPException(status_code=403, detail="You are not allowed to view this class report")
+
+
 @router.get("/{class_id}")
 async def get_class_analytics(class_id: str, request: Request, refresh: bool = False):
     """Get full class analytics report. Cached for 30 min unless refresh=true."""
     user = _require_teacher(request)
+    _require_class_ownership(user, class_id)
 
     from services.class_analytics_engine import get_class_analytics_engine
     engine = get_class_analytics_engine()
@@ -41,6 +86,7 @@ async def get_class_students(
 ):
     """Get student summaries for a class with optional filtering."""
     user = _require_teacher(request)
+    _require_class_ownership(user, class_id)
 
     from services.class_analytics_engine import get_class_analytics_engine
     engine = get_class_analytics_engine()
@@ -66,6 +112,7 @@ async def get_class_students(
 async def get_class_topics(class_id: str, request: Request):
     """Get topic performance sorted by accuracy (worst first)."""
     user = _require_teacher(request)
+    _require_class_ownership(user, class_id)
 
     from services.class_analytics_engine import get_class_analytics_engine
     engine = get_class_analytics_engine()
@@ -79,6 +126,7 @@ async def get_class_topics(class_id: str, request: Request):
 async def refresh_class_insights(class_id: str, request: Request):
     """Force regeneration of AI insights. Rate limited: 1 per 5 min per class."""
     user = _require_teacher(request)
+    _require_class_ownership(user, class_id)
 
     last_refresh = _refresh_timestamps.get(class_id, 0)
     if time.time() - last_refresh < 300:

@@ -63,6 +63,7 @@ const AdminRagManager: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [reingestStatus, setReingestStatus] = useState<ReingestStatusResponse | null>(null);
   const consecutiveFailuresRef = useRef<number>(0);
+  const reingestInFlightRef = useRef(false);
 
   // Search & Navigation States
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +73,7 @@ const AdminRagManager: React.FC = () => {
 
   // Confirm Modal States
   const [purgeModalOpen, setPurgeModalOpen] = useState(false);
+  const [reingestModalOpen, setReingestModalOpen] = useState(false);
   const [deleteSubjectModal, setDeleteSubjectModal] = useState<string | null>(null);
   const [deleteFileModal, setDeleteFileModal] = useState<string | null>(null);
 
@@ -130,6 +132,10 @@ const AdminRagManager: React.FC = () => {
       window.clearInterval(pollIntervalId);
     };
   }, [isReingestRunning, checkReingestStatus, fetchDocuments]);
+
+  useEffect(() => {
+    if (isReingestRunning) setReingestModalOpen(false);
+  }, [isReingestRunning]);
 
   // Group documents by subject
   const subjectGroups: SubjectGroup[] = useMemo(() => {
@@ -248,6 +254,11 @@ const AdminRagManager: React.FC = () => {
   };
 
   const handleReingest = async () => {
+    if (reingestInFlightRef.current || isReingestRunning) {
+      setReingestModalOpen(false);
+      return;
+    }
+    reingestInFlightRef.current = true;
     setActionLoading('reingest');
     try {
       const triggerResponse = await apiFetch<ReingestTriggerResponse>('/api/admin/reingest-pdf', {
@@ -264,6 +275,7 @@ const AdminRagManager: React.FC = () => {
       const errorMessage = triggerError instanceof Error ? triggerError.message : String(triggerError);
       toast.error(`Re-ingestion failed: ${errorMessage}`);
     } finally {
+      reingestInFlightRef.current = false;
       setActionLoading(null);
     }
   };
@@ -442,7 +454,7 @@ const AdminRagManager: React.FC = () => {
             </Button>
 
             <Button
-              onClick={handleReingest}
+              onClick={() => setReingestModalOpen(true)}
               disabled={!!actionLoading || isReingestRunning}
               className="gap-1.5 h-10 px-3 sm:px-4 text-xs font-bold rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white shadow-sm shadow-purple-500/20 active:scale-95 transition-all border border-purple-400/30 shrink-0 whitespace-nowrap"
             >
@@ -491,7 +503,7 @@ const AdminRagManager: React.FC = () => {
             Upload learning materials in the Content section, then click &ldquo;Rebuild Knowledge&rdquo; to vector-index your Senior High School curriculum.
           </p>
           <Button
-            onClick={handleReingest}
+            onClick={() => setReingestModalOpen(true)}
             disabled={isReingestRunning}
             className="mt-5 gap-2 bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20 active:scale-95"
           >
@@ -904,6 +916,19 @@ const AdminRagManager: React.FC = () => {
         confirmText="Remove File"
         type="danger"
         icon="delete"
+      />
+
+      {/* 4. Rebuild Knowledge Modal */}
+      <ConfirmModal
+        isOpen={reingestModalOpen}
+        onClose={() => setReingestModalOpen(false)}
+        onConfirm={handleReingest}
+        title="Rebuild AI Knowledge?"
+        message="This will start a remote re-ingestion from Firebase Storage and rebuild all curriculum vectors in the cloud. This can take a while. Counts stay unchanged until the rebuild completes."
+        confirmText={actionLoading === 'reingest' ? 'Starting...' : 'Rebuild Knowledge'}
+        cancelText="Cancel"
+        type="warning"
+        icon="warning"
       />
     </div>
   );

@@ -60,7 +60,7 @@ const buildDefaultFormData = (role: 'Student' | 'Teacher' | 'Admin' = 'Student')
   role,
   status: 'Active',
   department: role === 'Teacher' ? 'Mathematics' : role === 'Admin' ? 'System' : '',
-  grade: '',
+  grade: role === 'Student' ? 'Grade 11' : '',
   section: '',
   lrn: '',
 });
@@ -1855,7 +1855,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                       <div className="grid grid-cols-2 gap-3 sm:gap-4">
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Grade Level</label>
-                          <Input value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} placeholder="Grade 11" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white" />
+                          <Input value="Grade 11" disabled placeholder="Grade 11" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white" />
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Section</label>
@@ -1865,6 +1865,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">LRN (12 digits)</label>
                         <Input value={formData.lrn} onChange={(e) => setFormData({ ...formData, lrn: e.target.value })} placeholder="123456789012" className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-bold tracking-widest text-slate-900 dark:text-white" />
+                        {formErrors.lrn && <p className="text-xs text-rose-500">{formErrors.lrn}</p>}
                       </div>
                     </div>
                   ) : (
@@ -1888,6 +1889,25 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                           {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
                       </div>
+                      {formErrors.password && <p className="text-xs text-rose-500">{formErrors.password}</p>}
+                    </div>
+                  )}
+
+                  {!editingUser && (
+                    <div className="space-y-1.5 pt-1">
+                      <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Confirm Password</label>
+                      <div className="relative">
+                        <Input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          value={formData.confirmPassword}
+                          onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                          className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 pr-10 text-xs font-bold tracking-widest text-slate-900 dark:text-white"
+                        />
+                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                          {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                      {formErrors.confirmPassword && <p className="text-xs text-rose-500">{formErrors.confirmPassword}</p>}
                     </div>
                   )}
                 </div>

@@ -47,6 +47,12 @@ function extractLearners(matrix: SheetMatrix): ParsedLearner[] {
   const numberCol = Math.max(matrix.startCol, nameCol - 1);
   const remarksCol = Math.min(matrix.endCol, nameCol + 1);
   const additionalRemarksCol = Math.min(matrix.endCol, nameCol + 2);
+  const headerRows = [learnerAnchor.row, learnerAnchor.row - 1, learnerAnchor.row - 2]
+    .filter((row) => row >= matrix.startRow);
+  const lrnCol = headerRows.flatMap((row) => matrix.cells[row - matrix.startRow] || [])
+    .find((cell) => cell && /\bLRN\b|LEARNER\s*(?:REFERENCE\s*)?(?:NO|NUMBER)/i.test(cell.normalizedText))?.col;
+  const emailCol = headerRows.flatMap((row) => matrix.cells[row - matrix.startRow] || [])
+    .find((cell) => cell && /\bE-?MAIL\b/i.test(cell.normalizedText))?.col;
 
   const learners: ParsedLearner[] = [];
   let sexContext: ParsedLearner['sex'] = 'UNKNOWN';
@@ -83,6 +89,8 @@ function extractLearners(matrix: SheetMatrix): ParsedLearner[] {
     emptyRun = 0;
     const learnerNo = parseLearnerNo(getMatrixCell(matrix, row, numberCol)?.displayValue);
     const fullName = String(getMatrixCell(matrix, row, nameCol)?.displayValue || '').trim();
+    const lrn = lrnCol === undefined ? undefined : String(getMatrixCell(matrix, row, lrnCol)?.displayValue || '').trim() || undefined;
+    const email = emailCol === undefined ? undefined : String(getMatrixCell(matrix, row, emailCol)?.displayValue || '').trim() || undefined;
 
     const remark = String(getMatrixCell(matrix, row, remarksCol)?.displayValue || '').trim() || undefined;
     const additionalRemarks = String(getMatrixCell(matrix, row, additionalRemarksCol)?.displayValue || '').trim() || undefined;
@@ -95,6 +103,8 @@ function extractLearners(matrix: SheetMatrix): ParsedLearner[] {
 
     learners.push({
       learnerNo,
+      lrn,
+      email,
       sex: sexContext,
       fullName: fullName || `Unnamed Learner ${learnerNo || row}`,
       sourceSheet: matrix.sheetName,

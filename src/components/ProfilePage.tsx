@@ -469,19 +469,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                         Grade Level
                       </label>
-                      <Select
-                        value={accountData.grade?.includes('12') ? 'Grade 12' : 'Grade 11'}
-                        onValueChange={(val) => handleFieldChange('grade', val)}
-                        disabled={!isEditMode}
-                      >
-                        <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs font-medium cursor-pointer">
-                          <SelectValue placeholder="Grade Level" />
-                        </SelectTrigger>
-                        <SelectContent className="z-[80] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl">
-                          <SelectItem value="Grade 11">Grade 11 (Senior High)</SelectItem>
-                          <SelectItem value="Grade 12">Grade 12 (Senior High)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        value="Grade 11"
+                        readOnly
+                        className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-500 dark:text-slate-400"
+                      />
                     </div>
 
                     <div>

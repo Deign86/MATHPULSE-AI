@@ -312,10 +312,9 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
                           <div className="relative">
                             <BookOpen size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
-                              value={editedData.grade || ''}
-                              onChange={(e) => setEditedData({ ...editedData, grade: e.target.value })}
-                              disabled={!isEditing}
-                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] focus:border-[#a855f7] focus:ring-[#a855f7]/20 disabled:opacity-50 disabled:cursor-default"
+                              value="Grade 11"
+                              readOnly
+                              className="pl-10 bg-white border-[#dde3eb] rounded-lg font-body text-[#0a1628] disabled:opacity-50 disabled:cursor-default"
                             />
                           </div>
                         </div>

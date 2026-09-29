@@ -910,7 +910,7 @@ class TestUploadClassRecordsGuardrails:
     @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
     def test_upload_class_records_rejects_unsupported_dataset_intent(self, _mock_chat):
         files = {
-            "files": ("records.csv", b"name,lrn,email,avgQuizScore,attendance,engagementScore,assignmentCompletion\nAna,1001,ana@example.com,80,90,85,88\n", "text/csv"),
+            "files": ("records.csv", b"name,lrn,email,avgQuizScore,attendance,engagementScore,assignmentCompletion\nAna,123456789001,ana@example.com,80,90,85,88\n", "text/csv"),
         }
         response = client.post(
             "/api/upload/class-records",
@@ -926,7 +926,7 @@ class TestUploadClassRecordsGuardrails:
         files = {
             "files": (
                 "records.csv",
-                b"name,lrn,email,attendance\nAna,1001,ana@example.com,90\n",
+                b"name,lrn,email,attendance\nAna,123456789001,ana@example.com,90\n",
                 "text/csv",
             ),
         }
@@ -951,7 +951,7 @@ class TestUploadClassRecordsGuardrails:
                 "records.csv",
                 (
                     b"name,lrn,email,avgQuizScore,attendance,engagementScore,assignmentCompletion,patient_diagnosis\n"
-                    b"Ana,1001,ana@example.com,80,90,85,88,none\n"
+                    b"Ana,123456789001,ana@example.com,80,90,85,88,none\n"
                 ),
                 "text/csv",
             ),
@@ -993,8 +993,8 @@ class TestUploadClassRecordsGuardrails:
                 "records.csv",
                 (
                     b"name,lrn,avgQuizScore,attendance,engagementScore\n"
-                    b"Ana Cruz,1001,81,92,88\n"
-                    b"Ben Dela,1002,58,70,52\n"
+                    b"Ana Cruz,123456789001,81,92,88\n"
+                    b"Ben Dela,123456789002,58,70,52\n"
                 ),
                 "text/csv",
             ),
@@ -1023,15 +1023,47 @@ class TestUploadClassRecordsGuardrails:
         assert class_metadata.get("classification") == "Senior High School"
 
     @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_imports_real_xlsx_rows(self, _mock_chat):
+        from io import BytesIO
+        from openpyxl import Workbook
+
+        workbook = BytesIO()
+        excel = Workbook()
+        sheet = excel.active
+        assert sheet is not None
+        sheet.append(["name", "lrn", "email", "avgQuizScore", "attendance", "engagementScore", "assignmentCompletion", "term", "assessmentName"])
+        sheet.append(["Ana Cruz", "123456789001", "ana@example.com", 81, 92, 88, 90, "First Semester", "Algebra Quiz"])
+        excel.save(workbook)
+
+        response = client.post(
+            "/api/upload/class-records",
+            files={
+                "files": (
+                    "class-record.xlsx",
+                    workbook.getvalue(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+            data={"datasetIntent": "synthetic_student_records"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["success"] is True
+        assert payload["interpretedRows"] == 1
+        assert payload["rejectedRows"] == 0
+        assert payload["students"][0]["lrn"] == "123456789001"
+
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
     def test_upload_class_records_reports_explicit_row_rejections(self, _mock_chat):
         files = {
             "files": (
                 "records.csv",
                 (
-                    b"name,lrn,email,avgQuizScore,attendance,engagementScore\n"
-                    b",1001,ana@example.com,81,92,88\n"
-                    b"Ben Dela,,,58,70,52\n"
-                    b"Cara Lim,1003,,77,83,75\n"
+                    b"name,email,avgQuizScore,attendance,engagementScore\n"
+                    b",ana@example.com,81,92,88\n"
+                    b"Ben Dela,,58,70,52\n"
+                    b"Cara Lim,cara@example.com,77,83,75\n"
                 ),
                 "text/csv",
             ),
@@ -1067,7 +1099,7 @@ class TestUploadClassRecordsGuardrails:
                 "records.csv",
                 (
                     b"name,lrn,avgQuizScore,attendance,engagementScore\n"
-                    b"Ana Cruz,1001,81,92,88\n"
+                    b"Ana Cruz,123456789001,81,92,88\n"
                 ),
                 "text/csv",
             ),
@@ -1116,7 +1148,7 @@ class TestImportedOverviewAndTopicMastery:
                     {
                         "teacherId": "test-teacher-uid",
                         "name": "Ben Dela",
-                        "lrn": "1002",
+                        "lrn": "123456789002",
                         "classSectionId": "grade11_a",
                         "className": "Grade 11 - A",
                         "avgQuizScore": 68,
@@ -1600,6 +1632,9 @@ class _ProvisionDocumentRef:
         existing.update(payload)
         collection[self._doc_id] = existing
 
+    def update(self, payload: Dict[str, Any]):
+        self.set(payload, merge=True)
+
     def delete(self):
         collection = self._store.setdefault(self._collection_name, {})
         collection.pop(self._doc_id, None)
@@ -1671,6 +1706,29 @@ class _ProvisionFirestoreClient:
     def collection(self, name: str):
         return _ProvisionCollectionRef(self.store, name)
 
+    def transaction(self):
+        return _ProvisionTransaction()
+
+
+class _ProvisionTransaction:
+    def __init__(self):
+        self._writes: List[tuple[str, _ProvisionDocumentRef, Dict[str, Any], bool]] = []
+
+    def get(self, reference: _ProvisionDocumentRef):
+        if isinstance(reference, _ProvisionQuery):
+            return iter(reference.stream())
+        return iter([reference.get()])
+
+    def set(self, reference: _ProvisionDocumentRef, payload: Dict[str, Any], merge: bool = False):
+        self._writes.append(("set", reference, payload, merge))
+
+    def update(self, reference: _ProvisionDocumentRef, payload: Dict[str, Any]):
+        self._writes.append(("update", reference, payload, True))
+
+    def commit(self):
+        for _, reference, payload, merge in self._writes:
+            reference.set(payload, merge=merge)
+
 
 class _ProvisionFirestoreModule:
     class Query:
@@ -1693,7 +1751,7 @@ class TestStudentAccountProvisioningImport:
                 "users": {
                     "existing-student": {
                         "email": "existing@student.com",
-                        "lrn": "1002",
+                        "lrn": "123456789002",
                         "role": "student",
                     }
                 }
@@ -1713,9 +1771,9 @@ class TestStudentAccountProvisioningImport:
                         "accounts.csv",
                         (
                             b"First Name,Last Name,Student ID,Email,Grade,Section\n"
-                            b"Ana,Cruz,1001,ana@student.com,Grade 11,STEM-A\n"
-                            b"Ben,Dela,1002,existing@student.com,Grade 11,STEM-A\n"
-                            b",Lim,1003,cara@student.com,Grade 11,STEM-A\n"
+                            b"Ana,Cruz,123456789001,ana@student.com,Grade 11,STEM-A\n"
+                            b"Ben,Dela,123456789002,existing@student.com,Grade 11,STEM-A\n"
+                            b",Lim,123456789003,cara@student.com,Grade 11,STEM-A\n"
                         ),
                         "text/csv",
                     )
@@ -1745,7 +1803,7 @@ class TestStudentAccountProvisioningImport:
                 files={
                     "file": (
                         "accounts.csv",
-                        b"First Name,Last Name,Student ID,Email,Grade,Section\nAna,Cruz,1001,ana@student.com,Grade 11,STEM-A\n",
+                        b"First Name,Last Name,Student ID,Email,Grade,Section\nAna,Cruz,123456789001,ana@student.com,Grade 11,STEM-A\n",
                         "text/csv",
                     )
                 },
@@ -1777,6 +1835,149 @@ class TestStudentAccountProvisioningImport:
         provisioned_profile = next(iter(users_store.values()))
         assert provisioned_profile.get("role") == "student"
         assert provisioned_profile.get("forcePasswordChange") is True
+
+    @staticmethod
+    def _move_firestore() -> _ProvisionFirestoreModule:
+        return _ProvisionFirestoreModule(
+            {
+                "users": {
+                    "student-uid": {
+                        "name": "Ana Cruz",
+                        "email": "ana@student.com",
+                        "lrn": "123456789001",
+                        "role": "student",
+                        "classSectionId": "grade_11_stem_a",
+                        "section": "STEM-A",
+                        "teacherId": "former-teacher",
+                        "adviserTeacherId": "former-teacher",
+                    }
+                },
+                "managedStudents": {
+                    "student-uid": {
+                        "name": "Ana Cruz",
+                        "email": "ana@student.com",
+                        "lrn": "123456789001",
+                        "classSectionId": "grade_11_stem_a",
+                        "classroomId": "grade_11_stem_a",
+                        "teacherId": "former-teacher",
+                        "adviserTeacherId": "former-teacher",
+                    }
+                },
+                "classSectionOwnership": {
+                    "grade_11_stem_a": {
+                        "ownerTeacherId": "admin-uid",
+                        "managerId": "admin-uid",
+                        "studentUids": ["student-uid"],
+                    },
+                    "grade_11_stem_b": {
+                        "ownerTeacherId": "admin-uid",
+                        "managerId": "admin-uid",
+                        "studentUids": [],
+                    },
+                },
+                "accessAuditLogs": {},
+            }
+        )
+
+    @staticmethod
+    def _preview_move_import() -> Dict[str, Any]:
+        response = client.post(
+            "/api/import/student-accounts/preview",
+            data={"classSectionId": "grade_11_stem_b"},
+            files={
+                "file": (
+                    "accounts.csv",
+                    b"First Name,Last Name,Student ID,Email,Grade,Section\nAna,Cruz,123456789001,ana@student.com,Grade 11,STEM-B\n",
+                    "text/csv",
+                )
+            },
+        )
+        assert response.status_code == 200
+        return response.json()
+
+    def test_move_confirmation_reassigns_roster_with_sdk_transaction_iterators(self):
+        firestore = self._move_firestore()
+        token_claims = {"uid": "admin-uid", "email": "admin@example.com", "role": "admin"}
+        with (
+            patch.object(main_module, "firebase_firestore", firestore),
+            patch.object(main_module, "_firebase_ready", True),
+            patch.object(main_module.firebase_auth, "verify_id_token", return_value=token_claims),
+            patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=Exception("user not found")),
+        ):
+            unconfirmed_preview = self._preview_move_import()
+            assert unconfirmed_preview["rows"][0]["status"] == "move_confirmation_required"
+            unconfirmed = client.post(
+                "/api/import/student-accounts/commit",
+                json={"previewToken": unconfirmed_preview["previewToken"]},
+            )
+            assert unconfirmed.status_code == 200
+            assert unconfirmed.json()["rows"][0]["message"].startswith("Cannot import")
+            assert firestore.client().store["managedStudents"]["student-uid"]["classSectionId"] == "grade_11_stem_a"
+
+            confirmed_preview = self._preview_move_import()
+            confirmed = client.post(
+                "/api/import/student-accounts/commit",
+                json={"previewToken": confirmed_preview["previewToken"], "confirmSectionMoves": True},
+            )
+
+        assert confirmed.status_code == 200
+        assert confirmed.json()["rows"][0]["status"] == "updated"
+        moved_roster = firestore.client().store["managedStudents"]["student-uid"]
+        moved_profile = firestore.client().store["users"]["student-uid"]
+        assert moved_roster["classSectionId"] == "grade_11_stem_b"
+        assert moved_roster["teacherId"] == "admin-uid"
+        assert moved_roster["adviserTeacherId"] == "admin-uid"
+        assert moved_profile["classSectionId"] == "grade_11_stem_b"
+        assert firestore.client().store["classSectionOwnership"]["grade_11_stem_a"]["studentUids"] == []
+        assert firestore.client().store["classSectionOwnership"]["grade_11_stem_b"]["studentUids"] == ["student-uid"]
+
+    def test_confirmed_move_blocks_when_roster_lrn_changed_after_preview(self):
+        firestore = self._move_firestore()
+        token_claims = {"uid": "admin-uid", "email": "admin@example.com", "role": "admin"}
+        with (
+            patch.object(main_module, "firebase_firestore", firestore),
+            patch.object(main_module, "_firebase_ready", True),
+            patch.object(main_module.firebase_auth, "verify_id_token", return_value=token_claims),
+            patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=Exception("user not found")),
+        ):
+            preview = self._preview_move_import()
+            firestore.client().store["managedStudents"]["student-uid"]["lrn"] = "123456789999"
+            response = client.post(
+                "/api/import/student-accounts/commit",
+                json={"previewToken": preview["previewToken"], "confirmSectionMoves": True},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["rows"][0]["status"] == "blocked"
+        assert firestore.client().store["managedStudents"]["student-uid"]["classSectionId"] == "grade_11_stem_a"
+
+
+def test_class_analytics_rejects_same_id_ownership_collision():
+    from types import SimpleNamespace
+    from fastapi import HTTPException
+    from routes import class_analytics_routes
+
+    firestore = _ProvisionFirestoreModule(
+        {
+            "classrooms": {
+                "collision-id": {
+                    "classSectionId": "owned-section",
+                    "teacherId": "different-teacher",
+                }
+            },
+            "classSectionOwnership": {
+                "collision-id": {"ownerTeacherId": "requesting-teacher"},
+                "owned-section": {"ownerTeacherId": "requesting-teacher"},
+            },
+        }
+    )
+    user = SimpleNamespace(uid="requesting-teacher", role="teacher")
+
+    with patch("services.class_analytics_engine._get_firestore_client", return_value=firestore.client()):
+        with pytest.raises(HTTPException) as error:
+            class_analytics_routes._require_class_ownership(user, "collision-id")
+
+    assert error.value.status_code == 403
 
 
 class _FakeEmailServiceSuccess:

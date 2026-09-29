@@ -92,6 +92,7 @@ export interface ChatRequest {
   history: { role: 'user' | 'assistant'; content: string }[];
   userId?: string;
   sessionId?: string;
+  crossSessionMemory?: string;
   verify?: boolean;
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
@@ -101,6 +102,7 @@ export interface ChatRequest {
 
 export interface ChatCompletionOptions {
   sessionId?: string;
+  crossSessionMemory?: string;
   expectedEndMarker?: string;
   completionMode?: 'auto' | 'marker' | 'none';
   continuationMaxRounds?: number;
@@ -375,6 +377,21 @@ export interface RiskRefreshMonitorResponse {
   stats: RiskRefreshMonitorStats;
   jobs: RiskRefreshMonitorJob[];
   warnings: string[];
+}
+
+export interface DeleteClassSectionResponse {
+  success: boolean;
+  deletedDocs: number;
+  classSectionId: string;
+}
+
+export async function deleteClassSection(classSectionId: string): Promise<DeleteClassSectionResponse> {
+  const normalizedClassSectionId = classSectionId.trim();
+  validateRequired('/api/class-section/{class_section_id}', { classSectionId: normalizedClassSectionId });
+  return apiFetch<DeleteClassSectionResponse>(
+    `/api/class-section/${encodeURIComponent(normalizedClassSectionId)}`,
+    { method: 'DELETE' },
+  );
 }
 
 export interface CourseMaterialTopic {
@@ -753,7 +770,7 @@ export interface ImportGroundedAccessAuditResponse {
   warnings: string[];
 }
 
-export type StudentAccountPreviewStatus = 'valid' | 'invalid' | 'duplicate';
+export type StudentAccountPreviewStatus = 'valid' | 'invalid' | 'duplicate' | 'move_confirmation_required';
 export type StudentAccountCommitStatus = 'created' | 'updated' | 'skipped' | 'blocked' | 'failed';
 
 export interface StudentAccountProvisionPreviewRow {
@@ -1503,6 +1520,8 @@ function extractTaskErrorMessage(cause: unknown): string {
 // ─── Public API ──────────────────────────────────────────────
 
 export const apiService = {
+  deleteClassSection,
+
   async detectWeakness(payload: WeaknessDetectionRequest): Promise<WeaknessDetectionResponse> {
     return apiFetch<WeaknessDetectionResponse>('/api/deepseek/weakness-detection', {
       method: 'POST',
@@ -1562,6 +1581,7 @@ export const apiService = {
       moduleContext: options?.moduleContext,
     };
     if (options?.sessionId) requestPayload.sessionId = options.sessionId;
+    if (options?.crossSessionMemory) requestPayload.crossSessionMemory = options.crossSessionMemory;
     if (options?.expectedEndMarker) requestPayload.expectedEndMarker = options.expectedEndMarker;
     if (options?.completionMode) requestPayload.completionMode = options.completionMode;
     if (isNumber(options?.continuationMaxRounds)) {
@@ -2034,6 +2054,7 @@ export const apiService = {
     defaultPassword?: string;
     forcePasswordChange?: boolean;
     createAuthUsers?: boolean;
+    confirmSectionMoves?: boolean;
   }): Promise<StudentAccountImportCommitResponse> {
     validateRequired('/api/import/student-accounts/commit', {
       previewToken: payload.previewToken,

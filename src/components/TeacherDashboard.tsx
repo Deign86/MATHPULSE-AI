@@ -8,7 +8,8 @@ import {
   FileText, Target, Zap, FileSpreadsheet,
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
   ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck,
-  User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon, ArrowUpRight
+  User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon, ArrowUpRight,
+  Trash2, Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -76,6 +77,7 @@ import {
 import {
   apiService,
   ApiError,
+  apiFetch,
   fetchAnalysisCurriculumContext,
   type ImportedClassOverviewResponse,
   type LessonPlanResponse,
@@ -197,6 +199,23 @@ export interface StudentView {
   source?: 'registered' | 'import' | 'both';
   accountUid?: string;
   email?: string;
+}
+
+function findRosterStudent(studentId: string, students: StudentView[]): StudentView | undefined {
+  const normalizedId = studentId.trim().toLowerCase();
+  if (!normalizedId) return undefined;
+  const uidMatches = students.filter((student) =>
+    [student.accountUid, student.id]
+      .some((identifier) => identifier?.trim().toLowerCase() === normalizedId)
+  );
+  if (uidMatches.length === 1) return uidMatches[0];
+  if (uidMatches.length > 1) return undefined;
+
+  const secondaryMatches = students.filter((student) =>
+    [student.lrn, student.email]
+      .some((identifier) => identifier?.trim().toLowerCase() === normalizedId)
+  );
+  return secondaryMatches.length === 1 ? secondaryMatches[0] : undefined;
 }
 
 function toClassView(c: Classroom): ClassView {
@@ -740,6 +759,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [pendingRemoveStudent, setPendingRemoveStudent] = useState<StudentView | null>(null);
+  const [pendingDeleteClass, setPendingDeleteClass] = useState<ClassView | null>(null);
+  const [deleteClassBusy, setDeleteClassBusy] = useState(false);
+  const [deleteClassError, setDeleteClassError] = useState<string | null>(null);
+  const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
   const [showCreateClassModal, setShowCreateClassModal] = useState(false);
   const [showAddStudentsModal, setShowAddStudentsModal] = useState(false);
 
@@ -1296,6 +1319,67 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     setSelectedClass(classItem);
     setActiveView('analytics');
   };
+
+  const handleRequestDeleteClass = useCallback((classItem: ClassView) => {
+    setDeleteClassError(null);
+    setPendingDeleteClass(classItem);
+  }, []);
+
+  const closeDeleteClassDialog = useCallback(() => {
+    if (deleteClassBusy) return;
+    setPendingDeleteClass(null);
+    setDeleteClassError(null);
+  }, [deleteClassBusy]);
+
+  const confirmDeleteClass = useCallback(async () => {
+    if (!pendingDeleteClass || deleteClassBusy) return;
+    const classItem = pendingDeleteClass;
+    const classSectionId = (classItem.classSectionId || classItem.classMetadata?.classSectionId || '').trim();
+    if (!classSectionId) {
+      setDeleteClassError('This class is missing a section ID, so it cannot be deleted yet.');
+      return;
+    }
+
+    const snapshotClasses = classes;
+    const snapshotStudents = students;
+    setDeleteClassBusy(true);
+    setDeleteClassError(null);
+    setDeletingClassId(classItem.id);
+    // Optimistically drop the class and its students while the request is in flight.
+    setClasses(prev => prev.filter(c => c.id !== classItem.id));
+    setStudents(prev => prev.filter(s => {
+      const studentSection = normalizeClassSectionId(s.classSectionId || s.classroomId);
+      return studentSection !== normalizeClassSectionId(classSectionId);
+    }));
+
+    try {
+      // TODO: picks up fixer service method with same signature (deleteClassSection(classSectionId)).
+      await apiFetch<{ success: boolean; deletedDocs: number; classSectionId: string }>(
+        `/api/class-section/${encodeURIComponent(classSectionId)}`,
+        { method: 'DELETE' },
+      );
+      setPendingDeleteClass(null);
+      toast.success(`Deleted ${classItem.name}.`);
+      if (selectedClass && normalizeClassSectionId(selectedClass.classSectionId || '') === normalizeClassSectionId(classSectionId)) {
+        setSelectedClass(null);
+        setActiveView('dashboard');
+      }
+      setDataRefreshNonce((nonce) => nonce + 1);
+    } catch (err) {
+      console.error('Delete class section failed:', err);
+      setClasses(snapshotClasses);
+      setStudents(snapshotStudents);
+      if (err instanceof ApiError && err.status === 403) {
+        setDeleteClassError('You do not own this class section, so it cannot be deleted.');
+      } else {
+        setDeleteClassError('Failed to delete the class. Please try again.');
+      }
+      toast.error('Failed to delete class.');
+    } finally {
+      setDeleteClassBusy(false);
+      setDeletingClassId(null);
+    }
+  }, [pendingDeleteClass, deleteClassBusy, classes, students, selectedClass]);
 
   const handleViewStudent = (student: StudentView) => {
     setSelectedStudent(student);
@@ -1966,6 +2050,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     classes={managedClassesWithResolvedCounts}
                     liveActivity={liveActivity}
                     onViewClass={handleViewClass}
+                    onDeleteClass={handleRequestDeleteClass}
+                    deletingClassId={deletingClassId}
                     onViewAllClasses={() => setActiveView('analytics')}
                     onViewActivityStudent={(name) => {
                       const match = students.find(s => s.name === name);
@@ -2652,6 +2738,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         icon="delete"
       />
 
+      <DeleteClassConfirmModal
+        classItem={pendingDeleteClass}
+        busy={deleteClassBusy}
+        error={deleteClassError}
+        onClose={closeDeleteClassDialog}
+        onConfirm={confirmDeleteClass}
+      />
+
       <CreateClassModal
         open={showCreateClassModal}
         onClose={() => setShowCreateClassModal(false)}
@@ -2748,6 +2842,8 @@ const DashboardView: React.FC<{
   classes: ClassView[];
   liveActivity: { id: string; student: string; action: string; topic: string; time: string; type: string }[];
   onViewClass: (classItem: ClassView) => void;
+  onDeleteClass?: (classItem: ClassView) => void;
+  deletingClassId?: string | null;
   onViewAllClasses: () => void;
   onViewActivityStudent?: (studentName: string) => void;
   dailyInsight: string;
@@ -2759,7 +2855,7 @@ const DashboardView: React.FC<{
   totalAtRisk: number;
   avgPerformance: number;
   onCreateClass?: () => void;
-}> = ({ classes, liveActivity, onViewClass, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance, onCreateClass }) => {
+}> = ({ classes, liveActivity, onViewClass, onDeleteClass, deletingClassId, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance, onCreateClass }) => {
   const riskPercentage = totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0;
   const engagementRate = totalStudents > 0 ? Math.round(((totalStudents - totalAtRisk) / totalStudents) * 100) : 0;
 
@@ -2946,7 +3042,7 @@ const DashboardView: React.FC<{
               <div
                 key={classItem.id}
                 onClick={() => onViewClass(classItem)}
-                className={`relative overflow-hidden ${gradient.cardBg} border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-3 sm:p-4 shadow-xs hover:shadow-md ${gradient.cardGlow} ${gradient.cardBorder} hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-center justify-between gap-2.5 sm:gap-4 group`}
+                className={`relative overflow-hidden ${gradient.cardBg} border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-3 sm:p-4 shadow-xs hover:shadow-md ${gradient.cardGlow} ${gradient.cardBorder} hover:-translate-y-0.5 active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-center justify-between gap-2.5 sm:gap-4 group ${deletingClassId === classItem.id ? 'opacity-60 pointer-events-none' : ''}`}
               >
                 {/* Left Accent Gradient Bar */}
                 <div className={`absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b ${gradient.accentBar} opacity-80 group-hover:opacity-100 group-hover:w-2 transition-all`} />
@@ -2989,6 +3085,26 @@ const DashboardView: React.FC<{
                     <span className="sm:hidden">Manage</span>
                     <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
                   </span>
+
+                  {onDeleteClass && (
+                    <button
+                      type="button"
+                      aria-label={`Delete ${classItem.name}`}
+                      title="Delete class"
+                      disabled={deletingClassId === classItem.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteClass(classItem);
+                      }}
+                      className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-xl flex items-center justify-center border bg-white/80 dark:bg-slate-800/80 border-rose-200 dark:border-rose-800/70 text-rose-500 dark:text-rose-400 hover:bg-gradient-to-r hover:from-rose-500 hover:to-red-500 hover:text-white hover:border-rose-500 hover:shadow-sm hover:shadow-rose-500/25 active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {deletingClassId === classItem.id ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={13} />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -2997,6 +3113,151 @@ const DashboardView: React.FC<{
       </div>
     </motion.div>
   );
+};
+
+// Delete Class confirmation dialog — matches ConfirmModal's design language
+// (danger gradient badge styling, spring motion, portal) with class-specific
+// details, inline error display, and Escape/focus-trap support.
+const DeleteClassConfirmModal: React.FC<{
+  classItem: ClassView | null;
+  busy: boolean;
+  error: string | null;
+  onClose: () => void;
+  onConfirm: () => void | Promise<void>;
+}> = ({ classItem, busy, error, onClose, onConfirm }) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!classItem) return;
+    deleteButtonRef.current?.focus();
+  }, [classItem]);
+
+  useEffect(() => {
+    if (!classItem) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab' && panelRef.current) {
+        const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [classItem, onClose]);
+
+  const open = classItem !== null;
+
+  const modalElement = (
+    <AnimatePresence>
+      {open && classItem && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <motion.div
+            ref={panelRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-class-title"
+            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 16 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white dark:bg-slate-900 rounded-[28px] sm:rounded-3xl shadow-2xl w-full max-w-[340px] sm:max-w-md border border-slate-200/80 dark:border-slate-800 overflow-hidden"
+          >
+            {/* Danger gradient accent strip, mirroring the classes container */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-red-500 to-rose-600 pointer-events-none" />
+
+            <div className="p-5 sm:p-7 text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.08, type: 'spring', damping: 15 }}
+                className="w-14 h-14 sm:w-16 sm:h-16 bg-rose-100 dark:bg-rose-950/50 rounded-2xl flex items-center justify-center mx-auto mb-3.5 sm:mb-4 text-rose-600 dark:text-rose-400 shadow-inner"
+              >
+                <Trash2 className="w-6 h-6 sm:w-7 sm:h-7" />
+              </motion.div>
+
+              <h2 id="delete-class-title" className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white mb-1.5 sm:mb-2 tracking-tight">
+                Delete this class?
+              </h2>
+
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+                <span className="font-bold text-slate-900 dark:text-white">{classItem.name}</span>
+                {' — '}
+                {classItem.studentCount} student{classItem.studentCount === 1 ? '' : 's'} enrolled.
+              </p>
+
+              <div className="mb-5 sm:mb-6 text-left bg-gradient-to-r from-rose-50 to-red-50 dark:from-rose-950/50 dark:to-red-950/50 border border-rose-200 dark:border-rose-800 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                <AlertTriangle size={14} className="text-rose-500 dark:text-rose-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] sm:text-xs text-rose-700 dark:text-rose-300 font-medium leading-snug">
+                  This removes the class and all its student records, imports, and analytics. It cannot be undone.
+                </p>
+              </div>
+
+              {error && (
+                <p className="text-xs sm:text-sm text-rose-600 dark:text-rose-400 font-semibold mb-3" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+                <Button
+                  onClick={onClose}
+                  disabled={busy}
+                  variant="outline"
+                  className="flex-1 h-10 sm:h-11 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white font-bold text-xs sm:text-sm active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  ref={deleteButtonRef}
+                  onClick={onConfirm}
+                  disabled={busy}
+                  className="flex-1 h-10 sm:h-11 rounded-xl font-black text-xs sm:text-sm text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 active:scale-95 shadow-md shadow-rose-500/25 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {busy ? (
+                    <span className="flex items-center justify-center gap-1.5">
+                      <Loader2 size={14} className="animate-spin" />
+                      Deleting...
+                    </span>
+                  ) : (
+                    'Delete'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+
+  if (typeof document !== 'undefined') {
+    return ReactDOM.createPortal(modalElement, document.body);
+  }
+  return modalElement;
 };
 
 const StudentCard = React.memo(({
@@ -3061,7 +3322,7 @@ const StudentCard = React.memo(({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemoveStudent(student); }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 p-1 rounded-md shrink-0 ml-0.5"
+              className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 focus-visible:opacity-100 transition-colors shrink-0"
               aria-label={`Remove ${student.name} from class`}
               title="Remove from class"
             >
@@ -3563,7 +3824,7 @@ const AnalyticsView: React.FC<{
           .sort((a, b) => b.avg_score - a.avg_score)
           .slice(0, 5)
           .map(bs => {
-            const match = students.find(s => s.id === bs.student_id);
+            const match = findRosterStudent(bs.student_id, students);
             return match ? { ...match, avgScore: bs.avg_score } : null;
           })
           .filter(Boolean) as StudentView[];
@@ -3577,14 +3838,27 @@ const AnalyticsView: React.FC<{
     const attentionStudents = useMemo(() => {
       if (backendHasData) {
         // SAFETY: trusted internal value already conforms to the asserted type.
-        return backendReport!.students
+        const matchedStudents = backendReport!.students
           .filter(s => ['High Risk', 'Critical'].includes(s.risk_level))
           .sort((a, b) => a.avg_score - b.avg_score)
-          .map(bs => {
-            const match = students.find(s => s.id === bs.student_id);
-            return match ? { ...match, avgScore: bs.avg_score, _backendRisk: bs.risk_level } : null;
-          })
-          .filter(Boolean) as (StudentView & { _backendRisk?: string })[];
+          .flatMap(bs => {
+            const match = findRosterStudent(bs.student_id, students);
+            return match ? [{ ...match, avgScore: bs.avg_score, _backendRisk: bs.risk_level }] : [];
+          });
+        const matchedIds = new Set(
+          backendReport!.students
+            .map(student => findRosterStudent(student.student_id, students)?.id)
+            .filter((studentId): studentId is string => studentId !== undefined)
+        );
+        const localFallback = students
+          .filter(student => !matchedIds.has(student.id))
+          .filter((student) => {
+            const hasHighRiskSignal = student.riskLevel === 'high'
+              || ['intervene', 'critical', 'at_risk'].includes(student.riskStatus || '');
+            const isAssessed = progressScores.has(student.id) || student.avgScore > 0;
+            return hasHighRiskSignal || (isAssessed && student.avgScore < 75);
+          });
+        return [...matchedStudents, ...localFallback];
       }
       return [...students].filter((student) => student.riskLevel === 'high' || (progressScores.get(student.id) || student.avgScore) < 70 || student.assignmentCompletion < 65);
     }, [students, backendReport, backendHasData, progressScores]);
@@ -4235,7 +4509,7 @@ const InterventionView: React.FC<{
   const [selectedStep, setSelectedStep] = useState<import('../services/interventionService').LearningStep | null>(null);
   const [learningPath, setLearningPath] = useState<string>(initialCache?.learningPath || '');
   const [pathLoading, setPathLoading] = useState(true);
-  const [gradeDraft, setGradeDraft] = useState(initialCache?.gradeDraft || student.grade || 'Grade 11');
+  const [gradeDraft, setGradeDraft] = useState(initialCache?.gradeDraft || 'Grade 11');
   const [sectionDraft, setSectionDraft] = useState(initialCache?.sectionDraft || student.section || 'Section A');
   const [savingSection, setSavingSection] = useState(false);
   const [lessonPlan, setLessonPlan] = useState<LessonPlanResponse | null>(initialCache?.lessonPlan ?? null);
@@ -4686,7 +4960,7 @@ const InterventionView: React.FC<{
       className="w-full h-full flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative"
     >
       {/* Center Scrollable Content: Insights & Tools */}
-      <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-3.5 sm:p-6 xl:p-8 pb-28 lg:pb-8 no-scrollbar">
+      <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-3.5 sm:p-6 xl:p-8 pb-28 sm:pb-32 lg:pb-8 no-scrollbar">
         <div className="max-w-[1000px] mx-auto space-y-4 sm:space-y-6">
 
           {/* Top Navigation Row: Back Button + Segmented Tabs */}
@@ -4863,8 +5137,8 @@ const InterventionView: React.FC<{
                       <div>
                         <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Grade</label>
                         <Input
-                          value={gradeDraft}
-                          onChange={(e) => setGradeDraft(e.target.value)}
+                          value="Grade 11"
+                          disabled
                           placeholder="Grade"
                           className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs h-9 rounded-lg px-3"
                         />
@@ -5821,8 +6095,8 @@ const InterventionView: React.FC<{
                 <label className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5 block ml-1">Grade Level</label>
                 <div className="relative">
                   <Input
-                    value={gradeDraft}
-                    onChange={(e) => setGradeDraft(e.target.value)}
+                    value="Grade 11"
+                    disabled
                     placeholder="Grade"
                     className="appearance-none w-full bg-[#f8fafc] border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[14px] px-4 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] h-auto"
                   />
@@ -6164,7 +6438,7 @@ const ImportView: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6"
+      className="p-3.5 sm:p-6 pb-28 sm:pb-32 lg:pb-12"
     >
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="mb-2">

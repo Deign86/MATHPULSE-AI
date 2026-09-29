@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathPulse AI — Modular Activity Diagrams Viewer</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Mermaid.js -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-light: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --accent: #818cf8;
+      --border: #334155;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .title-group h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .title-group p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #0f172a;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      color: white;
+    }
+
+    .btn-outline {
+      background: var(--surface-light);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .btn-outline:hover {
+      background: var(--border);
+      color: white;
+    }
+
+    .legend-bar {
+      background: #131d35;
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.5rem;
+      font-size: 0.82rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      color: var(--text-muted);
+    }
+
+    .badge-symbol {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+
+    .badge-start { background: #10b981; color: #fff; }
+    .badge-exit { background: #ef4444; color: #fff; }
+    .badge-cancel { background: #f59e0b; color: #1e293b; }
+    .badge-lane { background: #3b82f6; color: #fff; border-radius: 4px; padding: 0.15rem 0.4rem; width: auto; height: auto; }
+
+    .nav-tabs {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 2rem;
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .tab-btn {
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background: var(--surface-light);
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      background: rgba(56, 189, 248, 0.1);
+      border-color: rgba(56, 189, 248, 0.3);
+      font-weight: 600;
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1500px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .module-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 2.5rem;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-header {
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .card-header h2 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .diagram-container {
+      padding: 2rem;
+      background: #ffffff;
+      min-height: 480px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-x: auto;
+      transition: transform 0.2s ease;
+      position: relative;
+    }
+
+    .diagram-container svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .raw-code-drawer {
+      background: #090d16;
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      display: none;
+    }
+
+    .raw-code-drawer pre {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: #93c5fd;
+      line-height: 1.4;
+      overflow-x: auto;
+      max-height: 250px;
+    }
+
+    .loading-spinner {
+      color: #64748b;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  
+    /* Strict UML Swimlane Partition Styling */
+    .cluster rect {
+      rx: 0px !important;
+      ry: 0px !important;
+      stroke-width: 2.5px !important;
+    }
+    #Student rect, [id*="Student"] rect {
+      fill: #f0f7ff !important;
+      stroke: #2563eb !important;
+    }
+    #Teacher rect, [id*="Teacher"] rect, #Author rect, [id*="Author"] rect {
+      fill: #fffbeb !important;
+      stroke: #d97706 !important;
+    }
+    #System rect, [id*="System"] rect {
+      fill: #f0fdf4 !important;
+      stroke: #16a34a !important;
+    }
+    #Admin rect, [id*="Admin"] rect {
+      fill: #faf5ff !important;
+      stroke: #7c3aed !important;
+    }
+    .cluster-label text, .cluster-label span {
+      font-weight: 700 !important;
+      font-size: 15px !important;
+    }
+    [id*="_Start"] circle {
+      fill: #000000 !important;
+      stroke: #000000 !important;
+    }
+    [id*="_End"] circle, [id*="_StudentEnd"] circle, [id*="_TeacherEnd"] circle, [id*="_AdminEnd"] circle {
+      fill: #dc2626 !important;
+      stroke: #991b1b !important;
+      stroke-width: 2px !important;
+    }
+    [id*="_Cancel"] circle, [id*="_Dismiss"] circle {
+      fill: #f59e0b !important;
+      stroke: #b45309 !important;
+      stroke-width: 2px !important;
+    }
+    .node rect {
+      rx: 6px !important;
+      ry: 6px !important;
+      fill: #ffffff !important;
+      stroke: #475569 !important;
+      stroke-width: 1.5px !important;
+    }
+    .node polygon {
+      fill: #fef9c3 !important;
+      stroke: #ca8a04 !important;
+      stroke-width: 1.5px !important;
+    }
+
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="title-group">
+      <h1>📊 MathPulse AI — Modular Activity Diagrams</h1>
+      <p>Defense-Compliant Architecture (9 Modules) • Dominant Users on Left • Strict UML Symbols</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="window.print()">🖨️ Print / Save All PDF</button>
+      <a class="btn btn-primary" href="ACTIVITY_DIAGRAMS.md" target="_blank">📄 View Markdown Source</a>
+    </div>
+  </header>
+
+  <div class="legend-bar">
+    <div class="legend-item"><span class="badge-symbol badge-start">●</span> <strong>Start Point:</strong> Solid Circle</div>
+    <div class="legend-item"><span class="badge-symbol badge-exit">X</span> <strong>Exit/End Point:</strong> Circle with "X"</div>
+    <div class="legend-item"><span class="badge-symbol badge-cancel">N</span> <strong>Cancelled Flow:</strong> Circle with "N"</div>
+    <div class="legend-item"><span class="badge-symbol badge-lane">Left Lane</span> <strong>Dominant User:</strong> Initiating Actor Controls Transaction</div>
+  </div>
+
+        <nav class="nav-tabs" id="navTabs">
+    <button class="tab-btn active" onclick="filterModule('all', this)">View All Modules (1-9)</button>
+    <button class="tab-btn" onclick="filterModule('mod1', this)">Module 1:
+User Authentication & Accounts</button>
+    <button class="tab-btn" onclick="filterModule('mod2', this)">Module 2:
+Academic Classroom Management</button>
+    <button class="tab-btn" onclick="filterModule('mod3', this)">Module 3:
+Curriculum & Content Management</button>
+    <button class="tab-btn" onclick="filterModule('mod4', this)">Module 4:
+Diagnostic Assessment & Path</button>
+    <button class="tab-btn" onclick="filterModule('mod5', this)">Module 5:
+Quiz Creation & Examination</button>
+    <button class="tab-btn" onclick="filterModule('mod6', this)">Module 6:
+Learning Progress & Gamification</button>
+    <button class="tab-btn" onclick="filterModule('mod7', this)">Module 7:
+Real-Time Quiz Battle</button>
+    <button class="tab-btn" onclick="filterModule('mod8', this)">Module 8:
+Remedial Intervention & Risk</button>
+    <button class="tab-btn" onclick="filterModule('mod9', this)">Module 9:
+System Audit & AI Tutoring</button>
+  </nav>
+
+  <main id="diagramsList">
+    <!-- Diagram Cards will be injected by JavaScript -->
+  </main>
+
+  <script>
+    const diagramsData = [
+      {
+            "id": "mod1",
+            "title": "Module 1: User Authentication & Accounts",
+            "processName": "User Authentication & Accounts",
+            "dominant": "Student (Left Swimlane)",
+            "code": "flowchart TD\n    subgraph Student[\"👤 Student (Dominant User)\"]\n        direction TB\n        M1_Start((●)) --> M1_S_Open[\"Open MathPulse AI Login Portal\"]\n        M1_S_Open --> M1_S_Input[\"Enter Student Email & Password\"]\n        M1_S_Retry{\"Retry Login?\"}\n        M1_S_Retry -- \"No\" --> M1_S_Cancel((N))\n        M1_S_Retry -- \"Yes\" --> M1_S_Input\n        M1_S_Dash[\"Access Student Dashboard & Path\"] --> M1_S_End((X))\n    end\n\n    subgraph System[\"⚙️ MathPulse AI System\"]\n        direction TB\n        M1_Sys_Verify[\"Verify Credentials via Firebase Auth\"]\n        M1_Sys_AuthCheck{\"Valid Credentials?\"}\n        M1_Sys_Err[\"Return Invalid Credentials Alert\"]\n        M1_Sys_Role{\"Identify User Role?\"}\n        M1_Sys_StudentSession[\"Generate Student Session Token\"]\n        M1_Sys_TeacherSession[\"Generate Teacher Session Token\"]\n        M1_Sys_AdminSession[\"Generate Admin Session Token\"]\n    end\n\n    subgraph Teacher[\"👨‍🏫 Teacher\"]\n        direction TB\n        M1_T_Start((●)) --> M1_T_Input[\"Enter Teacher Email & Password\"]\n        M1_T_Dash[\"Access Teacher Classroom Dashboard\"] --> M1_T_End((X))\n    end\n\n    subgraph Admin[\"🛡️ Administrator\"]\n        direction TB\n        M1_A_Start((●)) --> M1_A_Input[\"Enter Admin Email & Password\"]\n        M1_A_Dash[\"Access Admin Governance Dashboard\"] --> M1_A_End((X))\n    end\n\n    M1_S_Input --> M1_Sys_Verify\n    M1_T_Input --> M1_Sys_Verify\n    M1_A_Input --> M1_Sys_Verify\n\n    M1_Sys_Verify --> M1_Sys_AuthCheck\n    M1_Sys_AuthCheck -- \"Invalid\" --> M1_Sys_Err\n    M1_Sys_Err --> M1_S_Retry\n\n    M1_Sys_AuthCheck -- \"Valid\" --> M1_Sys_Role\n    M1_Sys_Role -- \"Student\" --> M1_Sys_StudentSession\n    M1_Sys_Role -- \"Teacher\" --> M1_Sys_TeacherSession\n    M1_Sys_Role -- \"Admin\" --> M1_Sys_AdminSession\n\n    M1_Sys_StudentSession --> M1_S_Dash\n    M1_Sys_TeacherSession --> M1_T_Dash\n    M1_Sys_AdminSession --> M1_A_Dash"
+      },
+      {
+            "id": "mod2",
+            "title": "Module 2: Academic Classroom Management",
+            "processName": "Academic Classroom Management",
+            "dominant": "Teacher (Left Swimlane)",
+            "code": "flowchart TD\n    subgraph Teacher[\"👨‍🏫 Teacher (Dominant User)\"]\n        direction TB\n        M2_Start((●)) --> M2_OpenClass[\"Open Class Management\"]\n        M2_OpenClass --> M2_SelectAction{\"Create Section or Import Roster?\"}\n        M2_SelectAction -- \"Cancel\" --> M2_Cancel((N))\n        M2_SelectAction -- \"Import Roster\" --> M2_UploadCSV[\"Upload Class CSV / Excel File\"]\n        M2_SelectAction -- \"Create Section\" --> M2_InputSection[\"Input Grade, Strand & Section Name\"]\n        M2_Review[\"Review Enrolled Student Roster\"] --> M2_End((X))\n    end\n\n    subgraph System[\"⚙️ MathPulse AI System\"]\n        direction TB\n        M2_ValidateFile{\"Validate File Schema & LRNs?\"}\n        M2_FileErr[\"Show Error & Flag Invalid Rows\"]\n        M2_BatchEnroll[\"Batch Enroll Student Roster\"]\n        M2_CreateSection[\"Create Classroom Section Record\"]\n        M2_Sync[\"Synchronize Class Roster & Trigger Alerts\"]\n    end\n\n    subgraph Student[\"🎓 Student (Secondary User)\"]\n        direction TB\n        M2_NotifyStudent[\"Receive Class Enrollment Notification\"]\n        M2_StudentEnd((X))\n    end\n\n    M2_UploadCSV --> M2_ValidateFile\n    M2_ValidateFile -- \"Invalid\" --> M2_FileErr\n    M2_FileErr --> M2_UploadCSV\n    M2_ValidateFile -- \"Valid\" --> M2_BatchEnroll\n    M2_InputSection --> M2_CreateSection\n    M2_BatchEnroll --> M2_Sync\n    M2_CreateSection --> M2_Sync\n    M2_Sync --> M2_Review\n    M2_Sync --> M2_NotifyStudent\n    M2_NotifyStudent --> M2_StudentEnd"
+      },
+      {
+            "id": "mod3",
+            "title": "Module 3: Curriculum & Content Management",
+            "processName": "Curriculum & Content Management",
+            "dominant": "Teacher / Admin (Left Swimlane)",
+            "code": "flowchart TD\n    subgraph Author[\"👨‍🏫 Teacher / Admin (Dominant User)\"]\n        direction TB\n        M3_Start((●)) --> M3_SelectTopic[\"Select Subject & Target Module\"]\n        M3_SelectTopic --> M3_DraftContent[\"Input Lesson Content, Markdown & Tags\"]\n        M3_PublishCheck{\"Confirm Publishing?\"}\n        M3_PublishCheck -- \"Discard\" --> M3_Cancel((N))\n        M3_PublishCheck -- \"Publish\" --> M3_SubmitLesson[\"Submit Lesson Record\"]\n        M3_ViewPublished[\"View Published Lesson in Curriculum Tree\"] --> M3_End((X))\n    end\n\n    subgraph System[\"⚙️ MathPulse AI System\"]\n        direction TB\n        M3_ValidateContent{\"Validate Required Fields?\"}\n        M3_ShowErr[\"Highlight Missing / Invalid Fields\"]\n        M3_SaveDB[\"Save Published Lesson Record\"]\n        M3_RAGIndex[\"Trigger Vector Store Indexing (Embeddings)\"]\n        M3_SyncCatalog[\"Synchronize to Student Study Catalog\"]\n    end\n\n    M3_SubmitLesson --> M3_ValidateContent\n    M3_ValidateContent -- \"Incomplete\" --> M3_ShowErr\n    M3_ShowErr --> M3_DraftContent\n    M3_ValidateContent -- \"Valid\" --> M3_SaveDB\n    M3_SaveDB --> M3_RAGIndex\n    M3_RAGIndex --> M3_SyncCatalog\n    M3_SyncCatalog --> M3_ViewPublished"
+      },
+      {
+            "id": "mod4",
+            "title": "Module 4: Diagnostic Assessment & Path",
+            "processName": "Diagnostic Assessment & Path",
+            "dominant": "Student (Left Swimlane)",
+            "code": "flowchart TD\n    subgraph Student[\"👤 Student (Dominant User)\"]\n        direction TB\n        M4_Start((●)) --> M4_LaunchModal[\"Trigger Diagnostic Assessment\"]\n        M4_LaunchModal --> M4_StartCheck{\"Accept Guidelines & Begin?\"}\n        M4_StartCheck -- \"Later / Cancel\" --> M4_Cancel((N))\n        M4_StartCheck -- \"Start Test\" --> M4_AnswerItems[\"Answer Competency Questions (MCQ & Math)\"]\n        M4_AnswerItems --> M4_SubmitCheck{\"Submit Test Sheet?\"}\n        M4_SubmitCheck -- \"Discard\" --> M4_CancelTest((N))\n        M4_SubmitCheck -- \"Confirm Submit\" --> M4_SendSheet[\"Send Completed Diagnostic Test\"]\n        M4_ViewPath[\"View Radar Chart & Recommended Path\"] --> M4_End((X))\n    end\n\n    subgraph System[\"⚙️ MathPulse AI System\"]\n        direction TB\n        M4_Grade[\"Evaluate Answers & Calculate Raw Scores\"]\n        M4_Classify[\"Classify Competency (Mastered / Review / Critical)\"]\n        M4_SaveResult[\"Save Diagnostic Result & Mastery Profile\"]\n        M4_GenPath[\"Synthesize Tailored Learning Path Sequence\"]\n        M4_RenderRadar[\"Compute Spider-Web Radar Dimensions\"]\n    end\n\n    M4_SendSheet --> M4_Grade\n    M4_Grade --> M4_Classify\n    M4_Classify --> M4_SaveResult\n    M4_SaveResult --> M4_GenPath\n    M4_GenPath --> M4_RenderRadar\n    M4_RenderRadar --> M4_ViewPath"
+      },
+      {
+            "id": "mod5",
+            "title": "Module 5: Quiz Creation & Examination",
+            "processName": "Quiz Creation & Examination",
+            "dominant": "Student (Left Swimlane)",
+            "code": "flowchart TD\n    subgraph Student[\"👤 Student (Dominant User)\"]\n        direction TB\n        M5_Start((●)) --> M5_SelectQuiz[\"Select Assigned Quiz from Coursework\"]\n        M5_SelectQuiz --> M5_StartPrompt{\"Start Timed Examination?\"}\n        M5_StartPrompt -- \"Cancel\" --> M5_Cancel((N))\n        M5_StartPrompt -- \"Start Quiz\" --> M5_EnterExam[\"Enter Timed Quiz Environment\"]\n        M5_EnterExam --> M5_AnswerItems[\"Input Formula & Multiple-Choice Answers\"]\n        M5_AnswerItems --> M5_ConfirmSubmit{\"Confirm Final Submission?\"}\n        M5_ConfirmSubmit -- \"Review Again\" --> M5_AnswerItems\n        M5_ConfirmSubmit -- \"Submit Exam\" --> M5_SendExam[\"Submit Quiz Responses\"]\n        M5_ViewFeedback[\"Review Score, Item Feedback & Earned XP\"] --> M5_End((X))\n    end\n\n    subgraph System[\"⚙️ MathPulse AI System\"]\n        direction TB\n        M5_FetchQuiz[\"Fetch Quiz Questions from Question Bank\"]\n        M5_GradeAnswers[\"Evaluate Responses Against Answer Key\"]\n        M5_ComputeScore[\"Compute Percentage & Save Attempt Record\"]\n        M5_PassCheck{\"Score Passed Threshold?\"}\n        M5_AwardXP[\"Award XP & Increment Subject Progress\"]\n        M5_FlagReview[\"Flag Gaps for Remedial Review\"]\n        M5_RenderSummary[\"Generate Detailed Performance Feedback\"]\n    end\n\n    M5_EnterExam --> M5_FetchQuiz\n    M5_SendExam --> M5_GradeAnswers\n    M5_GradeAnswers --> M5_ComputeScore\n    M5_ComputeScore --> M5_PassCheck\n    M5_PassCheck -- \"Passed\" --> M5_AwardXP\n    M5_PassCheck -- \"Failed\" --> M5_FlagReview\n    M5_AwardXP --> M5_RenderSummary\n    M5_FlagReview --> M5_RenderSummary\n    M5_RenderSummary --> M5_ViewFeedback"
+      },
+      {
+            "id": "mod6",
+            "title": "Module 6: Learning Progress & Gamification",
+            "processName": "Learning Progress & Gamification",
+            "dominant": "Student (Left Swimlane)",
+            "code": "flowchart TD\n    subgraph Student[\"👤 Student (Dominant User)\"]\n        direction TB\n        M6_Start((●)) --> M6_CompleteTask[\"Complete Lesson Module / Daily Login\"]\n        M6_CompleteTask --> M6_OpenGamification[\"Open Progress & Gamification Center\"]\n        M6_OpenGamification --> M6_CheckReward{\"Claim Daily Check-In Reward?\"}\n        M6_CheckReward -- \"Dismiss\" --> M6_Dismiss((N))\n        M6_CheckReward -- \"Claim Reward\" --> M6_SendClaim[\"Submit Reward Claim\"]\n        M6_ViewStats[\"View Updated Streak Days, XP Level & Badges\"] --> M6_End((X))\n    end\n\n    subgraph System[\"⚙️ MathPulse AI System\"]\n        direction TB\n        M6_VerifyStreak[\"Verify Last Login Timestamp against Policy\"]\n        M6_UpdateStreak[\"Increment Consecutive Streak Counter\"]\n        M6_AwardXP[\"Record Earned XP Points\"]\n        M6_BadgeCheck{\"Milestone Requirement Reached?\"}\n        M6_UnlockBadge[\"Unlock Achievement Milestone Badge\"]\n        M6_SyncOverall[\"Recalculate Overall Student Mastery Progress\"]\n        M6_EmitToast[\"Emit Celebration Toast & Level-Up Notification\"]\n    end\n\n    M6_SendClaim --> M6_VerifyStreak\n    M6_VerifyStreak --> M6_UpdateStreak\n    M6_UpdateStreak --> M6_AwardXP\n    M6_AwardXP --> M6_BadgeCheck\n    M6_BadgeCheck -- \"Yes\" --> M6_UnlockBadge\n    M6_BadgeCheck -- \"No\" --> M6_SyncOverall\n    M6_UnlockBadge --> M6_SyncOverall\n    M6_SyncOverall --> M6_EmitToast\n    M6_EmitToast --> M6_ViewStats"
+      },
+      {
+            "id": "mod7",
+            "title": "Module 7: Real-Time Quiz Battle",
+            "processName": "Real-Time Quiz Battle",
+            "dominant": "Student (Left Swimlane)",
+            "code": "flowchart TD\n    subgraph Student[\"👤 Student (Dominant User)\"]\n        direction TB\n        M7_Start((●)) --> M7_OpenArena[\"Access Quiz Battle Arena\"]\n        M7_OpenArena --> M7_SelectMode[\"Select Mode: Solo vs Bot or 1v1 PvP\"]\n        M7_SelectMode --> M7_JoinPrompt{\"Join Matchmaking Queue?\"}\n        M7_JoinPrompt -- \"Exit Arena\" --> M7_CancelArena((N))\n        M7_JoinPrompt -- \"Find Match\" --> M7_EnterQueue[\"Enter Matchmaking Queue\"]\n        M7_WaitQueue{\"In Queue Waiting...\"}\n        M7_WaitQueue -- \"Cancel Search\" --> M7_CancelQueue((N))\n        M7_WaitQueue -- \"Match Found\" --> M7_JoinRoom[\"Join Synchronized Battle Room\"]\n        M7_JoinRoom --> M7_AnswerRound[\"Answer Rapid-Fire Question Items\"]\n        M7_AnswerRound --> M7_SubmitRound[\"Submit Round Answers\"]\n        M7_ViewResults[\"View Final Match Standings & XP Distribution\"] --> M7_End((X))\n    end\n\n    subgraph System[\"⚙️ MathPulse AI System (Realtime Database)\"]\n        direction TB\n        M7_Enqueue[\"Register Player in Matchmaking Queue\"]\n        M7_Dequeue[\"Remove Player from Queue State\"]\n        M7_Pair[\"Pair Opponents & Initialize Match Session\"]\n        M7_ScoreRound[\"Compute Answer Speed & Correctness Points\"]\n        M7_SyncScore[\"Broadcast Real-Time Live Scoreboard\"]\n        M7_RoundCheck{\"All Rounds Completed?\"}\n        M7_ResolveWinner[\"Determine Match Winner & Final Standings\"]\n        M7_AwardBattleXP[\"Disburse Winner / Participation XP\"]\n    end\n\n    M7_EnterQueue --> M7_Enqueue\n    M7_Enqueue --> M7_WaitQueue\n    M7_CancelQueue --> M7_Dequeue\n    M7_WaitQueue --> M7_Pair\n    M7_Pair --> M7_JoinRoom\n    M7_SubmitRound --> M7_ScoreRound\n    M7_ScoreRound --> M7_SyncScore\n    M7_SyncScore --> M7_RoundCheck\n    M7_RoundCheck -- \"Next Round\" --> M7_AnswerRound\n    M7_RoundCheck -- \"Battle Complete\" --> M7_ResolveWinner\n    M7_ResolveWinner --> M7_AwardBattleXP\n    M7_AwardBattleXP --> M7_ViewResults"
+      },
+      {
+            "id": "mod8",
+            "title": "Module 8: Remedial Intervention & Risk",
+            "processName": "Remedial Intervention & Risk",
+            "dominant": "Teacher (Left Swimlane)",
+            "code": "flowchart TD\n    subgraph Teacher[\"👨‍🏫 Teacher (Dominant User)\"]\n        direction TB\n        M8_Start((●)) --> M8_OpenRadar[\"Open Class Analytics & Mastery Radar\"]\n        M8_OpenRadar --> M8_FilterRisk[\"Filter Students Flagged as At-Risk\"]\n        M8_FilterRisk --> M8_SelectStudent[\"Select Student & Critical Gap Topic\"]\n        M8_SelectStudent --> M8_DraftPlan[\"Configure Remedial Task & Due Date\"]\n        M8_DraftPlan --> M8_DispatchCheck{\"Dispatch Remedial Plan?\"}\n        M8_DispatchCheck -- \"Discard\" --> M8_Cancel((N))\n        M8_DispatchCheck -- \"Assign\" --> M8_SubmitPlan[\"Submit Remedial Plan\"]\n        M8_TrackProgress[\"Monitor Student Remedial Progress\"] --> M8_TeacherEnd((X))\n    end\n\n    subgraph System[\"⚙️ MathPulse AI System\"]\n        direction TB\n        M8_SaveRecord[\"Save Remedial Intervention Plan\"]\n        M8_PushAlert[\"Dispatch Priority Alert to Student Account\"]\n    end\n\n    subgraph Student[\"🎓 Student (Secondary User)\"]\n        direction TB\n        M8_StudentAlert[\"Receive Remedial Notification Banner\"]\n        M8_OpenReview[\"Access Prescribed Review Lessons\"]\n        M8_StudentEnd((X))\n    end\n\n    M8_SubmitPlan --> M8_SaveRecord\n    M8_SaveRecord --> M8_PushAlert\n    M8_PushAlert --> M8_TrackProgress\n    M8_PushAlert --> M8_StudentAlert\n    M8_StudentAlert --> M8_OpenReview\n    M8_OpenReview --> M8_StudentEnd"
+      },
+      {
+            "id": "mod9",
+            "title": "Module 9: System Audit & AI Tutoring",
+            "processName": "System Audit & AI Tutoring",
+            "dominant": "Student (Left Swimlane)",
+            "code": "flowchart TD\n    subgraph Student[\"👤 Student (Dominant User)\"]\n        direction TB\n        M9_Start((●)) --> M9_OpenTutor[\"Launch MathPulse AI Math Tutor\"]\n        M9_OpenTutor --> M9_InputPrompt[\"Type Math Problem or Ask for Derivation\"]\n        M9_InputPrompt --> M9_PromptCheck{\"Send Prompt to AI?\"}\n        M9_PromptCheck -- \"Cancel\" --> M9_Cancel((N))\n        M9_PromptCheck -- \"Send\" --> M9_SubmitPrompt[\"Submit Prompt to AI Tutor Engine\"]\n        M9_ReadResponse[\"Read Formatted LaTeX Steps & Charts\"] --> M9_StudentEnd((X))\n    end\n\n    subgraph System[\"⚙️ MathPulse AI System\"]\n        direction TB\n        M9_Embed[\"Embed Prompt via BAAI/bge-small Model\"]\n        M9_RAGSearch[\"Retrieve DepEd SSHS Context from Chroma Vector Store\"]\n        M9_Assemble[\"Assemble Prompt with Curricular Context\"]\n        M9_CallAI[\"Invoke DeepSeek AI API (deepseek-reasoner)\"]\n        M9_Stream[\"Stream Formatted LaTeX & Markdown Solution\"]\n        M9_SaveChat[\"Save Message to Session History\"]\n        M9_LogAudit[\"Log AI Token Usage & Security Event\"]\n    end\n\n    subgraph Admin[\"🛡️ Administrator (Secondary User)\"]\n        direction TB\n        M9_AdminInspect[\"Review System Health & Security Audit Logs\"]\n        M9_AdminEnd((X))\n    end\n\n    M9_SubmitPrompt --> M9_Embed\n    M9_Embed --> M9_RAGSearch\n    M9_RAGSearch --> M9_Assemble\n    M9_Assemble --> M9_CallAI\n    M9_CallAI --> M9_Stream\n    M9_Stream --> M9_ReadResponse\n    M9_Stream --> M9_SaveChat\n    M9_SaveChat --> M9_LogAudit\n    M9_LogAudit --> M9_AdminInspect\n    M9_AdminInspect --> M9_AdminEnd"
+      }
+];
+
+    // Initialize Mermaid with clean diagram settings
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true,
+        curve: 'basis'
+      },
+      securityLevel: 'loose'
+    });
+
+    const container = document.getElementById("diagramsList");
+
+    // Render cards
+    diagramsData.forEach((diag, idx) => {
+      const card = document.createElement("div");
+      card.className = "module-card";
+      card.id = `card-${diag.id}`;
+
+      card.innerHTML = `
+        <div class="card-header">
+          <h2><span>📌</span> ${diag.title}</h2>
+          <div class="card-actions">
+            <button class="btn btn-outline" onclick="toggleCode('${diag.id}')">Toggle Code</button>
+            <button class="btn btn-outline" onclick="downloadSVG('${diag.id}', '${diag.title}')">⬇ SVG</button>
+            <button class="btn btn-primary" onclick="downloadPNG('${diag.id}', '${diag.title}')">⬇ PNG</button>
+          </div>
+        </div>
+        <div class="raw-code-drawer" id="drawer-${diag.id}">
+          <pre><code>${diag.code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>
+        </div>
+        <div class="diagram-container" id="container-${diag.id}">
+          <div class="loading-spinner">Rendering vector diagram...</div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+
+    // Render each diagram via mermaid.render
+    async function renderAllDiagrams() {
+      for (const diag of diagramsData) {
+        try {
+          const { svg } = await mermaid.render(`svg-${diag.id}`, diag.code);
+          const target = document.getElementById(`container-${diag.id}`);
+          if (target) {
+            target.innerHTML = svg;
+          }
+        } catch (err) {
+          console.error(`Error rendering ${diag.id}:`, err);
+          const target = document.getElementById(`container-${diag.id}`);
+          if (target) {
+            target.innerHTML = `<div style="color: #ef4444;">Error rendering diagram: ${err.message}</div>`;
+          }
+        }
+      }
+    }
+
+    renderAllDiagrams();
+
+    // Toggle raw mermaid code drawer
+    function toggleCode(id) {
+      const drawer = document.getElementById(`drawer-${id}`);
+      drawer.style.display = drawer.style.display === "block" ? "none" : "block";
+    }
+
+    // Filter by module
+    function filterModule(modId, btn) {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      diagramsData.forEach(diag => {
+        const card = document.getElementById(`card-${diag.id}`);
+        if (modId === "all" || diag.id === modId) {
+          card.style.display = "block";
+        } else {
+          card.style.display = "none";
+        }
+      });
+    }
+
+    // Download SVG
+    function downloadSVG(id, title) {
+      const container = document.getElementById(`container-${id}`);
+      const svg = container.querySelector("svg");
+      if (!svg) return alert("SVG not ready yet");
+
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title.toLowerCase().replace(/[^a-z0-9]/g, "_")}.svg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Download PNG (High-Res 2x for Word / Docs / Slides)
+    function downloadPNG(id, title) {
+      const container = document.getElementById(`container-${id}`);
+      const svg = container.querySelector("svg");
+      if (!svg) return alert("SVG not ready yet");
+
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const img = new Image();
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = function() {
+        const canvas = document.createElement("canvas");
+        const scale = 2; // 2x high resolution
+        canvas.width = (svg.clientWidth || 1000) * scale;
+        canvas.height = (svg.clientHeight || 800) * scale;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const pngUrl = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = pngUrl;
+        a.download = `${title.toLowerCase().replace(/[^a-z0-9]/g, "_")}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }
+  </script>
+</body>
+</html>

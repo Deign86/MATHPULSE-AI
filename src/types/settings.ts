@@ -20,7 +20,7 @@ export interface TeacherPreferences {
 
 export interface AdminSystemConfig {
   maintenanceMode: boolean;
-  defaultGradeLevel: string;
+  defaultGradeLevel: 'Grade 11';
   defaultCurriculum: string;
   maxClassSize: number;
   auditLogVisible: boolean;

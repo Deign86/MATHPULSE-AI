@@ -402,9 +402,12 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   });
 
   const availableCompetencyGroups = useMemo(() => {
-    const groups = new Set<string>();
-    modulePool.forEach((module) => groups.add(module.competency_group));
-    return Array.from(groups);
+    const groups = new Map<string, string>();
+    modulePool.forEach((module) => {
+      const code = module.competency_group?.trim();
+      if (code && !groups.has(code)) groups.set(code, module.title);
+    });
+    return Array.from(groups, ([code, title]) => ({ code, title }));
   }, [modulePool]);
 
   const filteredModules = useMemo(() => {
@@ -1239,8 +1242,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:border-sky-400 focus:outline-none shadow-sm"
                   >
                     <option value="all">All Competencies</option>
-                    {availableCompetencyGroups.map((group) => (
-                      <option key={group} value={group}>{group}</option>
+                    {availableCompetencyGroups.map(({ code, title }) => (
+                      <option key={code} value={code}>{title}</option>
                     ))}
                   </select>
                 </div>
@@ -1402,7 +1405,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             </button>
 
             {/* Reset Filters Button */}
-            {activeFilterCount > 0 && (
+            {(activeFilterCount > 0 || searchQuery.trim().length > 0) && (
               <button
                 type="button"
                 onClick={clearFilters}
@@ -1450,8 +1453,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               aria-label="Competency Group"
             >
               <option value="all">All Competencies</option>
-              {availableCompetencyGroups.map((group) => (
-                <option key={group} value={group}>{group}</option>
+              {availableCompetencyGroups.map(({ code, title }) => (
+                <option key={code} value={code}>{title}</option>
               ))}
             </select>
 
@@ -2138,7 +2141,7 @@ const RecommendedModulesView: React.FC<{
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 badgeLabel="Start"
-                isRecommended={isRecommended}
+                isRecommended={isRecommended || (index === 0 && weakTopics.length > 0)}
                 onNotifyMe={onNotifyMe}
               />
             )})}

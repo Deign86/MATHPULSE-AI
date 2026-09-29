@@ -125,9 +125,9 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between p-4 border-t border-[#f1f5f9] dark:border-slate-800">
-            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleAdd} disabled={saving || selected.size === 0} className="bg-[#a855f7] hover:bg-[#9333ea] text-white">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 p-3.5 sm:p-4 border-t border-[#f1f5f9] dark:border-slate-800">
+            <Button variant="outline" size="sm" onClick={onClose} className="w-full sm:w-auto">Cancel</Button>
+            <Button size="sm" onClick={handleAdd} disabled={saving || selected.size === 0} className="w-full sm:w-auto bg-[#a855f7] hover:bg-[#9333ea] text-white">
               <UserPlus size={14} className="mr-1.5" />{saving ? 'Adding...' : `Add ${selected.size} Student${selected.size !== 1 ? 's' : ''}`}
             </Button>
           </div>

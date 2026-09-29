@@ -359,10 +359,10 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
     setPurchasingItemId(itemId);
     try {
       const result = await purchaseAvatarItem(userProfile.uid, itemId, price);
+      if (result.currentXP !== undefined) setCurrentXP(result.currentXP);
       if (result.success) {
         toast.success(result.message || 'Item purchased!');
         setOwnedItems(prev => [...prev, itemId]);
-        if (result.currentXP !== undefined) setCurrentXP(result.currentXP);
         await refreshProfile();
       } else {
         toast.error(result.message || 'Failed to purchase');

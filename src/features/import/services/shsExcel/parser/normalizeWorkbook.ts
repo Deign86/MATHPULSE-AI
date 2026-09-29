@@ -20,7 +20,7 @@ function dedupeLearners(
   const byKey = new Map<string, ImportedShsWorkbook['learners'][number]>();
 
   const register = (learner: ImportedShsWorkbook['learners'][number]) => {
-    const key = `${normalizeText(learner.fullName)}|${learner.learnerNo || ''}|${learner.sourceSheet}`;
+    const key = `${normalizeText(learner.fullName)}|${learner.learnerNo || ''}`;
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, learner);
@@ -31,6 +31,8 @@ function dedupeLearners(
     byKey.set(key, {
       ...existing,
       ...learner,
+      lrn: learner.lrn || existing.lrn,
+      email: learner.email || existing.email,
       remarks: learner.remarks || existing.remarks,
       additionalRemarks: learner.additionalRemarks || existing.additionalRemarks,
       statuses: mergedStatuses.length > 0 ? mergedStatuses : undefined,

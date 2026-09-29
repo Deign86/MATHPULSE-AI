@@ -344,7 +344,12 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
   };
 
   const handleSave = async () => {
-    const uid = currentUser?.uid || teacherId || 'local-user';
+    const uid = currentUser?.uid;
+    if (!uid) {
+      setError('Sign in to save calendar events.');
+      return;
+    }
+
     if (!formTitle.trim()) {
       setError('Event title is required.');
       return;
@@ -363,19 +368,32 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
       color: formColor,
     };
 
+    let tempId: string | null = null;
+    const previousEvent = editingEventId
+      ? events.find((event) => event.id === editingEventId)
+      : undefined;
+
     try {
       if (editingEventId) {
         setEvents(prev => prev.map(e => e.id === editingEventId ? { ...e, ...evData } : e));
         await updateCalendarEvent(editingEventId, evData);
       } else {
-        const tempId = `temp-${Date.now()}`;
-        setEvents(prev => [...prev, { id: tempId, userId: uid, createdAt: new Date(), ...evData }]);
-        await createCalendarEvent(uid, evData);
+        const optimisticId = `temp-${Date.now()}`;
+        tempId = optimisticId;
+        setEvents(prev => [...prev, { id: optimisticId, userId: uid, createdAt: new Date(), ...evData }]);
+        const savedEvent = await createCalendarEvent(uid, evData);
+        setEvents(prev => prev.map(event => event.id === optimisticId ? savedEvent : event));
       }
       setIsAddOpen(false);
     } catch (err) {
       console.error(err);
-      setIsAddOpen(false); // Optimistic UI holds
+      if (tempId) {
+        setEvents(prev => prev.filter(event => event.id !== tempId));
+      }
+      if (previousEvent) {
+        setEvents(prev => prev.map(event => event.id === editingEventId ? previousEvent : event));
+      }
+      setError('Unable to save calendar event. Please try again.');
     } finally {
       setSaving(false);
     }
