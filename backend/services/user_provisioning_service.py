@@ -15,6 +15,7 @@ logger = logging.getLogger("mathpulse")
 VALID_ROLES = {"student", "teacher", "admin"}
 VALID_STATUSES = {"active", "inactive"}
 EMAIL_REGEX = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+LRN_REGEX = re.compile(r"^\d{12}$")
 PASSWORD_UPPER_REGEX = re.compile(r"[A-Z]")
 PASSWORD_LOWER_REGEX = re.compile(r"[a-z]")
 PASSWORD_DIGIT_REGEX = re.compile(r"\d")
@@ -179,6 +180,8 @@ class UserProvisioningService:
             lrn = (user_input.lrn or "").strip()
             if not lrn:
                 raise UserProvisioningError("missing_lrn", "LRN is required for student accounts.", 400)
+            if not LRN_REGEX.fullmatch(lrn):
+                raise UserProvisioningError("invalid_lrn", "LRN must contain exactly 12 digits.", 400)
             payload.update(
                 {
                     "lrn": lrn,
@@ -221,6 +224,12 @@ class UserProvisioningService:
         validated_password = self._validate_password(user_input.password, user_input.confirm_password)
         role_lower = self._normalize_role(user_input.role)
         normalized_status = self._normalize_status(user_input.status)
+        if role_lower == "student":
+            normalized_lrn = (user_input.lrn or "").strip()
+            if not normalized_lrn:
+                raise UserProvisioningError("missing_lrn", "LRN is required for student accounts.", 400)
+            if not LRN_REGEX.fullmatch(normalized_lrn):
+                raise UserProvisioningError("invalid_lrn", "LRN must contain exactly 12 digits.", 400)
 
         firestore_client = self._firestore_module.client()
         self._ensure_no_duplicate_email(normalized_email, firestore_client)

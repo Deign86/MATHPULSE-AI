@@ -89,14 +89,15 @@ export function validateAdminCreateUserForm(data: AdminCreateUserFormData): Admi
     errors.section = 'Section is required.';
   }
 
-  if (data.role.trim().toLowerCase() === 'student' && !data.lrn.trim()) {
-    errors.lrn = 'LRN is required for student accounts.';
+  if (data.role.trim().toLowerCase() === 'student' && !/^\d{12}$/.test(data.lrn.trim())) {
+    errors.lrn = 'LRN must be exactly 12 digits.';
   }
 
   return errors;
 }
 
 export function getFirstValidationError(errors: AdminCreateUserValidationErrors): string | null {
+  if (errors.lrn) return errors.lrn;
   const first = Object.values(errors).find((message) => !!message);
   return first ?? null;
 }

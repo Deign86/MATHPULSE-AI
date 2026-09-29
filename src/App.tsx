@@ -1342,7 +1342,44 @@ const App = ({ authOverride }: AppProps = {}) => {
                             userName={firstName}
                             userLevel={userLevel}
                             avatarLayers={profileData.avatarLayers}
-                            onContinueLearning={() => handleStudentNavigation('Modules')}
+                            onContinueLearning={async () => {
+                              try {
+                                const progress = userProfile?.uid ? await getUserProgress(userProfile.uid) : null;
+                                const difficultySnapshot = userProfile?.uid
+                                  ? await getDoc(doc(db, 'users', userProfile.uid)).catch(() => null)
+                                  : null;
+                                const rawDifficulty = difficultySnapshot?.data()?.moduleDifficulty;
+                                const difficulty = rawDifficulty === 'easier' || rawDifficulty === 'remedial' ? rawDifficulty : 'normal';
+                                const visibleModules = curriculumRuntimeModules.filter((module) => {
+                                  if (difficulty === 'normal') return true;
+                                  const tags = 'tags' in module && Array.isArray(module.tags) ? module.tags : [];
+                                  // SAFETY: optional difficulty metadata on curriculum modules is authored as a string.
+                                  const moduleDifficulty = 'difficulty' in module ? (module.difficulty as string | undefined)?.toLowerCase() ?? '' : '';
+                                  if (difficulty === 'easier') {
+                                    return tags.some((tag) => ['foundation', 'basic', 'introductory'].includes(String(tag).toLowerCase()))
+                                      || ['foundation', 'basic', 'introductory'].includes(moduleDifficulty)
+                                      || (!tags.includes('advanced') && !moduleDifficulty.includes('advanced'));
+                                  }
+                                  return tags.some((tag) => ['remedial', 'review', 'catch-up'].includes(String(tag).toLowerCase()))
+                                    || ['remedial', 'review', 'catch-up'].includes(moduleDifficulty);
+                                });
+                                const inProgressLesson = Object.values(progress?.lessons || {})
+                                  .filter((lesson) => !lesson.completed && (lesson.progressPercent || 0) > 0)
+                                  .sort((left, right) => (right.progressPercent || 0) - (left.progressPercent || 0))[0];
+                                const inProgressModule = inProgressLesson
+                                  ? visibleModules
+                                    .find((module) => module.lessons.some((lesson) => lesson.id === inProgressLesson.lessonId))
+                                  : undefined;
+                                if (inProgressLesson && inProgressModule) {
+                                  sessionStorage.setItem(`mathpulse_module_${inProgressModule.id}_selectedLesson`, JSON.stringify({ lessonId: inProgressLesson.lessonId }));
+                                  handleStudentNavigation('Modules', inProgressModule.id);
+                                  return;
+                                }
+                              } catch (error) {
+                                console.warn('[ContinueLearning] Could not resume lesson:', error);
+                              }
+                              handleStudentNavigation('Modules');
+                            }}
                             showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null}
                             onOpenAssessment={handleOpenInitialAssessment}
                             studentId={userProfile?.uid}

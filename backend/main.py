@@ -4433,6 +4433,14 @@ def _normalize_class_records(
 
         lrn_value = str(student.get("lrn", "")).strip()
         email_value = str(student.get("email", "")).strip().lower()
+        if lrn_value and not re.fullmatch(r"\d{12}", lrn_value):
+            rejected_rows.append(
+                {
+                    "row": int(idx) + 2,
+                    "reason": f"Row {int(idx) + 2}: LRN must contain exactly 12 digits.",
+                }
+            )
+            continue
         if not lrn_value and not email_value:
             rejected_rows.append(
                 {
@@ -5378,6 +5386,7 @@ class StudentAccountProvisionCommitRequest(BaseModel):
     defaultPassword: Optional[str] = None
     forcePasswordChange: bool = True
     createAuthUsers: bool = True
+    confirmSectionMoves: bool = False
 
 
 class AdminCreateUserRequest(BaseModel):
@@ -6000,6 +6009,7 @@ async def preview_student_account_import(
 
         firestore_client = firebase_firestore.client() if (_firebase_ready and firebase_firestore) else None
         for row in parsed_rows:
+            row_number = int(row.get("rowNumber") or 0)
             first_name = str(row.get("firstName") or "").strip()
             last_name = str(row.get("lastName") or "").strip()
             middle_name = str(row.get("middleName") or "").strip()
@@ -6011,15 +6021,17 @@ async def preview_student_account_import(
 
             issues: List[str] = []
             if not first_name:
-                issues.append("Missing firstName")
+                issues.append(f"Row {row_number}: Missing firstName")
             if not last_name:
-                issues.append("Missing lastName")
+                issues.append(f"Row {row_number}: Missing lastName")
             if not student_id:
-                issues.append("Missing studentId/lrn")
+                issues.append(f"Row {row_number}: Missing studentId/lrn")
+            elif not re.fullmatch(r"\d{12}", student_id):
+                issues.append(f"Row {row_number}: LRN must contain exactly 12 digits")
             if not grade:
-                issues.append("Missing grade")
+                issues.append(f"Row {row_number}: Missing grade")
             if not section:
-                issues.append("Missing section")
+                issues.append(f"Row {row_number}: Missing section")
 
             resolved_row_section_id, _, resolved_grade, resolved_section = _resolve_import_class_context(
                 class_section_id=None,
@@ -6033,6 +6045,10 @@ async def preview_student_account_import(
             duplicate_in_file = False
             duplicate_in_firestore = False
             duplicate_in_auth = False
+            already_enrolled = False
+            enrolled_section_id = ""
+            roster_student_uid = ""
+            existing_profile_uid = ""
 
             student_id_key = student_id.lower()
             email_key = generated_email.lower()
@@ -6055,6 +6071,18 @@ async def preview_student_account_import(
                             firestore_client.collection("users").where("lrn", "==", student_id).limit(1).stream()
                         )
                         duplicate_in_firestore = duplicate_in_firestore or len(existing_by_lrn) > 0
+                        if existing_by_lrn:
+                            existing_profile_uid = str(existing_by_lrn[0].id)
+                        existing_roster_rows = list(
+                            firestore_client.collection("managedStudents").where("lrn", "==", student_id).limit(1).stream()
+                        )
+                        if existing_roster_rows:
+                            roster_student_uid = str(existing_roster_rows[0].id)
+                            roster_data = _snapshot_to_dict(existing_roster_rows[0])
+                            enrolled_section_id = str(roster_data.get("classSectionId") or roster_data.get("classroomId") or "").strip()
+                            already_enrolled = bool(enrolled_section_id)
+                            if already_enrolled:
+                                duplicate_in_firestore = True
                     if generated_email:
                         existing_by_email = list(
                             firestore_client.collection("users").where("email", "==", generated_email).limit(1).stream()
@@ -6072,18 +6100,32 @@ async def preview_student_account_import(
                         warnings.append(f"Auth duplicate check warning for {generated_email}: {auth_err}")
 
             if duplicate_in_firestore:
-                issues.append("Duplicate with existing Firestore profile")
+                if already_enrolled and enrolled_section_id.lower() != resolved_row_section_id.lower():
+                    issues.append(
+                        f"Row {row_number}: Cannot import; already enrolled in {enrolled_section_id}. "
+                        "A section move requires explicit confirmation."
+                    )
+                else:
+                    issues.append(f"Row {row_number}: Duplicate with existing Firestore profile")
             if duplicate_in_auth:
-                issues.append("Duplicate with existing Auth account")
+                issues.append(f"Row {row_number}: Duplicate with existing Auth account")
 
             status = "valid"
-            if issues:
+            if already_enrolled and enrolled_section_id.lower() != resolved_row_section_id.lower():
+                has_required_fields = bool(first_name and last_name and grade and section and re.fullmatch(r"\d{12}", student_id))
+                if not has_required_fields:
+                    status = "invalid"
+                elif duplicate_in_file:
+                    status = "duplicate"
+                else:
+                    status = "move_confirmation_required"
+            elif issues:
                 status = "invalid"
-            if duplicate_in_file or duplicate_in_firestore or duplicate_in_auth:
+            if status != "move_confirmation_required" and (duplicate_in_file or duplicate_in_firestore or duplicate_in_auth):
                 status = "duplicate"
 
             preview_row = {
-                "rowNumber": int(row.get("rowNumber") or 0),
+                "rowNumber": row_number,
                 "studentId": student_id,
                 "firstName": first_name,
                 "lastName": last_name,
@@ -6093,6 +6135,10 @@ async def preview_student_account_import(
                 "grade": resolved_grade,
                 "section": resolved_section,
                 "classSectionId": resolved_row_section_id,
+                "enrolledSectionId": enrolled_section_id,
+                "rosterStudentUid": roster_student_uid,
+                "existingProfileUid": existing_profile_uid,
+                "alreadyEnrolled": already_enrolled,
                 "status": status,
                 "issues": issues,
                 "duplicateInFile": duplicate_in_file,
@@ -6164,7 +6210,10 @@ async def commit_student_account_import(
 
         client = firebase_firestore.client()
         preview_rows = cast(List[Dict[str, Any]], preview.get("rows") or [])
-        candidate_rows = [row for row in preview_rows if str(row.get("status") or "") == "valid"]
+        candidate_rows = [
+            row for row in preview_rows
+            if str(row.get("status") or "") in {"valid", "move_confirmation_required"}
+        ]
 
         result_rows: List[Dict[str, Any]] = []
         warnings: List[str] = []
@@ -6200,6 +6249,206 @@ async def commit_student_account_import(
                 )
                 continue
 
+            if str(row.get("status") or "") == "move_confirmation_required":
+                source_section_id = str(row.get("enrolledSectionId") or "").strip().lower()
+                roster_student_uid = str(row.get("rosterStudentUid") or "").strip()
+                if not payload.confirmSectionMoves:
+                    blocked_rows += 1
+                    result_rows.append(
+                        {
+                            "rowNumber": row_number,
+                            "studentId": student_id,
+                            "fullName": full_name,
+                            "email": email,
+                            "uid": None,
+                            "classSectionId": class_section_id,
+                            "status": "blocked",
+                            "message": f"Cannot import: already enrolled in {source_section_id}. Explicit move confirmation is required.",
+                            "temporaryPassword": None,
+                        }
+                    )
+                    continue
+                if (
+                    not source_section_id
+                    or not roster_student_uid
+                    or (user.role != "admin" and not _teacher_can_manage_section(user, source_section_id))
+                ):
+                    blocked_rows += 1
+                    result_rows.append(
+                        {
+                            "rowNumber": row_number,
+                            "studentId": student_id,
+                            "fullName": full_name,
+                            "email": email,
+                            "uid": None,
+                            "classSectionId": class_section_id,
+                            "status": "blocked",
+                            "message": "Cannot move student: source or destination section ownership could not be verified.",
+                            "temporaryPassword": None,
+                        }
+                    )
+                    continue
+
+                try:
+                    transaction = client.transaction()
+                    roster_ref = client.collection("managedStudents").document(roster_student_uid)
+                    profile_uid = str(row.get("existingProfileUid") or roster_student_uid).strip()
+                    profile_ref = client.collection("users").document(profile_uid)
+                    source_ownership_ref = client.collection("classSectionOwnership").document(source_section_id)
+                    destination_ownership_ref = client.collection("classSectionOwnership").document(class_section_id)
+
+                    def read_transaction_snapshot(reference: Any) -> Any:
+                        transaction_read = transaction.get(reference)
+                        if hasattr(transaction_read, "exists"):
+                            return transaction_read
+                        return next(iter(transaction_read), None)
+
+                    read_refs = [roster_ref, source_ownership_ref, destination_ownership_ref]
+                    snapshots = [read_transaction_snapshot(reference) for reference in read_refs]
+                    roster_snapshot, source_snapshot, destination_snapshot = snapshots
+                    source_classrooms = list(
+                        transaction.get(
+                            client.collection("classrooms").where("classSectionId", "==", source_section_id)
+                        )
+                    )
+                    destination_classrooms = list(
+                        transaction.get(
+                            client.collection("classrooms").where("classSectionId", "==", class_section_id)
+                        )
+                    )
+                    if not _snapshot_exists(roster_snapshot):
+                        raise ValueError("Student roster entry no longer exists")
+
+                    current_roster = _snapshot_to_dict(roster_snapshot)
+                    current_section = str(current_roster.get("classSectionId") or current_roster.get("classroomId") or "").strip().lower()
+                    current_lrn = str(current_roster.get("lrn") or "").strip()
+                    if current_section != source_section_id:
+                        raise ValueError("Student roster section changed after preview")
+                    if current_lrn != student_id:
+                        raise ValueError("Student LRN changed after preview")
+
+                    source_ownership = _snapshot_to_dict(source_snapshot) if _snapshot_exists(source_snapshot) else {}
+                    destination_ownership = (
+                        _snapshot_to_dict(destination_snapshot) if _snapshot_exists(destination_snapshot) else {}
+                    )
+                    for ownership_name, ownership_data in (
+                        ("source", source_ownership),
+                        ("destination", destination_ownership),
+                    ):
+                        matching_classrooms = source_classrooms if ownership_name == "source" else destination_classrooms
+                        ownership_matches = user.uid in {
+                            str(ownership_data.get("ownerTeacherId") or ""),
+                            str(ownership_data.get("managerId") or ""),
+                        }
+                        classroom_matches = any(
+                            user.uid
+                            in {
+                                str(classroom_data.get("teacherId") or ""),
+                                str(classroom_data.get("ownerTeacherId") or ""),
+                                str(classroom_data.get("managerId") or ""),
+                            }
+                            for classroom_data in (_snapshot_to_dict(snapshot) for snapshot in matching_classrooms)
+                        )
+                        if user.role != "admin" and not (ownership_matches or classroom_matches):
+                            raise ValueError(f"{ownership_name.title()} section ownership changed after preview")
+                    source_uids = set(cast(List[str], source_ownership.get("studentUids") or []))
+                    destination_uids = set(cast(List[str], destination_ownership.get("studentUids") or []))
+                    source_uids.discard(roster_student_uid)
+                    destination_uids.add(roster_student_uid)
+                    class_section_name = f"{grade} - {section}"
+                    class_metadata = _build_class_metadata(
+                        class_section_id=class_section_id,
+                        class_name=class_section_name,
+                        grade=grade,
+                        section=section,
+                        owner_teacher_id=str(destination_ownership.get("ownerTeacherId") or user.uid),
+                        owner_teacher_name=str(destination_ownership.get("ownerTeacherName") or user.email),
+                        adviser_teacher_id=user.uid,
+                        adviser_teacher_name=user.email,
+                        manager_id=str(destination_ownership.get("managerId") or user.uid),
+                        manager_name=str(destination_ownership.get("managerName") or user.email),
+                    )
+
+                    transaction.update(
+                        roster_ref,
+                        {
+                            "classSectionId": class_section_id,
+                            "classroomId": class_section_id,
+                            "className": class_section_name,
+                            "grade": grade,
+                            "section": section,
+                            "classMetadata": class_metadata,
+                            "teacherId": user.uid,
+                            "adviserTeacherId": user.uid,
+                            "adviserTeacherName": user.email,
+                            "managerId": user.uid,
+                            "managerName": user.email,
+                            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+                        },
+                    )
+                    transaction.set(
+                        profile_ref,
+                        {
+                            "classSectionId": class_section_id,
+                            "section": section,
+                            "grade": grade,
+                            "teacherId": user.uid,
+                            "adviserTeacherId": user.uid,
+                            "adviserTeacherName": user.email,
+                            "classMetadata": class_metadata,
+                            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+                        },
+                        merge=True,
+                    )
+                    transaction.set(
+                        source_ownership_ref,
+                        {"studentUids": sorted(source_uids), "updatedAt": FIRESTORE_SERVER_TIMESTAMP},
+                        merge=True,
+                    )
+                    transaction.set(
+                        destination_ownership_ref,
+                        {
+                            "classSectionId": class_section_id,
+                            "className": class_section_name,
+                            "ownerTeacherId": str(destination_ownership.get("ownerTeacherId") or user.uid),
+                            "managerId": str(destination_ownership.get("managerId") or user.uid),
+                            "studentUids": sorted(destination_uids),
+                            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+                        },
+                        merge=True,
+                    )
+                    transaction.commit()
+                    updated_rows += 1
+                    result_rows.append(
+                        {
+                            "rowNumber": row_number,
+                            "studentId": student_id,
+                            "fullName": full_name,
+                            "email": email,
+                            "uid": roster_student_uid,
+                            "classSectionId": class_section_id,
+                            "status": "updated",
+                            "message": f"Student moved from {source_section_id} to {class_section_id}.",
+                            "temporaryPassword": None,
+                        }
+                    )
+                except Exception as move_err:
+                    blocked_rows += 1
+                    result_rows.append(
+                        {
+                            "rowNumber": row_number,
+                            "studentId": student_id,
+                            "fullName": full_name,
+                            "email": email,
+                            "uid": None,
+                            "classSectionId": class_section_id,
+                            "status": "blocked",
+                            "message": f"Cannot move student: {move_err}",
+                            "temporaryPassword": None,
+                        }
+                    )
+                continue
+
             existing_profile_doc = None
             existing_uid: Optional[str] = None
             try:
@@ -6215,6 +6464,32 @@ async def commit_student_account_import(
                         existing_uid = docs[0].id
             except Exception as duplicate_err:
                 warnings.append(f"Duplicate re-check warning for row {row_number}: {duplicate_err}")
+
+            try:
+                roster_rows = list(
+                    client.collection("managedStudents").where("lrn", "==", student_id).limit(1).stream()
+                ) if student_id else []
+                if roster_rows:
+                    roster_data = _snapshot_to_dict(roster_rows[0])
+                    enrolled_section_id = str(roster_data.get("classSectionId") or roster_data.get("classroomId") or "").strip()
+                    if enrolled_section_id:
+                        blocked_rows += 1
+                        result_rows.append(
+                            {
+                                "rowNumber": row_number,
+                                "studentId": student_id,
+                                "fullName": full_name,
+                                "email": email,
+                                "uid": None,
+                                "classSectionId": class_section_id,
+                                "status": "blocked",
+                                "message": f"Cannot import: already enrolled in {enrolled_section_id}.",
+                                "temporaryPassword": None,
+                            }
+                        )
+                        continue
+            except Exception as roster_err:
+                warnings.append(f"Roster membership check warning for row {row_number}: {roster_err}")
 
             auth_uid: Optional[str] = None
             temporary_password: Optional[str] = None
@@ -7891,6 +8166,17 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 file_students = normalized_result["rows"]
                 file_row_warnings = normalized_result["rowWarnings"]
                 file_rejected_rows = normalized_result.get("rejectedRows") or []
+                invalid_lrn_rows = [
+                    item for item in file_rejected_rows
+                    if "LRN must contain exactly 12 digits" in str(item.get("reason") or "")
+                ]
+                if invalid_lrn_rows:
+                    file_students = []
+                    file_rejected_rows_count = len(file_rejected_rows)
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Invalid LRN rows: " + "; ".join(str(item["reason"]) for item in invalid_lrn_rows),
+                    )
                 file_unknown_columns = normalized_result["unknownColumns"]
                 file_interpreted_rows = int(normalized_result.get("interpretedRows") or len(file_students))
                 file_rejected_rows_count = int(normalized_result.get("rejectedRowsCount") or len(file_rejected_rows))

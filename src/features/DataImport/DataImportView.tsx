@@ -14,7 +14,7 @@ import type { ClassSectionMetadata } from '../../types/models';
 import type { StudentView } from '../../components/TeacherDashboard';
 
 import type { ParseWorkbookResult } from '../import/services/shsExcel/parser/types';
-import type { UploadResponse } from '../../services/apiService';
+import type { StudentAccountImportPreviewResponse, UploadResponse } from '../../services/apiService';
 import { apiService, ApiError } from '../../services/apiService';
 import { parseShsWorkbook } from '../import/services/shsExcel/parser';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../import/services/shsExcel/parser/constants';
@@ -115,6 +115,12 @@ export default function DataImportView({
   const [dragOver2, setDragOver2] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
   const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
+  const [accountPreviewing, setAccountPreviewing] = useState(false);
+  const [accountCommitting, setAccountCommitting] = useState(false);
+  const [studentAccountFile, setStudentAccountFile] = useState<File | null>(null);
+  const [accountPreview, setAccountPreview] = useState<StudentAccountImportPreviewResponse | null>(null);
+  const [confirmedMoveRows, setConfirmedMoveRows] = useState<Set<number>>(() => new Set());
+  const [accountImportMessage, setAccountImportMessage] = useState('');
   const [uploadResult, setUploadResult] = useState<string>('');
   const [uploadInterpretation, setUploadInterpretation] = useState<{
     datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
@@ -143,6 +149,51 @@ export default function DataImportView({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
+  const studentAccountInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePreviewStudentAccounts = async (file: File) => {
+    setAccountPreviewing(true);
+    setAccountPreview(null);
+    setConfirmedMoveRows(new Set());
+    setAccountImportMessage('');
+    try {
+      const preview = await apiService.previewStudentAccountImport(file, {
+        classSectionId,
+        className,
+        defaultGrade: classMetadata?.grade ?? undefined,
+        defaultSection: classMetadata?.section ?? undefined,
+      });
+      setAccountPreview(preview);
+      if (!preview.previewToken) {
+        setAccountImportMessage('Preview did not return a token; import cannot be committed.');
+      }
+    } catch (error: unknown) {
+      setAccountImportMessage(error instanceof Error ? error.message : 'Student account preview failed.');
+    } finally {
+      setAccountPreviewing(false);
+    }
+  };
+
+  const handleCommitStudentAccounts = async (confirmSectionMoves: boolean) => {
+    const previewToken = accountPreview?.previewToken;
+    if (!previewToken || accountCommitting) return;
+    setAccountCommitting(true);
+    setAccountImportMessage('');
+    try {
+      const committed = await apiService.commitStudentAccountImport({ previewToken, confirmSectionMoves });
+      const blockedMoves = committed.rows.filter((row) => row.status === 'blocked' && /cannot import|move/i.test(row.message));
+      setAccountImportMessage(
+        blockedMoves.length > 0
+          ? `${blockedMoves.length} section move(s) blocked: ${blockedMoves.map((row) => row.message).join(' ')}`
+          : `Import completed: ${committed.summary.createdRows} created, ${committed.summary.updatedRows} updated, ${committed.summary.blockedRows} blocked, ${committed.summary.failedRows} failed.`,
+      );
+      if (committed.success) onDataChanged?.();
+    } catch (error: unknown) {
+      setAccountImportMessage(error instanceof Error ? error.message : 'Student account import failed.');
+    } finally {
+      setAccountCommitting(false);
+    }
+  };
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -221,8 +272,6 @@ export default function DataImportView({
 
     const fallbackTerm = (workbookResult.imported.schoolContext.semester || workbookResult.imported.schoolContext.schoolYear || 'First Semester').trim();
     const fallbackAssessment = (workbookResult.imported.schoolContext.subjectName || 'Class Record Import').trim();
-    const classToken = (classSectionId || className || 'import').replace(/[^a-zA-Z0-9]+/g, '').toUpperCase().slice(0, 12) || 'IMPORT';
-
     const header = ['name', 'lrn', 'email', 'engagementScore', 'avgQuizScore', 'attendance', 'assignmentCompletion', 'term', 'assessmentName'];
     const rows = [header.join(',')];
 
@@ -236,12 +285,11 @@ export default function DataImportView({
       const engagementScore = clampPercent((avgQuizScore * 0.7) + (attendance * 0.3), 80);
       const assignmentCompletion = clampPercent((attendance * 0.6) + (avgQuizScore * 0.4), 82);
 
-      const learnerNoSeed = student.learnerNo || (index + 1);
-      const lrn = `IMP-${classToken}-${String(learnerNoSeed).padStart(4, '0')}`;
+      const lrn = student.lrn?.trim() || '';
       const name = student.fullName || `Learner ${index + 1}`;
 
       rows.push([
-        toCsvCell(name), toCsvCell(lrn), toCsvCell(''), toCsvCell(Number(engagementScore.toFixed(1))),
+        toCsvCell(name), toCsvCell(lrn), toCsvCell(student.email?.trim() || ''), toCsvCell(Number(engagementScore.toFixed(1))),
         toCsvCell(Number(avgQuizScore.toFixed(1))), toCsvCell(Number(attendance.toFixed(1))),
         toCsvCell(Number(assignmentCompletion.toFixed(1))), toCsvCell(fallbackTerm), toCsvCell(fallbackAssessment)
       ].join(','));
@@ -263,6 +311,22 @@ export default function DataImportView({
       try {
         const workbookResult = await parseShsWorkbook(file, { confidenceThreshold: DETECTION_CONFIDENCE_THRESHOLD });
         setShsExcelResult(workbookResult);
+        const malformedLrnRows = workbookResult.mapping.studentEntities
+          .map((student, index) => ({
+            row: student.sourceRow || index + 2,
+            lrn: student.lrn?.trim() || '',
+            email: student.email?.trim() || '',
+          }))
+          .filter(({ lrn, email }) => (lrn ? !/^\d{12}$/.test(lrn) : !email));
+        if (malformedLrnRows.length > 0) {
+          const rowErrors = malformedLrnRows.map(({ row, lrn }) =>
+            `Row ${row}: ${lrn ? 'LRN must contain exactly 12 digits.' : 'LRN or email is required.'}`,
+          );
+          setUploadResult(rowErrors.join(' '));
+          toast.error(rowErrors.join(' '));
+          setUploadingClassRecords(false);
+          return;
+        }
         const normalizedFile = buildNormalizedWorkbookCsv(workbookResult, file.name);
         if (normalizedFile) uploadFile = normalizedFile;
       } catch {
@@ -307,7 +371,7 @@ export default function DataImportView({
         });
         onDataChanged?.();
       } else {
-        toast.error('Import completed but no usable student rows were detected. Check required columns and retry.');
+        toast.error(result.warnings?.join(' ') || 'Import completed but no usable student rows were detected. Check required columns and retry.');
       }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Upload failed');
@@ -565,6 +629,87 @@ export default function DataImportView({
                 </div>
               </div>
             </div>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3" aria-labelledby="student-account-import-title">
+              <div>
+                <h3 id="student-account-import-title" className="text-sm font-bold text-slate-800">Student Account Import</h3>
+                <p className="text-xs text-slate-500">Preview a roster and review any requested section moves before committing.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  ref={studentAccountInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] || null;
+                    setStudentAccountFile(file);
+                    setAccountPreview(null);
+                    setConfirmedMoveRows(new Set());
+                    setAccountImportMessage('');
+                  }}
+                  aria-label="Select student account roster"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!studentAccountFile || accountPreviewing}
+                  onClick={() => studentAccountFile && void handlePreviewStudentAccounts(studentAccountFile)}
+                >
+                  {accountPreviewing ? 'Previewing…' : 'Preview roster'}
+                </Button>
+              </div>
+              {accountPreview && (
+                <div className="space-y-3" aria-live="polite">
+                  <p className="text-xs text-slate-600">
+                    {accountPreview.summary.totalRows} rows: {accountPreview.summary.validRows} valid, {accountPreview.summary.invalidRows} invalid, {accountPreview.summary.duplicateRows} duplicate.
+                  </p>
+                  <div className="divide-y rounded-lg border border-slate-200">
+                    {accountPreview.rows.map((row) => row.status === 'move_confirmation_required' ? (
+                      <label key={row.rowNumber} className="flex items-start gap-2 p-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={confirmedMoveRows.has(row.rowNumber)}
+                          onChange={(event) => setConfirmedMoveRows((current) => {
+                            const next = new Set(current);
+                            if (event.target.checked) next.add(row.rowNumber);
+                            else next.delete(row.rowNumber);
+                            return next;
+                          })}
+                        />
+                        <span>
+                          <span className="font-medium">{row.fullName} — Move to this section?</span>
+                          <span className="block text-xs text-slate-500">{row.grade} {row.section} · {row.issues.join(' ') || 'Existing section assignment will change.'}</span>
+                        </span>
+                      </label>
+                    ) : (
+                      <div key={row.rowNumber} className="flex justify-between gap-3 p-3 text-xs">
+                        <span>{row.fullName}</span>
+                        <span>{row.status}{row.issues.length ? ` — ${row.issues.join(' ')}` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      disabled={!accountPreview.previewToken || accountCommitting || !accountPreview.rows.some((row) => row.status === 'move_confirmation_required') || confirmedMoveRows.size !== accountPreview.rows.filter((row) => row.status === 'move_confirmation_required').length}
+                      onClick={() => void handleCommitStudentAccounts(true)}
+                    >
+                      {accountCommitting ? 'Committing…' : 'Confirm moves & import'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!accountPreview.previewToken || accountCommitting}
+                      onClick={() => void handleCommitStudentAccounts(false)}
+                    >
+                      Import without moves (moves stay blocked)
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {accountImportMessage && <p role="status" className="text-xs text-slate-700">{accountImportMessage}</p>}
+              {accountPreview?.warnings.map((warning) => <p key={warning} className="text-xs text-amber-700">{warning}</p>)}
+            </section>
 
             {/* Quick Link to Module Availability Control in Topic Mastery */}
             {onNavigateToModuleAvailability && (

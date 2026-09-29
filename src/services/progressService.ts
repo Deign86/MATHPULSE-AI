@@ -15,6 +15,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { getCurriculumModulesForLearner } from '../data/curriculumModules';
 import {
   UserProgress,
   ModuleProgress,
@@ -102,6 +103,7 @@ export const updateLessonProgressPercent = async (
   userId: string,
   lessonId: string,
   percent: number,
+  sectionIndex?: number,
 ): Promise<void> => {
   const clampedPercent = Math.max(0, Math.min(100, percent));
   const progressRef = doc(db, 'progress', userId);
@@ -109,8 +111,13 @@ export const updateLessonProgressPercent = async (
   await setDoc(
     progressRef,
     {
-      [`lessons.${lessonId}.lessonId`]: lessonId,
-      [`lessons.${lessonId}.progressPercent`]: clampedPercent,
+      lessons: {
+        [lessonId]: {
+          lessonId,
+          progressPercent: clampedPercent,
+          ...(sectionIndex !== undefined && { lastSectionIndex: Math.max(0, sectionIndex) }),
+        },
+      },
       updatedAt: serverTimestamp(),
     },
     { merge: true },
@@ -144,11 +151,24 @@ export const recalculateAndUpdateModuleProgress = async (
   const completedQuizzes = moduleProgress.quizzesCompleted?.length || 0;
   const progress = Math.round(((completedLessons + completedQuizzes) / totalItems) * 100);
 
+  const courseModules = Object.values(data.subjects?.[subjectId]?.modulesProgress || {});
+  const assignedLessonIds = new Set(getCurriculumModulesForLearner('Grade 11', [subjectId]).flatMap((packet) => packet.lessons.map((lesson) => lesson.id)));
+  const courseCompletedLessonIds = new Set(courseModules.flatMap((entry) => entry.lessonsCompleted || []));
+  const courseProgress = assignedLessonIds.size > 0
+    ? Math.round(([...courseCompletedLessonIds].filter((lessonId) => assignedLessonIds.has(lessonId)).length / assignedLessonIds.size) * 100)
+    : 0;
+
   await setDoc(
     progressRef,
     {
-      [`subjects.${subjectId}.modulesProgress.${moduleId}.progress`]: progress,
-      [`subjects.${subjectId}.modulesProgress.${moduleId}.lastAccessedAt`]: serverTimestamp(),
+      subjects: {
+        [subjectId]: {
+          progress: courseProgress,
+          modulesProgress: {
+            [moduleId]: { ...moduleProgress, progress, lastAccessedAt: serverTimestamp() },
+          },
+        },
+      },
       updatedAt: serverTimestamp(),
     },
     { merge: true },
@@ -169,9 +189,9 @@ export const updateLessonQuizCompletion = async (
     await setDoc(
       progressRef,
       {
-        [`lessons.${lessonId}.lessonId`]: lessonId,
-        [`lessons.${lessonId}.quizCompleted`]: quizCompleted,
-        [`lessons.${lessonId}.quizScore`]: quizScore,
+      lessons: {
+        [lessonId]: { lessonId, quizCompleted, quizScore },
+      },
         updatedAt: serverTimestamp(),
       },
       { merge: true },
@@ -222,7 +242,9 @@ export const completeLesson = async (
     const progressData = progressSnap.data() as UserProgress;
 
     // Update lesson progress
+    const previousLessonProgress = progressData.lessons?.[lessonId];
     const lessonProgress: LessonProgress = {
+      ...previousLessonProgress,
       lessonId,
       completed: true,
       completedAt: new Date(),
@@ -257,18 +279,24 @@ export const completeLesson = async (
     }
 
     const moduleProgress = subjectProgress.modulesProgress[moduleId];
-    const isNewLesson = !moduleProgress.lessonsCompleted.includes(lessonId);
+    const isNewLesson = !Object.values(progressData.subjects).some((subject) =>
+      Object.values(subject.modulesProgress || {}).some((entry) => entry.lessonsCompleted?.includes(lessonId)),
+    );
     if (isNewLesson) {
       moduleProgress.lessonsCompleted.push(lessonId);
       moduleProgress.lastAccessedAt = new Date();
+    } else if (!moduleProgress.lessonsCompleted.includes(lessonId)) {
+      moduleProgress.lessonsCompleted.push(lessonId);
     }
 
     // Update Firestore
     await setDoc(
       progressRef,
       {
-        [`lessons.${lessonId}`]: lessonProgress,
-        [`subjects.${subjectId}.modulesProgress.${moduleId}`]: moduleProgress,
+        lessons: { [lessonId]: lessonProgress },
+        subjects: {
+          [subjectId]: { modulesProgress: { [moduleId]: moduleProgress } },
+        },
         ...(isNewLesson && { totalLessonsCompleted: increment(1) }),
         updatedAt: serverTimestamp(),
       },
@@ -565,20 +593,28 @@ export const recalculateProgressAggregates = async (userId: string): Promise<voi
       : 0;
 
     // Compute per-subject progress from module completions
-    const subjectUpdates: Record<string, number> = {};
+    const subjectUpdates: Record<string, { progress: number }> = {};
     const subjects = data.subjects || {};
     for (const [subjectId, subjectData] of Object.entries(subjects)) {
       const modules = subjectData.modulesProgress || {};
       const moduleProgresses = Object.values(modules);
       if (moduleProgresses.length > 0) {
-        const avgProgress = Math.round(
-          moduleProgresses.reduce((sum, m) => sum + (m.progress || 0), 0) / moduleProgresses.length
-        );
-        subjectUpdates[`subjects.${subjectId}.progress`] = avgProgress;
+        const completedLessonIds = new Set(moduleProgresses.flatMap((module) => module.lessonsCompleted || []));
+        const assignedLessonIds = new Set(getCurriculumModulesForLearner('Grade 11', [subjectId]).flatMap((packet) => packet.lessons.map((lesson) => lesson.id)));
+        const completedAssignedLessons = [...completedLessonIds].filter((lessonId) => assignedLessonIds.has(lessonId)).length;
+        subjectUpdates[subjectId] = {
+          progress: assignedLessonIds.size > 0
+            ? Math.round((completedAssignedLessons / assignedLessonIds.size) * 100)
+            : 0,
+        };
       }
     }
 
-    await setDoc(progressRef, { averageScore, ...subjectUpdates, updatedAt: serverTimestamp() }, { merge: true });
+    await setDoc(progressRef, {
+      averageScore,
+      subjects: subjectUpdates,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
 
     // Sync overallRisk to users collection for admin dashboard
     await syncOverallRisk(userId, averageScore);

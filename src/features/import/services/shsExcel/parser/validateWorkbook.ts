@@ -164,6 +164,8 @@ export function mapWorkbookToMathPulseEntities(workbook: ImportedShsWorkbook) {
   const studentEntities = workbook.learners.map((learner) => ({
     fullName: learner.fullName,
     learnerNo: learner.learnerNo,
+    lrn: learner.lrn,
+    email: learner.email,
     sex: learner.sex,
     remarks: learner.remarks,
     additionalRemarks: learner.additionalRemarks,

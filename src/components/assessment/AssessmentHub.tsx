@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, History, Play, RotateCcw } from 'lucide-react';
+import { BadgeCheck, BarChart3, ClipboardList, History, Play, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/button';
 
 export type AssessmentHubStatus = 'loading' | 'unassessed' | 'assessed';
@@ -64,10 +64,13 @@ const AssessmentHub: React.FC<AssessmentHubProps> = ({
         <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto mb-5">
           <BarChart3 className="text-emerald-600" size={32} />
         </div>
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700 mb-3" data-testid="assessment-hub-taken-badge">
+          <BadgeCheck size={16} />
+          Taken / Completed
+        </div>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Assessment Complete</h2>
         <p className="text-slate-500 text-sm leading-relaxed mb-6">
-          Review your latest score, competency breakdown, and full attempt history — or retake the
-          diagnostic to track your growth.
+          Review your latest score, competency breakdown, and full attempt history.
         </p>
         <div className="space-y-3">
           <Button

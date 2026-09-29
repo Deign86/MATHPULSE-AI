@@ -770,7 +770,7 @@ export interface ImportGroundedAccessAuditResponse {
   warnings: string[];
 }
 
-export type StudentAccountPreviewStatus = 'valid' | 'invalid' | 'duplicate';
+export type StudentAccountPreviewStatus = 'valid' | 'invalid' | 'duplicate' | 'move_confirmation_required';
 export type StudentAccountCommitStatus = 'created' | 'updated' | 'skipped' | 'blocked' | 'failed';
 
 export interface StudentAccountProvisionPreviewRow {
@@ -2054,6 +2054,7 @@ export const apiService = {
     defaultPassword?: string;
     forcePasswordChange?: boolean;
     createAuthUsers?: boolean;
+    confirmSectionMoves?: boolean;
   }): Promise<StudentAccountImportCommitResponse> {
     validateRequired('/api/import/student-accounts/commit', {
       previewToken: payload.previewToken,
