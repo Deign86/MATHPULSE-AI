@@ -29,53 +29,12 @@ interface QuizGenerationResponse {
   generatedAt: string;
 }
 
-// Minimal fallback bank for offline/development use only
-const FALLBACK_QUESTIONS: Question[] = [
-  {
-    id: 1,
-    type: 'multiple-choice',
-    question: 'What is the value of π (pi) to two decimal places?',
-    options: ['3.12', '3.14', '3.16', '3.18'],
-    correctAnswer: '3.14',
-    explanation: 'π ≈ 3.14159..., so to two decimal places it is 3.14.',
-  },
-  {
-    id: 2,
-    type: 'true-false',
-    question: 'The sum of angles in a triangle is 180 degrees.',
-    correctAnswer: 'True',
-    explanation: 'The interior angles of any Euclidean triangle sum to 180°.',
-  },
-  {
-    id: 3,
-    type: 'fill-in-blank',
-    question: 'If 2x + 5 = 13, then x = ___.',
-    correctAnswer: '4',
-    explanation: '2x = 13 - 5 = 8 → x = 4.',
-  },
-  {
-    id: 4,
-    type: 'multiple-choice',
-    question: 'Which of the following is a prime number?',
-    options: ['9', '15', '17', '21'],
-    correctAnswer: '17',
-    explanation: '17 is only divisible by 1 and itself. 9=3×3, 15=3×5, 21=3×7.',
-  },
-  {
-    id: 5,
-    type: 'true-false',
-    question: 'The slope of a horizontal line is zero.',
-    correctAnswer: 'True',
-    explanation: 'A horizontal line has no rise, so rise/run = 0.',
-  },
-  {
-    id: 6,
-    type: 'fill-in-blank',
-    question: 'The square root of 144 is ___.',
-    correctAnswer: '12',
-    explanation: '12 × 12 = 144, so √144 = 12.',
-  },
-];
+type SubjectName =
+  | 'General Mathematics'
+  | 'Statistics and Probability'
+  | 'Business Mathematics'
+  | 'Finite Mathematics';
+
 
 /**
  * Generate lesson quiz questions via DeepSeek AI + RAG curriculum context.
@@ -117,9 +76,8 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
       }),
     });
 
-    if (!response.questions || response.questions.length === 0) {
-      console.warn('[lessonQuizService] API returned empty questions, using fallback');
-      return _getFallbackQuestions(questionCount);
+    if (!response.questions?.length) {
+      throw new Error('Quiz generation returned no lesson-specific questions.');
     }
 
     // Map API response to InteractiveLesson Question type
@@ -136,8 +94,7 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
     }));
   } catch (error) {
     console.error('[lessonQuizService] Failed to generate quiz via API:', error);
-    console.warn('[lessonQuizService] Using fallback questions');
-    return _getFallbackQuestions(questionCount);
+    throw error;
   }
 }
 
@@ -150,7 +107,7 @@ export function getQuestionCountForQuiz(type: 'practice' | 'quiz'): number {
 
 // ─── Internal Helpers ────────────────────────────────────────────────────
 
-function _deriveSubjectName(subjectId?: string): string | null {
+function _deriveSubjectName(subjectId?: string): SubjectName | null {
   if (!subjectId) return null;
   const sid = subjectId.toLowerCase();
   if (sid.includes('gen-math') || sid.includes('gen_math')) return 'General Mathematics';
@@ -159,12 +116,4 @@ function _deriveSubjectName(subjectId?: string): string | null {
   if (sid.includes('finite')) return 'Finite Mathematics';
   // Grade 11 only: legacy pre-calc / calculus ids fall back to General Mathematics.
   return null;
-}
-
-function _getFallbackQuestions(count: number): Question[] {
-  const shuffled = [...FALLBACK_QUESTIONS].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, Math.min(count, shuffled.length)).map((q, i) => ({
-    ...q,
-    id: i + 1,
-  }));
 }

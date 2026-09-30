@@ -22,6 +22,9 @@ import {
 } from '../services/authService';
 import { UserRole } from '../types/models';
 import { recordGet } from '../utils/memberOf';
+import { z } from 'zod';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { InteractiveRobotBackground } from './login/InteractiveRobotBackground';
 
 export function isObjectVal<T>(value: T): value is T & object {
@@ -30,6 +33,15 @@ export function isObjectVal<T>(value: T): value is T & object {
 export function isString<T>(value: T): value is T & string {
   return typeof value === 'string';
 }
+
+const schoolSectionOptionSchema = z.object({
+  name: z.string(),
+  type: z.string().optional(),
+  grade: z.string().optional(),
+});
+
+const FALLBACK_SECTION_OPTIONS = ['Aumaury', 'Edison', 'Einstein', 'Mpai'];
+const FALLBACK_TRACK_OPTIONS = ['Academic', 'TechPro'];
 
 interface PasswordRule {
   id: string;
@@ -153,9 +165,6 @@ const getFriendlyResetErrorMessage = (cause: unknown): string => {
 
 export const LoginPage: React.FC = () => {
   const GRADE_OPTIONS = ['Grade 11'];
-  const SECTION_OPTIONS = {
-    'Grade 11': ['Academic', 'Tech-Pro'],
-  };
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -196,7 +205,12 @@ export const LoginPage: React.FC = () => {
   const [name, setName] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('student');
   const [selectedGrade, setSelectedGrade] = useState('Grade 11');
-  const [selectedSection, setSelectedSection] = useState(SECTION_OPTIONS['Grade 11'][0]);
+  const [selectedSection, setSelectedSection] = useState('');
+  const [selectedTrack, setSelectedTrack] = useState('');
+  const [sectionOptions, setSectionOptions] = useState<string[]>(FALLBACK_SECTION_OPTIONS);
+  const [trackOptions, setTrackOptions] = useState<string[]>(FALLBACK_TRACK_OPTIONS);
+  const [registrationOptionsLoading, setRegistrationOptionsLoading] = useState(true);
+  const [registrationOptionsError, setRegistrationOptionsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -205,6 +219,47 @@ export const LoginPage: React.FC = () => {
   const [resetSuccess, setResetSuccess] = useState(false);
   const resetEmailRef = useRef<HTMLInputElement | null>(null);
   const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve()
+      .then(() => getDocs(collection(db, 'schoolSections')))
+      .then((snapshot) => {
+        if (!active) return;
+        const sections: string[] = [];
+        const tracks: string[] = [];
+        snapshot.forEach((option) => {
+          const parsedOption = schoolSectionOptionSchema.safeParse(option.data());
+          if (!parsedOption.success) return;
+          const { name, type, grade } = parsedOption.data;
+          if (type === 'section' && grade === 'Grade 11') sections.push(name);
+          if (type === 'track') tracks.push(name);
+        });
+        setSectionOptions(
+          sections.length > 0
+            ? sections.sort((left, right) => left.localeCompare(right))
+            : FALLBACK_SECTION_OPTIONS,
+        );
+        setTrackOptions(
+          tracks.length > 0
+            ? tracks.sort((left, right) => left.localeCompare(right))
+            : FALLBACK_TRACK_OPTIONS,
+        );
+      })
+      .catch(() => {
+        if (active) {
+          setSectionOptions(FALLBACK_SECTION_OPTIONS);
+          setTrackOptions(FALLBACK_TRACK_OPTIONS);
+          setRegistrationOptionsError('Registration options could not be loaded. Default options are available.');
+        }
+      })
+      .finally(() => {
+        if (active) setRegistrationOptionsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (isResettingPassword) resetEmailRef.current?.focus();
@@ -234,13 +289,6 @@ export const LoginPage: React.FC = () => {
       normalizedError.includes('password does not meet')
     );
   }, [error, isSignUp]);
-
-  useEffect(() => {
-    const gradeSections = recordGet(SECTION_OPTIONS, selectedGrade) ?? [];
-    if (gradeSections.length > 0 && !gradeSections.includes(selectedSection)) {
-      setSelectedSection(gradeSections[0]);
-    }
-  }, [selectedGrade, selectedSection]);
 
   // Demo 1-click accounts are dev-only and env-injected (issue #156).
   // The section renders only when explicitly enabled in a dev build, so
@@ -354,6 +402,12 @@ export const LoginPage: React.FC = () => {
           return;
         }
 
+        if (selectedRole === 'student' && (!selectedSection || !selectedTrack)) {
+          setError('Please select both a section and track');
+          setLoading(false);
+          return;
+        }
+
         if (selectedRole === 'admin') {
           setError('Admin account creation is restricted. Please contact an existing administrator.');
           setLoading(false);
@@ -379,7 +433,7 @@ export const LoginPage: React.FC = () => {
           name,
           selectedRole,
           selectedRole === 'student'
-            ? { grade: selectedGrade, section: selectedSection }
+            ? { grade: selectedGrade, section: selectedSection, track: selectedTrack }
             : { department: 'Mathematics' }
         );
       } else {
@@ -540,7 +594,7 @@ export const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Row 2 (Student only): Grade & Section */}
+                {/* Row 2 (Student only): Grade, Section, and Track */}
                 {selectedRole === 'student' && (
                   <motion.div
                     initial={reduceMotion ? false : { opacity: 0, height: 0 }}
@@ -573,15 +627,41 @@ export const LoginPage: React.FC = () => {
                         id="login-section"
                         value={selectedSection}
                         onChange={(e) => setSelectedSection(e.target.value)}
+                        required
                         className="w-full px-2.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 text-xs sm:text-sm font-body focus:border-sky-400"
                       >
-                        {(recordGet(SECTION_OPTIONS, selectedGrade) ?? []).map((sec) => (
+                        <option value="">Select a section</option>
+                        {sectionOptions.map((sec) => (
                           <option key={sec} value={sec}>
                             {sec}
                           </option>
                         ))}
                       </select>
+                      {registrationOptionsLoading && <p role="status">Loading sections...</p>}
                     </div>
+                    <div className="space-y-0.5 sm:space-y-1">
+                      <label htmlFor="login-track" className="block text-[10px] sm:text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
+                        Track
+                      </label>
+                      <select
+                        id="login-track"
+                        value={selectedTrack}
+                        onChange={(e) => setSelectedTrack(e.target.value)}
+                        required
+                        className="w-full px-2.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-100/80 border border-slate-200 text-slate-900 text-xs sm:text-sm font-body focus:border-sky-400"
+                      >
+                        <option value="">Select a track</option>
+                        {trackOptions.map((track) => (
+                          <option key={track} value={track}>
+                            {track}
+                          </option>
+                        ))}
+                      </select>
+                      {registrationOptionsLoading && <p role="status">Loading tracks...</p>}
+                    </div>
+                    {registrationOptionsError && (
+                      <p role="alert" className="col-span-2 text-rose-600">{registrationOptionsError}</p>
+                    )}
                   </motion.div>
                 )}
 

@@ -113,6 +113,7 @@ export async function assignQuizToStudent(
     title: 'New Quiz Assigned',
     message: 'Your teacher has assigned you a new quiz. Complete it to earn XP!',
     metadata: { quizId },
+    actionUrl: `/modules?section=assigned-quizzes&quizId=${encodeURIComponent(quizId)}`,
     recipientRole: 'student',
   });
 }

@@ -7,6 +7,7 @@ import type { DocumentSnapshot } from 'firebase/firestore';
 import * as lessonContent from '../../hooks/useLessonContent';
 import type { UseLessonContentResult } from '../../hooks/useLessonContent';
 import * as lessonQuizService from '../../services/lessonQuizService';
+import * as practiceService from '../../services/practiceService';
 import * as progressService from '../../services/progressService';
 import * as trackingService from '../../services/trackingService';
 import type { AuthContextType } from '../../contexts/AuthContext';
@@ -78,6 +79,7 @@ const authContext: AuthContextType = {
 };
 
 let progressListener: (progress: UserProgress | null) => void = () => undefined;
+const generatePracticeSessionSpy = vi.spyOn(practiceService, 'generatePracticeSession');
 
 function buildModuleProgress(lessonsCompleted: string[]): ModuleProgress {
   return {
@@ -145,6 +147,8 @@ describe('G1b #171 lesson completion subject fallback', () => {
     document.body.innerHTML = '';
     sessionStorage.clear();
     vi.clearAllMocks();
+    generatePracticeSessionSpy.mockReset();
+    generatePracticeSessionSpy.mockImplementation(() => new Promise(() => undefined));
     progressListener = () => undefined;
 
     vi.spyOn(firestore, 'getDoc').mockResolvedValue(missingFirestoreSnapshot());
@@ -216,5 +220,18 @@ describe('G1b #171 lesson completion subject fallback', () => {
     expect(onEarnXP).toHaveBeenCalledWith(30, 'Completed "Fallback Lesson"');
     expect(screen.getByText('Study Journey')).toBeInTheDocument();
     expect(screen.queryByText('Lesson Complete!')).not.toBeInTheDocument();
+  });
+
+  it('starts practice for the clicked lesson before a lesson has been selected', async () => {
+    renderFallbackModule(vi.fn(), vi.fn());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quiz' }));
+
+    await waitFor(() => {
+      expect(generatePracticeSessionSpy).toHaveBeenCalledWith(expect.objectContaining({
+        competency: 'Fallback Lesson',
+      }));
+    });
+    expect(screen.getByText('Generating Quiz...')).toBeInTheDocument();
   });
 });

@@ -247,6 +247,11 @@ def _parse_quiz_response(text: str, expected_count: int) -> List[Dict[str, Any]]
             continue
 
         qtype = q.get("type", "multiple-choice")
+        qtype = {
+            "multiple_choice": "multiple-choice",
+            "fill_in_blank": "fill-in-blank",
+            "true_false": "true-false",
+        }.get(qtype, qtype)
         correct_key = q.get("correct_answer", "")
 
         # ── Flatten options from [{key, text}] to [text] ──────────────────
@@ -347,10 +352,6 @@ async def generate_quiz(request: QuizGenerationRequest):
 
         if not chunks:
             logger.warning(f"No curriculum chunks found for topic '{request.topic}' in subject '{request.subject}'")
-            raise HTTPException(
-                status_code=404,
-                detail=f"No curriculum content found for topic '{request.topic}'. Please ensure PDFs are ingested.",
-            )
 
         # Shuffle retrieved chunks for variance BEFORE formatting prompt context
         # This ensures different lessons → different curriculum context → different generated questions

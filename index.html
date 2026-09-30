@@ -273,6 +273,32 @@
         </div>
       </div>
        <div id="modal-root"></div>
+      <script>
+        /* Boot-failure surfacing: module boot errors (e.g. the fail-closed
+           env guard for a missing VITE_API_URL) run before React mounts,
+           which would otherwise leave the static loader spinning forever.
+           If the loader is still present when a page-level error fires,
+           show the message instead of hanging. Resource errors (target is
+           an element, e.g. an image) are ignored. */
+        window.addEventListener(
+          'error',
+          function (event) {
+            if (event.target && event.target !== window) return;
+            var loader = document.getElementById('pp-static-loader');
+            if (!loader || loader.getAttribute('data-boot-failed') === '1') return;
+            loader.setAttribute('data-boot-failed', '1');
+            var title = loader.querySelector('.pp-title');
+            var subtitle = loader.querySelector('.pp-subtitle');
+            if (title) title.textContent = 'MathPulse AI could not start';
+            if (subtitle) {
+              subtitle.textContent = String(
+                (event && event.message) || 'The app failed to start. Reload to try again.',
+              ).slice(0, 300);
+            }
+          },
+          true,
+        );
+      </script>
       <script type="module" src="/src/main.tsx"></script>
     </body>
   </html>

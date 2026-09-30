@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap, BadgeCheck, RotateCcw, RefreshCw, FileText } from 'lucide-react';
+import { ArrowLeft, Bookmark, Hash, Clock, Award, Play, Lock, CheckCircle2, Circle, BookOpen, PenTool, Trophy, Star, Target, Zap, BadgeCheck, RotateCcw, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import type { Question } from '@/types/curriculum';
 import QuizExperience, { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import LessonViewer from './LessonViewer';
-import { subjects, Module, Lesson, Quiz } from '../data/subjects';
-import { getLessonById } from '../data/curriculum/types';
+import { subjects, Module, Lesson, Quiz as SubjectQuiz } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
 import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
 import { computeHonestXp } from '../services/honestXp';
@@ -31,6 +30,8 @@ const MODULE_SUBJECT_FALLBACKS = {
 
 const DEFAULT_SUBJECT_ID = 'gen-math';
 const DEFAULT_LESSON_XP = computeHonestXp({ quizScore: 0, hintsUsed: 0, streakDays: 0 });
+
+type Quiz = SubjectQuiz & { learningObjectives?: string[]; competencyCodes?: string[] };
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -161,13 +162,20 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
     const parentSubject = subjects.find((s) => s.modules.some((m) => m.id === module.id));
     const subjectTitle = parentSubject?.title ?? 'General Mathematics';
+    const quizObjectives = selectedLesson.quiz.learningObjectives?.filter((objective) => objective.trim().length > 0) ?? [];
+    const lessonObjective = selectedLesson.returnToLesson?.learningCompetency
+      ?? selectedLesson.returnToLesson?.description
+      ?? selectedLesson.returnToLesson?.title;
+    const quizCompetency = quizObjectives.length > 0
+      ? quizObjectives.join('; ')
+      : lessonObjective ?? selectedLesson.quiz.title.replace(/^(Practice Quiz|Module Quiz):\s*/i, '');
 
     (async () => {
       try {
         const response = await generatePracticeSession({
           userId: userProfile.uid,
           subject: subjectTitle,
-          competency: selectedLesson.quiz.title.replace(/^(Practice Quiz|Module Quiz):\s*/i, ''),
+          competency: quizCompetency,
           difficulty: selectedLesson.quiz.type === 'module' ? 'Challenge' : 'Practice',
           count: selectedLesson.quiz.questions || 5,
         });
@@ -330,19 +338,18 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     setSelectedLesson(null);
   }, []);
 
-  const handleStartPractice = useCallback(() => {
-    const currentLesson = selectedLessonRef.current?.type === 'lesson' ? selectedLessonRef.current.lesson : null;
-    if (!currentLesson) return;
+  const handleStartPractice = useCallback((currentLesson: Lesson) => {
     // Synthesize practice quiz the same way it's done in the render
-    const practiceQuiz: Quiz = {
+    const practiceQuiz = {
       id: `${currentLesson.id}-practice`,
       title: `Practice Quiz: ${currentLesson.title}`,
+      learningObjectives: [currentLesson.learningCompetency ?? currentLesson.description ?? currentLesson.title],
       questions: getQuestionCountForQuiz('practice'),
       duration: currentLesson.duration,
       completed: false,
       locked: false,
       type: 'practice' as const,
-    };
+    } satisfies Quiz & { learningObjectives: string[] };
     setSelectedLesson({ type: 'quiz', quiz: practiceQuiz, returnToLesson: currentLesson });
     setIsInQuizMode?.(true);
   }, [setIsInQuizMode]);
@@ -448,7 +455,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
           nextContentLabel={nextContentLabel}
           onBack={handleBack}
-          onStartPractice={handleStartPractice}
+          onStartPractice={() => handleStartPractice(selectedLesson.lesson)}
           onProgressUpdate={handleProgressUpdate}
           onComplete={handleComplete}
           setIsInQuizMode={setIsInQuizMode}
@@ -630,13 +637,9 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
               const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
               const lessonPct = getLessonProgressPercent(lesson.id, isCompleted);
               const lessonAccentHex = MODULE_PALETTE[index % MODULE_PALETTE.length];
-              const curriculumMatch = getLessonById(lesson.id);
-              const rawSourcePath = lesson.storagePath || curriculumMatch?.storagePath || '';
-              const sourcePdfName =
-                lesson.sourceFile ||
-                curriculumMatch?.sourceFile ||
-                (rawSourcePath ? rawSourcePath.split('/').pop() : '') ||
-                '';
+              // S1: the raw curriculum PDF filename pill was removed from student lesson rows.
+              // Curriculum source metadata stays available upstream (quiz/evidence sourcing);
+              // this view no longer derives a display name from it.
 
               return (
                 <React.Fragment key={lesson.id}>
@@ -711,15 +714,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                               <p className="text-[10px] md:text-[12px] font-black uppercase tracking-wider text-slate-500">
                                 Lesson {index + 1}
                               </p>
-                              {sourcePdfName && (
-                                <span
-                                  className="inline-flex items-center gap-1 text-[10px] md:text-[11px] font-medium text-slate-600 bg-slate-100/90 border border-slate-200/80 px-2 py-0.5 rounded-full"
-                                  title={`DepEd Curriculum Source: ${sourcePdfName}`}
-                                >
-                                  <FileText size={10} className="text-slate-400 shrink-0" />
-                                  <span className="truncate max-w-[140px] sm:max-w-[220px] font-mono">{sourcePdfName}</span>
-                                </span>
-                              )}
                             </div>
                             <h3 className="font-bold text-[14px] md:text-[18px] text-[#0a1628] leading-tight line-clamp-2">{lesson.title}</h3>
                           </div>
@@ -747,7 +741,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                         </button>
                         <button
                           type="button"
-                          onClick={() => !lesson.locked && (setSelectedLesson({ lesson, type: 'lesson' }), handleStartPractice())}
+                          onClick={() => !lesson.locked && handleStartPractice(lesson)}
                           className={`inline-flex items-center gap-1.5 rounded-full px-3.5 md:px-4 py-2 md:py-2.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5 min-h-[40px] ${
                             isLessonQuizCompleted(lesson.id)
                               ? 'bg-emerald-50 border border-emerald-200'

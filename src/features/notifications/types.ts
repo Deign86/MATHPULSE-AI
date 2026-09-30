@@ -17,6 +17,7 @@ export type NotificationType =
   | 'teacher_announcement'
   | 'new_assignment'
   | 'quiz_assigned'
+  | 'class_assigned'
   | 'xp_earned'
   | 'system_alert'
   | 'risk_alert'
@@ -55,6 +56,17 @@ export interface NotificationPayload {
  */
 export const TEACHER_ONLY_NOTIFICATION_TYPES: readonly NotificationType[] = ['risk_alert'];
 
+/** Student progress and reward notifications do not belong in staff inboxes. */
+export const STUDENT_ONLY_NOTIFICATION_TYPES: readonly NotificationType[] = [
+  'streak_reminder',
+  'daily_checkin',
+  'streak_milestone',
+  'achievement_unlocked',
+  'level_up',
+  'xp_earned',
+  'quiz_result',
+];
+
 /** Default recipient scope stamped on writes when the caller omits it. */
 export function defaultRecipientRole(type: NotificationType): NotificationRecipientRole {
   return TEACHER_ONLY_NOTIFICATION_TYPES.includes(type) ? 'teacher' : 'student';
@@ -65,17 +77,16 @@ export function isTeacherOnlyNotification(type: NotificationType): boolean {
 }
 
 /**
- * Fail-closed inbox filter: students never see teacher-only alerts.
- * Teachers/admins see everything in their own scoped inbox.
+ * Role-scoped inbox filter: students never see teacher-only alerts, and
+ * non-students never see student progress/reward notifications.
  */
 export function filterNotificationsForRole(
   items: Notification[],
   role: NotificationRecipientRole | null | undefined,
 ): Notification[] {
-  if (role === 'student') {
-    return items.filter((item) => !isTeacherOnlyNotification(item.type));
-  }
-  return items;
+  return role === 'student'
+    ? items.filter((item) => !isTeacherOnlyNotification(item.type))
+    : items.filter((item) => !STUDENT_ONLY_NOTIFICATION_TYPES.includes(item.type));
 }
 
 /** Panel page size (issue #158): the list renders one page, "Show more" adds another. */

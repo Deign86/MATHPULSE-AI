@@ -1412,7 +1412,7 @@ Scope: Add the reusable lazy jsPDF + AutoTable export utility and focused Vitest
   EVIDENCE: `.omo/evidence/fix-9-qa-issues/task-7.log` records `PDF_FIXTURE_PASS bytes=122110 pages=4` and `RESULT: PASS`.
 
 - [x] G2A-6: Adversarial checks record stale-state, dirty-worktree, and hung/lazy-import timeout dispositions at the required evidence path.
-  EVIDENCE: `task-7.log` records PASS dispositions for stale_state, dirty_worktree, hung_commands, and misleading_success_output; GitNexus analyzer failure is explicitly recorded.
+  EVIDENCE: `task-7.log` records PASS dispositions for stale_state, dirty_worktree, hung_commands, and misleading_success_output; analyzer failure is explicitly recorded.
 
 - [x] G2A-7: The requested commit exists with only the G2a implementation/dependency scope and the exact feature subject.
    CHECK: node -e "const {execFileSync}=require('child_process'); const subjects=execFileSync('git',['log','--all','--pretty=%s'],{encoding:'utf8'}).split(String.fromCharCode(10)); if(!subjects.includes('feat(grades): lazy pdf export util with autotable')) throw new Error('requested feature commit not found'); console.log('PDF_COMMIT_SUBJECT_OK')"
@@ -1478,7 +1478,7 @@ Scope: Replace only the fake Student ID barcode/mini QR footer with the G4a cont
 - [x] G4B-169-5: Manual QA records the live QR, exact verify URL/new-tab behavior, barcode absence, missing-UID placeholder, responsive card capture, dirty-worktree scope, and cleanup status at the required path.
   EVIDENCE: `.omo/evidence/fix-9-qa-issues/task-10.log` records chrome-devtools snapshot/evaluate_script results, exact link semantics, no barcode, fallback, screenshot path, live-deploy limitation, dirty scope, and no-server cleanup; screenshot is `.omo/evidence/fix-9-qa-issues/task-10.png`.
 
-- [ ] G4B-169-6: Changed TypeScript files have zero LSP diagnostics; codegraph/GitNexus scope checks show only the requested card/test surface.
+- [ ] G4B-169-6: Changed TypeScript files have zero LSP diagnostics; codegraph scope checks show only the requested card/test surface.
   EVIDENCE: `lsp_diagnostics` was attempted for both changed TypeScript files; the configured TypeScript server is not installed and installation was previously declined. Codegraph reports StudentIDCard's two SettingsPage callers and focused StudentIDCard.test.tsx coverage; no SettingsPage/App/auth edits are in the task diff.
 ABANDON: G4B-169-6 TypeScript LSP server is unavailable in this environment; compiler, ESLint, anti-slop, and codegraph scope checks are the available static proof.
 

@@ -2928,7 +2928,10 @@ const finalizeCompletedMatch = async (
       const isPlayerA = participantId === playerAId;
       const scoreFor = isPlayerA ? scoreA : scoreB;
       const scoreAgainst = isPlayerA ? scoreB : scoreA;
-      const outcome = outcomeFromScores(scoreFor, scoreAgainst);
+      const recordedOutcome = asString(existingOutcomeByPlayer[participantId], "");
+      const outcome: MatchOutcome = recordedOutcome === "win" || recordedOutcome === "loss" || recordedOutcome === "draw"
+        ? recordedOutcome
+        : outcomeFromScores(scoreFor, scoreAgainst);
       const metrics = computeParticipantRoundMetrics(roundResults, isPlayerA, rounds, fallbackResponseMs);
 
       const totalPointsEarned = roundResults.reduce((sum, entry) => {
@@ -4480,21 +4483,23 @@ export const quizBattleLeavePrivateRoom = functions.https.onCall(async (data, co
         const matchData = matchSnap.data() as JsonObject;
         const matchStatus = asString(matchData.status, "ready");
 
-        if (matchStatus === "in_progress" || matchStatus === "completed") {
+        if (matchStatus === "in_progress") {
           throw new functions.https.HttpsError(
             "failed-precondition",
-            "Private room cannot be cancelled after the match has started.",
+            "Match must be forfeited before leaving its private room.",
           );
         }
 
-        tx.update(matchRef, {
+        if (matchStatus !== "completed") {
+          tx.update(matchRef, {
     // SAFETY: value was validated against the allowed union members before this narrowing.
-          status: "cancelled" as MatchStatus,
-          endedAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          cancelledBy: studentId,
-          cancellationReason: "room_left",
-        });
+            status: "cancelled" as MatchStatus,
+            endedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            cancelledBy: studentId,
+            cancellationReason: "room_left",
+          });
+        }
       }
     }
 
@@ -5109,6 +5114,54 @@ export const quizBattleGetMatchState = functions.https.onCall(async (data, conte
     success: true,
     match: mapMatchStateForStudent(matchRef.id, studentId, matchData),
   };
+});
+
+export const quizBattleForfeitMatch = functions.https.onCall(async (data, context) => {
+  const studentId = await requireStudentUid(context);
+  const matchId = asString(data?.matchId);
+  if (!matchId) {
+    throw new functions.https.HttpsError("invalid-argument", "matchId is required.");
+  }
+
+  const db = admin.firestore();
+  const matchRef = db.collection("quizBattleMatches").doc(matchId);
+  const forfeited = await db.runTransaction(async (tx) => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists) {
+      throw new functions.https.HttpsError("not-found", "Match not found.");
+    }
+
+    // SAFETY: match documents are written by this module; IDs and status are validated below.
+    const matchData = matchSnap.data() as JsonObject;
+    const playerAId = asString(matchData.playerAId);
+    const playerBId = asString(matchData.playerBId);
+    if (studentId !== playerAId && studentId !== playerBId) {
+      throw new functions.https.HttpsError("permission-denied", "You are not a participant of this match.");
+    }
+
+    const status = asString(matchData.status, "ready");
+    if (status === "completed") return false;
+    if (status !== "ready" && status !== "in_progress") {
+      throw new functions.https.HttpsError("failed-precondition", "This match can no longer be forfeited.");
+    }
+
+    const winnerId = studentId === playerAId ? playerBId : playerAId;
+    const outcomeByPlayer: Partial<Record<typeof studentId | typeof winnerId, MatchOutcome>> = { [studentId]: "loss" };
+    if (winnerId) outcomeByPlayer[winnerId] = "win";
+
+    tx.update(matchRef, {
+      status: "completed",
+      endedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      "metadata.outcomeByPlayer": outcomeByPlayer,
+    });
+    return true;
+  });
+
+  if (forfeited) {
+    await finalizeCompletedMatch(db, matchRef, studentId);
+  }
+  return { success: true };
 });
 
 export const quizBattleGetGenerationAudit = functions.https.onCall(async (data, context): Promise<QuizBattleGenerationAuditResponse> => {

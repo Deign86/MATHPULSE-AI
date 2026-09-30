@@ -28,7 +28,6 @@ interface CreateClassModalProps {
 export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClose, onCreated, teacherName }) => {
   const { currentUser } = useAuth();
   const [step, setStep] = useState<'details' | 'students'>('details');
-  const [className, setClassName] = useState('');
   const grade = 'Grade 11';
   const [section, setSection] = useState('');
   const [creating, setCreating] = useState(false);
@@ -43,7 +42,6 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
   useEffect(() => {
     if (!open) {
       setStep('details');
-      setClassName('');
       setSection('');
       setError('');
       setSelectedStudents(new Set());
@@ -101,21 +99,25 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
         ownerTeacherName: teacherName || currentUser.displayName || '',
         managerId: currentUser.uid,
         managerName: teacherName || currentUser.displayName || '',
-        className: className.trim() || `${grade} - ${section.trim()}`,
+        className: `${grade} - ${section.trim()}`,
       });
 
       // Assign selected students
       if (selectedStudents.size > 0) {
         const promises = Array.from(selectedStudents).map((uid) =>
-          assignStudentToClassSection(uid, grade, section.trim(), currentUser.uid, schoolYear, teacherName || currentUser.displayName || '')
+          assignStudentToClassSection(uid, grade, section.trim(), currentUser.uid, schoolYear, teacherName || currentUser.displayName || '', { notifyStudent: true })
         );
-        await Promise.allSettled(promises);
+        await Promise.all(promises);
       }
 
       onCreated();
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create class');
+      if (err instanceof Error && 'code' in err && (err.code === 'permission-denied' || err.code === 'firestore/permission-denied')) {
+        setError("You don't have permission to create classes. Please contact your administrator.");
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to create class');
+      }
     } finally {
       setCreating(false);
     }
@@ -169,18 +171,9 @@ export const CreateClassModal: React.FC<CreateClassModalProps> = ({ open, onClos
             {step === 'details' && (
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-[#475569] dark:text-slate-300 block mb-1.5">Class Name</label>
+                  <label className="text-sm font-medium text-[#475569] dark:text-slate-300 block mb-1.5">Section name</label>
                   <Input
-                    placeholder="e.g. Grade 11 - Section A"
-                    value={className}
-                    onChange={(e) => setClassName(e.target.value)}
-                  />
-                  <p className="text-xs text-[#94a3b8] mt-1">Optional. Auto-generated from grade + section if empty.</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-[#475569] dark:text-slate-300 block mb-1.5">Section</label>
-                  <Input
-                    placeholder="e.g. Section A, STEM-1, Rizal"
+                    placeholder="e.g. STEM-1, Rizal"
                     value={section}
                     onChange={(e) => setSection(e.target.value)}
                   />

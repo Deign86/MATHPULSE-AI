@@ -94,8 +94,10 @@ const LearningPath: React.FC<LearningPathProps> = ({
         </button>
       </div>
 
-      {/* Single-row horizontal side scroll on mobile and tablet, grid on desktop with generous headroom to prevent hover cropping */}
-      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 sm:gap-4.5 pt-3.5 sm:pt-4 pb-4 px-0 scrollbar-none lg:grid lg:grid-cols-3 lg:overflow-visible lg:gap-6 lg:pt-2 lg:pb-0">
+      {/* Single-row horizontal side scroll on mobile and tablet, grid on desktop.
+          px-3/-mx-3 adds clip-box headroom so the Review badge (which floats past the
+          card edge from the card root) is not cut off by the scroll container. */}
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3.5 sm:gap-4.5 pt-3.5 sm:pt-4 pb-4 px-3 -mx-3 scrollbar-none lg:grid lg:grid-cols-3 lg:overflow-visible lg:gap-6 lg:pt-2 lg:pb-0 lg:mx-0 lg:px-0">
         {modulesWithProgress.map((module, idx) => (
           <div key={module.id} className="w-[235px] sm:w-[265px] shrink-0 snap-start lg:w-full lg:shrink">
             <ModuleFolderCard

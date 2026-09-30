@@ -22,6 +22,31 @@ export function isString<T>(value: T): value is T & string {
   return typeof value === 'string';
 }
 
+/** Names that legitimately appear as words inside a pure equation. */
+const MATH_FUNCTION_WORDS = new Set([
+  'log', 'ln', 'sin', 'cos', 'tan', 'exp', 'max', 'min', 'sec', 'csc', 'cot',
+  'lim', 'abs', 'deg', 'rad', 'mod', 'inf', 'sup',
+]);
+
+/** Short everyday words that mark a string as prose, not a bare equation. */
+const PROSE_CONNECTORS = new Set(['to', 'of', 'is', 'if', 'in', 'on', 'by', 'as', 'or', 'and', 'the']);
+
+/**
+ * S7: prose must never be wrapped in $...$ — KaTeX math mode collapses the
+ * spaces between numbers and words, turning "500 to 600" into "500to600".
+ * A word token that is lowercase and not a known math function word marks
+ * the text as prose.
+ */
+function containsProse(text: string): boolean {
+  return text
+    .split(/[^A-Za-z]+/)
+    .some((token) => {
+      if (token.length === 0 || token !== token.toLowerCase()) return false;
+      if (PROSE_CONNECTORS.has(token)) return true;
+      return token.length >= 3 && !MATH_FUNCTION_WORDS.has(token);
+    });
+}
+
 /** Convert plain-text math notation to LaTeX-delimited string */
 function convertToLatex(text: string): string {
   if (!text) return '';
@@ -29,8 +54,9 @@ function convertToLatex(text: string): string {
   // Already has $ delimiters — leave as-is
   if (text.includes('$')) return text;
   
-  // Check if text contains any math-like patterns (require digit/variable context around operators)
-  const hasMath = /\d[\^*×÷]|[\^*×÷]\d|\\frac|\\sqrt|\\times|\w\^\w/.test(text);
+  // Check if text contains any math-like patterns (require digit/variable context around operators).
+  // S7 fix: a closing paren also counts as math context — "(0.8)^h" has ")" before "^".
+  const hasMath = /\d[\^*×÷]|[\^*×÷]\d|\\frac|\\sqrt|\\times|\w\^\w|\)\^/.test(text);
   if (!hasMath) return text;
 
   // Strategy: find math expressions within the text and wrap them in $...$
@@ -45,8 +71,12 @@ function convertToLatex(text: string): string {
   const label = labelMatch ? labelMatch[1] : '';
   const expr = label ? text.slice(label.length) : text;
   
-  // If the expression part contains = and math operators, it's a full equation
-  if (expr.includes('=') && (expr.includes('^') || expr.includes('*'))) {
+  // If the expression part contains = and math operators, it's a full equation.
+  // S7: only wrap the whole string when it is a pure equation. If it also contains
+  // prose words, wrapping it in $...$ sends the sentence through KaTeX, which drops
+  // the spaces between numbers and words ("500 to 600" → "500to600"). Prose mixed
+  // with math falls through to per-segment wrapping below instead.
+  if (expr.includes('=') && (expr.includes('^') || expr.includes('*')) && !containsProse(expr)) {
     const latexExpr = plainToLatex(expr);
     return label ? `${label}$${latexExpr}$` : `$${latexExpr}$`;
   }

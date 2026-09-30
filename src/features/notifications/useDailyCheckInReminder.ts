@@ -7,7 +7,6 @@
 import { useEffect, useRef } from 'react';
 import { hasCheckedInToday, hasRemindedToday } from './notificationFirestoreService';
 import { notify } from './notificationService';
-import type { NotificationType } from './types';
 
 export function useDailyCheckInReminder(userId: string | null): void {
   const hasFired = useRef(false);
@@ -26,8 +25,7 @@ export function useDailyCheckInReminder(userId: string | null): void {
 
         await notify({
           userId,
-          // SAFETY: 'streak_reminder' is a member of the NotificationType union.
-          type: 'streak_reminder' as NotificationType,
+          type: 'streak_reminder',
           title: "Don't forget your daily check-in!",
           message: 'Check in today to keep your streak alive and earn bonus XP.',
         });

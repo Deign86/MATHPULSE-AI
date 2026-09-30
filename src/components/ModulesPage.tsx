@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
@@ -30,7 +31,7 @@ import {
   ChevronRight,
   Award,
 } from 'lucide-react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { type TeacherUploadedModule } from '../data/curriculumModules';
 import { motion, AnimatePresence } from 'motion/react';
@@ -71,6 +72,7 @@ import { getStudentCompetencyProfile } from '../services/assessmentService';
 import type { CompetencyProfileDoc } from '../types/assessment';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { submitPracticeSession } from '../services/practiceService';
+import { fetchPendingQuizzesForStudent, type PlayableQuiz } from '../services/quizService';
 import { subscribeToUserProgress } from '../services/progressService';
 import { watchModule } from '../services/moduleWatchService';
 import type { ModuleProgress, UserProgress } from '../types/models';
@@ -85,6 +87,11 @@ interface ModulesPageProps {
   /** Whether the initial assessment has been completed — REVIEW badge suppressed until true */
   hasCompletedDiagnostic?: boolean;
 }
+
+const assignedQuizNavigationDetailSchema = z.object({
+  tab: z.literal('Modules'),
+  section: z.literal('assigned-quizzes'),
+}).passthrough();
 
 type ModulesTab = 'modules' | 'recommended' | 'practice' | 'teacher_uploaded';
 
@@ -120,6 +127,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 }) => {
   const { userProfile, currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('section') === 'assigned-quizzes') return 'practice';
     const stored = sessionStorage.getItem('mathpulse_modules_tab');
     if (stored === 'practice' || stored === 'recommended' || stored === 'teacher_uploaded') {
       sessionStorage.removeItem('mathpulse_modules_tab');
@@ -198,6 +207,17 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   const [selectedModule, setSelectedModule] = useState<CurriculumModuleRuntime | null>(initialModule);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
+  const [pendingQuizzes, setPendingQuizzes] = useState<PlayableQuiz[]>([]);
+  const [pendingQuizzesLoading, setPendingQuizzesLoading] = useState(() =>
+    new URLSearchParams(window.location.search).get('section') === 'assigned-quizzes',
+  );
+  const [pendingQuizzesLoaded, setPendingQuizzesLoaded] = useState(false);
+  const [pendingQuizzesError, setPendingQuizzesError] = useState(false);
+  const [assignedQuizUnavailable, setAssignedQuizUnavailable] = useState(false);
+  const [pendingQuizRefresh, setPendingQuizRefresh] = useState(0);
+  const [assignedQuizToOpen, setAssignedQuizToOpen] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get('quizId'),
+  );
   const practiceQuizEndRef = React.useRef<((quiz: QuizExperienceQuiz, answers: QuizAnswerRecord[]) => void) | null>(null);
   const [learningPath, setLearningPath] = useState<LearningPathState>(IDLE_LEARNING_PATH);
 
@@ -209,6 +229,81 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     ? { kind: 'module_detail', module: selectedModule }
     : { kind: 'library' };
 
+  useEffect(() => {
+    const handleAssignedQuizNavigation = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+      const parsedDetail = assignedQuizNavigationDetailSchema.safeParse(event.detail);
+      if (!parsedDetail.success) return;
+      const detail = parsedDetail.data;
+      setActiveTab('practice');
+      setPendingQuizzesLoading(true);
+      setPendingQuizzesLoaded(false);
+      setPendingQuizzesError(false);
+      setAssignedQuizUnavailable(false);
+      const quizId = z.string().safeParse(detail.quizId);
+      setAssignedQuizToOpen(quizId.success ? quizId.data : null);
+      setPendingQuizRefresh((refresh) => refresh + 1);
+    };
+
+    window.addEventListener('mathpulse:navigate', handleAssignedQuizNavigation);
+    return () => window.removeEventListener('mathpulse:navigate', handleAssignedQuizNavigation);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'practice') return;
+    const lrn = studentProfile?.lrn || userProfile?.uid;
+    if (!lrn) {
+      setPendingQuizzes([]);
+      setPendingQuizzesLoading(false);
+      setPendingQuizzesLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+    setPendingQuizzesLoading(true);
+    setPendingQuizzesLoaded(false);
+    setPendingQuizzesError(false);
+    fetchPendingQuizzesForStudent(lrn)
+      .then((quizzes) => {
+        if (!cancelled) {
+          setPendingQuizzes(quizzes);
+          setPendingQuizzesLoaded(true);
+        }
+      })
+      .catch((error) => {
+        console.error('[ModulesPage] Failed to load assigned quizzes:', error);
+        if (!cancelled) {
+          setPendingQuizzes([]);
+          setPendingQuizzesError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPendingQuizzesLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [activeTab, studentProfile?.lrn, userProfile?.uid, pendingQuizRefresh]);
+
+  useEffect(() => {
+    if (!assignedQuizToOpen || !pendingQuizzesLoaded || pendingQuizzesLoading || pendingQuizzesError) return;
+    const quiz = pendingQuizzes.find((pendingQuiz) => pendingQuiz.generatedQuizId === assignedQuizToOpen);
+    if (quiz) {
+      setSelectedQuiz(quiz);
+      setAssignedQuizToOpen(null);
+      const params = new URLSearchParams(window.location.search);
+      params.delete('quizId');
+      const queryString = params.toString();
+      window.history.replaceState({}, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
+    } else {
+      setAssignedQuizUnavailable(true);
+      setAssignedQuizToOpen(null);
+      const params = new URLSearchParams(window.location.search);
+      params.delete('quizId');
+      const queryString = params.toString();
+      window.history.replaceState({}, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
+    }
+  }, [assignedQuizToOpen, pendingQuizzes, pendingQuizzesLoaded, pendingQuizzesLoading, pendingQuizzesError]);
+
   // Competency profile state for personalized module filtering
   const [competencyProfile, setCompetencyProfile] = useState<CompetencyProfileDoc | null>(null);
 
@@ -216,7 +311,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [teacherModules, setTeacherModules] = useState<TeacherUploadedModule[]>([]);
   const [teacherModulesLoading, setTeacherModulesLoading] = useState(false);
 
-  // Fetch teacher-uploaded modules assigned to this student only
+  // Fetch teacher-uploaded modules assigned directly to this student or scoped to their class.
   useEffect(() => {
     if (activeTab !== 'teacher_uploaded') return;
 
@@ -229,28 +324,48 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     }
 
     setTeacherModulesLoading(true);
-    const unsubscribe = onSnapshot(
+    const classSectionId = studentProfile?.classSectionId;
+    const modulesByQuery = new Map<string, TeacherUploadedModule[]>();
+    const publishModules = () => {
+      const uniqueModules = new Map<string, TeacherUploadedModule>();
+      modulesByQuery.forEach((modules) => modules.forEach((module) => uniqueModules.set(module.moduleId, module)));
+      setTeacherModules(Array.from(uniqueModules.values()).filter((module) => module.moduleType === 'teacher_uploaded'));
+      if (modulesByQuery.size === (classSectionId ? 2 : 1)) setTeacherModulesLoading(false);
+    };
+    const readModules = (snapshot: QuerySnapshot<DocumentData>) =>
+      snapshot.docs.map((doc) => {
+        // SAFETY: Firestore module documents are validated by moduleType before rendering in this tab.
+        return { ...doc.data(), moduleId: doc.id } as TeacherUploadedModule;
+      });
+    const onQueryError = (error: Error) => {
+      console.error('Error fetching teacher modules:', error);
+      setTeacherModulesLoading(false);
+    };
+
+    const unsubscribeAssigned = onSnapshot(
       query(collection(db, 'modules'), where('assignedTo', '==', studentUid)),
       (snapshot) => {
-        const modules = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          // SAFETY: trusted internal value already conforms to the asserted type.
-          return {
-            ...data,
-            moduleId: doc.id,
-          } as TeacherUploadedModule;
-        }).filter((mod) => mod.moduleType === 'teacher_uploaded');
-        setTeacherModules(modules);
-        setTeacherModulesLoading(false);
+        modulesByQuery.set('assigned', readModules(snapshot));
+        publishModules();
       },
-      (error) => {
-        console.error('Error fetching teacher modules:', error);
-        setTeacherModulesLoading(false);
-      }
+      onQueryError,
     );
+    const unsubscribeClass = classSectionId
+      ? onSnapshot(
+          query(collection(db, 'modules'), where('classSectionId', '==', classSectionId)),
+          (snapshot) => {
+            modulesByQuery.set('class', readModules(snapshot));
+            publishModules();
+          },
+          onQueryError,
+        )
+      : undefined;
 
-    return () => unsubscribe();
-  }, [activeTab, userProfile?.uid]);
+    return () => {
+      unsubscribeAssigned();
+      unsubscribeClass?.();
+    };
+  }, [activeTab, userProfile?.uid, studentProfile?.classSectionId]);
 
   const filteredTeacherModules = useMemo(() => {
     const queryStr = searchQuery.trim().toLowerCase();
@@ -285,7 +400,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   // Show modal on mount if user can claim
   useEffect(() => {
-    if (!userProfile?.uid) return;
+    if (userProfile?.role !== 'student' || !userProfile.uid) return;
 
     let cancelled = false;
     const loadState = async (forceShow?: boolean) => {
@@ -298,7 +413,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     const handleNotificationNav = (e: Event) => {
       // SAFETY: trusted internal value already conforms to the asserted type.
       const detail = (e as CustomEvent).detail;
-      if (detail?.tab === 'Modules') {
+      if (userProfile?.role === 'student' && detail?.tab === 'Modules' && detail?.section !== 'assigned-quizzes') {
         loadState(true);
       }
     };
@@ -311,10 +426,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       clearTimeout(timer);
       window.removeEventListener('mathpulse:navigate', handleNotificationNav);
     };
-  }, [userProfile?.uid, canClaim]);
+  }, [userProfile?.uid, userProfile?.role, canClaim]);
 
   const handleClaimDailyReward = async () => {
-    if (!userProfile?.uid) return;
+    if (userProfile?.role !== 'student' || !userProfile.uid) return;
 
     try {
       const result = await claim();
@@ -578,10 +693,16 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     return (
       <QuizExperience
         quiz={selectedQuiz}
-        onClose={() => { practiceQuizEndRef.current = null; setSelectedQuiz(null); }}
+        onClose={() => {
+          practiceQuizEndRef.current = null;
+          setSelectedQuiz(null);
+          setPendingQuizRefresh((refresh) => refresh + 1);
+        }}
         onComplete={handleQuizComplete}
         onQuizEnd={practiceQuizEndRef.current ?? undefined}
-        studentId={userProfile?.uid}
+        studentId={selectedQuiz.source === 'ai_generated' && selectedQuiz.generatedQuizId
+          ? studentProfile?.lrn || userProfile?.uid
+          : userProfile?.uid}
       />
     );
   }
@@ -1601,13 +1722,49 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           className="pb-8 mt-4"
         >
           {activeTab === 'practice' ? (
+            <div className="space-y-6">
+            <section aria-label="Assigned by your teacher" className="space-y-3">
+              <h2 className="text-lg font-bold text-slate-800">Assigned by your teacher</h2>
+              {assignedQuizUnavailable && (
+                <p role="status" className="text-sm text-slate-500">This assigned quiz is no longer pending. Check with your teacher if you need access.</p>
+              )}
+              {pendingQuizzesLoading ? (
+                <p role="status" className="text-sm text-slate-500">Loading assigned quizzes…</p>
+              ) : pendingQuizzesError ? (
+                <div role="alert" className="text-sm text-rose-600">
+                  <p>Could not load assigned quizzes.</p>
+                  <button
+                    type="button"
+                    onClick={() => setPendingQuizRefresh((refresh) => refresh + 1)}
+                    className="mt-2 font-semibold underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : pendingQuizzes.length === 0 ? (
+                <p className="text-sm text-slate-500">You have no pending assigned quizzes. Check back when your teacher assigns one.</p>
+              ) : pendingQuizzes.map((quiz) => (
+                <div key={quiz.generatedQuizId} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
+                  <div>
+                    <h3 className="font-bold text-slate-800">{quiz.title}</h3>
+                    <p className="text-sm text-slate-500">{quiz.subject} · {quiz.questions} questions · {quiz.duration}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedQuiz(quiz)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+                  >
+                    <Play size={14} /> Take quiz
+                  </button>
+                </div>
+              ))}
+            </section>
             <PracticeCenter
               userId={userProfile?.uid ?? ''}
               onStartQuiz={(quiz) => {
                 practiceQuizEndRef.current = async (q, answers) => {
                   if (!userProfile?.uid) return;
 
-                  // Always record completion locally (regardless of backend success)
                   const topicName = q.title?.replace(/^Practice Quiz:\s*/i, '').replace(/\s*\(AI\)\s*$/i, '') || '';
                   const scorePercent = Math.round((answers.filter(a => a.correct).length / Math.max(answers.length, 1)) * 100);
                   if (topicName) {
@@ -1627,27 +1784,16 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                     } catch { /* localStorage write failure is non-critical */ }
                   }
 
-                  // Submit to backend (fire-and-forget)
                   if (q.generatedQuizId) {
                     try {
-                      const questionMap = new Map(
-                        (q.loadedQuestions || []).map((lq) => [lq.id, lq])
-                      );
+                      const questionMap = new Map((q.loadedQuestions || []).map((lq) => [lq.id, lq]));
                       const submitAnswers = answers.map((a) => {
                         const currentQuestion = questionMap.get(a.questionId);
                         const selected_index = a.selectedOptionIndex ?? (currentQuestion?.options && currentQuestion.options.findIndex((opt) => opt === a.answer) !== -1 ? currentQuestion.options.findIndex((opt) => opt === a.answer) : 0);
                         return { question_id: a.questionId, selected_index };
                       });
-
-                      const result = await submitPracticeSession({
-                        session_id: q.generatedQuizId!,
-                        userId: userProfile.uid,
-                        answers: submitAnswers,
-                      });
-
-                      toast.success(
-                        `Score: ${result.score_percent}% | Correct: ${result.correct_count}/${result.total} | +${result.xp_earned} XP`
-                      );
+                      const result = await submitPracticeSession({ session_id: q.generatedQuizId!, userId: userProfile.uid, answers: submitAnswers });
+                      toast.success(`Score: ${result.score_percent}% | Correct: ${result.correct_count}/${result.total} | +${result.xp_earned} XP`);
                     } catch (e) {
                       console.error(e);
                       toast.success(`Score: ${scorePercent}%`);
@@ -1659,6 +1805,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               searchQuery={searchQuery}
               atRiskTopics={normalizedRiskTopics}
             />
+            </div>
           ) : activeTab === 'teacher_uploaded' ? (
             <div className="space-y-6">
               {/* Teacher Materials Hero Banner */}

@@ -27,6 +27,7 @@ interface AdditionalProfileData {
   lrn?: string;
   grade?: string;
   section?: string;
+  track?: string;
   classSectionId?: string;
   adviserTeacherId?: string;
   adviserTeacherName?: string;
@@ -278,6 +279,7 @@ export const createUserProfile = async (
           lrn: additionalData.lrn || generatedLrn,
           grade: additionalData.grade || 'Grade 11',
           section: additionalData.section || 'Section A',
+          track: additionalData.track || '',
           classSectionId: additionalData.classSectionId || '',
           adviserTeacherId: additionalData.adviserTeacherId || '',
           adviserTeacherName: additionalData.adviserTeacherName || '',
