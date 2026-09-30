@@ -15,7 +15,7 @@ PASS: empty-row behavior — focused Vitest confirms one page, empty-state text,
 PASS: scope — GradesPage.tsx and its CSV handler were not changed.
 
 ADVERSARIAL:
-PASS: stale_state — GitNexus had no indexed repository; `npx gitnexus analyze` failed in analyzer manifest JSON parsing, so no stale graph result was trusted. Source, typecheck, tests, and build were rerun from current disk state.
+PASS: stale_state — no indexed repository was available; the graph-analysis CLI failed in analyzer manifest JSON parsing, so no stale graph result was trusted. Source, typecheck, tests, and build were rerun from current disk state.
 PASS: dirty_worktree — baseline already contained unrelated tracked/untracked changes on main; those files were preserved and not staged. A concurrent untracked studentIdVerification pair appeared during verification and was left untouched.
 PASS: hung_commands — focused Vitest, typecheck, build, and Node fixture all returned within their 120s/600s command ceilings; the lazy import resolved during the fixture. No server or child process was left running.
 N/A: prompt_injection — no untrusted prompt or remote document content is consumed by the utility.
