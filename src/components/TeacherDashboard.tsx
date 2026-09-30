@@ -4934,7 +4934,8 @@ const InterventionView: React.FC<{
         sectionDraft,
         teacherId,
         new Date().getFullYear().toString(),
-        teacherName
+        teacherName,
+        { notifyStudent: true }
       );
       await updateManagedStudentSectionAssignment(student.id, gradeDraft, sectionDraft);
 

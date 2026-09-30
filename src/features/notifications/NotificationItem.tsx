@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type { Notification } from './types';
 import { useNotifications } from './NotificationContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 /** Lucide icon rendered per notification category key. */
 interface NotificationIconMap { [category: string]: React.ComponentType<{ size?: number; className?: string }> }
@@ -73,6 +74,7 @@ interface NotificationItemProps {
 
 export const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => {
   const { markAsRead, deleteNotification } = useNotifications();
+  const { userProfile } = useAuth();
   const Icon = iconMap[notification.type] || Bell;
   const badge = badgeForType(notification.type);
 
@@ -81,7 +83,29 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
       markAsRead(notification.id);
     }
     if (notification.type === 'streak_reminder' || notification.type === 'daily_checkin') {
-      window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
+      if (userProfile?.role === 'student') {
+        window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
+      }
+      return;
+    }
+    if (notification.type === 'class_assigned') {
+      window.dispatchEvent(new CustomEvent('mathpulse:navigate', {
+        detail: { tab: 'Modules' },
+      }));
+      return;
+    }
+    if (notification.type === 'quiz_assigned') {
+      const actionQuizId = notification.actionUrl
+        ? new URL(notification.actionUrl, window.location.origin).searchParams.get('quizId')
+        : null;
+      window.dispatchEvent(new CustomEvent('mathpulse:navigate', {
+        detail: {
+          tab: 'Modules',
+          section: 'assigned-quizzes',
+          quizId: notification.metadata?.quizId ?? actionQuizId,
+          actionUrl: notification.actionUrl,
+        },
+      }));
       return;
     }
     if (notification.actionUrl) {

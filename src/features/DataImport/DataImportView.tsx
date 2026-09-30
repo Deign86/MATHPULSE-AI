@@ -2,6 +2,8 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { z } from 'zod';
+import { collection, getDocs, limit, orderBy, query, Timestamp, where } from 'firebase/firestore';
 import {
   Sparkles, Bell, Layers, ChevronDown, Table, FileText, ScanLine, TrendingDown,
   CheckCircle, Edit3, ArrowLeft, Cpu, ArrowRight, Check, Save, Info, Edit2, Search,
@@ -14,8 +16,9 @@ import type { ClassSectionMetadata } from '../../types/models';
 import type { StudentView } from '../../components/TeacherDashboard';
 
 import type { ParseWorkbookResult } from '../import/services/shsExcel/parser/types';
-import type { StudentAccountImportPreviewResponse, UploadResponse } from '../../services/apiService';
+import type { CourseMaterialArtifactSummary, StudentAccountImportPreviewResponse, UploadResponse } from '../../services/apiService';
 import { apiService, ApiError } from '../../services/apiService';
+import { db } from '../../lib/firebase';
 import { parseShsWorkbook } from '../import/services/shsExcel/parser';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../import/services/shsExcel/parser/constants';
 import { resolveClassMetadata, assignStudentToClassSection, updateManagedStudentSectionAssignment, updateStudentRisk } from '../../services/studentService';
@@ -38,6 +41,47 @@ function buildStudentViewKey(student: StudentView): string {
 }
 
 type PaginationItem = { kind: 'page'; page: number } | { kind: 'ellipsis'; id: string };
+
+const importMappingLogSchema = z.object({
+  datasetIntent: z.enum(['synthetic_student_records', 'general_analytics', 'eval_only']).optional(),
+  summary: z.object({
+    scoringColumns: z.number(),
+    displayColumns: z.number(),
+    storageOnlyColumns: z.number(),
+    lowConfidenceColumns: z.number(),
+    domainMismatchWarnings: z.number(),
+  }).optional(),
+  columns: z.array(z.object({
+    columnName: z.string(),
+    mappedField: z.string().optional(),
+    usagePolicy: z.enum(['scoring', 'display', 'storage_only']),
+    confidenceBand: z.enum(['high', 'medium', 'low']),
+    domainSignals: z.array(z.string()).optional(),
+  })),
+});
+
+const classRecordUploadHistorySchema = z.array(z.object({
+  fileName: z.string(),
+  uploadedAt: z.string(),
+  classSectionId: z.string(),
+  className: z.string(),
+  studentCount: z.number(),
+}));
+
+const classRecordImportDocumentSchema = z.object({
+  fileName: z.string(),
+  createdAt: z.unknown().optional(),
+  updatedAt: z.unknown().optional(),
+  classSectionId: z.string().optional(),
+  className: z.string().optional(),
+  rowCount: z.number().optional(),
+  datasetIntent: z.enum(['synthetic_student_records', 'general_analytics', 'eval_only']).optional(),
+  interpretationSummary: importMappingLogSchema.shape.summary.optional(),
+  columnInterpretations: importMappingLogSchema.shape.columns.optional(),
+});
+
+type ImportMappingLog = z.infer<typeof importMappingLogSchema>;
+type ClassRecordUploadHistoryEntry = z.infer<typeof classRecordUploadHistorySchema>[number];
 
 function createPaginationItems(total: number, current: number): PaginationItem[] {
   if (total <= 7) {
@@ -115,6 +159,9 @@ export default function DataImportView({
   const [dragOver2, setDragOver2] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
   const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
+  const [recentMaterials, setRecentMaterials] = useState<CourseMaterialArtifactSummary[]>([]);
+  const [recentMaterialsLoading, setRecentMaterialsLoading] = useState(true);
+  const [recentMaterialsError, setRecentMaterialsError] = useState('');
   const [accountPreviewing, setAccountPreviewing] = useState(false);
   const [accountCommitting, setAccountCommitting] = useState(false);
   const [studentAccountFile, setStudentAccountFile] = useState<File | null>(null);
@@ -122,23 +169,9 @@ export default function DataImportView({
   const [confirmedMoveRows, setConfirmedMoveRows] = useState<Set<number>>(() => new Set());
   const [accountImportMessage, setAccountImportMessage] = useState('');
   const [uploadResult, setUploadResult] = useState<string>('');
-  const [uploadInterpretation, setUploadInterpretation] = useState<{
-    datasetIntent?: 'synthetic_student_records' | 'general_analytics' | 'eval_only';
-    summary?: {
-      scoringColumns: number;
-      displayColumns: number;
-      storageOnlyColumns: number;
-      lowConfidenceColumns: number;
-      domainMismatchWarnings: number;
-    };
-    columns: Array<{
-      columnName: string;
-      mappedField?: string;
-      usagePolicy: 'scoring' | 'display' | 'storage_only';
-      confidenceBand: 'high' | 'medium' | 'low';
-      domainSignals?: string[];
-    }>;
-  } | null>(null);
+  const [uploadInterpretation, setUploadInterpretation] = useState<ImportMappingLog | null>(null);
+  const [classRecordHistory, setClassRecordHistory] = useState<ClassRecordUploadHistoryEntry[]>([]);
+  const [classRecordHistoryError, setClassRecordHistoryError] = useState('');
 
   interface PendingImportUpload {
     file: File;
@@ -146,6 +179,77 @@ export default function DataImportView({
   }
 
   const [pendingUpload, setPendingUpload] = useState<PendingImportUpload | null>(null);
+
+  const refreshRecentMaterials = useCallback(async () => {
+    setRecentMaterialsLoading(true);
+    setRecentMaterialsError('');
+    try {
+      const response = await apiService.getRecentCourseMaterials({ classSectionId, limit: 5 });
+      setRecentMaterials(response.materials);
+    } catch (error: unknown) {
+      setRecentMaterialsError(error instanceof Error ? error.message : 'Could not load recent curriculum uploads.');
+    } finally {
+      setRecentMaterialsLoading(false);
+    }
+  }, [classSectionId]);
+
+  const refreshClassRecordImports = useCallback(async () => {
+    if (!teacherId) {
+      setClassRecordHistory([]);
+      setUploadInterpretation(null);
+      setClassRecordHistoryError('');
+      return;
+    }
+    try {
+      const importsQuery = query(
+        collection(db, 'classRecordImports'),
+        where('teacherId', '==', teacherId),
+        orderBy('createdAt', 'desc'),
+        limit(5),
+      );
+      const snapshot = await getDocs(importsQuery);
+      const entries = snapshot.docs.flatMap((entry) => {
+        const parsedDocument = classRecordImportDocumentSchema.safeParse(entry.data());
+        if (!parsedDocument.success) return [];
+        const stored = parsedDocument.data;
+        const uploadedAt = stored.createdAt instanceof Timestamp
+          ? stored.createdAt.toDate().toISOString()
+          : stored.updatedAt instanceof Timestamp
+            ? stored.updatedAt.toDate().toISOString()
+            : '';
+        const parsed = classRecordUploadHistorySchema.safeParse([{
+          fileName: stored.fileName,
+          uploadedAt,
+          classSectionId: stored.classSectionId || '',
+          className: stored.className || 'Imported Class',
+          studentCount: stored.rowCount || 0,
+        }]);
+        return parsed.success ? parsed.data : [];
+      });
+      setClassRecordHistory(entries);
+      const latest = snapshot.docs[0]
+        ? classRecordImportDocumentSchema.safeParse(snapshot.docs[0].data())
+        : null;
+      const mapping = latest?.success ? importMappingLogSchema.safeParse({
+        datasetIntent: latest.data.datasetIntent,
+        summary: latest.data.interpretationSummary,
+        columns: latest.data.columnInterpretations,
+      }) : null;
+      setUploadInterpretation(mapping?.success ? mapping.data : null);
+      setClassRecordHistoryError('');
+    } catch (error: unknown) {
+      console.warn('[DataImportView] Could not load persisted class-record imports:', error);
+      setClassRecordHistoryError(error instanceof Error ? error.message : 'Could not refresh persisted class-record uploads.');
+    }
+  }, [teacherId]);
+
+  useEffect(() => {
+    void refreshRecentMaterials();
+  }, [refreshRecentMaterials]);
+
+  useEffect(() => {
+    void refreshClassRecordImports();
+  }, [refreshClassRecordImports]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
@@ -361,14 +465,17 @@ export default function DataImportView({
 
       if (result.success) {
         toast.success(`Successfully imported ${uploadedStudentsCount} student records.`);
-        setUploadInterpretation({
+        const mappingLog: ImportMappingLog = {
           datasetIntent: result.datasetIntent,
           summary: result.interpretationSummary,
           columns: result.columnInterpretations?.map((item) => ({
             columnName: item.columnName, mappedField: item.mappedField, usagePolicy: item.usagePolicy,
             confidenceBand: item.confidenceBand, domainSignals: item.domainSignals,
           })) || [],
-        });
+        };
+        setUploadInterpretation(mappingLog);
+        await refreshClassRecordImports();
+        await refreshRecentMaterials();
         onDataChanged?.();
       } else {
         toast.error(result.warnings?.join(' ') || 'Import completed but no usable student rows were detected. Check required columns and retry.');
@@ -387,6 +494,7 @@ export default function DataImportView({
       if (result.success) {
         const topicCount = result.topics?.length ?? 0;
         toast.success(`Course material imported (${topicCount} topics extracted).`);
+        await refreshRecentMaterials();
         onDataChanged?.();
       }
     } catch (err: unknown) {
@@ -818,18 +926,53 @@ export default function DataImportView({
                   <h2 className="text-[15px] font-bold text-slate-800 font-display">Recent Uploads</h2>
                   <button 
                     type="button"
-                    onClick={() => setCurrentImportView('mapping-logs')}
+                    onClick={() => void refreshRecentMaterials()}
                     className="text-xs font-semibold text-violet-600 hover:text-violet-700 transition-colors cursor-pointer"
                   >
-                    View All
+                    Refresh
                   </button>
                 </div>
-                
-                <div className="flex-1 bg-slate-50/60 border border-slate-200/80 rounded-2xl p-5 flex flex-col justify-center items-center text-center min-h-[140px]">
-                  <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center mb-2.5 border border-slate-200 shadow-2xs text-slate-400">
-                    <FileSpreadsheet className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs font-medium text-slate-500">There are no recent uploads yet.</p>
+                <div className="flex-1 bg-slate-50/60 border border-slate-200/80 rounded-2xl p-4 min-h-[140px]" aria-live="polite">
+                  {recentMaterialsLoading ? (
+                    <p className="text-xs text-slate-500" role="status">Loading recent uploads…</p>
+                  ) : (recentMaterialsError || classRecordHistoryError) && recentMaterials.length === 0 && classRecordHistory.filter((entry) => !classSectionId || entry.classSectionId === classSectionId).length === 0 ? (
+                    <p className="text-xs text-rose-700" role="alert">{recentMaterialsError || `Could not load persisted class-record uploads: ${classRecordHistoryError}`}</p>
+                  ) : recentMaterials.length === 0 && classRecordHistory.filter((entry) => !classSectionId || entry.classSectionId === classSectionId).length === 0 ? (
+                    <p className="text-xs font-medium text-slate-500">There are no recent uploads for this class yet.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {classRecordHistoryError && (
+                        <li className="text-xs text-amber-800" role="alert">Could not refresh class-record uploads; showing previously loaded history. {classRecordHistoryError}</li>
+                      )}
+                      {recentMaterialsError && <li className="text-xs text-rose-700" role="alert">{recentMaterialsError}</li>}
+                      {classRecordHistory.filter((entry) => !classSectionId || entry.classSectionId === classSectionId).map((entry) => (
+                        <li key={`${entry.uploadedAt}-${entry.fileName}`} className="border-b border-slate-200 pb-3 last:border-0 last:pb-0">
+                          <p className="text-sm font-semibold text-slate-800 break-words">{entry.fileName}</p>
+                          <p className="text-xs text-slate-500">{entry.studentCount} student record{entry.studentCount === 1 ? '' : 's'} · {entry.className}</p>
+                        </li>
+                      ))}
+                      {recentMaterials.map((material) => (
+                        <li key={material.materialId} className="border-b border-slate-200 pb-3 last:border-0 last:pb-0">
+                          <p className="text-sm font-semibold text-slate-800 break-words">{material.fileName || 'Curriculum document'}</p>
+                          <p className="text-xs text-slate-500">
+                            {material.topicsCount} topic{material.topicsCount === 1 ? '' : 's'} extracted
+                            {material.className ? ` · ${material.className}` : ''}
+                          </p>
+                          {material.topicTitles.length > 0 && (
+                            <p className="text-xs text-slate-600 mt-1">{material.topicTitles.join(' · ')}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="text-xs text-slate-500 mt-3">Uploaded curriculum documents are saved here as course materials.</p>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }))}
+                    className="mt-2 text-xs font-semibold text-violet-700 hover:text-violet-800 underline"
+                  >
+                    Go to Modules
+                  </button>
                 </div>
               </div>
             </div>

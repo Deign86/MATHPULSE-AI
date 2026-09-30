@@ -313,16 +313,6 @@ npm run check:backend:quick   # critical test file only
 
 ## Architecture
 
-Mapped as a knowledge graph with **GitNexus** — 573 source files, 16,882 symbols, 26,955 relationships, 580 functional communities, 300 execution-flow chains. Deepest call chains (7–8 steps) run UI → API service → backend route → AI inference → Firestore.
-
-| Metric | Value |
-| ------ | ----- |
-| Source files | 573 |
-| Code symbols | 16,882 |
-| Symbol relationships | 26,955 |
-| Functional communities | 580 |
-| Execution flow chains | 300 |
-
 **Key patterns** — service-layer abstraction (components never touch Firestore directly), discriminated role types (`StudentProfile | TeacherProfile | AdminProfile`), `AuthContext`/`ChatContext` + `onSnapshot` realtime listeners, async task queue for heavy generation (`POST /api/lesson|quiz/generate-async` → `GET /api/tasks/{id}`).
 
 **Firestore collections** — `users/` (role-discriminated), `progress/`, `xpActivities/`, `achievements/`, `notifications/`, `tasks/`, `chatSessions/`, `chatMessages/`.

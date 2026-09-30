@@ -493,10 +493,12 @@ function LoadingSkeleton() {
 function ErrorPanel({
   message,
   onRetry,
+  onCancel,
   isOffline,
 }: {
   message: string;
   onRetry: () => void;
+  onCancel?: () => void;
   isOffline: boolean;
 }) {
   return (
@@ -523,6 +525,11 @@ function ErrorPanel({
         <button onClick={onRetry} className="mt-3 text-slate-400 text-xs hover:text-slate-600 underline">
           Retry
         </button>
+        {onCancel && (
+          <button onClick={onCancel} className="mt-3 ml-4 text-slate-500 text-xs hover:text-slate-700 underline">
+            Back to lesson
+          </button>
+        )}
       </motion.div>
     </div>
   );
@@ -1289,6 +1296,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const [expandedProblem, setExpandedProblem] = useState<number | null>(null);
   const [showTryItPage, setShowTryItPage] = useState(false);
   const [tryItQuestions, setTryItQuestions] = useState<Question[] | null>(null);
+  const [tryItError, setTryItError] = useState<string | null>(null);
+  const [tryItAttempt, setTryItAttempt] = useState(0);
   const [tryItLoading, setTryItLoading] = useState(false);
   const [tryItSessionId] = useState(() => `tiy-${Date.now()}`);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -1314,13 +1323,16 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }, [showTryItPage]);
   // Generate questions when Try It Yourself is opened
   useEffect(() => {
-    if (!showTryItPage || tryItQuestions) return;
+    if (!showTryItPage || tryItQuestions || tryItError) return;
     setTryItLoading(true);
     generateLessonQuiz({ lessonId: lesson.id?.toString() || 'unknown', lessonTitle: lesson.title, topic: lesson.title, subjectId: lesson.subjectId, competencyCode: lesson.competencyCode, questionCount: 15 })
       .then(qs => setTryItQuestions(qs))
-      .catch(err => { console.error('[LessonViewer] Quiz generation failed:', err); setShowTryItPage(false); })
+      .catch(err => {
+        console.error('[LessonViewer] Quiz generation failed:', err);
+        setTryItError('Lesson-specific practice questions could not be generated. Please try again.');
+      })
       .finally(() => setTryItLoading(false));
-  }, [showTryItPage, tryItQuestions, lesson]);
+  }, [showTryItPage, tryItQuestions, tryItError, tryItAttempt, lesson]);
 
   const [tryItQuizCompleted, setTryItQuizCompleted] = useState(false);
 
@@ -1525,6 +1537,24 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   if (showTryItPage) {
     const portalTarget = document.getElementById('modal-root') || document.body;
+    if (tryItError) {
+      return (
+        <ErrorPanel
+          message={tryItError}
+          isOffline={false}
+          onCancel={() => {
+            setTryItError(null);
+            setTryItQuestions(null);
+            setShowTryItPage(false);
+          }}
+          onRetry={() => {
+            setTryItError(null);
+            setTryItQuestions(null);
+            setTryItAttempt((attempt) => attempt + 1);
+          }}
+        />
+      );
+    }
     if (tryItLoading || !tryItQuestions) {
       return (
         <MathPulseLoader
@@ -1542,12 +1572,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         subject={(lesson as any).subject || 'General Mathematics'}
         sessionId={tryItSessionId}
         userId={userProfile?.uid}
-        onBack={() => { setShowTryItPage(false); setTryItQuestions(null); }}
+        onBack={() => { setShowTryItPage(false); setTryItQuestions(null); setTryItError(null); }}
         onComplete={(scorePercent) => {
           onTryItQuizComplete?.(scorePercent);
           setTryItQuizCompleted(true);
           setShowTryItPage(false);
           setTryItQuestions(null);
+          setTryItError(null);
         }}
       />,
       portalTarget
@@ -1555,6 +1586,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }
 
   const currentSectionData = sections[currentSection] || { type: 'introduction', title: 'Loading...', content: 'Lesson content is loading. Please wait a moment.' };
+  const hasSupplementalSectionContent = Boolean(
+    currentSectionData.examples?.length
+    || currentSectionData.bulletPoints?.length
+    || currentSectionData.callouts?.length
+    || currentSectionData.videos?.length,
+  );
+  const isSparseSection = (currentSectionData.content?.trim().length ?? 0) < 160 && !hasSupplementalSectionContent;
 
   const handleNext = () => {
     if (currentSection < totalSections - 1) {
@@ -1872,7 +1910,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="w-full max-w-5xl mx-auto space-y-4 sm:space-y-6 font-body pb-6"
+                    className={`w-full max-w-5xl mx-auto space-y-4 sm:space-y-6 font-body pb-6 ${isSparseSection ? 'min-h-[min(24rem,60vh)] flex flex-col justify-center' : ''}`}
                   >
                     <SectionRenderer
                       section={currentSectionData}

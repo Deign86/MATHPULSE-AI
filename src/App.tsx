@@ -252,7 +252,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleStudentNavigation = (tab: string, moduleId?: string) => {
+  const handleStudentNavigation = (tab: string, moduleId?: string, navigationTarget?: { section?: string; quizId?: string }) => {
     // Guard: check if Avatar Studio or Profile has unsaved changes
     if (activeTab === 'Avatar Studio' && avatarUnsavedRef.current && tab !== 'Avatar Studio') { setPendingAvatarNav(tab); return; }
     if (activeTab === 'Profile' && profileUnsavedRef.current && tab !== 'Profile') { setPendingProfileNav(tab); return; }
@@ -276,8 +276,17 @@ const App = ({ authOverride }: AppProps = {}) => {
     setActiveTab(tab);
     // Also update URL for deep-link support
     const path = tabToPath[tab];
-    if (path && window.location.pathname !== path) {
-      window.history.pushState({}, '', path);
+    if (path) {
+      const params = new URLSearchParams();
+      if (tab === 'Modules' && navigationTarget?.section === 'assigned-quizzes') {
+        params.set('section', navigationTarget.section);
+        if (navigationTarget.quizId) params.set('quizId', navigationTarget.quizId);
+      }
+      const query = params.toString();
+      const target = `${path}${query ? `?${query}` : ''}`;
+      if (`${window.location.pathname}${window.location.search}` !== target) {
+        window.history.pushState({}, '', target);
+      }
     }
     setIsMobileSidebarOpen(false);
   };
@@ -1036,7 +1045,7 @@ const App = ({ authOverride }: AppProps = {}) => {
       // SAFETY: navigation events are dispatched by this app's notification flows as CustomEvent with a detail object.
       const detail = (e as CustomEvent).detail;
       if (detail?.tab && isLoggedIn) {
-        handleStudentNavigation(detail.tab);
+        handleStudentNavigation(detail.tab, undefined, detail);
       }
     };
 

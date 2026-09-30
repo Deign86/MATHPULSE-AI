@@ -30,7 +30,7 @@ interface NotificationProviderProps {
 }
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, userRole } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const userId = currentUser?.uid ?? null;
@@ -50,13 +50,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     }
 
     setIsLoading(true);
+    // Role falls back to the auth role while the profile is still loading
+    // (or missing) so students never lose their inbox mid-load.
+    const role = userProfile?.role ?? userRole;
     const unsubscribe = subscribeToNotifications(userId, (newNotifications) => {
-      setNotifications(dedupeNotifications(filterNotificationsForRole(newNotifications, userProfile?.role)));
+      setNotifications(dedupeNotifications(filterNotificationsForRole(newNotifications, role)));
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [userId, userProfile?.role]);
+  }, [userId, userProfile?.role, userRole]);
 
   // Keep ref in sync with current notifications state
   useEffect(() => {

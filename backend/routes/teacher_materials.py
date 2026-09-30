@@ -353,6 +353,7 @@ def _persist_teacher_module(
     module_data: Dict[str, Any],
     teacher_id: str,
     material_id: str,
+    class_section_id: Optional[str] = None,
 ) -> bool:
     """Store the generated module in Firestore `modules` collection."""
     fs = _get_firestore()
@@ -370,11 +371,14 @@ def _persist_teacher_module(
 
         doc_payload = {
             **module_data,
+            "moduleType": "teacher_uploaded",
             "teacherId": teacher_id,
             "materialId": material_id,
             "createdAt": fs.SERVER_TIMESTAMP,
             "updatedAt": fs.SERVER_TIMESTAMP,
         }
+        if class_section_id:
+            doc_payload["classSectionId"] = class_section_id
 
         doc_ref.set(doc_payload, merge=True)
         logger.info(f"Teacher module persisted: {module_id}")
@@ -546,7 +550,7 @@ async def upload_teacher_material(
         module_id = module_data["moduleId"]
 
         # ── Persist module to Firestore ────────────────────────────────────────
-        persisted = _persist_teacher_module(module_data, effective_teacher_id, material_id)
+        persisted = _persist_teacher_module(module_data, effective_teacher_id, material_id, classId)
         if not persisted:
             logger.warning(f"Module not persisted to Firestore (ID: {module_id})")
 

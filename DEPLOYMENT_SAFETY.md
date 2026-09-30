@@ -88,6 +88,14 @@ Do not use wildcard CORS with credentials in production.
 
 ## Deployment flow
 
+Deploy the `classRecordImports` composite index definition, then wait for Firebase to finish building it before relying on the query:
+
+```bash
+firebase deploy --only firestore:indexes
+```
+
+This repository change does not deploy the index.
+
 ```text
 Local changes
     ↓

@@ -1297,6 +1297,23 @@ export const getQuizBattleMatchState = async (
   }
 };
 
+export const forfeitQuizBattleMatch = async (matchId: string): Promise<void> => {
+  const callable = httpsCallable<{ matchId: string }, { success: boolean }>(
+    cloudFunctions,
+    'quizBattleForfeitMatch',
+  );
+
+  try {
+    await invokeWithTimeout(
+      'forfeiting Quiz Battle match',
+      callable({ matchId }),
+      20000,
+    );
+  } catch (error) {
+    throw new Error(mapCallableErrorMessage('forfeiting Quiz Battle match', error));
+  }
+};
+
 export const submitQuizBattleAnswer = async (payload: {
   matchId: string;
   roundNumber: number;

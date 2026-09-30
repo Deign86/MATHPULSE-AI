@@ -113,10 +113,9 @@ api.restart_space('deign86/mathpulse-api-v3test')
 
 ## Layer 2: Code Intelligence MCPs
 
-Two knowledge graph engines are active as local MCP servers in OpenCode:
+Graphify is active as a local MCP server in OpenCode:
 
 - **Graphify** — codebase-level clustering, GRAPH_REPORT.md, doc/image coverage
-- **GitNexus** — symbol-level precision: blast radius, call chains, refactor safety
 
 ### Graphify MCP Tools
 
@@ -130,93 +129,12 @@ Two knowledge graph engines are active as local MCP servers in OpenCode:
 | `graphify_graph_stats` | Graph summary stats |
 | `graphify_shortest_path` | Shortest path between two concepts |
 
-### GitNexus MCP Tools
-
-| Tool | Use for |
-|---|---|
-| `gitnexus_query` | Find execution flows by concept (ranked by relevance) |
-| `gitnexus_context` | Full symbol info: callers, callees, processes |
-| `gitnexus_impact` | Blast radius analysis before editing |
-| `gitnexus_rename` | Safe multi-file rename via call graph |
-| `gitnexus_detect_changes` | Map git diff → affected execution flows |
-| `gitnexus_cypher` | Raw Cypher query for complex graph traversal |
-| `gitnexus_api_impact` | API route impact analysis |
-| `gitnexus_route_map` | API route → handler → consumer mapping |
-| `gitnexus_shape_check` | API response shape vs consumer usage |
-| `gitnexus_list_repos` | List indexed repositories |
-| `gitnexus_group_list` / `gitnexus_group_sync` | Multi-repo group operations |
-
-### Index Freshness
-
-**GitNexus:** No auto-update. Re-index after code changes:
-```bash
-npx gitnexus analyze        # single repo
-```
-
 **Graphify:** Auto-indexes on file edits locally. Full rebuild:
 ```bash
 npx graphify analyze
 ```
 
 Run re-index before important tasks if significant changes since last session.
-
-### GitNexus Rules (MCP Tools)
-
-**MUST do before editing any symbol:**
-1. `gitnexus_impact({ target: "symbolName", direction: "upstream" })` → report blast radius + risk
-2. If risk = HIGH or CRITICAL, warn user before proceeding
-
-**MUST do before committing:**
-- `gitnexus_detect_changes()` → verify only expected symbols affected
-
-**NEVER:**
-- Edit without running `gitnexus_impact` first
-- Rename with find-and-replace — use `gitnexus_rename`
-- Commit with unexpected affected scopes
-
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
-
-This project is indexed by GitNexus as **MATHPULSE-AI** (15991 symbols, 29062 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
-
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
-
-## Always Do
-
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
-
-## Never Do
-
-- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
-- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
-
-## Resources
-
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/MATHPULSE-AI/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/MATHPULSE-AI/clusters` | All functional areas |
-| `gitnexus://repo/MATHPULSE-AI/processes` | All execution flows |
-| `gitnexus://repo/MATHPULSE-AI/process/{name}` | Step-by-step execution trace |
-
-## CLI
-
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-
-<!-- gitnexus:end -->
 
 ---
 

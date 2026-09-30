@@ -1,111 +1,75 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as apiService from '../apiService';
 import { generateLessonQuiz, getQuestionCountForQuiz } from '../lessonQuizService';
 
-// Spy on the real module instead of mocking it outright.
-vi.spyOn(apiService, 'apiFetch').mockRejectedValue(new Error('Mock API error for test'));
+const apiFetchSpy = vi.spyOn(apiService, 'apiFetch');
 
 beforeEach(() => {
-  vi.mocked(apiService.apiFetch).mockClear();
+  apiFetchSpy.mockReset();
 });
 
 describe('lessonQuizService', () => {
-  describe('generateLessonQuiz', () => {
-    it('returns the requested number of questions', async () => {
-      const quiz = await generateLessonQuiz({
-        lessonId: 'gm-1-l1',
-        lessonTitle: 'Patterns and Real-Life Relationships',
-        questionCount: 6,
-      });
-      expect(quiz).toHaveLength(6);
+  it('maps generated lesson questions from the API response', async () => {
+    apiFetchSpy.mockResolvedValue({
+      questions: [{
+        id: 3,
+        type: 'multiple-choice',
+        question: 'Which value is the interest rate?',
+        options: ['Principal', 'Rate'],
+        correctAnswer: 'Rate',
+        explanation: 'The rate is the percent charged.',
+        bloomLevel: 'apply',
+      }],
+      retrievalConfidence: {},
+      sourceChunks: 1,
+      generatedAt: '2026-09-30T00:00:00.000Z',
     });
 
-    it('returns fallback questions on API failure', async () => {
-      // Force fallback by passing empty title (causes API failure in real code)
-      const quiz = await generateLessonQuiz({
-        lessonId: 'test',
-        lessonTitle: '', // Empty title triggers fallback
-        questionCount: 6,
-      });
-      expect(quiz.length).toBeGreaterThan(0);
-      // Fallback has exactly 6 questions
-      expect(quiz).toHaveLength(6);
-    });
+    await expect(generateLessonQuiz({
+      lessonId: 'gm-1-l1',
+      lessonTitle: 'Simple Interest',
+      questionCount: 1,
+    })).resolves.toEqual([{
+      id: 3,
+      type: 'multiple-choice',
+      question: 'Which value is the interest rate?',
+      options: ['Principal', 'Rate'],
+      correctAnswer: 'Rate',
+      explanation: 'The rate is the percent charged.',
+      hints: [],
+      bloomLevel: 'apply',
+    }]);
+  });
 
-    it('returns questions with valid IDs', async () => {
-      const quiz = await generateLessonQuiz({
-        lessonId: 'test',
-        lessonTitle: 'Simple and Compound Interest',
-        questionCount: 6,
-      });
-      quiz.forEach((q, i) => {
-        expect(q.id).toBe(i + 1);
-      });
-    });
+  it('rejects API failures instead of returning unrelated shared-bank questions', async () => {
+    apiFetchSpy.mockRejectedValue(new Error('API unavailable'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    it('includes multiple-choice, true-false, and fill-in-blank types', async () => {
-      const quiz = await generateLessonQuiz({
-        lessonId: 'test',
-        lessonTitle: 'Probability Distributions',
-        questionCount: 6,
-      });
-      const types = new Set(quiz.map((q) => q.type));
-      expect(types.has('multiple-choice')).toBe(true);
-      expect(types.has('true-false')).toBe(true);
-      expect(types.has('fill-in-blank')).toBe(true);
-    });
+    await expect(generateLessonQuiz({
+      lessonId: 'gm-1-l1',
+      lessonTitle: 'Simple Interest',
+      questionCount: 6,
+    })).rejects.toThrow('API unavailable');
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[lessonQuizService] Failed to generate quiz via API:',
+      expect.any(Error),
+    );
+  });
 
-    it('ensures multiple-choice options contain the correct answer', async () => {
-      const quiz = await generateLessonQuiz({
-        lessonId: 'test',
-        lessonTitle: 'Functions as Mathematical Models',
-        questionCount: 6,
-      });
-      const mc = quiz.filter((q) => q.type === 'multiple-choice');
-      expect(mc.length).toBeGreaterThan(0);
-      mc.forEach((q) => {
-        expect(q.options).toContain(q.correctAnswer);
-      });
+  it('rejects empty API question sets instead of serving generic questions', async () => {
+    apiFetchSpy.mockResolvedValue({
+      questions: [],
+      retrievalConfidence: {},
+      sourceChunks: 0,
+      generatedAt: '2026-09-30T00:00:00.000Z',
     });
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    it('ensures true-false questions have True or False as correct answer', async () => {
-      const quiz = await generateLessonQuiz({
-        lessonId: 'test',
-        lessonTitle: 'Geometric Sequences',
-        questionCount: 6,
-      });
-      const tf = quiz.filter((q) => q.type === 'true-false');
-      expect(tf.length).toBeGreaterThan(0);
-      tf.forEach((q) => {
-        expect(['True', 'False']).toContain(q.correctAnswer);
-      });
-    });
-
-    it('ensures fill-in-blank questions have non-empty correct answers', async () => {
-      const quiz = await generateLessonQuiz({
-        lessonId: 'test',
-        lessonTitle: 'Confidence Intervals',
-        questionCount: 6,
-      });
-      const fib = quiz.filter((q) => q.type === 'fill-in-blank');
-      expect(fib.length).toBeGreaterThan(0);
-      fib.forEach((q) => {
-        expect(q.correctAnswer.trim().length).toBeGreaterThan(0);
-      });
-    });
-
-    it('ensures fallback questions are non-empty', async () => {
-      const quiz = await generateLessonQuiz({
-        lessonId: 'test',
-        lessonTitle: '', // Empty title triggers fallback
-        questionCount: 6,
-      });
-      expect(quiz.length).toBeGreaterThan(0);
-      quiz.forEach((q) => {
-        expect(q.question).toBeTruthy();
-        expect(q.correctAnswer).toBeTruthy();
-      });
-    });
+    await expect(generateLessonQuiz({
+      lessonId: 'gm-1-l1',
+      lessonTitle: 'Simple Interest',
+      questionCount: 6,
+    })).rejects.toThrow('Quiz generation returned no lesson-specific questions.');
   });
 
   describe('getQuestionCountForQuiz', () => {

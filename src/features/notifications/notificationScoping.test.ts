@@ -44,13 +44,15 @@ describe('notification role scoping (issue #156)', () => {
     expect(visible.map((item) => item.id)).toEqual(['a']);
   });
 
-  it('keeps teacher-only alerts for teacher and admin roles', () => {
+  it('filters student progress notifications from teacher and admin inboxes', () => {
     const inbox = [
       baseNotification({ id: 'a', type: 'quiz_result' }),
       baseNotification({ id: 'b', type: 'risk_alert', title: 'At-risk' }),
+      baseNotification({ id: 'c', type: 'daily_checkin' }),
+      baseNotification({ id: 'd', type: 'streak_reminder' }),
     ];
-    expect(filterNotificationsForRole(inbox, 'teacher').map((item) => item.id)).toEqual(['a', 'b']);
-    expect(filterNotificationsForRole(inbox, 'admin').map((item) => item.id)).toEqual(['a', 'b']);
+    expect(filterNotificationsForRole(inbox, 'teacher').map((item) => item.id)).toEqual(['b']);
+    expect(filterNotificationsForRole(inbox, 'admin').map((item) => item.id)).toEqual(['b']);
   });
 
   it('keeps student-appropriate types for students', () => {

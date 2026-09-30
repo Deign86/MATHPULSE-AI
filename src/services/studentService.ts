@@ -270,25 +270,63 @@ export async function getStudentsByTeacher(teacherId: string): Promise<ManagedSt
 }
 
 export async function getStudentsByTeacherWithPhotos(teacherId: string): Promise<ManagedStudent[]> {
-  const students = await getStudentsByTeacher(teacherId);
-  if (students.length === 0) return students;
+  if (!teacherId) return [];
+  const [classrooms, ownershipRecords] = await Promise.all([
+    getClassroomsByTeacher(teacherId).catch(() => []),
+    getClassSectionOwnershipByTeacher(teacherId).catch(() => []),
+  ]);
+  const classSectionIds = [
+    ...classrooms.flatMap((classroom) => [classroom.classSectionId, classroom.id]),
+    ...ownershipRecords.map((record) => record.classSectionId),
+  ]
+    .filter((id): id is string => Boolean(id));
+  const ownershipStudentUids = Array.from(new Set(ownershipRecords.flatMap((record) => record.studentUids || [])));
+  const [accounts, ownershipAccounts, rosterOnly] = await Promise.all([
+    getAllRegisteredStudentsByTeacher(teacherId, classSectionIds),
+    Promise.all(ownershipStudentUids.map(async (uid) => {
+      try {
+        const snapshot = await getDoc(doc(db, 'users', uid));
+        if (!snapshot.exists()) return null;
+        const account = mapRegisteredAccount(snapshot.id, snapshot.data());
+        return account?.role === 'student' ? account : null;
+      } catch (error) {
+        console.warn('[studentService] ownership-roster account lookup failed:', error);
+        return null;
+      }
+    })),
+    getStudentsByTeacher(teacherId),
+  ]);
+  const registeredByUid = new Map<string, RegisteredStudentAccount>();
+  [...accounts, ...ownershipAccounts.filter((account): account is RegisteredStudentAccount => account !== null)]
+    .forEach((account) => registeredByUid.set(account.uid, account));
+  const registered = Array.from(registeredByUid.values())
+    .map((account) => mapRegisteredStudentToManaged(account, { teacherId }));
+  const registeredIds = new Set(registered.map((student) => student.id));
+  // Roster-only students are visible but not assignable: quiz assignments require a registered users/{uid} account.
+  const unassignableRosterRows = rosterOnly
+    .filter((student) => student.hasRegisteredAccount !== true && !registeredIds.has(student.id))
+    .map((student) => ({ ...student, hasRegisteredAccount: false, source: 'import' as const }));
+  return [...registered, ...unassignableRosterRows];
+}
 
-  const registeredStudents = await getAllRegisteredStudentsByTeacher(
-    teacherId,
-    students.map((student) => student.classSectionId || student.classroomId).filter(Boolean)
-  );
-  const accountsByUid = new Map(registeredStudents.map((account) => [account.uid, account]));
-
-  return students.map((student) => {
-    const account = accountsByUid.get(student.accountUid || student.id);
-    if (!account) return student;
-
-    const accountPhoto = account.photo?.trim();
-    const enrichedStudent = { ...student };
-    if (accountPhoto && !accountPhoto.includes('ui-avatars.com')) enrichedStudent.avatar = accountPhoto;
-    if (account.gender) enrichedStudent.gender = account.gender;
-    return enrichedStudent;
-  });
+function mapRegisteredAccount(uid: string, data: DocumentData): RegisteredStudentAccount | null {
+  if (String(data.role || '').toLowerCase() !== 'student') return null;
+  return {
+    uid,
+    name: String(data.name || data.displayName || '').trim() || 'Student',
+    email: String(data.email || '').trim(),
+    lrn: data.lrn ? String(data.lrn).trim() || undefined : undefined,
+    photo: String(data.photo || '').trim() || String(data.photoURL || '').trim() || undefined,
+    gender: data.gender === 'male' || data.gender === 'female' || data.gender === 'prefer_not_to_say'
+      ? data.gender
+      : undefined,
+    grade: data.grade ? String(data.grade).trim() || undefined : undefined,
+    section: data.section ? String(data.section).trim() || undefined : undefined,
+    classSectionId: data.classSectionId ? String(data.classSectionId).trim() || undefined : undefined,
+    adviserTeacherId: data.adviserTeacherId ? String(data.adviserTeacherId).trim() || undefined : undefined,
+    role: 'student',
+    createdAt: data.createdAt instanceof Timestamp ? data.createdAt : undefined,
+  };
 }
 
 export async function getStudentsByClassroom(classroomId: string): Promise<ManagedStudent[]> {
@@ -1128,7 +1166,8 @@ export async function assignStudentToClassSection(
   section: string,
   ownerTeacherId: string,
   schoolYear: string,
-  ownerTeacherName?: string
+  ownerTeacherName?: string,
+  options: { notifyStudent?: boolean } = {}
 ): Promise<void> {
   const classSectionId = buildClassSectionId(grade, section);
 
@@ -1179,6 +1218,53 @@ export async function assignStudentToClassSection(
     },
     { merge: true }
   );
+
+  // Imported roster records may use an import-row ID instead of the account UID.
+  // Update matching records too, since teacher lists query managedStudents by classroomId.
+  const managedStudentsSnapshot = await getDocs(collection(db, 'managedStudents'));
+  const studentLrn = String(userData.lrn || '').trim().toLowerCase();
+  const studentEmail = String(userData.email || '').trim().toLowerCase();
+  const studentName = normalizeName(String(userData.name || userData.displayName || ''));
+  const matchingRosterUpdates = managedStudentsSnapshot.docs
+    .filter((rosterDoc) => {
+      if (rosterDoc.id === studentUid) return false;
+      const rosterData = rosterDoc.data();
+      const rosterLrn = String(rosterData.lrn || '').trim().toLowerCase();
+      const rosterEmail = String(rosterData.email || '').trim().toLowerCase();
+      const rosterName = normalizeName(String(rosterData.name || ''));
+      return Boolean(
+        (studentLrn && rosterLrn === studentLrn)
+        || (studentEmail && rosterEmail === studentEmail)
+        || (studentName && rosterName === studentName)
+      );
+    })
+    .map((rosterDoc) => setDoc(rosterDoc.ref, {
+      accountUid: studentUid,
+      teacherId: ownerTeacherId,
+      grade,
+      gradeLevel: grade,
+      section,
+      classSectionId,
+      classroomId: classSectionId,
+      hasRegisteredAccount: true,
+      source: 'both',
+      updatedAt: serverTimestamp(),
+    }, { merge: true }));
+
+  await Promise.all(matchingRosterUpdates);
+
+  if (options.notifyStudent) {
+    const { notify } = await import('@/features/notifications');
+    await notify({
+      userId: studentUid,
+      type: 'class_assigned',
+      title: 'Class section assigned',
+      message: `You've been added to ${grade} - ${section}`,
+      metadata: { classSectionId },
+      actionUrl: '/modules',
+      recipientRole: 'student',
+    });
+  }
 }
 
 export async function getClassSectionOwnershipByTeacher(teacherId: string): Promise<ClassSectionOwnershipRecord[]> {

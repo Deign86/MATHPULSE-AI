@@ -391,7 +391,7 @@ function makeAssessments(module: CurriculumModuleBlueprint): CurriculumAssessmen
     chunkIndex += 1;
     chunks.push({
       id: `${module.id}-a${chunkIndex}`,
-      title: `Competency Check ${chunkIndex}`,
+      title: subset.map((entry) => entry.outcome).join(' and '),
       competencyCodes: subset.map((entry) => entry.code),
       type: chunkIndex === Math.ceil(module.competencies.length / chunkSize) ? 'module' : 'practice',
     });
@@ -402,15 +402,23 @@ function makeAssessments(module: CurriculumModuleBlueprint): CurriculumAssessmen
 
 function makeQuizzes(module: CurriculumModuleBlueprint, assessments: CurriculumAssessmentMeta[]) {
   // All Grade 11 subjects are finalized DepEd-sourced modules: fully unlocked, no sequential gating.
-  return assessments.map((assessment, index) => ({
-    id: `${module.id}-q${index + 1}`,
-    title: assessment.title,
-    questions: Math.max(8, assessment.competencyCodes.length * 5),
-    duration: assessment.type === 'module' ? '22 min' : '15 min',
-    completed: false,
-    locked: false,
-    type: assessment.type,
-  }));
+  return assessments.map((assessment, index) => {
+    const learningObjectives = module.competencies
+      .filter((competency) => assessment.competencyCodes.includes(competency.code))
+      .map((competency) => competency.outcome);
+
+    return {
+      id: `${module.id}-q${index + 1}`,
+      title: assessment.title,
+      learningObjectives,
+      competencyCodes: assessment.competencyCodes,
+      questions: Math.max(8, assessment.competencyCodes.length * 5),
+      duration: assessment.type === 'module' ? '22 min' : '15 min',
+      completed: false,
+      locked: false,
+      type: assessment.type,
+    };
+  });
 }
 
 function normalizeGradeLevel(_rawGrade?: string | null): GradeLevel {

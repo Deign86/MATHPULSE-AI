@@ -38,9 +38,11 @@ export interface User {
 
 export interface StudentProfile extends User {
   role: 'student';
+  classSectionId?: string;
   lrn?: string;
   grade: string;
   section?: string;
+  track?: string;
   school: string;
   enrollmentDate: string;
   major: string;
@@ -542,6 +544,7 @@ export type NotificationType =
   | 'teacher_message'    // From teacher to student
   | 'system_announcement' // From admin to all
   | 'quiz_assigned'
+  | 'class_assigned'
   | 'assignment'        // Class assignment notification
 
 export interface Notification {

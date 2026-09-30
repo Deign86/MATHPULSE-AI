@@ -6,6 +6,7 @@ import type { User, UserRole } from '../../types/models';
 import type { CurriculumSource } from '../../types/curriculum';
 import type { UseLessonContentResult } from '../../hooks/useLessonContent';
 import AuthContext, { type AuthContextType } from '../../contexts/AuthContext';
+import * as lessonQuizService from '../../services/lessonQuizService';
 
 let activeProfile: User | null = null;
 
@@ -55,6 +56,7 @@ const stubLessonContent: UseLessonContentResult = {
 };
 
 const stubLogLessonView = vi.fn().mockResolvedValue(undefined);
+const generateLessonQuizSpy = vi.spyOn(lessonQuizService, 'generateLessonQuiz');
 
 function setRole(role: User['role']): void {
   activeProfile = {
@@ -109,6 +111,7 @@ describe('Issue #164: Curriculum Grounding Evidence role gating', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     activeProfile = null;
+    generateLessonQuizSpy.mockReset();
   });
 
   it('student sees neither the evidence trigger nor the evidence modal', () => {
@@ -181,5 +184,50 @@ describe('Issue #164: Curriculum Grounding Evidence role gating', () => {
     expect(screen.queryByRole('region', { name: 'Merrill micro-lesson' })).toBeNull();
     expect(screen.getByText('AI lesson unavailable')).toBeInTheDocument();
     expect(screen.getByText(/showing the DepEd source PDF/i)).toBeInTheDocument();
+  });
+
+  it('returns to the lesson after lesson quiz generation fails', async () => {
+    setRole('student');
+    generateLessonQuizSpy.mockRejectedValue(new Error('API unavailable'));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    renderLessonViewer({
+      ...stubLessonContent,
+      sections: [{ type: 'try_it_yourself', title: 'Practice', content: 'Practice this lesson.' }],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Start Practice Quiz/i }));
+
+    expect(await screen.findByText(/Lesson-specific practice questions could not be generated/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to lesson' }));
+
+    expect(screen.queryByText(/Lesson-specific practice questions could not be generated/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /Start Practice Quiz/i })).toBeInTheDocument();
+    expect(screen.queryByText(/If 2x \+ 5 = 13/)).toBeNull();
+  });
+
+  it('retries failed lesson quiz generation and renders the quiz after success', async () => {
+    setRole('student');
+    generateLessonQuizSpy
+      .mockRejectedValueOnce(new Error('API unavailable'))
+      .mockResolvedValueOnce([{
+        id: 1,
+        type: 'multiple-choice',
+        question: 'What is the simple interest?',
+        options: ['A', 'B'],
+        correctAnswer: 'A',
+        explanation: 'Use the lesson formula.',
+      }]);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    renderLessonViewer({
+      ...stubLessonContent,
+      sections: [{ type: 'try_it_yourself', title: 'Practice', content: 'Practice this lesson.' }],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Start Practice Quiz/i }));
+    await screen.findByText(/Lesson-specific practice questions could not be generated/i);
+    fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
+
+    expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
+    expect(generateLessonQuizSpy).toHaveBeenCalledTimes(2);
   });
 });
