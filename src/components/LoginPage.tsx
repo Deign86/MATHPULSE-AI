@@ -40,6 +40,9 @@ const schoolSectionOptionSchema = z.object({
   grade: z.string().optional(),
 });
 
+const FALLBACK_SECTION_OPTIONS = ['Aumaury', 'Edison', 'Einstein', 'Mpai'];
+const FALLBACK_TRACK_OPTIONS = ['Academic', 'TechPro'];
+
 interface PasswordRule {
   id: string;
   label: string;
@@ -204,8 +207,8 @@ export const LoginPage: React.FC = () => {
   const [selectedGrade, setSelectedGrade] = useState('Grade 11');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedTrack, setSelectedTrack] = useState('');
-  const [sectionOptions, setSectionOptions] = useState<string[]>([]);
-  const [trackOptions, setTrackOptions] = useState<string[]>([]);
+  const [sectionOptions, setSectionOptions] = useState<string[]>(FALLBACK_SECTION_OPTIONS);
+  const [trackOptions, setTrackOptions] = useState<string[]>(FALLBACK_TRACK_OPTIONS);
   const [registrationOptionsLoading, setRegistrationOptionsLoading] = useState(true);
   const [registrationOptionsError, setRegistrationOptionsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -219,7 +222,8 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     let active = true;
-    getDocs(collection(db, 'schoolSections'))
+    void Promise.resolve()
+      .then(() => getDocs(collection(db, 'schoolSections')))
       .then((snapshot) => {
         if (!active) return;
         const sections: string[] = [];
@@ -231,11 +235,23 @@ export const LoginPage: React.FC = () => {
           if (type === 'section' && grade === 'Grade 11') sections.push(name);
           if (type === 'track') tracks.push(name);
         });
-        setSectionOptions(sections.sort((left, right) => left.localeCompare(right)));
-        setTrackOptions(tracks.sort((left, right) => left.localeCompare(right)));
+        setSectionOptions(
+          sections.length > 0
+            ? sections.sort((left, right) => left.localeCompare(right))
+            : FALLBACK_SECTION_OPTIONS,
+        );
+        setTrackOptions(
+          tracks.length > 0
+            ? tracks.sort((left, right) => left.localeCompare(right))
+            : FALLBACK_TRACK_OPTIONS,
+        );
       })
       .catch(() => {
-        if (active) setRegistrationOptionsError('Registration options could not be loaded. Please try again later.');
+        if (active) {
+          setSectionOptions(FALLBACK_SECTION_OPTIONS);
+          setTrackOptions(FALLBACK_TRACK_OPTIONS);
+          setRegistrationOptionsError('Registration options could not be loaded. Default options are available.');
+        }
       })
       .finally(() => {
         if (active) setRegistrationOptionsLoading(false);
@@ -622,9 +638,6 @@ export const LoginPage: React.FC = () => {
                         ))}
                       </select>
                       {registrationOptionsLoading && <p role="status">Loading sections...</p>}
-                      {!registrationOptionsLoading && !registrationOptionsError && sectionOptions.length === 0 && (
-                        <p role="status">No sections are currently available.</p>
-                      )}
                     </div>
                     <div className="space-y-0.5 sm:space-y-1">
                       <label htmlFor="login-track" className="block text-[10px] sm:text-xs font-body font-semibold text-slate-500 uppercase tracking-wider">
@@ -645,9 +658,6 @@ export const LoginPage: React.FC = () => {
                         ))}
                       </select>
                       {registrationOptionsLoading && <p role="status">Loading tracks...</p>}
-                      {!registrationOptionsLoading && !registrationOptionsError && trackOptions.length === 0 && (
-                        <p role="status">No tracks are currently available.</p>
-                      )}
                     </div>
                     {registrationOptionsError && (
                       <p role="alert" className="col-span-2 text-rose-600">{registrationOptionsError}</p>

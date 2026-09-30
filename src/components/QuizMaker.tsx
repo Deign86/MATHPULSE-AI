@@ -248,6 +248,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const [assigning, setAssigning] = useState(false);
   const [students, setStudents] = useState<ManagedStudent[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsLoaded, setStudentsLoaded] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
@@ -908,25 +909,46 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     }
     setBankAssignQuizId(id);
     setShowAssignModal(true);
+    setStudents([]);
+    setStudentsLoaded(false);
     setSelectedStudentId(null);
     setStudentSearch('');
-
-    if (students.length === 0 && currentUser) {
-      setStudentsLoading(true);
-      try {
-        const s = await getStudentsByTeacherWithPhotos(currentUser.uid);
-        setStudents(s);
-      } catch {
-        toast.error('Failed to load students');
-      } finally {
-        setStudentsLoading(false);
-      }
-    }
   };
+
+  useEffect(() => {
+    if (!showAssignModal) return;
+    let cancelled = false;
+    setStudents([]);
+    setStudentsLoaded(false);
+    if (!currentUser) {
+      setStudentsLoading(false);
+      return () => { cancelled = true; };
+    }
+    setStudentsLoading(true);
+    void getStudentsByTeacherWithPhotos(currentUser.uid)
+      .then((freshStudents) => {
+        if (!cancelled) {
+          setStudents(freshStudents);
+          setStudentsLoaded(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setStudents([]);
+          setStudentsLoaded(false);
+          toast.error('Failed to load students');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setStudentsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [showAssignModal, currentUser]);
 
   const handleAssign = async () => {
     const quizId = bankAssignQuizId ?? savedQuizId;
-    if (!selectedStudentId || !quizId || !currentUser) return;
+    const selectedStudent = students.find((student) => student.id === selectedStudentId);
+    if (!studentsLoaded || !selectedStudentId || !quizId || !currentUser || selectedStudent?.hasRegisteredAccount !== true) return;
     setAssigning(true);
     try {
       await assignQuizToStudent(quizId, selectedStudentId, currentUser.uid);
@@ -2228,10 +2250,13 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       <button
                         key={s.id}
                         onClick={() => setSelectedStudentId(s.id)}
+                        disabled={s.hasRegisteredAccount !== true}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
                           selectedStudentId === s.id
                             ? 'bg-sky-50 border border-sky-300'
-                            : 'hover:bg-[#edf1f7] border border-transparent'
+                            : s.hasRegisteredAccount === true
+                              ? 'hover:bg-[#edf1f7] border border-transparent'
+                              : 'border border-transparent opacity-60 cursor-not-allowed'
                         }`}
                       >
                         <img
@@ -2244,7 +2269,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-[#0a1628] truncate">{s.name}</p>
-                          <p className="text-xs text-slate-500 truncate">{s.email}</p>
+                          <p className="text-xs text-slate-500 truncate">{s.hasRegisteredAccount === true ? s.email : 'Roster only · create an account before assigning'}</p>
                         </div>
                         {selectedStudentId === s.id && <Check size={16} className="text-sky-600 flex-shrink-0" />}
                       </button>
@@ -2262,7 +2287,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 </button>
                 <button
                   onClick={handleAssign}
-                  disabled={!selectedStudentId || assigning}
+                  disabled={!studentsLoaded || studentsLoading || !selectedStudentId || assigning}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
                     selectedStudentId && !assigning
                       ? 'bg-gradient-to-r from-sky-600 to-sky-500 text-white shadow-sm'

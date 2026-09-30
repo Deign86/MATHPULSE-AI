@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as authNs from '../contexts/AuthContext';
 import type { AuthContextType } from '../contexts/AuthContext';
@@ -66,6 +66,8 @@ vi.spyOn(PracticeCenterNs, 'default').mockImplementation(
 
 import ModulesPage from './ModulesPage';
 
+afterEach(cleanup);
+
 const renderModulesPage = () =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -84,7 +86,7 @@ describe('ModulesPage', () => {
   });
 
   it('shows teacher assignments above Practice topics when loaded at the assigned section URL', async () => {
-    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockResolvedValue([
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([
       {
         generatedQuizId: 'quiz-1',
         id: 'quiz-1',
@@ -110,6 +112,98 @@ describe('ModulesPage', () => {
     expect(screen.getAllByText(/practice center stub/i)).not.toHaveLength(0);
     expect(screen.queryByRole('button', { name: /^assigned$/i })).not.toBeInTheDocument();
     expect(window.location.search).toContain('section=assigned-quizzes');
+  });
+
+  it('waits for assigned quizzes to load and auto-opens the quiz from its deep link', async () => {
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([
+      {
+        generatedQuizId: 'quiz-1',
+        id: 'quiz-1',
+        title: 'Functions Review',
+        subject: 'General Mathematics',
+        difficulty: 'Medium',
+        questions: 1,
+        duration: '10 minutes',
+        xpReward: 20,
+        type: 'practice',
+        completed: false,
+        locked: false,
+        source: 'ai_generated',
+        loadedQuestions: [],
+      },
+    ]);
+    window.history.replaceState({}, '', '/modules?section=assigned-quizzes&quizId=quiz-1');
+
+    renderModulesPage();
+
+    expect(quizService.fetchPendingQuizzesForStudent).toHaveBeenCalledWith('user-1');
+    expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
+  });
+
+  it('refreshes assignments when an assigned quiz is clicked while Practice is already open', async () => {
+    let resolveRefresh: ((quizzes: quizService.PlayableQuiz[]) => void) | undefined;
+    const fetchPendingQuizzes = vi.spyOn(quizService, 'fetchPendingQuizzesForStudent')
+      .mockReset()
+      .mockResolvedValueOnce([])
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve; }));
+    window.history.replaceState({}, '', '/modules');
+
+    renderModulesPage();
+    fireEvent.click(screen.getAllByRole('button', { name: /^practice$/i })[0]);
+    await screen.findByText(/you have no pending assigned quizzes/i);
+    expect(fetchPendingQuizzes).toHaveBeenCalledTimes(1);
+
+    fireEvent(window, new CustomEvent('mathpulse:navigate', {
+      detail: { tab: 'Modules', section: 'assigned-quizzes', quizId: 'new-quiz' },
+    }));
+    await vi.waitFor(() => expect(fetchPendingQuizzes).toHaveBeenCalledTimes(2));
+
+    resolveRefresh?.([{
+      generatedQuizId: 'new-quiz',
+      id: 'new-quiz',
+      title: 'Newly Assigned Quiz',
+      subject: 'General Mathematics',
+      difficulty: 'Medium',
+      questions: 1,
+      duration: '10 minutes',
+      xpReward: 20,
+      type: 'practice',
+      completed: false,
+      locked: false,
+      source: 'ai_generated',
+      loadedQuestions: [],
+    }]);
+
+    expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
+  });
+
+  it('preserves the requested quiz ID after fetch failure and retries the fetch', async () => {
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent')
+      .mockReset()
+      .mockRejectedValueOnce(new Error('network unavailable'))
+      .mockResolvedValueOnce([{
+        generatedQuizId: 'quiz-1',
+        id: 'quiz-1',
+        title: 'Functions Review',
+        subject: 'General Mathematics',
+        difficulty: 'Medium',
+        questions: 1,
+        duration: '10 minutes',
+        xpReward: 20,
+        type: 'practice',
+        completed: false,
+        locked: false,
+        source: 'ai_generated',
+        loadedQuestions: [],
+      }]);
+    window.history.replaceState({}, '', '/modules?section=assigned-quizzes&quizId=quiz-1');
+
+    renderModulesPage();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load assigned quizzes.');
+    expect(window.location.search).toContain('quizId=quiz-1');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
   });
 
   it('scopes teacher-uploaded modules to the signed-in student', () => {

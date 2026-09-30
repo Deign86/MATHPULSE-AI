@@ -207,6 +207,20 @@
       ]
     },
     {
+      "collectionGroup": "classRecordImports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "teacherId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "generatedQuizzes",
       "queryScope": "COLLECTION",
       "fields": [

@@ -1,7 +1,7 @@
 import { db } from '../lib/firebase';
-import { collection, doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import type { LessonPlanResponse } from './apiService';
-import { apiService, getCurriculumGroundedLesson } from './apiService';
+import { apiFetch, apiService, getCurriculumGroundedLesson } from './apiService';
 import type { CurriculumSource } from '../types/curriculum';
 
 export type GeneratedLessonPlanStatus = 'draft' | 'published';
@@ -28,9 +28,17 @@ export async function saveGeneratedLessonPlan(
   },
 ): Promise<string> {
   const lessonRef = doc(collection(db, 'generatedLessonPlans'));
+  const {
+    publishReady: _publishReady,
+    sourceLegitimacy: _sourceLegitimacy,
+    curriculumGrounding: _curriculumGrounding,
+    needsReview: _needsReview,
+    selfValidation: _selfValidation,
+    ...draftPayload
+  } = lesson;
   // SAFETY: 'draft' is a member of the GeneratedLessonPlanStatus union persisted with the draft.
   await setDoc(lessonRef, {
-    ...lesson,
+    ...draftPayload,
     teacherId,
     teacherName: context?.teacherName || null,
     studentId: context?.studentId || null,
@@ -43,24 +51,10 @@ export async function saveGeneratedLessonPlan(
 }
 
 export async function publishLessonPlan(lessonId: string): Promise<void> {
-  const lessonRef = doc(db, 'generatedLessonPlans', lessonId);
-  const snapshot = await getDoc(lessonRef);
-  if (!snapshot.exists()) {
-    throw new Error('Lesson draft not found. Save draft before publishing.');
-  }
-
-  // SAFETY: draft docs are written by saveLessonDraft above with the GeneratedLessonPlanRecord field set.
-  const data = snapshot.data() as Partial<GeneratedLessonPlanRecord>;
-  if (!data.publishReady) {
-    throw new Error('Lesson is not publish-ready. Resolve source legitimacy and validation issues first.');
-  }
-
-  await updateDoc(lessonRef, {
-    // SAFETY: 'published' is a member of the GeneratedLessonPlanStatus union.
-    status: 'published' as GeneratedLessonPlanStatus,
-    publishedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  await apiFetch<{ success: boolean; lessonId: string; status: GeneratedLessonPlanStatus }>(
+    `/api/lesson-plans/${encodeURIComponent(lessonId)}/publish`,
+    { method: 'POST' },
+  );
 }
 
 /** Caller-facing request shape for grounded lesson-plan generation. */

@@ -831,6 +831,25 @@ service cloud.firestore {
       allow write: if false; // Backend only via firebase-admin
     }
 
+    match /generatedLessonPlans/{lessonId} {
+      allow read: if isTeacher() && resource.data.teacherId == request.auth.uid;
+      allow create: if isTeacher()
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.status == 'draft'
+        && !request.resource.data.keys().hasAny([
+          'publishReady', 'sourceLegitimacy', 'curriculumGrounding', 'needsReview', 'selfValidation'
+        ]);
+      allow update: if isTeacher()
+        && resource.data.teacherId == request.auth.uid
+        && request.resource.data.teacherId == resource.data.teacherId
+        && resource.data.status == 'draft'
+        && request.resource.data.status == 'draft'
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'publishReady', 'sourceLegitimacy', 'curriculumGrounding', 'needsReview', 'selfValidation'
+        ]);
+      allow delete: if isTeacher() && resource.data.teacherId == request.auth.uid;
+    }
+
     // Deny-by-default for unknown collections.
     match /{document=**} {
       allow read, write: if false;

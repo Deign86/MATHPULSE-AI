@@ -4,8 +4,7 @@ import { Sparkles, AlertCircle, CheckCircle2, Bell, Users, ArrowRight, CheckChec
 import { useNotifications } from '@/features/notifications';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
-
-const STUDENT_ONLY_TYPES = ['streak_reminder', 'daily_checkin', 'streak_milestone', 'achievement_unlocked', 'level_up', 'xp_earned', 'quiz_result'];
+import { filterNotificationsForRole } from '@/features/notifications/types';
 
 interface NotificationDropdownProps {
   isOpen: boolean;
@@ -19,8 +18,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
   const role = userProfile?.role;
 
   const filteredNotifications = useMemo(() => {
-    if (role === 'student') return notifications;
-    return notifications.filter((n) => !STUDENT_ONLY_TYPES.includes(n.type));
+    return filterNotificationsForRole(notifications, role);
   }, [notifications, role]);
 
   const unreadCount = filteredNotifications.filter((n) => !n.isRead).length;
@@ -113,8 +111,16 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                         }));
                         onClose();
                       } else if (notif.type === 'quiz_assigned') {
+                        const actionQuizId = notif.actionUrl
+                          ? new URL(notif.actionUrl, window.location.origin).searchParams.get('quizId')
+                          : null;
                         window.dispatchEvent(new CustomEvent('mathpulse:navigate', {
-                          detail: { tab: 'Modules', section: 'assigned-quizzes', quizId: notif.metadata?.quizId },
+                          detail: {
+                            tab: 'Modules',
+                            section: 'assigned-quizzes',
+                            quizId: notif.metadata?.quizId ?? actionQuizId,
+                            actionUrl: notif.actionUrl,
+                          },
                         }));
                         onClose();
                       } else if (notif.actionUrl) {

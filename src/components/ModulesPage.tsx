@@ -208,7 +208,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [selectedModule, setSelectedModule] = useState<CurriculumModuleRuntime | null>(initialModule);
   const [selectedQuiz, setSelectedQuiz] = useState<QuizExperienceQuiz | null>(null);
   const [pendingQuizzes, setPendingQuizzes] = useState<PlayableQuiz[]>([]);
-  const [pendingQuizzesLoading, setPendingQuizzesLoading] = useState(false);
+  const [pendingQuizzesLoading, setPendingQuizzesLoading] = useState(() =>
+    new URLSearchParams(window.location.search).get('section') === 'assigned-quizzes',
+  );
+  const [pendingQuizzesLoaded, setPendingQuizzesLoaded] = useState(false);
   const [pendingQuizzesError, setPendingQuizzesError] = useState(false);
   const [assignedQuizUnavailable, setAssignedQuizUnavailable] = useState(false);
   const [pendingQuizRefresh, setPendingQuizRefresh] = useState(0);
@@ -233,9 +236,13 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       if (!parsedDetail.success) return;
       const detail = parsedDetail.data;
       setActiveTab('practice');
+      setPendingQuizzesLoading(true);
+      setPendingQuizzesLoaded(false);
+      setPendingQuizzesError(false);
       setAssignedQuizUnavailable(false);
       const quizId = z.string().safeParse(detail.quizId);
       setAssignedQuizToOpen(quizId.success ? quizId.data : null);
+      setPendingQuizRefresh((refresh) => refresh + 1);
     };
 
     window.addEventListener('mathpulse:navigate', handleAssignedQuizNavigation);
@@ -247,15 +254,21 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     const lrn = studentProfile?.lrn || userProfile?.uid;
     if (!lrn) {
       setPendingQuizzes([]);
+      setPendingQuizzesLoading(false);
+      setPendingQuizzesLoaded(true);
       return;
     }
 
     let cancelled = false;
     setPendingQuizzesLoading(true);
+    setPendingQuizzesLoaded(false);
     setPendingQuizzesError(false);
     fetchPendingQuizzesForStudent(lrn)
       .then((quizzes) => {
-        if (!cancelled) setPendingQuizzes(quizzes);
+        if (!cancelled) {
+          setPendingQuizzes(quizzes);
+          setPendingQuizzesLoaded(true);
+        }
       })
       .catch((error) => {
         console.error('[ModulesPage] Failed to load assigned quizzes:', error);
@@ -272,7 +285,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   }, [activeTab, studentProfile?.lrn, userProfile?.uid, pendingQuizRefresh]);
 
   useEffect(() => {
-    if (!assignedQuizToOpen || pendingQuizzesLoading) return;
+    if (!assignedQuizToOpen || !pendingQuizzesLoaded || pendingQuizzesLoading || pendingQuizzesError) return;
     const quiz = pendingQuizzes.find((pendingQuiz) => pendingQuiz.generatedQuizId === assignedQuizToOpen);
     if (quiz) {
       setSelectedQuiz(quiz);
@@ -289,7 +302,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       const queryString = params.toString();
       window.history.replaceState({}, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
     }
-  }, [assignedQuizToOpen, pendingQuizzes, pendingQuizzesLoading]);
+  }, [assignedQuizToOpen, pendingQuizzes, pendingQuizzesLoaded, pendingQuizzesLoading, pendingQuizzesError]);
 
   // Competency profile state for personalized module filtering
   const [competencyProfile, setCompetencyProfile] = useState<CompetencyProfileDoc | null>(null);
@@ -387,7 +400,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   // Show modal on mount if user can claim
   useEffect(() => {
-    if (!userProfile?.uid) return;
+    if (userProfile?.role !== 'student' || !userProfile.uid) return;
 
     let cancelled = false;
     const loadState = async (forceShow?: boolean) => {
@@ -400,7 +413,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     const handleNotificationNav = (e: Event) => {
       // SAFETY: trusted internal value already conforms to the asserted type.
       const detail = (e as CustomEvent).detail;
-      if (detail?.tab === 'Modules' && detail?.section !== 'assigned-quizzes') {
+      if (userProfile?.role === 'student' && detail?.tab === 'Modules' && detail?.section !== 'assigned-quizzes') {
         loadState(true);
       }
     };
@@ -413,10 +426,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       clearTimeout(timer);
       window.removeEventListener('mathpulse:navigate', handleNotificationNav);
     };
-  }, [userProfile?.uid, canClaim]);
+  }, [userProfile?.uid, userProfile?.role, canClaim]);
 
   const handleClaimDailyReward = async () => {
-    if (!userProfile?.uid) return;
+    if (userProfile?.role !== 'student' || !userProfile.uid) return;
 
     try {
       const result = await claim();
@@ -1718,7 +1731,16 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               {pendingQuizzesLoading ? (
                 <p role="status" className="text-sm text-slate-500">Loading assigned quizzes…</p>
               ) : pendingQuizzesError ? (
-                <p role="alert" className="text-sm text-rose-600">Could not load assigned quizzes. Please try again later.</p>
+                <div role="alert" className="text-sm text-rose-600">
+                  <p>Could not load assigned quizzes.</p>
+                  <button
+                    type="button"
+                    onClick={() => setPendingQuizRefresh((refresh) => refresh + 1)}
+                    className="mt-2 font-semibold underline"
+                  >
+                    Retry
+                  </button>
+                </div>
               ) : pendingQuizzes.length === 0 ? (
                 <p className="text-sm text-slate-500">You have no pending assigned quizzes. Check back when your teacher assigns one.</p>
               ) : pendingQuizzes.map((quiz) => (

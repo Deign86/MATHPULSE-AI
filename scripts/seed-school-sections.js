@@ -30,12 +30,12 @@ admin.initializeApp({
 });
 
 const options = [
-  { id: 'section_amaury', name: 'Amaury', type: 'section', grade: 'Grade 11' },
+  { id: 'section_amaury', name: 'Aumaury', type: 'section', grade: 'Grade 11' },
   { id: 'section_edison', name: 'Edison', type: 'section', grade: 'Grade 11' },
   { id: 'section_einstein', name: 'Einstein', type: 'section', grade: 'Grade 11' },
   { id: 'section_mpai', name: 'Mpai', type: 'section', grade: 'Grade 11' },
   { id: 'track_academic', name: 'Academic', type: 'track' },
-  { id: 'track_tech-pro', name: 'Tech-Pro', type: 'track' },
+  { id: 'track_tech-pro', name: 'TechPro', type: 'track' },
 ];
 
 async function seed() {

@@ -10630,6 +10630,135 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
         raise HTTPException(status_code=500, detail=f"Lesson generation error: {str(e)}")
 
 
+@app.post("/api/lesson-plans/{lesson_id}/publish")
+async def publish_saved_lesson_plan(http_request: Request, lesson_id: str):
+    if not (_firebase_ready and firebase_firestore):
+        raise HTTPException(status_code=503, detail="Lesson-plan storage is unavailable.")
+
+    user = get_current_user(http_request)
+    if user.role not in {"teacher", "admin"}:
+        raise HTTPException(status_code=403, detail="Only teachers may publish lesson plans.")
+
+    lesson_ref = firebase_firestore.client().collection("generatedLessonPlans").document(lesson_id)
+    snapshot = cast(Any, lesson_ref.get())
+    if not _snapshot_exists(snapshot):
+        raise HTTPException(status_code=404, detail="Lesson draft not found.")
+    lesson_data = cast(Dict[str, Any], snapshot.to_dict() or {})
+    if user.role != "admin" and lesson_data.get("teacherId") != user.uid:
+        raise HTTPException(status_code=403, detail="You may only publish your own lesson plans.")
+    if lesson_data.get("status") != "draft":
+        raise HTTPException(status_code=409, detail="Only draft lesson plans may be published.")
+
+    blocks_raw = lesson_data.get("blocks")
+    selected_topics = lesson_data.get("focusTopics")
+    if not isinstance(blocks_raw, list) or not isinstance(selected_topics, list):
+        raise HTTPException(status_code=422, detail="Lesson draft is missing validation inputs.")
+    try:
+        blocks = [LessonPlanBlock(**block) for block in blocks_raw if isinstance(block, dict)]
+        if len(blocks) != len(blocks_raw) or not all(isinstance(topic, str) for topic in selected_topics):
+            raise ValueError("Malformed lesson validation inputs")
+        validation = await _validate_generated_lesson_plan(
+            lesson_title=str(lesson_data.get("lessonTitle") or ""),
+            selected_topics=selected_topics,
+            blocks=blocks,
+        )
+    except Exception as validation_error:
+        logger.warning("Saved lesson publish validation failed for %s: %s", lesson_id, validation_error)
+        raise HTTPException(status_code=422, detail="Lesson failed server-side publish validation.") from validation_error
+
+    # Rebuild readiness inputs from backend-owned course artifacts and a fresh
+    # curriculum retrieval; draft readiness/provenance fields are untrusted.
+    class_section_id = str(lesson_data.get("classSectionId") or "").strip() or None
+    imported_topics_payload: Dict[str, Any] = {"topics": [], "materials": [], "warnings": []}
+    imported_topic_titles: List[str] = []
+    if ENABLE_IMPORT_GROUNDED_LESSON:
+        imported_topics_payload = _load_persisted_course_material_topics(
+            http_request,
+            class_section_id=class_section_id,
+            limit_materials=20,
+        )
+        imported_topic_titles = [
+            str(topic.get("title") or "").strip()
+            for topic in (imported_topics_payload.get("topics") or [])
+            if str(topic.get("title") or "").strip()
+        ]
+        lookup_warnings = [
+            str(warning).strip().lower()
+            for warning in (imported_topics_payload.get("warnings") or [])
+        ]
+        if not imported_topic_titles and any(
+            "lookup skipped" in warning or "lookup unavailable" in warning
+            for warning in lookup_warnings
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail="Imported course-material lookup failed; lesson publishing is blocked until sources can be verified.",
+            )
+
+    source_legitimacy = _evaluate_lesson_source_legitimacy(
+        imported_topics_payload,
+        allow_review_sources=False,
+    )
+    if not imported_topics_payload.get("materials"):
+        source_legitimacy = {
+            "status": "verified",
+            "score": 1.0,
+            "verifiedMaterials": 0,
+            "reviewMaterials": 0,
+            "rejectedMaterials": 0,
+            "evidenceChecked": ["builtin_curriculum_fallback"],
+            "issues": [],
+        }
+
+    subject = str(lesson_data.get("subject") or "general_math").strip() or "general_math"
+    quarter_value = lesson_data.get("quarter")
+    quarter = quarter_value if isinstance(quarter_value, int) and 1 <= quarter_value <= 4 else 1
+    lesson_title = str(lesson_data.get("lessonTitle") or "Grounded Math Lesson").strip()
+    competency = str(lesson_data.get("curriculumCompetency") or "").strip()
+    competency_hint = competency or str(selected_topics[0] if selected_topics else "general mathematics")
+    retrieval_query = build_lesson_query(
+        competency_hint,
+        subject,
+        quarter,
+        lesson_title=lesson_title,
+        competency=competency,
+        module_unit=str(lesson_data.get("moduleUnit") or "").strip() or None,
+        learner_level=str(lesson_data.get("learnerLevel") or "").strip() or None,
+    )
+    curriculum_chunks = retrieve_curriculum_context(query=retrieval_query, subject=subject, quarter=quarter, top_k=5)
+    retrieval_summary = summarize_retrieval_confidence(curriculum_chunks)
+    retrieval_band = str(retrieval_summary.get("band") or "low")
+    retrieval_issues = not curriculum_chunks or retrieval_band == "low"
+    if retrieval_issues:
+        source_legitimacy["status"] = "review_required"
+
+    needs_review = retrieval_band == "low" or source_legitimacy.get("status") != "verified"
+    ready = bool(
+        validation.get("passed")
+        and source_legitimacy.get("status") == "verified"
+        and retrieval_band != "low"
+        and not needs_review
+    )
+    if not ready:
+        raise HTTPException(status_code=422, detail="Lesson is not publish-ready. Resolve source legitimacy and validation issues first.")
+
+    from google.cloud.firestore_v1 import LastUpdateOption
+
+    try:
+        lesson_ref.update({
+            "publishReady": True,
+            "status": "published",
+            "publishedAt": FIRESTORE_SERVER_TIMESTAMP,
+            "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
+        }, option=LastUpdateOption(snapshot.update_time))
+    except Exception as update_error:
+        latest_snapshot = cast(Any, lesson_ref.get())
+        if not _snapshot_exists(latest_snapshot) or latest_snapshot.update_time != snapshot.update_time:
+            raise HTTPException(status_code=409, detail="Lesson draft changed during publish validation. Retry publishing.") from update_error
+        raise
+    return {"success": True, "lessonId": lesson_id, "status": "published"}
+
+
 @app.post("/api/lesson/generate-async", response_model=AsyncTaskSubmitResponse)
 async def generate_lesson_plan_async(http_request: Request, request: LessonGenerationRequest):
     if not ENABLE_ASYNC_GENERATION:
