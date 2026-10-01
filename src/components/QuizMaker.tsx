@@ -34,6 +34,7 @@ import {
 } from '../services/quizService';
 import { getStudentsByTeacherWithPhotos, type ManagedStudent } from '../services/studentService';
 import type { GeneratedQuiz, AIQuizQuestion, GeneratedQuizStatus } from '../types/models';
+import QuizExperience, { type Quiz as ExperienceQuiz } from './QuizExperience';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -258,6 +259,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const [bankFilter, setBankFilter] = useState<GeneratedQuizStatus | 'all'>('all');
   const [bankAssignQuizId, setBankAssignQuizId] = useState<string | null>(null);
   const [viewingBankQuizId, setViewingBankQuizId] = useState<string | null>(null);
+  const [previewQuiz, setPreviewQuiz] = useState<ExperienceQuiz | null>(null);
 
   // Load topics when grade changes
   const loadTopics = useCallback(async () => {
@@ -1059,6 +1061,32 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     setActiveTab('create');
   };
 
+  const openQuizPreview = (quiz: GeneratedQuiz) => {
+    setPreviewQuiz({
+      id: quiz.id,
+      title: quiz.title,
+      subject: quiz.gradeLevel,
+      difficulty: 'Medium',
+      questions: quiz.questions.length,
+      duration: '10',
+      xpReward: 0,
+      type: 'challenge',
+      completed: false,
+      locked: false,
+      loadedQuestions: quiz.questions,
+      source: 'ai_generated',
+      generatedQuizId: quiz.id,
+    });
+  };
+
+  const openGeneratedPreview = () => {
+    if (!quizResult) return;
+    openQuizPreview({
+      id: savedQuizId || 'generated-preview',
+      ...buildGeneratedQuiz(quizResult),
+    } as GeneratedQuiz);
+  };
+
   // ─── Render ────────────────────────────────────────────────
 
   const renderSection = (id: string, title: React.ReactNode, icon: React.ReactNode, children: React.ReactNode) => {
@@ -1271,6 +1299,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
           {/* ─── QUIZ BANK TAB ─── */}
           {activeTab === 'bank' && (
             <div className="w-full space-y-4 sm:space-y-6">
+              <p className="text-xs text-slate-600">Quizzes are for registered students only. Use Preview quiz to take one yourself without saving progress or earning XP.</p>
               {/* Bank Filters */}
               <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 border-b border-[#e2e8f0] mb-4 sm:mb-6" style={{scrollbarWidth:'none'}}>
                 {(['all', 'draft', 'published', 'assigned', 'completed'] as const).map((f) => (
@@ -1357,6 +1386,12 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 sm:gap-4 mt-auto pt-3 sm:pt-5 border-t border-[#f1f5f9] pl-2 sm:pl-3">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openQuizPreview(q); }}
+                          className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13px] font-bold text-[#9333ea] hover:text-[#7e22ce] transition-colors bg-purple-50 border border-purple-200 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full"
+                        >
+                          <Eye size={13} /> Preview quiz
+                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleViewBankQuiz(q); }}
                           className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13px] font-semibold text-[#64748b] hover:text-[#1e293b] transition-colors bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-xs"
@@ -1909,6 +1944,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
             <div className="w-full space-y-3 sm:space-y-6 pb-16 sm:pb-8">
               {/* Summary Card */}
               <div className="bg-white/80 backdrop-blur-md rounded-xl sm:rounded-[20px] border border-[#e2e8f0] shadow-xs sm:shadow-[0_8px_24px_rgba(0,0,0,0.04)] p-3 sm:p-6">
+                <p className="text-xs text-slate-600 mb-3">Quizzes are for registered students only. Take the quiz yourself with Preview quiz; preview attempts do not save progress or earn XP.</p>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3 sm:mb-4">
                   <h3 className="text-base sm:text-lg font-bold font-display text-[#0a1628] leading-tight">Quiz Generated</h3>
                   <div className="flex items-center gap-1.5 sm:gap-2">
@@ -2088,6 +2124,16 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
                 {/* In-Page Results Completion Action Bar */}
                 <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={viewingBankQuizId ? () => {
+                      const bankQuiz = bankQuizzes.find((quiz) => quiz.id === viewingBankQuizId);
+                      if (bankQuiz) openQuizPreview(bankQuiz);
+                    } : openGeneratedPreview}
+                    className="bg-purple-50 border border-purple-200 text-[#9333ea] text-xs sm:text-[13px] font-bold rounded-xl sm:rounded-full px-4 sm:px-5 py-2 sm:py-2.5"
+                  >
+                    <Eye size={14} className="inline mr-1.5" /> Preview quiz
+                  </button>
                   {viewingBankQuizId ? (
                     <>
                       <button
@@ -2171,6 +2217,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
       
       <BloomsTaxonomyModal isOpen={showBloomsModal} onClose={() => setShowBloomsModal(false)} />
+      {previewQuiz && (
+        <QuizExperience
+          key={previewQuiz.id}
+          quiz={previewQuiz}
+          previewMode
+          onClose={() => setPreviewQuiz(null)}
+        />
+      )}
 
       <ConfirmModal
         isOpen={showLeaveConfirm}
