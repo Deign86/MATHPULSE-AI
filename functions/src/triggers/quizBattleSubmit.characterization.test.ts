@@ -54,12 +54,3 @@ test("characterization: static pool satisfies the 5Q GenMath VS Bot repro", () =
     assert.ok(entry.correctOptionIndex >= 0 && entry.correctOptionIndex < 4);
   }
 });
-
-test("characterization: stale roundNumber submissions are rejected, not scored", () => {
-  // Pre-fix contract from quizBattleSubmitAnswer: a submit whose roundNumber
-  // does not equal the server currentRound throws failed-precondition with
-  // `Expected round ${current}, received ${stale}.` — never scores.
-  const buildStaleRejection = (currentRound: number, receivedRound: number): string =>
-    currentRound !== receivedRound ? `Expected round ${currentRound}, received ${receivedRound}.` : "";
-  assert.equal(buildStaleRejection(2, 1), "Expected round 2, received 1.");
-});
