@@ -44,6 +44,68 @@ class TestRetrieveCurriculumContext:
             )
             assert result == []
 
+    def test_empty_exact_retrieval_runs_subject_quarter_and_general_fallbacks(self):
+        from rag import curriculum_rag
+
+        grounded_chunk = {
+            "content": "A linear equation has equal expressions on both sides.",
+            "source_file": "SHS_GM_Q1.pdf",
+            "score": 0.9,
+            "page": 2,
+        }
+        with patch.object(
+            curriculum_rag,
+            "retrieve_curriculum_context",
+            side_effect=[[], [], [], [], [], [grounded_chunk]],
+        ) as retrieve:
+            result, mode = curriculum_rag.retrieve_lesson_pdf_context(
+                topic="M11GM-Ia-1",
+                subject="General Mathematics",
+                quarter=3,
+                lesson_title="Linear Equations",
+                storage_path="curriculum/SHS_GM_Q1.pdf",
+            )
+
+        assert result == [grounded_chunk]
+        assert mode == "general"
+        assert [call.kwargs for call in retrieve.call_args_list] == [
+            {
+                "query": "Linear Equations",
+                "subject": "General Mathematics",
+                "quarter": 3,
+                "storage_path": "curriculum/SHS_GM_Q1.pdf",
+                "top_k": 8,
+            },
+            {
+                "query": "Linear Equations",
+                "subject": "General Mathematics",
+                "storage_path": "curriculum/SHS_GM_Q1.pdf",
+                "top_k": 8,
+            },
+            {
+                "query": "Linear Equations",
+                "storage_path": "curriculum/SHS_GM_Q1.pdf",
+                "top_k": 8,
+            },
+            {
+                "query": "Linear Equations",
+                "subject": "General Mathematics",
+                "quarter": 3,
+                "top_k": 8,
+            },
+            {
+                "query": "Linear Equations",
+                "subject": "General Mathematics",
+                "quarter": 1,
+                "top_k": 8,
+            },
+            {
+                "query": "Linear Equations",
+                "subject": "General Mathematics",
+                "top_k": 8,
+            },
+        ]
+
 
 class TestDistanceToScore:
     def test_zero_distance_returns_one(self):

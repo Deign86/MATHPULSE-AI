@@ -77,6 +77,40 @@ describe('NotificationContext', () => {
     });
   });
 
+  it('deduplicates repeated subscription records before exposing unread counts', async () => {
+    subscribeToNotificationsSpy.mockImplementation((_userId, callback) => {
+      callback([
+        {
+          id: 'duplicate-id',
+          userId: 'user-123',
+          type: 'daily_checkin',
+          title: 'First delivery',
+          message: 'First payload',
+          isRead: false,
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+        {
+          id: 'duplicate-id',
+          userId: 'user-123',
+          type: 'daily_checkin',
+          title: 'Repeated delivery',
+          message: 'Repeated payload',
+          isRead: false,
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+      ]);
+      return vi.fn();
+    });
+
+    const TestComponent = () => {
+      const { notifications, unreadCount } = useNotifications();
+      return <output>{`${notifications.length}:${unreadCount}:${notifications[0]?.title}`}</output>;
+    };
+    render(<NotificationProvider><TestComponent /></NotificationProvider>);
+
+    await waitFor(() => expect(screen.getByText('1:1:First delivery')).toBeInTheDocument());
+  });
+
   it('throws when useNotifications is used outside provider', () => {
     const TestComponent = () => {
       try {

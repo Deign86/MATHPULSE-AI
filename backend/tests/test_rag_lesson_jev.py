@@ -109,3 +109,18 @@ def test_jev_exception_fails_open_cleanly(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["sections"][0]["content"] == "Generated introduction hallucination."
     assert response.json()["jevVerification"] is None
+
+
+def test_empty_context_fails_closed_without_generated_grounding() -> None:
+    with patch("routes.rag_routes.retrieve_lesson_pdf_context", return_value=([], "general")), \
+         patch("routes.rag_routes._generate_text") as generate_text:
+        response = client.post("/api/rag/lesson", json=PAYLOAD)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == {
+        "error": "no_curriculum_context",
+        "message": "No curriculum content found for lesson 'Introduction to Rational Functions' (General Mathematics Q1). Please ensure the PDF has been ingested.",
+        "retrievalBand": "low",
+        "sources": [],
+    }
+    generate_text.assert_not_called()
