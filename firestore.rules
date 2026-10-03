@@ -471,27 +471,50 @@ service cloud.firestore {
 
     match /quizResults/{docId} {
       allow read: if ownerByField('studentId') || isTeacherOrAdmin();
-      allow create: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.lrn == request.auth.uid;
       allow update: if isSelf(docId) || isTeacherOrAdmin();
       allow delete: if isAdmin();
     }
 
     match /quizSubmissions/{docId} {
       allow read: if isSignedIn() && (resource.data.lrn == request.auth.uid || isTeacherOrAdmin());
-      allow create: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.lrn == request.auth.uid;
       allow delete: if isAdmin();
     }
 
     match /generatedQuizzes/{docId} {
-      allow read: if isTeacherOrAdmin() || ownerByField('teacherId');
-      allow create: if isTeacherOrAdmin() || isClaimingOwner('teacherId');
-      allow update, delete: if isAdmin() || isExistingOwner('teacherId');
+      allow read: if isTeacherOrAdmin()
+        || (isSignedIn() && resource.data.recipientUids is list
+          && request.auth.uid in resource.data.recipientUids)
+        || (isTeacher() && ownerByField('teacherId'));
+      allow create: if isAdmin() || (isTeacher() && isClaimingOwner('teacherId'));
+      allow update: if isAdmin() || (isTeacher()
+        && (isClaimingOwner('teacherId') || isExistingOwner('teacherId'))
+        && request.resource.data.teacherId == resource.data.teacherId);
+      allow delete: if isAdmin() || (isTeacher() && isExistingOwner('teacherId'));
     }
 
     match /quizAssignments/{docId} {
       allow read: if isTeacherOrAdmin() || ownerByField('teacherId') || ownerByField('lrn');
-      allow create: if isTeacherOrAdmin() || isClaimingOwner('teacherId');
-      allow update, delete: if isAdmin() || isExistingOwner('teacherId');
+      allow create: if isAdmin() || (isTeacher() && isClaimingOwner('teacherId'));
+      allow update: if resource.data.status != 'completed' && (
+        isAdmin()
+        || (isTeacher() && isExistingOwner('teacherId'))
+        || (isSelf(resource.data.lrn)
+          && resource.data.status == 'pending'
+          && request.resource.data.status == 'completed'
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'score', 'completedAt'])
+          && request.resource.data.score is number
+          && request.resource.data.score >= 0
+          && request.resource.data.score <= 100
+          && request.resource.data.completedAt == request.time));
+      allow delete: if resource.data.status != 'completed'
+        && (isAdmin() || (isTeacher() && isExistingOwner('teacherId')));
     }
 
     match /attendance/{docId} {

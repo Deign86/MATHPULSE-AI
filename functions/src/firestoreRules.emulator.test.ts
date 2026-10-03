@@ -29,7 +29,7 @@ async function acquireEmulatorLock(timeoutMs = EMULATOR_LOCK_TIMEOUT_MS): Promis
 
 function authToken(uid: string, role?: string): string {
   const encode = (payload: string): string => Buffer.from(payload).toString("base64url");
-  return `${encode('{"alg":"none","typ":"JWT"}')}.${encode(JSON.stringify({
+  return `${encode("{\"alg\":\"none\",\"typ\":\"JWT\"}")}.${encode(JSON.stringify({
     aud: PROJECT_ID,
     iss: `https://securetoken.google.com/${PROJECT_ID}`,
     sub: uid,
@@ -96,7 +96,7 @@ test("Firestore emulator lock acquisition fails promptly when another holder own
   try {
     await assert.rejects(
       acquireEmulatorLock(100),
-      new RegExp(`Timed out acquiring shared Firebase emulator lock after 100ms`),
+      new RegExp("Timed out acquiring shared Firebase emulator lock after 100ms"),
     );
     assert.ok(Date.now() - startedAt < 2_000, "lock acquisition should fail promptly");
     assert.ok((await stat(LOCK_PATH)).isDirectory(), "the existing holder's lock must remain present");

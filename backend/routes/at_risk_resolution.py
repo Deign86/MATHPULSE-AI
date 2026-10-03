@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from services.ai_client import CHAT_MODEL
@@ -62,6 +62,16 @@ class FallbackContent(BaseModel):
 class ResolveResponse(BaseModel):
     resolved: list[ResolvedTopic]
     fallback_generated: int = 0
+
+
+def _require_student_or_staff_access(uid: str, request: Request) -> None:
+    user = getattr(request.state, "user", None)
+    role = getattr(user, "role", None)
+    if role in {"teacher", "admin"}:
+        return
+    if role == "student" and getattr(user, "uid", None) == uid:
+        return
+    raise HTTPException(status_code=403, detail="Forbidden for this student")
 
 
 # ─── Resolution Logic ──────────────────────────────────────────────
@@ -261,8 +271,9 @@ def _generate_fallback_content(
 # ─── Endpoints ─────────────────────────────────────────────────────
 
 @router.post("/resolve", response_model=ResolveResponse)
-async def resolve_at_risk_topics(request: ResolveRequest):
+async def resolve_at_risk_topics(request: ResolveRequest, http_request: Request):
     """Resolve flagged topics into resolution states and generate fallback content."""
+    _require_student_or_staff_access(request.uid, http_request)
     try:
         firestore_client = fs.client()
     except Exception:
@@ -311,8 +322,9 @@ async def resolve_at_risk_topics(request: ResolveRequest):
 
 
 @router.get("/fallback/{uid}/{topic_id}")
-async def get_fallback_content(uid: str, topic_id: str):
+async def get_fallback_content(uid: str, topic_id: str, request: Request):
     """Fetch cached fallback study brief for a flagged topic."""
+    _require_student_or_staff_access(uid, request)
     try:
         firestore_client = fs.client()
     except Exception:

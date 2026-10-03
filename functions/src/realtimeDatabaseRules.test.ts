@@ -12,7 +12,7 @@ const EMULATOR_LOCK_TIMEOUT_MS = 30_000;
 
 function authToken(uid: string): string {
   const encode = (payload: string): string => Buffer.from(payload).toString("base64url");
-  return `${encode('{"alg":"none","typ":"JWT"}')}.${encode(JSON.stringify({
+  return `${encode("{\"alg\":\"none\",\"typ\":\"JWT\"}")}.${encode(JSON.stringify({
     aud: PROJECT_ID,
     iss: `https://securetoken.google.com/${PROJECT_ID}`,
     sub: uid,

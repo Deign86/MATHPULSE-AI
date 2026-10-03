@@ -44,10 +44,6 @@ Every prompt and coding task in this repository MUST auto-invoke and apply the f
    - **AUTO-INVOKE ON EVERY PROMPT.**
    - Enforce opinionated Oxlint rules from [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) vendored at `tools/oxlint/anti-slop/`. Run `npm run lint:anti-slop` (`npx oxlint --quiet`). Reject low-evidence type assertions without `// SAFETY:` comments, unconstrained object parameter bags, loose dictionary types, and fluff prose.
 
-4. **Firecrawl Developer Index** (`.agents/skills/firecrawl-developer-index/SKILL.md`):
-   - **AUTO-INVOKE ON EVERY PROMPT.**
-   - Query primary source documentation, GitHub issues, and PRs via Firecrawl Developer search instead of guessing external library contracts.
-
 ## Copilot Skill Invocation Policy
 
 - ALWAYS auto-invoke `ui-ux-pro-max` whenever a task changes UI, UX, or visual behavior.

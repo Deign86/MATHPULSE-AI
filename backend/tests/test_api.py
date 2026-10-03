@@ -197,6 +197,36 @@ class TestAuthMiddleware:
         assert len(data["materials"]) == 1
         assert data["materials"][0]["materialId"] == "mat-auth-1"
 
+class TestRequestTimeoutBoundary:
+    def test_request_timeout_is_terminal_504(self):
+        from starlette.requests import Request
+        from starlette.responses import Response
+
+        request = Request({
+            "type": "http",
+            "asgi": {"version": "3.0"},
+            "http_version": "1.1",
+            "method": "POST",
+            "scheme": "http",
+            "path": "/api/chat",
+            "raw_path": b"/api/chat",
+            "query_string": b"",
+            "headers": [],
+            "client": ("testclient", 50000),
+            "server": ("testserver", 80),
+        })
+        middleware = main_module.RequestMiddleware(app)
+
+        async def slow_handler(_request):
+            await asyncio.sleep(0.02)
+            return Response("late response")
+
+        with patch.object(main_module, "REQUEST_TIMEOUT_SECONDS", 0.001):
+            response = asyncio.run(middleware.dispatch(request, slow_handler))
+
+        assert response.status_code == 504
+        assert json.loads(response.body)["detail"] == "Request timed out after 0.001s"
+
 
 # ─── Chat Endpoint ─────────────────────────────────────────────
 
