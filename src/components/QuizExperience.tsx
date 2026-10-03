@@ -373,19 +373,20 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   const [failedOptions, setFailedOptions] = useState<number[]>([]);
    const [viewIndex, setViewIndex] = useState(0);
   const [achievementPill, setAchievementPill] = useState<'streak' | 'multiplier2' | 'multiplier3' | null>(null);
-   const isSubmittingRef = useRef(false);
-   const finalizedRef = useRef(false);
-   const quizEndRef = useRef(false);
-   const localOnlyRef = useRef(previewMode);
-   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-   const startCountdownRef = useRef<() => void>(() => {});
-   const finalizeScoreRef = useRef<() => void>(() => {});
-   const onQuizEndRef = useRef(onQuizEnd);
-   const showResultsRef = useRef(showResults);
-   const answerRecordsRef = useRef(answerRecords);
-   onQuizEndRef.current = onQuizEnd;
-   showResultsRef.current = showResults;
-   answerRecordsRef.current = answerRecords;
+  const isSubmittingRef = useRef(false);
+  const finalizedRef = useRef(false);
+  const quizEndRef = useRef(false);
+  const localOnlyRef = useRef(previewMode || quiz.completed);
+  const hasRewardedAttemptRef = useRef(quiz.completed);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startCountdownRef = useRef<() => void>(() => {});
+  const finalizeScoreRef = useRef<() => void>(() => {});
+  const onQuizEndRef = useRef(onQuizEnd);
+  const showResultsRef = useRef(showResults);
+  const answerRecordsRef = useRef(answerRecords);
+  onQuizEndRef.current = onQuizEnd;
+  showResultsRef.current = showResults;
+  answerRecordsRef.current = answerRecords;
 
   // Load AI questions or generate hardcoded fallback
   const [questions] = useState<QuizQuestion[]>(() => {
@@ -481,10 +482,11 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   const playSound = (type: 'correct' | 'incorrect' | 'complete' | 'combo') => {
     if (!isAudioEnabled) return;
     try {
-      // SAFETY: trusted internal value already conforms to the asserted type.
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
+      // SAFETY: window is the browser global; Safari may expose this optional constructor.
+      const audioWindow = window as Window & { webkitAudioContext?: typeof AudioContext };
+      const AudioContextConstructor = window.AudioContext ?? audioWindow.webkitAudioContext;
+      if (!AudioContextConstructor) return;
+      const ctx = new AudioContextConstructor();
       const t = ctx.currentTime;
 
       const playNote = (freq: number, startTime: number, duration: number, vol = 0.1, waveType: OscillatorType = 'sine') => {
@@ -711,24 +713,25 @@ const newStreak = streak + 1;
   };
 
   const calculateFinalScore = () => {
-    if (finalizedRef.current && !localOnlyRef.current) return;
-    if (!localOnlyRef.current) finalizedRef.current = true;
+    if (finalizedRef.current) return;
+    finalizedRef.current = true;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     const percentage = Math.round((score / questions.length) * 100);
-    const isLocalOnly = localOnlyRef.current;
-    let xpEarned = isLocalOnly ? 0 : quiz.xpReward;
+    const shouldRewardAttempt = !localOnlyRef.current && !hasRewardedAttemptRef.current;
+    hasRewardedAttemptRef.current = true;
+    let xpEarned = shouldRewardAttempt ? quiz.xpReward : 0;
 
     // Bonus XP for performance
-    if (!isLocalOnly && percentage >= 90) {
+    if (shouldRewardAttempt && percentage >= 90) {
       xpEarned = Math.round(xpEarned * 1.5);
-    } else if (!isLocalOnly && percentage >= 80) {
+    } else if (shouldRewardAttempt && percentage >= 80) {
       xpEarned = Math.round(xpEarned * 1.25);
     }
 
     // Bonus XP for speed (if completed with more than 50% time remaining)
     const totalTime = parseInt(quiz.duration) * 60;
-    if (!isLocalOnly && timeRemaining > totalTime * 0.5) {
+    if (shouldRewardAttempt && timeRemaining > totalTime * 0.5) {
       xpEarned = Math.round(xpEarned * 1.2);
     }
 
@@ -737,7 +740,7 @@ const newStreak = streak + 1;
     const timeSpent = totalTime - timeRemaining;
 
     // Fire automation: quiz submitted
-    if (!isLocalOnly && studentId) {
+    if (shouldRewardAttempt && studentId) {
       triggerQuizSubmitted({
         lrn: studentId,
         quizId: quiz.id,
@@ -750,7 +753,7 @@ const newStreak = streak + 1;
     }
 
     // Save detailed results for AI-generated quizzes
-    if (!isLocalOnly && quiz.source === 'ai_generated' && studentId) {
+    if (shouldRewardAttempt && quiz.source === 'ai_generated' && studentId) {
       saveQuizResults(
         studentId,
         quiz.id,
@@ -767,7 +770,7 @@ const newStreak = streak + 1;
           bloomLevel: q.bloomLevel || 'understand',
         })),
       ).catch((err) => console.error('[WARN] Quiz result save failed:', err));
-    } else if (!isLocalOnly && studentId) {
+    } else if (shouldRewardAttempt && studentId) {
       // Persist static quiz attempts to progress (XP awarded by parent via onComplete callback)
       recordPracticeQuiz(
         studentId,
@@ -784,7 +787,7 @@ timeSpent,
     }
 
     // Persist to assessments subcollection for GradesPage visibility
-    if (!isLocalOnly && studentId) {
+    if (shouldRewardAttempt && studentId) {
       import('../services/gradesService').then(({ saveAssessmentResult }) => {
         saveAssessmentResult({
           uid: studentId,
@@ -805,7 +808,7 @@ timeSpent,
 playSound('complete');
 
     // Notify parent of completion with score and XP
-    if (!isLocalOnly) onComplete?.(percentage, xpEarned);
+    if (shouldRewardAttempt) onComplete?.(percentage, xpEarned);
     };
   finalizeScoreRef.current = calculateFinalScore;
 
@@ -902,6 +905,7 @@ playSound('complete');
                  onClick={() => {
                     deliverCompletedAttempt();
                     isSubmittingRef.current = false;
+                    finalizedRef.current = false;
                     setCurrentQuestionIndex(0);
                     setViewIndex(0);
                     setSelectedAnswer(null);
@@ -913,6 +917,7 @@ playSound('complete');
                     setAnswerRecords([]);
                     setCurrentPoints(0);
                     localOnlyRef.current = true;
+                    quizEndRef.current = true;
                     setTimeRemaining((parseInt(quiz.duration) || 10) * 60);
                     startCountdownRef.current();
                     setShowResults(false);
