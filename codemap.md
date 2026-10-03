@@ -6,9 +6,10 @@ MathPulse AI — installable, repo-owned PWA for AI-powered mathematics tutoring
 ## System Entry Points
 - `src/main.tsx` → `src/App.tsx`: frontend bootstrap (ErrorBoundary > BrowserRouter > QueryClientProvider > AuthProvider), role-aware lazy navigation.
 - `src/config/env.ts` + `src/services/apiService.ts`: typed API abstraction; all frontend calls go through here (`VITE_API_URL` or same-origin `/api`).
-- `backend/main.py`: FastAPI entry (ROLE_POLICIES ~line 310); Firebase/Firestore init, auth middleware, domain routers.
+- `backend/main.py`: FastAPI entry (`ROLE_POLICIES` authorization matrix — referenced by symbol, never by line number); Firebase/Firestore init, auth middleware, domain routers.
 - `functions/src/index.ts`: Cloud Functions export surface (Node 22, project `mathpulse-ai-2026`).
 - `firebase.json`, `firestore.rules`, `config/models.yaml`: hosting, security, model routing.
+- `TESTING.md`: per-layer verification commands, worktree setup, CI triage, gate-check notes.
 
 ## Flow
 1. Student/teacher/admin signs in (Firebase Auth) → `AuthContext` + role policies gate routes.
@@ -73,3 +74,5 @@ MathPulse AI — installable, repo-owned PWA for AI-powered mathematics tutoring
 | `src/features/import/services/shsExcel/` | DepEd SHS workbook interpretation pipeline. | [View Map](src/features/import/services/shsExcel/codemap.md) |
 | `src/features/import/services/shsExcel/parser/` | Parser stages: extraction, normalization, validation. | [View Map](src/features/import/services/shsExcel/parser/codemap.md) |
 | `src/features/import/services/shsExcel/parser/utils/` | Workbook matrix/cell/range/anchor/text/row helpers. | [View Map](src/features/import/services/shsExcel/parser/utils/codemap.md) |
+| `scripts/` | Maintenance/sync/backfill utilities (hooks, model sync, assignment backfill). | [View Map](scripts/codemap.md) |
+| `tests/e2e/` | Agentic browser E2E suites via tester-army/e2e (local dev servers only). | [View Map](tests/e2e/codemap.md) |

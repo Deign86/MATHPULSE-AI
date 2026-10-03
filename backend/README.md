@@ -13,8 +13,7 @@ pinned: false
 FastAPI backend for the MathPulse AI educational platform.
 
 ## Models Used
-- **Qwen/Qwen2.5-Math-7B-Instruct** - AI Math Tutor, Learning Path Generation, Daily Insights
-- **facebook/bart-large-mnli** - Student Risk Classification (zero-shot)
+Model routing is defined in `backend/config/models.yaml` (see `AGENTS.md`). The `prod` profile uses deepseek-reasoner for RAG lessons and deepseek-chat for other tasks; the backend selects models through `services/inference_client.py`.
 
 ## API Endpoints
 - `POST /api/chat` - AI Math Tutor conversation

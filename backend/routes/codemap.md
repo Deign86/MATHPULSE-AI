@@ -5,7 +5,7 @@ FastAPI route modules expose tutoring, curriculum, assessment, teacher, admin, a
 
 ## Design
 - Modules define `APIRouter` instances, Pydantic request/response models, endpoint handlers, and local request/auth validation.
-- `main.py` imports and mounts the routers; `ROLE_POLICIES` there (around line 404) controls path/role authorization.
+- `main.py` imports and mounts the routers; `ROLE_POLICIES` in `backend/main.py` (referenced by symbol, never by line number) controls path/role authorization, with `resolve_required_roles` as the single enforcement point and `backend/tests/role_policy_expectations.py` as the executable contract.
 - Handlers use domain services for reusable work, while some routes retain endpoint-specific orchestration and Firestore access.
 - Representative routers: `rag_routes`, `deepseek_rag_routes`, `practice`, `curriculum_routes`, `class_records_router`, `admin_routes`.
 

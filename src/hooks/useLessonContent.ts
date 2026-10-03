@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getAuth } from 'firebase/auth';
 import {
   fetchRagLesson,
   getRagLessonHealth,
@@ -55,7 +56,17 @@ export function useLessonContent(
   const [isOffline, setIsOffline] = useState(false);
 
   const doFetch = useCallback(async () => {
-    if (!enabled || !lessonId) return;
+    if (!lessonId) {
+      // A fetch was requested but no lesson can be identified: surface it
+      // instead of leaving the initial loading state in place forever.
+      setIsLoading(false);
+      setError('Lesson content is unavailable for this item.');
+      return;
+    }
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
 
     const cached = getCachedLesson(lessonId);
     if (cached) {
@@ -76,7 +87,7 @@ export function useLessonContent(
     setIsOffline(false);
 
     try {
-      const currentUser = await import('firebase/auth').then(m => m.getAuth().currentUser);
+      const currentUser = getAuth().currentUser;
       const userId = currentUser?.uid;
 
       const data = await fetchRagLesson({

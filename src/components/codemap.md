@@ -7,6 +7,7 @@
 ## Design
 - Components divide into routed/page surfaces, dashboard widgets, modal workflows, math-learning views, and role/navigation guards; state is local unless shared through contexts or service hooks.
 - Representative props/state: `ConfirmModal` receives open/title/message and callbacks; `ClassesOverviewMenu` receives class data and selection callback; `AppLoadingScreen` accepts loading text; stateful pages own selected tabs, filters, modal visibility, or form inputs.
+- Quiz contracts: `QuizExperience` accepts optional `previewMode` (default false); preview and retakes of completed quizzes stay local-only — `localOnlyRef` (seeded from `previewMode || quiz.completed`) suppresses persistence and rewards (`triggerQuizSubmitted`, `saveQuizResults`, `recordPracticeQuiz`, `saveAssessmentResult`, `onComplete`, `onQuizEnd`, hint fetch, XP display), and `finalizedRef`/`quizEndRef` guard duplicate timer/completion handling; the RETAKE button restarts a local-only session. `QuizMaker` runs a `setup → topics → style → preview → results` wizard, opens generated-quiz previews through the `GeneratedQuiz` contract (`openQuizPreview`/`openGeneratedPreview` with `as GeneratedQuiz` under a `// SAFETY` comment), and mounts them via `<QuizExperience previewMode>`.
 
 ## Flow
 - User navigates or acts on a page → page/component updates local state or calls its feature service/context → loading, content, empty, and error states render; modal callbacks return outcomes to their parent.
