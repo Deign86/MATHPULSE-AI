@@ -315,27 +315,19 @@ export async function saveQuizResults(
     submittedAt: serverTimestamp(),
   });
 
-  // Assigned quizzes are single-shot: read ownership state before creating any result records.
-  if (generatedQuizId && assignmentId && assignmentId !== generatedQuizId) {
-    const assignmentRef = doc(db, 'quizAssignments', assignmentId);
-    const completed = await runTransaction(db, async (transaction) => {
+  // Assigned quizzes are single-shot: read their state before creating a submission.
+  const shouldEmitSubmission = await runTransaction(db, async (transaction) => {
+    if (generatedQuizId && assignmentId && assignmentId !== generatedQuizId) {
+      const assignmentRef = doc(db, 'quizAssignments', assignmentId);
       const assignment = await transaction.get(assignmentRef);
       if (!assignment.exists() || assignment.data().status !== 'pending') return false;
 
-      const submissionRef = doc(collection(db, 'quizSubmissions'));
-      transaction.set(submissionRef, submissionPayload(submissionRef.id));
-      transaction.update(assignmentRef, {
-        status: 'completed',
-        completedAt: serverTimestamp(),
-        score,
-      });
-      return true;
-    });
-    if (!completed) return;
-  } else {
+    }
     const submissionRef = doc(collection(db, 'quizSubmissions'));
-    await setDoc(submissionRef, submissionPayload(submissionRef.id));
-  }
+    transaction.set(submissionRef, submissionPayload(submissionRef.id));
+    return true;
+  });
+  if (!shouldEmitSubmission) return;
 
   // Pipeline: emit quiz completion event (fire-and-forget)
   try {
