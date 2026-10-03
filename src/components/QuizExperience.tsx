@@ -221,6 +221,7 @@ interface QuizQuestion {
 
 interface QuizExperienceProps {
   quiz: Quiz;
+  previewMode?: boolean;
   onClose: () => void;
   /** Called with (score percent, XP earned) when quiz session completes — used for static quizzes */
   onComplete?: (score: number, xpEarned: number) => void;
@@ -323,7 +324,7 @@ function getPromptForType(questionType?: string): string {
   }
 }
 
-const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, onQuizEnd, studentId, atRiskSubjects = [] }) => {
+const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = false, onClose, onComplete, onQuizEnd, studentId, atRiskSubjects = [] }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [textAnswer, setTextAnswer] = useState('');
@@ -360,7 +361,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [wrongAttempted, setWrongAttempted] = useState(false);
   const [shakeCard, setShakeCard] = useState(false);
   const [showRoundResult, setShowRoundResult] = useState(false);
-  const { totalHintsAvailable } = useExtraHints(studentId || null);
+  const { totalHintsAvailable } = useExtraHints(previewMode ? null : studentId || null);
   const [keysCount, setKeysCount] = useState(5);
   const [heartsCount, setHeartsCount] = useState(15);
 
@@ -371,8 +372,20 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [nextHeartCountdown, setNextHeartCountdown] = useState(15 * 60 * 1000);
   const [failedOptions, setFailedOptions] = useState<number[]>([]);
    const [viewIndex, setViewIndex] = useState(0);
-   const [achievementPill, setAchievementPill] = useState<'streak' | 'multiplier2' | 'multiplier3' | null>(null);
+  const [achievementPill, setAchievementPill] = useState<'streak' | 'multiplier2' | 'multiplier3' | null>(null);
    const isSubmittingRef = useRef(false);
+   const finalizedRef = useRef(false);
+   const quizEndRef = useRef(false);
+   const localOnlyRef = useRef(previewMode);
+   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+   const startCountdownRef = useRef<() => void>(() => {});
+   const finalizeScoreRef = useRef<() => void>(() => {});
+   const onQuizEndRef = useRef(onQuizEnd);
+   const showResultsRef = useRef(showResults);
+   const answerRecordsRef = useRef(answerRecords);
+   onQuizEndRef.current = onQuizEnd;
+   showResultsRef.current = showResults;
+   answerRecordsRef.current = answerRecords;
 
   // Load AI questions or generate hardcoded fallback
   const [questions] = useState<QuizQuestion[]>(() => {
@@ -405,22 +418,33 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const currentQuestion = questions[currentQuestionIndex];
 
   // Timer
-  useEffect(() => {
-    const durationInMinutes = parseInt(quiz.duration) || 10; // Default to 10 minutes if invalid
-    setTimeRemaining(durationInMinutes * 60);
-
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
+  startCountdownRef.current = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setTimeRemaining((remaining) => {
+        if (remaining <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          timerRef.current = null;
           handleTimeUp();
           return 0;
         }
-        return prev - 1;
+        return remaining - 1;
       });
     }, 1000);
+  };
+  useEffect(() => {
+    const durationInMinutes = parseInt(quiz.duration) || 10; // Default to 10 minutes if invalid
+    setTimeRemaining(durationInMinutes * 60);
+    startCountdownRef.current();
 
-    return () => clearInterval(timer);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
+      if (showResultsRef.current && !quizEndRef.current && !localOnlyRef.current) {
+        quizEndRef.current = true;
+        onQuizEndRef.current?.(quiz, answerRecordsRef.current);
+      }
+    };
   }, []);
 
   // Detect when hearts hit 0
@@ -502,13 +526,21 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   };
 
   const handleTimeUp = () => {
+    if (finalizedRef.current && !localOnlyRef.current) return;
     setShowResults(true);
-    calculateFinalScore();
+    finalizeScoreRef.current();
+  };
+
+  const deliverCompletedAttempt = () => {
+    if (showResultsRef.current && !localOnlyRef.current && !quizEndRef.current) {
+      quizEndRef.current = true;
+      onQuizEnd?.(quiz, answerRecords);
+    }
   };
 
   /** Called when the user explicitly exits the results screen — fires onQuizEnd before closing */
   const handleFinish = () => {
-    onQuizEnd?.(quiz, answerRecords);
+    deliverCompletedAttempt();
     onClose();
   };
 
@@ -679,19 +711,24 @@ const newStreak = streak + 1;
   };
 
   const calculateFinalScore = () => {
+    if (finalizedRef.current && !localOnlyRef.current) return;
+    if (!localOnlyRef.current) finalizedRef.current = true;
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
     const percentage = Math.round((score / questions.length) * 100);
-    let xpEarned = quiz.xpReward;
+    const isLocalOnly = localOnlyRef.current;
+    let xpEarned = isLocalOnly ? 0 : quiz.xpReward;
 
     // Bonus XP for performance
-    if (percentage >= 90) {
+    if (!isLocalOnly && percentage >= 90) {
       xpEarned = Math.round(xpEarned * 1.5);
-    } else if (percentage >= 80) {
+    } else if (!isLocalOnly && percentage >= 80) {
       xpEarned = Math.round(xpEarned * 1.25);
     }
 
     // Bonus XP for speed (if completed with more than 50% time remaining)
     const totalTime = parseInt(quiz.duration) * 60;
-    if (timeRemaining > totalTime * 0.5) {
+    if (!isLocalOnly && timeRemaining > totalTime * 0.5) {
       xpEarned = Math.round(xpEarned * 1.2);
     }
 
@@ -700,7 +737,7 @@ const newStreak = streak + 1;
     const timeSpent = totalTime - timeRemaining;
 
     // Fire automation: quiz submitted
-    if (studentId) {
+    if (!isLocalOnly && studentId) {
       triggerQuizSubmitted({
         lrn: studentId,
         quizId: quiz.id,
@@ -713,7 +750,7 @@ const newStreak = streak + 1;
     }
 
     // Save detailed results for AI-generated quizzes
-    if (quiz.source === 'ai_generated' && studentId) {
+    if (!isLocalOnly && quiz.source === 'ai_generated' && studentId) {
       saveQuizResults(
         studentId,
         quiz.id,
@@ -730,7 +767,7 @@ const newStreak = streak + 1;
           bloomLevel: q.bloomLevel || 'understand',
         })),
       ).catch((err) => console.error('[WARN] Quiz result save failed:', err));
-    } else if (studentId) {
+    } else if (!isLocalOnly && studentId) {
       // Persist static quiz attempts to progress (XP awarded by parent via onComplete callback)
       recordPracticeQuiz(
         studentId,
@@ -747,7 +784,7 @@ timeSpent,
     }
 
     // Persist to assessments subcollection for GradesPage visibility
-    if (studentId) {
+    if (!isLocalOnly && studentId) {
       import('../services/gradesService').then(({ saveAssessmentResult }) => {
         saveAssessmentResult({
           uid: studentId,
@@ -768,8 +805,9 @@ timeSpent,
 playSound('complete');
 
     // Notify parent of completion with score and XP
-    onComplete?.(percentage, xpEarned);
+    if (!isLocalOnly) onComplete?.(percentage, xpEarned);
     };
+  finalizeScoreRef.current = calculateFinalScore;
 
   const isCurrentlyAnswered = viewIndex < currentQuestionIndex || (viewIndex === currentQuestionIndex && showExplanation);
   const viewedQuestion = questions[viewIndex] || currentQuestion;
@@ -843,7 +881,7 @@ playSound('complete');
                 <h3 className="text-slate-400 text-[9px] font-black uppercase tracking-widest text-left mb-1.5 ml-1">Performance Details</h3>
                 <div className="space-y-1.5">
                   <AnimatedCounter value={score} label="Correct Answers" delay={500} icon={<Check className="h-3 w-3 text-emerald-500" />} />
-                  <AnimatedCounter value={totalXP} label="Total XP Earned" delay={800} icon={<Zap className="h-3 w-3 text-amber-500" />} />
+                  <AnimatedCounter value={previewMode ? 0 : totalXP} label="Total XP Earned" delay={800} icon={<Zap className="h-3 w-3 text-amber-500" />} />
                   
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -862,6 +900,7 @@ playSound('complete');
                <Button
                  size="lg"
                  onClick={() => {
+                    deliverCompletedAttempt();
                     isSubmittingRef.current = false;
                     setCurrentQuestionIndex(0);
                     setViewIndex(0);
@@ -873,6 +912,9 @@ playSound('complete');
                     setAnswers([]);
                     setAnswerRecords([]);
                     setCurrentPoints(0);
+                    localOnlyRef.current = true;
+                    setTimeRemaining((parseInt(quiz.duration) || 10) * 60);
+                    startCountdownRef.current();
                     setShowResults(false);
                     setShowExplanation(false);
                     setUserRequestedExplanation(false);
@@ -989,7 +1031,7 @@ playSound('complete');
               <h2 className="text-3xl md:text-4xl font-black mb-4 uppercase tracking-widest text-emerald-500 text-balance">Correct!</h2>
               <div className="flex flex-col items-center gap-3 w-full justify-center">
                 <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full font-bold border border-emerald-500/30 tabular-nums">
-                   <span>+ {(eliminatedByHint[currentQuestionIndex] || []).length > 0 ? 5 : 10} XP</span>
+                   <span>{localOnlyRef.current ? 'Preview' : `+ ${(eliminatedByHint[currentQuestionIndex] || []).length > 0 ? 5 : 10} XP`}</span>
                 </div>
                 {achievementPill === 'streak' && (
                   <div className="flex items-center gap-2 bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-full text-sm font-bold border border-orange-500/30 tabular-nums">
@@ -1310,7 +1352,7 @@ playSound('complete');
             <p className="text-sm text-slate-500 text-center">Your progress will be reset and you'll need to start over.</p>
             <div className="w-full flex flex-col gap-2">
               <button onClick={() => setShowLeaveConfirm(false)} className="w-full py-3 bg-[#9956DE] hover:bg-[#8544c7] text-white font-bold rounded-full transition-all motion-reduce:transition-none active:scale-[0.98]">Stay</button>
-              <button onClick={() => { setShowLeaveConfirm(false); onClose(); }} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-all motion-reduce:transition-none active:scale-[0.98]">Leave Quiz</button>
+              <button onClick={() => { setShowLeaveConfirm(false); handleFinish(); }} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full transition-all motion-reduce:transition-none active:scale-[0.98]">Leave Quiz</button>
             </div>
           </motion.div>
         </div>

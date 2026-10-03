@@ -1,8 +1,8 @@
 import { db } from '../lib/firebase';
 import {
   collection, doc, setDoc, getDoc, getDocs,
-  query, where, orderBy, updateDoc, deleteDoc,
-  serverTimestamp,
+  query, where, orderBy, updateDoc, deleteDoc, arrayUnion, writeBatch,
+  runTransaction, serverTimestamp,
 } from 'firebase/firestore';
 import type {
   GeneratedQuiz,
@@ -81,34 +81,39 @@ export async function deleteGeneratedQuiz(quizId: string): Promise<void> {
 
 export async function assignQuizToStudent(
   quizId: string,
-  lrn: string,
+  studentUid: string,
   teacherId: string,
 ): Promise<void> {
-  // Update quiz status
-  await updateDoc(doc(db, 'generatedQuizzes', quizId), {
+  const quizRef = doc(db, 'generatedQuizzes', quizId);
+  const assignmentRef = doc(collection(db, 'quizAssignments'));
+  const batch = writeBatch(db);
+
+  batch.update(quizRef, {
     status: 'assigned' satisfies GeneratedQuizStatus,
-    'metadata.assignedTo': lrn,
+    'metadata.assignedTo': studentUid,
+    recipientUids: arrayUnion(studentUid),
     assignedBy: teacherId,
     assignedAt: serverTimestamp(),
   });
 
-  // Create assignment record
-  const assignmentRef = doc(collection(db, 'quizAssignments'));
-  await setDoc(assignmentRef, {
+  batch.set(assignmentRef, {
     quizId,
-    lrn,
+    // `lrn` is the historical field name; assignment ownership uses the student's Auth UID.
+    lrn: studentUid,
     teacherId,
     status: 'pending',
     assignedAt: serverTimestamp(),
     dueDate: null,
   });
 
+  await batch.commit();
+
   // Send notification to the student's scoped inbox. Teachers may create
   // student-appropriate items in a student's subcollection (see
   // firestore.rules); cross-user writes of teacher-only types stay denied.
   const { notify } = await import('@/features/notifications');
   await notify({
-    userId: lrn,
+    userId: studentUid,
     type: 'quiz_assigned',
     title: 'New Quiz Assigned',
     message: 'Your teacher has assigned you a new quiz. Complete it to earn XP!',
@@ -171,9 +176,11 @@ export interface PlayableQuiz {
   loadedQuestions: AIQuizQuestion[];
   source: 'ai_generated' | 'adaptive' | 'hardcoded';
   generatedQuizId: string;
+  /** Assignment document id; quiz `id` is set to this for the result-save handoff. */
+  assignmentId?: string;
 }
 
-export function toPlayableQuiz(gen: GeneratedQuiz): PlayableQuiz {
+export function toPlayableQuiz(gen: GeneratedQuiz, assignmentId: string): PlayableQuiz {
   const diffBreak = gen.metadata.difficultyBreakdown;
   const dominantDiff: 'Easy' | 'Medium' | 'Hard' =
     diffBreak.hard >= diffBreak.medium && diffBreak.hard >= diffBreak.easy
@@ -185,7 +192,7 @@ export function toPlayableQuiz(gen: GeneratedQuiz): PlayableQuiz {
   const mins = Math.max(5, Math.ceil(gen.questions.length * 1.5));
 
   return {
-    id: gen.id,
+    id: assignmentId,
     title: gen.title,
     subject: gen.metadata.topicsCovered[0] ?? 'Mathematics',
     difficulty: dominantDiff,
@@ -198,17 +205,18 @@ export function toPlayableQuiz(gen: GeneratedQuiz): PlayableQuiz {
     loadedQuestions: gen.questions,
     source: 'ai_generated',
     generatedQuizId: gen.id,
+    assignmentId,
   };
 }
 
 // ─── FETCH PENDING QUIZZES FOR STUDENT ───────────────────────
 
-export async function fetchPendingQuizzesForStudent(lrn: string): Promise<PlayableQuiz[]> {
+export async function fetchPendingQuizzesForStudent(studentUid: string): Promise<PlayableQuiz[]> {
   let assignmentsSnap;
   try {
     const assignmentsQuery = query(
       collection(db, 'quizAssignments'),
-      where('lrn', '==', lrn),
+      where('lrn', '==', studentUid),
       where('status', '==', 'pending'),
       orderBy('assignedAt', 'desc'),
     );
@@ -218,7 +226,7 @@ export async function fetchPendingQuizzesForStudent(lrn: string): Promise<Playab
 
     const fallbackQuery = query(
       collection(db, 'quizAssignments'),
-      where('lrn', '==', lrn),
+      where('lrn', '==', studentUid),
       where('status', '==', 'pending'),
     );
     assignmentsSnap = await getDocs(fallbackQuery);
@@ -229,7 +237,7 @@ export async function fetchPendingQuizzesForStudent(lrn: string): Promise<Playab
   for (const assignDoc of assignmentsSnap.docs) {
     const { quizId } = assignDoc.data();
     const gen = await fetchGeneratedQuiz(quizId);
-    if (gen) quizzes.push(toPlayableQuiz(gen));
+    if (gen) quizzes.push(toPlayableQuiz(gen, assignDoc.id));
   }
 
   return quizzes;
@@ -238,17 +246,17 @@ export async function fetchPendingQuizzesForStudent(lrn: string): Promise<Playab
 // ─── FETCH ADAPTIVE QUIZ ────────────────────────────────────
 
 export async function fetchAdaptiveQuiz(
-  lrn: string,
+  studentUid: string,
   subject: string,
 ): Promise<PlayableQuiz | null> {
   try {
     const data = await apiFetch<{ questions?: AIQuizQuestion[] }>('/api/quiz/adaptive-select', {
       method: 'POST',
-      body: JSON.stringify({ lrn, topicId: subject, numQuestions: 10 }),
+      body: JSON.stringify({ lrn: studentUid, topicId: subject, numQuestions: 10 }),
     });
 
     return {
-      id: `adaptive_${lrn}_${Date.now()}`,
+      id: `adaptive_${studentUid}_${Date.now()}`,
       title: `Adaptive ${subject} Quiz`,
       subject,
       difficulty: 'Medium',
@@ -270,8 +278,8 @@ export async function fetchAdaptiveQuiz(
 // ─── SAVE QUIZ RESULTS ──────────────────────────────────────
 
 export async function saveQuizResults(
-  lrn: string,
-  quizId: string,
+  studentUid: string,
+  assignmentId: string,
   generatedQuizId: string | undefined,
   subject: string,
   source: string,
@@ -281,12 +289,12 @@ export async function saveQuizResults(
   answers: QuizAnswerRecord[],
   questionsMeta: { topic: string; difficulty: string; bloomLevel: string }[],
 ): Promise<void> {
-  const submissionRef = doc(collection(db, 'quizSubmissions'));
-
-  await setDoc(submissionRef, {
-    submissionId: submissionRef.id,
-    lrn,
-    quizId,
+  const submissionPayload = (submissionId: string) => ({
+    submissionId,
+    studentId: studentUid,
+    // `lrn` is retained for the legacy submission schema, but stores the Auth UID.
+    lrn: studentUid,
+    quizId: generatedQuizId ?? assignmentId,
     generatedQuizId: generatedQuizId ?? null,
     subject,
     source,
@@ -307,31 +315,26 @@ export async function saveQuizResults(
     submittedAt: serverTimestamp(),
   });
 
-  // Mark assignment as completed if this was an assigned quiz
-  if (generatedQuizId) {
-    const assignmentsQuery = query(
-      collection(db, 'quizAssignments'),
-      where('quizId', '==', generatedQuizId),
-      where('lrn', '==', lrn),
-    );
-    const snap = await getDocs(assignmentsQuery);
+  // Assigned quizzes are single-shot: read ownership state before creating any result records.
+  if (generatedQuizId && assignmentId && assignmentId !== generatedQuizId) {
+    const assignmentRef = doc(db, 'quizAssignments', assignmentId);
+    const completed = await runTransaction(db, async (transaction) => {
+      const assignment = await transaction.get(assignmentRef);
+      if (!assignment.exists() || assignment.data().status !== 'pending') return false;
 
-    for (const d of snap.docs) {
-      await updateDoc(d.ref, {
+      const submissionRef = doc(collection(db, 'quizSubmissions'));
+      transaction.set(submissionRef, submissionPayload(submissionRef.id));
+      transaction.update(assignmentRef, {
         status: 'completed',
         completedAt: serverTimestamp(),
         score,
       });
-    }
-
-    // Also update GeneratedQuiz status
-    try {
-      await updateDoc(doc(db, 'generatedQuizzes', generatedQuizId), {
-        status: 'completed' satisfies GeneratedQuizStatus,
-      });
-    } catch {
-      // non-critical
-    }
+      return true;
+    });
+    if (!completed) return;
+  } else {
+    const submissionRef = doc(collection(db, 'quizSubmissions'));
+    await setDoc(submissionRef, submissionPayload(submissionRef.id));
   }
 
   // Pipeline: emit quiz completion event (fire-and-forget)
@@ -340,10 +343,10 @@ export async function saveQuizResults(
     const ctx = getStudentContext();
     if (ctx) {
       emitPipelineEvent({
-        student_id: lrn,
+        student_id: studentUid,
         event_type: 'quiz',
         event_data: {
-          quiz_id: quizId,
+          quiz_id: generatedQuizId ?? assignmentId,
           topic: questionsMeta[0]?.topic ?? subject,
           score,
           total_questions: answers.length,
@@ -360,11 +363,11 @@ export async function saveQuizResults(
 
 // ─── GET STUDENT COMPETENCY ─────────────────────────────────
 
-export async function getStudentCompetency(lrn: string) {
+export async function getStudentCompetency(studentUid: string) {
   try {
     return await apiFetch('/api/quiz/student-competency', {
       method: 'POST',
-      body: JSON.stringify({ lrn }),
+      body: JSON.stringify({ lrn: studentUid }),
     });
   } catch {
     return null;

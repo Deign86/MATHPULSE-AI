@@ -148,4 +148,13 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm run lint
       - run: npm run build
-      - run: npm test
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm install -g firebase-tools
+      - name: Run functions tests under emulators
+        env:
+          GCLOUD_PROJECT: demo-mathpulse
+          GOOGLE_CLOUD_PROJECT: demo-mathpulse
+        run: firebase emulators:exec --project demo-mathpulse --only firestore,database "npm run build && node --test --test-concurrency=1 \"lib/**/*.test.js\""

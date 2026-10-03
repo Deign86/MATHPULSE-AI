@@ -1857,4 +1857,100 @@ Requirement: chats must retain memory of other convos/sessions (Q3 covered same-
   EXPECT: /passed|Found 0 errors|exit code 0/
   EVIDENCE: Both tsc and oxlint passed with exit code 0 and 0 errors; full test suite passed 56/56 test files (347 tests).
 
+---
+
+# Gates: Phase 2 Regression Harness
+
+Baseline commands and observed results are recorded below. Phase 3 owns the pending regression tests; the listed existing files are the intended extension points. Vitest discovers `src/**/*.{test,spec}.{ts,tsx}` from `vitest.config.ts`.
+
+## Baselines
+
+- Frontend — `npx vitest run`: 62 files and 375 tests passed; 133.46s.
+- Backend runtime — `python -m pytest backend/tests`: 423 passed, 2 warnings; 147.49s. This is the baseline for Lane B suites.
+- Backend repository-root invocation — `python -m pytest`: blocked during collection by `test-results/test-config-files.txt` failing UTF-8 decode at byte 0 (`0xff`); 428 collected, 1 collection error. Root-wide suite is unbaselined; do not classify that error as a backend test failure.
+- Functions clean-output baseline — deleted ignored `functions/lib`, ran `npm run build`, then `npm test`: 57 tests passed, 0 failed. Clean output contains no compiled `manualTriggers.test.js` or `onQuizSubmitted.test.js`.
+- Stale-output evidence only — before removing ignored `functions/lib`, `npm test` reported 59 total, 57 passed, 2 failed. Orphan titles were `authorized manual quiz path invokes the processor with a trusted staff flag` (`reprocessManualQuizSubmission is not a function`) and `quiz submission identity requires studentId and lrn to match caller UID` (`matchesQuizSubmissionIdentity is not a function`). These came from stale ignored artifacts and are not a Phase 4 allowance.
+
+## Phase 3 results (2026-10-01)
+- Lane A frontend: 7 touched-path suites, 46 tests passed; anti-slop + diff-check passed. IAR component-boundary + FE-battle gaps documented per gate below.
+- Lane B backend: `pytest backend/tests` 433 passed / 0 failed / 2 warnings; diff-check passed. 25 newly classified routes annotated where handlers lack role/ownership checks (Gate 3 risk).
+- Lane C functions: build passed; `npm test` 56 passed / 3 failed / 0 skipped — all 3 fail on emulator unavailability (fail-not-skip per spec). Anti-slop passed.
+- Functions default suite is RED without emulators by design; Phase 4 must attempt the emulator run before judging FN gates.
+- Gate 3 remediation (2026-10-01): Lane S prod authz fixes (RAG destructive→admin, at-risk ownership) + `pytest backend/tests` 438/0; Lane T RTDB ns/TCP-probe/reset fixes + new firestoreRules.emulator.test.ts, single identity `demo-mathpulse` (battle emulator test aligned; matches the documented command); Lane U IAR loop collapsed→direct derivation, FE-battle via real page, valid-workbook integration. `git diff --check` clean.
+- Phase 4 hardening (2026-10-01): Lane P serialization (battle joins shared lock, 30s bound; `--test-concurrency=1` in FN-rules-RTDB command); Lane Q3 `assessmentPersistence.test.ts` (persist/resume, denied read, reset-clear, persisted unlock; 2 files / 10 tests pass). Emulator execution + full validation pending.
+- Final validation (2026-10-01): `npx vitest run` 64 files / 395 passed; `pytest backend/tests` 438 passed / 0 failed; functions emulator execution 64/64 on main, 70/70 on PR tree (Firestore 1.22.0, RTDB 4.11.2; Firestore:8081 workaround for occupied 8080); `tsc --noEmit` clean; `lint:anti-slop` clean; gate-check 334 gates: 293 met / 41 abandoned / 0 unmet; `git diff --check` clean; no vectorstore binary diffs.
+
+## Frontend — Vitest
+
+- [x] FE-IAR: assessment gating, derivation branches, persist/resume/reset service contracts, and no premature unlock in `src/components/assessment/AssessmentHub.test.tsx` + `src/services/__tests__/assessmentPersistence.test.ts`.
+  CHECK: npx vitest run src/components/assessment/AssessmentHub.test.tsx src/services/__tests__/assessmentPersistence.test.ts
+  EXPECT: /Test Files\s+2 passed/
+  EVIDENCE: 2026-10-01 Lane U+Q3 + matrix lane — loop collapsed; direct derivation + lock/unlock + resume (6 tests) + assessmentPersistence.test.ts (round-trip, denied-read propagation, reset-clear, supplied-state derivation; 11 tests in file, all pass). Matrix lane added 6 derivation cases + reset→`not_started` + persisted `completed`. COMPLETE for reachable states — unreachability proven: `deriveIARAssessmentState` returns only `placed`/`deep_diagnostic_in_progress`/`deep_diagnostic_required`/`completed`; repo-wide writer search shows nothing persists `in_progress`/`skipped_unassessed` and backend never touches the field. Testing those two would invent behavior, so they stay documented dead members.
+- [x] FE-auth: RequireRole render and denied-role behavior in `src/components/RequireRole.test.tsx`.
+  CHECK: npx vitest run src/components/RequireRole.test.tsx
+  EXPECT: /Test Files\s+1 passed/
+  EVIDENCE: 2026-10-01 Lane A — matrix extended (allowed-role cases + loading-to-role-flip denial); 9 tests passed within the 7-file / 46-test touched-path run.
+- [x] FE-battle: submit response consumption, duplicate submission, and deadline client behavior in `src/components/__tests__/QuizBattleProfileRefresh.test.tsx` + `src/services/__tests__/quizBattleSubmit.test.ts`.
+  CHECK: npx vitest run src/components/__tests__/QuizBattleProfileRefresh.test.tsx src/services/__tests__/quizBattleSubmit.test.ts
+  EXPECT: /Test Files\s+2 passed/
+  EVIDENCE: 2026-10-01 Lane U — real-page test extended (duplicate client submission + expired-round server-state resolution, 2 tests pass); 13 existing timer-guard tests pass. Persisted finalization tracked under FN-battle.
+- [x] FE-import: workbook-to-consumer and invalid-no-commit coverage in `src/features/import/services/shsExcel/parser/__tests__/validateWorkbook.test.ts` and `src/features/import/hooks/__tests__/useWorkbookImport.test.tsx`.
+  CHECK: npx vitest run src/features/import/services/shsExcel/parser/__tests__/validateWorkbook.test.ts src/features/import/hooks/__tests__/useWorkbookImport.test.tsx
+  EXPECT: /Test Files\s+2 passed/
+  EVIDENCE: 2026-10-01 Lane A+U — invalid workbooks stay non-committable (4 tests) + VALID generated workbook through the real parser/hook asserting consumer entities + confirmation eligibility (2 tests in hook suite). Valid integration now covered.
+- [x] FE-transport: retry, refresh, terminal denial, timeout, and mutation replay in `src/services/__tests__/apiServiceTransport.test.ts`.
+  CHECK: npx vitest run src/services/__tests__/apiServiceTransport.test.ts
+  EXPECT: /Test Files\s+1 passed/
+  EVIDENCE: 2026-10-01 Lane A — mutation retry/body replay, terminal 403, 401→refresh, timeout cases added; 8 tests passed.
+- [x] FE-notifs: client ingestion and deduplication in `src/features/notifications/NotificationContext.test.tsx`.
+  CHECK: npx vitest run src/features/notifications/NotificationContext.test.tsx
+  EXPECT: /Test Files\s+1 passed/
+  EVIDENCE: 2026-10-01 Lane A — duplicate-subscription ingestion/dedupe added; 7 tests passed.
+
+## Backend — pytest
+
+- [x] BE-auth: reviewed ROLE_POLICIES expected table, route classification, and middleware allow/deny in `backend/tests/test_audit_remediation.py` and `backend/tests/role_policy_expectations.py`.
+  CHECK: python -m pytest backend/tests/test_audit_remediation.py
+  EXPECT: /= [0-9]+ passed(?:, [0-9]+ warnings?)? in/
+  EVIDENCE: 2026-10-01 Lane S — `pytest backend/tests` 438 passed / 0 failed. PROD FIX: destructive RAG routes admin-only (`main.py` policies), at-risk caller-ownership + staff access (`at_risk_resolution.py`); denial tests prove vectorstore/Firestore NOT called on 403 (owner + teacher-access pass); exceptions triaged public vs authenticated-only vs truly handler-guarded; 401/403 deduped to one family.
+- [x] BE-RAG: empty-context fallback and grounding behavior in `backend/tests/test_rag_pipeline.py` and `backend/tests/test_rag_lesson_jev.py`.
+  CHECK: python -m pytest backend/tests/test_rag_pipeline.py backend/tests/test_rag_lesson_jev.py
+  EXPECT: /= [0-9]+ passed(?:, [0-9]+ warnings?)? in/
+  EVIDENCE: 2026-10-01 Lane B2+S — same 438/0 run. Fallback-chain test (exact→subject/quarter→general) + empty-context fail-closed (generation not called) passed.
+- [x] BE-transport: timeout and terminal error behavior in `backend/tests/test_api.py`.
+  CHECK: python -m pytest backend/tests/test_api.py
+  EXPECT: /= [0-9]+ passed(?:, [0-9]+ warnings?)? in/
+  EVIDENCE: 2026-10-01 Lane B2+S — same 438/0 run. Missing-bearer terminal 401, wrong-role terminal 403, request-timeout terminal 504 passed (deduplicated authoritative family).
+
+## Functions — TypeScript build and Node test runner
+
+- [x] FN-battle: production submission duplicate/deadline/replay and persisted XP cap/reset in `functions/src/triggers/quizBattleSubmit.characterization.test.ts` and `functions/src/scoring/scoringEngine.test.ts`.
+  CHECK: npm test --prefix functions
+  EXPECT: /^# fail 0$/m
+  EVIDENCE: 2026-10-01 emulator execution VERIFIED — expired-round resolution + repeated-finalization XP/totals/counters/history invariance pass (expired fixture needed prod-schema `keys` field — test-side fix); full suite 64/64 green.
+- [x] FN-scoring: persisted daily cap and rollover in `functions/src/scoring/scoringEngine.test.ts`.
+  CHECK: npm test --prefix functions
+  EXPECT: /^# fail 0$/m
+  EVIDENCE: 2026-10-01 — per Oracle, no separate duplicate test: persisted cap/rollover VERIFIED via the FN-battle finalization invariant under emulators; full suite 64/64 green.
+- [x] FN-notifs: notification fan-out, replay dedupe, and partial failure in `functions/src/utils/sendPush.test.ts`.
+  CHECK: npm test --prefix functions
+  EXPECT: /^# fail 0$/m
+  EVIDENCE: 2026-10-01 emulator execution VERIFIED — fan-out + replay-dedupe + partial-failure retry pass; full suite 64/64 green.
+- [x] FN-rules-RTDB: authenticated Firestore/RTDB allow-deny operations in `functions/src/firestoreRules.emulator.test.ts` and `functions/src/realtimeDatabaseRules.test.ts`.
+  CHECK: npx firebase emulators:exec --project demo-mathpulse --only firestore,database "npm --prefix functions run build && node --test --test-concurrency=1 "functions/lib/**/*.test.js""
+  EXPECT: /^# fail 0$/m
+  EVIDENCE: 2026-10-01 emulator execution VERIFIED — RTDB 401 root-caused to auth transport (`auth_variable_override` left auth null in rule evaluation; test JWT via `?auth=` works — harness-only fix, NO rules/prod change, debug-proven); Firestore ownership/escalation/server-only/notifs + RTDB identity/validation/owner-delete all pass; full suite 64/64 green (Firestore 1.22.0, RTDB 4.11.2; Firestore:8081 workaround for occupied 8080). CI `functions` job now runs the same serialized invocation (setup-java Temurin 21 + `emulators:exec`), so emulator tests stay green in CI instead of failing without emulators.
+
+## Harness boundaries
+
+Use the existing RequireRole render, quizBattle submit strings, scoringEngine daily-cap, sendPush, validateWorkbook baseDetection, curriculumJoin, test_audit_remediation TestClient, and conftest.py auth setup. Do not introduce shared cross-runtime fixtures, production testability abstractions, browser E2E, or runner migration. Functions remains `tsc` plus `node --test`; Firebase RTDB emulator port is 9000 and top-level database rules config owns the rules file.
+
+- [x] H-ANTI-SLOP: touched files pass anti-slop lint.
+  CHECK: npm run lint:anti-slop
+  EVIDENCE: npm run lint:anti-slop exited 0; Oxlint reported no errors.
+- [x] H-RTDB: RTDB emulator port is configured without duplicate rules-path configuration.
+  CHECK: node -e "const c=JSON.parse(require('node:fs').readFileSync('firebase.json')); if(c.emulators.database.port!==9000 || c.emulators.database.rules) process.exit(1); console.log('RTDB config ok')"
+  EXPECT: RTDB config ok
+  EVIDENCE: RTDB emulator uses port 9000; database.rules.json remains configured only at the top level.
+
 

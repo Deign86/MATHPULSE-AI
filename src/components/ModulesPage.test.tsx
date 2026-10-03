@@ -24,6 +24,7 @@ vi.spyOn(firestore, 'onSnapshot').mockImplementation((() => vi.fn()) as typeof f
 
 const testUserProfile: StudentProfile = {
   uid: 'user-1',
+  lrn: 'school-lrn-1',
   email: 'user-1@example.test',
   name: 'Test Student',
   role: 'student',

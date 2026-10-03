@@ -15,7 +15,7 @@ const isText = <T>(value: T): value is T & string => typeof value === "string";
 
 const isNumber = <T>(value: T): value is T & number => typeof value === "number";
 import { processDiagnosticCompletion } from "../automations/diagnosticProcessor";
-import { processQuizSubmission } from "../automations/quizProcessor";
+import { processQuizSubmission, type QuizSubmissionData } from "../automations/quizProcessor";
 import {
   BackfillMode,
   runCurriculumVersionBackfill,
@@ -169,7 +169,7 @@ export const manualProcessQuiz = functions.https.onCall(
 
     const db = admin.firestore();
 
-    // Verify caller is teacher/admin
+// Verify caller is teacher/admin
     const callerDoc = await db.collection("users").doc(context.auth.uid).get();
     const callerRole = callerDoc.data()?.role;
     if (callerRole !== "teacher" && callerRole !== "admin") {
@@ -198,14 +198,14 @@ export const manualProcessQuiz = functions.https.onCall(
     }
 
     try {
-      await processQuizSubmission({
+      await reprocessManualQuizSubmission(resultId, {
         lrn,
-        quizId: quizData.quizId || resultId,
+        quizId: quizData.quizId,
         subject: quizData.subject,
         score: quizData.score,
-        totalQuestions: quizData.totalQuestions || 0,
-        correctAnswers: quizData.correctAnswers || 0,
-        timeSpentSeconds: quizData.timeSpentSeconds || 0,
+        totalQuestions: quizData.totalQuestions,
+        correctAnswers: quizData.correctAnswers,
+        timeSpentSeconds: quizData.timeSpentSeconds,
         answers: quizData.answers,
       });
 
@@ -301,6 +301,40 @@ interface ManualReassessmentCallableContext {
   auth?: {
     uid: string;
   } | null;
+}
+
+export function buildAuthorizedManualQuizSubmission(
+  resultId: string,
+  quizData: {
+    lrn: string;
+    quizId?: string;
+    subject: string;
+    score: number;
+    totalQuestions?: number;
+    correctAnswers?: number;
+    timeSpentSeconds?: number;
+    answers?: any[];
+  },
+): QuizSubmissionData {
+  return {
+    authorizedStaffOperation: true,
+    lrn: quizData.lrn,
+    quizId: quizData.quizId || resultId,
+    subject: quizData.subject,
+    score: quizData.score,
+    totalQuestions: quizData.totalQuestions || 0,
+    correctAnswers: quizData.correctAnswers || 0,
+    timeSpentSeconds: quizData.timeSpentSeconds || 0,
+    answers: quizData.answers,
+  };
+}
+
+export async function reprocessManualQuizSubmission(
+  resultId: string,
+  quizData: Parameters<typeof buildAuthorizedManualQuizSubmission>[1],
+  processor: (submission: QuizSubmissionData) => Promise<void> = processQuizSubmission,
+): Promise<void> {
+  await processor(buildAuthorizedManualQuizSubmission(resultId, quizData));
 }
 
 interface ManualRequestReassessmentHandlerInput {
