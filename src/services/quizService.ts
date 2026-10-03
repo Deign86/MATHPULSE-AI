@@ -2,7 +2,7 @@ import { db } from '../lib/firebase';
 import {
   collection, doc, setDoc, getDoc, getDocs,
   query, where, orderBy, updateDoc, deleteDoc,
-  serverTimestamp,
+  serverTimestamp, runTransaction,
 } from 'firebase/firestore';
 import type {
   GeneratedQuiz,
@@ -281,58 +281,52 @@ export async function saveQuizResults(
   answers: QuizAnswerRecord[],
   questionsMeta: { topic: string; difficulty: string; bloomLevel: string }[],
 ): Promise<void> {
-  const submissionRef = doc(collection(db, 'quizSubmissions'));
-
-  await setDoc(submissionRef, {
-    submissionId: submissionRef.id,
-    lrn,
-    quizId,
-    generatedQuizId: generatedQuizId ?? null,
-    subject,
-    source,
-    score,
-    xpEarned,
-    totalTime,
-    answers,
-    correctCount: answers.filter((a) => a.correct).length,
-    totalQuestions: answers.length,
-    questionBreakdown: answers.map((a, i) => ({
-      questionId: a.questionId,
-      topic: questionsMeta[i]?.topic ?? subject,
-      difficulty: questionsMeta[i]?.difficulty ?? 'medium',
-      bloomLevel: questionsMeta[i]?.bloomLevel ?? 'understand',
-      correct: a.correct,
-      timeSpent: a.timeSpent,
-    })),
-    submittedAt: serverTimestamp(),
-  });
-
-  // Mark assignment as completed if this was an assigned quiz
-  if (generatedQuizId) {
-    const assignmentsQuery = query(
+  const assignmentsQuery = generatedQuizId
+    ? query(
       collection(db, 'quizAssignments'),
       where('quizId', '==', generatedQuizId),
       where('lrn', '==', lrn),
-    );
-    const snap = await getDocs(assignmentsQuery);
+    )
+    : null;
 
-    for (const d of snap.docs) {
-      await updateDoc(d.ref, {
-        status: 'completed',
-        completedAt: serverTimestamp(),
-        score,
-      });
+  const assignments = assignmentsQuery ? (await getDocs(assignmentsQuery)).docs : [];
+
+  const shouldEmitSubmission = await runTransaction(db, async (transaction) => {
+    const assignmentSnapshots = await Promise.all(assignments.map((assignment) => transaction.get(assignment.ref)));
+    const pendingAssignments = assignments.filter((_, index) => assignmentSnapshots[index].data()?.status === 'pending');
+    if (assignments.length > 0 && pendingAssignments.length === 0) {
+      return false;
     }
 
-    // Also update GeneratedQuiz status
-    try {
-      await updateDoc(doc(db, 'generatedQuizzes', generatedQuizId), {
-        status: 'completed' satisfies GeneratedQuizStatus,
-      });
-    } catch {
-      // non-critical
-    }
-  }
+    const submissionRef = doc(collection(db, 'quizSubmissions'));
+    transaction.set(submissionRef, {
+      submissionId: submissionRef.id,
+      lrn,
+      quizId,
+      generatedQuizId: generatedQuizId ?? null,
+      subject,
+      source,
+      score,
+      xpEarned,
+      totalTime,
+      answers,
+      correctCount: answers.filter((a) => a.correct).length,
+      totalQuestions: answers.length,
+      questionBreakdown: answers.map((a, i) => ({
+        questionId: a.questionId,
+        topic: questionsMeta[i]?.topic ?? subject,
+        difficulty: questionsMeta[i]?.difficulty ?? 'medium',
+        bloomLevel: questionsMeta[i]?.bloomLevel ?? 'understand',
+        correct: a.correct,
+        timeSpent: a.timeSpent,
+      })),
+      submittedAt: serverTimestamp(),
+    });
+
+    return true;
+  });
+
+  if (!shouldEmitSubmission) return;
 
   // Pipeline: emit quiz completion event (fire-and-forget)
   try {
