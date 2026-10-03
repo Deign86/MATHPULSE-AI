@@ -7,6 +7,8 @@ from pydantic import ValidationError
 from main import app
 from routes.rag_routes import RagLessonRequest, _strip_thinking_and_parse
 
+pytestmark = pytest.mark.usefixtures("isolated_mock_student_auth")
+
 client = TestClient(app)
 
 

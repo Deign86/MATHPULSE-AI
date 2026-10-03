@@ -1,9 +1,12 @@
 """Weighted Risk Index API boundaries and classification regressions."""
 
 from fastapi.testclient import TestClient
+import pytest
 
 from main import app
 from routes.risk_router import _get_wri_service
+
+pytestmark = pytest.mark.usefixtures("isolated_mock_student_auth")
 
 client = TestClient(app)
 

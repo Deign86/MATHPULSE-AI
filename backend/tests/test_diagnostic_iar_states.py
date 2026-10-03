@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from main import app
 from routes.diagnostic import _compute_domain_scores, _is_diagnostic_correct
 
+pytestmark = pytest.mark.usefixtures("isolated_mock_student_auth")
+
 client = TestClient(app)
 IAR_STATES = {
     "not_started",

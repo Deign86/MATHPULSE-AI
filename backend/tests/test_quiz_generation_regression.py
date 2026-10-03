@@ -7,6 +7,8 @@ from pydantic import ValidationError
 from main import app
 from routes.quiz_generation_routes import QuizGenerationRequest, _build_quiz_generation_prompt
 
+pytestmark = pytest.mark.usefixtures("isolated_mock_student_auth")
+
 client = TestClient(app)
 
 
