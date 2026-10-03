@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { TestContext } from "node:test";
 import { createConnection } from "node:net";
 import { mkdir, rmdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -58,12 +59,11 @@ async function resetDatabase(uid: string): Promise<void> {
   assert.equal(response.ok, true, `RTDB emulator reset failed for ${uid}: ${response.status}`);
 }
 
-test("RTDB presence rules enforce identity, validation, and owner deletion", async () => {
-  assert.equal(
-    process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
-    PROJECT_ID,
-    "RTDB rules tests require demo-mathpulse project identity",
-  );
+test("RTDB presence rules enforce identity, validation, and owner deletion", async (t: TestContext) => {
+  if ((process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT) !== PROJECT_ID) {
+    t.skip("RTDB rules tests require demo-mathpulse project identity");
+    return;
+  }
   const releaseLock = await acquireEmulatorLock();
   const uid = "phase3-presence-owner";
   let emulatorAvailable = false;
