@@ -5,6 +5,7 @@
 
 import { initializeApp, cert } from 'firebase-admin/app';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { z } from 'zod';
 import path from 'path';
 
 initializeApp({
@@ -13,6 +14,8 @@ initializeApp({
 
 const db = getFirestore();
 const APPLY = process.argv.includes('--apply');
+const assignmentRecipientsSchema = z.object({ quizId: z.string(), lrn: z.string() });
+const legacyRecipientSchema = z.string();
 
 async function main(): Promise<void> {
   const recipientByQuiz = new Map<string, Set<string>>();
@@ -22,8 +25,9 @@ async function main(): Promise<void> {
   let orphans = 0;
 
   for (const assignment of assignments.docs) {
-    const { quizId, lrn } = assignment.data();
-    if (typeof quizId !== 'string' || typeof lrn !== 'string' || !lrn) continue;
+    const parsedAssignment = assignmentRecipientsSchema.safeParse(assignment.data());
+    if (!parsedAssignment.success || !parsedAssignment.data.lrn) continue;
+    const { quizId, lrn } = parsedAssignment.data;
     if (!quizIds.has(quizId)) {
       orphans += 1;
       console.warn(`[backfill-quiz-assignment-recipients] orphan assignment=${assignment.id} quizId=${quizId}`);
@@ -35,8 +39,9 @@ async function main(): Promise<void> {
   }
 
   for (const quiz of quizzes.docs) {
-    const legacyRecipient = quiz.get('metadata.assignedTo');
-    if (typeof legacyRecipient !== 'string' || !legacyRecipient) continue;
+    const parsedLegacyRecipient = legacyRecipientSchema.safeParse(quiz.get('metadata.assignedTo'));
+    if (!parsedLegacyRecipient.success || !parsedLegacyRecipient.data) continue;
+    const legacyRecipient = parsedLegacyRecipient.data;
     const recipients = recipientByQuiz.get(quiz.id) ?? new Set<string>();
     recipients.add(legacyRecipient);
     recipientByQuiz.set(quiz.id, recipients);

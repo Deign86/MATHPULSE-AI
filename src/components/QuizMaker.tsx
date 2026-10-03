@@ -1081,6 +1081,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
   const openGeneratedPreview = () => {
     if (!quizResult) return;
+    // SAFETY: buildGeneratedQuiz supplies the generated quiz fields required by the preview contract.
     openQuizPreview({
       id: savedQuizId || 'generated-preview',
       ...buildGeneratedQuiz(quizResult),

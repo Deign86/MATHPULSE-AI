@@ -52,9 +52,7 @@ test("push delivery retains successes across retry and deduplicates delivered to
   const messaging = admin.messaging(app);
   const originalSend = messaging.sendEachForMulticast;
   let phase: "partial" | "retry" = "partial";
-  let calls = 0;
   messaging.sendEachForMulticast = async (message) => {
-    calls += 1;
     if (phase === "partial") {
       return {
         responses: message.tokens.map((token) => token !== "token-retry"
