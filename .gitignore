@@ -57,6 +57,7 @@ env/
 .mypy_cache/
 
 # Tool / runtime caches
+.e2e/
 .tmp/
 tmp/
 temp/
