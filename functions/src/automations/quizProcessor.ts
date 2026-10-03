@@ -20,6 +20,9 @@ import { createNotification } from "./notificationSender";
 // ─── Types ────────────────────────────────────────────────────
 
 export interface QuizSubmissionData {
+  callerUid?: string;
+  /** Only trusted server-side staff workflows may explicitly bypass caller/target equality. */
+  authorizedStaffOperation?: boolean;
   lrn: string;
   quizId: string;
   subject: string;
@@ -62,7 +65,11 @@ export interface RemedialQuizConfig {
 export async function processQuizSubmission(
   data: QuizSubmissionData,
 ): Promise<void> {
-  const { lrn, subject, score, quizId } = data;
+  const { callerUid, authorizedStaffOperation = false, lrn, subject, score, quizId } = data;
+  if (!authorizedStaffOperation && (!callerUid || callerUid !== lrn)) {
+    functions.logger.warn("Quiz submission caller does not match target; skipping", { callerUid, lrn });
+    return;
+  }
   const db = admin.firestore();
 
   functions.logger.info("[QUIZ] Processing quiz submission", {
@@ -95,6 +102,13 @@ export async function processQuizSubmission(
   }
 
   const userData = userSnap.data()!;
+  if (userSnap.id !== lrn || userData.role !== "student") {
+    functions.logger.warn("Quiz submission target is not a student", { lrn, role: userData.role });
+    return;
+  }
+  // `lrn` is the target user document UID throughout processing; never trust a
+  // secondary identity from the submitted payload for writes or notifications.
+  const targetUid = userSnap.id;
   const existingBadges: Record<string, string> = userData.subjectBadges || {};
   const existingClassifications: admin.firestore.DocumentData = userData.riskClassifications || {};
   const existingAtRisk: string[] = userData.atRiskSubjects || [];
@@ -125,7 +139,7 @@ export async function processQuizSubmission(
   if (previousStatus && previousStatus !== newStatus) {
     const direction = newStatus === "At Risk" ? "dropped to" : "improved to";
     await createNotification({
-      userId: lrn,
+      userId: targetUid,
       type: NOTIFICATION_TYPES.GRADE,
       title: `${subject} Status Changed`,
       message: `Your ${subject} status ${direction} ${newStatus} after scoring ${score}%.`,

@@ -6,44 +6,54 @@
  * and updates the student profile.
  */
 
-import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
+import { onDocumentCreatedWithAuthContext } from "firebase-functions/v2/firestore";
 import { processQuizSubmission } from "../automations/quizProcessor";
 
-export const onQuizSubmitted = functions.firestore
-  .document("quizResults/{resultId}")
-  .onCreate(async (snapshot, context) => {
-    const resultId = context.params.resultId;
+export function matchesQuizSubmissionIdentity(
+  callerUid: string | undefined,
+  studentId: string | undefined,
+  lrn: string | undefined,
+): callerUid is string {
+  return Boolean(callerUid && studentId === callerUid && lrn === callerUid);
+}
+
+export const onQuizSubmitted = onDocumentCreatedWithAuthContext(
+  "quizResults/{resultId}",
+  async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) return null;
+    const resultId = event.params.resultId;
     const quizData = snapshot.data();
+    const callerUid = event.authId;
     const lrn: string | undefined = quizData.lrn;
+    const studentId: string | undefined = quizData.studentId;
 
     // Validate required fields
-    if (!lrn || !quizData.subject || quizData.score === undefined) {
-      functions.logger.warn("Quiz result missing required fields, skipping", {
+    if (!matchesQuizSubmissionIdentity(callerUid, studentId, lrn) || !quizData.subject || quizData.score === undefined) {
+      console.warn("Quiz result missing caller identity or required fields, skipping", {
         resultId,
+        hasCallerUid: !!callerUid,
+        hasStudentId: !!studentId,
         hasLrn: !!quizData.lrn,
         hasSubject: !!quizData.subject,
         hasScore: quizData.score !== undefined,
       });
       return null;
     }
+    const targetUid = callerUid;
 
-    functions.logger.info("[QUIZ] Quiz result created", {
+    console.info("[QUIZ] Quiz result created", {
       resultId,
-      lrn,
+      targetUid,
       subject: quizData.subject,
       score: quizData.score,
     });
 
     try {
-      // Mark as processing
-      await snapshot.ref.update({
-        automationProcessed: true,
-        automationProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
       await processQuizSubmission({
-        lrn,
+        callerUid: targetUid,
+        lrn: targetUid,
         quizId: quizData.quizId || resultId,
         subject: quizData.subject,
         score: quizData.score,
@@ -53,12 +63,17 @@ export const onQuizSubmitted = functions.firestore
         answers: quizData.answers,
       });
 
-      functions.logger.info("[OK] Quiz submission processed", {
+      await snapshot.ref.update({
+        automationProcessed: true,
+        automationProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.info("[OK] Quiz submission processed", {
         resultId,
-        lrn,
+        targetUid,
       });
     } catch (error: any) {
-      functions.logger.error("[ERROR] Quiz submission processing failed", {
+      console.error("[ERROR] Quiz submission processing failed", {
         resultId,
         error: error.message,
       });
@@ -70,4 +85,5 @@ export const onQuizSubmitted = functions.firestore
     }
 
     return null;
-  });
+  },
+);
