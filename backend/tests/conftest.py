@@ -8,6 +8,7 @@ This conftest:
 
 import sys
 import os
+from types import SimpleNamespace
 
 import pytest
 
@@ -102,3 +103,23 @@ def _mock_firebase_auth():
     except Exception:
         pass
     yield
+
+
+@pytest.fixture
+def isolated_mock_student_auth(monkeypatch):
+    """Give authorization regression tests stable, request-specific Firebase roles."""
+    import main as main_module
+
+    def verify_id_token(token: str) -> dict:
+        token_uid = token.removeprefix("mock_token_")
+        role = "teacher" if "teacher" in token or "auth" in token else "student"
+        return {
+            "uid": token_uid or "test-user-id",
+            "sub": token_uid or "test-user-id",
+            "email": f"{token_uid or 'test'}@test.mathpulse.ai",
+            "role": role,
+        }
+
+    monkeypatch.setattr(main_module, "_firebase_ready", True)
+    monkeypatch.setattr(main_module, "_init_firebase_admin", lambda: None)
+    monkeypatch.setattr(main_module, "firebase_auth", SimpleNamespace(verify_id_token=verify_id_token))

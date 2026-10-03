@@ -10,6 +10,8 @@ from main import app
 from routes.intervention_routes import CompleteStepRequest, GenerateRequest
 from routes.pipeline_routes import PipelineEventPayload
 
+pytestmark = pytest.mark.usefixtures("isolated_mock_student_auth")
+
 client = TestClient(app)
 
 
