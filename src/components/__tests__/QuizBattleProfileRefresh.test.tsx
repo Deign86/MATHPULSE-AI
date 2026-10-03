@@ -122,7 +122,7 @@ const ProfileRefreshHarness: React.FC<ProfileRefreshHarnessProps> = ({ refreshPr
 };
 
 describe('QuizBattlePage profile refresh after match completion', () => {
-  it('updates header XP after delayed profile refresh without reloading', async () => {
+  it('consumes the submit response once and updates header XP after delayed profile refresh', async () => {
     let releaseProfileWrite: (() => void) | undefined;
     const profileWrite = new Promise<void>((resolve) => {
       releaseProfileWrite = resolve;
@@ -147,7 +147,7 @@ describe('QuizBattlePage profile refresh after match completion', () => {
     vi.spyOn(quizBattleService, 'startQuizBattleMatch').mockResolvedValue(liveMatch);
     vi.spyOn(quizBattleService, 'submitQuizBattleAnswer').mockResolvedValue({
       success: true,
-      duplicate: false,
+      duplicate: true,
       roundResult: null,
       completion: { outcome: 'win', xpEarned: 50 },
       match: completedMatch,
@@ -167,6 +167,11 @@ describe('QuizBattlePage profile refresh after match completion', () => {
       return matchingButton;
     });
     fireEvent.click(answerButton);
+    fireEvent.click(answerButton);
+
+    await waitFor(() => {
+      expect(quizBattleService.submitQuizBattleAnswer).toHaveBeenCalledTimes(1);
+    });
 
     await waitFor(() => {
       expect(refreshProfile).toHaveBeenCalledTimes(1);
@@ -180,6 +185,37 @@ describe('QuizBattlePage profile refresh after match completion', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('header-xp')).toHaveTextContent('150 XP');
+    });
+  });
+
+  it('resolves an expired round from the server match state', async () => {
+    const refreshProfile = vi.fn(async () => undefined);
+    vi.spyOn(quizBattleService, 'resumeQuizBattleSession').mockResolvedValue({
+      success: true,
+      sessionType: 'idle',
+    });
+    vi.spyOn(quizBattleService, 'getStudentBattleStats').mockResolvedValue(battleStats);
+    vi.spyOn(quizBattleService, 'getStudentBattleHistory').mockResolvedValue([]);
+    vi.spyOn(quizBattleService, 'getStudentBattleLeaderboard').mockResolvedValue([]);
+    vi.spyOn(quizBattleService, 'createQuizBattleBotMatch').mockResolvedValue({
+      success: true,
+      matchId: liveMatch.matchId,
+      status: 'ready',
+      botDifficulty: 'medium',
+    });
+    vi.spyOn(quizBattleService, 'startQuizBattleMatch').mockResolvedValue({
+      ...liveMatch,
+      roundDeadlineAtMs: Date.now() - 1,
+    });
+    vi.spyOn(quizBattleService, 'getQuizBattleMatchState').mockResolvedValue(completedMatch);
+
+    render(<ProfileRefreshHarness refreshProfile={refreshProfile} />);
+    fireEvent.click(screen.getByRole('button', { name: /VS Bot/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start Battle' }));
+
+    await waitFor(() => {
+      expect(quizBattleService.getQuizBattleMatchState).toHaveBeenCalledWith(liveMatch.matchId);
+      expect(refreshProfile).toHaveBeenCalledTimes(1);
     });
   });
 });

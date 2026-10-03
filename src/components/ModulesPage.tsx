@@ -251,8 +251,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   useEffect(() => {
     if (activeTab !== 'practice') return;
-    const lrn = studentProfile?.lrn || userProfile?.uid;
-    if (!lrn) {
+    const studentUid = userProfile?.uid;
+    if (!studentUid) {
       setPendingQuizzes([]);
       setPendingQuizzesLoading(false);
       setPendingQuizzesLoaded(true);
@@ -263,7 +263,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     setPendingQuizzesLoading(true);
     setPendingQuizzesLoaded(false);
     setPendingQuizzesError(false);
-    fetchPendingQuizzesForStudent(lrn)
+    fetchPendingQuizzesForStudent(studentUid)
       .then((quizzes) => {
         if (!cancelled) {
           setPendingQuizzes(quizzes);
@@ -700,9 +700,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         }}
         onComplete={handleQuizComplete}
         onQuizEnd={practiceQuizEndRef.current ?? undefined}
-        studentId={selectedQuiz.source === 'ai_generated' && selectedQuiz.generatedQuizId
-          ? studentProfile?.lrn || userProfile?.uid
-          : userProfile?.uid}
+        studentId={userProfile?.uid}
       />
     );
   }

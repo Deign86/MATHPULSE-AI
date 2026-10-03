@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as rateLimitHandler from '../../utils/rateLimitHandler';
+import { auth } from '../../lib/firebase';
 import { ApiError } from '../apiUtils';
 
 /**
@@ -20,6 +21,7 @@ const { apiFetch } = await import('../apiService');
 const NO_RETRY = { maxRetries: 0, timeoutMs: 2_000, baseBackoffMs: 0 };
 
 const fetchMock = vi.fn();
+const originalCurrentUserDescriptor = Object.getOwnPropertyDescriptor(auth, 'currentUser');
 
 function lastRequestInit() {
   const call = fetchMock.mock.calls.at(-1);
@@ -36,6 +38,9 @@ describe('apiService transport', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    if (originalCurrentUserDescriptor) {
+      Object.defineProperty(auth, 'currentUser', originalCurrentUserDescriptor);
+    }
   });
 
   it('defaults to a JSON content type and returns the parsed body', async () => {
@@ -83,5 +88,72 @@ describe('apiService transport', () => {
 
     expect(handleRateLimitSpy).toHaveBeenCalledTimes(1);
     expect(handleRateLimitSpy.mock.calls[0][1]).toBe('/api/limited');
+  });
+
+  it('retries a mutation with the same payload after a retryable server response', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response('try again', { status: 503, statusText: 'Unavailable' }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ accepted: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+    const request = { method: 'POST', body: JSON.stringify({ answer: 2, key: 'round-1' }) };
+
+    await expect(apiFetch('/api/battle/answer', request, {
+      maxRetries: 1,
+      timeoutMs: 2_000,
+      baseBackoffMs: 0,
+    })).resolves.toEqual({ accepted: true });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][1]?.body).toBe(request.body);
+    expect(fetchMock.mock.calls[1][1]?.body).toBe(request.body);
+  });
+
+  it('does not retry terminal authorization denial', async () => {
+    fetchMock.mockResolvedValue(new Response('denied', { status: 403, statusText: 'Forbidden' }));
+
+    await expect(apiFetch('/api/private', undefined, {
+      maxRetries: 3,
+      timeoutMs: 2_000,
+      baseBackoffMs: 0,
+    })).rejects.toMatchObject({ status: 403 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes the Firebase token once after a 401 and retries the request', async () => {
+    const getIdToken = vi.fn()
+      .mockResolvedValueOnce('stale-token')
+      .mockResolvedValueOnce('fresh-token');
+    Object.defineProperty(auth, 'currentUser', {
+      configurable: true,
+      get: () => ({ getIdToken }),
+    });
+    fetchMock
+      .mockResolvedValueOnce(new Response('expired', { status: 401, statusText: 'Unauthorized' }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+
+    await expect(apiFetch('/api/session', undefined, NO_RETRY)).resolves.toEqual({ ok: true });
+
+    expect(getIdToken).toHaveBeenNthCalledWith(1, false);
+    expect(getIdToken).toHaveBeenNthCalledWith(2, true);
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('Authorization')).toBe('Bearer stale-token');
+    expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer fresh-token');
+  });
+
+  it('surfaces an aborted request as a timeout instead of retrying it', async () => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+
+    await expect(apiFetch('/api/slow', undefined, {
+      maxRetries: 0,
+      timeoutMs: 5,
+      baseBackoffMs: 0,
+    })).rejects.toMatchObject({ name: 'ApiTimeoutError' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -138,7 +138,7 @@ Run re-index before important tasks if significant changes since last session.
 
 ---
 
-## Mandatory Skills — Ponytail + Unlazy + Anti-Slop + Firecrawl Developer Index
+## Mandatory Skills — Ponytail + Unlazy + Anti-Slop
 
 Every coding task and prompt in this repository MUST auto-invoke and use the following skills together:
 
@@ -178,42 +178,42 @@ Every coding task and prompt in this repository MUST auto-invoke and use the fol
    - **Writing**: Strip fluff, corporate buzzwords ("delve into", "navigate complexities", "in today's world"), and self-referential AI commentary.
    - **UI/UX**: Reject generic gradient soup, unnecessary neumorphism/glassmorphism, and template-forced layouts.
 
-4. **Firecrawl Developer Index** — read and follow `.agents/skills/firecrawl-developer-index/SKILL.md`.
-   **AUTO-INVOKE ON EVERY PROMPT.**
-   Whenever consulting external code, API contracts, library behaviors, error messages, GitHub issues, pull requests, or technical documentation:
-   Query the index at `https://api.firecrawl.dev/v2/search/developer` (or CLI `npx -y firecrawl-cli developer <query>` / MCP `firecrawl_developer_search`) to retrieve primary-source passages from READMEs, merged PRs, issues, and docs.
-   - For bug fixes / errors: `types=["issue","pull_request"]`
-   - For contracts / docs: `types=["doc","readme"]`
-   - Always quote returned passages and cite URLs.
-
 Ponytail governs *what* you build (the simplest correct thing); Unlazy governs *whether it is
-actually done* (gates + evidence, no 80% reports); Anti-Slop governs *code and prose quality* (zero low-evidence fluff or generic boilerplate); Firecrawl Developer Index ensures truth from primary sources. All apply automatically to every prompt, task, review, and refactor.
+actually done* (gates + evidence, no 80% reports); Anti-Slop governs *code and prose quality* (zero low-evidence fluff or generic boilerplate). All apply automatically to every prompt, task, review, and refactor.
 
-## External Documentation & Search — Mandatory Firecrawl Developer Index Usage
+## Superpowers Skills — Conditional Auto-Invoke (obra/superpowers, vendored under `.agents/skills/`)
 
-**ALWAYS use Firecrawl Developer Index when working with external libraries, APIs, frameworks, or error diagnostics.**
+The 15 Superpowers skills are installed repo-wide. Unlike the mandatory three above, they are NOT every-prompt.
+The orchestrator MUST consider them on every task and auto-invoke via the `skill` tool whenever the trigger
+matches — when in doubt, load `using-superpowers` first and let it route. Subagents executing a bounded task
+ignore this section (per-skill `SUBAGENT-STOP` rules still apply).
 
-When implementing features or debugging that use:
-- New npm packages or Python libraries
-- Framework APIs (React, FastAPI, Firebase, etc.)
-- Third-party services or SDKs
-- Any external dependency not covered in this AGENTS.md
-- Error strings, stack traces, upstream bug tracking, or PR resolutions
+- **using-superpowers** — load when starting any multi-step build/feature/deepwork session, or when unsure which
+  skill applies. Establishes the skill-check-before-task discipline.
+- **brainstorming** — before writing code for anything beyond a trivial edit: refine the idea socratically, present
+  the design in digestible sections, get user sign-off.
+- **writing-plans** — with an approved design: break work into bite-sized tasks with exact file paths and
+  verification steps. Prefer this over ad-hoc todo lists for builds.
+- **executing-plans / subagent-driven-development / dispatching-parallel-agents** — executing an approved plan:
+  inline for cheap work, subagent-per-task with review for thorough work, parallel lanes for independent work.
+- **test-driven-development** — during implementation: RED-GREEN-REFACTOR, failing test first. Complements (never
+  replaces) Unlazy gates — TDD proves the unit, gates prove the outcome.
+- **systematic-debugging** — any bug fix that survives a first attempt or lacks a clear root cause: 4-phase
+  root-cause process, no guessing.
+- **verification-before-completion** — before declaring any fix/feature done: prove it, then claim it. Pairs with
+  Unlazy evidence (`GATES.md` ledger remains the completion standard).
+- **requesting-code-review / receiving-code-review** — between implementation tasks and when review feedback lands.
+- **using-git-worktrees** — parallel or risky multi-lane work needing isolated branches. Pairs with the `worktrees`
+  skill for lane setup.
+- **finishing-a-development-branch** — when a branch's tasks complete: verify tests, present merge/PR/keep/discard.
+- **writing-skills** — creating or modifying repo skills (including Superpowers updates).
+- **diagnosing-superpowers** — when a session misbehaves (skill misfires, ignored plan, token burn): diagnose with
+  line-level evidence; use for "what went wrong with superpowers" requests.
 
-You MUST:
-1. Auto-invoke Firecrawl Developer Index (`npx -y firecrawl-cli developer <query>` or HTTP `https://api.firecrawl.dev/v2/search/developer`) to find primary sources (merged PRs, issues, READMEs, official docs).
-2. For error messages / stack traces: search with `types=["issue","pull_request"]`.
-3. For contracts / docs: search with `types=["doc","readme"]`.
-4. Never assume API behavior — always verify against primary sources with Firecrawl Developer Index and cite exact source URLs and passages.
-
-**Why:** Prevents hallucinations about library APIs, ensures correct usage patterns, and provides production-ready code examples verified from 70M+ primary open-source issues, PRs, and docs.
-
-**Triggers (auto-invoke on every prompt):**
-- "How do I use [library]?"
-- "What's the best practice for [framework feature]?"
-- Implementing unfamiliar npm/pip packages
-- Any question about external library behavior
-- Investigating any error message, exception, or bug fix
+Precedence: Ponytail still governs scope (smallest correct change); Unlazy `GATES.md` remains the definition of
+done; Anti-Slop still governs code/prose quality. Superpowers governs *how the work flows* (design → plan →
+TDD → review → verify). On conflict, mandatory-four wins; record the exception in the deepwork/session file.
+Update vendored skills with `git clone --depth 1 https://github.com/obra/superpowers.git` and re-copy `skills/`.
 
 ## UI Skills MCP — Mandatory UI Routing
 

@@ -71,4 +71,34 @@ describe('RequireRole guard (issue #156)', () => {
     expect(screen.queryByText('Student dashboard content')).not.toBeInTheDocument();
     expect(screen.getByText(/access denied/i)).toBeInTheDocument();
   });
+
+  it.each([
+    ['student', ['student']],
+    ['teacher', ['teacher']],
+    ['admin', ['admin']],
+  ] as const)('allows the %s role when explicitly listed', (role, allowed) => {
+    render(
+      <RequireRole allowed={[...allowed]} userRole={role} loading={false} onGoToLogin={vi.fn()}>
+        <div>Authorized dashboard</div>
+      </RequireRole>,
+    );
+    expect(screen.getByText('Authorized dashboard')).toBeInTheDocument();
+  });
+
+  it('keeps children hidden through the loading-to-role-flip race and denies the final role', () => {
+    const view = render(
+      <RequireRole allowed={['admin']} userRole="admin" loading onGoToLogin={vi.fn()}>
+        <div>Privileged content</div>
+      </RequireRole>,
+    );
+    expect(screen.queryByText('Privileged content')).not.toBeInTheDocument();
+
+    view.rerender(
+      <RequireRole allowed={['admin']} userRole="student" loading={false} onGoToLogin={vi.fn()}>
+        <div>Privileged content</div>
+      </RequireRole>,
+    );
+    expect(screen.queryByText('Privileged content')).not.toBeInTheDocument();
+    expect(screen.getByText(/access denied/i)).toBeInTheDocument();
+  });
 });
