@@ -1,46 +1,32 @@
-# Backend Tests Safe Runner
+# Backend Tests
 
-## Test Pollution Issue
-The test suite has pollution when run in default pytest order. Tests pass in isolation or in specific groupings.
+## Running the suite
 
-## Running Tests Safely
+The full suite runs green in default order — no ignores, subsets, or ordering workarounds needed:
 
-### Option 1: Run core API tests only (137 tests, all green)
 ```bash
 cd backend
-python -m pytest tests/test_api.py tests/test_rag_pipeline.py tests/test_quiz_battle.py tests/test_model_profiles.py -v
+python -m pytest tests/ -v --tb=short
 ```
 
-### Option 2: Run key test files in correct order
+Run with `PYTHONPATH=<repo>/backend` and UTF-8 mode enabled (this is what CI does). Targeted runs:
+
 ```bash
-python -m pytest tests/ -v --ignore=tests/test_video_routes.py --ignore=tests/test_admin_model_routes.py --ignore=tests/test_hf_monitoring_routes.py
+python -m pytest backend/tests/<module>.py -q  # from repo root
 ```
 
-### Option 3: Individual test files (all green individually)
-```bash
-# Each passes individually
-python -m pytest tests/test_api.py -v  # 90 passed
-python -m pytest tests/test_rag_pipeline.py -v  # 13 passed
-python -m pytest tests/test_quiz_battle.py -v  # 19 passed
-python -m pytest tests/test_model_profiles.py -v  # 15 passed
-python -m pytest tests/test_video_routes.py -v  # 11 passed
-python -m pytest tests/test_admin_model_routes.py -v  # 19 passed
-python -m pytest tests/test_hf_monitoring_routes.py -v  # 8 passed
-```
+Latest verified state: 579 passed, 0 failed.
 
-## Root Cause
-- Different test files set different auth roles at module level
-- `test_api.py`: teacher role
-- `test_video_routes.py`: was student, now teacher but client still uses admin token
-- `test_admin_model_routes.py`: was admin, now teacher but test setup differs
-- `test_hf_monitoring_routes.py`: was admin, tests need admin via separate client
+## Fixtures (`conftest.py`)
 
-## Fix Attempts
-1. conftest.py - doesn't work (MagicMock doesn't reset properly with @patch)
-2. Using pytest fixtures - doesn't work (@patch doesn't override MagicMock)
-3. Changing module-level auth - causes different tests to fail
+- Firebase auth / Firebase Admin test doubles, so no production credentials are needed.
+- Isolated-auth fixture: binds student/teacher claims per test module. Always apply it to auth-sensitive modules — suite-wide auth mocks previously leaked teacher claims into student cases (wrong role = wrong status codes, not real failures).
 
-## Status
-- 177/180 tests pass when run in safe combinations
-- 3 tests fail only when test_video_routes runs before test_api in default order
-- Tests pass individually or in safe groupings
+## Auth/authorization regression coverage
+
+- `test_role_policies_regression.py` — matrix over `ROLE_POLICIES`; expectations live in `role_policy_expectations.py`.
+- `test_diagnostic_iar_states.py`, `test_intervention_pipeline.py`, `test_quiz_battle_api.py`, `test_quiz_generation_regression.py`, `test_rag_regression.py`, `test_risk_wri_regression.py` — all assert 403-first rejection for unauthorized roles.
+
+## History (resolved)
+
+An older revision of this file described test pollution under default ordering (module-level auth roles, MagicMock resets). That failure mode is gone: the isolated-auth fixture plus per-module claim binding fixed it. If ordering failures ever return, check fixture isolation before reintroducing subsets or ignores.

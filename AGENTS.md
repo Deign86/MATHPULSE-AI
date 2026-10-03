@@ -39,11 +39,13 @@ Keep native write/edit/delete tools for file mutations when no lean-ctx replacem
 
 ## Known Scripts
 
+Full verification index (exact commands, cwd, env, worktree setup, CI triage): `TESTING.md`.
+
 ```bash
 # Frontend
 npm run dev            # Vite dev server (triggers predev → sync:models + check:backend:dev)
-npm run build          # Production build to dist/
-npm run test           # Vitest (all tests)
+npm run build          # Production build to build/ (vite.config.ts outDir)
+npm run test           # Vitest (`vitest run --passWithNoTests`; CI runs `npm test -- --run`)
 npm run lint           # ESLint
 npm run typecheck      # TypeScript type checking
 
@@ -55,9 +57,6 @@ cd functions && npm run build && npm test
 
 # Deploy frontend PWA
 npm run build
-npx firebase deploy --only hosting --project mathpulse-ai-2026
-
-# Deploy frontend PWA
 npx firebase deploy --only hosting --project mathpulse-ai-2026
 
 # Backend checks/deployment are handled by the selected backend platform.

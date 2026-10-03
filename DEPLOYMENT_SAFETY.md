@@ -86,6 +86,20 @@ CORS_ORIGINS=https://mathpulse-ai-2026.web.app
 
 Do not use wildcard CORS with credentials in production.
 
+## Environment and service catalog
+
+Which file each process reads (verified — do not re-derive):
+
+- Repository root `.env.local`: frontend `VITE_*` variables; `backend/main.py` also loads it at startup (model keys such as `DEEPSEEK_API_KEY` live here, never in `VITE_*` variables or the browser).
+- `backend/.env`: backend runtime configuration (exists alongside `backend/.env.example`).
+- `functions/.env.mathpulse-ai-2026`: loaded by `firebase-tools` at deploy time for the `mathpulse-ai-2026` project.
+- E2E only: `E2E_USER_{STUDENT,TEACHER,ADMIN}_{USERNAME,PASSWORD}` process env (see `TESTING.md`); never committed.
+
+Functions deploy prerequisites (all project-owner actions, none fixable in code):
+
+- EventArc API enabled (required since the Firestore 2nd-gen `onQuizSubmitted` trigger).
+- IAM bindings for the project service agents: `roles/iam.serviceAccountTokenCreator` on the pubsub service agent, `roles/run.invoker` + `roles/eventarc.eventReceiver` on the compute service agent. The deploy log prints the exact `gcloud projects add-iam-policy-binding` commands when they are missing.
+
 ## Deployment flow
 
 Deploy the `classRecordImports` composite index definition, then wait for Firebase to finish building it before relying on the query:

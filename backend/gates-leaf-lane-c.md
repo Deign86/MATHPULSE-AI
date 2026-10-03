@@ -8,4 +8,4 @@
   EXPECT: Lane C changes are limited to this gate file and the seven new test modules; existing unrelated dirty files are preserved.
   Evidence: status showed the seven new modules and gate file, plus pre-existing dirty `backend/main.py` and `backend/routes/at_risk_resolution.py`; neither production file nor `conftest.py` was edited in Lane C.
 
-Gate-check script evidence: `gate-check.mjs` was not present in the workspace, so the prescribed automated gate-check could not be run; pytest and the scoped status check above are recorded directly.
+Gate-check script evidence: `gate-check.mjs` exists at `.agents/skills/unlazy/scripts/gate-check.mjs`; run it as `node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md` (or per-leaf `gates/` file). The pytest evidence and the scoped status check above are recorded directly.
