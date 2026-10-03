@@ -143,7 +143,8 @@ test("Client quiz completion payload satisfies the create and pending-to-complet
   assert.deepEqual(identityFields, ["studentId", "lrn"]);
   assert.equal(clientPayload.studentId, callerUid);
   assert.equal(clientPayload.lrn, callerUid);
-  const oldLrnOnlyPayload = { lrn: callerUid } satisfies { studentId?: string; lrn: string };
+  type OldLrnOnlyPayload = { studentId?: string; lrn: string };
+  const oldLrnOnlyPayload: OldLrnOnlyPayload = { lrn: callerUid };
   assert.equal(identityFields.every((field) => field === "studentId"
     ? oldLrnOnlyPayload.studentId === callerUid
     : oldLrnOnlyPayload.lrn === callerUid), false);
