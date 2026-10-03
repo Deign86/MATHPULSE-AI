@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as automationService from '../services/automationService';
 import * as quizService from '../services/quizService';
 import * as progressService from '../services/progressService';
@@ -20,6 +20,12 @@ const previewQuiz: Quiz = {
 const assignedQuiz: Quiz = { ...previewQuiz, id: 'assigned-test', generatedQuizId: 'generated-assignment' };
 
 describe('QuizExperience preview mode', () => {
+  beforeEach(() => {
+    vi.spyOn(extraHints, 'useExtraHints').mockReturnValue({
+      extraHintsEnabled: false, hintTokens: 0, totalHintsAvailable: 0, loading: false,
+    });
+  });
+
   afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
   it('keeps normal completion and retake local', async () => {

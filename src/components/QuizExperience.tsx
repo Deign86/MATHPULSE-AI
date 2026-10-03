@@ -372,8 +372,12 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
   const [nextHeartCountdown, setNextHeartCountdown] = useState(15 * 60 * 1000);
   const [failedOptions, setFailedOptions] = useState<number[]>([]);
    const [viewIndex, setViewIndex] = useState(0);
-   const [achievementPill, setAchievementPill] = useState<'streak' | 'multiplier2' | 'multiplier3' | null>(null);
-   const isSubmittingRef = useRef(false);
+    const [achievementPill, setAchievementPill] = useState<'streak' | 'multiplier2' | 'multiplier3' | null>(null);
+    const isSubmittingRef = useRef(false);
+    const hasFinalizedRef = useRef(false);
+    const hasReportedQuizEndRef = useRef(false);
+    const hasRewardedAttemptRef = useRef(quiz.completed);
+    const isLocalRetakeRef = useRef(quiz.completed);
 
   // Load AI questions or generate hardcoded fallback
   const [questions] = useState<QuizQuestion[]>(() => {
@@ -509,7 +513,10 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
 
   /** Called when the user explicitly exits the results screen — fires onQuizEnd before closing */
   const handleFinish = () => {
-    if (!previewMode) onQuizEnd?.(quiz, answerRecords);
+    if (!previewMode && !isLocalRetakeRef.current && !hasReportedQuizEndRef.current) {
+      onQuizEnd?.(quiz, answerRecords);
+      hasReportedQuizEndRef.current = true;
+    }
     onClose();
   };
 
@@ -680,19 +687,24 @@ const newStreak = streak + 1;
   };
 
   const calculateFinalScore = () => {
+    if (hasFinalizedRef.current) return;
+    hasFinalizedRef.current = true;
+    const shouldRewardAttempt = !previewMode && !hasRewardedAttemptRef.current;
+    hasRewardedAttemptRef.current = true;
+
     const percentage = Math.round((score / questions.length) * 100);
-    let xpEarned = quiz.xpReward;
+    let xpEarned = shouldRewardAttempt ? quiz.xpReward : 0;
 
     // Bonus XP for performance
-    if (percentage >= 90) {
+    if (shouldRewardAttempt && percentage >= 90) {
       xpEarned = Math.round(xpEarned * 1.5);
-    } else if (percentage >= 80) {
+    } else if (shouldRewardAttempt && percentage >= 80) {
       xpEarned = Math.round(xpEarned * 1.25);
     }
 
     // Bonus XP for speed (if completed with more than 50% time remaining)
     const totalTime = parseInt(quiz.duration) * 60;
-    if (timeRemaining > totalTime * 0.5) {
+    if (shouldRewardAttempt && timeRemaining > totalTime * 0.5) {
       xpEarned = Math.round(xpEarned * 1.2);
     }
 
@@ -701,7 +713,7 @@ const newStreak = streak + 1;
     const timeSpent = totalTime - timeRemaining;
 
     // Fire automation: quiz submitted
-    if (!previewMode && studentId) {
+    if (shouldRewardAttempt && studentId) {
       triggerQuizSubmitted({
         lrn: studentId,
         quizId: quiz.id,
@@ -714,7 +726,7 @@ const newStreak = streak + 1;
     }
 
     // Save detailed results for AI-generated quizzes
-    if (!previewMode && quiz.source === 'ai_generated' && studentId) {
+    if (shouldRewardAttempt && quiz.source === 'ai_generated' && studentId) {
       saveQuizResults(
         studentId,
         quiz.id,
@@ -731,7 +743,7 @@ const newStreak = streak + 1;
           bloomLevel: q.bloomLevel || 'understand',
         })),
       ).catch((err) => console.error('[WARN] Quiz result save failed:', err));
-    } else if (!previewMode && studentId) {
+    } else if (shouldRewardAttempt && studentId) {
       // Persist static quiz attempts to progress (XP awarded by parent via onComplete callback)
       recordPracticeQuiz(
         studentId,
@@ -748,7 +760,7 @@ timeSpent,
     }
 
     // Persist to assessments subcollection for GradesPage visibility
-    if (!previewMode && studentId) {
+    if (shouldRewardAttempt && studentId) {
       import('../services/gradesService').then(({ saveAssessmentResult }) => {
         saveAssessmentResult({
           uid: studentId,
@@ -769,7 +781,7 @@ timeSpent,
 playSound('complete');
 
     // Notify parent of completion with score and XP
-    if (!previewMode) onComplete?.(percentage, xpEarned);
+    if (shouldRewardAttempt) onComplete?.(percentage, xpEarned);
     };
 
   const isCurrentlyAnswered = viewIndex < currentQuestionIndex || (viewIndex === currentQuestionIndex && showExplanation);
@@ -862,7 +874,13 @@ playSound('complete');
             <div className="flex flex-col gap-2">
                <Button
                  size="lg"
-                 onClick={() => {
+                  onClick={() => {
+                    if (!previewMode && !isLocalRetakeRef.current && !hasReportedQuizEndRef.current) {
+                      onQuizEnd?.(quiz, answerRecords);
+                      hasReportedQuizEndRef.current = true;
+                    }
+                    isLocalRetakeRef.current = true;
+                    hasFinalizedRef.current = false;
                     isSubmittingRef.current = false;
                     setCurrentQuestionIndex(0);
                     setViewIndex(0);
