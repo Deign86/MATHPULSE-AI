@@ -228,6 +228,7 @@ interface QuizExperienceProps {
   onQuizEnd?: (quiz: Quiz, answers: QuizAnswerRecord[]) => void;
   studentId?: string;
   atRiskSubjects?: string[];
+  previewMode?: boolean;
 }
 
 // ─── AI → Internal Question Converter ───────────────────────
@@ -323,7 +324,7 @@ function getPromptForType(questionType?: string): string {
   }
 }
 
-const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, onQuizEnd, studentId, atRiskSubjects = [] }) => {
+const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComplete, onQuizEnd, studentId, atRiskSubjects = [], previewMode = false }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [textAnswer, setTextAnswer] = useState('');
@@ -508,7 +509,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, onClose, onComple
 
   /** Called when the user explicitly exits the results screen — fires onQuizEnd before closing */
   const handleFinish = () => {
-    onQuizEnd?.(quiz, answerRecords);
+    if (!previewMode) onQuizEnd?.(quiz, answerRecords);
     onClose();
   };
 
@@ -700,7 +701,7 @@ const newStreak = streak + 1;
     const timeSpent = totalTime - timeRemaining;
 
     // Fire automation: quiz submitted
-    if (studentId) {
+    if (!previewMode && studentId) {
       triggerQuizSubmitted({
         lrn: studentId,
         quizId: quiz.id,
@@ -713,7 +714,7 @@ const newStreak = streak + 1;
     }
 
     // Save detailed results for AI-generated quizzes
-    if (quiz.source === 'ai_generated' && studentId) {
+    if (!previewMode && quiz.source === 'ai_generated' && studentId) {
       saveQuizResults(
         studentId,
         quiz.id,
@@ -730,7 +731,7 @@ const newStreak = streak + 1;
           bloomLevel: q.bloomLevel || 'understand',
         })),
       ).catch((err) => console.error('[WARN] Quiz result save failed:', err));
-    } else if (studentId) {
+    } else if (!previewMode && studentId) {
       // Persist static quiz attempts to progress (XP awarded by parent via onComplete callback)
       recordPracticeQuiz(
         studentId,
@@ -747,7 +748,7 @@ timeSpent,
     }
 
     // Persist to assessments subcollection for GradesPage visibility
-    if (studentId) {
+    if (!previewMode && studentId) {
       import('../services/gradesService').then(({ saveAssessmentResult }) => {
         saveAssessmentResult({
           uid: studentId,
@@ -768,7 +769,7 @@ timeSpent,
 playSound('complete');
 
     // Notify parent of completion with score and XP
-    onComplete?.(percentage, xpEarned);
+    if (!previewMode) onComplete?.(percentage, xpEarned);
     };
 
   const isCurrentlyAnswered = viewIndex < currentQuestionIndex || (viewIndex === currentQuestionIndex && showExplanation);
