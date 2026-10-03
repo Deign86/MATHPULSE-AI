@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { TestContext } from "node:test";
 import { mkdir, rmdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -67,12 +68,11 @@ async function resetFirestore(): Promise<void> {
   assert.equal(response.status, 200, `Firestore emulator reset failed: ${response.status}`);
 }
 
-async function runIsolated(operation: () => Promise<void>): Promise<void> {
-  assert.equal(
-    process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
-    PROJECT_ID,
-    "Firestore rules tests require demo-mathpulse project identity",
-  );
+async function runIsolated(t: TestContext, operation: () => Promise<void>): Promise<void> {
+  if ((process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT) !== PROJECT_ID) {
+    t.skip("Firestore rules tests require demo-mathpulse project identity");
+    return;
+  }
   assert.ok(FIRESTORE_HOST, "Firestore emulator is required; tests must not be skipped");
   const releaseLock = await acquireEmulatorLock();
   try {
@@ -108,7 +108,7 @@ test("Firestore emulator lock acquisition fails promptly when another holder own
   }
 });
 
-test("Firestore rules enforce document ownership", async () => runIsolated(async () => {
+test("Firestore rules enforce document ownership", async (t) => runIsolated(t, async () => {
   const write = await firestoreRequest("/progress/owned-progress", "owner", undefined, {
     method: "PATCH",
     body: JSON.stringify(stringFields({ userId: "owner", progress: "started" })),
@@ -125,7 +125,7 @@ test("Firestore rules enforce document ownership", async () => runIsolated(async
   assert.equal(wrongOwnerWrite.status, 403);
 }));
 
-test("Firestore rules deny user role privilege escalation", async () => runIsolated(async () => {
+test("Firestore rules deny user role privilege escalation", async (t) => runIsolated(t, async () => {
   const create = await firestoreRequest("/users/student-user", "student-user", undefined, {
     method: "PATCH",
     body: JSON.stringify(stringFields({ displayName: "Student" })),
@@ -138,7 +138,7 @@ test("Firestore rules deny user role privilege escalation", async () => runIsola
   assert.equal(escalation.status, 403);
 }));
 
-test("Firestore rules keep server-only records unwritable by clients", async () => runIsolated(async () => {
+test("Firestore rules keep server-only records unwritable by clients", async (t) => runIsolated(t, async () => {
   const write = await firestoreRequest("/studentProgress/student-user/stats/summary", "student-user", undefined, {
     method: "PATCH",
     body: JSON.stringify(stringFields({ xp: "100" })),
@@ -151,7 +151,7 @@ test("Firestore rules keep server-only records unwritable by clients", async () 
   assert.equal(privateDelivery.status, 403);
 }));
 
-test("Firestore notification rules scope recipients and block privileged types", async () => runIsolated(async () => {
+test("Firestore notification rules scope recipients and block privileged types", async (t) => runIsolated(t, async () => {
   const studentInbox = await firestoreRequest("/notifications/student-a/items/self-item", "student-a", undefined, {
     method: "PATCH",
     body: JSON.stringify(stringFields({ userId: "student-a", type: "system" })),

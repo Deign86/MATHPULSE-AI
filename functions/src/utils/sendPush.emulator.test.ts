@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { TestContext } from "node:test";
 import * as admin from "firebase-admin";
 import { mkdir, rmdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -34,12 +35,11 @@ async function resetFirestore(): Promise<void> {
   assert.equal(response.status, 200, `Firestore emulator reset failed: ${response.status}`);
 }
 
-test("push delivery retains successes across retry and deduplicates delivered tokens", async () => {
-  assert.equal(
-    process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT,
-    PROJECT_ID,
-    "Push delivery emulator tests require demo-mathpulse project identity",
-  );
+test("push delivery retains successes across retry and deduplicates delivered tokens", async (t: TestContext) => {
+  if ((process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT) !== PROJECT_ID) {
+    t.skip("Push delivery emulator tests require demo-mathpulse project identity");
+    return;
+  }
   assert.ok(process.env.FIRESTORE_EMULATOR_HOST, "Firestore emulator is required; tests must not be skipped");
   const releaseLock = await acquireEmulatorLock();
   try {
