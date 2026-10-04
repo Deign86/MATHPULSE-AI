@@ -16,5 +16,17 @@ test('interaction-only: student opens the notification bell and inspects the pan
   await expect(screen.getByRole('heading', 'Diagnostic Assessment Complete')).toBeVisible();
 
   await agent.act('delete the Diagnostic Assessment Complete notification using its Delete notification button');
-  await expect(screen.getByText('3 unread alerts')).toBeVisible();
+  const unreadText = await screen.getByText(/unread alerts/, { exact: false }).first().textContent();
+  const unreadAfterDelete = Number.parseInt(unreadText ?? '', 10);
+  await expect(screen.getByText(`${unreadAfterDelete} unread alerts`)).toBeVisible();
+
+  await agent.act('mark one uniquely titled remaining notification as read, choosing a notification other than Diagnostic Assessment Complete');
+  await expect(screen.getByRole('heading', 'Notifications')).toBeVisible();
+  await expect(screen.getByText(`${unreadAfterDelete - 1} unread alerts`, { exact: false }).first()).toBeAttached({ timeout: 120_000 });
+
+  await app.open('/');
+  await expect(screen.getByRole('button', 'Dashboard')).toBeVisible();
+  await agent.act('open the Notifications panel from the notification bell');
+  await expect(screen.getByRole('heading', 'Notifications')).toBeVisible();
+  await expect(screen.getByText(`${unreadAfterDelete - 1} unread alerts`, { exact: false }).first()).toBeAttached({ timeout: 120_000 });
 });

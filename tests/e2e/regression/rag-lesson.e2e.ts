@@ -14,5 +14,5 @@ test('student can open a curriculum module for a RAG lesson', async ({ app, agen
 
   await agent.act('open a visible mathematics module and select its first lesson without waiting for the lesson content to finish loading');
   await agent.waitFor('the lesson content has finished loading and lesson text is visible', { timeout: 300_000 });
-  await expect(screen.getByText(/Lesson|Objectives|Overview/i).first()).toBeVisible();
+  await expect(screen.getByText('Try It Yourself', { exact: false }).first()).toBeVisible();
 });

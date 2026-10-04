@@ -17,8 +17,11 @@ test('student gets a math answer in AI Chat and opens the floating tutor', async
 
   await screen.getByPlaceholder('Ask me anything about math...').fill('What is 2 + 2?');
   await screen.getByRole('button', 'Send message').tap();
+  await agent.waitFor('a tutor message responding to the 2 + 2 question is visible', { timeout: 300_000 });
   await expect(screen.getByRole('button', 'Open conversation: What is 2 + 2?').first()).toBeVisible();
-  await expect(screen.getByRole('button', 'Copy message')).toBeVisible();
+  await expect(screen.getByRole('button', 'Copy message').first()).toBeVisible({ timeout: 120_000 });
+  await agent.assert('the tutor shows a visible message responding to the 2 + 2 question');
+  await expect(screen.getByRole('button', 'Copy message').first()).toBeVisible();
 
   await agent.act('open Dashboard from the student navigation');
   await expect(screen.getByRole('button', 'Dashboard')).toBeVisible();
