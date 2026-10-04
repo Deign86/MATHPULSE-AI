@@ -36,6 +36,7 @@ test('persisted: admin creates a disposable account and removes it', async ({ ap
   await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible();
 
   await agent.act('open User Management from the admin navigation');
+  await expect(screen.getByRole('columnheader', 'User Identity')).toBeVisible({ timeout: 120_000 });
   await screen.getByRole('button', 'Add User').tap();
   await expect(screen.getByText('Full Name')).toBeVisible();
   await screen.getByPlaceholder('e.g. Maria Santos').fill(uniqueName);
@@ -50,8 +51,11 @@ test('persisted: admin creates a disposable account and removes it', async ({ ap
 
   await app.open('/');
   await agent.act('reopen User Management and search for the disposable account');
+  await expect(screen.getByRole('columnheader', 'User Identity')).toBeVisible({ timeout: 120_000 });
   await screen.getByPlaceholder('Search name, email, LRN…').fill(uniqueEmail);
   await expect(screen.getByRole('button', `Delete ${uniqueName}`)).toBeVisible({ timeout: 120_000 });
-  await agent.act('delete only the uniquely named disposable account and confirm its deletion');
-  await expect(screen.getByText(uniqueName, { exact: false })).not.toBeVisible({ timeout: 120_000 });
+  await screen.getByRole('button', `Delete ${uniqueName}`).tap();
+  await expect(screen.getByText('Delete User?', { exact: false })).toBeVisible();
+  await screen.getByRole('button', /^Delete$/).tap();
+  await expect(screen.getByRole('button', `Delete ${uniqueName}`)).not.toBeVisible({ timeout: 120_000 });
 });

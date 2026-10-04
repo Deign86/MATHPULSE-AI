@@ -17,7 +17,7 @@ export default {
         command: {
           executable: 'node',
           args: ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5173', '--strictPort'],
-          env: { VITE_API_URL: 'http://127.0.0.1:8000' },
+          env: { VITE_API_URL: 'http://127.0.0.1:8000', VITE_ENABLE_SW_IN_DEV: 'true' },
           log: '.e2e/logs/app.log',
         },
       },
