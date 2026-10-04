@@ -59,16 +59,18 @@ export const createCalendarEvent = async (
   },
 ): Promise<CalendarEvent> => {
   const eventRef = doc(collection(db, 'calendarEvents'));
+  // SAFETY: Firestore rejects explicit undefined field values — only attach
+  // optional fields when defined (TCH-064: saves failed on undefined optionals).
   const event: CalendarEvent = {
     id: eventRef.id,
     userId,
     title: payload.title,
-    description: payload.description,
     startTime: payload.startTime,
-    endTime: payload.endTime,
-    color: payload.color,
     createdAt: new Date(),
   };
+  if (payload.description !== undefined) event.description = payload.description;
+  if (payload.endTime !== undefined) event.endTime = payload.endTime;
+  if (payload.color !== undefined) event.color = payload.color;
 
   await setDoc(eventRef, {
     ...event,
@@ -84,8 +86,12 @@ export const updateCalendarEvent = async (
   updates: Partial<Pick<CalendarEvent, 'title' | 'description' | 'startTime' | 'endTime' | 'color'>>,
 ): Promise<void> => {
   const eventRef = doc(db, 'calendarEvents', eventId);
+  // SAFETY: Firestore updateDoc rejects explicit undefined values (TCH-064).
+  const cleanUpdates = Object.fromEntries(
+    Object.entries(updates).filter(([, value]) => value !== undefined),
+  );
   await updateDoc(eventRef, {
-    ...updates,
+    ...cleanUpdates,
     updatedAt: serverTimestamp(),
   });
 };

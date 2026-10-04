@@ -38,10 +38,42 @@ let _sharedConfig: PlatformSubjectsConfig | null = null;
 let _sharedLoading = true;
 let _sharedError: string | null = null;
 let _sharedUnsubscribers: Array<() => void> = [];
+let _sharedSubscribed = false;
 
 function _broadcastToAll() {
   // Force all hook instances to re-render with shared state
   _sharedUnsubscribers.forEach(fn => fn());
+}
+
+/**
+ * Apply a locally-known availability change immediately (ADM-095).
+ * Toggle writes show instantly instead of waiting for the snapshot
+ * roundtrip; the subscription later confirms the same value.
+ */
+export function applyLocalAvailability(subjectId: string, available: boolean): void {
+  const base = _sharedConfig;
+  const subjects = { ...(base?.subjects ?? {}) };
+  const current = subjects[subjectId];
+  subjects[subjectId] = {
+    available,
+    pdfPath: current?.pdfPath ?? null,
+    lastUpdated: new Date(),
+  };
+  _sharedConfig = {
+    subjects,
+    updatedAt: new Date(),
+    updatedBy: base?.updatedBy ?? '',
+  };
+  _broadcastToAll();
+}
+
+/** Reset singleton state (tests only). */
+export function resetSubjectAvailabilityForTests(): void {
+  _sharedConfig = null;
+  _sharedLoading = true;
+  _sharedError = null;
+  _sharedSubscribed = false;
+  _sharedUnsubscribers = [];
 }
 
 export function useSubjectAvailability(): UseSubjectAvailabilityResult {
@@ -58,8 +90,11 @@ export function useSubjectAvailability(): UseSubjectAvailabilityResult {
     };
     _sharedUnsubscribers.push(broadcaster);
 
-    // If no subscription exists yet, start one
-    if (!_sharedConfig && _sharedLoading) {
+    // Establish the shared subscription exactly once; independent of whether
+    // the initial fetch already resolved. A failed first load must not
+    // permanently disable live updates (ADM-095: stale switches).
+    if (!_sharedSubscribed) {
+      _sharedSubscribed = true;
       getSubjectAvailability()
         .then((initialConfig) => {
           _sharedConfig = initialConfig;
@@ -69,7 +104,6 @@ export function useSubjectAvailability(): UseSubjectAvailabilityResult {
         .catch((err) => {
           console.error('[useSubjectAvailability] initial fetch error:', err);
           _sharedError = 'Failed to load subject availability';
-          _sharedLoading = false;
           _broadcastToAll();
         });
 

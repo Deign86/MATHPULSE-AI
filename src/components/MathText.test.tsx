@@ -34,3 +34,23 @@ describe('MathText spacing (S7)', () => {
     expect(renderedText('What is the mean of 4, 7, and 12?')).toBe('What is the mean of 4, 7, and 12?');
   });
 });
+
+describe('MathText block mode (STU-012)', () => {
+  it('renders bare-subscript formula lines as KaTeX', () => {
+    const { container } = render(<MathText block>S_n = n/2 [2a + (n-1)d]</MathText>);
+    expect(container.querySelector('.katex')).not.toBeNull();
+  });
+
+  it('renders braced subscripts without mangling them', () => {
+    const { container } = render(<MathText block>{'a_n = a_{n-1} + 4'}</MathText>);
+    const katex = container.querySelector('.katex');
+    expect(katex).not.toBeNull();
+    expect(katex?.textContent).toContain('a');
+  });
+
+  it('leaves prose without equation signals alone even in spirit', () => {
+    expect(renderedText('Review your notes before the quiz')).toBe(
+      'Review your notes before the quiz',
+    );
+  });
+});

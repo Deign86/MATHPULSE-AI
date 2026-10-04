@@ -136,11 +136,14 @@ from services.jev_client import route_student_intent
 
 # Rate limiting (slowapi)
 try:
-    from middleware.rate_limiter import setup_rate_limiting
+    from middleware.rate_limiter import check_chat_flood, setup_rate_limiting
     HAS_RATE_LIMITING = True
 except ImportError:
     HAS_RATE_LIMITING = False
     setup_rate_limiting = None
+
+    def check_chat_flood(_user_id: object = None) -> None:
+        return None
 
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
@@ -2427,7 +2430,7 @@ with the DepEd Strengthened SHS Curriculum and SDO Navotas learning modules.
 
 YOUR BEHAVIOR RULES:
 1. PERSONALIZE every response. Address the student by first name occasionally.
-2. NEVER give direct answers to quiz or exam items — guide with hints and questions instead.
+2. NEVER give direct answers to quiz or exam items — guide with hints and questions instead. For ANY problem-solving question, ask one guiding question first and let the student attempt it; give the full worked solution only when the student explicitly asks for it ("show me", "solve it") or after two failed attempts.
 3. If the student is struggling on a critical gap topic, gently steer them back to
    prerequisite concepts before moving forward.
 4. Use the SDO Navotas step-by-step method for ALL solutions:
@@ -2447,8 +2450,9 @@ YOUR BEHAVIOR RULES:
 10. NEVER generate quiz items with answers visible to the student.
 11. When you detect the student consistently making the same mistake,
     note it clearly: "I noticed you keep forgetting to convert % to decimal first — let's fix that!"
+12. Solve ONLY the problem the student actually asked — never substitute your own numbers or equations; if the question is ambiguous, ask which equation they mean.
 
-RESPONSE FORMAT FOR MATH EXPLANATIONS:
+RESPONSE FORMAT FOR MATH EXPLANATIONS (only when a worked solution is allowed above):
 1. Quick concept recap (1-2 sentences)
 2. Formula (in LaTeX block)
 3. Step-by-step solution
@@ -2712,6 +2716,7 @@ async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
     _start_ms = int(time.monotonic() * 1000)
     try:
+        check_chat_flood(request.userId)
         # ─── Context-Aware Intent Gate (before scope check) ──────
         # Load active state to determine if student is mid-session.
         # If so, skip scope check for short/vague replies.
@@ -2910,6 +2915,7 @@ async def _update_memory_after_response(
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
     try:
+        check_chat_flood(request.userId)
         # ─── Context-Aware Intent Gate (before scope check) ──────
         _skip_scope_check = False
         if request.userId and request.sessionId and HAS_MEMORY_SERVICE and get_active_state is not None:
@@ -4068,6 +4074,21 @@ CLASS_RECORD_FIELD_ALIASES: Dict[str, List[str]] = {
 }
 
 
+# Columns that hold name PARTS (initials), never full names. Mapping one to
+# `name` produces single-letter roster names (TCH-043/074) — always exclude.
+_NAME_PART_ONLY_COLUMNS: Set[str] = {"mi", "m i", "middle initial", "middle name"}
+
+
+def _is_grade_level_column(normalized: str) -> bool:
+    """True when a normalized column header denotes a grade LEVEL (e.g.
+    "Grade 11", "Grade Level"), which must never feed scoring fields —
+    otherwise "Grade 11" parses as an 11% score (TCH-043/074)."""
+    text = normalized.strip()
+    if "level" in text:
+        return True
+    return bool(re.fullmatch(r"grade\s*\d{1,2}", text))
+
+
 def _is_empty_cell(value: Any) -> bool:
     if value is None:
         return True
@@ -4204,6 +4225,10 @@ def _fallback_column_mapping(columns: List[str]) -> Dict[str, str]:
 
         for field, aliases in CLASS_RECORD_FIELD_ALIASES.items():
             if any(alias in normalized for alias in aliases):
+                if field == "name" and normalized in _NAME_PART_ONLY_COLUMNS:
+                    break
+                if field in CLASS_RECORD_SCORING_FIELDS and _is_grade_level_column(normalized):
+                    break
                 if col not in mapping:
                     mapping[col] = field
                 break
@@ -4223,6 +4248,11 @@ def _sanitize_column_mapping(raw_mapping: Any) -> Dict[str, str]:
         if not column_name or not mapped_field:
             continue
         if mapped_field not in CLASS_RECORD_REQUIRED_FIELDS:
+            continue
+        normalized_col = re.sub(r"[^a-z0-9]+", " ", column_name.lower()).strip()
+        if mapped_field == "name" and normalized_col in _NAME_PART_ONLY_COLUMNS:
+            continue
+        if mapped_field in CLASS_RECORD_SCORING_FIELDS and _is_grade_level_column(normalized_col):
             continue
         sanitized[column_name] = mapped_field
 
@@ -4410,23 +4440,30 @@ def _normalize_class_records(
     unknown_columns = sorted([col for col in df.columns if col not in column_mapping])
     inferred_rows = 0
     fallback_inference_rows = 0
+    seen_dedup_keys: Dict[str, int] = {}
+    duplicate_rows: List[Dict[str, Any]] = []
 
     for idx, row in df.iterrows():
         student: Dict[str, Any] = {}
         unknown_fields: Dict[str, Any] = {}
         warnings_for_row: List[str] = []
 
+        name_parts: List[str] = []
         for col in df.columns:
             raw_value = row[col]
             mapped_field = column_mapping.get(col)
-            if mapped_field in CLASS_RECORD_REQUIRED_FIELDS:
+            if mapped_field == "name":
+                part = _stringify_cell(raw_value)
+                if part:
+                    name_parts.append(part)
+            elif mapped_field in CLASS_RECORD_REQUIRED_FIELDS:
                 student[mapped_field] = _stringify_cell(raw_value)
             else:
                 text_val = _stringify_cell(raw_value)
                 if text_val:
                     unknown_fields[_normalize_unknown_key(col)] = text_val
 
-        student_name = str(student.get("name", "")).strip()
+        student_name = " ".join(name_parts).strip()
         if not student_name:
             rejected_rows.append(
                 {
@@ -4464,6 +4501,16 @@ def _normalize_class_records(
                 defaulted_metrics.add(field)
 
         student_id, term, assessment_name, dedup_key = _build_record_identity(student, unknown_fields)
+        if dedup_key in seen_dedup_keys:
+            duplicate_rows.append(
+                {
+                    "row": int(idx) + 2,
+                    "firstRow": seen_dedup_keys[dedup_key],
+                    "dedupKey": dedup_key,
+                }
+            )
+            continue
+        seen_dedup_keys[dedup_key] = int(idx) + 2
         student["name"] = student_name
         student["email"] = email_value
         student["lrn"] = lrn_value
@@ -4521,6 +4568,7 @@ def _normalize_class_records(
         "rows": normalized_rows,
         "rowWarnings": row_warnings,
         "rejectedRows": rejected_rows,
+        "duplicateRows": duplicate_rows,
         "unknownColumns": unknown_columns,
         "interpretedRows": len(normalized_rows),
         "rejectedRowsCount": len(rejected_rows),
@@ -8182,6 +8230,19 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                         status_code=400,
                         detail="Invalid LRN rows: " + "; ".join(str(item["reason"]) for item in invalid_lrn_rows),
                     )
+                duplicate_identity_rows = normalized_result.get("duplicateRows") or []
+                if duplicate_identity_rows:
+                    file_students = []
+                    for item in duplicate_identity_rows:
+                        file_rejected_rows.append(
+                            {
+                                "row": item.get("row"),
+                                "reason": (
+                                    "Row " + str(item.get("row")) + " duplicates Row " + str(item.get("firstRow"))
+                                    + " (same student identity). Remove duplicates and retry."
+                                ),
+                            }
+                        )
                 file_unknown_columns = normalized_result["unknownColumns"]
                 file_interpreted_rows = int(normalized_result.get("interpretedRows") or len(file_students))
                 file_rejected_rows_count = int(normalized_result.get("rejectedRowsCount") or len(file_rejected_rows))
@@ -11540,7 +11601,11 @@ def _validate_quiz_questions(
 
 
 @app.post("/api/quiz/generate", response_model=QuizResponse)
-async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
+async def generate_quiz(
+    http_request: Request,
+    request: QuizGenerationRequest,
+    _enforce_floor: bool = True,
+):
     """
     Generate an AI-powered quiz via HF Serverless Inference.
     Supports Bloom's Taxonomy integration, multiple question types,
@@ -11755,6 +11820,18 @@ Remember:
                     },
                 ]
 
+        # Fail loudly below the acceptance floor instead of silently shorting
+        # the quiz (TCH-051/070): the frontend surfaces the error with retry.
+        # Previews are best-effort samples and bypass the floor.
+        minimum_questions = max(1, math.ceil(request.numQuestions * 0.7))
+        if _enforce_floor and len(parsed_questions) < minimum_questions:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    f"AI generated only {len(parsed_questions)} of {request.numQuestions} "
+                    f"requested questions after {max_attempts} attempts. Please try again."
+                ),
+            )
         # Warn if the LLM still generated fewer questions than requested
         if len(parsed_questions) < request.numQuestions:
             logger.warning(
@@ -11864,7 +11941,7 @@ async def preview_quiz(http_request: Request, request: QuizGenerationRequest):
     """
     # Override to produce only 3 questions
     request.numQuestions = 3
-    return await generate_quiz(http_request, request)
+    return await generate_quiz(http_request, request, _enforce_floor=False)
 
 
 @app.post("/api/quiz/generate-async", response_model=AsyncTaskSubmitResponse)

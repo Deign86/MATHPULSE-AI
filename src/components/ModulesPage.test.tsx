@@ -214,4 +214,28 @@ describe('ModulesPage', () => {
 
     expect(firestore.where).toHaveBeenCalledWith('assignedTo', '==', 'user-1');
   });
+
+  it('shows the completed lock with score instead of generic unavailable (STU-014)', async () => {
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockResolvedValue([]);
+    const lookup = vi.spyOn(quizService, 'fetchCompletedSubmissionForQuiz').mockResolvedValue({ score: 88 });
+    window.history.replaceState({}, '', '/modules?section=assigned-quizzes&quizId=quiz-9');
+
+    renderModulesPage();
+
+    expect(await screen.findByTestId('assigned-quiz-completed')).toBeInTheDocument();
+    expect(screen.getByText(/Quiz already completed/)).toBeInTheDocument();
+    expect(screen.getByText(/88%/)).toBeInTheDocument();
+    expect(lookup).toHaveBeenCalledWith('user-1', 'quiz-9');
+  });
+
+  it('shows generic unavailable when never assigned nor completed', async () => {
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockResolvedValue([]);
+    vi.spyOn(quizService, 'fetchCompletedSubmissionForQuiz').mockResolvedValue(null);
+    window.history.replaceState({}, '', '/modules?section=assigned-quizzes&quizId=quiz-9');
+
+    renderModulesPage();
+
+    expect(await screen.findByText('This assigned quiz is no longer pending. Check with your teacher if you need access.')).toBeInTheDocument();
+    expect(screen.queryByTestId('assigned-quiz-completed')).not.toBeInTheDocument();
+  });
 });

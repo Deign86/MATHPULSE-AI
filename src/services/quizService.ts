@@ -243,6 +243,25 @@ export async function fetchPendingQuizzesForStudent(studentUid: string): Promise
   return quizzes;
 }
 
+/**
+ * Look up the student's completed submission for a quiz, if any (STU-014).
+ * Single-field query (no composite index needed); ownership filtered client-side.
+ * Returns the latest score, or null when never completed by this student.
+ */
+export async function fetchCompletedSubmissionForQuiz(
+  studentUid: string,
+  quizId: string,
+): Promise<{ score: number } | null> {
+  if (!studentUid || !quizId) return null;
+  const snap = await getDocs(query(collection(db, 'quizSubmissions'), where('quizId', '==', quizId)));
+  const mine = snap.docs
+    .map((d) => d.data())
+    .filter((s) => s.lrn === studentUid || s.studentId === studentUid);
+  if (mine.length === 0) return null;
+  const scores = mine.map((s) => Number(s.score ?? 0)).filter((n) => Number.isFinite(n));
+  return { score: scores.length > 0 ? Math.max(...scores) : 0 };
+}
+
 // ─── FETCH ADAPTIVE QUIZ ────────────────────────────────────
 
 export async function fetchAdaptiveQuiz(
@@ -321,7 +340,13 @@ export async function saveQuizResults(
       const assignmentRef = doc(db, 'quizAssignments', assignmentId);
       const assignment = await transaction.get(assignmentRef);
       if (!assignment.exists() || assignment.data().status !== 'pending') return false;
-
+      // STU-014: transition to completed atomically so retakes are rejected
+      // and completed quizzes leave the pending list.
+      transaction.update(assignmentRef, {
+        status: 'completed',
+        completedAt: serverTimestamp(),
+        score,
+      });
     }
     const submissionRef = doc(collection(db, 'quizSubmissions'));
     transaction.set(submissionRef, submissionPayload(submissionRef.id));

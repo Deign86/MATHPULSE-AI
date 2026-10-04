@@ -64,7 +64,11 @@ describe('saveQuizResults assignment idempotency', () => {
 
     expect(transaction.get).toHaveBeenCalledOnce();
     expect(transactionWrites.set).toHaveBeenCalledOnce();
-    expect(transactionWrites.update).not.toHaveBeenCalled();
+    expect(transactionWrites.update).toHaveBeenCalledOnce();
+    expect(transactionWrites.update).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: 'completed', score: 75 }),
+    );
     expect(collectionReference).toHaveBeenCalledOnce();
     expect(documentReference).toHaveBeenCalledTimes(2);
     expect(documentReference).not.toHaveBeenCalledWith(expect.anything(), 'generatedQuizzes', 'quiz-1');
@@ -88,5 +92,55 @@ describe('saveQuizResults assignment idempotency', () => {
     expect(collectionReference).toHaveBeenCalledOnce();
     expect(documentReference).toHaveBeenCalledOnce();
     expect(documentReference).not.toHaveBeenCalledWith(expect.anything(), 'generatedQuizzes', 'practice-session-1');
+  });
+});
+
+describe('fetchCompletedSubmissionForQuiz (STU-014)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  interface StubSubmission {
+    lrn?: string;
+    studentId?: string;
+    quizId?: string;
+    score?: number;
+  }
+
+  const submissionDoc = (overrides: StubSubmission) => ({
+    data: (): StubSubmission => ({ lrn: 'student-uid', quizId: 'quiz-9', score: 0, ...overrides }),
+  });
+
+  function mockSubmissionQuery(docs: Array<{ data: () => StubSubmission }>) {
+    // SAFETY: boundary spies return only the docs array consumed by the lookup.
+    vi.spyOn(firestore, 'collection').mockReturnValue({} as never);
+    // SAFETY: where-clause values are ignored by the docs-array stub.
+    vi.spyOn(firestore, 'where').mockReturnValue({} as never);
+    // SAFETY: query object is opaque to the stubbed getDocs below.
+    vi.spyOn(firestore, 'query').mockReturnValue({} as never);
+    // SAFETY: boundary mock returns only the docs array consumed by the lookup.
+    vi.spyOn(firestore, 'getDocs').mockResolvedValue({ docs } as never);
+  }
+
+  it('returns the best score among the student’s submissions', async () => {
+    const { fetchCompletedSubmissionForQuiz } = await import('../quizService');
+    mockSubmissionQuery([
+      submissionDoc({ score: 70 }),
+      submissionDoc({ lrn: 'other-student', score: 100 }),
+      submissionDoc({ score: 88 }),
+    ]);
+    await expect(fetchCompletedSubmissionForQuiz('student-uid', 'quiz-9')).resolves.toEqual({ score: 88 });
+  });
+
+  it('returns null when the student never submitted the quiz', async () => {
+    const { fetchCompletedSubmissionForQuiz } = await import('../quizService');
+    mockSubmissionQuery([submissionDoc({ lrn: 'other-student', score: 100 })]);
+    await expect(fetchCompletedSubmissionForQuiz('student-uid', 'quiz-9')).resolves.toBeNull();
+  });
+
+  it('returns null without querying for empty inputs', async () => {
+    const { fetchCompletedSubmissionForQuiz } = await import('../quizService');
+    const getDocs = vi.spyOn(firestore, 'getDocs');
+    await expect(fetchCompletedSubmissionForQuiz('', 'quiz-9')).resolves.toBeNull();
+    await expect(fetchCompletedSubmissionForQuiz('student-uid', '')).resolves.toBeNull();
+    expect(getDocs).not.toHaveBeenCalled();
   });
 });

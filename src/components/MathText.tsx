@@ -16,6 +16,12 @@ import rehypeKatex from 'rehype-katex';
 interface MathTextProps {
   children: string;
   className?: string;
+  /**
+   * Block mode renders the WHOLE string as one math expression (STU-012).
+   * Use only for standalone formula lines (e.g. lesson formula boxes), never
+   * for mixed prose — math mode collapses inter-word spaces (see S7 below).
+   */
+  block?: boolean;
 }
 
 export function isString<T>(value: T): value is T & string {
@@ -91,6 +97,19 @@ function convertToLatex(text: string): string {
   return result;
 }
 
+/** Convert a standalone formula line to LaTeX (block mode): bare subscripts,
+ * slash fractions, plus the caret/asterisk handling of plainToLatex.
+ * Only for detected formula lines — never for mixed prose. */
+function plainBlockToLatex(line: string): string {
+  let result = plainToLatex(line);
+  // Bare single-char subscripts: S_n -> S_{n} (braced groups kept as-is).
+  result = result.replace(/([A-Za-z)\]])_([A-Za-z0-9])/g, '$1_{$2}');
+  // Simple slash fractions: n/2 -> \frac{n}{2}. Single-token operands only —
+  // complex quotients keep their readable slash form.
+  result = result.replace(/([A-Za-z\d)\]]+)\s*\/\s*([A-Za-z\d(\[][A-Za-z\d)\]]*)/g, '\\frac{$1}{$2}');
+  return result;
+}
+
 /** Convert plain math notation to LaTeX syntax */
 function plainToLatex(expr: string): string {
   let result = expr;
@@ -105,8 +124,24 @@ function plainToLatex(expr: string): string {
   return result;
 }
 
-const MathText: React.FC<MathTextProps> = ({ children, className }) => {
+const MathText: React.FC<MathTextProps> = ({ children, className, block = false }) => {
   if (!children || !isString(children)) return null;
+
+  if (block) {
+    return (
+      <span className={className}>
+        <ReactMarkdown
+          remarkPlugins={[remarkMath]}
+          rehypePlugins={[rehypeKatex]}
+          components={{
+            p: ({ children }) => <>{children}</>,
+          }}
+        >
+          {`$${plainBlockToLatex(children)}$`}
+        </ReactMarkdown>
+      </span>
+    );
+  }
 
   const processed = convertToLatex(children);
 

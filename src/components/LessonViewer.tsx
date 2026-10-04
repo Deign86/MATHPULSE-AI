@@ -289,7 +289,7 @@ function formatContent(raw: string): React.ReactNode {
       flushPara();
       nodes.push(
         <div key={key++} className="lesson-formula-box my-2 text-xs sm:text-sm">
-          {trimmed}
+          <MathText block>{trimmed}</MathText>
         </div>
       );
       continue;
@@ -376,6 +376,7 @@ import { cn } from './ui/utils';
 import { Lesson, Quiz } from '../data/subjects';
 import type { RagLessonSection } from '../services/lessonService';
 import { useLessonContent, type UseLessonContentResult } from '../hooks/useLessonContent';
+import MathText from './MathText';
 import { getFirebaseStoragePdfUrl } from '../data/curriculum/types';
 import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
@@ -405,6 +406,24 @@ interface LessonViewerProps {
   setIsInQuizMode?: (value: boolean) => void;
   initialContent?: UseLessonContentResult;
   onLogLessonView?: (userId: string, lessonId: string, topic: string) => Promise<void>;
+}
+
+/**
+ * Decide which saved section to restore when a lesson opens (STU-010).
+ * A late-arriving saved value must never yank the student back after they
+ * already navigated manually. Returns the section index to apply, or
+ * undefined to leave the current section alone.
+ */
+export function resolveRestoredSection(
+  userNavigated: boolean,
+  initialSection: number,
+  totalSections: number,
+  savedSectionIndex: number | undefined,
+): number | undefined {
+  if (userNavigated) return undefined;
+  if (savedSectionIndex === undefined) return undefined;
+  if (!(initialSection >= 0 && initialSection < totalSections)) return undefined;
+  return Math.min(savedSectionIndex, totalSections - 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -986,7 +1005,7 @@ function SectionRenderer({
                       const isFormulaStep = MATH_RE.test(step) && step.length < 100 && !/[a-z]{6,}/.test(step);
                       return isFormulaStep ? (
                         <div key={si} className="lesson-formula-box my-1">
-                          {step}
+                          <MathText block>{step}</MathText>
                         </div>
                       ) : (
                         <div key={si} className="flex items-start gap-2">
@@ -1309,6 +1328,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement>(null);
+  const userNavigatedSectionRef = useRef(false);
 
   useEffect(() => {
     if (activeTabRef.current) {
@@ -1457,6 +1477,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const microLessonCards = buildMicroLessonCards(sections);
 
   useEffect(() => {
+    userNavigatedSectionRef.current = false;
     if (initialSection >= 0 && initialSection < totalSections) {
       setCurrentSection(initialSection);
     }
@@ -1476,9 +1497,13 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         ? Object.entries(savedLessonProgress).find(([key]) => key === 'lastSectionIndex')?.[1]
         : undefined;
       const savedSectionIndex = Number.isInteger(savedSection) && savedSection >= 0 ? savedSection : undefined;
-      if (initialSection >= 0 && initialSection < totalSections && savedSection !== undefined) {
-        if (savedSectionIndex !== undefined) setCurrentSection(Math.min(savedSectionIndex, totalSections - 1));
-      }
+      const restoredSection = resolveRestoredSection(
+        userNavigatedSectionRef.current,
+        initialSection,
+        totalSections,
+        savedSection === undefined ? undefined : savedSectionIndex,
+      );
+      if (restoredSection !== undefined) setCurrentSection(restoredSection);
       setSectionProgressLoaded(true);
     }).catch((caughtError) => {
       const restoreError = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
@@ -1597,6 +1622,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const handleNext = () => {
     if (currentSection < totalSections - 1) {
       setDirection(1);
+      userNavigatedSectionRef.current = true;
       setCurrentSection((p) => p + 1);
     } else if (!practiceQuiz || practiceQuizCompleted) {
       setShowCompletion(true);
@@ -1606,6 +1632,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const handlePrevious = () => {
     if (currentSection > 0) {
       setDirection(-1);
+      userNavigatedSectionRef.current = true;
       setCurrentSection((p) => p - 1);
     }
   };
@@ -1707,6 +1734,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   key={tab.type}
                   onClick={() => {
                     setDirection(idx > currentSection ? 1 : -1);
+                    userNavigatedSectionRef.current = true;
                     setCurrentSection(idx);
                   }}
                   className={cn(
@@ -1805,6 +1833,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                                 disabled={!isUnlocked}
                                 onClick={() => {
                                   setDirection(idx > currentSection ? 1 : -1);
+                                  userNavigatedSectionRef.current = true;
                                   setCurrentSection(idx);
                                   setIsMobileNavOpen(false);
                                 }}

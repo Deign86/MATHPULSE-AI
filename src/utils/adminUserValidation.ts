@@ -81,15 +81,17 @@ export function validateAdminCreateUserForm(data: AdminCreateUserFormData): Admi
     errors.status = 'Status is required.';
   }
 
-  if (!data.grade.trim()) {
+  const isStudent = data.role.trim().toLowerCase() === 'student';
+
+  if (isStudent && !data.grade.trim()) {
     errors.grade = 'Grade is required.';
   }
 
-  if (!data.section.trim()) {
+  if (isStudent && !data.section.trim()) {
     errors.section = 'Section is required.';
   }
 
-  if (data.role.trim().toLowerCase() === 'student' && !/^\d{12}$/.test(data.lrn.trim())) {
+  if (isStudent && !/^\d{12}$/.test(data.lrn.trim())) {
     errors.lrn = 'LRN must be exactly 12 digits.';
   }
 

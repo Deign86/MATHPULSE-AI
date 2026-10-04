@@ -640,18 +640,15 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
     setShowExplanation(true);
 
     if (!isCorrect) {
-      // INCORRECT: shake, deduct heart, no popup, auto-advance after 1.5s
+      // INCORRECT: shake, deduct heart, show explanation, wait for manual
+      // Next — never auto-advance (STU-009: students lost the explanation).
       setShakeCard(true);
       playSound('incorrect');
       setTimeout(() => setShakeCard(false), 500);
       setHeartsCount(prev => Math.max(0, prev - 1));
       setStreak(0);
       setComboMultiplier(1);
-      
-      // Auto-advance even on incorrect for Practice Center
-      setTimeout(() => {
-        handleNextQuestion();
-      }, 1500);
+      setUserRequestedExplanation(true);
       return;
     }
 

@@ -21,6 +21,12 @@ import { apiService, ApiError } from '../../services/apiService';
 import { db } from '../../lib/firebase';
 import { parseShsWorkbook } from '../import/services/shsExcel/parser';
 import { DETECTION_CONFIDENCE_THRESHOLD } from '../import/services/shsExcel/parser/constants';
+import {
+  buildWorkbookPreviewRows,
+  isBlockedRow,
+  parseCsvPreviewRows,
+} from './classRecordsPreview';
+import type { ClassRecordsPreviewRow } from './classRecordsPreview';
 import { resolveClassMetadata, assignStudentToClassSection, updateManagedStudentSectionAssignment, updateStudentRisk } from '../../services/studentService';
 
 function normalizeClassSectionId(value?: string | null): string {
@@ -179,6 +185,15 @@ export default function DataImportView({
   }
 
   const [pendingUpload, setPendingUpload] = useState<PendingImportUpload | null>(null);
+  const [classRecordsPreview, setClassRecordsPreview] = useState<{
+    fileName: string;
+    total: number;
+    rows: ClassRecordsPreviewRow[];
+    blocked: string[];
+    note: string;
+  } | null>(null);
+  const [classRecordsResult, setClassRecordsResult] = useState<UploadResponse | null>(null);
+  const pendingClassRecordsFile = useRef<{ file: File; normalizedFile: File | null } | null>(null);
 
   const refreshRecentMaterials = useCallback(async () => {
     setRecentMaterialsLoading(true);
@@ -315,6 +330,7 @@ export default function DataImportView({
 
   const handleCancelUpload = () => {
     setPendingUpload(null);
+    setClassRecordsPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (materialInputRef.current) materialInputRef.current.value = '';
   };
@@ -322,15 +338,14 @@ export default function DataImportView({
   const handleConfirmUpload = () => {
     if (!pendingUpload) return;
     const { file, type } = pendingUpload;
+    if (type === 'class_records') {
+      void prepareClassRecordsPreview(file);
+      return;
+    }
     setPendingUpload(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (materialInputRef.current) materialInputRef.current.value = '';
-
-    if (type === 'class_records') {
-      void handleFileUpload(file);
-    } else {
-      void handleCourseMaterialUpload(file);
-    }
+    void handleCourseMaterialUpload(file);
   };
 
   const normalizeLearnerKey = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -342,7 +357,11 @@ export default function DataImportView({
 
   const toFiniteNumber = (value: number | string | null | undefined): number | null => {
     if (isNum(value) && Number.isFinite(value)) return value;
-    const parsed = Number(String(value ?? '').replace(/[^0-9.-]+/g, ''));
+    const text = String(value ?? '');
+    // SAFETY: cells carrying letters (e.g. "Grade 11") are labels, not scores —
+    // stripping letters would fabricate an 11% score (TCH-043/074).
+    if (/[a-zA-Z]/.test(text)) return null;
+    const parsed = Number(text.replace(/[^0-9.-]+/g, ''));
     return Number.isFinite(parsed) ? parsed : null;
   };
 
@@ -404,44 +423,64 @@ export default function DataImportView({
     return new File([rows.join('\n')], `${normalizedName}-normalized.csv`, { type: 'text/csv' });
   };
 
-  const handleFileUpload = async (file: File) => {
+  const prepareClassRecordsPreview = async (file: File) => {
     setUploadingClassRecords(true);
     setUploadResult('');
-    setUploadInterpretation(null);
+    setClassRecordsPreview(null);
+    setClassRecordsResult(null);
 
-    let uploadFile = file;
+    let pendingNormalized: File | null = null;
 
     if (/\.(xlsx|xls)$/i.test(file.name)) {
       try {
         const workbookResult = await parseShsWorkbook(file, { confidenceThreshold: DETECTION_CONFIDENCE_THRESHOLD });
         setShsExcelResult(workbookResult);
-        const malformedLrnRows = workbookResult.mapping.studentEntities
-          .map((student, index) => ({
-            row: student.sourceRow || index + 2,
-            lrn: student.lrn?.trim() || '',
-            email: student.email?.trim() || '',
-          }))
-          .filter(({ lrn, email }) => (lrn ? !/^\d{12}$/.test(lrn) : !email));
-        if (malformedLrnRows.length > 0) {
-          const rowErrors = malformedLrnRows.map(({ row, lrn }) =>
-            `Row ${row}: ${lrn ? 'LRN must contain exactly 12 digits.' : 'LRN or email is required.'}`,
-          );
-          setUploadResult(rowErrors.join(' '));
-          toast.error(rowErrors.join(' '));
-          setUploadingClassRecords(false);
-          return;
-        }
-        const normalizedFile = buildNormalizedWorkbookCsv(workbookResult, file.name);
-        if (normalizedFile) uploadFile = normalizedFile;
+        const { rows: workbookRows, total: workbookTotal } = buildWorkbookPreviewRows(
+          workbookResult.mapping.studentEntities || [],
+        );
+        const blockedRows = workbookRows.filter(isBlockedRow);
+        pendingNormalized = buildNormalizedWorkbookCsv(workbookResult, file.name);
+        pendingClassRecordsFile.current = { file, normalizedFile: pendingNormalized };
+        setClassRecordsPreview({
+          fileName: file.name,
+          total: workbookTotal,
+          rows: workbookRows.slice(0, 20),
+          blocked: blockedRows.map((row) => `Row ${row.sourceRow}: ${row.flags.join(' ')}`),
+          note: `${workbookTotal} student row${workbookTotal === 1 ? '' : 's'} parsed from workbook (showing first ${Math.min(20, workbookRows.length)}).`,
+        });
       } catch {
         setShsExcelResult(null);
+        setUploadResult('Preview failed to parse the file.');
       }
     } else {
       setShsExcelResult(null);
+      const csvText = await file.text();
+      const csvPreview = parseCsvPreviewRows(csvText);
+      if (csvPreview.total === 0) {
+        setUploadResult(csvPreview.note || 'No rows found.');
+        return;
+      }
+      pendingClassRecordsFile.current = { file, normalizedFile: null };
+      setClassRecordsPreview({
+        fileName: file.name,
+        total: csvPreview.total,
+        rows: csvPreview.rows.slice(0, 20),
+        blocked: csvPreview.rows.filter(isBlockedRow).map((row) => `Row ${row.sourceRow}: ${row.flags.join(' ')}`),
+        note: `${csvPreview.total} student row${csvPreview.total === 1 ? '' : 's'} parsed from CSV (showing first ${Math.min(20, csvPreview.rows.length)}).`,
+      });
+      return;
     }
 
+  };
+
+  const executeClassRecordsUpload = async () => {
+    const pending = pendingClassRecordsFile.current;
+    if (!pending) return;
+    setUploadingClassRecords(true);
+    setUploadResult('');
+    setUploadInterpretation(null);
     try {
-      const result = await apiService.uploadClassRecords(uploadFile, { classSectionId, className, datasetIntent: 'synthetic_student_records' });
+      const result = await apiService.uploadClassRecords(pending.normalizedFile ?? pending.file, { classSectionId, className, datasetIntent: 'synthetic_student_records' });
       const uploadedStudentsCount = result.students.length;
       
       const resolveUploadedClassContext = (result: any, classSectionId?: string, className?: string, classMetadata?: ClassSectionMetadata) => {
@@ -477,6 +516,7 @@ export default function DataImportView({
         await refreshClassRecordImports();
         await refreshRecentMaterials();
         onDataChanged?.();
+        setClassRecordsResult(result);
       } else {
         toast.error(result.warnings?.join(' ') || 'Import completed but no usable student rows were detected. Check required columns and retry.');
       }
@@ -484,6 +524,11 @@ export default function DataImportView({
       toast.error(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploadingClassRecords(false);
+      setClassRecordsPreview(null);
+      setPendingUpload(null);
+      pendingClassRecordsFile.current = null;
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (materialInputRef.current) materialInputRef.current.value = '';
     }
   };
 
@@ -737,6 +782,40 @@ export default function DataImportView({
                 </div>
               </div>
             </div>
+
+            {classRecordsResult && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-2" aria-live="polite">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-bold text-slate-800">Last class-records import</h3>
+                  <button
+                    type="button"
+                    onClick={() => setClassRecordsResult(null)}
+                    className="text-xs font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+                <p className="text-xs text-slate-600">
+                  {classRecordsResult.totalRows ?? classRecordsResult.students.length} students imported ·{' '}
+                  {(classRecordsResult.dedup?.inserted ?? 0)} new, {(classRecordsResult.dedup?.updated ?? 0)} updated.
+                </p>
+                {(classRecordsResult.dedup?.updated ?? 0) > 0 && (
+                  <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    {classRecordsResult.dedup?.updated} existing record(s) were overwritten by this import. Review the rows below before re-importing.
+                  </p>
+                )}
+                {(classRecordsResult.rejectedRowDetails ?? []).slice(0, 10).map((item) => (
+                  <p key={`${item.row}-${item.reason}`} className="text-xs text-red-700">
+                    Row {item.row}: {item.reason}
+                  </p>
+                ))}
+                {(classRecordsResult.rowWarnings ?? []).slice(0, 10).map((item) => (
+                  <p key={`${item.row}-${item.warning}`} className="text-xs text-amber-700">
+                    Row {item.row}: {item.warning}
+                  </p>
+                ))}
+              </section>
+            )}
 
             <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3" aria-labelledby="student-account-import-title">
               <div>
@@ -1341,6 +1420,60 @@ export default function DataImportView({
                 )}
               </div>
 
+              {pendingUpload.type === 'class_records' && classRecordsPreview ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{classRecordsPreview.note}</p>
+                  {classRecordsPreview.blocked.length > 0 && (
+                    <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700 space-y-1">
+                      {classRecordsPreview.blocked.slice(0, 5).map((message) => <p key={message}>{message}</p>)}
+                      {classRecordsPreview.blocked.length > 5 && (
+                        <p>…and {classRecordsPreview.blocked.length - 5} more.</p>
+                      )}
+                    </div>
+                  )}
+                  <div className="max-h-56 overflow-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800 text-left">
+                          <th className="p-2">Row</th>
+                          <th className="p-2">Name</th>
+                          <th className="p-2">LRN</th>
+                          <th className="p-2">Flags</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {classRecordsPreview.rows.map((row) => (
+                          <tr key={row.sourceRow} className="border-t border-slate-100 dark:border-slate-800">
+                            <td className="p-2">{row.sourceRow}</td>
+                            <td className="p-2 font-semibold">{row.name || '—'}</td>
+                            <td className="p-2">{row.lrn || '—'}</td>
+                            <td className="p-2 text-amber-700">{row.flags.join(' ') || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setClassRecordsPreview(null)}
+                      className="w-full sm:w-auto h-10 text-xs sm:text-sm font-bold cursor-pointer"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={uploadingClassRecords || classRecordsPreview.blocked.length > 0}
+                      onClick={() => void executeClassRecordsUpload()}
+                      className="w-full sm:w-auto h-10 text-xs sm:text-sm font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                    >
+                      Upload {classRecordsPreview.total} rows
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+              <>
               {/* Action Buttons */}
               <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <Button
@@ -1354,12 +1487,15 @@ export default function DataImportView({
                 <Button
                   type="button"
                   onClick={handleConfirmUpload}
-                  className="w-full sm:w-auto h-10 text-xs sm:text-sm font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs cursor-pointer active:scale-95"
+                  disabled={uploadingClassRecords}
+                  className="w-full sm:w-auto h-10 text-xs sm:text-sm font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
                 >
                   <Check className="w-4 h-4 mr-1.5" />
-                  Proceed & Process
+                  {pendingUpload.type === 'class_records' ? 'Preview rows' : 'Proceed & Process'}
                 </Button>
               </div>
+              </>
+              )}
             </motion.div>
           </div>
         </AnimatePresence>,

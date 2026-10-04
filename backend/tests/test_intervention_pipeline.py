@@ -9,6 +9,7 @@ import pytest
 from main import app
 from routes.intervention_routes import CompleteStepRequest, GenerateRequest
 from routes.pipeline_routes import PipelineEventPayload
+import services.student_intelligence_pipeline as pipeline_service
 
 pytestmark = pytest.mark.usefixtures("isolated_mock_student_auth")
 
@@ -59,3 +60,28 @@ def test_pipeline_recompute_requires_staff_and_intervention_bad_step_is_rejected
         json={},
     )
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("staff_uid", "role"),
+    [("teacher-1", "teacher"), ("admin-1", "admin")],
+)
+def test_staff_recompute_queues_one_force_recompute_event(monkeypatch, staff_uid, role):
+    events = []
+
+    class PipelineBoundary:
+        async def process_event(self, event):
+            events.append(event)
+
+    monkeypatch.setattr(pipeline_service, "get_pipeline", lambda: PipelineBoundary())
+    response = client.post(
+        "/api/pipeline/profile/student-42/recompute",
+        headers={"Authorization": f"Bearer mock_token_{staff_uid}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "recompute_queued", "student_id": "student-42"}
+    assert len(events) == 1
+    assert events[0].student_id == "student-42"
+    assert events[0].event_type == "force_recompute"
+    assert events[0].teacher_id == staff_uid

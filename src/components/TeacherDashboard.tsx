@@ -218,6 +218,46 @@ function findRosterStudent(studentId: string, students: StudentView[]): StudentV
   return secondaryMatches.length === 1 ? secondaryMatches[0] : undefined;
 }
 
+const KNOWN_RISK_STATUSES = ['safe', 'watch', 'intervene', 'critical', 'at_risk'] as const;
+
+type KnownRiskStatus = (typeof KNOWN_RISK_STATUSES)[number];
+
+/**
+ * Normalize raw risk statuses from Firestore/backend into the known contract
+ * (TCH-047: values like PENDING_ASSESSMENT leaked into badges and filters).
+ * Unknown, empty, or missing values become null.
+ */
+export function normalizeRiskStatusOrNull(status: string | null | undefined): KnownRiskStatus | null {
+  const normalized = (status ?? '').trim().toLowerCase();
+  // SAFETY: membership in KNOWN_RISK_STATUSES narrows the string to the union.
+  return (KNOWN_RISK_STATUSES as readonly string[]).includes(normalized)
+    ? (normalized as KnownRiskStatus)
+    : null;
+}
+
+/** True for high-risk levels in any casing (TCH-048/062: Top Performers contamination). */
+export function isHighRiskLevel(riskLevel: string | null | undefined): boolean {
+  return (riskLevel ?? '').trim().toLowerCase() === 'high';
+}
+
+/**
+ * True when a backend roster join failed completely: the backend returned
+ * students but none matched the local roster while the roster is non-empty.
+ * Callers fall back to local predicates instead of showing empty lists (TCH-062).
+ */
+export function hasJoinFailure(backendCount: number, matchedCount: number, rosterCount: number): boolean {
+  return backendCount > 0 && rosterCount > 0 && matchedCount === 0;
+}
+
+/**
+ * Whether the Topic Performance chart has anything honest to show (TCH-060).
+ * Empty rosters with no backend aggregates render an empty state instead of
+ * the hardcoded curriculum baseline bars.
+ */
+export function hasTopicChartData(rosterCount: number, backendTopicCount: number): boolean {
+  return rosterCount > 0 || backendTopicCount > 0;
+}
+
 function toClassView(c: Classroom): ClassView {
   const riskLevel = c.atRiskCount >= 5 ? 'high' : c.atRiskCount >= 2 ? 'medium' : 'low';
   const classMetadata = resolveClassMetadata({
@@ -293,7 +333,7 @@ function toStudentView(s: ManagedStudent, className: string): StudentView {
     avatar: s.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(s.name)}&background=random`,
     avgScore: s.avgQuizScore,
     riskLevel,
-    riskStatus: s.riskStatus || null,
+    riskStatus: normalizeRiskStatusOrNull(s.riskStatus),
     wri: s.wri ?? null,
     weakestTopic: s.weakestTopic && s.weakestTopic !== 'N/A' ? s.weakestTopic : (s.struggles?.[0] || 'Foundational Mathematics'),
     classroomId: s.classroomId || classMetadata.classSectionId || baseClassName,
@@ -1101,7 +1141,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               struggles: match.struggles || baseManaged.struggles,
               lastActive: match.lastActive || baseManaged.lastActive,
               wri: match.wri ?? null,
-              riskStatus: match.riskStatus ?? null,
+              riskStatus: normalizeRiskStatusOrNull(match.riskStatus),
               riskUpdatedAt: match.riskUpdatedAt ?? null,
               diagnosticScore: match.diagnosticScore ?? null,
               externalGradesAvg: match.externalGradesAvg ?? null,
@@ -3792,23 +3832,35 @@ const AnalyticsView: React.FC<{
       if (filterType === 'Good') {
         // Use backend data for accurate filtering
         if (backendReport) {
-          const topIds = new Set(
-            backendReport.students
-              .filter(s => s.quiz_attempt_count > 0 && s.avg_score >= 75)
-              .map(s => s.student_id)
+          const qualifying = backendReport.students
+            .filter(s => s.quiz_attempt_count > 0 && s.avg_score >= 75);
+          const matchedIds = new Set(
+            qualifying
+              .map(s => findRosterStudent(s.student_id, students)?.id)
+              .filter((id): id is string => id !== undefined)
           );
-          filtered = filtered.filter(s => topIds.has(s.id));
+          if (hasJoinFailure(qualifying.length, matchedIds.size, students.length)) {
+            filtered = filtered.filter(s => s.avgScore >= 85 && s.riskLevel !== 'high');
+          } else {
+            filtered = filtered.filter(s => matchedIds.has(s.id));
+          }
         } else {
           filtered = filtered.filter(s => s.avgScore >= 85 && s.riskLevel !== 'high');
         }
       } else if (filterType === 'Risk') {
         if (backendReport) {
-          const riskIds = new Set(
-            backendReport.students
-              .filter(s => ['High Risk', 'Critical', 'Unassessed'].includes(s.risk_level))
-              .map(s => s.student_id)
+          const qualifying = backendReport.students
+            .filter(s => ['High Risk', 'Critical', 'Unassessed'].includes(s.risk_level));
+          const matchedIds = new Set(
+            qualifying
+              .map(s => findRosterStudent(s.student_id, students)?.id)
+              .filter((id): id is string => id !== undefined)
           );
-          filtered = filtered.filter(s => riskIds.has(s.id));
+          if (hasJoinFailure(qualifying.length, matchedIds.size, students.length)) {
+            filtered = filtered.filter(s => s.riskLevel === 'high' || s.avgScore < 75);
+          } else {
+            filtered = filtered.filter(s => matchedIds.has(s.id));
+          }
         } else {
           filtered = filtered.filter(s => s.riskLevel === 'high' || s.avgScore < 75);
         }
@@ -3817,22 +3869,31 @@ const AnalyticsView: React.FC<{
     }, [searchTerm, students, filterType, backendReport]);
 
     const topPerformers = useMemo(() => {
-      if (backendHasData) {
-        // SAFETY: trusted internal value already conforms to the asserted type.
-        return backendReport!.students
-          .filter(s => s.quiz_attempt_count > 0)
-          .sort((a, b) => b.avg_score - a.avg_score)
-          .slice(0, 5)
-          .map(bs => {
-            const match = findRosterStudent(bs.student_id, students);
-            return match ? { ...match, avgScore: bs.avg_score } : null;
-          })
-          .filter(Boolean) as StudentView[];
-      }
-      return [...students]
+      const localTopPerformers = () => [...students]
         .map(s => ({ ...s, avgScore: progressScores.get(s.id) || s.avgScore }))
+        .filter(s => !isHighRiskLevel(s.riskLevel))
         .sort((a, b) => b.avgScore - a.avgScore)
         .slice(0, 5);
+      if (backendHasData) {
+        // SAFETY: trusted internal value already conforms to the asserted type.
+        const qualifying = backendReport!.students
+          .filter(s => s.quiz_attempt_count > 0)
+          .sort((a, b) => b.avg_score - a.avg_score)
+          .slice(0, 5);
+        const matchedOrNull = qualifying.map(bs => {
+          const match = findRosterStudent(bs.student_id, students);
+          return match ? { ...match, avgScore: bs.avg_score } : null;
+        });
+        const joinOk = !hasJoinFailure(
+          qualifying.length,
+          matchedOrNull.filter(m => m !== null).length,
+          students.length,
+        );
+        if (joinOk) {
+          return matchedOrNull.filter((m): m is StudentView => m !== null && !isHighRiskLevel(m.riskLevel));
+        }
+      }
+      return localTopPerformers();
     }, [students, backendReport, backendHasData, progressScores]);
 
     const attentionStudents = useMemo(() => {
@@ -4279,6 +4340,12 @@ const AnalyticsView: React.FC<{
               </div>
 
               {/* Visual Chart 2: Topic Performance */}
+              {!hasTopicChartData(students.length, backendReport?.insights?.topic_performance?.length ?? 0) ? (
+                <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-4 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[320px] sm:h-[340px]">
+                  <h3 className="font-display font-bold text-[15px] text-[#1e293b] text-balance">Topic Performance</h3>
+                  <p className="font-body text-xs text-muted-foreground mt-2">No students in this class yet. Import a roster to see topic performance.</p>
+                </div>
+              ) : (
               <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-4 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[320px] sm:h-[340px]">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-3 sm:mb-4">
                   <div>
@@ -4308,6 +4375,7 @@ const AnalyticsView: React.FC<{
                   </ResponsiveContainer>
                 </div>
               </div>
+            )}
             </div>
 
             {/* Bottom Row Lists */}

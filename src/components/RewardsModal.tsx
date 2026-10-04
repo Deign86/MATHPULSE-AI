@@ -7,6 +7,7 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getUserAchievements } from '../services/gamificationService';
+import { useDailyReward } from '../hooks/useDailyReward';
 import { cn } from './ui/utils';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
@@ -42,6 +43,9 @@ export const RewardsModal: React.FC<RewardsModalProps> = ({
   const [loading, setLoading] = useState(true);
   const [unlockedCount, setUnlockedCount] = useState(0);
   const [progressData, setProgressData] = useState<ProgressDoc>({});
+  // STU-021: streak comes from the daily-rewards system (single source of
+  // truth); the progress doc never carries dailyStreak (always read as 0).
+  const dailyReward = useDailyReward(userId);
 
   useEffect(() => {
     if (!isOpen || !userId) return;
@@ -156,7 +160,7 @@ export const RewardsModal: React.FC<RewardsModalProps> = ({
                 <Flame size={12} className="text-rose-300" />
                 <span>Streak</span>
               </div>
-              <p className="text-lg font-black text-white tabular-nums mt-0.5">{progressData.dailyStreak || 0}d</p>
+              <p className="text-lg font-black text-white tabular-nums mt-0.5">{dailyReward.currentStreak}d</p>
             </div>
           </div>
 

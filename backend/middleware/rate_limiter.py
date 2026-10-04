@@ -4,9 +4,15 @@ Rate limiting middleware using slowapi.
 import os
 import logging
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded as SlowAPIRateLimitExceeded
+
+import logging
+import os
+import threading
+import time
+from collections import deque
 
 RateLimitExceeded = SlowAPIRateLimitExceeded
 
@@ -184,3 +190,40 @@ def leaderboard_rate_limit():
 def default_rate_limit():
     """Decorator for default rate limiting."""
     return rate_limiter.limiter.limit(rate_limiter.default_limit)
+
+
+# Chat flood guard (STU-019): short per-user burst throttle for AI chat.
+# slowapi decorators cannot apply here: chat handlers take a pydantic
+# ChatRequest (not a Starlette Request) and are also invoked directly in
+# unit tests. Keyed on Firebase UID; absent userId skips (tests + anonymous).
+CHAT_FLOOD_MAX_REQUESTS = int(os.getenv("CHAT_FLOOD_MAX_REQUESTS", "10"))
+CHAT_FLOOD_WINDOW_SECONDS = int(os.getenv("CHAT_FLOOD_WINDOW_SECONDS", "60"))
+CHAT_FLOOD_RETRY_AFTER_SECONDS = 60
+
+_chat_flood_hits: dict = {}
+_chat_flood_lock = threading.Lock()
+
+
+def reset_chat_flood_state() -> None:
+    """Clear flood-guard state (tests only)."""
+    with _chat_flood_lock:
+        _chat_flood_hits.clear()
+
+
+def check_chat_flood(user_id) -> None:
+    """Raise HTTPException 429 when a user exceeds the chat burst budget."""
+    if not user_id:
+        return
+    now = time.time()
+    window_start = now - CHAT_FLOOD_WINDOW_SECONDS
+    with _chat_flood_lock:
+        hits = _chat_flood_hits.setdefault(str(user_id), deque())
+        while hits and hits[0] <= window_start:
+            hits.popleft()
+        if len(hits) >= CHAT_FLOOD_MAX_REQUESTS:
+            raise HTTPException(
+                status_code=429,
+                detail="You're going too fast! Please wait a minute before sending another message.",
+                headers={"Retry-After": str(CHAT_FLOOD_RETRY_AFTER_SECONDS)},
+            )
+        hits.append(now)

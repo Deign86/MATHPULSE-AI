@@ -15,6 +15,7 @@ import {
   Tooltip as RechartsTooltip
 } from 'recharts';
 import { getAnalyticsSummary, type AnalyticsSummary } from '../services/adminService';
+import { buildAnalyticsExportCsv } from './analyticsExport';
 
 type TimeRange = '7d' | '30d' | '90d' | 'all';
 const TIME_RANGES: readonly TimeRange[] = ['7d', '30d', '90d', 'all'];
@@ -214,44 +215,15 @@ export const AdminAnalytics: React.FC = () => {
   const handleExportCSV = () => {
     setIsExporting(true);
     try {
-      const rows = [
-        ['MathPulse AI - Platform Learning & Outcome Analytics Report'],
-        [`Generated At: ${new Date().toLocaleString()}`],
-        [`Timeframe Filter: ${timeRange.toUpperCase()}`],
-        [],
-        ['KEY PERFORMANCE INDICATORS'],
-        ['Metric', 'Value', 'Benchmark Target', 'Status'],
-        ['Total Active Users', summary?.totalActiveUsers ?? 0, '100+', 'Healthy'],
-        ['Total Students Enrolled', summary?.totalStudents ?? 0, '80+', 'Healthy'],
-        ['Total Teachers / Instructors', summary?.totalTeachers ?? 0, '5+', 'Healthy'],
-        ['Average Quiz Score', `${summary?.avgQuizScore ?? 82.4}%`, '75.0%', 'Above Target'],
-        ['Total Quizzes Completed', summary?.totalQuizzesTaken ?? 4904, '1000+', 'Active'],
-        ['At-Risk Students', summary?.atRiskStudents ?? 12, '<15', 'Monitored'],
-        ['Total XP Earned', summary?.totalXPEarned ?? 384500, '-', 'Gamified'],
-        ['Active Daily Streaks', summary?.activeStreaks ?? 142, '-', 'High Retention'],
-        ['AI Socratic Tutor Sessions', summary?.aiTutorSessions ?? 1280, '-', 'High Engagement'],
-        [],
-        ['CURRICULUM SUBJECT BREAKDOWN'],
-        ['Subject Name', 'Subject Code', 'Grade Level', 'Enrolled', 'Completion Rate', 'Quiz Attempts', 'Average Score', 'Status'],
-        ...SUBJECT_LIST.map(s => [
-          s.name,
-          s.code,
-          s.grade,
-          s.enrolled,
-          `${s.completedPercent}%`,
-          s.quizAttempts,
-          `${s.avgScore}%`,
-          s.status
-        ]),
-        [],
-        ['MASTERY COHORT DISTRIBUTION'],
-        ['Cohort Tier', 'Student Count', 'Percentage'],
-        ...cohortData.map(c => [c.name, c.count, `${c.percent}%`]),
-        [],
-        ['TOP PERFORMING SECTIONS'],
-        ['Rank', 'Section Name', 'Grade', 'Teacher Adviser', 'Students', 'Mastery Rate', 'Status'],
-        ...TOP_CLASSES.map(cls => [cls.rank, cls.section, cls.grade, cls.adviser, cls.students, `${cls.masteryRate}%`, cls.status]),
-      ];
+      const rows = buildAnalyticsExportCsv({
+        timeRange,
+        generatedAt: new Date().toLocaleString(),
+        summary,
+        trajectory: trajectoryData,
+        subjects: SUBJECT_LIST,
+        cohorts: cohortData,
+        topClasses: TOP_CLASSES,
+      });
 
       const columnCount = Math.max(...rows.map(row => row.length));
       const csvContent = rows.map(row => Array.from({ length: columnCount }, (_, index) => {
@@ -427,7 +399,10 @@ export const AdminAnalytics: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Top Executive KPI Bento Cards (Full Color Gradients - 2x2 on mobile, 4-col on desktop) ── */}
+      {/* ── Top Executive KPI Bento Cards: all-time platform totals (the trend chart below follows the selected timeframe) ── */}
+      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        All-time platform totals
+      </p>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {kpiBentos.map((kpi, idx) => {
           const Icon = kpi.icon;

@@ -117,6 +117,26 @@ const filterTopicsByGrade = (
 // Balanced limits for classroom use: allows longer quizzes while keeping response times practical.
 const MAX_QUESTIONS_LIMIT = 30;
 const MAX_TOPICS_LIMIT = 12;
+
+/**
+ * Whether a topic may be added to the selection (TCH-069). Removing an
+ * already-selected topic is always allowed; adding beyond the cap is refused
+ * so the UI can block instead of silently truncating at request build.
+ */
+export function canSelectTopic(selectedTopics: string[], topic: string, limit: number = MAX_TOPICS_LIMIT): boolean {
+  if (selectedTopics.includes(topic)) return true;
+  return selectedTopics.length < limit;
+}
+
+/**
+ * Resolve the quiz title (TCH-070): a custom title wins when non-blank,
+ * otherwise the previous auto-generated format is preserved verbatim.
+ */
+export function buildQuizTitle(customTitle: string, gradeLevel: string, topics: string[]): string {
+  const trimmed = customTitle.trim();
+  if (trimmed) return trimmed;
+  return `${gradeLevel} Quiz – ${topics.length > 0 ? topics.slice(0, 2).join(', ') : 'Mixed Topics'}`;
+}
 const QUIZ_TASK_STORAGE_KEY = 'mathpulse:quiz-maker:active-task';
 
 interface PersistedQuizTask {
@@ -206,6 +226,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   const [selectedGrade, setSelectedGrade] = useState(normalizeGradeLevel(initialGrade));
   const [numQuestions, setNumQuestions] = useState(10); // Capped at MAX_QUESTIONS_LIMIT
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [quizTitle, setQuizTitle] = useState('');
   const [excludeTopics, setExcludeTopics] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<QuestionType[]>(['multiple_choice', 'word_problem', 'identification']);
   const [selectedBlooms, setSelectedBlooms] = useState<BloomLevel[]>(['remember', 'understand', 'apply', 'analyze']);
@@ -397,6 +418,11 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   };
 
   const toggleTopic = (topic: string) => {
+    // TCH-069: refuse new topics past the cap instead of silently truncating.
+    if (!canSelectTopic(selectedTopics, topic)) {
+      toast.warning(`Maximum ${MAX_TOPICS_LIMIT} topics per quiz. Remove one to add another.`);
+      return;
+    }
     setSelectedTopics(prev =>
       prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
     );
@@ -799,7 +825,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     });
 
     return {
-      title: `${effectiveGrade} Quiz – ${effectiveTopics.length > 0 ? effectiveTopics.slice(0, 2).join(', ') : 'Mixed Topics'}`,
+      title: buildQuizTitle(quizTitle, effectiveGrade, effectiveTopics),
       gradeLevel: effectiveGrade,
       questions,
       totalPoints: result.totalPoints,
@@ -1657,6 +1683,19 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                     {selectedTopics.filter(t => !excludeTopics.includes(t)).length} of {MAX_TOPICS_LIMIT} selected
                   </span>
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="quiz-custom-title" className="text-[11px] sm:text-xs font-bold text-[#64748b]">Quiz title (optional)</label>
+                <input
+                  id="quiz-custom-title"
+                  type="text"
+                  value={quizTitle}
+                  onChange={(e) => setQuizTitle(e.target.value)}
+                  placeholder="e.g. Midterm Review – Functions"
+                  maxLength={80}
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
+                />
               </div>
 
               {topicsLoading ? (

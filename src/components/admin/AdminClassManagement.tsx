@@ -17,6 +17,28 @@ interface ClassRecord {
   studentCount?: number;
 }
 
+/**
+ * Whether a class record matches the admin search query (ADM-089).
+ * Matches across name, id slug, grade, section, the combined "grade section"
+ * label, and manager name — previously the id slug and combined label were
+ * skipped, so queries like "grade 11" missed classes whose fields split the
+ * phrase across columns.
+ */
+export function matchesClassQuery(record: ClassRecord, queryTerm: string): boolean {
+  if (!queryTerm) return true;
+  const haystacks = [
+    record.name,
+    record.id,
+    record.gradeLevel,
+    record.section,
+    [record.gradeLevel, record.section].filter(Boolean).join(' '),
+    record.managerName,
+  ];
+  return haystacks.some(
+    (field) => field !== undefined && field.toLowerCase().includes(queryTerm),
+  );
+}
+
 interface TeacherOption {
   uid: string;
   name: string;
@@ -136,12 +158,7 @@ const AdminClassManagement: React.FC = () => {
   const filteredClasses = useMemo(() => {
     const queryTerm = searchQuery.trim().toLowerCase();
     if (!queryTerm) return classes;
-    return classes.filter(cls =>
-      cls.name.toLowerCase().includes(queryTerm) ||
-      (cls.gradeLevel && cls.gradeLevel.toLowerCase().includes(queryTerm)) ||
-      (cls.section && cls.section.toLowerCase().includes(queryTerm)) ||
-      (cls.managerName && cls.managerName.toLowerCase().includes(queryTerm))
-    );
+    return classes.filter((cls) => matchesClassQuery(cls, queryTerm));
   }, [classes, searchQuery]);
 
   if (loading) {

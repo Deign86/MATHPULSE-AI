@@ -420,8 +420,12 @@ const GradesPage = () => {
     }
     if (averageScore > 0) return averageScore;
     if (diagnosticSummary?.score) return diagnosticSummary.score;
-    return 70;
+    // STU-034: no fabricated placeholder — zero means "no data yet" (empty state below).
+    return 0;
   }, [averageScore, proficiencyRate, diagnosticSummary?.score]);
+
+  const hasReadinessData =
+    averageScore > 0 || proficiencyRate > 0 || (diagnosticSummary?.score ?? 0) > 0;
 
   // Derive core Senior High School STEM exam milestones
   const examMilestones = useMemo<ExamMilestone[]>(() => {
@@ -440,8 +444,8 @@ const GradesPage = () => {
       {
         title: 'Business Mathematics & Annuities',
         subject: 'General Mathematics',
-        status: genMathScore >= 85 ? 'completed' : 'in-progress',
-        statusLabel: genMathScore >= 85 ? 'Mastered' : 'In Review',
+        status: genMathScore >= 85 ? 'completed' : genMathScore > 0 ? 'in-progress' : 'ready',
+        statusLabel: genMathScore >= 85 ? 'Mastered' : genMathScore > 0 ? `${genMathScore}%` : 'Up Next',
       },
       {
         title: 'Normal Distribution & Z-Scores',
@@ -1524,6 +1528,23 @@ const GradesPage = () => {
             </div>
 
             {/* Readiness Target Gauge Progress Bar */}
+            {!hasReadinessData && (
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 mb-4">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                  No assessment data yet.
+                </p>
+                <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-1 mb-3">
+                  Take the diagnostic assessment to see your exam readiness here.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Assessment' } }))}
+                  className="text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl px-4 py-2 cursor-pointer"
+                >
+                  Go to Assessment
+                </button>
+              </div>
+            )}
             <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 mb-4">
               <div className="flex items-center justify-between text-xs mb-2">
                 <span className="font-bold text-slate-600 dark:text-slate-300">Quarter Exam Target Progress</span>

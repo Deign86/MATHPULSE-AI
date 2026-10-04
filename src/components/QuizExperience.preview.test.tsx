@@ -61,6 +61,24 @@ describe('QuizExperience preview mode', () => {
     vi.useRealTimers();
   });
 
+  it('holds an incorrect answer on screen with its explanation instead of auto-advancing (STU-009)', async () => {
+    const onComplete = vi.fn();
+    const onQuizEnd = vi.fn();
+    vi.useFakeTimers();
+    const { unmount } = render(
+      <QuizExperience quiz={previewQuiz} previewMode studentId="student-1" onComplete={onComplete} onQuizEnd={onQuizEnd} onClose={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '3' }));
+    await act(async () => { vi.advanceTimersByTime(2_200); });
+    expect(screen.getByText('What is 2 + 2?')).toBeInTheDocument();
+    expect(screen.getByText('2 + 2 = 4')).toBeInTheDocument();
+    expect(screen.queryByText(/Quiz Complete/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View Results' })).toBeInTheDocument();
+    unmount();
+    vi.useRealTimers();
+  });
+
   it('keeps timeout local with no callbacks or persistence', async () => {
     const submit = vi.spyOn(automationService, 'triggerQuizSubmitted');
     const saveResults = vi.spyOn(quizService, 'saveQuizResults');

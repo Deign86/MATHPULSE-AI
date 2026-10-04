@@ -112,7 +112,12 @@ def isolated_mock_student_auth(monkeypatch):
 
     def verify_id_token(token: str) -> dict:
         token_uid = token.removeprefix("mock_token_")
-        role = "teacher" if "teacher" in token or "auth" in token else "student"
+        if "admin" in token:
+            role = "admin"
+        elif "teacher" in token or "auth" in token:
+            role = "teacher"
+        else:
+            role = "student"
         return {
             "uid": token_uid or "test-user-id",
             "sub": token_uid or "test-user-id",

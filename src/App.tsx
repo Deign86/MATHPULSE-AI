@@ -36,6 +36,7 @@ import { buildHeroBannerModalSummary, saveHeroBannerModalSummary } from './servi
 import { selectDisplayXP } from './utils/display';
 import { TabErrorBoundary } from './components/TabErrorBoundary.tsx';
 import { useCapacitorBackButton } from './hooks/useCapacitorBackButton';
+import { useDailyReward } from './hooks/useDailyReward';
 import MobileBottomNav from './components/MobileBottomNav';
 import { DEFAULT_SCHOOL } from './utils/profileValidation';
 
@@ -96,6 +97,8 @@ const App = ({ authOverride }: AppProps = {}) => {
   // Get authentication state from context
   const contextAuth = useAuth();
   const { isLoggedIn, userProfile, userRole, loading, refreshProfile } = authOverride ?? contextAuth;
+  // STU-021: dashboard streak reads the daily-rewards system (was hardcoded "7 Days").
+  const { currentStreak: dashboardStreak } = useDailyReward(userProfile?.uid ?? null);
   const navigate = useNavigate();
   const location = useLocation();
   const tabLoadingFallback = (
@@ -499,8 +502,10 @@ const App = ({ authOverride }: AppProps = {}) => {
     let cancelled = false;
     const checkDiagnostic = async () => {
       try {
-        setAssessmentDismissed(!!studentProfile?.assessmentDismissed);
-        setInitialAssessmentCompleted(!!studentProfile?.initialAssessmentCompleted);
+        const dismissed = !!studentProfile?.assessmentDismissed;
+        const completed = !!studentProfile?.initialAssessmentCompleted;
+        setAssessmentDismissed(dismissed);
+        setInitialAssessmentCompleted(completed);
 
         // Check legacy diagnostic results (force server read to avoid stale cache after reset)
         const legacySnap = await getDocFromServer(doc(db, 'diagnosticResults', userProfile.uid))
@@ -517,7 +522,7 @@ const App = ({ authOverride }: AppProps = {}) => {
         if (!hasLegacyComplete && !hasEnhancedComplete) {
           setHasCompletedDiagnostic(false);
           const timer = setTimeout(() => {
-            if (!cancelled && !assessmentDismissed && !initialAssessmentCompleted) {
+            if (!cancelled && !dismissed && !completed) {
               // Also check session-only dismiss — X button sets sessionStorage, not Firestore
               const sessionDismissed = sessionStorage.getItem('mathpulse_iar_session_dismissed') === 'true';
               if (!sessionDismissed) {
@@ -1494,9 +1499,9 @@ const App = ({ authOverride }: AppProps = {}) => {
                               <span className="block text-[10px] sm:text-[11px] font-bold text-orange-600/80 dark:text-orange-400 uppercase tracking-wider leading-none">
                                 Streak
                               </span>
-                              <span className="block text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1.5">
-                                7 Days
-                              </span>
+                                <span className="block text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1.5">
+                                  {dashboardStreak} Day{dashboardStreak === 1 ? '' : 's'}
+                                </span>
                             </div>
                           </button>
                         </div>

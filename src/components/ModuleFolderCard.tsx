@@ -25,13 +25,15 @@ interface ModuleFolderCardProps {
   /** Optional pre-computed availability - avoids N Firestore listeners when passed from parent */
   precomputedAvailable?: boolean;
   isRecommended?: boolean;
+  /** Weakest diagnostic topic match — shows the Review badge instead of Recommended (STU-007) */
+  isWeakestTopic?: boolean;
   /** Callback for "Notify Me" on coming_soon modules */
   onNotifyMe?: (moduleId: string) => void;
   /** Render in compact format (ideal for side-scrolling carousels) */
   compact?: boolean;
 }
 
-const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable, isRecommended, onNotifyMe, compact = false }) => {
+const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable, isRecommended, isWeakestTopic, onNotifyMe, compact = false }) => {
   const theme = THEMES[index % THEMES.length];
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
   
@@ -104,11 +106,15 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
                 {module.content_domain}
               </span>
             )}
-            {isRecommended && (
+            {isWeakestTopic ? (
+              <span className="rounded-full border border-rose-200 bg-rose-100 px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-rose-700 shadow-sm animate-pulse leading-none">
+                Review
+              </span>
+            ) : isRecommended ? (
               <span className="rounded-full border border-purple-200 bg-purple-100 px-2 md:px-2.5 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold text-purple-700 shadow-sm animate-pulse leading-none">
                 Recommended
               </span>
-            )}
+            ) : null}
           </div>
 
           <p className={`text-white/85 ${compact ? 'text-[9px] md:text-xs line-clamp-1 mb-1.5' : 'text-[10px] md:text-[13px] line-clamp-1 md:line-clamp-2 mb-2 md:mb-4'} font-medium leading-snug md:leading-relaxed pr-2 drop-shadow-sm`}>

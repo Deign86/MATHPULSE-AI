@@ -266,3 +266,49 @@ describe('GradesPage CSV/PDF export', () => {
     });
   });
 });
+
+describe('GradesPage exam readiness empty state (STU-034)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    vi.clearAllMocks();
+    curriculumSpy.mockReturnValue({
+      subjects: [],
+      isLoading: false,
+      error: null,
+      getSubject: () => undefined,
+      getTopics: () => [],
+      refetch: () => undefined,
+    });
+    gradeSummarySubscription.mockImplementation((_uid, onChange) => {
+      onChange(null);
+      return () => undefined;
+    });
+    assessmentSubscription.mockImplementation((_uid, onChange) => {
+      onChange([]);
+      return () => undefined;
+    });
+    progressSubscription.mockImplementation((_uid, onChange) => {
+      onChange(null);
+      return () => undefined;
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('shows no fabricated readiness score and offers the diagnostic CTA on fresh accounts', async () => {
+    renderGradesPage();
+    await screen.findByText('No assessment data yet.');
+
+    expect(
+      screen.getByText('Take the diagnostic assessment to see your exam readiness here.'),
+    ).toBeInTheDocument();
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
+    fireEvent.click(screen.getByRole('button', { name: 'Go to Assessment' }));
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    // SAFETY: the test dispatches only a CustomEvent carrying the tab detail above.
+    const event = dispatch.mock.calls[0][0] as CustomEvent;
+    expect(event.detail.tab).toBe('Assessment');
+  });
+});

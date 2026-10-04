@@ -15,7 +15,7 @@ Single source of truth for how each layer is verified. Commands below mirror `.g
 | Backend targeted | `python -m pytest backend/tests/<file> -q` (repo root) | Same as above | — |
 | Functions lint | `cd functions && npm run lint` (0 errors; 2 pre-existing axios `import/no-named-as-default-member` warnings are accepted) | Node 22, `functions/node_modules` installed | Firebase Functions checks |
 | Functions build | `cd functions && npm run build` → `tsc` | Same as above | Firebase Functions checks + deploy predeploy |
-| Functions tests | `cd functions && npm test` → build + `node --test "lib/**/*.test.js"` | Emulator-gated files (`*.emulator.test.ts`, `realtimeDatabaseRules.test.ts`) assert the `demo-mathpulse` project identity and SKIP when absent — 0 failures expected without emulators | Validate Functions (deploy workflow); PR CI runs the same suite UNDER emulators |
+| Functions tests | `cd functions && npm test` → build + `node --test "lib/**/*.test.js"` | No emulator tests in this repo (emulator-gated suites removed 2026-10-04; do not add new ones) — 0 failures expected | Validate Functions (deploy workflow); PR CI runs the same suite |
 | E2E | `e2e list`, `e2e run [--max-failures N --workers 1] [files...]` (repo root, tester-army/e2e v0.16.0) | Needs: `E2E_USER_{STUDENT,TEACHER,ADMIN}_{USERNAME,PASSWORD}`, ports 5173/8000 free, backend on `:8000`, ChatGPT login serving the agent model (`e2e models openai` to check). Report: `.e2e/report.json` + `.e2e/artifacts/` | No CI job — manual only |
 
 ## Worktree setup (fresh worktrees have NO node_modules)

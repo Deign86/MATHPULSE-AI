@@ -35,6 +35,22 @@ interface QuestionBankPanelProps {
   teacherName?: string;
 }
 
+/**
+ * Validate a question-bank PDF storage path client-side (TCH-072) so
+ * malformed paths never reach the API (which fails after long waits).
+ * Storage paths are storage-relative PDF locations, never URLs.
+ */
+export function validatePdfStoragePath(raw: string): string | null {
+  const path = raw.trim();
+  if (!path) return 'Please enter a storage path';
+  if (!/\.pdf$/i.test(path)) return 'Storage path must point to a .pdf file';
+  if (/^(https?:\/\/|gs:\/\/|\/)/i.test(path)) {
+    return 'Enter a storage-relative path (e.g. rag-pdfs/filename.pdf), not a URL';
+  }
+  if (path.includes('..')) return 'Storage path must not contain ..';
+  return null;
+}
+
 export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
   onOpenNotifications,
   onOpenProfile,
@@ -46,6 +62,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
   const [loading, setLoading] = useState(false);
   const [ingesting, setIngesting] = useState(false);
   const [storagePath, setStoragePath] = useState('');
+  const [pathError, setPathError] = useState('');
   const [gradeLevel, setGradeLevel] = useState(11);
   const [topic, setTopic] = useState('general_mathematics');
 
@@ -132,8 +149,10 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
   }, [fetchStatus]);
 
   const handleIngest = async () => {
-    if (!storagePath.trim()) {
-      toast.error('Please enter a storage path');
+    const validationError = validatePdfStoragePath(storagePath);
+    setPathError(validationError ?? '');
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
     setIngesting(true);
@@ -151,6 +170,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
       toast.success('PDF ingestion completed');
       await fetchStatus();
       setStoragePath('');
+      setPathError('');
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Ingestion failed';
       toast.error(message);
@@ -231,7 +251,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                     type="text"
                     placeholder="quiz_pdfs/grade_11/gen_math_q1.pdf"
                     value={storagePath}
-                    onChange={(e) => setStoragePath(e.target.value)}
+                    onChange={(e) => { setStoragePath(e.target.value); if (pathError) setPathError(''); }}
                     className="font-body w-full bg-slate-50 border border-slate-200 hover:border-[#cbd5e1] text-[#475569] text-xs sm:text-[14px] font-medium rounded-xl pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3.5 outline-none focus:bg-white focus:border-[#a855f7] focus:ring-4 focus:ring-[#a855f7]/10 transition-all shadow-inner"
                   />
                 </div>

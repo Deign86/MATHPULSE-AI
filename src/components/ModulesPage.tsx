@@ -72,7 +72,7 @@ import { getStudentCompetencyProfile } from '../services/assessmentService';
 import type { CompetencyProfileDoc } from '../types/assessment';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { submitPracticeSession } from '../services/practiceService';
-import { fetchPendingQuizzesForStudent, type PlayableQuiz } from '../services/quizService';
+import { fetchCompletedSubmissionForQuiz, fetchPendingQuizzesForStudent, type PlayableQuiz } from '../services/quizService';
 import { subscribeToUserProgress } from '../services/progressService';
 import { watchModule } from '../services/moduleWatchService';
 import type { ModuleProgress, UserProgress } from '../types/models';
@@ -214,6 +214,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [pendingQuizzesLoaded, setPendingQuizzesLoaded] = useState(false);
   const [pendingQuizzesError, setPendingQuizzesError] = useState(false);
   const [assignedQuizUnavailable, setAssignedQuizUnavailable] = useState(false);
+  const [completedQuizInfo, setCompletedQuizInfo] = useState<{ quizId: string; score: number } | null>(null);
   const [pendingQuizRefresh, setPendingQuizRefresh] = useState(0);
   const [assignedQuizToOpen, setAssignedQuizToOpen] = useState<string | null>(() =>
     new URLSearchParams(window.location.search).get('quizId'),
@@ -240,6 +241,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       setPendingQuizzesLoaded(false);
       setPendingQuizzesError(false);
       setAssignedQuizUnavailable(false);
+      setCompletedQuizInfo(null);
       const quizId = z.string().safeParse(detail.quizId);
       setAssignedQuizToOpen(quizId.success ? quizId.data : null);
       setPendingQuizRefresh((refresh) => refresh + 1);
@@ -295,12 +297,18 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       const queryString = params.toString();
       window.history.replaceState({}, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
     } else {
-      setAssignedQuizUnavailable(true);
+      // Not pending: it was either completed (single-shot lock) or never assigned.
+      // Distinguish the two so completed quizzes show their lock + score (STU-014).
+      const missingQuizId = assignedQuizToOpen;
       setAssignedQuizToOpen(null);
       const params = new URLSearchParams(window.location.search);
       params.delete('quizId');
       const queryString = params.toString();
       window.history.replaceState({}, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
+      void fetchCompletedSubmissionForQuiz(userProfile?.uid ?? '', missingQuizId).then((completed) => {
+        if (completed) setCompletedQuizInfo({ quizId: missingQuizId, score: completed.score });
+        else setAssignedQuizUnavailable(true);
+      });
     }
   }, [assignedQuizToOpen, pendingQuizzes, pendingQuizzesLoaded, pendingQuizzesLoading, pendingQuizzesError]);
 
@@ -1726,6 +1734,19 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               {assignedQuizUnavailable && (
                 <p role="status" className="text-sm text-slate-500">This assigned quiz is no longer pending. Check with your teacher if you need access.</p>
               )}
+              {completedQuizInfo && (
+                <div data-testid="assigned-quiz-completed" role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-sm font-bold text-emerald-800">Quiz already completed — score {completedQuizInfo.score}%.</p>
+                  <p className="text-xs text-emerald-700 mt-1">Assigned quizzes are single-attempt and cannot be retaken.</p>
+                  <button
+                    type="button"
+                    onClick={() => setCompletedQuizInfo(null)}
+                    className="mt-2 text-xs font-semibold text-emerald-700 underline cursor-pointer"
+                  >
+                    Back to quizzes
+                  </button>
+                </div>
+              )}
               {pendingQuizzesLoading ? (
                 <p role="status" className="text-sm text-slate-500">Loading assigned quizzes…</p>
               ) : pendingQuizzesError ? (
@@ -1952,6 +1973,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               onPreviewSources={setSourcePreviewModule}
               isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
               weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
+              hasCompletedDiagnostic={hasCompletedDiagnostic}
               onNotifyMe={handleNotifyMe}
             />
           ) : (
@@ -1963,6 +1985,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
               learningPath={learningPath}
               weakTopics={studentProfile?.assessmentResults?.weakTopics || []}
+              hasCompletedDiagnostic={hasCompletedDiagnostic}
               onNotifyMe={handleNotifyMe}
             />
           )}
@@ -2156,14 +2179,30 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   );
 };
 
+/** Weakest-first ordering is the codebase convention (weak_topics sorted by ascending score). */
+function matchesWeakestTopic(
+  module: CurriculumModuleRuntime,
+  weakestTopic: string,
+): boolean {
+  const target = weakestTopic.toLowerCase();
+  return Boolean(
+    (module.content_domain && module.content_domain.toLowerCase().includes(target)) ||
+    (module.title && module.title.toLowerCase().includes(target)) ||
+    (module.competency_group && module.competency_group.toLowerCase().includes(target)) ||
+    (module.subject && module.subject.toLowerCase().includes(target)),
+  );
+}
+
 const ModulesLibraryView: React.FC<{
   modules: CurriculumModuleRuntime[];
   onSelectModule: (module: CurriculumModuleRuntime) => void;
   onPreviewSources: (module: CurriculumModuleRuntime) => void;
   isAtRisk?: boolean;
   weakTopics?: string[];
+  hasCompletedDiagnostic?: boolean;
   onNotifyMe?: (moduleId: string) => void;
-}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false, weakTopics = [], onNotifyMe }) => {
+}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false, weakTopics = [], hasCompletedDiagnostic = false, onNotifyMe }) => {
+  const weakestTopic = hasCompletedDiagnostic ? weakTopics[0] : undefined;
   return (
     <div className="pr-2 space-y-8">
       <div>
@@ -2193,6 +2232,7 @@ const ModulesLibraryView: React.FC<{
                 onPreviewSources={() => onPreviewSources(module)}
                 isAtRisk={isAtRisk}
                 isRecommended={isRecommended}
+                isWeakestTopic={weakestTopic !== undefined && matchesWeakestTopic(module, weakestTopic)}
                 onNotifyMe={onNotifyMe}
               />
             )})}
@@ -2211,8 +2251,10 @@ const RecommendedModulesView: React.FC<{
   isAtRisk?: boolean;
   learningPath?: LearningPathState;
   weakTopics?: string[];
+  hasCompletedDiagnostic?: boolean;
   onNotifyMe?: (moduleId: string) => void;
-}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPath = IDLE_LEARNING_PATH, weakTopics = [], onNotifyMe }) => {
+}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPath = IDLE_LEARNING_PATH, weakTopics = [], hasCompletedDiagnostic = false, onNotifyMe }) => {
+  const weakestTopic = hasCompletedDiagnostic ? weakTopics[0] : undefined;
   const inProgress = modules.filter((module) => module.progress > 0 && module.progress < 100);
   const suggested = (modules.length > 0 ? modules : fullPool).filter((module) => module.progress === 0).slice(0, 6);
 
@@ -2262,6 +2304,7 @@ const RecommendedModulesView: React.FC<{
                 isAtRisk={isAtRisk}
                 badgeLabel="In Progress"
                 isRecommended={isRecommended}
+                isWeakestTopic={weakestTopic !== undefined && matchesWeakestTopic(module, weakestTopic)}
                 onNotifyMe={onNotifyMe}
               />
             )})}
@@ -2293,6 +2336,7 @@ const RecommendedModulesView: React.FC<{
                 isAtRisk={isAtRisk}
                 badgeLabel="Start"
                 isRecommended={isRecommended || (index === 0 && weakTopics.length > 0)}
+                isWeakestTopic={weakestTopic !== undefined && matchesWeakestTopic(module, weakestTopic)}
                 onNotifyMe={onNotifyMe}
               />
             )})}

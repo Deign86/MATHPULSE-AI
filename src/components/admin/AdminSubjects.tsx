@@ -32,6 +32,7 @@ import {
 } from '../ui/table';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubjectAvailability } from '../../hooks/useSubjectAvailability';
+import { applyLocalAvailability } from '../../hooks/useSubjectAvailability';
 import { toggleSubjectAvailability } from '../../services/platformConfigService';
 import { SHS_MATH_SUBJECTS } from '../../data/subjects';
 import { toast } from 'sonner';
@@ -98,6 +99,9 @@ const AdminSubjects: React.FC = () => {
       setSavingId(subjectId);
       try {
         await toggleSubjectAvailability(subjectId, nextAvailable, userProfile.uid);
+        // Optimistic local update: the switch reflects instantly instead of
+        // waiting for the Firestore snapshot roundtrip (ADM-095).
+        applyLocalAvailability(subjectId, nextAvailable);
         toast.success(
           `${SUBJECT_ROWS.find((s) => s.id === subjectId)?.name || subjectId} is now ${nextAvailable ? 'available' : 'locked'}`,
         );

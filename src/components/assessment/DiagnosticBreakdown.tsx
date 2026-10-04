@@ -158,9 +158,10 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
     setLoading(true);
     try {
       const resultsSnap = await getDoc(doc(db, 'diagnosticResults', userId));
-      if (!resultsSnap.exists()) { 
-        setLoading(false); 
-        return; 
+      if (!resultsSnap.exists()) {
+        setLoading(false);
+        setAnalysisLoading(false);
+        return;
       }
 
       const data = resultsSnap.data();
@@ -413,7 +414,12 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
             </div>
 
             {/* TAB 1: AI INSIGHTS & ACTIONS */}
-            {activeTab === 'insights' && (
+            {activeTab === 'insights' && (!loading && responses.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs space-y-2">
+                <p className="font-bold text-slate-600 dark:text-slate-300">No diagnostic results yet.</p>
+                <p>Complete the initial assessment to see your score breakdown here.</p>
+              </div>
+            ) : (
               <div className="space-y-4 sm:space-y-5 animate-in fade-in-50 duration-200">
                 {/* Executive Summary Card */}
                 <div className="bg-gradient-to-br from-purple-50/70 via-indigo-50/40 to-white dark:from-purple-950/20 dark:via-slate-900 dark:to-slate-900 border border-purple-100/80 dark:border-purple-900/40 rounded-2xl p-4 sm:p-6 shadow-xs">
@@ -569,7 +575,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                   </div>
                 )}
               </div>
-            )}
+            ))}
 
             {/* TAB 2: DOMAIN MASTERY */}
             {activeTab === 'domains' && (
@@ -676,7 +682,11 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
 
                 {/* Questions List */}
                 <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-xs">
-                  {filteredResponses.length > 0 ? (
+                  {responses.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 text-xs">
+                      No diagnostic results yet. Complete the initial assessment to see your score breakdown here.
+                    </div>
+                  ) : filteredResponses.length > 0 ? (
                     filteredResponses.map((r, i) => {
                       const isExpanded = expandedQuestion === i;
 
