@@ -245,7 +245,9 @@ export async function fetchPendingQuizzesForStudent(studentUid: string): Promise
 
 /**
  * Look up the student's completed submission for a quiz, if any (STU-014).
- * Single-field query (no composite index needed); ownership filtered client-side.
+ * Single-field owner query (no composite index needed, and Firestore rules can
+ * prove student scope — a quizId-only filter is rejected for students);
+ * the quiz is narrowed client-side instead.
  * Returns the latest score, or null when never completed by this student.
  */
 export async function fetchCompletedSubmissionForQuiz(
@@ -253,10 +255,10 @@ export async function fetchCompletedSubmissionForQuiz(
   quizId: string,
 ): Promise<{ score: number } | null> {
   if (!studentUid || !quizId) return null;
-  const snap = await getDocs(query(collection(db, 'quizSubmissions'), where('quizId', '==', quizId)));
+  const snap = await getDocs(query(collection(db, 'quizSubmissions'), where('lrn', '==', studentUid)));
   const mine = snap.docs
     .map((d) => d.data())
-    .filter((s) => s.lrn === studentUid || s.studentId === studentUid);
+    .filter((s) => s.quizId === quizId && (s.lrn === studentUid || s.studentId === studentUid));
   if (mine.length === 0) return null;
   const scores = mine.map((s) => Number(s.score ?? 0)).filter((n) => Number.isFinite(n));
   return { score: scores.length > 0 ? Math.max(...scores) : 0 };

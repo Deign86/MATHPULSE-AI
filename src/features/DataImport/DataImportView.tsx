@@ -431,6 +431,7 @@ export default function DataImportView({
 
     let pendingNormalized: File | null = null;
 
+    try {
     if (/\.(xlsx|xls)$/i.test(file.name)) {
       try {
         const workbookResult = await parseShsWorkbook(file, { confidenceThreshold: DETECTION_CONFIDENCE_THRESHOLD });
@@ -469,6 +470,9 @@ export default function DataImportView({
         note: `${csvPreview.total} student row${csvPreview.total === 1 ? '' : 's'} parsed from CSV (showing first ${Math.min(20, csvPreview.rows.length)}).`,
       });
       return;
+    }
+    } finally {
+      setUploadingClassRecords(false);
     }
 
   };
