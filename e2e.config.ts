@@ -4,6 +4,11 @@ import { web } from '@e2e-dev/web';
 
 export default {
   tests: 'tests/e2e/**/*.e2e.ts',
+  // Generous budget: the local backend verifies tokens without the Admin SDK
+  // (per-request fallback) and AI generation endpoints take minutes.
+  timeout: 600_000,
+  // Locator assertions poll slowly here: authed backend reads take seconds.
+  assertionTimeout: 60_000,
   targets: [
     {
       engine: web(),

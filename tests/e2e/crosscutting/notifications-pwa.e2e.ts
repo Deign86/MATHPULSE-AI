@@ -13,6 +13,8 @@ test('interaction-only: student opens the notification bell and inspects the pan
   await expect(notificationBell).toBeVisible();
   await agent.act('open the notifications panel from the notification bell and inspect its visible items');
   await expect(screen.getByRole('heading', 'Notifications')).toBeVisible();
-  await expect(screen.getByRole('heading', 'Daily Reward Claimed!')).toBeVisible();
-  await expect(screen.getByText('All caught up')).toBeVisible();
+  await expect(screen.getByRole('heading', 'Diagnostic Assessment Complete')).toBeVisible();
+
+  await agent.act('delete the Diagnostic Assessment Complete notification using its Delete notification button');
+  await expect(screen.getByText('3 unread alerts')).toBeVisible();
 });

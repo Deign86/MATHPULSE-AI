@@ -9,10 +9,15 @@ test('interaction-only: IAR hub exposes existing results without changing placem
   });
   await expect(screen.getByRole('button', 'Dashboard')).toBeVisible();
 
-  await agent.act('open the Diagnostic Assessment from the student application');
-  await expect(screen.getByRole('heading', 'Diagnostic Assessment')).toBeVisible();
+  await app.open('/assessment');
+  await expect(screen.getByRole('heading', 'Assessment Results')).toBeVisible();
+  await expect(screen.getByRole('heading', 'Latest Score')).toBeVisible();
+  await expect(screen.getByRole('heading', 'Focus Areas')).toBeVisible();
 
-  await agent.act('show the completed assessment results entry point');
+  await agent.act('show the completed assessment results entry point without starting or retaking the assessment');
+  await expect(screen.getByRole('button', 'History & Trends')).toBeVisible();
+
+  await app.open('/grades');
   await expect(screen.getByRole('heading', 'Initial Diagnostic Results')).toBeVisible();
   await expect(screen.getByRole('button', 'View Full Analysis')).toBeVisible();
 });
