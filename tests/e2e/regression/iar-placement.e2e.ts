@@ -1,7 +1,7 @@
 import { test } from '@e2e-dev/web';
 import { credentials, expect } from 'e2e';
 
-test('IAR assessment exposes the completed placement state', async ({ app, agent, screen }) => {
+test('interaction-only: IAR hub exposes existing results without changing placement', async ({ app, agent, screen }) => {
   const student = credentials.user('student');
   await app.open('/');
   await agent.act('sign in to MathPulse using the supplied student email and password', {

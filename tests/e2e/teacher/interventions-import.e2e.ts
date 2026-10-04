@@ -1,7 +1,7 @@
 import { test } from '@e2e-dev/web';
 import { credentials, expect } from 'e2e';
 
-test('teacher opens intervention center and Data Import without uploading', async ({ app, agent, screen }) => {
+test('navigation/read-only: teacher opens Intervention Center and Data Import without uploading', async ({ app, agent, screen }) => {
   const teacher = credentials.user('teacher');
   await app.open('/');
   await expect(screen.getByRole('button', 'Sign In')).toBeVisible();

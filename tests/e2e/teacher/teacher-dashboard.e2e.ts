@@ -1,7 +1,7 @@
 import { test } from '@e2e-dev/web';
 import { credentials, expect } from 'e2e';
 
-test('teacher signs in and sees classes with risk badges', async ({ app, agent, screen }) => {
+test('navigation/read-only: teacher sees classes with risk badges', async ({ app, agent, screen }) => {
   const teacher = credentials.user('teacher');
   await app.open('/');
   await expect(screen.getByRole('button', 'Sign In')).toBeVisible();
