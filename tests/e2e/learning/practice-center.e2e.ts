@@ -16,5 +16,5 @@ test('student starts a practice session from a curriculum topic', async ({ app, 
   await expect(screen.getByText('Practice Center')).toBeVisible();
 
   await agent.act('start a practice quiz by selecting the Functions as Mathematical Models topic; wait for the generated quiz to open');
-  await expect(screen.getByText('Functions as Mathematical Models')).toBeVisible();
+  await expect(screen.getByText('Functions as Mathematical Models', { exact: false }).first()).toBeVisible();
 });

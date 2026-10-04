@@ -13,7 +13,7 @@ test('navigation/read-only: admin views user and class management tables', async
 
   await agent.act('open User Management from the admin navigation');
   await expect(screen.getByRole('heading', 'User Management')).toBeVisible();
-  await expect(screen.getByText('user records', { exact: false })).toBeVisible();
+  await expect(screen.getByText('user records', { exact: false }).first()).toBeVisible();
   await expect(screen.getByRole('columnheader', 'User Identity')).toBeVisible();
   await expect(screen.getByRole('columnheader', 'Role')).toBeVisible();
   await expect(screen.getByRole('columnheader', 'Status')).toBeVisible();
