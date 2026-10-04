@@ -99,6 +99,8 @@ Functions deploy prerequisites (all project-owner actions, none fixable in code)
 
 - EventArc API enabled (required since the Firestore 2nd-gen `onQuizSubmitted` trigger).
 - IAM bindings for the project service agents: `roles/iam.serviceAccountTokenCreator` on the pubsub service agent, `roles/run.invoker` + `roles/eventarc.eventReceiver` on the compute service agent. The deploy log prints the exact `gcloud projects add-iam-policy-binding` commands when they are missing.
+- 1st-gen → 2nd-gen migration: Firebase refuses same-name upgrades (`Upgrading from 1st Gen to 2nd Gen is not yet supported`). Delete the remote v1 function first (`firebase functions:delete <name> --project <id>`), then deploy; events missed during the gap are recoverable via the manual backfill callables. `onQuizSubmitted` migrated this way (us-east1).
+- Artifact cleanup policy is per-region: `firebase functions:artifacts:setpolicy` defaults to `us-central1` — pass `--location <region>` for the region hosting 2nd-gen functions. After first enabling EventArc, allow minutes for permission propagation before retrying the deploy.
 
 ## Deployment flow
 
