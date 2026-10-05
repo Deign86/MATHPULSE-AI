@@ -83,6 +83,17 @@ const AdminSubjects: React.FC = () => {
   const { userProfile } = useAuth();
   const { availability, loading, error } = useSubjectAvailability();
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [savedAvailability, setSavedAvailability] = useState<Record<string, boolean>>({});
+  const currentAvailability = useMemo(() => {
+    const mergedAvailability = { ...availability };
+    Object.entries(savedAvailability).forEach(([subjectId, available]) => {
+      mergedAvailability[subjectId] = {
+        ...mergedAvailability[subjectId],
+        available,
+      };
+    });
+    return mergedAvailability;
+  }, [availability, savedAvailability]);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -98,6 +109,7 @@ const AdminSubjects: React.FC = () => {
       setSavingId(subjectId);
       try {
         await toggleSubjectAvailability(subjectId, nextAvailable, userProfile.uid);
+        setSavedAvailability((previous) => ({ ...previous, [subjectId]: nextAvailable }));
         toast.success(
           `${SUBJECT_ROWS.find((s) => s.id === subjectId)?.name || subjectId} is now ${nextAvailable ? 'available' : 'locked'}`,
         );
@@ -114,7 +126,7 @@ const AdminSubjects: React.FC = () => {
   const filteredSubjects = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
     return SUBJECT_ROWS.filter((subject) => {
-      const entry = availability[subject.id];
+      const entry = currentAvailability[subject.id];
       const isAvailable = entry?.available ?? !subject.shelved;
       const pdfPath = entry?.pdfPath ?? '';
 
@@ -140,7 +152,7 @@ const AdminSubjects: React.FC = () => {
 
       return true;
     });
-  }, [searchTerm, selectedGrade, selectedStatus, availability]);
+  }, [searchTerm, selectedGrade, selectedStatus, currentAvailability]);
 
   const hasActiveFilters = searchTerm !== '' || selectedGrade !== 'All Grades' || selectedStatus !== 'All Statuses';
 
@@ -175,7 +187,7 @@ const AdminSubjects: React.FC = () => {
           },
           {
             label: 'Available',
-            value: SUBJECT_ROWS.filter((s) => availability[s.id]?.available ?? !s.shelved).length,
+            value: SUBJECT_ROWS.filter((s) => (currentAvailability[s.id]?.available ?? !s.shelved)).length,
             subtext: 'Accessible to students',
             badge: 'Active',
             icon: Unlock,
@@ -184,7 +196,7 @@ const AdminSubjects: React.FC = () => {
           },
           {
             label: 'Locked',
-            value: SUBJECT_ROWS.filter((s) => !(availability[s.id]?.available ?? !s.shelved)).length,
+            value: SUBJECT_ROWS.filter((s) => currentAvailability[s.id]?.available === false).length,
             subtext: 'Materials not yet linked',
             badge: 'Locked',
             icon: Lock,
@@ -193,7 +205,7 @@ const AdminSubjects: React.FC = () => {
           },
           {
             label: 'Linked Materials',
-            value: SUBJECT_ROWS.filter((s) => availability[s.id]?.pdfPath).length,
+            value: SUBJECT_ROWS.filter((s) => currentAvailability[s.id]?.pdfPath).length,
             subtext: 'Ready for AI tutoring',
             badge: 'AI Ready',
             icon: Link2,
@@ -327,7 +339,7 @@ const AdminSubjects: React.FC = () => {
           </div>
         ) : (
           filteredSubjects.map((subject) => {
-            const entry = availability[subject.id];
+            const entry = currentAvailability[subject.id];
             const isAvailable = entry?.available ?? !subject.shelved;
             const lastUpdated = entry?.lastUpdated;
             const isSaving = savingId === subject.id;
@@ -428,7 +440,7 @@ const AdminSubjects: React.FC = () => {
                 </TableRow>
               ) : (
                 filteredSubjects.map((subject) => {
-                  const entry = availability[subject.id];
+                  const entry = currentAvailability[subject.id];
             const isAvailable = entry?.available ?? !subject.shelved;
                   const lastUpdated = entry?.lastUpdated;
                   const isSaving = savingId === subject.id;

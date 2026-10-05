@@ -9,6 +9,7 @@ import {
   Save, Send, Library, Trash2, Users, Search, HelpCircle, Award, ListChecks, CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { buildQuizRequestBasics } from '../utils/quizRequest';
 import {
   apiService,
   ApiError,
@@ -461,9 +462,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     const clampedQuestions = Math.min(numQuestions, MAX_QUESTIONS_LIMIT);
 
     return {
-      topics: effectiveTopics,
-      gradeLevel: selectedGrade,
-      numQuestions: clampedQuestions,
+      ...buildQuizRequestBasics(effectiveTopics, selectedGrade, clampedQuestions, quizTitle),
       questionTypes: selectedTypes,
       includeGraphs,
       difficultyDistribution: difficultyDist,
@@ -815,7 +814,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     });
 
     return {
-      title: resolveQuizTitle(quizTitle, effectiveGrade, effectiveTopics),
+      title: sourceRequest?.title || resolveQuizTitle(quizTitle, effectiveGrade, effectiveTopics),
       gradeLevel: effectiveGrade,
       questions,
       totalPoints: result.totalPoints,
@@ -1593,6 +1592,10 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   <h3 className="text-[10.5px] sm:text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Basic Settings</h3>
                 </div>
                 <div className="p-3.5 sm:p-5 flex flex-col md:flex-row gap-3 sm:gap-6">
+                  <div className="flex-1 group">
+                    <label htmlFor="quiz-title" className="text-xs sm:text-[13px] font-semibold text-[#1e293b] mb-1.5 block">Quiz title</label>
+                    <input id="quiz-title" value={quizTitle} onChange={(event) => setQuizTitle(event.target.value)} placeholder="Enter a title (optional)" className="w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] rounded-xl px-3.5 py-2.5 h-[40px] sm:h-[42px]" />
+                  </div>
                   {/* Grade Level */}
                   <div className="flex-1 group">
                     <label htmlFor="quiz-grade-level" className="text-xs sm:text-[13px] font-semibold text-[#1e293b] mb-1.5 block group-hover:text-[#a855f7] transition-colors">Grade level</label>
@@ -1921,6 +1924,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 <h3 className="text-[10.5px] sm:text-[12px] font-bold text-[#64748b] uppercase tracking-wider mb-2.5 sm:mb-6 flex items-center gap-1.5 sm:gap-2">
                   <BarChart3 size={15} className="text-[#a855f7]" /> Quiz Summary
                 </h3>
+                <p className="mb-3 text-sm font-semibold text-[#1e293b]">{quizTitle.trim() || `${selectedGrade} Quiz`}</p>
                 <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 mb-3 sm:mb-6">
                   {[
                     { label: 'Questions', value: numQuestions },

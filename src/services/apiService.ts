@@ -1091,6 +1091,7 @@ export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 export interface QuizGenerationRequest {
   topics: string[];
   gradeLevel: string;
+  title?: string;
   numQuestions?: number;
   questionTypes?: QuestionType[];
   includeGraphs?: boolean;

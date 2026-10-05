@@ -16,6 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Loader2, Upload, RefreshCw, BookOpen, FileText, Sparkles, Bell, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
+import { isValidFirebaseStoragePdfPath } from '../utils/firebaseStoragePath';
 
 interface PdfStatus {
   filename: string;
@@ -133,7 +134,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
 
   const handleIngest = async () => {
     const normalizedPath = storagePath.trim();
-    if (!/^[A-Za-z0-9][A-Za-z0-9/_ .-]*\.pdf$/i.test(normalizedPath) || normalizedPath.includes('..')) {
+    if (!isValidFirebaseStoragePdfPath(normalizedPath)) {
       toast.error('Enter a valid Firebase Storage path to a PDF, such as quiz_pdfs/grade_11/quiz.pdf.');
       return;
     }

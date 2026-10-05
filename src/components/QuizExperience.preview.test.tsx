@@ -39,6 +39,18 @@ describe('QuizExperience preview mode', () => {
     vi.useRealTimers();
   });
 
+  it('keeps the explanation visible until the learner chooses Next Question', async () => {
+    vi.useFakeTimers();
+    render(<QuizExperience quiz={previewQuiz} previewMode onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '4' }));
+    await act(async () => { vi.advanceTimersByTime(3_000); });
+
+    expect(screen.getByText('2 + 2 = 4')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /view results/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Quiz Complete/)).not.toBeInTheDocument();
+  });
+
   it('keeps normal completion and retake local', async () => {
     const submit = vi.spyOn(automationService, 'triggerQuizSubmitted').mockResolvedValue({
       success: true, event: 'quiz_submitted', lrn: 'student-1', message: 'test', remedialQuizzesCreated: 0, notifications: [],
@@ -53,9 +65,8 @@ describe('QuizExperience preview mode', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '4' }));
-    await act(async () => { vi.advanceTimersByTime(200); });
-    expect(screen.getByText('2 + 2 = 4')).toBeInTheDocument();
-    await act(async () => { vi.advanceTimersByTime(1_800); });
+    await act(async () => { vi.advanceTimersByTime(2_200); });
+    fireEvent.click(screen.getByRole('button', { name: /view results/i }));
     expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Review answers'));
     expect(screen.getByText('Your answer: 4 · Correct')).toBeInTheDocument();
@@ -64,8 +75,8 @@ describe('QuizExperience preview mode', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'RETAKE QUIZ' }));
     fireEvent.click(screen.getByRole('button', { name: '4' }));
-    await act(async () => { vi.advanceTimersByTime(200); });
-    await act(async () => { vi.advanceTimersByTime(1_800); });
+    await act(async () => { vi.advanceTimersByTime(2_200); });
+    fireEvent.click(screen.getByRole('button', { name: /view results/i }));
     expect(screen.getAllByText(/Quiz Complete/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'FINISH' }));
 
@@ -136,6 +147,7 @@ describe('QuizExperience preview mode', () => {
     render(<QuizExperience quiz={assignedQuiz} studentId="student-1" onComplete={onComplete} onQuizEnd={onQuizEnd} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: '3' }));
     await act(async () => { vi.advanceTimersByTime(2_200); });
+    fireEvent.click(screen.getByRole('button', { name: /view results/i }));
     expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
     await act(async () => { vi.advanceTimersByTime(60_000); });
     expect(submit).toHaveBeenCalledOnce();
@@ -156,8 +168,8 @@ describe('QuizExperience preview mode', () => {
     vi.useFakeTimers();
     render(<QuizExperience quiz={assignedQuiz} studentId="student-1" onComplete={onComplete} onQuizEnd={onQuizEnd} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: '4' }));
-    await act(async () => { vi.advanceTimersByTime(2_000); });
-    expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
+    await act(async () => { vi.advanceTimersByTime(2_200); });
+    fireEvent.click(screen.getByRole('button', { name: /view results/i }));
     expect(submit).toHaveBeenCalledOnce();
     expect(saveResults).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'RETAKE QUIZ' }));
@@ -166,8 +178,8 @@ describe('QuizExperience preview mode', () => {
     expect(completedAttempt).toHaveLength(1);
     expect(completedAttempt[0]).toMatchObject({ questionId: 'question-1', correct: true });
     fireEvent.click(screen.getByRole('button', { name: '4' }));
-    await act(async () => { vi.advanceTimersByTime(2_000); });
-    expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
+    await act(async () => { vi.advanceTimersByTime(2_200); });
+    fireEvent.click(screen.getByRole('button', { name: /view results/i }));
     expect(submit).toHaveBeenCalledOnce();
     expect(saveResults).toHaveBeenCalledOnce();
     expect(onComplete).toHaveBeenCalledOnce();

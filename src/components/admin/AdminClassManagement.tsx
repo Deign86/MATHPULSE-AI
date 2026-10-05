@@ -9,6 +9,7 @@ import ConfirmModal from '../ConfirmModal';
 interface ClassRecord {
   id: string;
   name: string;
+  className?: string;
   teacherId?: string;
   managerId?: string;
   managerName?: string;
@@ -137,7 +138,8 @@ const AdminClassManagement: React.FC = () => {
     const queryTerm = searchQuery.trim().toLowerCase();
     if (!queryTerm) return classes;
     return classes.filter(cls =>
-      cls.name.toLowerCase().includes(queryTerm) ||
+      (cls.name || '').toLowerCase().includes(queryTerm) ||
+      (cls.className && cls.className.toLowerCase().includes(queryTerm)) ||
       (cls.gradeLevel && cls.gradeLevel.toLowerCase().includes(queryTerm)) ||
       (cls.section && cls.section.toLowerCase().includes(queryTerm)) ||
       (cls.managerName && cls.managerName.toLowerCase().includes(queryTerm))
