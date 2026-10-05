@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   RefreshCw, DollarSign, Cpu, Activity, Database, List, Sparkles,
-  Zap, ArrowUpRight, TrendingUp, Layers, HelpCircle
+  Zap, ArrowUpRight, TrendingUp, Layers, HelpCircle, Clock, CircleCheck
 } from 'lucide-react';
 import { useAIMonitoring } from '../../hooks/useAIMonitoring';
 import { KPICard } from '../../components/admin/ai-monitoring/KPICard';
@@ -138,6 +138,30 @@ const AIMonitoringPage: React.FC = () => {
           theme="sky"
           progressPercent={Math.round(data.cacheHitRate * 100)}
           trend="+5.1%"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <KPICard
+          title="Questions Today"
+          value={data.dailyQuestionCount.toLocaleString()}
+          subValue="Inference requests recorded today (UTC)"
+          icon={<Activity className="h-5 w-5" />}
+          theme="purple"
+        />
+        <KPICard
+          title="Average Response Speed"
+          value={`${data.averageLatencyMs.toLocaleString()} ms`}
+          subValue="Mean completed inference latency"
+          icon={<Clock className="h-5 w-5" />}
+          theme="sky"
+        />
+        <KPICard
+          title="Successful Responses"
+          value={`${(data.successRate * 100).toFixed(1)}%`}
+          subValue="Successful inference requests / total requests"
+          icon={<CircleCheck className="h-5 w-5" />}
+          theme="emerald"
         />
       </div>
 

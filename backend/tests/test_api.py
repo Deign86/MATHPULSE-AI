@@ -881,16 +881,19 @@ class TestClassRecordImportMapping:
 
     @patch("main.call_hf_chat")
     def test_preview_quiz(self, mock_chat):
-        quiz_json = json.dumps([{
-            "questionType": "identification",
-            "question": "Define slope.",
-            "correctAnswer": "Rise over run",
-            "bloomLevel": "remember",
-            "difficulty": "easy",
-            "topic": "Algebra",
-            "points": 1,
-            "explanation": "Slope = rise/run.",
-        }])
+        quiz_json = json.dumps([
+            {
+                "questionType": "identification",
+                "question": f"Question {index + 1}",
+                "correctAnswer": "Rise over run",
+                "bloomLevel": "remember",
+                "difficulty": "easy",
+                "topic": "Algebra",
+                "points": 1,
+                "explanation": "Slope = rise/run.",
+            }
+            for index in range(3)
+        ])
         mock_chat.return_value = quiz_json
         response = client.post("/api/quiz/preview", json={
             "topics": ["Algebra"],
@@ -1114,6 +1117,35 @@ class TestUploadClassRecordsGuardrails:
         assert any("missing required field: name" in key for key in reasons.keys())
         assert any("missing required identity value: lrn_or_email" in key for key in reasons.keys())
         assert len(payload.get("rejectedRowDetails") or []) == 2
+
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_quarantines_short_names_and_percentage_score_corruption(self, _mock_chat):
+        files = {
+            "files": (
+                "records.csv",
+                (
+                    b"name,lrn,avgQuizScore,attendance,engagementScore\n"
+                    b"A,123456789001,81,92,88\n"
+                    b"Ana Cruz,123456789002,11%,92,88\n"
+                    b"Ben Dela,123456789003,81,90,85\n"
+                ),
+                "text/csv",
+            ),
+        }
+
+        response = client.post(
+            "/api/upload/class-records",
+            files=files,
+            data={"datasetIntent": "synthetic_student_records"},
+        )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["interpretedRows"] == 1
+        assert payload["rejectedRows"] == 2
+        reasons = payload.get("rejectedReasons") or {}
+        assert any("single-character learner name" in reason for reason in reasons)
+        assert any("percentage-formatted score" in reason for reason in reasons)
 
     @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
     def test_upload_class_records_degrades_gracefully_when_firestore_adc_missing(self, _mock_chat):
@@ -1818,6 +1850,21 @@ class TestStudentAccountProvisioningImport:
         assert payload["summary"]["validRows"] == 1
         assert payload["summary"]["duplicateRows"] >= 1
         assert payload["summary"]["invalidRows"] >= 1
+
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_preview_quarantines_single_letter_and_duplicate_lrn_rows(self, _mock_chat):
+        firestore = _ProvisionFirestoreModule({"users": {}, "managedStudents": {}})
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=Exception("user not found")):
+            response = client.post(
+                "/api/import/student-accounts/preview",
+                files={"file": ("accounts.csv", b"First Name,Last Name,Student ID,Email,Grade,Section\nA,Cruz,123456789001,a@example.com,Grade 11,STEM-A\nAna,Cruz,123456789001,b@example.com,Grade 11,STEM-A\n", "text/csv")},
+            )
+
+        assert response.status_code == 200
+        preview = response.json()
+        assert [row["status"] for row in preview["rows"]] == ["invalid", "duplicate"]
+        assert any("at least 2 characters" in issue for issue in preview["rows"][0]["issues"])
+        assert preview["summary"]["validRows"] == 0
 
     @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
     def test_commit_student_account_import_provisions_profiles(self, _mock_chat):

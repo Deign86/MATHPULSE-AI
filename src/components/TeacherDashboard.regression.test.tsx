@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countResolvedStudentsForClass, deriveResolvedClassCounts } from './TeacherDashboard';
+import { countResolvedStudentsForClass, deriveResolvedClassCounts, formatRiskLabel } from './TeacherDashboard';
 import { classifyWRI } from '../utils/riskEngine';
 
 describe('teacher dashboard roster and risk regressions', () => {
@@ -23,5 +23,10 @@ describe('teacher dashboard roster and risk regressions', () => {
   it('counts an empty class as zero and maps the four WRI bands', () => {
     expect(countResolvedStudentsForClass({ id: 'class-1', classSectionId: 'section-a', name: 'A' }, [])).toBe(0);
     expect([88, 80, 75, 68].map(classifyWRI)).toEqual(['safe', 'watch', 'intervene', 'critical']);
+  });
+
+  it('shows assessment statuses as student-facing labels', () => {
+    expect(formatRiskLabel('PENDING_ASSESSMENT')).toBe('Not assessed');
+    expect(formatRiskLabel('High Risk')).toBe('High risk');
   });
 });

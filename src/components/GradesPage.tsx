@@ -420,7 +420,7 @@ const GradesPage = () => {
     }
     if (averageScore > 0) return averageScore;
     if (diagnosticSummary?.score) return diagnosticSummary.score;
-    return 70;
+    return null;
   }, [averageScore, proficiencyRate, diagnosticSummary?.score]);
 
   // Derive core Senior High School STEM exam milestones
@@ -1515,11 +1515,11 @@ const GradesPage = () => {
                 </div>
               </div>
               <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border self-start sm:self-auto whitespace-nowrap shrink-0 ${
-                examReadinessScore >= 75 
+                examReadinessScore === null ? 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700' : examReadinessScore >= 75
                   ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800' 
                   : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200/70 dark:border-amber-800'
               }`}>
-                {examReadinessScore >= 75 ? 'On Track 🚀' : 'Prep Needed ⚡'}
+                {examReadinessScore === null ? 'Not enough data' : examReadinessScore >= 75 ? 'On Track 🚀' : 'Prep Needed ⚡'}
               </span>
             </div>
 
@@ -1527,12 +1527,12 @@ const GradesPage = () => {
             <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 mb-4">
               <div className="flex items-center justify-between text-xs mb-2">
                 <span className="font-bold text-slate-600 dark:text-slate-300">Quarter Exam Target Progress</span>
-                <span className="font-black text-slate-900 dark:text-white tabular-nums text-sm">{examReadinessScore}%</span>
+                <span className="font-black text-slate-900 dark:text-white tabular-nums text-sm">{examReadinessScore === null ? '—' : `${examReadinessScore}%`}</span>
               </div>
               <div className="w-full h-2.5 bg-slate-200/70 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 rounded-full transition-all duration-700" 
-                  style={{ width: `${Math.min(100, Math.max(12, examReadinessScore))}%` }} 
+                  style={{ width: `${examReadinessScore === null ? 0 : Math.min(100, Math.max(12, examReadinessScore))}%` }}
                 />
               </div>
               <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-2">

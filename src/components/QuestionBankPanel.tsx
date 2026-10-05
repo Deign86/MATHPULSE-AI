@@ -132,8 +132,9 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
   }, [fetchStatus]);
 
   const handleIngest = async () => {
-    if (!storagePath.trim()) {
-      toast.error('Please enter a storage path');
+    const normalizedPath = storagePath.trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9/_ .-]*\.pdf$/i.test(normalizedPath) || normalizedPath.includes('..')) {
+      toast.error('Enter a valid Firebase Storage path to a PDF, such as quiz_pdfs/grade_11/quiz.pdf.');
       return;
     }
     setIngesting(true);
@@ -142,7 +143,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          storage_path: storagePath.trim(),
+          storage_path: normalizedPath,
           grade_level: gradeLevel,
           topic: topic.trim(),
           force_reingest: false,
@@ -151,9 +152,8 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
       toast.success('PDF ingestion completed');
       await fetchStatus();
       setStoragePath('');
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Ingestion failed';
-      toast.error(message);
+    } catch {
+      toast.error('Unable to process that PDF. Check the Firebase Storage path and file, then try again.');
     } finally {
       setIngesting(false);
     }

@@ -122,6 +122,16 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
 }
 
+export function formatRiskLabel(value: string): string {
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'PENDING_ASSESSMENT' || normalized === 'UNASSESSED') return 'Not assessed';
+  if (normalized === 'HIGH RISK') return 'High risk';
+  if (normalized === 'MEDIUM RISK') return 'Medium risk';
+  if (normalized === 'LOW RISK') return 'Low risk';
+  if (normalized === 'CRITICAL') return 'Critical';
+  return value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (letter: string) => letter.toUpperCase());
+}
+
 interface TeacherDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
@@ -3702,30 +3712,45 @@ const AnalyticsView: React.FC<{
     const [progressScores, setProgressScores] = useState<Map<string, number>>(new Map());
     useEffect(() => {
       let cancelled = false;
+      const unsubscribeProgress: (() => void)[] = [];
       const registeredStudents = students.filter(s => s.accountUid || s.hasRegisteredAccount);
-      if (registeredStudents.length === 0) return;
+      if (registeredStudents.length === 0) {
+        setProgressScores(new Map());
+        return;
+      }
       (async () => {
         try {
-          const { doc: firestoreDoc, getDoc: firestoreGetDoc } = await import('firebase/firestore');
+          const { doc: firestoreDoc, onSnapshot: firestoreOnSnapshot } = await import('firebase/firestore');
           const { db: firestoreDb } = await import('../lib/firebase');
-          const scores = new Map<string, number>();
-          // Batch fetch progress docs (limit to avoid excessive reads)
-          const batch = registeredStudents.slice(0, 50);
-          await Promise.all(batch.map(async (student) => {
+          if (cancelled) return;
+          // Keep up to 50 registered learners live so quiz retakes immediately refresh their scores.
+          registeredStudents.slice(0, 50).forEach((student) => {
             const uid = student.accountUid || student.id;
-            try {
-              const progressSnap = await firestoreGetDoc(firestoreDoc(firestoreDb, 'progress', uid));
-              if (progressSnap.exists()) {
-                const data = progressSnap.data();
-                const avgScore = data.averageScore || 0;
-                if (avgScore > 0) scores.set(student.id, avgScore);
-              }
-            } catch { /* skip individual failures */ }
-          }));
-          if (!cancelled) setProgressScores(scores);
+            const stop = firestoreOnSnapshot(
+              firestoreDoc(firestoreDb, 'progress', uid),
+              (progressSnap) => {
+                if (cancelled) return;
+                setProgressScores((previous) => {
+                  const next = new Map(previous);
+                  const averageScore = progressSnap.exists() ? progressSnap.data().averageScore : undefined;
+                  if (isNum(averageScore) && Number.isFinite(averageScore) && averageScore > 0) {
+                    next.set(student.id, averageScore);
+                  } else {
+                    next.delete(student.id);
+                  }
+                  return next;
+                });
+              },
+              () => { /* retain last score when a live read fails */ },
+            );
+            unsubscribeProgress.push(stop);
+          });
         } catch { /* non-critical */ }
       })();
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+        unsubscribeProgress.forEach((unsubscribe) => unsubscribe());
+      };
     }, [students]);
 
     // Use backend data only when it has assessed students; otherwise compute locally.
@@ -3770,7 +3795,7 @@ const AnalyticsView: React.FC<{
         { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
         { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
         { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
-      ];
+      ].filter((entry) => entry.value > 0);
 
     useEffect(() => {
       setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
@@ -3831,6 +3856,7 @@ const AnalyticsView: React.FC<{
       }
       return [...students]
         .map(s => ({ ...s, avgScore: progressScores.get(s.id) || s.avgScore }))
+        .filter(s => s.avgScore > 0)
         .sort((a, b) => b.avgScore - a.avgScore)
         .slice(0, 5);
     }, [students, backendReport, backendHasData, progressScores]);
@@ -3880,17 +3906,8 @@ const AnalyticsView: React.FC<{
       return bs ? bs.risk_level : null;
     };
 
-    // Topic performance: merge real student assessments with Grade 11 General Mathematics curriculum
+    // Topic performance only includes observed class assessment data.
     const effectiveTopicPerformance = useMemo(() => {
-      const CORE_CURRICULUM_TOPICS = [
-        { topic: 'Exponential Functions', baseline: 64 },
-        { topic: 'Rational Functions', baseline: 68 },
-        { topic: 'Financial Mathematics', baseline: 72 },
-        { topic: 'Foundational Skills', baseline: 75 },
-        { topic: 'Logic & Reasoning', baseline: 79 },
-        { topic: 'Functions & Relations', baseline: 82 },
-      ];
-
       const topicAggregates: Record<string, { total: number; sum: number }> = {};
 
       if (backendReport?.insights?.topic_performance?.length) {
@@ -3923,30 +3940,10 @@ const AnalyticsView: React.FC<{
         }
       });
 
-      const enrichedTopics = CORE_CURRICULUM_TOPICS.map((core) => {
-        const real = topicAggregates[core.topic];
-        if (real && real.total > 0) {
-          return {
-            topic: core.topic,
-            score: Math.round(real.sum / real.total),
-          };
-        }
-        return {
-          topic: core.topic,
-          score: core.baseline,
-        };
-      });
-
-      Object.entries(topicAggregates).forEach(([topic, stat]) => {
-        if (!CORE_CURRICULUM_TOPICS.some((core) => core.topic.toLowerCase() === topic.toLowerCase()) && stat.total > 0) {
-          enrichedTopics.push({
-            topic,
-            score: Math.round(stat.sum / stat.total),
-          });
-        }
-      });
-
-      return enrichedTopics.sort((a, b) => a.score - b.score);
+      return Object.entries(topicAggregates)
+        .filter(([, aggregate]) => aggregate.total > 0)
+        .map(([topic, aggregate]) => ({ topic, score: Math.round(aggregate.sum / aggregate.total) }))
+        .sort((a, b) => a.score - b.score);
     }, [backendReport, students, progressScores, backendHasData]);
 
     const handleRefreshInsights = async () => {
@@ -4261,7 +4258,9 @@ const AnalyticsView: React.FC<{
                   </div>
                 </div>
                 <div className="relative w-full flex-1 min-h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  {riskDistribution.length === 0 ? (
+                    <p className="h-full flex items-center justify-center text-sm text-slate-500" role="status">Risk data will appear after students are assessed.</p>
+                  ) : <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={riskDistribution}>
                       <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
                       <XAxis dataKey="name" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#475569', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)' }} dy={10} />
@@ -4274,7 +4273,7 @@ const AnalyticsView: React.FC<{
                         })}
                       </Bar>
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer>}
                 </div>
               </div>
 
@@ -4292,7 +4291,9 @@ const AnalyticsView: React.FC<{
                   </div>
                 </div>
                 <div className="relative w-full flex-1 min-h-[220px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  {effectiveTopicPerformance.length === 0 ? (
+                    <p className="h-full flex items-center justify-center text-sm text-slate-500" role="status">Topic results will appear after students complete assessments.</p>
+                  ) : <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={effectiveTopicPerformance} layout="vertical" margin={{ top: 0, right: 15, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" horizontal={false} />
                       <XAxis type="number" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-body)' }} tickFormatter={(val) => `${val}%`} />
@@ -4305,7 +4306,7 @@ const AnalyticsView: React.FC<{
                         })}
                       </Bar>
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ResponsiveContainer>}
                 </div>
               </div>
             </div>
@@ -4369,7 +4370,7 @@ const AnalyticsView: React.FC<{
                         <span className="font-body text-[13px] font-bold text-[#1e293b]">{student.name}</span>
                         <div className="flex items-center gap-2">
                           <span className={`text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] ${labelColor}`}>
-                            {riskLabel.toUpperCase()}
+                            {formatRiskLabel(riskLabel)}
                           </span>
                           <ChevronRight size={15} className="text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition-all" />
                         </div>
@@ -6387,6 +6388,17 @@ const ImportView: React.FC<{
   };
 
   const handleCourseMaterialUpload = async (file: File) => {
+    const supportedFile = /\.(pdf|docx|txt)$/i.test(file.name);
+    if (!supportedFile || file.size === 0 || file.size > 10 * 1024 * 1024) {
+      const message = !supportedFile
+        ? 'Choose a PDF, DOCX, or TXT course material file.'
+        : file.size === 0
+          ? 'The selected file is empty. Choose a different course material.'
+          : 'The selected file exceeds the 10 MB upload limit.';
+      setUploadResult(message);
+      toast.error(message);
+      return;
+    }
     setUploadingCourseMaterials(true);
     setUploadResult('');
     try {
@@ -6404,8 +6416,10 @@ const ImportView: React.FC<{
         onDataChanged?.();
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Course material upload failed');
-      setUploadResult('Course material upload failed. Please check the file format and try again.');
+      console.warn('Course material upload failed:', err);
+      const message = 'Unable to process this course material. Check that the file is a valid PDF, DOCX, or TXT and try again.';
+      toast.error(message);
+      setUploadResult(message);
     } finally {
       setUploadingCourseMaterials(false);
     }
