@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { countResolvedStudentsForClass, deriveResolvedClassCounts, deriveTopicPerformance, formatRiskLabel } from './TeacherDashboard';
+import {
+  countResolvedStudentsForClass,
+  deriveResolvedClassCounts,
+  getRiskDistribution,
+  normalizeAnalyticsRisk,
+} from './TeacherDashboard';
 import { classifyWRI } from '../utils/riskEngine';
 
 describe('teacher dashboard roster and risk regressions', () => {
@@ -25,16 +30,15 @@ describe('teacher dashboard roster and risk regressions', () => {
     expect([88, 80, 75, 68].map(classifyWRI)).toEqual(['safe', 'watch', 'intervene', 'critical']);
   });
 
-  it('shows assessment statuses as student-facing labels', () => {
-    expect(formatRiskLabel('PENDING_ASSESSMENT')).toBe('Not assessed');
-    expect(formatRiskLabel('High Risk')).toBe('High risk');
-  });
-
-  it('uses only backend topic performance and returns empty when none is available', () => {
-    expect(deriveTopicPerformance(undefined)).toEqual([]);
-    expect(deriveTopicPerformance([
-      { topic: 'Functions', class_accuracy: 72.6, struggling_count: 3, mastered_count: 4 },
-      { topic: '  ', class_accuracy: 20, struggling_count: 1, mastered_count: 0 },
-    ])).toEqual([{ topic: 'Functions', score: 73 }]);
+  it('normalizes backend risk labels and retains the medium band', () => {
+    expect(normalizeAnalyticsRisk('PENDING_ASSESSMENT')).toBe('Unassessed');
+    expect(normalizeAnalyticsRisk('watch')).toBe('Medium Risk');
+    expect(getRiskDistribution({ Critical: 1, 'High Risk': 2, Medium: 3, Low: 4, PENDING_ASSESSMENT: 5 })).toEqual([
+      { name: 'Critical', value: 1, color: '#dc2626' },
+      { name: 'High Risk', value: 2, color: '#f43f5e' },
+      { name: 'Medium Risk', value: 3, color: '#f59e0b' },
+      { name: 'Low Risk', value: 4, color: '#10b981' },
+      { name: 'Unassessed', value: 5, color: '#94a3b8' },
+    ]);
   });
 });

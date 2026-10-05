@@ -595,6 +595,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         section: formData.section,
         lrn: formData.lrn,
       });
+      if (formData.role !== 'Student') {
+        delete validationErrors.section;
+      }
       const firstError = getFirstValidationError(validationErrors);
       if (firstError) {
         setFormErrors(validationErrors);

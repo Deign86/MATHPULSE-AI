@@ -1,6 +1,7 @@
 # backend/routes/ai_monitoring.py
 # TODO: Review pricing after 2026-05-31
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Request
 import logging
 
@@ -10,6 +11,108 @@ from services.cost_calculator import calculate_feature_cost, calculate_full_pric
 logger = logging.getLogger("mathpulse.ai_monitoring")
 
 router = APIRouter(prefix="/api/admin/ai-monitoring", tags=["admin", "ai-monitoring"])
+MANILA = ZoneInfo("Asia/Manila")
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _get_firestore_client():
+    try:
+        from firebase_admin import firestore
+
+        return firestore.client()
+    except Exception as exc:
+        logger.warning("AI monitoring Firestore unavailable: %s", exc)
+        return None
+
+
+def _as_datetime(value) -> datetime | None:
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return None
+
+
+def _aggregate_telemetry() -> dict:
+    """Aggregate attempt events into Manila days; pending events count as failed attempts."""
+    today = _now().astimezone(MANILA).date()
+    first_day = today - timedelta(days=29)
+    days: dict[date, dict] = {
+        first_day + timedelta(days=offset): {
+            "date": (first_day + timedelta(days=offset)).isoformat(),
+            "totalAttempts": 0,
+            "successfulAttempts": 0,
+            "completedRequests": 0,
+            "latencyTotalMs": 0.0,
+        }
+        for offset in range(30)
+    }
+    start_at = datetime.combine(first_day, time.min, tzinfo=MANILA).astimezone(timezone.utc)
+    end_at = datetime.combine(today + timedelta(days=1), time.min, tzinfo=MANILA).astimezone(timezone.utc)
+    db = _get_firestore_client()
+    if db is not None:
+        try:
+            events = (
+                db.collection("ai_usage_logs")
+                .where("timestamp", ">=", start_at)
+                .where("timestamp", "<", end_at)
+                .stream()
+            )
+            for snapshot in events:
+                event = snapshot.to_dict() or {}
+                timestamp = _as_datetime(event.get("timestamp"))
+                if timestamp is None:
+                    timestamp = _as_datetime(event.get("createdAtIso"))
+                if timestamp is None:
+                    continue
+                bucket = timestamp.astimezone(MANILA).date()
+                if bucket not in days:
+                    continue
+                daily = days[bucket]
+                daily["totalAttempts"] += 1
+                if event.get("status") == "success":
+                    daily["successfulAttempts"] += 1
+                    latency_ms = event.get("latencyMs")
+                    if isinstance(latency_ms, (int, float)) and latency_ms >= 0:
+                        daily["completedRequests"] += 1
+                        daily["latencyTotalMs"] += latency_ms
+        except Exception as exc:
+            logger.warning("AI monitoring telemetry read failed: %s", exc)
+
+    daily_metrics = []
+    total_attempts = successful_attempts = completed_requests = 0
+    latency_total_ms = 0.0
+    for daily in days.values():
+        total_attempts += daily["totalAttempts"]
+        successful_attempts += daily["successfulAttempts"]
+        completed_requests += daily["completedRequests"]
+        latency_total_ms += daily["latencyTotalMs"]
+        daily_metrics.append({
+            "date": daily["date"],
+            "totalAttempts": daily["totalAttempts"],
+            "successfulAttempts": daily["successfulAttempts"],
+            "completedRequests": daily["completedRequests"],
+            "averageLatencyMs": round(daily["latencyTotalMs"] / daily["completedRequests"], 2) if daily["completedRequests"] else None,
+            "successRate": round(daily["successfulAttempts"] / daily["totalAttempts"] * 100, 1) if daily["totalAttempts"] else None,
+        })
+
+    return {
+        "dailyMetrics": daily_metrics,
+        "totalAttempts": total_attempts,
+        "successfulAttempts": successful_attempts,
+        "completedRequests": completed_requests,
+        "averageLatencyMs": round(latency_total_ms / completed_requests, 2) if completed_requests else None,
+        "successRate": round(successful_attempts / total_attempts * 100, 1) if total_attempts else None,
+        "latencyDefinition": "Mean generation time in milliseconds across completed requests only.",
+        "successRateDefinition": "Successful attempts divided by all attempts, as a percentage.",
+        "dayTimezone": "Asia/Manila",
+    }
 
 
 def require_admin(request: Request):
@@ -144,6 +247,7 @@ def get_monitoring_summary(_admin=Depends(require_admin)):
         **data["summary"],
         "features": data["features"],
         "pricingMeta": _build_pricing_meta(),
+        "telemetry": _aggregate_telemetry(),
     }
 
 

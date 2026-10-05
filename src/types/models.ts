@@ -564,6 +564,7 @@ export interface Notification {
 export interface CalendarEvent {
   id: string;
   userId: string;
+  classId?: string;
   title: string;
   description?: string;
   startTime: Date;

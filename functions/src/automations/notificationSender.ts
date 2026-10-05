@@ -11,7 +11,7 @@ import * as functions from "firebase-functions";
 
 export interface NotificationPayload {
   userId: string;
-  type: "grade" | "reminder" | "message" | "achievement" | "risk_alert";
+  type: "grade" | "reminder" | "message" | "achievement" | "risk_alert" | "quiz_completed";
   title: string;
   message: string;
   link?: string;

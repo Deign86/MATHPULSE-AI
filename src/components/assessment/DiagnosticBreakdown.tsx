@@ -65,6 +65,11 @@ interface QuestionWithText extends DiagnosticResponse {
   options?: Record<string, string>;
 }
 
+export function getOriginalQuestionNumber(questionIds: string[], questionId: string): number {
+  const originalIndex = questionIds.indexOf(questionId);
+  return originalIndex < 0 ? 0 : originalIndex + 1;
+}
+
 function normalizeAnswerText(answer: string): string {
   return answer.trim().toLocaleLowerCase().replace(/\s+/g, ' ');
 }
@@ -220,6 +225,13 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
       sessionStorage.setItem('mathpulse_practice_topic', topicName);
     }
     sessionStorage.setItem('mathpulse_modules_tab', 'practice');
+    window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
+    onClose();
+  };
+
+  const handleOpenLesson = (topicName: string) => {
+    sessionStorage.setItem('mathpulse_lesson_topic', topicName);
+    sessionStorage.setItem('mathpulse_modules_tab', 'recommended');
     window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
     onClose();
   };
@@ -483,15 +495,15 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                     </div>
                     {analysis?.weakness_areas && analysis.weakness_areas.length > 0 ? (
                       <ul className="space-y-2.5">
-                        {analysis.weakness_areas.map((w, i) => (
-                          <li key={i} className="text-xs sm:text-sm text-amber-900 dark:text-amber-200 flex items-start justify-between gap-2">
+                        {analysis.weakness_areas.map((w) => (
+                          <li key={w.domain} className="text-xs sm:text-sm text-amber-900 dark:text-amber-200 flex items-start justify-between gap-2">
                             <div className="flex items-start gap-2">
                               <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
                               <span><strong className="font-black text-amber-950 dark:text-amber-100">{w.domain}:</strong> {w.detail}</span>
                             </div>
-                            <span className="shrink-0 px-2 py-0.5 rounded-md bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-[9px] font-black uppercase tracking-wider">
-                              {w.priority || 'Priority'}
-                            </span>
+                            <button type="button" onClick={() => handleOpenLesson(w.domain)} className="shrink-0 px-2 py-0.5 rounded-md bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-[9px] font-black uppercase tracking-wider">
+                              Find matching lesson
+                            </button>
                           </li>
                         ))}
                       </ul>
@@ -677,14 +689,15 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                 {/* Questions List */}
                 <div className="bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden shadow-xs">
                   {filteredResponses.length > 0 ? (
-                    filteredResponses.map((r, i) => {
-                      const isExpanded = expandedQuestion === i;
+                    filteredResponses.map((r) => {
+                      const originalIndex = getOriginalQuestionNumber(responses.map((response) => response.question_id), r.question_id) - 1;
+                      const isExpanded = expandedQuestion === originalIndex;
 
                       return (
-                        <div key={i} className="p-3.5 sm:p-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                        <div key={r.question_id} className="p-3.5 sm:p-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
                           <button
                             type="button"
-                            onClick={() => setExpandedQuestion(isExpanded ? null : i)}
+                            onClick={() => setExpandedQuestion(isExpanded ? null : originalIndex)}
                             className="w-full flex items-center justify-between gap-3 text-left cursor-pointer"
                           >
                             <div className="flex items-center gap-3 min-w-0">
@@ -697,7 +710,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate">
-                                  Q{i + 1}. {r.question_text || `${r.topic} (${r.domain})`}
+                                  Q{originalIndex + 1}. {r.question_text || `${r.topic} (${r.domain})`}
                                 </p>
                                 <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
                                   <span className="capitalize">{r.difficulty}</span>
@@ -721,17 +734,24 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                                   {r.question_text}
                                 </p>
                               )}
+                              {r.options && (
+                                <ul className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
+                                  {Object.entries(r.options).map(([letter, optionText]) => (
+                                    <li key={letter}><strong>{letter}.</strong> {optionText}</li>
+                                  ))}
+                                </ul>
+                              )}
                               <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
                                 <span className={`px-2.5 py-1 rounded-lg font-bold ${
                                   r.is_correct 
                                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60' 
                                     : 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200/60'
                                 }`}>
-                                  Your Answer: <strong className="font-black">{r.student_answer || '—'}</strong>
+                                  Your Answer: <strong className="font-black">{r.options?.[r.student_answer.toUpperCase()] || r.student_answer || '—'}</strong>
                                 </span>
                                 {!r.is_correct && (
                                   <span className="px-2.5 py-1 rounded-lg font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60">
-                                    Correct Answer: <strong className="font-black">{r.correct_answer}</strong>
+                                    Correct Answer: <strong className="font-black">{r.options?.[r.correct_answer.toUpperCase()] || r.correct_answer}</strong>
                                   </span>
                                 )}
                                 <span className="text-slate-400 font-medium">

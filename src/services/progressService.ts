@@ -30,6 +30,21 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === 'number';
 }
 
+export function calculateLatestAttemptAverage(attempts: readonly QuizAttempt[]): number {
+  const latestByQuiz = new Map<string, QuizAttempt>();
+  attempts.forEach((attempt) => {
+    const existing = latestByQuiz.get(attempt.quizId);
+    if (!existing || attempt.attemptNumber > existing.attemptNumber
+      || (attempt.attemptNumber === existing.attemptNumber && attempt.completedAt > existing.completedAt)) {
+      latestByQuiz.set(attempt.quizId, attempt);
+    }
+  });
+  const latestScores = [...latestByQuiz.values()];
+  return latestScores.length === 0
+    ? 0
+    : Math.round(latestScores.reduce((sum, attempt) => sum + attempt.score, 0) / latestScores.length);
+}
+
 export const initializeUserProgress = async (userId: string): Promise<UserProgress> => {
   const progressData: UserProgress = {
     userId,
@@ -116,6 +131,7 @@ export const updateLessonProgressPercent = async (
           lessonId,
           progressPercent: clampedPercent,
           ...(sectionIndex !== undefined && { lastSectionIndex: Math.max(0, sectionIndex) }),
+          lastAccessedAt: Date.now(),
         },
       },
       updatedAt: serverTimestamp(),
@@ -304,7 +320,9 @@ export const completeLesson = async (
     );
 
     // Award XP
-    await awardXP(userId, xpReward, 'lesson_complete', `Completed lesson: ${lessonId}`);
+    if (isNewLesson) {
+      await awardXP(userId, xpReward, 'lesson_complete', `Completed lesson: ${lessonId}`);
+    }
 
     // Recalculate aggregates (averageScore, subject progress, overallRisk)
     await recalculateProgressAggregates(userId);
@@ -587,10 +605,7 @@ export const recalculateProgressAggregates = async (userId: string): Promise<voi
     const data = progressSnap.data() as UserProgress;
     const quizAttempts = data.quizAttempts || [];
 
-    // Compute averageScore from all quiz attempts
-    const averageScore = quizAttempts.length > 0
-      ? Math.round(quizAttempts.reduce((sum, q) => sum + q.score, 0) / quizAttempts.length)
-      : 0;
+    const averageScore = calculateLatestAttemptAverage(quizAttempts);
 
     // Compute per-subject progress from module completions
     const subjectUpdates: Record<string, { progress: number }> = {};

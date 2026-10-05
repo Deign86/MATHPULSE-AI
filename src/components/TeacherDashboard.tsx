@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
+import { z } from 'zod';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import ConfirmModal from './ConfirmModal';
@@ -34,7 +35,6 @@ import {
   getClassAnalytics,
   refreshClassInsights,
   type ClassAnalyticsReport,
-  type TopicPerformance,
 } from '../services/classAnalyticsService';
 import { getUserProgress } from '../services/progressService';
 import {
@@ -123,23 +123,6 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
 }
 
-export function formatRiskLabel(value: string): string {
-  const normalized = value.trim().toUpperCase();
-  if (normalized === 'PENDING_ASSESSMENT' || normalized === 'UNASSESSED') return 'Not assessed';
-  if (normalized === 'HIGH RISK') return 'High risk';
-  if (normalized === 'MEDIUM RISK') return 'Medium risk';
-  if (normalized === 'LOW RISK') return 'Low risk';
-  if (normalized === 'CRITICAL') return 'Critical';
-  return value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (letter: string) => letter.toUpperCase());
-}
-
-export function deriveTopicPerformance(topicPerformance: readonly TopicPerformance[] | undefined): { topic: string; score: number }[] {
-  return (topicPerformance ?? [])
-    .filter((item) => item.topic.trim().length > 0)
-    .map((item) => ({ topic: item.topic, score: Math.round(item.class_accuracy) }))
-    .sort((left, right) => left.score - right.score);
-}
-
 interface TeacherDashboardProps {
   onLogout: () => void;
   onOpenProfile?: () => void;
@@ -219,7 +202,7 @@ export interface StudentView {
   email?: string;
 }
 
-function findRosterStudent(studentId: string, students: StudentView[]): StudentView | undefined {
+export function findRosterStudent(studentId: string, students: StudentView[]): StudentView | undefined {
   const normalizedId = studentId.trim().toLowerCase();
   if (!normalizedId) return undefined;
   const uidMatches = students.filter((student) =>
@@ -420,6 +403,31 @@ function deriveRiskLevel(avgQuiz: number, attendance: number, engagement: number
   if (avgQuiz < 60 || attendance < 75 || engagement < 55) return 'high';
   if (avgQuiz < 75 || attendance < 85 || engagement < 70) return 'medium';
   return 'low';
+}
+
+export function normalizeAnalyticsRisk(label: string): string {
+  const normalized = label.trim().toLowerCase().replace(/[_-]/g, ' ');
+  if (normalized === 'critical') return 'Critical';
+  if (['high risk', 'intervene', 'at risk'].includes(normalized)) return 'High Risk';
+  if (['medium risk', 'medium', 'watch'].includes(normalized)) return 'Medium Risk';
+  if (['low risk', 'low', 'safe'].includes(normalized)) return 'Low Risk';
+  if (normalized === 'unassessed' || normalized === 'pending assessment') return 'Unassessed';
+  return label;
+}
+
+export function getRiskDistribution(riskCounts: Record<string, number> | null | undefined) {
+  if (!riskCounts) return [];
+  const readCount = (target: string) => {
+    const matchingLabel = Object.keys(riskCounts).find((label) => normalizeAnalyticsRisk(label) === target);
+    return matchingLabel ? riskCounts[matchingLabel] : 0;
+  };
+  return [
+    { name: 'Critical', value: readCount('Critical'), color: '#dc2626' },
+    { name: 'High Risk', value: readCount('High Risk'), color: '#f43f5e' },
+    { name: 'Medium Risk', value: readCount('Medium Risk'), color: '#f59e0b' },
+    { name: 'Low Risk', value: readCount('Low Risk'), color: '#10b981' },
+    { name: 'Unassessed', value: readCount('Unassessed'), color: '#94a3b8' },
+  ].filter((entry) => entry.value > 0);
 }
 
 function toUploadedStudentView(
@@ -3720,7 +3728,8 @@ const AnalyticsView: React.FC<{
     const [progressScores, setProgressScores] = useState<Map<string, number>>(new Map());
     useEffect(() => {
       let cancelled = false;
-      const unsubscribeProgress: (() => void)[] = [];
+      const unsubscribes: (() => void)[] = [];
+      let refreshTimer: ReturnType<typeof setTimeout> | undefined;
       const registeredStudents = students.filter(s => s.accountUid || s.hasRegisteredAccount);
       if (registeredStudents.length === 0) {
         setProgressScores(new Map());
@@ -3730,36 +3739,44 @@ const AnalyticsView: React.FC<{
         try {
           const { doc: firestoreDoc, onSnapshot: firestoreOnSnapshot } = await import('firebase/firestore');
           const { db: firestoreDb } = await import('../lib/firebase');
-          if (cancelled) return;
-          // Keep up to 50 registered learners live so quiz retakes immediately refresh their scores.
+          const scores = new Map<string, number>();
+          const refreshAnalytics = () => {
+            if (refreshTimer) clearTimeout(refreshTimer);
+            refreshTimer = setTimeout(() => {
+              getClassAnalytics(selectedClass.id, true).then((report) => {
+                if (!cancelled) setBackendReport(report);
+              }).catch(() => { });
+            }, 500);
+          };
+          // Keep live score and class risk summaries aligned with quiz retakes.
           registeredStudents.slice(0, 50).forEach((student) => {
             const uid = student.accountUid || student.id;
-            const stop = firestoreOnSnapshot(
-              firestoreDoc(firestoreDb, 'progress', uid),
-              (progressSnap) => {
-                if (cancelled) return;
-                setProgressScores((previous) => {
-                  const next = new Map(previous);
-                  const averageScore = progressSnap.exists() ? progressSnap.data().averageScore : undefined;
-                  if (isNum(averageScore) && Number.isFinite(averageScore) && averageScore > 0) {
-                    next.set(student.id, averageScore);
-                  } else {
-                    next.delete(student.id);
-                  }
-                  return next;
-                });
-              },
-              () => { /* retain last score when a live read fails */ },
-            );
-            unsubscribeProgress.push(stop);
+            unsubscribes.push(firestoreOnSnapshot(firestoreDoc(firestoreDb, 'progress', uid), (progressSnap) => {
+              if (progressSnap.exists()) {
+                const avgScore = z.number().finite().safeParse(progressSnap.data().averageScore);
+                if (avgScore.success) {
+                  scores.set(student.id, avgScore.data);
+                } else {
+                  scores.delete(student.id);
+                }
+                if (!cancelled) {
+                  setProgressScores(new Map(scores));
+                  refreshAnalytics();
+                }
+              } else {
+                scores.delete(student.id);
+                if (!cancelled) setProgressScores(new Map(scores));
+              }
+            }, () => { /* skip individual progress listener failures */ }));
           });
         } catch { /* non-critical */ }
       })();
       return () => {
         cancelled = true;
-        unsubscribeProgress.forEach((unsubscribe) => unsubscribe());
+        if (refreshTimer) clearTimeout(refreshTimer);
+        unsubscribes.forEach((unsubscribe) => unsubscribe());
       };
-    }, [students]);
+    }, [students, selectedClass.id]);
 
     // Use backend data only when it has assessed students; otherwise compute locally.
     // The ?? operator won't help here because backend returns 0 (not null) when no
@@ -3792,18 +3809,12 @@ const AnalyticsView: React.FC<{
 
     // Compute risk distribution with Unassessed + Critical categories
     const riskDistribution = backendReport?.insights?.risk_distribution
-      ? [
-        { name: 'Critical', value: backendReport.insights.risk_distribution['Critical'] || 0, color: '#dc2626' },
-        { name: 'High Risk', value: backendReport.insights.risk_distribution['High Risk'] || 0, color: '#f43f5e' },
-        { name: 'Medium Risk', value: backendReport.insights.risk_distribution['Medium Risk'] || 0, color: '#f59e0b' },
-        { name: 'Low Risk', value: backendReport.insights.risk_distribution['Low Risk'] || 0, color: '#10b981' },
-        { name: 'Unassessed', value: backendReport.insights.risk_distribution['Unassessed'] || 0, color: '#94a3b8' },
-      ].filter(d => d.value > 0)
-      : [
-        { name: 'High Risk', value: students.filter((s) => s.riskLevel === 'high').length, color: '#FF8B8B' },
-        { name: 'Medium Risk', value: students.filter((s) => s.riskLevel === 'medium').length, color: '#F08386' },
-        { name: 'Low Risk', value: students.filter((s) => s.riskLevel === 'low').length, color: '#75D06A' },
-      ].filter((entry) => entry.value > 0);
+      ? getRiskDistribution(backendReport.insights.risk_distribution)
+      : getRiskDistribution({
+        'High Risk': students.filter((s) => s.riskLevel === 'high').length,
+        'Medium Risk': students.filter((s) => s.riskLevel === 'medium').length,
+        'Low Risk': students.filter((s) => s.riskLevel === 'low').length,
+      });
 
     useEffect(() => {
       setSelectedManagerId(selectedClass.classMetadata?.managerId || selectedClass.managerId || '');
@@ -3828,7 +3839,8 @@ const AnalyticsView: React.FC<{
           const topIds = new Set(
             backendReport.students
               .filter(s => s.quiz_attempt_count > 0 && s.avg_score >= 75)
-              .map(s => s.student_id)
+              .map(s => findRosterStudent(s.student_id, students)?.id)
+              .filter((studentId): studentId is string => studentId !== undefined)
           );
           filtered = filtered.filter(s => topIds.has(s.id));
         } else {
@@ -3838,12 +3850,13 @@ const AnalyticsView: React.FC<{
         if (backendReport) {
           const riskIds = new Set(
             backendReport.students
-              .filter(s => ['High Risk', 'Critical', 'Unassessed'].includes(s.risk_level))
-              .map(s => s.student_id)
+              .filter(s => ['High Risk', 'Medium Risk', 'Critical', 'Unassessed'].includes(normalizeAnalyticsRisk(s.risk_level)))
+              .map(s => findRosterStudent(s.student_id, students)?.id)
+              .filter((studentId): studentId is string => studentId !== undefined)
           );
           filtered = filtered.filter(s => riskIds.has(s.id));
         } else {
-          filtered = filtered.filter(s => s.riskLevel === 'high' || s.avgScore < 75);
+          filtered = filtered.filter(s => s.riskLevel === 'high' || s.riskLevel === 'medium' || s.avgScore < 75);
         }
       }
       return filtered;
@@ -3864,7 +3877,6 @@ const AnalyticsView: React.FC<{
       }
       return [...students]
         .map(s => ({ ...s, avgScore: progressScores.get(s.id) || s.avgScore }))
-        .filter(s => s.avgScore > 0)
         .sort((a, b) => b.avgScore - a.avgScore)
         .slice(0, 5);
     }, [students, backendReport, backendHasData, progressScores]);
@@ -3873,7 +3885,7 @@ const AnalyticsView: React.FC<{
       if (backendHasData) {
         // SAFETY: trusted internal value already conforms to the asserted type.
         const matchedStudents = backendReport!.students
-          .filter(s => ['High Risk', 'Critical'].includes(s.risk_level))
+          .filter(s => ['High Risk', 'Medium Risk', 'Critical'].includes(normalizeAnalyticsRisk(s.risk_level)))
           .sort((a, b) => a.avg_score - b.avg_score)
           .flatMap(bs => {
             const match = findRosterStudent(bs.student_id, students);
@@ -3888,13 +3900,14 @@ const AnalyticsView: React.FC<{
           .filter(student => !matchedIds.has(student.id))
           .filter((student) => {
             const hasHighRiskSignal = student.riskLevel === 'high'
-              || ['intervene', 'critical', 'at_risk'].includes(student.riskStatus || '');
+              || student.riskLevel === 'medium'
+              || ['intervene', 'critical', 'at_risk', 'watch'].includes(student.riskStatus || '');
             const isAssessed = progressScores.has(student.id) || student.avgScore > 0;
             return hasHighRiskSignal || (isAssessed && student.avgScore < 75);
           });
         return [...matchedStudents, ...localFallback];
       }
-      return [...students].filter((student) => student.riskLevel === 'high' || (progressScores.get(student.id) || student.avgScore) < 70 || student.assignmentCompletion < 65);
+      return [...students].filter((student) => student.riskLevel !== 'low' || (progressScores.get(student.id) || student.avgScore) < 70 || student.assignmentCompletion < 65);
     }, [students, backendReport, backendHasData, progressScores]);
 
     // Helper to get backend score for a student
@@ -3911,11 +3924,15 @@ const AnalyticsView: React.FC<{
     const getStudentRisk = (studentId: string): string | null => {
       if (!backendReport) return null;
       const bs = backendReport.students.find(s => s.student_id === studentId);
-      return bs ? bs.risk_level : null;
+      return bs ? normalizeAnalyticsRisk(bs.risk_level) : null;
     };
 
+    // Topic performance comes only from completed assessment analytics.
     const effectiveTopicPerformance = useMemo(() => {
-      return deriveTopicPerformance(backendReport?.insights?.topic_performance ?? undefined);
+      return (backendReport?.insights?.topic_performance || [])
+        .filter((topic) => topic.topic && Number.isFinite(topic.class_accuracy))
+        .map((topic) => ({ topic: topic.topic, score: Math.round(topic.class_accuracy) }))
+        .sort((a, b) => a.score - b.score);
     }, [backendReport]);
 
     const handleRefreshInsights = async () => {
@@ -4229,10 +4246,12 @@ const AnalyticsView: React.FC<{
                     <p className="font-body text-[11px] text-[#64748b] mt-0.5">Cohort Support Status</p>
                   </div>
                 </div>
-                <div className="relative w-full flex-1 min-h-[200px]">
-                  {riskDistribution.length === 0 ? (
-                    <p className="h-full flex items-center justify-center text-sm text-slate-500" role="status">Risk data will appear after students are assessed.</p>
-                  ) : <ResponsiveContainer width="100%" height="100%">
+                {riskDistribution.length === 0 ? (
+                  <p className="flex flex-1 items-center justify-center text-sm text-slate-500">
+                    {students.length === 0 ? 'No students in this class yet.' : 'Risk assessment data is not available yet.'}
+                  </p>
+                ) : <div className="relative w-full flex-1 min-h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={riskDistribution}>
                       <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
                       <XAxis dataKey="name" axisLine={{ stroke: '#cbd5e1', strokeWidth: 2 }} tickLine={false} tick={{ fill: '#475569', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-body)' }} dy={10} />
@@ -4245,8 +4264,8 @@ const AnalyticsView: React.FC<{
                         })}
                       </Bar>
                     </BarChart>
-                  </ResponsiveContainer>}
-                </div>
+                  </ResponsiveContainer>
+                </div>}
               </div>
 
               {/* Visual Chart 2: Topic Performance */}
@@ -4264,7 +4283,9 @@ const AnalyticsView: React.FC<{
                 </div>
                 <div className="relative w-full flex-1 min-h-[220px]">
                   {effectiveTopicPerformance.length === 0 ? (
-                    <p className="h-full flex items-center justify-center text-sm text-slate-500" role="status">Topic results will appear after students complete assessments.</p>
+                    <p className="flex h-full items-center justify-center text-sm text-slate-500">
+                      No topic assessment data is available yet.
+                    </p>
                   ) : <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={effectiveTopicPerformance} layout="vertical" margin={{ top: 0, right: 15, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" horizontal={false} />
@@ -4342,7 +4363,7 @@ const AnalyticsView: React.FC<{
                         <span className="font-body text-[13px] font-bold text-[#1e293b]">{student.name}</span>
                         <div className="flex items-center gap-2">
                           <span className={`text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider bg-white px-2 py-0.5 rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] ${labelColor}`}>
-                            {formatRiskLabel(riskLabel)}
+                            {riskLabel.toUpperCase()}
                           </span>
                           <ChevronRight size={15} className="text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition-all" />
                         </div>
@@ -6360,17 +6381,6 @@ const ImportView: React.FC<{
   };
 
   const handleCourseMaterialUpload = async (file: File) => {
-    const supportedFile = /\.(pdf|docx|txt)$/i.test(file.name);
-    if (!supportedFile || file.size === 0 || file.size > 10 * 1024 * 1024) {
-      const message = !supportedFile
-        ? 'Choose a PDF, DOCX, or TXT course material file.'
-        : file.size === 0
-          ? 'The selected file is empty. Choose a different course material.'
-          : 'The selected file exceeds the 10 MB upload limit.';
-      setUploadResult(message);
-      toast.error(message);
-      return;
-    }
     setUploadingCourseMaterials(true);
     setUploadResult('');
     try {
@@ -6388,10 +6398,8 @@ const ImportView: React.FC<{
         onDataChanged?.();
       }
     } catch (err: unknown) {
-      console.warn('Course material upload failed:', err);
-      const message = 'Unable to process this course material. Check that the file is a valid PDF, DOCX, or TXT and try again.';
-      toast.error(message);
-      setUploadResult(message);
+      toast.error(err instanceof Error ? err.message : 'Course material upload failed');
+      setUploadResult('Course material upload failed. Please check the file format and try again.');
     } finally {
       setUploadingCourseMaterials(false);
     }

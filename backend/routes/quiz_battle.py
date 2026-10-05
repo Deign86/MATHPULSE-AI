@@ -12,7 +12,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request, HTTPException, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from rag.pdf_ingestion import ingest_pdf, IngestionResult
 _quiz_battle_services = None
@@ -64,6 +64,20 @@ class IngestPdfRequest(BaseModel):
     grade_level: int = Field(..., ge=7, le=12)
     topic: str = Field(..., min_length=1)
     force_reingest: bool = False
+
+    @field_validator("storage_path")
+    @classmethod
+    def validate_storage_path(cls, value: str) -> str:
+        normalized = value.strip()
+        parts = normalized.split("/")
+        if (
+            not normalized.startswith("quiz_pdfs/")
+            or not normalized.lower().endswith(".pdf")
+            or "\\" in normalized
+            or any(part in {"", ".", ".."} for part in parts)
+        ):
+            raise ValueError("storage_path must point to a PDF under quiz_pdfs/")
+        return normalized
 
 
 class IngestPdfResponse(BaseModel):
@@ -201,11 +215,11 @@ async def ingest_pdf_endpoint(
             force_reingest=body.force_reingest,
         )
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="PDF was not found in Firebase Storage") from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="PDF ingestion request is invalid") from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="PDF ingestion failed; please verify the storage path and try again") from e
 
     return IngestPdfResponse(
         status="processed" if result.processed else "skipped",

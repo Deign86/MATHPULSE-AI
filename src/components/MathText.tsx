@@ -56,7 +56,7 @@ function convertToLatex(text: string): string {
   
   // Check if text contains any math-like patterns (require digit/variable context around operators).
   // S7 fix: a closing paren also counts as math context — "(0.8)^h" has ")" before "^".
-  const hasMath = /\d[\^*×÷]|[\^*×÷]\d|\\frac|\\sqrt|\\times|\w\^\w|\)\^/.test(text);
+  const hasMath = /\d[\^*×÷]|[\^*×÷]\d|\\frac|\\sqrt|\\times|\w\^\w|\)\^|[A-Za-z]_\{[^}]+\}/.test(text);
   if (!hasMath) return text;
 
   // Strategy: find math expressions within the text and wrap them in $...$
@@ -84,7 +84,7 @@ function convertToLatex(text: string): string {
   // Otherwise, try to wrap individual math segments
   // Find segments that look like math (contain ^, *, or are numeric expressions with variables)
   const result = text.replace(
-    /([A-Za-z()\d.]+(?:\s*[*×]\s*[A-Za-z()\d.^{}]+)+|[A-Za-z()\d.]+\^[A-Za-z()\d.{}]+)/g,
+    /([A-Za-z()\d.]+(?:\s*[*×]\s*[A-Za-z()\d.^{}]+)+|[A-Za-z()\d.]+\^[A-Za-z()\d.{}]+|[A-Za-z]_\{[^}]+\})/g,
     (match) => `$${plainToLatex(match)}$`
   );
   
