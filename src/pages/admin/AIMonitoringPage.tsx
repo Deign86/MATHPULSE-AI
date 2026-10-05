@@ -1,7 +1,7 @@
 // src/pages/admin/AIMonitoringPage.tsx
 import React, { useState } from 'react';
 import {
-  RefreshCw, DollarSign, Cpu, Activity, Database, List, Sparkles,
+  RefreshCw, DollarSign, Cpu, Activity, Database, List,
   Zap, ArrowUpRight, TrendingUp, Layers, HelpCircle
 } from 'lucide-react';
 import { useAIMonitoring } from '../../hooks/useAIMonitoring';

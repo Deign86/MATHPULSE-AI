@@ -156,6 +156,7 @@ export default function DataImportView({
 
   // Logic for Import
   const [shsExcelResult, setShsExcelResult] = useState<ParseWorkbookResult | null>(null);
+  const [pendingWorkbookUpload, setPendingWorkbookUpload] = useState<File | null>(null);
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
@@ -285,6 +286,10 @@ export default function DataImportView({
   const handleCommitStudentAccounts = async (confirmSectionMoves: boolean) => {
     const previewToken = accountPreview?.previewToken;
     if (!previewToken || accountCommitting) return;
+    const confirmationMessage = confirmSectionMoves
+      ? 'Move the selected students to this class and import the remaining eligible rows?'
+      : 'Import eligible students? Existing or invalid rows will be skipped.';
+    if (!window.confirm(confirmationMessage)) return;
     setAccountCommitting(true);
     setAccountImportMessage('');
     try {
@@ -449,8 +454,32 @@ export default function DataImportView({
         const workbookResult = parsedWorkbook ?? await parseShsWorkbook(file, { confidenceThreshold: DETECTION_CONFIDENCE_THRESHOLD });
         setShsExcelResult(workbookResult);
         if (workbookResult.imported.validation.errors.length) throw new Error(workbookResult.imported.validation.errors.join(' '));
+        if (workbookResult.mapping.studentEntities.length === 0) {
+          setUploadResult('No students were found in the spreadsheet; no records were imported.');
+          setUploadingClassRecords(false);
+          return;
+        }
+        const malformedLrnRows = workbookResult.mapping.studentEntities
+          .map((student, index) => ({
+            row: student.sourceRow || index + 2,
+            lrn: student.lrn?.trim() || '',
+            email: student.email?.trim() || '',
+          }))
+          .filter(({ lrn, email }) => (lrn ? !/^\d{12}$/.test(lrn) : !email));
+        if (malformedLrnRows.length > 0) {
+          const rowErrors = malformedLrnRows.map(({ row, lrn }) =>
+            `Row ${row}: ${lrn ? 'LRN must contain exactly 12 digits.' : 'LRN or email is required.'}`,
+          );
+          setUploadResult(rowErrors.join(' '));
+          toast.error(rowErrors.join(' '));
+          setUploadingClassRecords(false);
+          return;
+        }
         const normalizedFile = buildNormalizedWorkbookCsv(workbookResult, file.name);
         if (normalizedFile) uploadFile = normalizedFile;
+        setPendingWorkbookUpload(uploadFile);
+        setUploadingClassRecords(false);
+        return;
       } catch (error: unknown) {
         setShsExcelResult(null);
         setUploadResult(error instanceof Error ? error.message : 'Workbook parsing failed.');
@@ -462,6 +491,12 @@ export default function DataImportView({
       setShsExcelResult(null);
     }
 
+    await uploadClassRecords(uploadFile);
+  };
+
+  const uploadClassRecords = async (uploadFile: File) => {
+    setUploadingClassRecords(true);
+    setPendingWorkbookUpload(null);
     try {
       const result = await apiService.uploadClassRecords(uploadFile, { classSectionId, className, datasetIntent: 'synthetic_student_records' });
       const uploadedStudentsCount = result.students.length;
@@ -717,6 +752,33 @@ export default function DataImportView({
                 </div>
               </div>
 
+              {shsExcelResult && pendingWorkbookUpload && (
+                <section className="rounded-xl border border-sky-200 bg-white p-4 space-y-3" aria-label="Spreadsheet student preview">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">Student preview — {shsExcelResult.mapping.studentEntities.length} students</p>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={() => { setPendingWorkbookUpload(null); setShsExcelResult(null); }}>Cancel</Button>
+                      <Button type="button" disabled={uploadingClassRecords} onClick={() => void uploadClassRecords(pendingWorkbookUpload)}>
+                        Confirm import
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <table className="w-full text-left text-xs">
+                      <thead><tr><th className="p-2">Row</th><th className="p-2">Student</th><th className="p-2">LRN</th><th className="p-2">Email</th></tr></thead>
+                      <tbody className="divide-y">
+                        {shsExcelResult.mapping.studentEntities.map((student) => (
+                          <tr key={`${student.sourceRow}-${student.fullName}`}>
+                            <td className="p-2">{student.sourceRow}</td><td className="p-2">{student.fullName}</td>
+                            <td className="p-2">{student.lrn || '—'}</td><td className="p-2">{student.email || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
               {/* Zone 2: Course Materials (Vibrant Purple Dotted) */}
               <div 
                 role="button"
@@ -792,30 +854,38 @@ export default function DataImportView({
                   <p className="text-xs text-slate-600">
                     {accountPreview.summary.totalRows} rows: {accountPreview.summary.validRows} valid, {accountPreview.summary.invalidRows} invalid, {accountPreview.summary.duplicateRows} duplicate.
                   </p>
-                  <div className="divide-y rounded-lg border border-slate-200">
-                    {accountPreview.rows.map((row) => row.status === 'move_confirmation_required' ? (
-                      <label key={row.rowNumber} className="flex items-start gap-2 p-3 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={confirmedMoveRows.has(row.rowNumber)}
-                          onChange={(event) => setConfirmedMoveRows((current) => {
-                            const next = new Set(current);
-                            if (event.target.checked) next.add(row.rowNumber);
-                            else next.delete(row.rowNumber);
-                            return next;
-                          })}
-                        />
-                        <span>
-                          <span className="font-medium">{row.fullName} — Move to this section?</span>
-                          <span className="block text-xs text-slate-500">{row.grade} {row.section} · {row.issues.join(' ') || 'Existing section assignment will change.'}</span>
-                        </span>
-                      </label>
-                    ) : (
-                      <div key={row.rowNumber} className="flex justify-between gap-3 p-3 text-xs">
-                        <span>{row.fullName}</span>
-                        <span>{row.status}{row.issues.length ? ` — ${row.issues.join(' ')}` : ''}</span>
-                      </div>
-                    ))}
+                  <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <table className="w-full text-left text-xs">
+                      <thead><tr><th className="p-2">Row</th><th className="p-2">Student</th><th className="p-2">LRN</th><th className="p-2">Class</th><th className="p-2">Status / review</th></tr></thead>
+                      <tbody className="divide-y">
+                        {accountPreview.rows.map((row) => (
+                          <tr key={row.rowNumber}>
+                            <td className="p-2">{row.rowNumber}</td>
+                            <td className="p-2">{row.fullName}</td>
+                            <td className="p-2">{row.studentId}</td>
+                            <td className="p-2">{row.grade} {row.section}</td>
+                            <td className="p-2">
+                              {row.status === 'move_confirmation_required' && (
+                                <label className="flex items-start gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={confirmedMoveRows.has(row.rowNumber)}
+                                    onChange={(event) => setConfirmedMoveRows((current) => {
+                                      const next = new Set(current);
+                                      if (event.target.checked) next.add(row.rowNumber);
+                                      else next.delete(row.rowNumber);
+                                      return next;
+                                    })}
+                                  />
+                                  <span>Confirm move: {row.issues.join(' ') || 'Existing section assignment will change.'}</span>
+                                </label>
+                              )}
+                              {row.status !== 'move_confirmation_required' && `${row.status}${row.issues.length ? ` — ${row.issues.join(' ')}` : ''}`}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -836,7 +906,12 @@ export default function DataImportView({
                   </div>
                 </div>
               )}
-              {accountImportMessage && <p role="status" className="text-xs text-slate-700">{accountImportMessage}</p>}
+              {accountImportMessage && (
+                <div role="status" className="flex items-start justify-between gap-3 text-xs text-slate-700">
+                  <p>{accountImportMessage}</p>
+                  <Button type="button" variant="outline" onClick={() => setAccountImportMessage('')}>Dismiss</Button>
+                </div>
+              )}
               {accountPreview?.warnings.map((warning) => <p key={warning} className="text-xs text-amber-700">{warning}</p>)}
             </section>
 

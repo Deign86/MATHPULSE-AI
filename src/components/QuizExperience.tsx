@@ -487,6 +487,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
       const AudioContextConstructor = window.AudioContext ?? audioWindow.webkitAudioContext;
       if (!AudioContextConstructor) return;
       const ctx = new AudioContextConstructor();
+      void ctx.resume();
       const t = ctx.currentTime;
 
       const playNote = (freq: number, startTime: number, duration: number, vol = 0.1, waveType: OscillatorType = 'sine') => {
@@ -591,10 +592,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
     if (showExplanation) return;
     if (isCurrentlyAnswered) return;
     setSelectedAnswer(idx);
-    // Auto submit on selection for Practice Center
-    setTimeout(() => {
-      handleSubmitAnswer(idx);
-    }, 150);
+    handleSubmitAnswer(idx);
   };
 
   const handleSubmitAnswer = (forcedAnswerIdx?: number) => {
@@ -640,22 +638,17 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
     setShowExplanation(true);
 
     if (!isCorrect) {
-      // INCORRECT: shake, deduct heart, no popup, auto-advance after 1.5s
+      // Keep feedback visible until the learner chooses to continue.
       setShakeCard(true);
       playSound('incorrect');
       setTimeout(() => setShakeCard(false), 500);
       setHeartsCount(prev => Math.max(0, prev - 1));
       setStreak(0);
       setComboMultiplier(1);
-      
-      // Auto-advance even on incorrect for Practice Center
-      setTimeout(() => {
-        handleNextQuestion();
-      }, 1500);
       return;
     }
 
-     // CORRECT: popup + auto-advance
+     // CORRECT: play feedback and wait for the learner to continue.
      playSound('correct');
      const wasHintUsed = (eliminatedByHint[currentQuestionIndex] || []).length > 0;
       const ptsAwarded = wasHintUsed ? 5 : 10;
@@ -687,11 +680,6 @@ const newStreak = streak + 1;
     });
 
     setShowRoundResult(true);
-    setTimeout(() => {
-      setShowRoundResult(false);
-      setAchievementPill(null);
-      setTimeout(() => handleNextQuestion(), 300);
-    }, 1500); // 1.5s total
   };
 
   const handleNextQuestion = () => {
@@ -1333,10 +1321,10 @@ playSound('complete');
                       const eliminatedCount = (eliminatedByHint[currentQuestionIndex] || []).length;
                       const wrongChoicesCount = (currentQuestion.options || []).length - 1;
                       const allWrongEliminated = wrongChoicesCount > 0 && eliminatedCount >= wrongChoicesCount;
-                      const showNextButton = allWrongEliminated || (isCurrentlyAnswered && !lastAnswerCorrect);
+                      const showNextButton = allWrongEliminated || isCurrentlyAnswered;
                       
                       return showNextButton ? (
-                        <button onClick={handleNextQuestion} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-sm sm:text-base md:text-lg px-5 sm:px-8 py-3 sm:py-4 rounded-full flex items-center justify-center gap-2 sm:gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all motion-reduce:transition-none w-full max-w-md mx-auto">
+                        <button onClick={() => { setShowRoundResult(false); setAchievementPill(null); handleNextQuestion(); }} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-sm sm:text-base md:text-lg px-5 sm:px-8 py-3 sm:py-4 rounded-full flex items-center justify-center gap-2 sm:gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all motion-reduce:transition-none w-full max-w-md mx-auto">
                           {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'View Results'} <ChevronRight size={20} className="sm:hidden" /><ChevronRight size={24} className="hidden sm:block" />
                         </button>
                       ) : viewIndex === currentQuestionIndex && !showExplanation ? (

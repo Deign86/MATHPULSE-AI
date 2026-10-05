@@ -387,8 +387,8 @@ const App = ({ authOverride }: AppProps = {}) => {
   // Load computed general average from progress data (DepEd percentage-based)
   useEffect(() => {
     if (isLoggedIn && userRole === 'student' && userProfile) {
-      getUserProgress(userProfile.uid).then((progress) => {
-        if (progress && progress.averageScore > 0) {
+        getUserProgress(userProfile.uid).then((progress) => {
+          if (progress && progress.averageScore > 0) {
           setComputedGpa(Math.round(progress.averageScore).toString());
         }
       }).catch(err => console.error('Error loading progress for GPA:', err));
@@ -1524,7 +1524,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                                 Streak
                               </span>
                               <span className="block text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1.5">
-                                {currentStreak} Days
+                                {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
                               </span>
                             </div>
                           </button>

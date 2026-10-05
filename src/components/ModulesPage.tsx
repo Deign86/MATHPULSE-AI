@@ -73,6 +73,7 @@ import type { CompetencyProfileDoc } from '../types/assessment';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { submitPracticeSession } from '../services/practiceService';
 import { fetchPendingQuizzesForStudent, type PlayableQuiz } from '../services/quizService';
+import { recordPracticeQuiz } from '../services/progressService';
 import { subscribeToUserProgress } from '../services/progressService';
 import { watchModule } from '../services/moduleWatchService';
 import type { ModuleProgress, UserProgress } from '../types/models';
@@ -699,6 +700,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const handleQuizComplete = (score: number, xpEarned: number) => {
     if (onEarnXP) {
       onEarnXP(xpEarned, `Quiz Completed! +${xpEarned} XP`);
+    }
+    if (userProfile?.uid && selectedQuiz) {
+      void recordPracticeQuiz(userProfile.uid, selectedQuiz.id, selectedQuiz.subject, score, [], 0)
+        .catch((error) => console.error('[ModulesPage] Failed to refresh student quiz risk:', error));
     }
     // Don't unmount here - let user see results modal first
   };
