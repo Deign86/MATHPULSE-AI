@@ -78,6 +78,7 @@ const mapNotificationDoc = (docSnap: { id: string; data: () => DocumentData }): 
     metadata: data.metadata,
     actionUrl: data.actionUrl as string | undefined,
     recipientRole: data.recipientRole as Notification['recipientRole'],
+    studentId: data.studentId as string | undefined,
   };
 };
 

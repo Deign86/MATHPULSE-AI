@@ -224,33 +224,17 @@ export const AdminAnalytics: React.FC = () => {
         ['Total Active Users', summary?.totalActiveUsers ?? 0, '100+', 'Healthy'],
         ['Total Students Enrolled', summary?.totalStudents ?? 0, '80+', 'Healthy'],
         ['Total Teachers / Instructors', summary?.totalTeachers ?? 0, '5+', 'Healthy'],
-        ['Average Quiz Score', `${summary?.avgQuizScore ?? 82.4}%`, '75.0%', 'Above Target'],
-        ['Total Quizzes Completed', summary?.totalQuizzesTaken ?? 4904, '1000+', 'Active'],
-        ['At-Risk Students', summary?.atRiskStudents ?? 12, '<15', 'Monitored'],
-        ['Total XP Earned', summary?.totalXPEarned ?? 384500, '-', 'Gamified'],
-        ['Active Daily Streaks', summary?.activeStreaks ?? 142, '-', 'High Retention'],
-        ['AI Socratic Tutor Sessions', summary?.aiTutorSessions ?? 1280, '-', 'High Engagement'],
-        [],
-        ['CURRICULUM SUBJECT BREAKDOWN'],
-        ['Subject Name', 'Subject Code', 'Grade Level', 'Enrolled', 'Completion Rate', 'Quiz Attempts', 'Average Score', 'Status'],
-        ...SUBJECT_LIST.map(s => [
-          s.name,
-          s.code,
-          s.grade,
-          s.enrolled,
-          `${s.completedPercent}%`,
-          s.quizAttempts,
-          `${s.avgScore}%`,
-          s.status
-        ]),
+        ['Average Quiz Score', `${summary?.avgQuizScore ?? 0}%`, '75.0%', 'Live'],
+        ['Total Quizzes Completed', summary?.totalQuizzesTaken ?? 0, '—', 'Live'],
+        ['At-Risk Students', summary?.atRiskStudents ?? 0, '—', 'Live'],
+        ['Total XP Earned', summary?.totalXPEarned ?? 0, '—', 'Live'],
+        ['Active Daily Streaks', summary?.activeStreaks ?? 0, '—', 'Live'],
+        ['AI Socratic Tutor Sessions', summary?.aiTutorSessions ?? 0, '—', 'Live'],
         [],
         ['MASTERY COHORT DISTRIBUTION'],
         ['Cohort Tier', 'Student Count', 'Percentage'],
         ...cohortData.map(c => [c.name, c.count, `${c.percent}%`]),
         [],
-        ['TOP PERFORMING SECTIONS'],
-        ['Rank', 'Section Name', 'Grade', 'Teacher Adviser', 'Students', 'Mastery Rate', 'Status'],
-        ...TOP_CLASSES.map(cls => [cls.rank, cls.section, cls.grade, cls.adviser, cls.students, `${cls.masteryRate}%`, cls.status]),
       ];
 
       const columnCount = Math.max(...rows.map(row => row.length));
@@ -274,16 +258,16 @@ export const AdminAnalytics: React.FC = () => {
     }
   };
 
-  const activeUsersCount = summary?.totalActiveUsers || 192;
-  const avgQuizScore = summary?.avgQuizScore ? summary.avgQuizScore : 82.4;
-  const quizzesTakenCount = summary?.totalQuizzesTaken || 4904;
-  const atRiskCount = summary?.atRiskStudents || 12;
+  const activeUsersCount = summary?.totalActiveUsers ?? 0;
+  const avgQuizScore = summary?.avgQuizScore ?? 0;
+  const quizzesTakenCount = summary?.totalQuizzesTaken ?? 0;
+  const atRiskCount = summary?.atRiskStudents ?? 0;
 
   const kpiBentos = [
     {
       title: 'Active Learners',
       value: loadingKPIs ? null : activeUsersCount.toLocaleString(),
-      subValue: `${summary?.totalStudents || 168} Students • ${summary?.totalTeachers || 24} Teachers`,
+      subValue: `${summary?.totalStudents ?? 0} Students • ${summary?.totalTeachers ?? 0} Teachers`,
       badge: 'Active Base',
       trend: '+14.2%',
       isPositive: true,
@@ -338,7 +322,7 @@ export const AdminAnalytics: React.FC = () => {
       color: 'text-amber-600 dark:text-amber-400',
       bg: 'bg-amber-500/10 dark:bg-amber-950/20',
       border: 'border-amber-200/80 dark:border-amber-900/40',
-      value: loadingKPIs ? null : (summary?.achievementsUnlocked || 342).toLocaleString(),
+      value: loadingKPIs ? null : (summary?.achievementsUnlocked ?? 0).toLocaleString(),
     },
     {
       label: 'Platform XP Earned',
@@ -347,7 +331,7 @@ export const AdminAnalytics: React.FC = () => {
       color: 'text-violet-600 dark:text-violet-400',
       bg: 'bg-violet-500/10 dark:bg-violet-950/20',
       border: 'border-violet-200/80 dark:border-violet-900/40',
-      value: loadingKPIs ? null : ((summary?.totalXPEarned ?? 384500) >= 1_000_000 ? `${((summary?.totalXPEarned ?? 384500) / 1_000_000).toFixed(1)}M` : (summary?.totalXPEarned ?? 384500) >= 1_000 ? `${Math.round((summary?.totalXPEarned ?? 384500) / 1_000)}K` : (summary?.totalXPEarned ?? 384500).toLocaleString()),
+      value: loadingKPIs ? null : ((summary?.totalXPEarned ?? 0) >= 1_000_000 ? `${((summary?.totalXPEarned ?? 0) / 1_000_000).toFixed(1)}M` : (summary?.totalXPEarned ?? 0) >= 1_000 ? `${Math.round((summary?.totalXPEarned ?? 0) / 1_000)}K` : (summary?.totalXPEarned ?? 0).toLocaleString()),
     },
     {
       label: 'Active Streaks',
@@ -356,7 +340,7 @@ export const AdminAnalytics: React.FC = () => {
       color: 'text-rose-600 dark:text-rose-400',
       bg: 'bg-rose-500/10 dark:bg-rose-950/20',
       border: 'border-rose-200/80 dark:border-rose-900/40',
-      value: loadingKPIs ? null : (summary?.activeStreaks || 148).toLocaleString(),
+      value: loadingKPIs ? null : (summary?.activeStreaks ?? 0).toLocaleString(),
     },
     {
       label: 'AI Tutor Sessions',
@@ -365,7 +349,7 @@ export const AdminAnalytics: React.FC = () => {
       color: 'text-sky-600 dark:text-sky-400',
       bg: 'bg-sky-500/10 dark:bg-sky-950/20',
       border: 'border-sky-200/80 dark:border-sky-900/40',
-      value: loadingKPIs ? null : (summary?.aiTutorSessions || 1280).toLocaleString(),
+      value: loadingKPIs ? null : (summary?.aiTutorSessions ?? 0).toLocaleString(),
     },
   ];
 

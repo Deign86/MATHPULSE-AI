@@ -11,6 +11,7 @@ export type NotificationType =
   | 'achievement_unlocked'
   | 'level_up'
   | 'quiz_result'
+  | 'quiz_completed'
   | 'daily_checkin'
   | 'streak_milestone'
   | 'streak_reminder'
@@ -37,6 +38,7 @@ export interface Notification {
   metadata?: NotificationMetadata;
   actionUrl?: string;
   recipientRole?: NotificationRecipientRole;
+  studentId?: string;
 }
 
 export interface NotificationPayload {
@@ -54,7 +56,7 @@ export interface NotificationPayload {
  * student inbox (issue #156). Even if a misaddressed document lands in a
  * student's subcollection, the client filter drops it.
  */
-export const TEACHER_ONLY_NOTIFICATION_TYPES: readonly NotificationType[] = ['risk_alert'];
+export const TEACHER_ONLY_NOTIFICATION_TYPES: readonly NotificationType[] = ['risk_alert', 'quiz_completed'];
 
 /** Student progress and reward notifications do not belong in staff inboxes. */
 export const STUDENT_ONLY_NOTIFICATION_TYPES: readonly NotificationType[] = [

@@ -72,6 +72,18 @@ interface ExamMilestone {
 
 type ExportFormat = 'csv' | 'pdf';
 
+export function calculateExamReadinessScore(
+  averageScore: number,
+  proficiencyRate: number,
+  diagnosticScore: number | undefined,
+  hasCompletedAssessment: boolean,
+): number | null {
+  if (averageScore > 0 && proficiencyRate > 0) return Math.round((averageScore * 0.6) + (proficiencyRate * 0.4));
+  if (averageScore > 0) return averageScore;
+  if (diagnosticScore !== undefined) return diagnosticScore;
+  return hasCompletedAssessment ? 0 : null;
+}
+
 // Creative Radial Score Ring with smooth SVG gradient
 const RadialScoreRing: React.FC<{ 
   value: number; 
@@ -415,13 +427,8 @@ const GradesPage = () => {
 
   // Compute exam readiness score from average & quiz proficiency
   const examReadinessScore = useMemo(() => {
-    if (averageScore > 0 && proficiencyRate > 0) {
-      return Math.round((averageScore * 0.6) + (proficiencyRate * 0.4));
-    }
-    if (averageScore > 0) return averageScore;
-    if (diagnosticSummary?.score) return diagnosticSummary.score;
-    return 70;
-  }, [averageScore, proficiencyRate, diagnosticSummary?.score]);
+    return calculateExamReadinessScore(averageScore, proficiencyRate, diagnosticSummary?.score, totalQuizzes > 0 || recentQuizzes.length > 0);
+  }, [averageScore, proficiencyRate, diagnosticSummary, totalQuizzes, recentQuizzes.length]);
 
   // Derive core Senior High School STEM exam milestones
   const examMilestones = useMemo<ExamMilestone[]>(() => {
@@ -1515,11 +1522,11 @@ const GradesPage = () => {
                 </div>
               </div>
               <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border self-start sm:self-auto whitespace-nowrap shrink-0 ${
-                examReadinessScore >= 75 
+                examReadinessScore !== null && examReadinessScore >= 75
                   ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800' 
                   : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200/70 dark:border-amber-800'
               }`}>
-                {examReadinessScore >= 75 ? 'On Track 🚀' : 'Prep Needed ⚡'}
+                {examReadinessScore === null ? 'Assessment Needed' : examReadinessScore >= 75 ? 'On Track 🚀' : 'Prep Needed ⚡'}
               </span>
             </div>
 
@@ -1532,7 +1539,7 @@ const GradesPage = () => {
               <div className="w-full h-2.5 bg-slate-200/70 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 rounded-full transition-all duration-700" 
-                  style={{ width: `${Math.min(100, Math.max(12, examReadinessScore))}%` }} 
+                  style={{ width: `${examReadinessScore === null ? 0 : Math.min(100, Math.max(0, examReadinessScore))}%` }}
                 />
               </div>
               <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-2">

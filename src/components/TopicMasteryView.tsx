@@ -218,11 +218,17 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
           ...topic,
           isExcluded: excluded.includes(topic.topicName),
         }));
+        const derivedSummary = {
+          totalTopicsTracked: topicsWithExclude.length,
+          masteredCount: topicsWithExclude.filter((topic: TopicMasteryData) => topic.masteryStatus === 'mastered').length,
+          needsAttentionCount: topicsWithExclude.filter((topic: TopicMasteryData) => topic.masteryStatus === 'needs_attention').length,
+          excludedCount: topicsWithExclude.filter((topic: TopicMasteryData) => topic.isExcluded).length,
+        };
 
         return {
           excluded,
           topics: topicsWithExclude,
-          summary: data.summary || { totalTopicsTracked: 0, masteredCount: 0, needsAttentionCount: 0, excludedCount: excluded.length },
+          summary: topicsWithExclude.length > 0 ? derivedSummary : (data.summary || derivedSummary),
         };
       } catch {
         return {
@@ -348,9 +354,11 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
 
   const filteredTopics = topics
     .filter(t => {
-      if (subjectFilter !== 'all' && t.subjectId !== subjectFilter) return false;
-      // SAFETY: trusted internal value already conforms to the asserted type.
-      if (!gradeScopedSubjectIds.includes(t.subjectId as SubjectId)) return false;
+      const matchedSubject = SHS_MATH_SUBJECTS.find((subject) =>
+        subject.id === t.subjectId || subject.name.toLowerCase() === t.subjectId.trim().toLowerCase()
+      );
+      if (subjectFilter !== 'all' && matchedSubject?.id !== subjectFilter) return false;
+      if (!matchedSubject || !gradeScopedSubjectIds.includes(matchedSubject.id)) return false;
       if (searchQuery && !t.topicName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     })

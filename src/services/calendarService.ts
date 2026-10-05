@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   setDoc,
   updateDoc,
@@ -9,6 +10,7 @@ import {
   query,
   where,
   limit,
+  type UpdateData,
   Unsubscribe,
   type FirestoreError,
 } from 'firebase/firestore';
@@ -52,6 +54,7 @@ export const createCalendarEvent = async (
   userId: string,
   payload: {
     title: string;
+    classId?: string;
     description?: string;
     startTime: Date;
     endTime?: Date;
@@ -63,6 +66,7 @@ export const createCalendarEvent = async (
     id: eventRef.id,
     userId,
     title: payload.title,
+    classId: payload.classId,
     description: payload.description,
     startTime: payload.startTime,
     endTime: payload.endTime,
@@ -70,8 +74,14 @@ export const createCalendarEvent = async (
     createdAt: new Date(),
   };
 
+  const firestoreEvent = { ...event };
+  if (firestoreEvent.classId === undefined) delete firestoreEvent.classId;
+  if (firestoreEvent.description === undefined) delete firestoreEvent.description;
+  if (firestoreEvent.endTime === undefined) delete firestoreEvent.endTime;
+  if (firestoreEvent.color === undefined) delete firestoreEvent.color;
+
   await setDoc(eventRef, {
-    ...event,
+    ...firestoreEvent,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -81,12 +91,22 @@ export const createCalendarEvent = async (
 
 export const updateCalendarEvent = async (
   eventId: string,
-  updates: Partial<Pick<CalendarEvent, 'title' | 'description' | 'startTime' | 'endTime' | 'color'>>,
+  updates: Partial<Pick<CalendarEvent, 'title' | 'description' | 'startTime' | 'endTime' | 'color' | 'classId'>>,
 ): Promise<void> => {
   const eventRef = doc(db, 'calendarEvents', eventId);
+  const firestoreUpdates: UpdateData<CalendarEvent> = { updatedAt: serverTimestamp() };
+  if (updates.title !== undefined) firestoreUpdates.title = updates.title;
+  if (updates.startTime !== undefined) firestoreUpdates.startTime = updates.startTime;
+  if (updates.description !== undefined) firestoreUpdates.description = updates.description;
+  else if ('description' in updates) firestoreUpdates.description = deleteField();
+  if (updates.endTime !== undefined) firestoreUpdates.endTime = updates.endTime;
+  else if ('endTime' in updates) firestoreUpdates.endTime = deleteField();
+  if (updates.color !== undefined) firestoreUpdates.color = updates.color;
+  else if ('color' in updates) firestoreUpdates.color = deleteField();
+  if (updates.classId !== undefined) firestoreUpdates.classId = updates.classId;
+  else if ('classId' in updates) firestoreUpdates.classId = deleteField();
   await updateDoc(eventRef, {
-    ...updates,
-    updatedAt: serverTimestamp(),
+    ...firestoreUpdates,
   });
 };
 

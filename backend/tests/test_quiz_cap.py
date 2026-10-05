@@ -45,7 +45,7 @@ def test_quiz_cap():
         "numQuestions": 15,
     })
     assert response.status_code == 400, f"Expected 400, got {response.status_code}: {response.text}"
-    assert "capped at 10 items" in response.json()["detail"]
+    assert "capped at 12 items" in response.json()["detail"]
     print("Test passed!")
 
 

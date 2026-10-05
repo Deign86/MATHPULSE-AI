@@ -1,16 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as firestore from 'firebase/firestore';
-import type { CollectionReference, DocumentReference, Transaction } from 'firebase/firestore';
-import { saveQuizResults } from '../quizService';
+import type { CollectionReference, DocumentReference, Query, Transaction } from 'firebase/firestore';
+import type { GeneratedQuiz } from '../../types/models';
+import { fetchPendingQuizzesForStudent, saveQuizResults } from '../quizService';
 
 // SAFETY: this opaque reference is returned by the Firestore boundary spy and consumed only by mocked transaction IO.
 const fakeDocumentReference = { id: 'submission-1' } as DocumentReference;
 // SAFETY: this collection reference is passed only to the mocked doc() boundary.
 const fakeCollectionReference = {} as CollectionReference;
+// SAFETY: opaque query/document values are used only by the Firestore boundary spies.
+const fakeQuery = {} as Query;
+// SAFETY: this fixture is returned only from the mocked doc() boundary for the generated-quiz lookup.
+const fakeQuizDocument = { id: 'quiz-1' } as DocumentReference;
 
-const assignmentSnapshot = (status: 'pending' | 'completed') => ({
+const assignmentSnapshot = (status: 'pending' | 'completed', assessmentType = 'graded') => ({
   exists: () => true,
-  data: () => ({ status }),
+  data: () => ({ status, assessmentType }),
 });
 
 describe('saveQuizResults assignment idempotency', () => {
@@ -26,7 +31,7 @@ describe('saveQuizResults assignment idempotency', () => {
     const { collectionReference, documentReference } = stubReferences();
     const transactionWrites = { set: vi.fn(), update: vi.fn(), delete: vi.fn() };
     const transaction = {
-      get: vi.fn().mockResolvedValue(assignmentSnapshot('completed')),
+      get: vi.fn().mockResolvedValue(assignmentSnapshot('completed', 'graded')),
       ...transactionWrites,
     };
     const transactionRunner = vi.spyOn(firestore, 'runTransaction').mockImplementation(
@@ -88,5 +93,77 @@ describe('saveQuizResults assignment idempotency', () => {
     expect(collectionReference).toHaveBeenCalledOnce();
     expect(documentReference).toHaveBeenCalledOnce();
     expect(documentReference).not.toHaveBeenCalledWith(expect.anything(), 'generatedQuizzes', 'practice-session-1');
+  });
+
+  it('allows a completed diagnostic assignment to be retaken', async () => {
+    const { collectionReference, documentReference } = stubReferences();
+    const transactionWrites = { set: vi.fn(), update: vi.fn(), delete: vi.fn() };
+    const transaction = {
+      get: vi.fn().mockResolvedValue(assignmentSnapshot('completed', 'diagnostic')),
+      ...transactionWrites,
+    };
+    vi.spyOn(firestore, 'runTransaction').mockImplementation(async (_database, callback) => {
+      // SAFETY: the diagnostic fixture supplies only the transaction calls under test.
+      return callback(transaction as Transaction);
+    });
+
+    await saveQuizResults('student-uid', 'assignment-1', 'quiz-1', 'Math', 'diagnostic', 90, 20, 30, [], []);
+
+    expect(transactionWrites.set).toHaveBeenCalledOnce();
+    expect(collectionReference).toHaveBeenCalledOnce();
+    expect(documentReference).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('fetchPendingQuizzesForStudent', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('loads a pending quiz assigned using a legacy student LRN', async () => {
+    const quiz: GeneratedQuiz = {
+      id: 'quiz-1',
+      title: 'Algebra review',
+      gradeLevel: 'Grade 11',
+      questions: [],
+      totalPoints: 0,
+      metadata: {
+        topicsCovered: [],
+        difficultyBreakdown: { easy: 1, medium: 0, hard: 0 },
+        bloomDistribution: {},
+        questionTypeBreakdown: {},
+        supplementalPurpose: '',
+        recommendedTeacherActions: [],
+        generatedAt: '',
+        generatedBy: 'teacher_generated',
+      },
+      status: 'assigned',
+      source: 'teacher_generated',
+    };
+    // SAFETY: the synthetic query row supplies only id and data(), which are the fields used by the loader.
+    const assignment = {
+      id: 'assignment-1',
+      data: () => ({ quizId: 'quiz-1' }),
+    } as never;
+    vi.spyOn(firestore, 'collection').mockReturnValue(fakeCollectionReference);
+    // SAFETY: the query spies are consumed only by the fake Firestore query constructor.
+    vi.spyOn(firestore, 'where').mockReturnValue(fakeQuery as never);
+    // SAFETY: the query mock is consumed only by the Firestore query constructor in this test.
+    vi.spyOn(firestore, 'orderBy').mockReturnValue(fakeQuery as never);
+    vi.spyOn(firestore, 'query').mockReturnValue(fakeQuery);
+    // SAFETY: the minimal snapshot contains the docs list consumed by the pending-assignment loader.
+    vi.spyOn(firestore, 'getDocs').mockResolvedValue({ docs: [assignment] } as never);
+    vi.spyOn(firestore, 'doc').mockReturnValue(fakeQuizDocument);
+    // SAFETY: this snapshot fixture implements exactly the methods called by fetchGeneratedQuiz.
+    vi.spyOn(firestore, 'getDoc').mockResolvedValue({
+      id: 'quiz-1',
+      exists: () => true,
+      data: () => quiz,
+    } as never);
+
+    const quizzes = await fetchPendingQuizzesForStudent('student-uid', 'legacy-lrn');
+
+    expect(firestore.where).toHaveBeenCalledWith('lrn', 'in', ['student-uid', 'legacy-lrn']);
+    expect(quizzes).toHaveLength(1);
+    expect(quizzes[0].title).toBe('Algebra review');
+    expect(quizzes[0].assignmentId).toBe('assignment-1');
   });
 });

@@ -43,12 +43,16 @@ describe('QuizExperience preview mode', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '4' }));
     await act(async () => { vi.advanceTimersByTime(2_200); });
+    expect(screen.getByText('2 + 2 = 4')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /View Results/ }));
     expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
     expect(screen.getAllByText('+0').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'RETAKE QUIZ' }));
     fireEvent.click(screen.getByRole('button', { name: '4' }));
     await act(async () => { vi.advanceTimersByTime(2_200); });
+    expect(screen.queryByText(/Quiz Complete/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /View Results/ }));
     expect(screen.getAllByText(/Quiz Complete/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'FINISH' }));
 
@@ -119,6 +123,7 @@ describe('QuizExperience preview mode', () => {
     render(<QuizExperience quiz={assignedQuiz} studentId="student-1" onComplete={onComplete} onQuizEnd={onQuizEnd} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: '4' }));
     await act(async () => { vi.advanceTimersByTime(2_200); });
+    fireEvent.click(screen.getByRole('button', { name: /View Results/ }));
     expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
     await act(async () => { vi.advanceTimersByTime(60_000); });
     expect(submit).toHaveBeenCalledOnce();
@@ -140,6 +145,7 @@ describe('QuizExperience preview mode', () => {
     render(<QuizExperience quiz={assignedQuiz} studentId="student-1" onComplete={onComplete} onQuizEnd={onQuizEnd} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: '4' }));
     await act(async () => { vi.advanceTimersByTime(2_200); });
+    fireEvent.click(screen.getByRole('button', { name: /View Results/ }));
     expect(submit).toHaveBeenCalledOnce();
     expect(saveResults).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'RETAKE QUIZ' }));

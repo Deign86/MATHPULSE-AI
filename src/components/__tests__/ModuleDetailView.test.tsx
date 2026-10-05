@@ -80,6 +80,7 @@ const authContext: AuthContextType = {
 
 let progressListener: (progress: UserProgress | null) => void = () => undefined;
 const generatePracticeSessionSpy = vi.spyOn(practiceService, 'generatePracticeSession');
+const useLessonContentSpy = vi.spyOn(lessonContent, 'useLessonContent');
 
 function buildModuleProgress(lessonsCompleted: string[]): ModuleProgress {
   return {
@@ -153,7 +154,8 @@ describe('G1b #171 lesson completion subject fallback', () => {
 
     vi.spyOn(firestore, 'getDoc').mockResolvedValue(missingFirestoreSnapshot());
     vi.spyOn(firestore, 'setDoc').mockResolvedValue(undefined);
-    vi.spyOn(lessonContent, 'useLessonContent').mockReturnValue(lessonContentResult);
+    useLessonContentSpy.mockReset();
+    useLessonContentSpy.mockReturnValue(lessonContentResult);
     vi.spyOn(lessonQuizService, 'generateLessonQuiz').mockResolvedValue([]);
     vi.spyOn(trackingService, 'logLessonView').mockResolvedValue(undefined);
     vi.spyOn(tryItYourselfModule, 'default').mockImplementation(({ onComplete }) => (
@@ -233,5 +235,19 @@ describe('G1b #171 lesson completion subject fallback', () => {
       }));
     });
     expect(screen.getByText('Generating Quiz...')).toBeInTheDocument();
+  });
+
+  it('allows lesson completion when the lesson has no required practice quiz', async () => {
+    useLessonContentSpy.mockReturnValueOnce({
+      ...lessonContentResult,
+      sections: [{ type: 'introduction', title: 'Introduction', content: 'Read this section.' }],
+    });
+    renderFallbackModule(vi.fn(), vi.fn());
+
+    fireEvent.click(screen.getByRole('button', { name: /Fallback Lesson/i }));
+    await screen.findByRole('button', { name: 'Complete lesson' });
+    expect(screen.getByRole('button', { name: 'Complete lesson' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Complete lesson' }));
+    expect(await screen.findByText('Lesson Complete!')).toBeInTheDocument();
   });
 });

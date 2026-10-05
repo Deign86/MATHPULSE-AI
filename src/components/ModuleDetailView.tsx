@@ -9,7 +9,7 @@ import QuizExperience, { Quiz as QuizExperienceQuiz } from './QuizExperience';
 import LessonViewer from './LessonViewer';
 import { subjects, Module, Lesson, Quiz as SubjectQuiz } from '../data/subjects';
 import { useAuth } from '../contexts/AuthContext';
-import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress, updateLessonProgressPercent } from '../services/progressService';
+import { completeLesson, completeQuiz, recalculateAndUpdateModuleProgress, subscribeToUserProgress } from '../services/progressService';
 import { computeHonestXp } from '../services/honestXp';
 import { db } from '../lib/firebase';
 import { getQuestionCountForQuiz } from '../services/lessonQuizService';
@@ -275,18 +275,15 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     return isCompleted ? 100 : 0;
   };
 
-  // Derived module progress that includes partial lesson progress.
+  // Module completion reflects completed lessons and quizzes, not reading position.
   const derivedModuleProgressPercent = useMemo(() => {
     if (!totalItems) return 0;
-    const lessonSum = module.lessons.reduce((sum, lesson) => {
-      const isCompleted = completedLessonIds.has(lesson.id) || lesson.completed;
-      return sum + getLessonProgressPercent(lesson.id, isCompleted);
-    }, 0);
+    const lessonSum = completedLessons * 100;
     const quizSum = completedQuizzes * 100;
     return Math.round((lessonSum + quizSum) / totalItems);
-  }, [completedLessonIds, completedQuizzes, module.lessons, module.quizzes.length, totalItems, userProgress?.lessons]);
+  }, [completedLessons, completedQuizzes, totalItems]);
 
-  const moduleProgressPercent = derivedModuleProgressPercent > 0 ? derivedModuleProgressPercent : moduleProgressPercentFromDb;
+  const moduleProgressPercent = totalItems > 0 ? derivedModuleProgressPercent : moduleProgressPercentFromDb;
 
   const standaloneQuiz = useMemo(() => {
     // Prefer explicitly-marked final/general module quizzes
@@ -360,7 +357,10 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     const currentLesson = current.lesson;
 
     const xpAmount = computeHonestXp({ quizScore: score ?? 0, hintsUsed: 0, streakDays: 0 });
-    onEarnXPRef.current?.(xpAmount, `Completed "${currentLesson.title}"`);
+    const wasAlreadyCompleted = completedLessonIds.has(currentLesson.id)
+      || Boolean(userProgress?.lessons?.[currentLesson.id]?.completed)
+      || currentLesson.completed;
+    if (!wasAlreadyCompleted) onEarnXPRef.current?.(xpAmount, `Completed "${currentLesson.title}"`);
 
     // Persist progress for Competency Matrix (Concept Grasp)
     if (userProfile?.uid) {
@@ -411,20 +411,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     } else {
       setSelectedLesson(null);
     }
-  }, [subjectId, subjectIdSource, module.id, module.lessons, module.quizzes, setIsInQuizMode]);
-
-  const handleProgressUpdate = useCallback((percent: number) => {
-    if (!userProfile?.uid || !selectedLessonRef.current || selectedLessonRef.current.type !== 'lesson') return;
-    const lessonId = selectedLessonRef.current.lesson.id;
-    // Persist partial lesson progress to Firestore
-    void (async () => {
-      try {
-        await updateLessonProgressPercent(userProfile.uid!, lessonId, percent);
-      } catch (err) {
-        console.warn('[ModuleDetailView] Failed to persist lesson progress:', err);
-      }
-    })();
-  }, [userProfile?.uid, module.id]);
+  }, [subjectId, subjectIdSource, module.id, module.lessons, module.quizzes, completedLessonIds, userProgress?.lessons, setIsInQuizMode]);
 
   // If a lesson is selected, show the appropriate viewer
   if (selectedLesson) {
@@ -456,7 +443,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           nextContentLabel={nextContentLabel}
           onBack={handleBack}
           onStartPractice={() => handleStartPractice(selectedLesson.lesson)}
-          onProgressUpdate={handleProgressUpdate}
           onComplete={handleComplete}
           setIsInQuizMode={setIsInQuizMode}
         />

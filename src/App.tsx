@@ -9,6 +9,7 @@ import { deleteCurrentUserAccount, signOutUser, updateUserProfile, updateUserPas
 import { awardXP } from './services/gamificationService.ts';
 import { updateCompetencyProfile } from './services/assessmentService.ts';
 import { getUserProgress } from './services/progressService.ts';
+import { getDailyRewardState } from './services/dailyRewardService.ts';
 import { AdminProfile, DEFAULT_USER_SETTINGS, StudentProfile, TeacherProfile, User, UserSettings } from './types/models.ts';
 import { applyRuntimeSettings, clearClientCache, exportUserDataSnapshot, getUserSettings, upsertUserSettings } from './services/settingsService.ts';
 import { Toaster, toast } from 'sonner';
@@ -159,6 +160,18 @@ const App = ({ authOverride }: AppProps = {}) => {
   const [userLevel, setUserLevel] = useState(studentProfile?.level || 1);
   const [currentXP, setCurrentXP] = useState(studentProfile?.currentXP || 0);
   const [totalXP, setTotalXP] = useState(studentProfile?.totalXP || 0);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    if (!studentProfile?.uid) {
+      setCurrentStreak(0);
+      return;
+    }
+    void getDailyRewardState(studentProfile.uid).then((dailyRewardState) => {
+      if (!cancelled) setCurrentStreak(dailyRewardState.currentStreak);
+    });
+    return () => { cancelled = true; };
+  }, [studentProfile?.uid]);
   const xpToNextLevel = Math.floor(100 * Math.pow(1.5, userLevel - 1));
   let sumRequiredForCurrentLevel = 0;
   for (let i = 1; i < userLevel; i++) {
@@ -1372,9 +1385,20 @@ const App = ({ authOverride }: AppProps = {}) => {
                                   return tags.some((tag) => ['remedial', 'review', 'catch-up'].includes(String(tag).toLowerCase()))
                                     || ['remedial', 'review', 'catch-up'].includes(moduleDifficulty);
                                 });
-                                const inProgressLesson = Object.values(progress?.lessons || {})
+                                // SAFETY: progress records persist this optional numeric access timestamp for lesson ordering.
+                                const lessonRecords = Object.values(progress?.lessons || {}) as Array<{
+                                  lessonId: string;
+                                  completed?: boolean;
+                                  progressPercent?: number;
+                                  lastAccessedAt?: number;
+                                }>;
+                                const inProgressLesson = lessonRecords
                                   .filter((lesson) => !lesson.completed && (lesson.progressPercent || 0) > 0)
-                                  .sort((left, right) => (right.progressPercent || 0) - (left.progressPercent || 0))[0];
+                                  .sort((left, right) => {
+                                    const leftTime = left.lastAccessedAt ?? 0;
+                                    const rightTime = right.lastAccessedAt ?? 0;
+                                    return rightTime - leftTime;
+                                  })[0];
                                 const inProgressModule = inProgressLesson
                                   ? visibleModules
                                     .find((module) => module.lessons.some((lesson) => lesson.id === inProgressLesson.lessonId))
@@ -1495,7 +1519,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                                 Streak
                               </span>
                               <span className="block text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1.5">
-                                7 Days
+                                {currentStreak} Days
                               </span>
                             </div>
                           </button>
@@ -1598,6 +1622,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                               userLevel={userLevel}
                               userPhoto={profileData.photo}
                               currentXP={progressXPInLevel}
+                              currentStreak={currentStreak}
                               xpToNextLevel={xpToNextLevel}
                               overallXP={currentXP}
                               userName={firstName}
@@ -1708,6 +1733,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                       currentXP={progressXPInLevel}
                       totalXP={totalXP}
                       xpToNextLevel={xpToNextLevel}
+                      currentStreak={currentStreak}
                       onBack={() => handleStudentNavigation(previousTab || 'Dashboard')}
                     />
                   </Suspense>
@@ -1777,6 +1803,7 @@ const App = ({ authOverride }: AppProps = {}) => {
             currentXP={progressXPInLevel}
             xpToNextLevel={xpToNextLevel}
             totalXP={totalXP}
+            currentStreak={currentStreak}
             userId={userProfile?.uid || ''}
             onViewAllRewards={() => {
               setActiveModal(null);

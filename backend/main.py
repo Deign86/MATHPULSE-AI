@@ -136,11 +136,12 @@ from services.jev_client import route_student_intent
 
 # Rate limiting (slowapi)
 try:
-    from middleware.rate_limiter import setup_rate_limiting
+    from middleware.rate_limiter import rate_limiter, setup_rate_limiting
     HAS_RATE_LIMITING = True
 except ImportError:
     HAS_RATE_LIMITING = False
     setup_rate_limiting = None
+    rate_limiter = None
 
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
@@ -2427,25 +2428,31 @@ with the DepEd Strengthened SHS Curriculum and SDO Navotas learning modules.
 
 YOUR BEHAVIOR RULES:
 1. PERSONALIZE every response. Address the student by first name occasionally.
-2. NEVER give direct answers to quiz or exam items — guide with hints and questions instead.
-3. If the student is struggling on a critical gap topic, gently steer them back to
+2. Teach Socratically: give one small hint or ask one focused question, then pause for the
+   student's attempt. Never complete the calculation or reveal the final answer, even when
+   asked to solve it; guide the student through one step at a time.
+3. Answer only the question the student actually asked. Never invent, introduce, or solve a
+   different equation or example; ask a clarifying question if the problem is missing.
+4. NEVER give direct answers to quiz or exam items — guide with hints and questions instead.
+5. If the student is struggling on a critical gap topic, gently steer them back to
    prerequisite concepts before moving forward.
-4. Use the SDO Navotas step-by-step method for ALL solutions:
-   "Given → Formula → Substitute → Compute → Conclude"
-5. Always format math using LaTeX:
+6. Use the SDO Navotas method as a guided sequence:
+   "Given → Formula → Substitute → Compute → Conclude"; show only the current step and invite
+   the student to do the next one.
+7. Always format math using LaTeX:
    - Inline: \\( expression \\)
    - Block/display: \\[ expression \\]
    Never use dollar signs ($) — they break the KaTeX renderer.
-6. Use Filipino-friendly English. Mix in occasional Tagalog phrases
+8. Use Filipino-friendly English. Mix in occasional Tagalog phrases
    (e.g., "Kaya mo yan!", "Subukan natin...") to keep the tone warm.
-7. When a student answers a "try_it" problem, evaluate their answer:
+9. When a student answers a "try_it" problem, evaluate their answer:
    - If correct: Celebrate briefly, explain WHY it's correct, then offer a harder challenge.
    - If wrong: Say "Good try! Let's check your steps..." then walk through the error.
-8. Keep responses concise (max 300 words per message). Use bullet points for steps.
-9. If a student asks about a topic outside their current lesson, help but
+10. Keep responses concise (max 300 words per message). Use bullet points for steps.
+11. If a student asks about a topic outside their current lesson, help but
    note: "This is from [topic]. We'll cover this soon in your learning path!"
-10. NEVER generate quiz items with answers visible to the student.
-11. When you detect the student consistently making the same mistake,
+12. NEVER generate quiz items with answers visible to the student.
+13. When you detect the student consistently making the same mistake,
     note it clearly: "I noticed you keep forgetting to convert % to decimal first — let's fix that!"
 
 RESPONSE FORMAT FOR MATH EXPLANATIONS:
@@ -2708,6 +2715,11 @@ def _build_stream_continuation_prompt(original_question: str, expected_end_marke
 
 
 @app.post("/api/chat", response_model=ChatResponse)
+@rate_limiter.limiter.limit("9/3 seconds")
+async def chat_tutor_endpoint(request: Request, chat_request: ChatRequest):
+    return await chat_tutor(chat_request)
+
+
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
     _start_ms = int(time.monotonic() * 1000)
@@ -2907,6 +2919,11 @@ async def _update_memory_after_response(
 
 
 @app.post("/api/chat/stream")
+@rate_limiter.limiter.limit("9/3 seconds")
+async def chat_tutor_stream_endpoint(request: Request, chat_request: ChatRequest):
+    return await chat_tutor_stream(chat_request)
+
+
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
     try:
@@ -5325,8 +5342,8 @@ def _parse_provisioning_dataframe(df: Any) -> Dict[str, Any]:
     for idx, row in df.iterrows():
         first_name = _pick(row, ["firstname", "first", "givenname", "given"])
         last_name = _pick(row, ["lastname", "last", "surname", "familyname"])
-        middle_name = _pick(row, ["middlename", "middle", "middlenameinitial"]) or ""
-        student_id = _pick(row, ["studentid", "lrn", "learnerid", "learnerreferencenumber", "schoolid"])
+        middle_name = _pick(row, ["middlename", "middle", "middleinitial", "middlenameinitial", "mi"]) or ""
+        student_id = _pick(row, ["studentid", "lrn", "lrnno", "learnerid", "learnerreferencenumber", "schoolid"])
         email = _pick(row, ["email", "emailaddress", "studentemail"]).lower()
         grade = _pick(row, ["grade", "gradelevel", "yearlevel"])
         section = _pick(row, ["section", "classsection", "homeroom", "sectionname"])
@@ -5988,9 +6005,9 @@ async def preview_student_account_import(
             )
 
         if ext == ".csv":
-            df = pd.read_csv(io.BytesIO(contents), on_bad_lines="skip")
+            df = pd.read_csv(io.BytesIO(contents), on_bad_lines="skip", dtype=str)
         else:
-            df = pd.read_excel(io.BytesIO(contents))
+            df = pd.read_excel(io.BytesIO(contents), dtype=str)
 
         if df is None or df.empty:
             raise HTTPException(status_code=400, detail="No rows found in uploaded file")
@@ -6049,13 +6066,14 @@ async def preview_student_account_import(
 
             duplicate_in_file = False
             duplicate_in_firestore = False
+            duplicate_lrn_in_firestore = False
             duplicate_in_auth = False
             already_enrolled = False
             enrolled_section_id = ""
             roster_student_uid = ""
             existing_profile_uid = ""
 
-            student_id_key = student_id.lower()
+            student_id_key = re.sub(r"\s+", "", student_id).lower()
             email_key = generated_email.lower()
             if student_id_key and student_id_key in seen_student_ids:
                 duplicate_in_file = True
@@ -6077,11 +6095,13 @@ async def preview_student_account_import(
                         )
                         duplicate_in_firestore = duplicate_in_firestore or len(existing_by_lrn) > 0
                         if existing_by_lrn:
+                            duplicate_lrn_in_firestore = True
                             existing_profile_uid = str(existing_by_lrn[0].id)
                         existing_roster_rows = list(
                             firestore_client.collection("managedStudents").where("lrn", "==", student_id).limit(1).stream()
                         )
                         if existing_roster_rows:
+                            duplicate_lrn_in_firestore = True
                             roster_student_uid = str(existing_roster_rows[0].id)
                             roster_data = _snapshot_to_dict(existing_roster_rows[0])
                             enrolled_section_id = str(roster_data.get("classSectionId") or roster_data.get("classroomId") or "").strip()
@@ -6148,6 +6168,7 @@ async def preview_student_account_import(
                 "issues": issues,
                 "duplicateInFile": duplicate_in_file,
                 "duplicateInFirestore": duplicate_in_firestore,
+                "duplicateLrnInFirestore": duplicate_lrn_in_firestore,
                 "duplicateInAuth": duplicate_in_auth,
             }
             preview_rows.append(preview_row)
@@ -6219,6 +6240,49 @@ async def commit_student_account_import(
             row for row in preview_rows
             if str(row.get("status") or "") in {"valid", "move_confirmation_required"}
         ]
+
+        student_lrns = [
+            re.sub(r"\s+", "", str(row.get("studentId") or "")).lower()
+            for row in preview_rows
+            if str(row.get("studentId") or "").strip()
+        ]
+        duplicate_lrns = {lrn for lrn, count in Counter(student_lrns).items() if count > 1}
+        has_existing_lrn = any(
+            bool(row.get("duplicateLrnInFirestore"))
+            and str(row.get("status") or "") != "move_confirmation_required"
+            for row in preview_rows
+        )
+        if duplicate_lrns or has_existing_lrn:
+            blocked_results = [
+                {
+                    "rowNumber": int(row.get("rowNumber") or 0),
+                    "studentId": str(row.get("studentId") or ""),
+                    "fullName": str(row.get("fullName") or "Imported Student"),
+                    "email": str(row.get("email") or ""),
+                    "uid": None,
+                    "classSectionId": str(row.get("classSectionId") or ""),
+                    "status": "blocked",
+                    "message": "Import rejected: duplicate LRN detected; no rows were written.",
+                    "temporaryPassword": None,
+                }
+                for row in preview_rows
+            ]
+            with _account_import_previews_lock:
+                _account_import_previews.pop(preview_token, None)
+            return {
+                "success": False,
+                "previewToken": preview_token,
+                "summary": {
+                    "totalRows": len(preview_rows),
+                    "createdRows": 0,
+                    "updatedRows": 0,
+                    "skippedRows": 0,
+                    "blockedRows": len(preview_rows),
+                    "failedRows": 0,
+                },
+                "rows": blocked_results,
+                "warnings": ["Duplicate LRN detected; the entire import was rejected without writes."],
+            }
 
         result_rows: List[Dict[str, Any]] = []
         warnings: List[str] = []
@@ -6508,6 +6572,23 @@ async def commit_student_account_import(
                 except Exception as auth_lookup_err:
                     if not _auth_user_not_found(cast(Exception, auth_lookup_err)):
                         warnings.append(f"Auth lookup warning for {email}: {auth_lookup_err}")
+
+            if existing_profile_doc or auth_existing:
+                blocked_rows += 1
+                result_rows.append(
+                    {
+                        "rowNumber": row_number,
+                        "studentId": student_id,
+                        "fullName": full_name,
+                        "email": email,
+                        "uid": existing_uid or auth_uid,
+                        "classSectionId": class_section_id,
+                        "status": "blocked",
+                        "message": "Cannot import: an account with this LRN or email already exists.",
+                        "temporaryPassword": None,
+                    }
+                )
+                continue
 
             if payload.createAuthUsers and firebase_auth and not auth_uid and email:
                 try:
@@ -8000,6 +8081,7 @@ async def upload_class_records(
         inferred_rows_total = 0
         fallback_inference_rows_total = 0
         per_file_results: List[Dict[str, Any]] = []
+        duplicate_lrn_rejection = False
 
         for upload in uploads:
             filename = upload.filename or ""
@@ -8171,6 +8253,36 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 file_students = normalized_result["rows"]
                 file_row_warnings = normalized_result["rowWarnings"]
                 file_rejected_rows = normalized_result.get("rejectedRows") or []
+                normalized_lrns = [
+                    re.sub(r"\s+", "", str(student.get("lrn") or "")).lower()
+                    for student in file_students
+                    if str(student.get("lrn") or "").strip()
+                ]
+                duplicate_lrns = sorted(
+                    lrn for lrn, count in Counter(normalized_lrns).items() if count > 1
+                )
+                if _firebase_ready and firebase_firestore and not duplicate_lrns:
+                    try:
+                        firestore_client = firebase_firestore.client()
+                        for lrn in normalized_lrns:
+                            existing_lrn = list(
+                                firestore_client.collection("managedStudents").where("lrn", "==", lrn).limit(1).stream()
+                            )
+                            existing_profile = list(
+                                firestore_client.collection("users").where("lrn", "==", lrn).limit(1).stream()
+                            )
+                            if existing_lrn or existing_profile:
+                                duplicate_lrns.append(lrn)
+                    except Exception as firestore_err:
+                        file_warnings.append(f"Could not check existing LRNs before import: {firestore_err}")
+                duplicate_lrns = sorted(set(duplicate_lrns))
+                if duplicate_lrns:
+                    duplicate_lrn_rejection = True
+                    file_students = []
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Duplicate LRN values reject the entire import: " + ", ".join(duplicate_lrns),
+                    )
                 invalid_lrn_rows = [
                     item for item in file_rejected_rows
                     if "LRN must contain exactly 12 digits" in str(item.get("reason") or "")
@@ -8295,6 +8407,8 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
         successful_files = sum(1 for f in per_file_results if f.get("status") in {"success", "partial_success"})
         failed_files = len(per_file_results) - successful_files
         overall_success = successful_files > 0
+        if duplicate_lrn_rejection:
+            raise HTTPException(status_code=400, detail="Duplicate LRN values reject the entire import; no records were written.")
         risk_refresh = _queue_post_import_risk_refresh(
             request,
             students=all_students,
@@ -11546,9 +11660,9 @@ async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
     Supports Bloom's Taxonomy integration, multiple question types,
     and graph-based identification questions.
     """
-    # Quiz item cap — returns 400 with exact message for test compatibility
-    if request.numQuestions > 10:
-        raise HTTPException(status_code=400, detail="capped at 10 items")
+    # Keep the live endpoint aligned with the teacher UI's classroom cap.
+    if request.numQuestions > 12:
+        raise HTTPException(status_code=400, detail="capped at 12 items")
 
     try:
 
@@ -11600,11 +11714,11 @@ async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
             )
             effective_topics = effective_topics[:MAX_TOPICS_LIMIT]
 
-        if request.numQuestions > MAX_QUESTIONS_LIMIT:
+        if request.numQuestions > min(MAX_QUESTIONS_LIMIT, 12):
             logger.warning(
                 f"Clamping numQuestions from {request.numQuestions} to {MAX_QUESTIONS_LIMIT} (request limit)"
             )
-            request.numQuestions = MAX_QUESTIONS_LIMIT
+            request.numQuestions = min(MAX_QUESTIONS_LIMIT, 12)
 
         # Pre-compute question distribution
         distribution = _distribute_questions(
@@ -11729,8 +11843,21 @@ Remember:
                     detail="Failed to parse quiz questions from AI response. Please try again.",
                 )
 
-            # If we got at least 70% of requested questions, accept the result
-            if len(parsed_questions) >= request.numQuestions * 0.7:
+            # Repair truncated but parseable replies before retrying the full prompt.
+            if parsed_questions and len(parsed_questions) < request.numQuestions:
+                try:
+                    strict_questions = await _regenerate_quiz_json_strict(
+                        original_prompt=prompt,
+                        num_questions=request.numQuestions,
+                        timeout=http_timeout,
+                        model_id=HF_QUIZ_JSON_REPAIR_MODEL_ID,
+                    )
+                    if len(strict_questions) > len(parsed_questions):
+                        parsed_questions = strict_questions
+                except Exception as strict_exc:
+                    logger.warning("Strict quiz completion failed (attempt %s): %s", attempt + 1, strict_exc)
+
+            if len(parsed_questions) == request.numQuestions:
                 break
 
             # Otherwise retry with a stronger nudge
@@ -11755,11 +11882,15 @@ Remember:
                     },
                 ]
 
-        # Warn if the LLM still generated fewer questions than requested
-        if len(parsed_questions) < request.numQuestions:
+        # Never report a partial quiz as successful.
+        if len(parsed_questions) < request.numQuestions and http_request.url.path != "/api/quiz/preview":
             logger.warning(
                 f"LLM generated {len(parsed_questions)}/{request.numQuestions} questions "
                 f"after {max_attempts} attempts (raw length={len(raw_content)} chars)."
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=f"Quiz generation returned {len(parsed_questions)} of {request.numQuestions} requested questions. Please retry.",
             )
 
         topic_provenance_map: Dict[str, Dict[str, Optional[str]]] = {}

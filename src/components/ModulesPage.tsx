@@ -263,7 +263,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     setPendingQuizzesLoading(true);
     setPendingQuizzesLoaded(false);
     setPendingQuizzesError(false);
-    fetchPendingQuizzesForStudent(studentUid)
+    fetchPendingQuizzesForStudent(studentUid, studentProfile?.lrn)
       .then((quizzes) => {
         if (!cancelled) {
           setPendingQuizzes(quizzes);
@@ -521,6 +521,23 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       });
     },
   });
+
+  useEffect(() => {
+    const lessonTopic = sessionStorage.getItem('mathpulse_lesson_topic');
+    if (!lessonTopic || modulePool.length === 0) return;
+    const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const topic = normalize(lessonTopic);
+    const matchingModule = modulePool.find((module) => {
+      const curriculumTerms = [module.content_domain, module.title, ...module.lessons.map((lesson) => lesson.title), ...module.competencies.flatMap((competency) => [competency.code, competency.outcome])]
+        .filter((term): term is string => Boolean(term))
+        .map(normalize);
+      return curriculumTerms.some((term) => term === topic || term.startsWith(`${topic} `) || term.endsWith(` ${topic}`) || term.includes(` ${topic} `));
+    });
+    if (matchingModule) {
+      setSelectedModule(matchingModule);
+      sessionStorage.removeItem('mathpulse_lesson_topic');
+    }
+  }, [modulePool]);
 
   const availableCompetencyGroups = useMemo(() => {
     const groups = new Map<string, string>();
@@ -1957,7 +1974,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           ) : (
             <RecommendedModulesView
               modules={modulesWithProgress}
-              fullPool={modulePool}
               onSelectModule={setSelectedModule}
               onPreviewSources={setSourcePreviewModule}
               isAtRisk={normalizedRiskTopics.length > 0 && hasCompletedDiagnostic}
@@ -2156,6 +2172,15 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   );
 };
 
+const matchesWeakTopic = (module: CurriculumModuleRuntime, weakTopics: string[]): boolean => {
+  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const topics = weakTopics.map(normalize).filter(Boolean);
+  const moduleTerms = [module.content_domain, module.title, module.competency_group, ...module.lessons.map((lesson) => lesson.title), ...module.competencies.flatMap((competency) => [competency.code, competency.outcome])]
+    .filter((value): value is string => Boolean(value))
+    .map(normalize);
+  return topics.some((topic) => moduleTerms.some((term) => term === topic || term.startsWith(`${topic} `) || term.endsWith(` ${topic}`) || term.includes(` ${topic} `)));
+};
+
 const ModulesLibraryView: React.FC<{
   modules: CurriculumModuleRuntime[];
   onSelectModule: (module: CurriculumModuleRuntime) => void;
@@ -2178,12 +2203,7 @@ const ModulesLibraryView: React.FC<{
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {modules.map((module, index) => {
-              const isRecommended = weakTopics.some(wt => 
-                (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
-                (module.title && module.title.toLowerCase().includes(wt.toLowerCase())) ||
-                (module.competency_group && module.competency_group.toLowerCase().includes(wt.toLowerCase())) ||
-                (module.subject && module.subject.toLowerCase().includes(wt.toLowerCase()))
-              );
+              const isRecommended = matchesWeakTopic(module, weakTopics);
               return (
               <ModuleFolderCard
                 key={module.id}
@@ -2191,7 +2211,7 @@ const ModulesLibraryView: React.FC<{
                 index={index}
                 onClick={() => onSelectModule(module)}
                 onPreviewSources={() => onPreviewSources(module)}
-                isAtRisk={isAtRisk}
+                isAtRisk={isAtRisk && isRecommended}
                 isRecommended={isRecommended}
                 onNotifyMe={onNotifyMe}
               />
@@ -2205,16 +2225,15 @@ const ModulesLibraryView: React.FC<{
 
 const RecommendedModulesView: React.FC<{
   modules: CurriculumModuleRuntime[];
-  fullPool: CurriculumModuleRuntime[];
   onSelectModule: (module: CurriculumModuleRuntime) => void;
   onPreviewSources: (module: CurriculumModuleRuntime) => void;
   isAtRisk?: boolean;
   learningPath?: LearningPathState;
   weakTopics?: string[];
   onNotifyMe?: (moduleId: string) => void;
-}> = ({ modules, fullPool, onSelectModule, onPreviewSources, isAtRisk = false, learningPath = IDLE_LEARNING_PATH, weakTopics = [], onNotifyMe }) => {
+}> = ({ modules, onSelectModule, onPreviewSources, isAtRisk = false, learningPath = IDLE_LEARNING_PATH, weakTopics = [], onNotifyMe }) => {
   const inProgress = modules.filter((module) => module.progress > 0 && module.progress < 100);
-  const suggested = (modules.length > 0 ? modules : fullPool).filter((module) => module.progress === 0).slice(0, 6);
+  const suggested = modules.filter((module) => module.progress === 0).slice(0, 6);
 
   return (
     <div className="pr-2 space-y-10">
@@ -2246,12 +2265,7 @@ const RecommendedModulesView: React.FC<{
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {inProgress.slice(0, 4).map((module, index) => {
-              const isRecommended = weakTopics.some(wt => 
-                (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
-                (module.title && module.title.toLowerCase().includes(wt.toLowerCase())) ||
-                (module.competency_group && module.competency_group.toLowerCase().includes(wt.toLowerCase())) ||
-                (module.subject && module.subject.toLowerCase().includes(wt.toLowerCase()))
-              );
+              const isRecommended = matchesWeakTopic(module, weakTopics);
               return (
               <ModuleFolderCard
                 key={module.id}
@@ -2259,7 +2273,7 @@ const RecommendedModulesView: React.FC<{
                 index={index}
                 onClick={() => onSelectModule(module)}
                 onPreviewSources={() => onPreviewSources(module)}
-                isAtRisk={isAtRisk}
+                isAtRisk={isAtRisk && isRecommended}
                 badgeLabel="In Progress"
                 isRecommended={isRecommended}
                 onNotifyMe={onNotifyMe}
@@ -2277,12 +2291,7 @@ const RecommendedModulesView: React.FC<{
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {suggested.map((module, index) => {
-              const isRecommended = weakTopics.some(wt => 
-                (module.content_domain && module.content_domain.toLowerCase().includes(wt.toLowerCase())) ||
-                (module.title && module.title.toLowerCase().includes(wt.toLowerCase())) ||
-                (module.competency_group && module.competency_group.toLowerCase().includes(wt.toLowerCase())) ||
-                (module.subject && module.subject.toLowerCase().includes(wt.toLowerCase()))
-              );
+              const isRecommended = matchesWeakTopic(module, weakTopics);
               return (
               <ModuleFolderCard
                 key={module.id}
@@ -2290,9 +2299,9 @@ const RecommendedModulesView: React.FC<{
                 index={index}
                 onClick={() => onSelectModule(module)}
                 onPreviewSources={() => onPreviewSources(module)}
-                isAtRisk={isAtRisk}
+                isAtRisk={isAtRisk && isRecommended}
                 badgeLabel="Start"
-                isRecommended={isRecommended || (index === 0 && weakTopics.length > 0)}
+                isRecommended={isRecommended}
                 onNotifyMe={onNotifyMe}
               />
             )})}

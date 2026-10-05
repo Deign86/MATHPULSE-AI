@@ -396,7 +396,6 @@ interface LessonViewerProps {
   onStartPractice?: () => void;
   onBack: () => void;
   onComplete: (score?: number, totalXP?: number, goToNext?: boolean) => void;
-  onProgressUpdate?: (percent: number) => void;
   /** Fires when the inline Try It Yourself quiz is completed — use to persist to Firestore and award XP */
   onTryItQuizComplete?: (scorePercent: number) => void;
   /** Fires when user clicks Continue Learning in the Try It Yourself quiz overlay — advances to next lesson */
@@ -1279,7 +1278,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   onStartPractice,
   onBack,
   onComplete,
-  onProgressUpdate,
   onTryItQuizComplete,
   onContinueLearning,
   setIsInQuizMode,
@@ -1321,19 +1319,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     setIsInQuizMode?.(showTryItPage);
     return () => { setIsInQuizMode?.(false); };
   }, [showTryItPage]);
-  // Generate questions when Try It Yourself is opened
-  useEffect(() => {
-    if (!showTryItPage || tryItQuestions || tryItError) return;
-    setTryItLoading(true);
-    generateLessonQuiz({ lessonId: lesson.id?.toString() || 'unknown', lessonTitle: lesson.title, topic: lesson.title, subjectId: lesson.subjectId, competencyCode: lesson.competencyCode, questionCount: 15 })
-      .then(qs => setTryItQuestions(qs))
-      .catch(err => {
-        console.error('[LessonViewer] Quiz generation failed:', err);
-        setTryItError('Lesson-specific practice questions could not be generated. Please try again.');
-      })
-      .finally(() => setTryItLoading(false));
-  }, [showTryItPage, tryItQuestions, tryItError, tryItAttempt, lesson]);
-
   const [tryItQuizCompleted, setTryItQuizCompleted] = useState(false);
 
   const request = {
@@ -1441,6 +1426,26 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     }
   }, [sections]);
 
+  const practiceTopic = lessonSpecificTopic || sections
+    .find((section) => section.type === 'introduction')?.title
+    ?.replace(/^Introduction\s+(to|-|:|—)\s+/i, '')
+    .replace(/\s*[-:—]\s*Introduction$/i, '')
+    .replace(/\s+Introduction$/i, '')
+    .trim() || lesson.title;
+
+  // Generate lesson-specific questions only after the specific topic is known.
+  useEffect(() => {
+    if (!showTryItPage || tryItQuestions || tryItError) return;
+    setTryItLoading(true);
+    generateLessonQuiz({ lessonId: lesson.id?.toString() || 'unknown', lessonTitle: lesson.title, topic: practiceTopic, subjectId: lesson.subjectId, competencyCode: lesson.competencyCode, questionCount: 15 })
+      .then(qs => setTryItQuestions(qs))
+      .catch(err => {
+        console.error('[LessonViewer] Quiz generation failed:', err);
+        setTryItError('Lesson-specific practice questions could not be generated. Please try again.');
+      })
+      .finally(() => setTryItLoading(false));
+  }, [showTryItPage, tryItQuestions, tryItError, tryItAttempt, lesson, practiceTopic]);
+
   // Track lesson view activity when lesson loads
   useEffect(() => {
     if (sections.length > 0 && userProfile?.uid && lesson.id) {
@@ -1496,8 +1501,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }, [sections, initialSection]);
 
   useEffect(() => {
-    const progress = totalSections > 0 ? ((currentSection + 1) / totalSections) * 100 : 0;
-    onProgressUpdate?.(progress);
+    if (!sections.length || isLoading) return;
+    const progress = totalSections > 0 ? ((maxUnlockedSection + 1) / totalSections) * 100 : 0;
     if (sectionProgressLoaded && userProfile?.uid && lesson.id) {
       void updateLessonProgressPercent(userProfile.uid, lesson.id, progress, currentSection)
         .catch((caughtError) => {
@@ -1505,7 +1510,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           console.warn('[LessonViewer] Failed to persist lesson section:', persistError);
         });
     }
-  }, [currentSection, totalSections, onProgressUpdate, sectionProgressLoaded, userProfile?.uid, lesson.id]);
+  }, [currentSection, maxUnlockedSection, totalSections, sections.length, isLoading, sectionProgressLoaded, userProfile?.uid, lesson.id]);
 
   if (isLoading) {
     return <LoadingSkeleton />;
@@ -1598,7 +1603,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     if (currentSection < totalSections - 1) {
       setDirection(1);
       setCurrentSection((p) => p + 1);
-    } else if (!practiceQuiz || practiceQuizCompleted) {
+    } else {
       setShowCompletion(true);
     }
   };
@@ -1616,9 +1621,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   };
 
   // Block completion if either the external practice quiz OR the Try It Yourself quiz is unfinished
-  const isPracticeRequired = Boolean(
-    (practiceQuiz && !practiceQuizCompleted) || !tryItQuizCompleted
-  );
+  // Practice activities remain available but do not gate reading completion.
+  const isPracticeRequired = false;
   const currentTab = SECTION_TABS[currentSection] || SECTION_TABS[0];
   const CurrentTabIcon = currentTab.icon;
   // SAFETY: lesson objects from curriculum metadata dynamically carry the optional subject name.

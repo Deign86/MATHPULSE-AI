@@ -938,6 +938,29 @@ class TestClassRecordImportMapping:
 
 class TestUploadClassRecordsGuardrails:
     @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_rejects_duplicate_lrns_before_any_writes(self, _mock_chat):
+        with patch.object(main_module, "_persist_class_record_import_artifact") as persist_import, patch.object(
+            main_module, "_sync_imported_students_to_teacher_dashboard"
+        ) as sync_dashboard, patch.object(main_module, "_queue_post_import_risk_refresh") as queue_risk_refresh:
+            response = client.post(
+                "/api/upload/class-records",
+                files={
+                    "files": (
+                        "records.csv",
+                        b"name,lrn,avgQuizScore,attendance,engagementScore\nAna Cruz,123456789001,81,92,88\nBen Dela,123456789001,58,70,52\n",
+                        "text/csv",
+                    ),
+                },
+                data={"datasetIntent": "synthetic_student_records"},
+            )
+
+        assert response.status_code == 400
+        assert "duplicate" in response.json()["detail"].lower()
+        persist_import.assert_not_called()
+        sync_dashboard.assert_not_called()
+        queue_risk_refresh.assert_not_called()
+
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
     def test_upload_class_records_rejects_unsupported_dataset_intent(self, _mock_chat):
         files = {
             "files": ("records.csv", b"name,lrn,email,avgQuizScore,attendance,engagementScore,assignmentCompletion\nAna,123456789001,ana@example.com,80,90,85,88\n", "text/csv"),
@@ -1774,6 +1797,36 @@ class _ProvisionFirestoreModule:
 
 
 class TestStudentAccountProvisioningImport:
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_commit_student_account_import_rejects_duplicate_lrns_atomically(self, _mock_chat):
+        original_profile = {"name": "Existing Student", "email": "existing@student.com", "lrn": "123456789001", "role": "student"}
+        firestore = _ProvisionFirestoreModule({"users": {"existing-student": original_profile}, "managedStudents": {}, "classSectionOwnership": {}, "accessAuditLogs": {}})
+        auth_create = MagicMock(return_value=type("AuthUser", (), {"uid": "auth-created-1"})())
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }), patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=Exception("user not found")), patch.object(main_module.firebase_auth, "create_user", auth_create):
+            preview_response = client.post(
+                "/api/import/student-accounts/preview",
+                files={"file": ("accounts.csv", b"First Name,Last Name,Student ID,Email,Grade,Section\nAna,Cruz,123456789001,ana@student.com,Grade 11,STEM-A\nBen,Dela,123456789002,ben@student.com,Grade 11,STEM-A\n", "text/csv")},
+            )
+            preview_payload = preview_response.json()
+            commit_response = client.post(
+                "/api/import/student-accounts/commit",
+                json={"previewToken": preview_payload["previewToken"], "createAuthUsers": True},
+            )
+
+        assert preview_response.status_code == 200
+        assert commit_response.status_code == 200
+        assert commit_response.json()["success"] is False
+        assert commit_response.json()["summary"]["createdRows"] == 0
+        assert commit_response.json()["summary"]["blockedRows"] == 2
+        assert auth_create.call_count == 0
+        assert firestore.client().store.get("users", {}) == {"existing-student": original_profile}
+        assert firestore.client().store.get("managedStudents", {}) == {}
+
     @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
     def test_preview_student_account_import_returns_validation_summary(self, _mock_chat):
         firestore = _ProvisionFirestoreModule(

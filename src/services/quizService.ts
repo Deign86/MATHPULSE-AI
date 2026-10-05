@@ -98,6 +98,7 @@ export async function assignQuizToStudent(
 
   batch.set(assignmentRef, {
     quizId,
+    assessmentType: 'graded',
     // `lrn` is the historical field name; assignment ownership uses the student's Auth UID.
     lrn: studentUid,
     teacherId,
@@ -211,12 +212,21 @@ export function toPlayableQuiz(gen: GeneratedQuiz, assignmentId: string): Playab
 
 // ─── FETCH PENDING QUIZZES FOR STUDENT ───────────────────────
 
-export async function fetchPendingQuizzesForStudent(studentUid: string): Promise<PlayableQuiz[]> {
+export function getQuizAssignmentRecipientIds(studentUid: string, legacyLrn?: string): string[] {
+  return [...new Set([studentUid, legacyLrn].filter((recipientId): recipientId is string => Boolean(recipientId?.trim())))];
+}
+
+export async function fetchPendingQuizzesForStudent(studentUid: string, legacyLrn?: string): Promise<PlayableQuiz[]> {
+  const recipientIds = getQuizAssignmentRecipientIds(studentUid, legacyLrn);
+  if (recipientIds.length === 0) return [];
+  const assignmentRecipientFilter = recipientIds.length === 1
+    ? where('lrn', '==', recipientIds[0])
+    : where('lrn', 'in', recipientIds);
   let assignmentsSnap;
   try {
     const assignmentsQuery = query(
       collection(db, 'quizAssignments'),
-      where('lrn', '==', studentUid),
+      assignmentRecipientFilter,
       where('status', '==', 'pending'),
       orderBy('assignedAt', 'desc'),
     );
@@ -226,7 +236,7 @@ export async function fetchPendingQuizzesForStudent(studentUid: string): Promise
 
     const fallbackQuery = query(
       collection(db, 'quizAssignments'),
-      where('lrn', '==', studentUid),
+      assignmentRecipientFilter,
       where('status', '==', 'pending'),
     );
     assignmentsSnap = await getDocs(fallbackQuery);
@@ -295,6 +305,7 @@ export async function saveQuizResults(
     // `lrn` is retained for the legacy submission schema, but stores the Auth UID.
     lrn: studentUid,
     quizId: generatedQuizId ?? assignmentId,
+    assignmentId: generatedQuizId && assignmentId !== generatedQuizId ? assignmentId : null,
     generatedQuizId: generatedQuizId ?? null,
     subject,
     source,
@@ -315,12 +326,13 @@ export async function saveQuizResults(
     submittedAt: serverTimestamp(),
   });
 
-  // Assigned quizzes are single-shot: read their state before creating a submission.
+  // Only teacher-assigned graded quizzes are single-shot; practice and diagnostics can be retaken.
   const shouldEmitSubmission = await runTransaction(db, async (transaction) => {
     if (generatedQuizId && assignmentId && assignmentId !== generatedQuizId) {
       const assignmentRef = doc(db, 'quizAssignments', assignmentId);
       const assignment = await transaction.get(assignmentRef);
-      if (!assignment.exists() || assignment.data().status !== 'pending') return false;
+      if (!assignment.exists()) return false;
+      if (source !== 'diagnostic' && assignment.data().assessmentType === 'graded' && assignment.data().status !== 'pending') return false;
 
     }
     const submissionRef = doc(collection(db, 'quizSubmissions'));
