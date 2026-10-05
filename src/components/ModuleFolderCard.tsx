@@ -32,6 +32,7 @@ interface ModuleFolderCardProps {
 }
 
 const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onClick, onPreviewSources, isAtRisk, badgeLabel, precomputedAvailable, isRecommended, onNotifyMe, compact = false }) => {
+  const showReviewBadge = Boolean(isAtRisk && isRecommended);
   const theme = THEMES[index % THEMES.length];
   const curriculumBadge = `${module.active_grade_level ?? ''} · ${module.subject ?? 'Module'} ${module.quarter ?? ''}`.trim();
   
@@ -79,7 +80,7 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
             {/* S4: in compact (carousel) mode the Review badge flows inside the folder body
                 instead of floating past the card edge — an overflow-x scroll container clips
                 anything that crosses its edge mid-scroll. Desktop keeps the floating corner badge. */}
-            {isAtRisk && compact && (
+            {showReviewBadge && compact && (
               <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-500 text-white px-2.5 py-1 text-[10px] font-black uppercase tracking-wider shadow-lg border border-rose-400">
                 <AlertTriangle size={11} strokeWidth={3} /> Review
               </span>
@@ -175,7 +176,7 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
           clipped folder body, so they survive overflow clipping. Compact carousel cards
           render the Review badge in-flow above instead (see CONTENT row) so nothing
           floats past the scroll container's edge mid-scroll. */}
-      {isAtRisk && !compact && (
+      {showReviewBadge && !compact && (
         <div className="absolute -top-3 -right-2 z-20 bg-rose-500 text-white px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg border border-rose-400 animate-pulse">
           <AlertTriangle size={12} strokeWidth={3} /> Review
         </div>

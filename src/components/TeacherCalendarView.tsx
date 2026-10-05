@@ -169,6 +169,16 @@ function parseScheduleDays(schedule: string): number[] {
   return Array.from(days).sort((a, b) => a - b);
 }
 
+export function rollbackCalendarSave(
+  currentEvents: CalendarEvent[],
+  optimisticEventId: string | null,
+  previousEvent?: CalendarEvent,
+): CalendarEvent[] {
+  if (optimisticEventId) return currentEvents.filter((event) => event.id !== optimisticEventId);
+  if (!previousEvent) return currentEvents;
+  return currentEvents.map((event) => event.id === previousEvent.id ? previousEvent : event);
+}
+
 const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
   classes,
   teacherId,
@@ -201,6 +211,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
 
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
+  const [formClassId, setFormClassId] = useState('');
   const [formDate, setFormDate] = useState(() => toDateKey(new Date()));
   const [formStartTime, setFormStartTime] = useState('09:00');
   const [formEndTime, setFormEndTime] = useState('');
@@ -265,6 +276,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
             evs.push({
               id,
               userId: teacherId || '',
+              classId: cls.id,
               title: cls.name,
               startTime: new Date(current),
               createdAt: new Date(),
@@ -313,6 +325,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
     setEditingEventId(null);
     setFormTitle('');
     setFormDescription('');
+    setFormClassId(classes?.length === 1 ? classes[0].id : '');
     setFormDate(key);
     setFormStartTime('09:00');
     setFormEndTime('');
@@ -329,6 +342,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
     }
     setFormTitle(ev.title);
     setFormDescription(ev.description || '');
+    setFormClassId(ev.classId || '');
     setFormDate(toDateKey(ev.startTime));
     setFormStartTime(pad2(ev.startTime.getHours()) + ':' + pad2(ev.startTime.getMinutes()));
     setFormEndTime(ev.endTime ? (pad2(ev.endTime.getHours()) + ':' + pad2(ev.endTime.getMinutes())) : '');
@@ -369,6 +383,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
     setError('');
     const evData = {
       title: formTitle.trim(),
+      classId: formClassId || undefined,
       description: formDescription.trim() ? formDescription.trim() : undefined,
       startTime: start,
       endTime: end,
@@ -397,12 +412,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
       setIsAddOpen(false);
     } catch (err) {
       console.error(err);
-      if (tempId) {
-        setEvents(prev => prev.filter(event => event.id !== tempId));
-      }
-      if (previousEvent) {
-        setEvents(prev => prev.map(event => event.id === editingEventId ? previousEvent : event));
-      }
+      setEvents((previous) => rollbackCalendarSave(previous, tempId, previousEvent));
       setError('Unable to save calendar event. Please try again.');
     } finally {
       setSaving(false);
@@ -677,6 +687,11 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
                                 {ev.description}
                               </p>
                             )}
+                            {ev.classId && classes?.find((classroom) => classroom.id === ev.classId) && (
+                              <p className="mt-2 text-xs font-semibold text-slate-600">
+                                Class: {classes.find((classroom) => classroom.id === ev.classId)?.name}
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
@@ -710,6 +725,21 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
                   placeholder="e.g., Mathematics Quiz - Grade 11" 
                   className="bg-white border-slate-200 focus:border-[#a855f7] focus:ring-4 focus:ring-purple-50 rounded-xl h-12 px-4 transition-all text-[14px]"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="calendar-event-class" className="text-[13px] font-bold text-[#1e293b] ml-1">Class</label>
+                <select
+                  id="calendar-event-class"
+                  value={formClassId}
+                  onChange={(event) => setFormClassId(event.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl h-12 px-4 text-[14px]"
+                >
+                  <option value="">No class</option>
+                  {classes?.map((classroom) => (
+                    <option key={classroom.id} value={classroom.id}>{classroom.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -813,6 +843,11 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
                       <CalendarDays size={12} />
                       {selectedEvent.startTime.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                     </span>
+                    {selectedEvent.classId && classes?.find((classroom) => classroom.id === selectedEvent.classId) && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[12px] font-semibold border border-slate-200">
+                        {classes.find((classroom) => classroom.id === selectedEvent.classId)?.name}
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 text-[12px] font-semibold border border-slate-200">
                       <Clock size={12} />
                       {formatTime(selectedEvent.startTime)}{selectedEvent.endTime ? ` - ${formatTime(selectedEvent.endTime)}` : ''}

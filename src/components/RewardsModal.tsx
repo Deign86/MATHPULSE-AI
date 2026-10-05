@@ -19,6 +19,7 @@ interface RewardsModalProps {
   xpToNextLevel: number;
   totalXP: number;
   userId: string;
+  currentStreak: number;
   onViewAllRewards?: () => void;
 }
 
@@ -37,6 +38,7 @@ export const RewardsModal: React.FC<RewardsModalProps> = ({
   xpToNextLevel,
   totalXP,
   userId,
+  currentStreak,
   onViewAllRewards,
 }) => {
   const [loading, setLoading] = useState(true);
@@ -156,7 +158,7 @@ export const RewardsModal: React.FC<RewardsModalProps> = ({
                 <Flame size={12} className="text-rose-300" />
                 <span>Streak</span>
               </div>
-              <p className="text-lg font-black text-white tabular-nums mt-0.5">{progressData.dailyStreak || 0}d</p>
+              <p className="text-lg font-black text-white tabular-nums mt-0.5">{currentStreak}d</p>
             </div>
           </div>
 
