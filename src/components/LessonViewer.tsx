@@ -1476,9 +1476,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
         ? Object.entries(savedLessonProgress).find(([key]) => key === 'lastSectionIndex')?.[1]
         : undefined;
       const savedSectionIndex = Number.isInteger(savedSection) && savedSection >= 0 ? savedSection : undefined;
-      if (initialSection >= 0 && initialSection < totalSections && savedSection !== undefined) {
-        if (savedSectionIndex !== undefined) setCurrentSection(Math.min(savedSectionIndex, totalSections - 1));
-      }
+      if (savedSectionIndex !== undefined) setCurrentSection(Math.min(savedSectionIndex, totalSections - 1));
       setSectionProgressLoaded(true);
     }).catch((caughtError) => {
       const restoreError = caughtError instanceof Error ? caughtError : new Error(String(caughtError));

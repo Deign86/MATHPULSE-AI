@@ -29,7 +29,7 @@ import string
 import asyncio
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, deque
 from threading import Lock
 
 # Lazy import for audit_logger to prevent ModuleNotFoundError during test collection.
@@ -2706,9 +2706,35 @@ def _build_stream_continuation_prompt(original_question: str, expected_end_marke
     return "\n".join(lines)
 
 
+_chat_message_windows: dict[str, deque[float]] = defaultdict(deque)
+_chat_message_windows_lock = Lock()
+_CHAT_MESSAGE_LIMIT = 12
+_CHAT_MESSAGE_WINDOW_SECONDS = 60
+_SOCRATIC_CHAT_SAFETY_RULE = (
+    "TUTORING SAFETY RULE: Teach Socratically. Do not solve a student's active problem or "
+    "provide its final answer directly, even when explicitly asked. Offer one hint or a "
+    "single next step, then ask the student to try it.\n\n"
+)
+
+
+def _enforce_chat_message_limit(user_id: str | None) -> None:
+    if not user_id:
+        return
+    now = time.monotonic()
+    key = user_id
+    with _chat_message_windows_lock:
+        timestamps = _chat_message_windows[key]
+        while timestamps and now - timestamps[0] >= _CHAT_MESSAGE_WINDOW_SECONDS:
+            timestamps.popleft()
+        if len(timestamps) >= _CHAT_MESSAGE_LIMIT:
+            raise HTTPException(status_code=429, detail="Too many chat messages. Please wait a minute and try again.")
+        timestamps.append(now)
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
+    _enforce_chat_message_limit(request.userId)
     _start_ms = int(time.monotonic() * 1000)
     try:
         # ─── Context-Aware Intent Gate (before scope check) ──────
@@ -2755,7 +2781,7 @@ async def chat_tutor(request: ChatRequest):
             except Exception as intent_err:
                 logger.warning("Jev intent routing failed; continuing with chat: %s", intent_err)
 
-        system_prompt = MATH_TUTOR_SYSTEM_PROMPT
+        system_prompt = _SOCRATIC_CHAT_SAFETY_RULE + MATH_TUTOR_SYSTEM_PROMPT
 
         if request.crossSessionMemory:
             system_prompt = (
@@ -2908,6 +2934,7 @@ async def _update_memory_after_response(
 @app.post("/api/chat/stream")
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
+    _enforce_chat_message_limit(request.userId)
     try:
         # ─── Context-Aware Intent Gate (before scope check) ──────
         _skip_scope_check = False
@@ -2935,7 +2962,7 @@ async def chat_tutor_stream(request: ChatRequest):
                 )
             except Exception as mem_err:
                 logger.debug(f"Memory context injection skipped: {mem_err}")
-        prompt_content = MATH_TUTOR_SYSTEM_PROMPT
+        prompt_content = _SOCRATIC_CHAT_SAFETY_RULE + MATH_TUTOR_SYSTEM_PROMPT
         if request.crossSessionMemory:
             prompt_content = (
                 "RELEVANT CONTEXT FROM THIS STUDENT'S PRIOR CONVERSATIONS (use only when relevant; "
@@ -4434,6 +4461,14 @@ def _normalize_class_records(
                 }
             )
             continue
+        if re.fullmatch(r"[A-Za-z]", student_name):
+            rejected_rows.append(
+                {
+                    "row": int(idx) + 2,
+                    "reason": f"Row {int(idx) + 2}: single-character learner name is invalid; row quarantined.",
+                }
+            )
+            continue
 
         lrn_value = str(student.get("lrn", "")).strip()
         email_value = str(student.get("email", "")).strip().lower()
@@ -4455,12 +4490,23 @@ def _normalize_class_records(
             continue
 
         defaulted_metrics: Set[str] = set()
+        invalid_score_reason: Optional[str] = None
         for field in ["engagementScore", "avgQuizScore", "attendance", "assignmentCompletion"]:
+            raw_score = str(student.get(field) or "").strip()
+            if re.search(r"%\s*$", raw_score):
+                invalid_score_reason = f"Row {int(idx) + 2}: {field} is a percentage-formatted score, expected a raw mark; row quarantined."
+                break
             numeric_value, parse_warning = _safe_numeric(student.get(field))
+            if (parse_warning and parse_warning.startswith("invalid numeric value")) or not math.isfinite(numeric_value) or not 0 <= numeric_value <= 100:
+                invalid_score_reason = f"Row {int(idx) + 2}: {field} must be a numeric raw mark from 0 to 100; row quarantined."
+                break
             student[field] = numeric_value
             if parse_warning:
                 warnings_for_row.append(f"{field}: {parse_warning}")
                 defaulted_metrics.add(field)
+        if invalid_score_reason:
+            rejected_rows.append({"row": int(idx) + 2, "reason": invalid_score_reason})
+            continue
 
         student_id, term, assessment_name, dedup_key = _build_record_identity(student, unknown_fields)
         student["name"] = student_name
@@ -5401,10 +5447,10 @@ class AdminCreateUserRequest(BaseModel):
     role: str
     status: str
     grade: str
-    section: str
+    section: str = ""
     lrn: Optional[str] = None
 
-    @field_validator("name", "email", "password", "confirmPassword", "role", "status", "grade", "section")
+    @field_validator("name", "email", "password", "confirmPassword", "role", "status", "grade")
     @classmethod
     def _strip_required(cls, value: str) -> str:
         return str(value or "").strip()
@@ -6026,8 +6072,12 @@ async def preview_student_account_import(
             issues: List[str] = []
             if not first_name:
                 issues.append(f"Row {row_number}: Missing firstName")
+            elif len(first_name) < 2:
+                issues.append(f"Row {row_number}: firstName must contain at least 2 characters")
             if not last_name:
                 issues.append(f"Row {row_number}: Missing lastName")
+            elif len(last_name) < 2:
+                issues.append(f"Row {row_number}: lastName must contain at least 2 characters")
             if not student_id:
                 issues.append(f"Row {row_number}: Missing studentId/lrn")
             elif not re.fullmatch(r"\d{12}", student_id):
@@ -6467,7 +6517,38 @@ async def commit_student_account_import(
                         existing_profile_doc = docs[0]
                         existing_uid = docs[0].id
             except Exception as duplicate_err:
-                warnings.append(f"Duplicate re-check warning for row {row_number}: {duplicate_err}")
+                blocked_rows += 1
+                result_rows.append(
+                    {
+                        "rowNumber": row_number,
+                        "studentId": student_id,
+                        "fullName": full_name,
+                        "email": email,
+                        "uid": None,
+                        "classSectionId": class_section_id,
+                        "status": "blocked",
+                        "message": f"Cannot import: duplicate check failed ({duplicate_err}).",
+                        "temporaryPassword": None,
+                    }
+                )
+                continue
+
+            if existing_profile_doc:
+                blocked_rows += 1
+                result_rows.append(
+                    {
+                        "rowNumber": row_number,
+                        "studentId": student_id,
+                        "fullName": full_name,
+                        "email": email,
+                        "uid": None,
+                        "classSectionId": class_section_id,
+                        "status": "blocked",
+                        "message": "Cannot import: an account with this LRN or email already exists.",
+                        "temporaryPassword": None,
+                    }
+                )
+                continue
 
             try:
                 roster_rows = list(
@@ -6493,7 +6574,21 @@ async def commit_student_account_import(
                         )
                         continue
             except Exception as roster_err:
-                warnings.append(f"Roster membership check warning for row {row_number}: {roster_err}")
+                blocked_rows += 1
+                result_rows.append(
+                    {
+                        "rowNumber": row_number,
+                        "studentId": student_id,
+                        "fullName": full_name,
+                        "email": email,
+                        "uid": None,
+                        "classSectionId": class_section_id,
+                        "status": "blocked",
+                        "message": f"Cannot import: roster duplicate check failed ({roster_err}).",
+                        "temporaryPassword": None,
+                    }
+                )
+                continue
 
             auth_uid: Optional[str] = None
             temporary_password: Optional[str] = None
@@ -11444,6 +11539,7 @@ async def _regenerate_quiz_json_strict(
 def _validate_quiz_questions(
     questions: List[Dict[str, Any]],
     distribution: List[Dict[str, str]],
+    topics: Optional[List[str]] = None,
     topic_provenance_map: Optional[Dict[str, Dict[str, Optional[str]]]] = None,
 ) -> List[QuizQuestion]:
     """Validate and normalise each question from the LLM response."""
@@ -11514,7 +11610,7 @@ def _validate_quiz_questions(
                 question_type = "identification"
                 options = None
 
-        question_topic = str(q.get("topic", "General"))
+        question_topic = topics[i % len(topics)] if topics else str(q.get("topic", "General"))
         question_provenance = None
         if topic_provenance_map:
             question_provenance = topic_provenance_map.get(_topic_key(question_topic))
@@ -11545,7 +11641,7 @@ async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
     Supports Bloom's Taxonomy integration, multiple question types,
     and graph-based identification questions.
     """
-    # Quiz item cap — returns 400 with exact message for test compatibility
+    # Quiz item cap ??? returns 400 with exact message for test compatibility
     if request.numQuestions > 10:
         raise HTTPException(status_code=400, detail="capped at 10 items")
 
@@ -11760,6 +11856,10 @@ Remember:
                 f"LLM generated {len(parsed_questions)}/{request.numQuestions} questions "
                 f"after {max_attempts} attempts (raw length={len(raw_content)} chars)."
             )
+            raise HTTPException(
+                status_code=502,
+                detail=f"Quiz generation returned {len(parsed_questions)} of {request.numQuestions} requested questions. Please try again.",
+            )
 
         topic_provenance_map: Dict[str, Dict[str, Optional[str]]] = {}
         for imported_topic in (imported_topics_payload.get("topics") or []):
@@ -11777,8 +11877,9 @@ Remember:
             }
 
         validated = _validate_quiz_questions(
-            parsed_questions,
+            parsed_questions[:request.numQuestions],
             distribution,
+            topics=effective_topics,
             topic_provenance_map=topic_provenance_map,
         )
         total_points = sum(q.points for q in validated)

@@ -51,6 +51,24 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
   const [iarCompleted, setIarCompleted] = useState(false);
   const [quizQuestions, setQuizQuestions] = useState<(AIQuizQuestion | Question)[] | null>(null);
+  const [quizLoadError, setQuizLoadError] = useState<string | null>(null);
+  const [quizAttempt, setQuizAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!selectedLesson) return;
+    window.history.pushState({ ...window.history.state, mathPulseModuleLesson: module.id }, '');
+    const handleLessonBack = (event: PopStateEvent) => {
+      if (!event.state?.mathPulseModuleLesson) {
+        setSelectedLesson(null);
+        return;
+      }
+      setSelectedLesson((current) => current?.type === 'quiz' && current.returnToLesson
+        ? { type: 'lesson', lesson: current.returnToLesson, returnFromQuiz: true }
+        : current);
+    };
+    window.addEventListener('popstate', handleLessonBack);
+    return () => window.removeEventListener('popstate', handleLessonBack);
+  }, [selectedLesson, module.id]);
 
   // Check if the Initial Assessment has been completed before showing REVIEW markers
   useEffect(() => {
@@ -157,8 +175,15 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
 
   // Generate AI quiz questions when a quiz is selected
   useEffect(() => {
-    if (!selectedLesson || selectedLesson.type !== 'quiz' || !userProfile?.uid) return;
+    if (!selectedLesson || selectedLesson.type !== 'quiz') return;
     let cancelled = false;
+    setQuizQuestions(null);
+    setQuizLoadError(null);
+
+    if (!userProfile?.uid) {
+      setQuizLoadError('Sign in to load this quiz.');
+      return;
+    }
 
     const parentSubject = subjects.find((s) => s.modules.some((m) => m.id === module.id));
     const subjectTitle = parentSubject?.title ?? 'General Mathematics';
@@ -199,30 +224,19 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           explanation: q.explanation || '',
         }));
 
+        if (questions.length === 0) {
+          setQuizLoadError('Quiz questions could not be loaded. Please try again.');
+          return;
+        }
         setQuizQuestions(questions);
       } catch (err) {
         console.error('[ModuleDetailView] Quiz generation failed:', err);
-        // Fallback: generate basic questions so the quiz isn't stuck
-        const count = selectedLesson.quiz.questions || 5;
-        const fallback: Question[] = Array.from({ length: count }).map((_, i) => {
-          const a = Math.floor(Math.random() * 20) + 2;
-          const b = Math.floor(Math.random() * 20) + 2;
-          const correct = (a + b).toString();
-          return {
-            id: i + 1,
-            type: 'multiple-choice' as const,
-            question: `Compute: ${a} + ${b}`,
-            options: [correct, (a * b).toString(), Math.abs(a - b).toString(), (a + b + 1).toString()],
-            correctAnswer: correct,
-            explanation: `${a} + ${b} = ${correct}`,
-          };
-        });
-        if (!cancelled) setQuizQuestions(fallback);
+        if (!cancelled) setQuizLoadError('Quiz questions could not be loaded. Please try again.');
       }
     })();
 
     return () => { cancelled = true; };
-  }, [selectedLesson, userProfile?.uid, module.id]);
+  }, [selectedLesson, userProfile?.uid, module.id, quizAttempt]);
 
   const dbModuleProgress = useMemo(() => {
     if (!subjectId) return null;
@@ -465,11 +479,17 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       // Show the quiz interface — questions loaded via quizQuestions state
       if (!quizQuestions) {
         return (
-          <MathPulseLoader
-            title="Generating Quiz..."
-            subtitle={`AI is crafting questions for ${selectedLesson.quiz.title}`}
-            fullScreen={true}
-          />
+          <div role={quizLoadError ? 'alert' : undefined} className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+            {quizLoadError ? <>
+              <p>{quizLoadError}</p>
+              <Button onClick={() => setQuizAttempt((attempt) => attempt + 1)}>Retry</Button>
+              <Button variant="outline" onClick={() => { setSelectedLesson(null); setQuizLoadError(null); }}>Back to module</Button>
+            </> : <MathPulseLoader
+              title="Generating Quiz..."
+              subtitle={`AI is crafting questions for ${selectedLesson.quiz.title}`}
+              fullScreen={true}
+            />}
+          </div>
         );
       }
       return (
@@ -731,13 +751,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
                           type="button"
                           onClick={() => !lesson.locked && (setSelectedLesson({ lesson, type: 'lesson' }), markStudyMaterialsComplete(lesson.id))}
                           className={`inline-flex items-center gap-1.5 rounded-full px-3.5 md:px-4 py-2 md:py-2.5 text-[11px] md:text-[12px] font-bold shadow-sm transition hover:-translate-y-0.5 min-h-[40px] ${
-                            isStudyMaterialsCompleted(lesson.id)
+                            (isStudyMaterialsCompleted(lesson.id) || completedLessonIds.has(lesson.id) || lesson.completed)
                               ? 'bg-emerald-50 border border-emerald-200'
                               : 'bg-white'
                           }`}
-                          style={{ color: isStudyMaterialsCompleted(lesson.id) ? '#059669' : lessonAccentHex }}
+                          style={{ color: isStudyMaterialsCompleted(lesson.id) || completedLessonIds.has(lesson.id) || lesson.completed ? '#059669' : lessonAccentHex }}
                         >
-                          {isStudyMaterialsCompleted(lesson.id) ? <><CheckCircle2 size={14} /> Review</> : <><BookOpen size={14} /> Study Materials</>}
+                          {isStudyMaterialsCompleted(lesson.id) || completedLessonIds.has(lesson.id) || lesson.completed ? <><CheckCircle2 size={14} /> Review</> : <><BookOpen size={14} /> Study Materials</>}
                         </button>
                         <button
                           type="button"
