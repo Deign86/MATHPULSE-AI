@@ -1,8 +1,22 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { TrendingUp, Award, Target, Brain, Sparkles, AlertCircle, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import {
+  TrendingUp,
+  Award,
+  Target,
+  Brain,
+  Sparkles,
+  AlertCircle,
+  ShieldAlert,
+  CheckCircle2,
+  ArrowRight,
+  Check,
+  X,
+  Compass,
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../ui/dialog';
 import AssessmentHistoryChart from './AssessmentHistoryChart';
+import MathText from '../MathText';
 import { getAssessmentHistory, getLatestAssessmentResult } from '../../services/assessmentResultsService';
 import { getHeroBannerModalSummary, subscribeToHeroBannerModalSummary } from '../../services/heroBannerSummaryService';
 import { doc, getDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
@@ -17,223 +31,324 @@ interface AssessmentResultsModalProps {
   heroBannerSummary?: HeroBannerModalSummary | null;
 }
 
-const proficiencyColors = {
-  Beginner: 'bg-amber-100 text-amber-700 border-amber-300',
-  Developing: 'bg-blue-100 text-blue-700 border-blue-300',
-  Proficient: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-  Advanced: 'bg-violet-100 text-violet-700 border-violet-300',
+type ProficiencyKey = 'Beginner' | 'Developing' | 'Proficient' | 'Advanced';
+
+const proficiencyStyles: Record<ProficiencyKey, { bg: string; text: string; border: string }> = {
+  Beginner: {
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-700 dark:text-amber-300',
+    border: 'border-amber-200 dark:border-amber-800/60',
+  },
+  Developing: {
+    bg: 'bg-sky-50 dark:bg-sky-950/40',
+    text: 'text-sky-700 dark:text-sky-300',
+    border: 'border-sky-200 dark:border-sky-800/60',
+  },
+  Proficient: {
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    border: 'border-emerald-200 dark:border-emerald-800/60',
+  },
+  Advanced: {
+    bg: 'bg-violet-50 dark:bg-violet-950/40',
+    text: 'text-violet-700 dark:text-violet-300',
+    border: 'border-violet-200 dark:border-violet-800/60',
+  },
 };
 
 type TabKey = 'latest' | 'history';
 
-const AssessmentResultView: React.FC<{ result: AssessmentResult }> = ({ result }) => (
-  <div className="space-y-6">
-    {/* Score Card */}
-    <div className="bg-gradient-to-br from-sky-500 to-teal-600 rounded-xl p-6 text-white">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sky-200 text-sm font-medium">Total Score</p>
-          <p className="text-4xl font-bold">{result.score}/{result.totalQuestions}</p>
-          <p className="text-sky-200 text-sm mt-1">{result.percentage}% Correct</p>
-        </div>
-        <div className="text-right">
-          <p className="text-sky-200 text-sm font-medium">Proficiency</p>
-          <span className={`inline-block mt-1 px-3 py-1 rounded-full text-sm font-semibold border ${proficiencyColors[result.proficiencyLevel]}`}>
-            {result.proficiencyLevel}
-          </span>
-        </div>
-      </div>
-    </div>
+const AssessmentResultView: React.FC<{ result: AssessmentResult }> = ({ result }) => {
+  const proficiency = proficiencyStyles[result.proficiencyLevel] || proficiencyStyles.Developing;
 
-    {/* Competency Breakdown */}
-    <div>
-      <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-        <Brain className="w-4 h-4 text-sky-500" />
-        Competency Breakdown
-      </h3>
-      <div className="space-y-2">
-        {result.competencyBreakdown.map((comp, i) => (
-          <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-slate-700">{comp.topic}</p>
-              <p className="text-xs text-slate-500">{comp.correctAnswers}/{comp.totalQuestions} correct</p>
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      {/* Sleek Hero Score Card */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 rounded-2xl p-5 sm:p-6 text-white shadow-lg border border-white/20">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex flex-col items-center justify-center font-black text-xl sm:text-2xl text-white shadow-inner shrink-0">
+              <span>{Math.round(result.percentage)}%</span>
             </div>
-            <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${comp.accuracyPercent >= 70 ? 'bg-emerald-500' : 'bg-red-400'}`}
-                style={{ width: `${comp.accuracyPercent}%` }}
-              />
+            <div>
+              <p className="text-purple-200 text-xs font-bold uppercase tracking-wider">Diagnostic Score</p>
+              <h3 className="text-xl sm:text-2xl font-black text-white leading-tight mt-0.5">
+                {result.score} / {result.totalQuestions} Correct
+              </h3>
             </div>
-            <span className="text-sm font-semibold text-slate-600 w-10 text-right">{comp.accuracyPercent}%</span>
           </div>
-        ))}
-      </div>
-    </div>
-
-    {/* AI Narrative */}
-    {result.aiNarrative && (
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-        <div className="flex items-start gap-2">
-          <Sparkles className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-amber-800 leading-relaxed">{result.aiNarrative}</p>
-        </div>
-      </div>
-    )}
-
-    {/* Question Breakdown */}
-    <div>
-      <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-        <Target className="w-4 h-4 text-sky-500" />
-        Question Breakdown
-      </h3>
-      <div className="space-y-3">
-        {result.answers.map((ans, i) => (
-          <div
-            key={i}
-            className={`p-4 rounded-xl border-2 ${ans.isCorrect ? 'border-emerald-200 bg-emerald-50/30' : 'border-red-200 bg-red-50/30'}`}
-          >
-            <p className="text-sm font-medium text-slate-800 mb-2">
-              Q{i + 1}. {ans.questionText}
-            </p>
-            <div className="flex items-center gap-4 text-sm">
-              <span className="text-slate-500">Your answer: <span className={ans.isCorrect ? 'text-emerald-600 font-medium' : 'text-red-500 font-medium'}>{ans.userAnswer || '\u2014'}</span></span>
-              {!ans.isCorrect && (
-                <span className="text-slate-500">Correct: <span className="text-emerald-600 font-medium">{ans.correctAnswer}</span></span>
-              )}
-            </div>
-            {ans.explanation && (
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">{ans.explanation}</p>
-            )}
+          <div className="self-end sm:self-center">
+            <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-black border backdrop-blur-md shadow-xs ${proficiency.bg} ${proficiency.text} ${proficiency.border}`}>
+              <Sparkles className="w-3.5 h-3.5" />
+              {result.proficiencyLevel}
+            </span>
           </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-const HeroBannerSummaryView: React.FC<{ summary: HeroBannerModalSummary }> = ({ summary }) => (
-  <div className="space-y-6">
-    {/* Score and Risk Level */}
-    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-      <div className="bg-sky-50 border border-sky-100 rounded-2xl p-4 flex items-center gap-4 flex-1">
-        <div className="w-12 h-12 bg-sky-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
-          {summary.latestScorePercent}%
-        </div>
-        <div>
-          <h4 className="text-sm font-medium text-slate-500">Latest Score</h4>
-          <p className="text-slate-800 font-bold">{summary.headline}</p>
         </div>
       </div>
-      
-      {summary.latestRiskLevel && (
-        <div className={`px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2
-          ${summary.latestRiskLevel === 'At Risk' ? 'bg-red-100 text-red-700' : 
-            summary.latestRiskLevel === 'Needs Attention' ? 'bg-amber-100 text-amber-700' : 
-            'bg-emerald-100 text-emerald-700'}`}
-        >
-          {summary.latestRiskLevel === 'At Risk' ? <ShieldAlert className="w-4 h-4" /> : 
-           summary.latestRiskLevel === 'Needs Attention' ? <AlertCircle className="w-4 h-4" /> : 
-           <CheckCircle2 className="w-4 h-4" />}
-          {summary.latestRiskLevel}
-        </div>
-      )}
-    </div>
 
-    {/* Summary Text */}
-    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-      <p className="text-slate-700 leading-relaxed">{summary.summary}</p>
-    </div>
-
-    {/* Strengths & Weaknesses */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {summary.strengths?.length > 0 && (
-        <div className="border border-emerald-100 bg-emerald-50/30 rounded-xl p-4">
-          <h4 className="font-semibold text-emerald-800 mb-3 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Strengths
-          </h4>
-          <ul className="space-y-2">
-            {summary.strengths.map((s, i) => (
-              <li key={i} className="text-sm text-emerald-700 flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-                <span>{s}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {summary.weaknesses?.length > 0 && (
-        <div className="border border-amber-100 bg-amber-50/30 rounded-xl p-4">
-          <h4 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
-            <Target className="w-4 h-4" />
-            Focus Areas
-          </h4>
-          <ul className="space-y-2">
-            {summary.weaknesses.map((w, i) => (
-              <li key={i} className="text-sm text-amber-700 flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
-                <span>{w}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-
-    {/* Recommendation */}
-    {summary.recommendation && (
-      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border border-indigo-100">
-        <h4 className="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
-          <Brain className="w-4 h-4 text-indigo-500" />
-          Recommended Next Step
+      {/* Competency Breakdown */}
+      <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-4 sm:p-5">
+        <h4 className="font-bold text-slate-800 dark:text-white mb-3.5 flex items-center gap-2 text-sm sm:text-base">
+          <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+          Competency Breakdown
         </h4>
-        <p className="text-sm text-indigo-800 leading-relaxed">{summary.recommendation}</p>
+        <div className="space-y-2.5">
+          {result.competencyBreakdown.map((comp, i) => (
+            <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-slate-700/50 shadow-2xs">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{comp.topic}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{comp.correctAnswers} of {comp.totalQuestions} items correct</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="w-24 sm:w-28 h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      comp.accuracyPercent >= 70 ? 'bg-emerald-500' : comp.accuracyPercent >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                    }`}
+                    style={{ width: `${comp.accuracyPercent}%` }}
+                  />
+                </div>
+                <span className="text-xs sm:text-sm font-mono font-black text-slate-700 dark:text-slate-300 w-10 text-right">
+                  {Math.round(comp.accuracyPercent)}%
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    )}
-  </div>
-);
+
+      {/* AI Narrative */}
+      {result.aiNarrative && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 rounded-2xl p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h5 className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">AI Assessment Insight</h5>
+              <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed mt-1 font-medium">{result.aiNarrative}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Question Breakdown */}
+      <div>
+        <h4 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 text-sm sm:text-base">
+          <Target className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          Question Review
+        </h4>
+        <div className="space-y-3">
+          {result.answers.map((ans, i) => (
+            <div
+              key={i}
+              className={`p-4 rounded-2xl border transition-all ${
+                ans.isCorrect
+                  ? 'border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-950/20'
+                  : 'border-rose-500/20 bg-rose-50/40 dark:bg-rose-950/20'
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-white ${ans.isCorrect ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                  {ans.isCorrect ? <Check className="w-3 h-3 stroke-[3]" /> : <X className="w-3 h-3 stroke-[3]" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                    <span className="text-xs font-mono font-black text-slate-400 mr-1.5">Q{i + 1}.</span>
+                    <MathText>{ans.questionText}</MathText>
+                  </div>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-slate-500 dark:text-slate-400">Your answer:</span>
+                    <span className={`px-2 py-0.5 rounded-md font-bold ${ans.isCorrect ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300'}`}>
+                      {ans.userAnswer || '—'}
+                    </span>
+                    {!ans.isCorrect && (
+                      <>
+                        <span className="text-slate-400">&bull;</span>
+                        <span className="text-slate-500 dark:text-slate-400">Correct:</span>
+                        <span className="px-2 py-0.5 rounded-md font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+                          {ans.correctAnswer}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {ans.explanation && (
+                    <div className="text-xs text-slate-600 dark:text-slate-300 mt-2.5 p-2.5 bg-white/60 dark:bg-slate-800/60 rounded-xl border border-slate-200/50 dark:border-slate-700/40 leading-relaxed">
+                      <MathText>{ans.explanation}</MathText>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const HeroBannerSummaryView: React.FC<{ summary: HeroBannerModalSummary }> = ({ summary }) => {
+  const isHighRisk = summary.latestRiskLevel === 'At Risk' || summary.latestRiskLevel === 'High';
+  const isModerate = summary.latestRiskLevel === 'Needs Attention' || summary.latestRiskLevel === 'Moderate';
+
+  return (
+    <div className="space-y-4 sm:space-y-5">
+      {/* Hero Score & Status Card */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white shadow-lg border border-white/20">
+        <div className="absolute top-0 right-0 w-72 h-72 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex flex-col items-center justify-center font-black text-xl sm:text-2xl text-white shadow-inner shrink-0">
+              <span className="leading-none">{Math.round(summary.latestScorePercent)}%</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-purple-200 text-[11px] sm:text-xs font-bold uppercase tracking-wider">Latest Score</p>
+              <h3 className="text-lg sm:text-xl font-black text-white leading-snug truncate drop-shadow-xs">
+                {summary.headline}
+              </h3>
+            </div>
+          </div>
+
+          {summary.latestRiskLevel && (
+            <div className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 backdrop-blur-md shadow-xs border ${
+              isHighRisk
+                ? 'bg-rose-500/20 text-rose-100 border-rose-400/40'
+                : isModerate
+                ? 'bg-amber-500/20 text-amber-100 border-amber-400/40'
+                : 'bg-emerald-500/20 text-emerald-100 border-emerald-400/40'
+            }`}>
+              {isHighRisk ? (
+                <ShieldAlert className="w-3.5 h-3.5" />
+              ) : isModerate ? (
+                <AlertCircle className="w-3.5 h-3.5" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              )}
+              <span>{summary.latestRiskLevel} Risk</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Summary Narrative */}
+      <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 rounded-2xl p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">
+          <Compass className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+          <span>Diagnostic Insights</span>
+        </div>
+        <p className="text-sm sm:text-base text-slate-700 dark:text-slate-200 leading-relaxed font-medium">
+          {summary.summary}
+        </p>
+      </div>
+
+      {/* Strengths & Focus Areas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        {summary.strengths?.length > 0 && (
+          <div className="border border-emerald-500/25 bg-emerald-500/10 dark:bg-emerald-950/30 rounded-2xl p-4 flex flex-col justify-between">
+            <div>
+              <h4 className="font-bold text-emerald-800 dark:text-emerald-300 mb-2.5 flex items-center gap-2 text-xs sm:text-sm">
+                <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                Strengths & Mastery
+              </h4>
+              <ul className="space-y-2">
+                {summary.strengths.map((s, i) => (
+                  <li key={i} className="text-xs sm:text-sm text-emerald-900 dark:text-emerald-200 flex items-start gap-2 font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                    <span>{s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {summary.weaknesses?.length > 0 && (
+          <div className="border border-amber-500/25 bg-amber-500/10 dark:bg-amber-950/30 rounded-2xl p-4 flex flex-col justify-between">
+            <div>
+              <h4 className="font-bold text-amber-800 dark:text-amber-300 mb-2.5 flex items-center gap-2 text-xs sm:text-sm">
+                <Target className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                Priority Focus Areas
+              </h4>
+              <ul className="space-y-2">
+                {summary.weaknesses.map((w, i) => (
+                  <li key={i} className="text-xs sm:text-sm text-amber-900 dark:text-amber-200 flex items-start gap-2 font-medium">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                    <span>{w}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Recommended Next Step */}
+      {summary.recommendation && (
+        <div className="bg-gradient-to-r from-violet-500/10 via-indigo-500/10 to-sky-500/10 dark:from-violet-950/40 dark:via-indigo-950/40 dark:to-sky-950/40 rounded-2xl p-4 sm:p-5 border border-indigo-500/30 shadow-xs">
+          <div className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 mb-2 text-xs sm:text-sm font-bold">
+            <div className="w-6 h-6 rounded-lg bg-indigo-600/15 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Brain className="w-3.5 h-3.5" />
+            </div>
+            <span>Recommended Next Step</span>
+          </div>
+          <p className="text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 leading-relaxed font-medium">
+            {summary.recommendation.replace(/Kaya mo yan!/g, "You've got this!")}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const HeroBannerModalContent: React.FC<{
   heroBannerSummary: HeroBannerModalSummary | null | undefined;
   latestResult: AssessmentResult | null;
   loading: boolean;
 }> = ({ heroBannerSummary, latestResult, loading }) => {
-  if (loading) return (
-    <div className="animate-pulse space-y-4">
-      <div className="h-32 bg-slate-200 rounded-xl" />
-      <div className="space-y-2">
-        <div className="h-4 bg-slate-200 rounded w-3/4" />
-        <div className="h-4 bg-slate-200 rounded w-1/2" />
-        <div className="h-4 bg-slate-200 rounded w-5/6" />
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-4 py-2">
+        <div className="h-28 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
+        <div className="h-20 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
+          <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded-2xl" />
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  if (!heroBannerSummary && !latestResult) return (
-    <div className="text-center py-8">
-      <div className="w-16 h-16 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Brain className="w-8 h-8 text-sky-500" />
+  if (!heroBannerSummary && !latestResult) {
+    return (
+      <div className="text-center py-10 px-4">
+        <div className="w-16 h-16 bg-purple-500/15 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+          <Brain className="w-8 h-8" />
+        </div>
+        <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2">Personalize Your Learning Path</h3>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+          Complete your initial diagnostic assessment to unlock customized math modules, targeted practice, and AI tutoring.
+        </p>
       </div>
-      <h3 className="text-lg font-bold text-slate-800 mb-2">Let&apos;s personalize your learning</h3>
-      <p className="text-sm text-slate-500 max-w-xs mx-auto">
-        Complete your diagnostic assessment so I can understand your strengths, weak areas, and the best next lessons for you.
-      </p>
-    </div>
-  );
+    );
+  }
 
-  if (heroBannerSummary?.status === 'ready') return <HeroBannerSummaryView summary={heroBannerSummary} />;
-  
-  if (latestResult) return <AssessmentResultView result={latestResult} />;
+  if (heroBannerSummary?.status === 'ready') {
+    return <HeroBannerSummaryView summary={heroBannerSummary} />;
+  }
+
+  if (latestResult) {
+    return <AssessmentResultView result={latestResult} />;
+  }
 
   return (
-    <div className="text-center py-8">
-      <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <AlertCircle className="w-8 h-8 text-amber-500" />
+    <div className="text-center py-10 px-4">
+      <div className="w-16 h-16 bg-amber-500/15 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+        <AlertCircle className="w-8 h-8" />
       </div>
-      <h3 className="text-lg font-bold text-slate-800 mb-2">Your learning summary is being prepared</h3>
-      <p className="text-sm text-slate-500 max-w-xs mx-auto">
-        Please try opening this again in a moment.
+      <h3 className="text-lg font-black text-slate-800 dark:text-white mb-2">Preparing Learning Summary</h3>
+      <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
+        Your diagnostic results are being processed. Check back in a moment for your personalized breakdown.
       </p>
     </div>
   );
@@ -241,12 +356,11 @@ const HeroBannerModalContent: React.FC<{
 
 /** Check all possible Firestore locations for assessment data and build a summary */
 async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalSummary | null> {
-  // Issue #159: sequential fallback chain — each source logs at debug when
-  // unavailable and yields to the next source; all-null means "no data".
   const nullOnFailure = (source: string) => (err: Error): null => {
     console.debug(`[AssessmentResultsModal] fallback source ${source} unavailable:`, err);
     return null;
   };
+
   // 1. competencyProfiles/{uid}
   const cpSnap = await getDoc(doc(db, 'competencyProfiles', studentId)).catch(nullOnFailure('competencyProfiles'));
   if (cpSnap?.exists()) {
@@ -255,19 +369,21 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
     const weaknesses: string[] = cp.primaryWeakness ? [cp.primaryWeakness] : [];
     return {
       status: 'ready',
-      headline: cp.overallScore >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
+      headline: cp.overallScore >= 70 ? 'Good job — keep it up!' : "Let's build your foundation",
       summary: weaknesses.length > 0
         ? `Focus on strengthening ${weaknesses[0]} to improve your overall performance.`
         : 'Keep practicing to maintain and expand your skills.',
-      strengths, weaknesses,
+      strengths,
+      weaknesses,
       recommendation: cp.suggestedModule ? `Start with the ${cp.suggestedModule} module.` : 'Continue with your personalized learning path.',
-      latestAssessmentId: '', latestScorePercent: cp.overallScore || 0,
+      latestAssessmentId: '',
+      latestScorePercent: cp.overallScore || 0,
       latestRiskLevel: cp.overallScore >= 70 ? 'Low' : cp.overallScore >= 50 ? 'Moderate' : 'High',
       updatedAt: cp.updatedAt?.toDate?.() || new Date(),
     };
   }
 
-  // 2. assessments/{uid}/attempts (from completeInitialAssessment)
+  // 2. assessments/{uid}/attempts
   const assessSnap = await getDocs(
     query(collection(db, 'assessments', studentId, 'attempts'), orderBy('completedAt', 'desc'), limit(1))
   ).catch(nullOnFailure('assessments/attempts'));
@@ -277,14 +393,15 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
     const profile = d.proficiencyProfile;
     return {
       status: 'ready',
-      headline: score >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
+      headline: score >= 70 ? 'Good job — keep it up!' : "Let's build your foundation",
       summary: profile?.weaknesses?.length > 0
         ? `Focus on strengthening ${profile.weaknesses[0]} to improve.`
-        : score >= 70 ? 'You have a solid foundation!' : 'With practice, you\'ll build confidence.',
+        : score >= 70 ? 'You have a solid foundation!' : "With consistent practice, you'll build confidence.",
       strengths: profile?.strengths || [],
       weaknesses: profile?.weaknesses || [],
       recommendation: profile?.suggestedStartingModule ? `Start with ${profile.suggestedStartingModule}.` : 'Follow your personalized learning path.',
-      latestAssessmentId: d.assessmentId || '', latestScorePercent: score,
+      latestAssessmentId: d.assessmentId || '',
+      latestScorePercent: score,
       latestRiskLevel: score >= 70 ? 'Low' : score >= 50 ? 'Moderate' : 'High',
       updatedAt: d.completedAt?.toDate?.() || new Date(),
     };
@@ -298,19 +415,21 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
     const weakDomains: string[] = d.riskProfile?.weak_domains || [];
     return {
       status: 'ready',
-      headline: score >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
+      headline: score >= 70 ? 'Good job — keep it up!' : "Let's build your foundation",
       summary: weakDomains.length > 0
         ? `Areas to focus on: ${weakDomains.join(', ')}.`
         : 'Assessment completed. Follow your learning path.',
-      strengths: [], weaknesses: weakDomains,
+      strengths: [],
+      weaknesses: weakDomains,
       recommendation: d.recommended_intervention || 'Continue with your personalized learning path.',
-      latestAssessmentId: '', latestScorePercent: score,
+      latestAssessmentId: '',
+      latestScorePercent: score,
       latestRiskLevel: d.overall_risk || (score >= 70 ? 'Low' : 'Moderate'),
       updatedAt: d.completedAt?.toDate?.() || new Date(),
     };
   }
 
-  // 4. users/{uid}/assessments subcollection (from gradesService.saveAssessmentResult)
+  // 4. users/{uid}/assessments
   const gradesSnap = await getDocs(
     query(collection(db, 'users', studentId, 'assessments'), orderBy('completedAt', 'desc'), limit(5))
   ).catch(nullOnFailure('users/assessments'));
@@ -322,18 +441,19 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
     const avgScore = Math.round(entries.reduce((sum, e) => sum + (e.score || e.scorePercent || 0), 0) / totalAttempts);
     return {
       status: 'ready',
-      headline: score >= 70 ? 'Good job — keep it up!' : 'Let\'s build your foundation',
+      headline: score >= 70 ? 'Good job — keep it up!' : "Let's build your foundation",
       summary: `You've completed ${totalAttempts} diagnostic assessment${totalAttempts > 1 ? 's' : ''}. Your latest score is ${score}% (average: ${avgScore}%).`,
       strengths: [],
       weaknesses: latest.risk === 'At Risk' || latest.risk === 'High' ? [latest.subject || 'General Mathematics'] : [],
       recommendation: 'Continue with your personalized learning path to strengthen weak areas.',
-      latestAssessmentId: latest.testId || '', latestScorePercent: score,
+      latestAssessmentId: latest.testId || '',
+      latestScorePercent: score,
       latestRiskLevel: latest.risk || (score >= 70 ? 'Low' : score >= 50 ? 'Moderate' : 'High'),
       updatedAt: latest.completedAt?.toDate?.() || new Date(),
     };
   }
 
-  // 5. Last resort: user profile has initialAssessmentCompleted but no detailed data
+  // 5. User profile fallback
   const userSnap = await getDoc(doc(db, 'users', studentId)).catch(nullOnFailure('users/profile'));
   if (userSnap?.exists()) {
     const u = userSnap.data();
@@ -348,7 +468,8 @@ async function buildFallbackSummary(studentId: string): Promise<HeroBannerModalS
         strengths: [],
         weaknesses: atRisk,
         recommendation: 'Continue with your recommended lessons to strengthen your skills.',
-        latestAssessmentId: '', latestScorePercent: 0,
+        latestAssessmentId: '',
+        latestScorePercent: 0,
         latestRiskLevel: atRisk.length > 0 ? 'Moderate' : 'Low',
         updatedAt: u.assessmentCompletedAt?.toDate?.() || new Date(),
       };
@@ -383,7 +504,6 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
 
   const activeSummary = heroBannerSummary || internalHeroBannerSummary;
 
-
   useEffect(() => {
     if (isOpen && studentId) {
       setLoading(true);
@@ -397,13 +517,11 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
           setLatestResult(result);
           setHistory(hist);
 
-          // If no heroBannerSummary from subscription yet, do a one-time read
           if (!heroBannerSummary && !internalHeroBannerSummary) {
             const directSummary = await getHeroBannerModalSummary(studentId);
             if (directSummary) {
               setInternalHeroBannerSummary(directSummary);
             } else {
-              // Fallback chain: try multiple data sources
               const summary = await buildFallbackSummary(studentId);
               if (summary) setInternalHeroBannerSummary(summary);
             }
@@ -426,44 +544,58 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85dvh] overflow-y-auto p-0 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800">
-        {/* Header (DialogContent owns the single X close button) */}
-        <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 rounded-t-2xl px-4 sm:px-6 py-3 sm:py-4">
-          <div className="mb-2.5 sm:mb-3 pr-8">
-            <DialogTitle className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white">Assessment Results</DialogTitle>
-            <DialogDescription className="sr-only">
-              Your latest diagnostic score, proficiency profile, and attempt history.
-            </DialogDescription>
+      <DialogContent className="w-[calc(100%-1.25rem)] sm:w-full max-w-xl md:max-w-2xl max-h-[90dvh] sm:max-h-[85dvh] flex flex-col p-0 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+        {/* Header */}
+        <div className="shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 pt-4 pb-3">
+          <div className="flex items-center justify-between gap-2 mb-3 pr-8">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0">
+                <Brain className="w-4 h-4" />
+              </div>
+              <div>
+                <DialogTitle className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">
+                  Assessment Results
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Your diagnostic score, competency profile, and learning progress.
+                </DialogDescription>
+              </div>
+            </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-200/60 dark:border-slate-700/60 overflow-x-auto no-scrollbar">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${
-                  activeTab === tab.key
-                    ? 'bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-sm'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
+          {/* Segmented Pill Tabs */}
+          <div className="flex gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 overflow-x-auto no-scrollbar">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex items-center justify-center gap-1.5 sm:gap-2 flex-1 px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-300 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Content */}
-        <div className="px-4 sm:px-6 py-4 sm:py-5">
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5">
           <AnimatePresence mode="wait">
             {activeTab === 'latest' && (
               <motion.div
                 key="latest"
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
               >
                 <HeroBannerModalContent
                   heroBannerSummary={activeSummary}
@@ -476,32 +608,54 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
             {activeTab === 'history' && (
               <motion.div
                 key="history"
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
+                className="space-y-5"
               >
-                <AssessmentHistoryChart history={history} />
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-700/60">
+                  <h4 className="font-bold text-slate-800 dark:text-white mb-3 text-xs sm:text-sm flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    Performance Over Time
+                  </h4>
+                  <AssessmentHistoryChart history={history} />
+                </div>
 
                 {history.length > 0 && (
-                  <div className="mt-6 space-y-2">
-                    <h3 className="font-semibold text-slate-800 mb-3">All Attempts</h3>
-                    {history.map((entry, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                        <div>
-                          <p className="text-sm font-medium text-slate-700">Attempt {history.length - i}</p>
-                          <p className="text-xs text-slate-500">{new Date(entry.completedAt).toLocaleDateString()}</p>
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-slate-800 dark:text-white text-xs sm:text-sm">Previous Attempts</h4>
+                    <div className="space-y-2">
+                      {history.map((entry, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/50 rounded-xl">
+                          <div>
+                            <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">Attempt {history.length - i}</p>
+                            <p className="text-[11px] text-slate-400">{new Date(entry.completedAt).toLocaleDateString()}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs sm:text-sm font-mono font-black text-purple-600 dark:text-purple-400">{entry.percentage}%</p>
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{entry.proficiencyLevel}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-sky-600">{entry.percentage}%</p>
-                          <p className="text-xs text-slate-500">{entry.proficiencyLevel}</p>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* Frosted Action Footer */}
+        <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-3.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-end gap-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>Continue to Learning Path</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </DialogContent>
     </Dialog>
