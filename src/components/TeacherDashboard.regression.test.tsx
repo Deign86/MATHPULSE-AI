@@ -4,6 +4,7 @@ import {
   deriveResolvedClassCounts,
   getRiskDistribution,
   normalizeAnalyticsRisk,
+  deriveTopicPerformance,
 } from './TeacherDashboard';
 import { classifyWRI } from '../utils/riskEngine';
 
@@ -40,5 +41,13 @@ describe('teacher dashboard roster and risk regressions', () => {
       { name: 'Low Risk', value: 4, color: '#10b981' },
       { name: 'Unassessed', value: 5, color: '#94a3b8' },
     ]);
+  });
+
+  it('uses only backend topic performance and keeps empty data empty', () => {
+    expect(deriveTopicPerformance(undefined)).toEqual([]);
+    expect(deriveTopicPerformance([
+      { topic: 'Functions', class_accuracy: 72.6 },
+      { topic: '  ', class_accuracy: 20 },
+    ])).toEqual([{ topic: 'Functions', score: 73 }]);
   });
 });
