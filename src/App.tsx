@@ -1917,6 +1917,7 @@ const App = ({ authOverride }: AppProps = {}) => {
             isOpen={showAssessmentResults}
             onClose={() => setShowAssessmentResults(false)}
             studentId={userProfile.uid}
+            onContinueToLearningPath={() => setActiveTab('Modules')}
           />
         </Suspense>
       )}

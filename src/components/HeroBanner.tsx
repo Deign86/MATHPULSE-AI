@@ -71,12 +71,34 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
 
   const reduceMotion = useReducedMotion();
 
+  // Reset dismiss flag when a new assessment completes — allows reappearance of alert.
+  useEffect(() => {
+    if (assessmentCompleted) {
+      setIsAssessmentCompleteDismissed(false);
+      try {
+        localStorage.removeItem(dismissStorageKey);
+      } catch {
+        // Ignore
+      }
+    }
+  }, [assessmentCompleted, dismissStorageKey]);
+
   // Clear summary when modal closes
   useEffect(() => {
     if (!showResultsModal) {
       setHeroBannerSummary(null);
     }
   }, [showResultsModal]);
+
+  // Re-read dismiss from localStorage when studentId changes (late-arriving uid).
+  useEffect(() => {
+    if (!studentId) return;
+    try {
+      setIsAssessmentCompleteDismissed(localStorage.getItem(dismissStorageKey) === 'true');
+    } catch {
+      // Ignore
+    }
+  }, [studentId, dismissStorageKey]);
 
   // Get time-based greeting
   const getGreeting = () => {
@@ -221,6 +243,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           onClose={() => setShowResultsModal(false)}
           studentId={studentId}
           heroBannerSummary={heroBannerSummary}
+          onContinueToLearningPath={onContinueLearning}
         />
       )}
 
