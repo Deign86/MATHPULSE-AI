@@ -98,7 +98,7 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
       <DialogContent
         aria-labelledby="iar-title"
         aria-describedby="iar-description"
-        className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-[44rem] w-full max-h-[90dvh] overflow-y-auto flex flex-col p-0 gap-0 border border-slate-100 dark:border-slate-800"
+        className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl w-[calc(100%-1.5rem)] sm:w-full max-w-lg md:max-w-xl max-h-[92dvh] sm:max-h-[88dvh] overflow-y-auto flex flex-col p-0 gap-0 border border-slate-200/80 dark:border-slate-800"
       >
       <motion.div
         initial={{ opacity: 0 }}
@@ -106,31 +106,31 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
         transition={{ duration: 0.2, ease: 'easeOut' }}
         className="flex flex-col overflow-hidden"
       >
-        <div className="px-4 sm:px-5 py-3 border-b border-[#dde3eb] dark:border-slate-800 flex items-center justify-between bg-[#edf1f7] dark:bg-slate-800/80 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-purple-100 dark:bg-purple-950/60 rounded-lg flex items-center justify-center text-purple-600 dark:text-purple-400">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#dde3eb] dark:border-slate-800 flex items-center justify-between bg-[#edf1f7] dark:bg-slate-800/80 flex-shrink-0 pr-12 sm:pr-14">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-purple-100 dark:bg-purple-950/60 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 shadow-xs">
               <Brain size={18} />
             </div>
-            <div>
-              <DialogTitle id="iar-title" className="text-base font-bold text-[#0a1628] dark:text-white leading-tight">
+            <div className="min-w-0">
+              <DialogTitle id="iar-title" className="text-sm sm:text-base font-bold text-[#0a1628] dark:text-white leading-tight truncate">
                 Initial Assessment
               </DialogTitle>
-              <DialogDescription id="iar-description" className="text-[11px] text-[#5a6578] dark:text-slate-400">
+              <DialogDescription id="iar-description" className="text-[11px] sm:text-xs text-[#5a6578] dark:text-slate-400 truncate">
                 Analyze your strengths & weaknesses
               </DialogDescription>
             </div>
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 text-center space-y-3">
+        <div className="p-4 sm:p-6 md:p-8 text-center space-y-3.5 sm:space-y-4">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
           >
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-purple-50 dark:bg-purple-950/40 rounded-full flex items-center justify-center mx-auto mb-3">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-purple-50 dark:bg-purple-950/40 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
               <svg
-                className="w-8 h-8 sm:w-9 sm:h-9 text-purple-600 dark:text-purple-400"
+                className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 text-purple-600 dark:text-purple-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -144,46 +144,46 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
               </svg>
             </div>
 
-            <h3 className="text-base sm:text-lg font-bold text-[#0a1628] dark:text-white">
+            <h3 className="text-base sm:text-xl md:text-2xl font-bold text-[#0a1628] dark:text-white">
               Welcome to MathPulse AI!
             </h3>
-            <p className="text-xs sm:text-[13px] text-[#5a6578] dark:text-slate-300 max-w-[24rem] mx-auto leading-relaxed">
+            <p className="text-xs sm:text-[13px] text-[#5a6578] dark:text-slate-300 max-w-[26rem] mx-auto leading-relaxed mt-1">
               To personalize your learning path, complete a DepEd competency-based
               SHS diagnostic (15 items, around 11.6 minutes).
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-[28rem] mx-auto text-left mt-4">
-              <div className="bg-[#edf1f7] dark:bg-slate-800/70 p-2.5 rounded-lg border border-[#dde3eb] dark:border-slate-700/70">
-                <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0a1628] dark:text-white mb-1">
-                  <CheckCircle size={14} className="text-teal-500" />
-                  Personalized Path
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 max-w-[30rem] mx-auto text-left mt-3.5 sm:mt-4">
+              <div className="bg-[#edf1f7] dark:bg-slate-800/70 p-3 sm:p-3.5 rounded-xl border border-[#dde3eb] dark:border-slate-700/70 shadow-2xs">
+                <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#0a1628] dark:text-white mb-1">
+                  <CheckCircle size={15} className="text-teal-500 shrink-0" />
+                  <span>Personalized Path</span>
                 </div>
-                <p className="text-[10px] text-[#5a6578] dark:text-slate-400 pl-[18px]">
+                <p className="text-[11px] text-[#5a6578] dark:text-slate-400 pl-5 leading-normal">
                   Get recommendations based on your level.
                 </p>
               </div>
-              <div className="bg-[#edf1f7] dark:bg-slate-800/70 p-2.5 rounded-lg border border-[#dde3eb] dark:border-slate-700/70">
-                <div className="flex items-center gap-1.5 font-bold text-[13px] text-[#0a1628] dark:text-white mb-1">
-                  <AlertTriangle size={14} className="text-rose-500" />
-                  Identify Risks
+              <div className="bg-[#edf1f7] dark:bg-slate-800/70 p-3 sm:p-3.5 rounded-xl border border-[#dde3eb] dark:border-slate-700/70 shadow-2xs">
+                <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#0a1628] dark:text-white mb-1">
+                  <AlertTriangle size={15} className="text-rose-500 shrink-0" />
+                  <span>Identify Risks</span>
                 </div>
-                <p className="text-[10px] text-[#5a6578] dark:text-slate-400 pl-[18px]">
+                <p className="text-[11px] text-[#5a6578] dark:text-slate-400 pl-5 leading-normal">
                   Spot areas that need more attention early.
                 </p>
               </div>
             </div>
 
             {error && (
-              <div role="alert" className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-xs text-red-700">{error}</p>
+              <div role="alert" className="mt-3 p-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-xl text-left">
+                <p className="text-xs text-red-700 dark:text-red-300">{error}</p>
               </div>
             )}
 
-            <div className="pt-3 space-y-2.5">
+            <div className="pt-3 sm:pt-4 space-y-2.5">
               <Button
                 onClick={handleStart}
                 disabled={loading}
-                className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-5 py-3 rounded-xl text-sm font-bold shadow-lg shadow-purple-200 w-full max-w-[380px] mx-auto"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-5 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm md:text-base font-bold shadow-lg shadow-purple-500/25 w-full max-w-[360px] mx-auto active:scale-[0.98] transition-all"
               >
                 {loading ? (
                   <>
@@ -195,13 +195,13 @@ const InitialAssessmentModal: React.FC<InitialAssessmentModalProps> = ({
                 )}
               </Button>
               {loading && (
-                <p className="text-[10px] text-slate-400 max-w-[24rem] mx-auto text-center leading-relaxed">
+                <p className="text-[10px] sm:text-[11px] text-slate-400 max-w-[24rem] mx-auto text-center leading-relaxed">
                   This may take up to 90 seconds while AI generates your personalized test.
                 </p>
               )}
               <button
                 onClick={handlePersistDismiss}
-                className="block mx-auto text-xs text-slate-500 hover:text-[#5a6578] transition-colors font-medium"
+                className="block mx-auto text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors font-semibold py-1 cursor-pointer"
               >
                 {loading ? 'Cancel generation' : 'Skip for now'}
               </button>
