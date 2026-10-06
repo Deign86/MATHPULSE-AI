@@ -8,7 +8,7 @@ interface StudentIDCardProps {
   profileData: ProfileData;
   userLevel?: number;
   userXP?: number;
-  onPhotoUploaded?: (photoURL: string) => void;
+  onPhotoUploaded?: (photo: File | string) => void | Promise<void>;
   className?: string;
 }
 
@@ -17,13 +17,10 @@ interface PhotoCellProps {
   displayName?: string;
   gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
   uid?: string;
-  onPhotoUploaded?: (photoURL: string) => void;
+  onPhotoUploaded?: (photo: File | string) => void | Promise<void>;
 }
 
-/** Renders the portrait photo area on the ID card front.
- *  Clicking opens a file picker; the raw data-URL is passed to onPhotoUploaded
- *  so the parent (SettingsPage) can handle the actual upload/crop flow.
- */
+/** Renders the portrait photo area on the ID card front. */
 const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gender, onPhotoUploaded }) => {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [photoError, setPhotoError] = useState(false);
@@ -32,17 +29,8 @@ const PhotoCell: React.FC<PhotoCellProps> = ({ photoURL, displayName, gender, on
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      // FileReader.result is `string | ArrayBuffer | null`; string path chosen by readAsDataURL.
-      // `instanceof ArrayBuffer` eliminates the non-string branches without a runtime typeof check.
-      const result = reader.result;
-      if (result !== null && !(result instanceof ArrayBuffer)) {
-        setPhotoError(false);
-        onPhotoUploaded?.(result);
-      }
-    };
-    reader.readAsDataURL(file);
+    setPhotoError(false);
+    void onPhotoUploaded?.(file);
     e.target.value = '';
   };
 

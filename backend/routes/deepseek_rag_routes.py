@@ -228,6 +228,7 @@ async def generate_module_preview(req: ModulePreviewRequest):
 
     system_prompt = (
         "You are a DepEd K-12 SHS math educator writing for Grade 11 Filipino students. "
+        "IMPORTANT: Write EVERYTHING in English. Do NOT use Tagalog, Filipino, or any other language. "
         "Generate content ONLY from the retrieved DepEd curriculum excerpts provided. "
         "Do NOT add generic filler. Do NOT invent examples or definitions not present "
         "in the retrieved context."
@@ -312,6 +313,7 @@ async def generate_study_tips(req: StudyTipsRequest):
 
     system_prompt = (
         "You are a math tutor helping a Filipino SHS student improve weak areas. "
+        "IMPORTANT: Write EVERYTHING in English. Do NOT use Tagalog, Filipino, or any other language. "
         "Base ALL study tips strictly on the retrieved DepEd curriculum content below. "
         "Do not invent practice problems or examples not found in the curriculum context."
     )

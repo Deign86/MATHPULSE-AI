@@ -52,6 +52,7 @@ if ('setCustomParameters' in googleProvider && Boolean(googleProvider.setCustomP
   googleProvider.setCustomParameters({ prompt: 'select_account' });
 }
 const PENDING_AUTH_ROLE_KEY = 'mathpulse.pendingAuthRole';
+const PENDING_AUTH_NAME_KEY = 'mathpulse.pendingAuthName';
 const LAST_AUTH_ROLE_KEY = 'mathpulse.lastAuthRole';
 
 const ensurePublicSignupRole = (role: UserRole): void => {
@@ -118,6 +119,24 @@ export const consumePendingAuthRole = (): UserRole | null => {
   }
 };
 
+export const setPendingAuthName = (name: string): void => {
+  try {
+    localStorage.setItem(PENDING_AUTH_NAME_KEY, name);
+  } catch {
+    // Ignore storage failures; auth can still proceed with Firebase's display name.
+  }
+};
+
+export const consumePendingAuthName = (): string | null => {
+  try {
+    const name = localStorage.getItem(PENDING_AUTH_NAME_KEY);
+    localStorage.removeItem(PENDING_AUTH_NAME_KEY);
+    return name?.trim() || null;
+  } catch {
+    return null;
+  }
+};
+
 export const getLastAuthRole = (): UserRole | null => {
   try {
     const role = localStorage.getItem(LAST_AUTH_ROLE_KEY);
@@ -140,6 +159,7 @@ export const signUpWithEmail = async (
 ): Promise<User> => {
   try {
     ensurePublicSignupRole(role);
+    setPendingAuthName(name);
 
     // Create auth user
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -149,10 +169,11 @@ export const signUpWithEmail = async (
     await updateProfile(firebaseUser, { displayName: name });
 
     // Create user profile in Firestore
-    const userProfile = await createUserProfile(firebaseUser, role, additionalData);
+    const userProfile = await createUserProfile(firebaseUser, role, { ...additionalData, name });
 
     return userProfile;
   } catch (error) {
+    consumePendingAuthName();
     logFirebaseError('Error signing up', error);
     throw toAuthServiceError(error, 'Failed to create account');
   }
@@ -262,7 +283,7 @@ export const createUserProfile = async (
   const baseProfile = {
     uid: firebaseUser.uid,
     email: firebaseUser.email || '',
-    name: firebaseUser.displayName || additionalData.name || 'User',
+    name: additionalData.name || firebaseUser.displayName || 'User',
     role,
     photo: firebaseUser.photoURL || '',
     createdAt: serverTimestamp(),

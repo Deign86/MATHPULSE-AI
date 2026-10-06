@@ -26,6 +26,7 @@ import {
 import { validateProfileDraft } from '../utils/profileValidation';
 import { useAuth } from '../contexts/AuthContext';
 import { changeEmailWithReauth } from '../services/settingsService';
+import { uploadProfilePicture } from '../services/profileImageService';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 import ConfirmModal from './ConfirmModal';
 import type { ProfileData } from './SettingsPage';
@@ -59,7 +60,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onConfirmLeave,
   onCancelNavigation,
 }) => {
-  const { userRole, userProfile } = useAuth();
+  const { userRole, userProfile, refreshProfile } = useAuth();
   const isAdmin = userRole === 'admin' || userProfile?.role === 'admin';
 
   const DEFAULT_SCHOOL_NAME = 'Gen. T De Leon National High School';
@@ -97,6 +98,31 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const handleFieldChange = <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => {
     setAccountData((prev) => ({ ...prev, [key]: value }));
     setIsDirty(true);
+  };
+
+  const handlePhotoUploaded = async (photo: File | string) => {
+    if (!(photo instanceof File)) {
+      handleFieldChange('photo', photo);
+      return;
+    }
+
+    if (!userProfile?.uid) {
+      toast.error('You need to be signed in to change your profile photo');
+      return;
+    }
+
+    try {
+      const photoURL = await uploadProfilePicture({
+        file: photo,
+        uid: userProfile.uid,
+        syncFirestore: true,
+      });
+      handleFieldChange('photo', photoURL);
+      await refreshProfile();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to upload profile photo';
+      toast.error(message);
+    }
   };
 
   const handleDiscardChanges = () => {
@@ -202,7 +228,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             profileData={accountData}
             userLevel={userLevel}
             userXP={userXP}
-            onPhotoUploaded={(photoURL) => handleFieldChange('photo', photoURL)}
+            onPhotoUploaded={handlePhotoUploaded}
             className="w-full"
           />
 
