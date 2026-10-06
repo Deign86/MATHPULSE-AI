@@ -835,8 +835,10 @@ const App = ({ authOverride }: AppProps = {}) => {
       if (data.section !== undefined) updates.section = data.section;
     }
 
-    // This screen cannot change school; initialize a missing value to the default.
-    if (!studentProfile?.school) {
+    // This screen cannot change school, and Firestore rules reject school writes
+    // from non-admins — so only include the missing-value default when the
+    // writer is permitted to set it. Sending it otherwise denies the whole write.
+    if (isAdmin && !studentProfile?.school) {
       updates.school = DEFAULT_SCHOOL;
     }
 
@@ -848,7 +850,9 @@ const App = ({ authOverride }: AppProps = {}) => {
       toast.success('Profile updated successfully');
     } catch (error) {
       console.error('Error saving profile:', error);
-      toast.error('Failed to update profile');
+      // Rethrow so callers (ProfilePage, SettingsPage) surface the failure
+      // instead of reporting a false success and clearing unsaved changes.
+      throw error;
     }
   };
 
