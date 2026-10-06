@@ -131,6 +131,9 @@ docs/ui-standardization-summary.md
 # Deepwork local progress state — never commit
 .slim/deepwork/
 
+# Git worktrees — linked checkouts must never be committed
+.worktrees/
+
 # Android / Capacitor build artifacts & signing credentials
 android/.gradle/
 android/build/
