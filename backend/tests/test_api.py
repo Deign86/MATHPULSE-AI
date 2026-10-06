@@ -951,14 +951,16 @@ class TestClassRecordImportMapping:
                 "points": 1,
                 "explanation": "Slope = rise/run.",
             }
-            for index in range(3)
+            for index in range(5)
         ])
         mock_chat.return_value = quiz_json
         response = client.post("/api/quiz/preview", json={
             "topics": ["Algebra"],
             "gradeLevel": "Grade 11",
+            "numQuestions": 5,
         })
         assert response.status_code == 200
+        assert len(response.json()["questions"]) == 5
 
     @patch("main.call_hf_chat")
     def test_preview_quiz_rejects_partial_question_set(self, mock_chat):
@@ -980,6 +982,7 @@ class TestClassRecordImportMapping:
         response = client.post("/api/quiz/preview", json={
             "topics": ["Algebra"],
             "gradeLevel": "Grade 11",
+            "numQuestions": 3,
         })
 
         assert response.status_code == 502
@@ -1004,6 +1007,7 @@ class TestClassRecordImportMapping:
             response = client.post("/api/quiz/preview", json={
                 "topics": ["Algebra"],
                 "gradeLevel": "Grade 11",
+                "numQuestions": 3,
             })
 
         assert response.status_code == 502

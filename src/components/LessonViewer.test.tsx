@@ -21,14 +21,18 @@ describe('LessonViewer role gating', () => {
     const authValue: AuthContextType = { currentUser: null, userProfile: null, loading: false, isLoggedIn: false, userRole: 'student', refreshProfile: async () => undefined };
     const lesson = { id: 'intro', title: 'Introduction', duration: '10 min', completed: false, locked: false } satisfies Parameters<typeof LessonViewer>[0]['lesson'];
     // SAFETY: initialContent provides sections array so the component renders without network fetch.
+    // The try-it section makes practice required, so completion stays gated until it is done.
     const mockInitialContent: never = {
       isLoading: false, error: null, retry: vi.fn(), sources: [],
-      sections: [{ type: 'introduction', title: 'Welcome', content: '' }],
+      sections: [
+        { type: 'introduction', title: 'Welcome', content: '' },
+        { type: 'try_it_yourself', title: 'Practice', content: '' },
+      ],
       retrievalBand: 'low', retrievalConfidence: 0, needsReview: false, isOffline: false,
     } as never;
     render(
       <AuthContext.Provider value={authValue}>
-        <LessonViewer lesson={lesson} initialSection={4} initialContent={mockInitialContent} onBack={vi.fn()} onComplete={vi.fn()} />
+        <LessonViewer lesson={lesson} initialSection={1} initialContent={mockInitialContent} onBack={vi.fn()} onComplete={vi.fn()} />
       </AuthContext.Provider>,
     );
     expect(screen.getByRole('button', { name: 'Complete lesson' })).toBeDisabled();
