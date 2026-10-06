@@ -95,7 +95,7 @@ describe('saveQuizResults assignment idempotency', () => {
     expect(documentReference).not.toHaveBeenCalledWith(expect.anything(), 'generatedQuizzes', 'practice-session-1');
   });
 
-  it('allows a completed diagnostic assignment to be retaken', async () => {
+  it('blocks a completed diagnostic assignment from creating another submission', async () => {
     const { collectionReference, documentReference } = stubReferences();
     const transactionWrites = { set: vi.fn(), update: vi.fn(), delete: vi.fn() };
     const transaction = {
@@ -109,16 +109,17 @@ describe('saveQuizResults assignment idempotency', () => {
 
     await saveQuizResults('student-uid', 'assignment-1', 'quiz-1', 'Math', 'diagnostic', 90, 20, 30, [], []);
 
-    expect(transactionWrites.set).toHaveBeenCalledOnce();
-    expect(collectionReference).toHaveBeenCalledOnce();
-    expect(documentReference).toHaveBeenCalledTimes(2);
+    expect(transaction.get).toHaveBeenCalledOnce();
+    expect(transactionWrites.set).not.toHaveBeenCalled();
+    expect(collectionReference).not.toHaveBeenCalled();
+    expect(documentReference).toHaveBeenCalledWith(expect.anything(), 'quizAssignments', 'assignment-1');
   });
 });
 
 describe('fetchPendingQuizzesForStudent', () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it('loads a pending quiz assigned using a legacy student LRN', async () => {
+  it('loads only assignments addressed to the authenticated student UID', async () => {
     const quiz: GeneratedQuiz = {
       id: 'quiz-1',
       title: 'Algebra review',
@@ -159,9 +160,10 @@ describe('fetchPendingQuizzesForStudent', () => {
       data: () => quiz,
     } as never);
 
-    const quizzes = await fetchPendingQuizzesForStudent('student-uid', 'legacy-lrn');
+    const quizzes = await fetchPendingQuizzesForStudent('student-uid');
 
-    expect(firestore.where).toHaveBeenCalledWith('lrn', 'in', ['student-uid', 'legacy-lrn']);
+    expect(firestore.where).toHaveBeenCalledWith('lrn', '==', 'student-uid');
+    expect(firestore.where).not.toHaveBeenCalledWith('lrn', 'in', expect.anything());
     expect(quizzes).toHaveLength(1);
     expect(quizzes[0].title).toBe('Algebra review');
     expect(quizzes[0].assignmentId).toBe('assignment-1');

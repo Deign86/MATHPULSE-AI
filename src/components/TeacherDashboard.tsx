@@ -415,6 +415,15 @@ export function normalizeAnalyticsRisk(label: string): string {
   return label;
 }
 
+export function deriveTopicPerformance(
+  backendTopics: readonly { topic: string; class_accuracy: number }[] | undefined,
+): { topic: string; score: number }[] {
+  return (backendTopics ?? [])
+    .filter((topic) => topic.topic.trim() && Number.isFinite(topic.class_accuracy))
+    .map((topic) => ({ topic: topic.topic, score: Math.round(topic.class_accuracy) }))
+    .sort((left, right) => left.score - right.score);
+}
+
 export function getRiskDistribution(riskCounts: Record<string, number> | null | undefined) {
   if (!riskCounts) return [];
   const readCount = (target: string) => {
@@ -3739,6 +3748,7 @@ const AnalyticsView: React.FC<{
         try {
           const { doc: firestoreDoc, onSnapshot: firestoreOnSnapshot } = await import('firebase/firestore');
           const { db: firestoreDb } = await import('../lib/firebase');
+          if (cancelled) return;
           const scores = new Map<string, number>();
           const refreshAnalytics = () => {
             if (refreshTimer) clearTimeout(refreshTimer);
@@ -3929,10 +3939,7 @@ const AnalyticsView: React.FC<{
 
     // Topic performance comes only from completed assessment analytics.
     const effectiveTopicPerformance = useMemo(() => {
-      return (backendReport?.insights?.topic_performance || [])
-        .filter((topic) => topic.topic && Number.isFinite(topic.class_accuracy))
-        .map((topic) => ({ topic: topic.topic, score: Math.round(topic.class_accuracy) }))
-        .sort((a, b) => a.score - b.score);
+      return deriveTopicPerformance(backendReport?.insights?.topic_performance);
     }, [backendReport]);
 
     const handleRefreshInsights = async () => {

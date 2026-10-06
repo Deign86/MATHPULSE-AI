@@ -19,9 +19,6 @@ const QUICK_PROMPTS = [
   { label: 'Check my solution', icon: FlaskConical, prompt: 'Can you check if my solution is correct?' },
 ] as const;
 
-const CHAT_BURST_LIMIT = 5;
-const CHAT_COOLDOWN_SECONDS = 60;
-
 const TOPIC_CARDS = [
   { label: 'Algebra', icon: Calculator, color: 'from-[#9956DE] to-[#7274ED]', desc: 'Equations, functions, polynomials' },
   { label: 'Geometry', icon: Hash, color: 'from-[#1FA7E1] to-[#6ED1CF]', desc: 'Shapes, proofs, coordinates' },
@@ -65,13 +62,11 @@ const AIChatPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMessage, setCurrentMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [chatCooldownSeconds, setChatCooldownSeconds] = useState(0);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const sendLockRef = useRef(false);
-  const recentChatSendsRef = useRef<number[]>([]);
 
   const activeSession = getActiveSession();
   const messages = activeSession?.messages || [];
@@ -134,29 +129,12 @@ const AIChatPage = () => {
     if (activeSessionId) setTimeout(() => inputRef.current?.focus(), 100);
   }, [activeSessionId]);
 
-  useEffect(() => {
-    if (chatCooldownSeconds <= 0) return;
-    const timer = window.setTimeout(() => {
-      setChatCooldownSeconds(seconds => Math.max(0, seconds - 1));
-    }, 1000);
-    return () => window.clearTimeout(timer);
-  }, [chatCooldownSeconds]);
-
   const handleSendMessage = async (overrideText?: string) => {
     const text = (overrideText ?? currentMessage).trim();
-    if (!text || chatCooldownSeconds > 0 || isLoading || isSendingMessage || sendLockRef.current) return;
+    if (!text || isLoading || isSendingMessage || sendLockRef.current) return;
 
     sendLockRef.current = true;
     setIsSendingMessage(true);
-    const now = Date.now();
-    recentChatSendsRef.current = recentChatSendsRef.current.filter(
-      sentAt => now - sentAt < CHAT_COOLDOWN_SECONDS * 1000,
-    );
-    recentChatSendsRef.current.push(now);
-    if (recentChatSendsRef.current.length >= CHAT_BURST_LIMIT) {
-      recentChatSendsRef.current = [];
-      setChatCooldownSeconds(CHAT_COOLDOWN_SECONDS);
-    }
 
     try {
       let sessionId = activeSessionId;
@@ -458,7 +436,7 @@ const AIChatPage = () => {
                   <button
                     key={label}
                     onClick={() => handleSendMessage(prompt)}
-                    disabled={chatCooldownSeconds > 0 || isLoading || isSendingMessage}
+                    disabled={isLoading || isSendingMessage}
                     className="flex items-center gap-1.5 px-3 py-1.5 border text-[11px] font-semibold rounded-xl whitespace-nowrap transition-all disabled:opacity-40 disabled:cursor-not-allowed text-[#9956DE] hover:border-[#9956DE]/40"
                     style={{ background: 'rgba(153,86,222,0.07)', borderColor: 'rgba(153,86,222,0.2)' }}
                   >
@@ -468,12 +446,6 @@ const AIChatPage = () => {
                 ))}
               </div>
             </div>
-
-            {chatCooldownSeconds > 0 && (
-              <p role="alert" aria-live="assertive" className="px-4 pt-2 text-center text-xs font-semibold text-amber-700">
-                Too many messages sent too quickly. Please wait {chatCooldownSeconds} seconds before sending again.
-              </p>
-            )}
 
             {/* Input — safe-area aware for mobile bottom nav */}
             <div
@@ -492,7 +464,7 @@ const AIChatPage = () => {
                 />
                 <Button
                   onClick={() => handleSendMessage()}
-                  disabled={!currentMessage.trim() || chatCooldownSeconds > 0 || isLoading || isSendingMessage}
+                  disabled={!currentMessage.trim() || isLoading || isSendingMessage}
                   aria-label="Send message"
                   className="w-9 h-9 rounded-xl text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md hover:shadow-lg flex-shrink-0 p-0 border-0"
                   style={{ background: 'linear-gradient(135deg, #9956DE, #7274ED)' }}

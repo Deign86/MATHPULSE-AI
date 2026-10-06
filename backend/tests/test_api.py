@@ -907,6 +907,55 @@ class TestClassRecordImportMapping:
         assert response.status_code == 200
 
     @patch("main.call_hf_chat")
+    def test_preview_quiz_rejects_partial_question_set(self, mock_chat):
+        partial_quiz = json.dumps([
+            {
+                "questionType": "identification",
+                "question": f"Question {index + 1}",
+                "correctAnswer": "Rise over run",
+                "bloomLevel": "remember",
+                "difficulty": "easy",
+                "topic": "Algebra",
+                "points": 1,
+                "explanation": "Slope = rise/run.",
+            }
+            for index in range(2)
+        ])
+        mock_chat.return_value = partial_quiz
+
+        response = client.post("/api/quiz/preview", json={
+            "topics": ["Algebra"],
+            "gradeLevel": "Grade 11",
+        })
+
+        assert response.status_code == 502
+        assert response.json()["detail"] == "Quiz generation returned 2 of 3 requested questions. Please try again."
+
+    @patch("main.call_hf_chat")
+    def test_preview_quiz_rejects_when_validation_drops_a_question(self, mock_chat):
+        mock_chat.return_value = json.dumps([
+            {
+                "questionType": "identification",
+                "question": f"Question {index + 1}",
+                "correctAnswer": "Rise over run",
+                "bloomLevel": "remember",
+                "difficulty": "easy",
+                "topic": "Algebra",
+                "points": 1,
+                "explanation": "Slope = rise/run.",
+            }
+            for index in range(3)
+        ])
+        with patch.object(main_module, "_validate_quiz_questions", return_value=[object(), object()]):
+            response = client.post("/api/quiz/preview", json={
+                "topics": ["Algebra"],
+                "gradeLevel": "Grade 11",
+            })
+
+        assert response.status_code == 502
+        assert response.json()["detail"] == "Quiz generation returned 2 of 3 requested questions. Please try again."
+
+    @patch("main.call_hf_chat")
     def test_generate_quiz_accepts_new_max_limits(self, mock_chat):
         max_questions = 12  # Classroom generation cap is 12 items.
         quiz_json = json.dumps([
@@ -969,6 +1018,27 @@ class TestUploadClassRecordsGuardrails:
                         "text/csv",
                     ),
                 },
+                data={"datasetIntent": "synthetic_student_records"},
+            )
+
+        assert response.status_code == 400
+        assert "duplicate" in response.json()["detail"].lower()
+        persist_import.assert_not_called()
+        sync_dashboard.assert_not_called()
+        queue_risk_refresh.assert_not_called()
+
+    @patch("main.call_hf_chat", side_effect=Exception("mapper unavailable"))
+    def test_upload_class_records_rejects_cross_file_duplicate_lrns_before_any_writes(self, _mock_chat):
+        files = [
+            ("files", ("records-a.csv", b"name,lrn,avgQuizScore,attendance,engagementScore\nAna Cruz,123456789001,81,92,88\n", "text/csv")),
+            ("files", ("records-b.csv", b"name,lrn,avgQuizScore,attendance,engagementScore\nBen Dela,123456789001,58,70,52\n", "text/csv")),
+        ]
+        with patch.object(main_module, "_persist_class_record_import_artifact") as persist_import, patch.object(
+            main_module, "_sync_imported_students_to_teacher_dashboard"
+        ) as sync_dashboard, patch.object(main_module, "_queue_post_import_risk_refresh") as queue_risk_refresh:
+            response = client.post(
+                "/api/upload/class-records",
+                files=files,
                 data={"datasetIntent": "synthetic_student_records"},
             )
 

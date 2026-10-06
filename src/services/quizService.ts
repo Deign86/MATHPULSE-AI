@@ -212,21 +212,13 @@ export function toPlayableQuiz(gen: GeneratedQuiz, assignmentId: string): Playab
 
 // ─── FETCH PENDING QUIZZES FOR STUDENT ───────────────────────
 
-export function getQuizAssignmentRecipientIds(studentUid: string, legacyLrn?: string): string[] {
-  return [...new Set([studentUid, legacyLrn].filter((recipientId): recipientId is string => Boolean(recipientId?.trim())))];
-}
-
-export async function fetchPendingQuizzesForStudent(studentUid: string, legacyLrn?: string): Promise<PlayableQuiz[]> {
-  const recipientIds = getQuizAssignmentRecipientIds(studentUid, legacyLrn);
-  if (recipientIds.length === 0) return [];
-  const assignmentRecipientFilter = recipientIds.length === 1
-    ? where('lrn', '==', recipientIds[0])
-    : where('lrn', 'in', recipientIds);
+export async function fetchPendingQuizzesForStudent(studentUid: string): Promise<PlayableQuiz[]> {
+  if (!studentUid) return [];
   let assignmentsSnap;
   try {
     const assignmentsQuery = query(
       collection(db, 'quizAssignments'),
-      assignmentRecipientFilter,
+      where('lrn', '==', studentUid),
       where('status', '==', 'pending'),
       orderBy('assignedAt', 'desc'),
     );
@@ -236,7 +228,7 @@ export async function fetchPendingQuizzesForStudent(studentUid: string, legacyLr
 
     const fallbackQuery = query(
       collection(db, 'quizAssignments'),
-      assignmentRecipientFilter,
+      where('lrn', '==', studentUid),
       where('status', '==', 'pending'),
     );
     assignmentsSnap = await getDocs(fallbackQuery);
@@ -326,13 +318,12 @@ export async function saveQuizResults(
     submittedAt: serverTimestamp(),
   });
 
-  // Only teacher-assigned graded quizzes are single-shot; practice and diagnostics can be retaken.
+  // Every assigned quiz is single-shot; unassigned practice attempts remain local.
   const shouldEmitSubmission = await runTransaction(db, async (transaction) => {
     if (generatedQuizId && assignmentId && assignmentId !== generatedQuizId) {
       const assignmentRef = doc(db, 'quizAssignments', assignmentId);
       const assignment = await transaction.get(assignmentRef);
-      if (!assignment.exists()) return false;
-      if (source !== 'diagnostic' && assignment.data().assessmentType === 'graded' && assignment.data().status !== 'pending') return false;
+      if (!assignment.exists() || assignment.data().status !== 'pending') return false;
 
     }
     const submissionRef = doc(collection(db, 'quizSubmissions'));

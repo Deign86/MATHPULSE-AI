@@ -69,6 +69,9 @@ async def test_conceptual_question_uses_normal_chat_generation(
     system_prompt = observed_messages[0]["content"]
     assert "Write EVERYTHING in English" in system_prompt
     assert "Respond in the student's language" not in system_prompt
+    assert "Use the SDO Navotas step-by-step method for ALL solutions" in system_prompt
+    assert "Never complete the calculation or reveal the final answer" not in system_prompt
+    assert "Given → Formula → Substitute → Compute → Conclude" in system_prompt
 
 
 @pytest.mark.asyncio
