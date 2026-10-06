@@ -1441,7 +1441,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   useEffect(() => {
     if (!showTryItPage || tryItQuestions || tryItError) return;
     setTryItLoading(true);
-    generateLessonQuiz({ lessonId: lesson.id?.toString() || 'unknown', lessonTitle: lesson.title, topic: practiceTopic, subjectId: lesson.subjectId, competencyCode: lesson.competencyCode, questionCount: 15 })
+    // The classroom generation cap is 12; the practice button promises 10.
+    generateLessonQuiz({ lessonId: lesson.id?.toString() || 'unknown', lessonTitle: lesson.title, topic: practiceTopic, subjectId: lesson.subjectId, competencyCode: lesson.competencyCode, questionCount: 10 })
       .then(qs => setTryItQuestions(qs))
       .catch(err => {
         console.error('[LessonViewer] Quiz generation failed:', err);
