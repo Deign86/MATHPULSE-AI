@@ -383,7 +383,10 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
     try {
       if (editingEventId) {
         setEvents(prev => prev.map(e => e.id === editingEventId ? { ...e, ...evData } : e));
-        await updateCalendarEvent(editingEventId, evData);
+        const clearFields: ('description' | 'endTime')[] = [];
+        if (!evData.description) clearFields.push('description');
+        if (!evData.endTime) clearFields.push('endTime');
+        await updateCalendarEvent(editingEventId, evData, clearFields);
       } else {
         const optimisticId = `temp-${Date.now()}`;
         tempId = optimisticId;
@@ -725,6 +728,16 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
                     type="time" 
                     value={formStartTime} 
                     onChange={(e) => setFormStartTime(e.target.value)}
+                    className="bg-white border-slate-200 focus:border-[#a855f7] rounded-xl h-12 px-4 text-[14px]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="calendar-end-time" className="text-[13px] font-bold text-[#1e293b] ml-1">End Time (Optional)</label>
+                  <Input
+                    id="calendar-end-time"
+                    type="time"
+                    value={formEndTime}
+                    onChange={(e) => setFormEndTime(e.target.value)}
                     className="bg-white border-slate-200 focus:border-[#a855f7] rounded-xl h-12 px-4 text-[14px]"
                   />
                 </div>
