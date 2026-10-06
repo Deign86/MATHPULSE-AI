@@ -292,10 +292,10 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
   const optionLabels = ['A', 'B', 'C', 'D'];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 md:p-6 overflow-hidden">
       <div
         id="assessment-container"
-        className="bg-white/95 backdrop-blur-xl border border-white/20 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.3)] w-full max-w-4xl h-[95dvh] sm:h-[90dvh] md:h-[85dvh] flex flex-col relative z-10 overflow-hidden transition-all duration-300"
+        className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-0 sm:border border-white/20 dark:border-white/10 rounded-none sm:rounded-3xl shadow-2xl w-full max-w-4xl h-full sm:h-[92dvh] md:h-[88dvh] max-h-none sm:max-h-[850px] flex flex-col relative z-10 overflow-hidden transition-all duration-300"
       >
         {/* Animated Orbs Background */}
         <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
@@ -326,65 +326,73 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
 
         {/* Header */}
         <motion.div 
-          className="shrink-0 text-white border-b border-white/10 shadow-md relative z-10"
-          style={{ backgroundColor: '#9956DE' }}
+          className="shrink-0 text-white border-b border-white/10 shadow-md relative z-10 bg-[#9956DE]"
         >
-          <div className="flex items-center justify-between p-4 sm:p-5 md:p-6">
+          {/* Top Title Bar */}
+          <div className="flex items-center justify-between px-3.5 sm:px-5 md:px-6 pt-3 sm:pt-4 pb-2 sm:pb-2.5 gap-2">
             <div className="flex-1 min-w-0 mr-2">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold truncate">Diagnostic Assessment</h2>
-              <p className="text-white/80 text-xs sm:text-sm font-medium truncate">
+              <h2 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold truncate leading-tight">
+                Diagnostic Assessment
+              </h2>
+              <p className="text-white/80 text-[11px] sm:text-xs font-medium truncate mt-0.5">
                 {currentQuestion.domain} &bull; {currentQuestion.difficulty}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <button
+                type="button"
                 onClick={toggleFullscreen}
-                className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 bg-white/20 hover:bg-white/30 active:scale-95 rounded-xl flex items-center justify-center transition-all cursor-pointer"
                 title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
               >
-                {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </button>
               <button
+                type="button"
                 onClick={onCancel}
-                className="w-9 h-9 sm:w-10 sm:h-10 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 bg-white/20 hover:bg-white/30 active:scale-95 rounded-xl flex items-center justify-center transition-all cursor-pointer"
+                title="Exit Assessment"
+                aria-label="Exit Assessment"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
           </div>
 
-          {/* Stats Row */}
-          <div className="flex items-center justify-between px-4 sm:px-5 md:px-6 pb-3 sm:pb-4 md:pb-5">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/20 px-3 py-1 rounded-full flex items-center gap-1">
-                <Zap size={16} />
-                <span className="font-bold text-sm">{responses.length} / {totalQuestions}</span>
+          {/* Stats & Question Counter Row */}
+          <div className="flex items-center justify-between px-3.5 sm:px-5 md:px-6 pb-2 sm:pb-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="bg-white/20 px-2.5 py-0.5 sm:py-1 rounded-full flex items-center gap-1 text-xs sm:text-sm font-bold shadow-2xs">
+                <Zap size={14} className="shrink-0" />
+                <span className="tabular-nums">{responses.length} / {totalQuestions}</span>
+              </div>
+              <div className={`flex items-center gap-1 px-2.5 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-bold shadow-2xs ${timeLeft <= 10 ? 'bg-red-500/90 text-white animate-pulse' : 'bg-white/20'}`}>
+                <Clock size={14} className="shrink-0" />
+                <span className="tabular-nums">{formatTime(timeLeft)}</span>
               </div>
             </div>
-            <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${timeLeft <= 10 ? 'bg-red-500/80 animate-pulse' : 'bg-white/20'}`}>
-              <Clock size={16} />
-              <span className="font-bold text-sm">{formatTime(timeLeft)}</span>
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold opacity-90">
+              <span>Question {currentIndex + 1} of {totalQuestions}</span>
+              <span className="opacity-70">&bull;</span>
+              <span className="tabular-nums">{progressPct}%</span>
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div className="px-4 sm:px-5 md:px-6 pb-3 sm:pb-4 md:pb-5">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium">Question {currentIndex + 1} of {totalQuestions}</span>
-              <span className="text-sm font-bold">{progressPct}%</span>
-            </div>
-            <div className="flex items-center gap-1">
+          {/* Segmented Progress Bar */}
+          <div className="px-3.5 sm:px-5 md:px-6 pb-2.5 sm:pb-3.5">
+            <div className="flex items-center gap-0.5 sm:gap-1 w-full">
               {questions.map((_, idx) => {
                 let dotClass = 'bg-white/30';
                 if (idx < currentIndex) {
                   dotClass = answerResults[idx] ? 'bg-[#75D06A]' : 'bg-[#FF8B8B]';
                 } else if (idx === currentIndex) {
-                  dotClass = 'bg-white scale-y-150 shadow-[0_0_8px_white]';
+                  dotClass = 'bg-white scale-y-125 shadow-[0_0_8px_white]';
                 }
                 return (
                   <motion.div
                     key={idx}
-                    className={`flex-1 h-2 rounded-full transition-all duration-300 ${dotClass}`}
+                    className={`flex-1 h-1.5 sm:h-2 rounded-full transition-all duration-300 ${dotClass}`}
                   />
                 );
               })}
@@ -393,7 +401,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
         </motion.div>
 
         {/* Question Content - Scrollable with compact layout */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 md:p-6 lg:p-8 relative flex flex-col bg-white/70 backdrop-blur-md">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6 lg:p-8 relative flex flex-col bg-white/70 dark:bg-slate-900/70 backdrop-blur-md">
           {step === 'testing' && (
             <AnimatePresence mode="wait">
               <motion.div
@@ -403,47 +411,47 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
                 exit={{ opacity: 0, x: -20 }}
                 className="flex flex-col flex-1 relative z-10"
               >
-                {/* Question Card - Compact on small screens */}
-                <div className="mb-4 sm:mb-6 shrink-0">
-                  <h3 className="font-extrabold text-[#0a1628] leading-snug break-words text-sm sm:text-base md:text-lg lg:text-xl">
+                {/* Question Card - Responsive on all screens */}
+                <div className="mb-3 sm:mb-5 shrink-0">
+                  <h3 className="font-extrabold text-[#0a1628] dark:text-white leading-snug sm:leading-relaxed break-words text-sm sm:text-base md:text-lg lg:text-xl">
                     {currentQuestion.question_text}
                   </h3>
-                  <p className="text-xs sm:text-sm font-semibold opacity-70 uppercase tracking-wide text-[#9956DE] mt-2">
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#9956DE] dark:text-purple-400 mt-1.5 sm:mt-2">
                     Select the correct answer
                   </p>
                 </div>
 
-                {/* Options - Compact on small screens */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+                {/* Options - Single column on mobile, 2 columns on tablet/desktop */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4 mt-1 sm:mt-2">
                   {optionLabels.map((letter) => {
                     // SAFETY: trusted internal value already conforms to the asserted type.
                     const optionText = currentQuestion.options[letter as keyof typeof currentQuestion.options];
                     if (!optionText) return null;
                     const isSelected = selectedAnswer === letter;
-                    const showCorrectness = !!selectedAnswer;
 
-                    let bgColor = 'bg-[#edf1f7] hover:bg-[#dde3eb] border-[#dde3eb]';
+                    let bgColor = 'bg-[#edf1f7] hover:bg-[#dde3eb] border-[#dde3eb] dark:bg-slate-800/80 dark:hover:bg-slate-800 dark:border-slate-700/80';
                     if (isSelected) {
-                      bgColor = 'bg-purple-50 border-[#9956DE]';
+                      bgColor = 'bg-purple-50 dark:bg-purple-950/40 border-[#9956DE] shadow-sm';
                     }
 
                     return (
                       <motion.button
                         key={letter}
+                        type="button"
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         onClick={() => handleSelectAnswer(letter)}
-                        className={`w-full text-left p-2.5 sm:p-3 md:p-4 rounded-xl border-2 transition-all ${bgColor} cursor-pointer shadow-sm hover:shadow-md flex items-center min-h-[3rem] sm:min-h-[4rem] md:min-h-[5rem]`}
+                        className={`w-full text-left p-2.5 sm:p-3.5 md:p-4 rounded-xl sm:rounded-2xl border-2 transition-all ${bgColor} cursor-pointer shadow-2xs hover:shadow-sm flex items-center min-h-[3rem] sm:min-h-[3.75rem] md:min-h-[4.25rem]`}
                       >
                         <div className="flex items-center gap-2 sm:gap-3 w-full min-w-0">
-                          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl shrink-0 flex items-center justify-center font-bold text-sm sm:text-base ${
+                          <div className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-lg sm:rounded-xl shrink-0 flex items-center justify-center font-bold text-xs sm:text-sm ${
                             isSelected ? 'bg-[#9956DE] text-white shadow-inner' :
-                            'bg-white text-[#0a1628] shadow-sm'
+                            'bg-white dark:bg-slate-700 text-[#0a1628] dark:text-white shadow-2xs'
                           }`}>
                             {letter}
                           </div>
-                          <span className="font-semibold text-[#0a1628] text-xs sm:text-sm md:text-base break-words">{optionText}</span>
-                          {isSelected && <CheckCircle size={18} className="ml-auto text-[#9956DE] flex-shrink-0" />}
+                          <span className="font-semibold text-[#0a1628] dark:text-slate-100 text-xs sm:text-sm md:text-base break-words flex-1 min-w-0 leading-snug">{optionText}</span>
+                          {isSelected && <CheckCircle size={18} className="ml-auto text-[#9956DE] dark:text-purple-400 shrink-0" />}
                         </div>
                       </motion.button>
                     );
@@ -455,29 +463,29 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 md:p-6 bg-[#edf1f7] border-t border-[#dde3eb]">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-[#5a6578]">
+        <div className="p-3.5 sm:p-4 md:p-5 bg-[#edf1f7] dark:bg-slate-800/90 border-t border-[#dde3eb] dark:border-slate-800 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs sm:text-sm text-[#5a6578] dark:text-slate-300 font-medium truncate min-w-0 mr-2">
               {selectedAnswer ? (
-                <span className="flex items-center gap-2">
-                  <TrendingUp size={16} />
-                  Ready for the next one!
+                <span className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300 font-semibold truncate">
+                  <TrendingUp size={15} className="shrink-0" />
+                  <span className="truncate">Ready for the next one!</span>
                 </span>
               ) : (
-                <span>{timeLeft <= 10 ? `Auto-skipping in ${timeLeft}s...` : 'Select an answer to continue'}</span>
+                <span className="truncate">{timeLeft <= 10 ? `Auto-skipping in ${timeLeft}s...` : 'Select an answer to continue'}</span>
               )}
             </div>
             <Button
               onClick={handleNext}
               disabled={!selectedAnswer}
-              className={`font-bold px-6 py-2.5 sm:py-3 rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-lg text-sm ${
+              className={`font-bold px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl flex items-center gap-1.5 sm:gap-2 transition-all shadow-md text-xs sm:text-sm shrink-0 cursor-pointer ${
                 selectedAnswer
-                  ? 'bg-[#9956DE] hover:bg-[#8850CE] text-white shadow-[#9956DE]/20'
-                  : 'bg-[#dde3eb] text-slate-500 cursor-not-allowed'
+                  ? 'bg-[#9956DE] hover:bg-[#8850CE] text-white shadow-[#9956DE]/20 active:scale-95'
+                  : 'bg-[#dde3eb] dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
               }`}
             >
-              {currentIndex < totalQuestions - 1 ? 'Next Question' : 'Submit Assessment'}
-              <ChevronRight size={18} />
+              <span>{currentIndex < totalQuestions - 1 ? 'Next Question' : 'Submit Assessment'}</span>
+              <ChevronRight size={16} className="shrink-0" />
             </Button>
           </div>
         </div>
@@ -487,21 +495,21 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 bg-white/95 backdrop-blur-xl flex items-center justify-center z-50 rounded-3xl"
+            className="absolute inset-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl flex items-center justify-center z-50 rounded-none sm:rounded-3xl p-4 sm:p-8"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="text-center p-8"
+              className="text-center p-4 sm:p-8 max-w-sm mx-auto"
             >
-              <div className="mx-auto mb-4 h-16 w-16 rounded-full border-4 border-[#9956DE] border-t-transparent animate-spin" />
-              <h2 className="text-2xl font-bold text-[#0a1628] mb-2">Analyzing your results...</h2>
-              <p className="text-sm text-[#5a6578] max-w-xs mx-auto">
+              <div className="mx-auto mb-4 h-12 w-12 sm:h-16 sm:w-16 rounded-full border-4 border-[#9956DE] border-t-transparent animate-spin" />
+              <h2 className="text-xl sm:text-2xl font-bold text-[#0a1628] dark:text-white mb-2">Analyzing your results...</h2>
+              <p className="text-xs sm:text-sm text-[#5a6578] dark:text-slate-300 max-w-xs mx-auto leading-relaxed">
                 We&apos;re evaluating your responses and building your personalized learning path.
               </p>
               {error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg max-w-sm mx-auto">
-                  <p className="text-sm text-red-700">{error}</p>
+                <div className="mt-4 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl max-w-sm mx-auto">
+                  <p className="text-xs sm:text-sm text-red-700 dark:text-red-300">{error}</p>
                 </div>
               )}
             </motion.div>
@@ -513,46 +521,46 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 bg-white/95 backdrop-blur-xl flex items-center justify-center z-50 rounded-3xl overflow-y-auto"
+            className="absolute inset-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl flex items-center justify-center z-50 rounded-none sm:rounded-3xl p-4 sm:p-8 overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="text-center p-6 sm:p-8 max-w-md mx-auto"
+              className="text-center p-4 sm:p-8 max-w-md mx-auto"
             >
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: 'spring' }}
-                className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-4 ${
+                className={`w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-2xl flex items-center justify-center mb-4 shadow-lg ${
                   responses.length >= totalQuestions * 0.7 ? 'bg-gradient-to-br from-[#75D06A] to-[#6ED1CF]' : 'bg-gradient-to-br from-[#FFB356] to-[#FF8B8B]'
                 }`}
               >
                 {responses.length >= totalQuestions * 0.7 ? (
-                  <Trophy size={48} className="text-white" />
+                  <Trophy size={40} className="text-white drop-shadow-sm" />
                 ) : (
-                  <Target size={48} className="text-white" />
+                  <Target size={40} className="text-white drop-shadow-sm" />
                 )}
               </motion.div>
               
-              <h2 className="text-3xl font-bold font-display text-[#0a1628] mb-2">
+              <h2 className="text-2xl sm:text-3xl font-bold font-display text-[#0a1628] dark:text-white mb-2">
                 Assessment Complete!
               </h2>
-              <p className="text-[#5a6578] mb-6">
+              <p className="text-xs sm:text-sm text-[#5a6578] dark:text-slate-300 mb-5 leading-relaxed">
                 Great job, {userName}! Your personalized learning path is ready.
               </p>
 
-              <div className="bg-gradient-to-br from-[#1FA7E1]/10 to-[#6ED1CF]/10 rounded-2xl p-5 mb-5">
-                <div className="text-sm text-[#5a6578] mb-2">
+              <div className="bg-gradient-to-br from-[#1FA7E1]/10 to-[#6ED1CF]/10 rounded-2xl p-4 sm:p-5 mb-5 border border-sky-200/50 dark:border-sky-800/40">
+                <div className="text-xs sm:text-sm font-semibold text-[#5a6578] dark:text-slate-300 mb-1">
                   You answered {responses.length} questions
                 </div>
-                <div className="text-xs text-[#5a6578]">
+                <div className="text-[11px] sm:text-xs text-[#5a6578] dark:text-slate-400">
                   Results will be available shortly...
                 </div>
               </div>
 
-              <p className="text-xs text-slate-400 mb-4">Redirecting to dashboard...</p>
+              <p className="text-xs text-slate-400 mb-2">Redirecting to dashboard...</p>
             </motion.div>
           </motion.div>
         )}
