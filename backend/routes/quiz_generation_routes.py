@@ -136,6 +136,7 @@ Generate a "Try It Yourself" quiz for the following lesson.
 - Point value per question: {points}
 
 ## Instructions
+IMPORTANT: Write EVERYTHING in English. Do NOT use Tagalog, Filipino, or any other language.
 1. Generate EXACTLY {question_count} questions covering the topic above.
 2. Question types to use: {qt_str}
 3. BLOOM'S TAXONOMY DISTRIBUTION (for {question_count} questions):

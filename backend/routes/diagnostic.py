@@ -324,6 +324,7 @@ Finite Math:     FM1-MAT-01, FM2-PROB-01, FM2-PROB-02
   - Hard   (Bloom: analyzing):                  3 questions (20%)
 
 QUESTION RULES:
+IMPORTANT: Write EVERYTHING in English. Do NOT use Tagalog, Filipino, or any other language.
 1. All questions are 4-option multiple choice (A, B, C, D).
 2. Use Filipino real-life context: peso amounts, Filipino names
    (Juan, Maria, Jose), Philippine institutions (SSS, PhilHealth,
