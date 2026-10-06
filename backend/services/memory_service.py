@@ -106,7 +106,7 @@ class ProfileMemory:
         self.weak_topics = weak_topics or []
         self.learning_style = learning_style
         self.explanation_depth = explanation_depth  # "auto", "basic", "detailed", "advanced"
-        self.language_tone = language_tone  # "english", "filipino-friendly"
+        self.language_tone = language_tone
         self.prior_goals = prior_goals or []
         self.stable_tutoring_facts = stable_tutoring_facts or []
         self.recurring_mistakes = recurring_mistakes or []
@@ -522,9 +522,9 @@ def extract_profile_info_from_message(text: str) -> dict:
                 else:
                     updates[field] = matched
 
-    # Language preference
+    # Accept Filipino-language input without changing the English output preference.
     if re.search(r"(?:tagalog|filipino|bisaya|ilocano)", text, re.IGNORECASE):
-        updates["language_tone"] = "filipino-friendly"
+        updates["language_tone"] = "english"
 
     return updates
 
@@ -583,9 +583,6 @@ def _maybe_record_stable_fact(uid: str, profile: ProfileMemory, message: str) ->
         facts_to_record.append(f"Student struggles with: {', '.join(profile.weak_topics[-3:])}")
     if profile.explanation_depth and profile.explanation_depth != "auto":
         facts_to_record.append(f"Student prefers {profile.explanation_depth} explanations")
-    if profile.language_tone == "filipino-friendly":
-        facts_to_record.append("Student prefers Filipino-friendly language")
-
     if facts_to_record:
         for fact in facts_to_record:
             if fact not in profile.stable_tutoring_facts:
@@ -801,10 +798,13 @@ def _format_profile_context(profile: ProfileMemory) -> str:
         lines.append(f"Weak Topics: {', '.join(profile.weak_topics[:5])}")
     if profile.explanation_depth and profile.explanation_depth != "auto":
         lines.append(f"Explanation Preference: {profile.explanation_depth} explanations")
-    if profile.language_tone and profile.language_tone != "english":
-        lines.append(f"Language: {profile.language_tone}")
     if profile.stable_tutoring_facts:
-        lines.append(f"Tutoring Facts: {'; '.join(profile.stable_tutoring_facts[-3:])}")
+        active_facts = [
+            fact for fact in profile.stable_tutoring_facts
+            if fact != "Student prefers Filipino-friendly language"
+        ]
+        if active_facts:
+            lines.append(f"Tutoring Facts: {'; '.join(active_facts[-3:])}")
     if profile.prior_goals:
         lines.append(f"Prior Goals: {'; '.join(profile.prior_goals[-3:])}")
     if profile.recurring_mistakes:

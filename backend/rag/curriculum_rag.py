@@ -650,6 +650,7 @@ def build_lesson_prompt(
     return (
         "You are a DepEd-aligned Grade 11 mathematics instructional designer.\n"
         "Generate a lesson in JSON format. Use ONLY the retrieved curriculum evidence below.\n"
+        "IMPORTANT: Write EVERYTHING in English. Do NOT use Tagalog, Filipino, or any other language.\n"
         "Do NOT invent content. Do NOT add generic motivational text. All content must be grounded in the retrieved excerpts.\n\n"
         f"Lesson title: {lesson_title}\n"
         f"Competency code: {competency_code or 'n/a'}\n"
