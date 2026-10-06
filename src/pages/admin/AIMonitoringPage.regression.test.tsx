@@ -16,9 +16,6 @@ const monitoringSummary: AIMonitoringSummary = {
   billingCycleLabel: 'Current cycle',
   costBreakdown: { cacheHitCost: 0, cacheMissCost: 0, outputCost: 0 },
   totalUsage: 20,
-  dailyQuestionCount: 12,
-  averageLatencyMs: 325,
-  successRate: 0.9,
   totalInputTokens: 0,
   totalOutputTokens: 0,
   cacheHitRate: 0,
@@ -58,14 +55,4 @@ describe('AI monitoring page regressions', () => {
     expect(screen.queryByText(/live sync active/i)).toBeNull();
   });
 
-  it('shows daily request count, response latency, and success rate from telemetry', () => {
-    // SAFETY: the hook's non-loading test value includes every field rendered by the page.
-    vi.spyOn(aiMonitoring, 'useAIMonitoring').mockReturnValue({ data: monitoringSummary, isLoading: false, refetch: vi.fn() } as never);
-    render(<AIMonitoringPage />);
-
-    expect(screen.getByText('Questions Today')).toBeTruthy();
-    expect(screen.getByText('12')).toBeTruthy();
-    expect(screen.getByText('325 ms')).toBeTruthy();
-    expect(screen.getByText('90.0%')).toBeTruthy();
-  });
 });

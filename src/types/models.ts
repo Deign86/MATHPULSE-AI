@@ -569,8 +569,6 @@ export interface CalendarEvent {
   startTime: Date;
   endTime?: Date;
   color?: 'purple' | 'blue' | 'emerald' | 'amber' | 'rose';
-  classSectionId?: string;
-  className?: string;
   createdAt: Date;
   updatedAt?: Date;
 }

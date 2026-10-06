@@ -903,7 +903,7 @@ class TestClassRecordImportMapping:
 
     @patch("main.call_hf_chat")
     def test_generate_quiz_accepts_new_max_limits(self, mock_chat):
-        max_questions = 10  # Cap enforced at 10 items
+        max_questions = 12  # Classroom generation cap is 12 items.
         quiz_json = json.dumps([
             {
                 "questionType": "identification",
@@ -933,7 +933,17 @@ class TestClassRecordImportMapping:
         response = client.post("/api/quiz/generate", json={
             "topics": ["Algebra"],
             "gradeLevel": "Grade 11",
-            "numQuestions": main_module.MAX_QUESTIONS_LIMIT + 1,
+            "numQuestions": 13,
+        })
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "capped at 12 items"
+
+    def test_generate_quiz_preserves_structural_ceiling_over_thirty(self):
+        response = client.post("/api/quiz/generate", json={
+            "topics": ["Algebra"],
+            "gradeLevel": "Grade 11",
+            "numQuestions": 31,
         })
 
         assert response.status_code == 422

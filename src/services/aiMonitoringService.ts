@@ -41,9 +41,6 @@ export interface AIMonitoringSummary {
     outputCost: number;
   };
   totalUsage: number;
-  dailyQuestionCount: number;
-  averageLatencyMs: number;
-  successRate: number;
   totalInputTokens: number;
   totalOutputTokens: number;
   cacheHitRate: number;
