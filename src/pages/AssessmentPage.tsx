@@ -448,25 +448,23 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
                     if (!optionText) return null;
                     const isSelected = selectedAnswer === letter;
 
-                    let cardStyle = 'bg-white/90 dark:bg-slate-900/80 border-slate-200/90 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50/40 dark:hover:bg-violet-950/20 hover:shadow-md hover:-translate-y-0.5';
+                    let cardStyle = 'bg-white/95 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50/40 dark:hover:bg-violet-950/20 hover:shadow-md';
                     if (isSelected) {
-                      cardStyle = 'bg-gradient-to-r from-violet-50/95 via-purple-50/70 to-indigo-50/60 dark:from-violet-950/60 dark:via-purple-950/40 dark:to-slate-900 border-violet-500 dark:border-violet-400 shadow-[0_4px_18px_rgba(139,92,246,0.18)] ring-2 ring-violet-500/20';
+                      cardStyle = 'bg-violet-50/90 dark:bg-violet-950/60 border-violet-500 dark:border-violet-400 shadow-md shadow-violet-500/10 ring-2 ring-violet-500/25';
                     }
 
                     return (
-                      <motion.button
+                      <button
                         key={letter}
                         type="button"
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.98 }}
                         onClick={() => handleSelectAnswer(letter)}
-                        className={`w-full text-left p-3 sm:p-4 rounded-2xl border-2 transition-all duration-150 cursor-pointer flex items-center justify-between gap-3 group shadow-2xs ${cardStyle}`}
+                        className={`w-full text-left p-3.5 sm:p-4 rounded-2xl border-2 transition-all duration-150 ease-out cursor-pointer flex items-center justify-between gap-3 group active:scale-[0.98] ${cardStyle}`}
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           {/* Letter Badge */}
-                          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl font-black text-xs sm:text-sm shrink-0 flex items-center justify-center transition-all ${
+                          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl font-black text-xs sm:text-sm shrink-0 flex items-center justify-center transition-colors duration-150 ${
                             isSelected
-                              ? 'bg-violet-600 text-white shadow-md scale-105'
+                              ? 'bg-violet-600 text-white shadow-xs'
                               : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 group-hover:bg-violet-100 dark:group-hover:bg-violet-900/40 group-hover:text-violet-700 dark:group-hover:text-violet-300'
                           }`}>
                             {letter}
@@ -481,14 +479,14 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
                         </div>
 
                         {/* Radio Check Circle */}
-                        <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${
+                        <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors duration-150 ${
                           isSelected
                             ? 'border-violet-600 bg-violet-600 text-white shadow-xs'
                             : 'border-slate-300 dark:border-slate-600 group-hover:border-violet-400'
                         }`}>
                           {isSelected && <Check size={11} strokeWidth={3.5} />}
                         </div>
-                      </motion.button>
+                      </button>
                     );
                   })}
                 </div>
