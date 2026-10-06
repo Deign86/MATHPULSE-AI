@@ -37,15 +37,15 @@ client = TestClient(app, headers={"Authorization": "Bearer test-auth-token"})
 
 
 def test_quiz_cap():
-    """Test that quiz generation capped at 10 items returns 400."""
+    """Test that classroom quiz generation capped at 12 items returns 400."""
     response = client.post("/api/quiz/generate", json={
         "topics": ["Algebra"],
         "subject": "Mathematics",
         "gradeLevel": "Grade 11",
-        "numQuestions": 15,
+        "numQuestions": 13,
     })
     assert response.status_code == 400, f"Expected 400, got {response.status_code}: {response.text}"
-    assert "capped at 10 items" in response.json()["detail"]
+    assert response.json()["detail"] == "capped at 12 items"
     print("Test passed!")
 
 

@@ -680,7 +680,10 @@ const newStreak = streak + 1;
 
     // Use specific canvas confetti for correct answers
     import('canvas-confetti').then((confetti) => {
-      confetti.default({ particleCount: 30, spread: 40, colors: ['#75D06A', '#6ED1CF'], origin: { y: 0.6 } });
+      if (!previewMode && !localOnlyRef.current) {
+        if (!window.CanvasRenderingContext2D) return;
+        confetti.default({ particleCount: 30, spread: 40, colors: ['#75D06A', '#6ED1CF'], origin: { y: 0.6 } });
+      }
     });
 
     setShowRoundResult(true);
@@ -895,6 +898,23 @@ playSound('complete');
                     <span className="text-slate-400 text-[9px] font-black uppercase tracking-widest">Final Accuracy</span>
                     <span className="text-lg font-black text-slate-800 tabular-nums">{percentage}%</span>
                   </motion.div>
+                  <details className="rounded-lg border border-slate-200 bg-white p-2 text-left">
+                    <summary className="cursor-pointer text-[10px] font-black uppercase tracking-widest text-purple-700">Review answers</summary>
+                    <ol className="mt-2 space-y-2">
+                      {questions.map((question, index) => {
+                        const attempt = answerRecords.find((record) => record.questionId === question.id);
+                        const correctAnswer = question.correctAnswerText ?? question.options[question.correctAnswer] ?? '—';
+                        return (
+                          <li key={question.id} className="border-t border-slate-100 pt-2 text-xs">
+                            <p className="font-semibold">{index + 1}. {question.question}</p>
+                            <p>Your answer: {attempt?.answerText || attempt?.answer || 'Not answered'}{attempt ? (attempt.correct ? ' · Correct' : ' · Incorrect') : ''}</p>
+                            {!attempt?.correct && <p>Correct answer: {correctAnswer}</p>}
+                            {question.explanation && <p className="text-slate-500">{question.explanation}</p>}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </details>
                 </div>
               </div>
             </motion.div>

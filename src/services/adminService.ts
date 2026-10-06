@@ -20,6 +20,7 @@ import {
 import { db } from '../lib/firebase';
 import { getDefaultAvatar } from '../utils/avatarUtils';
 import { auth } from '../lib/firebase';
+import { selectAnalyticsAttempts, type AdminAnalyticsRange, type AnalyticsAttempt } from '../utils/adminAnalyticsRange';
 import {
   ApiError,
   ApiNetworkError,
@@ -232,10 +233,18 @@ function asProgressMap(v: DocValue | undefined): Record<string, { progress?: Doc
 }
 
 /** Parse a Firestore quiz-attempt list without blind casts. */
-function asAttemptList(v: DocValue | undefined): Array<{ score?: DocValue }> | undefined {
+interface QuizAttemptDoc {
+  score?: DocValue;
+  timestamp?: DocValue;
+  createdAt?: DocValue;
+  completedAt?: DocValue;
+  date?: DocValue;
+}
+
+function asAttemptList(v: DocValue | undefined): QuizAttemptDoc[] | undefined {
   if (!Array.isArray(v)) return undefined;
   // SAFETY: attempt entries are records with optional numeric scores; scores parsed via isNumber.
-  return v.filter(isObjectRecord) as Array<{ score?: DocValue }>;
+  return v.filter(isObjectRecord) as QuizAttemptDoc[];
 }
 
 const isObjectRecord = <T extends DocValue>(v: T | undefined | null): v is T & Record<string, DocValue> =>
@@ -1104,10 +1113,25 @@ export interface AnalyticsSummary {
   aiTutorSessions: number;
   totalQuizzesTaken: number;
   avgQuizScore: number;
+  activeLearners: number;
+  quizAttempts: AnalyticsAttempt[];
 }
 
-/** Aggregate analytics KPIs from Firestore. */
-export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
+function analyticsAttemptDate(attempt: QuizAttemptDoc): Date | null {
+  const occurredAt = attempt.completedAt ?? attempt.timestamp ?? attempt.createdAt ?? attempt.date;
+  if (isTimestamp(occurredAt)) {
+    const date = occurredAt.toDate();
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (isString(occurredAt)) {
+    const date = new Date(occurredAt);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}
+
+/** Aggregate period-specific learning KPIs from Firestore. */
+export async function getAnalyticsSummary(range: AdminAnalyticsRange = 'all'): Promise<AnalyticsSummary> {
   try {
     const usersSnap = await getDocs(collection(db, 'users'));
     let totalStudents = 0;
@@ -1155,18 +1179,29 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
 
     let totalQuizzesTaken = 0;
     let avgQuizScore = 0;
+    let activeLearners = 0;
+    let quizAttempts: AnalyticsAttempt[] = [];
     try {
       const progressSnap = await getDocs(collection(db, 'progress'));
-      const scores: number[] = [];
+      const allAttempts: AnalyticsAttempt[] = [];
       progressSnap.docs.forEach(d => {
         const data = asDoc(d.data());
         const attempts = asAttemptList(data.quizAttempts);
-        if (attempts?.length) {
-          totalQuizzesTaken += attempts.length;
-          attempts.forEach(a => { if (isNumber(a.score)) scores.push(a.score); });
-        }
+        attempts?.forEach((attempt) => {
+          allAttempts.push({
+            learnerId: d.id,
+            score: isNumber(attempt.score) ? attempt.score : null,
+            occurredAt: analyticsAttemptDate(attempt),
+          });
+        });
       });
-      avgQuizScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      quizAttempts = selectAnalyticsAttempts(allAttempts, range);
+      totalQuizzesTaken = quizAttempts.length;
+      const scoredAttempts = quizAttempts.flatMap(({ score }) => score === null ? [] : [score]);
+      avgQuizScore = scoredAttempts.length > 0
+        ? Math.round(scoredAttempts.reduce((sum, score) => sum + score, 0) / scoredAttempts.length)
+        : 0;
+      activeLearners = new Set(quizAttempts.map((attempt) => attempt.learnerId)).size;
     } catch { /* optional */ }
 
     return {
@@ -1180,6 +1215,8 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       aiTutorSessions,
       totalQuizzesTaken,
       avgQuizScore,
+      activeLearners,
+      quizAttempts,
     };
   } catch (err) {
     console.error('[adminService] getAnalyticsSummary error:', err);
@@ -1194,6 +1231,8 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       aiTutorSessions: 0,
       totalQuizzesTaken: 0,
       avgQuizScore: 0,
+      activeLearners: 0,
+      quizAttempts: [],
     };
   }
 }

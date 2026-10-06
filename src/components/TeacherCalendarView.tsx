@@ -354,17 +354,24 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
       setError('Event title is required.');
       return;
     }
-
-    setSaving(true);
-    setError('');
+    if (!formDate || !formStartTime || Number.isNaN(parseDateTime(formDate, formStartTime).getTime())) {
+      setError('Choose a valid event date and start time.');
+      return;
+    }
 
     const start = parseDateTime(formDate, formStartTime);
     const end = formEndTime ? parseDateTime(formDate, formEndTime) : undefined;
+    if (end && (Number.isNaN(end.getTime()) || end.getTime() <= start.getTime())) {
+      setError('Choose an end time later than the start time.');
+      return;
+    }
+    setSaving(true);
+    setError('');
     const evData = {
       title: formTitle.trim(),
       description: formDescription.trim() ? formDescription.trim() : undefined,
       startTime: start,
-      endTime: end && end.getTime() > start.getTime() ? end : undefined,
+      endTime: end,
       color: formColor,
     };
 

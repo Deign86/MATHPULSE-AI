@@ -70,8 +70,11 @@ export const createCalendarEvent = async (
     createdAt: new Date(),
   };
 
+  const firestoreEvent = Object.fromEntries(
+    Object.entries(event).filter(([, value]) => value !== undefined),
+  );
   await setDoc(eventRef, {
-    ...event,
+    ...firestoreEvent,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -84,8 +87,11 @@ export const updateCalendarEvent = async (
   updates: Partial<Pick<CalendarEvent, 'title' | 'description' | 'startTime' | 'endTime' | 'color'>>,
 ): Promise<void> => {
   const eventRef = doc(db, 'calendarEvents', eventId);
+  const firestoreUpdates = Object.fromEntries(
+    Object.entries(updates).filter(([, value]) => value !== undefined),
+  );
   await updateDoc(eventRef, {
-    ...updates,
+    ...firestoreUpdates,
     updatedAt: serverTimestamp(),
   });
 };

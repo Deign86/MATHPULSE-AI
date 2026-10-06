@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, GraduationCap, BookOpen, Clock,
@@ -135,16 +135,25 @@ export const AdminAnalytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('outcomes');
   const [isExporting, setIsExporting] = useState(false);
+  const latestSummaryRequest = useRef(0);
 
-  const loadData = () => {
+  const loadData = useCallback((range: TimeRange) => {
+    const requestId = latestSummaryRequest.current + 1;
+    latestSummaryRequest.current = requestId;
     setLoadingKPIs(true);
-    getAnalyticsSummary()
-      .then(setSummary)
-      .catch(console.error)
-      .finally(() => setLoadingKPIs(false));
-  };
+    getAnalyticsSummary(range)
+      .then((nextSummary) => {
+        if (requestId === latestSummaryRequest.current) setSummary(nextSummary);
+      })
+      .catch(() => {
+        if (requestId === latestSummaryRequest.current) console.error('Failed to load analytics summary.');
+      })
+      .finally(() => {
+        if (requestId === latestSummaryRequest.current) setLoadingKPIs(false);
+      });
+  }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(timeRange); }, [loadData, timeRange]);
 
   // Performance Trend Curves
   const trajectoryData = useMemo(() => {
@@ -189,23 +198,34 @@ export const AdminAnalytics: React.FC = () => {
 
   // Grade Cohort Distribution
   const cohortData = useMemo(() => {
-    const totalUsers = summary?.totalStudents || 160;
-    const atRiskCount = summary?.atRiskStudents || Math.round(totalUsers * 0.08);
-    const developingCount = Math.round(totalUsers * 0.22);
-    const proficientCount = Math.round(totalUsers * 0.45);
-    const advancedCount = Math.max(0, totalUsers - atRiskCount - developingCount - proficientCount);
+    const learnerScores = new Map<string, number[]>();
+    summary?.quizAttempts.forEach(({ learnerId, score }) => {
+      if (score === null) return;
+      const scores = learnerScores.get(learnerId) ?? [];
+      scores.push(score);
+      learnerScores.set(learnerId, scores);
+    });
+    const learnerAverages = [...learnerScores.values()].map((scores) => (
+      scores.reduce((total, score) => total + score, 0) / scores.length
+    ));
+    const countFor = (matches: (score: number) => boolean) => learnerAverages.filter(matches).length;
+    const advancedCount = countFor((score) => score >= 90);
+    const proficientCount = countFor((score) => score >= 75 && score < 90);
+    const developingCount = countFor((score) => score >= 60 && score < 75);
+    const atRiskCount = countFor((score) => score < 60);
+    const totalLearners = learnerAverages.length;
 
     return [
-      { name: 'Advanced (90-100%)', count: advancedCount, percent: Math.round((advancedCount / totalUsers) * 100), color: COHORT_COLORS.advanced },
-      { name: 'Proficient (75-89%)', count: proficientCount, percent: Math.round((proficientCount / totalUsers) * 100), color: COHORT_COLORS.proficient },
-      { name: 'Developing (60-74%)', count: developingCount, percent: Math.round((developingCount / totalUsers) * 100), color: COHORT_COLORS.developing },
-      { name: 'Needs Support (<60%)', count: atRiskCount, percent: Math.round((atRiskCount / totalUsers) * 100), color: COHORT_COLORS.atRisk },
+      { name: 'Advanced (90-100%)', count: advancedCount, percent: totalLearners ? Math.round((advancedCount / totalLearners) * 100) : 0, color: COHORT_COLORS.advanced },
+      { name: 'Proficient (75-89%)', count: proficientCount, percent: totalLearners ? Math.round((proficientCount / totalLearners) * 100) : 0, color: COHORT_COLORS.proficient },
+      { name: 'Developing (60-74%)', count: developingCount, percent: totalLearners ? Math.round((developingCount / totalLearners) * 100) : 0, color: COHORT_COLORS.developing },
+      { name: 'Needs Support (<60%)', count: atRiskCount, percent: totalLearners ? Math.round((atRiskCount / totalLearners) * 100) : 0, color: COHORT_COLORS.atRisk },
     ];
   }, [summary]);
 
   const passRate = useMemo(() => {
     const total = cohortData.reduce((acc, c) => acc + c.count, 0);
-    if (total === 0) return 88.5;
+    if (total === 0) return 0;
     const passing = cohortData.filter(c => c.name !== 'Needs Support (<60%)').reduce((acc, c) => acc + c.count, 0);
     return Math.round((passing / total) * 100);
   }, [cohortData]);
@@ -220,37 +240,20 @@ export const AdminAnalytics: React.FC = () => {
         [`Timeframe Filter: ${timeRange.toUpperCase()}`],
         [],
         ['KEY PERFORMANCE INDICATORS'],
-        ['Metric', 'Value', 'Benchmark Target', 'Status'],
-        ['Total Active Users', summary?.totalActiveUsers ?? 0, '100+', 'Healthy'],
-        ['Total Students Enrolled', summary?.totalStudents ?? 0, '80+', 'Healthy'],
-        ['Total Teachers / Instructors', summary?.totalTeachers ?? 0, '5+', 'Healthy'],
-        ['Average Quiz Score', `${summary?.avgQuizScore ?? 82.4}%`, '75.0%', 'Above Target'],
-        ['Total Quizzes Completed', summary?.totalQuizzesTaken ?? 4904, '1000+', 'Active'],
-        ['At-Risk Students', summary?.atRiskStudents ?? 12, '<15', 'Monitored'],
-        ['Total XP Earned', summary?.totalXPEarned ?? 384500, '-', 'Gamified'],
-        ['Active Daily Streaks', summary?.activeStreaks ?? 142, '-', 'High Retention'],
-        ['AI Socratic Tutor Sessions', summary?.aiTutorSessions ?? 1280, '-', 'High Engagement'],
+        ['Metric', 'Value'],
+        ['Active Learners', summary?.activeLearners ?? 0],
+        ['Average Quiz Score', `${summary?.avgQuizScore ?? 0}%`],
+        ['Quiz Attempts', summary?.totalQuizzesTaken ?? 0],
+        ['Learners Scoring Below 60%', atRiskCount],
         [],
-        ['CURRICULUM SUBJECT BREAKDOWN'],
-        ['Subject Name', 'Subject Code', 'Grade Level', 'Enrolled', 'Completion Rate', 'Quiz Attempts', 'Average Score', 'Status'],
-        ...SUBJECT_LIST.map(s => [
-          s.name,
-          s.code,
-          s.grade,
-          s.enrolled,
-          `${s.completedPercent}%`,
-          s.quizAttempts,
-          `${s.avgScore}%`,
-          s.status
-        ]),
+        ['QUIZ ATTEMPTS IN SELECTED RANGE'],
+        ['Learner ID', 'Occurred At', 'Score'],
+        ...((summary?.quizAttempts ?? []).map((attempt) => [
+          attempt.learnerId,
+          attempt.occurredAt?.toISOString() ?? 'Undated (all-time only)',
+          attempt.score ?? '',
+        ])),
         [],
-        ['MASTERY COHORT DISTRIBUTION'],
-        ['Cohort Tier', 'Student Count', 'Percentage'],
-        ...cohortData.map(c => [c.name, c.count, `${c.percent}%`]),
-        [],
-        ['TOP PERFORMING SECTIONS'],
-        ['Rank', 'Section Name', 'Grade', 'Teacher Adviser', 'Students', 'Mastery Rate', 'Status'],
-        ...TOP_CLASSES.map(cls => [cls.rank, cls.section, cls.grade, cls.adviser, cls.students, `${cls.masteryRate}%`, cls.status]),
       ];
 
       const columnCount = Math.max(...rows.map(row => row.length));
@@ -274,30 +277,32 @@ export const AdminAnalytics: React.FC = () => {
     }
   };
 
-  const activeUsersCount = summary?.totalActiveUsers || 192;
-  const avgQuizScore = summary?.avgQuizScore ? summary.avgQuizScore : 82.4;
-  const quizzesTakenCount = summary?.totalQuizzesTaken || 4904;
-  const atRiskCount = summary?.atRiskStudents || 12;
+  const activeUsersCount = summary?.activeLearners ?? 0;
+  const avgQuizScore = summary?.avgQuizScore ?? 0;
+  const quizzesTakenCount = summary?.totalQuizzesTaken ?? 0;
+  const atRiskCount = new Set((summary?.quizAttempts ?? [])
+    .filter(({ score }) => score !== null && score < 60)
+    .map(({ learnerId }) => learnerId)).size;
 
   const kpiBentos = [
     {
       title: 'Active Learners',
       value: loadingKPIs ? null : activeUsersCount.toLocaleString(),
-      subValue: `${summary?.totalStudents || 168} Students • ${summary?.totalTeachers || 24} Teachers`,
-      badge: 'Active Base',
-      trend: '+14.2%',
+      subValue: `${summary?.activeLearners ?? 0} students with quiz activity • ${timeRange.toUpperCase()}`,
+      badge: timeRange.toUpperCase(),
+      trend: 'Selected range',
       isPositive: true,
       icon: Users,
       gradient: 'bg-gradient-to-br from-[#6366F1] via-[#4F46E5] to-[#4338CA]',
       shadow: 'shadow-[0_8px_24px_-6px_rgba(99,102,241,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(99,102,241,0.48)]',
-      progressPercent: 88,
+      progressPercent: summary?.totalStudents ? (activeUsersCount / summary.totalStudents) * 100 : 0,
     },
     {
       title: 'Mastery Average',
       value: loadingKPIs ? null : `${avgQuizScore}%`,
       subValue: 'Benchmark target is 75.0%',
-      badge: 'Pass: 88.5%',
-      trend: '+3.8%',
+      badge: `Pass: ${passRate}%`,
+      trend: `${timeRange.toUpperCase()} average`,
       isPositive: true,
       icon: Target,
       gradient: 'bg-gradient-to-br from-[#10B981] via-[#059669] to-[#047857]',
@@ -307,26 +312,26 @@ export const AdminAnalytics: React.FC = () => {
     {
       title: 'Quizzes Taken',
       value: loadingKPIs ? null : quizzesTakenCount.toLocaleString(),
-      subValue: 'Diagnostic & practice logs',
-      badge: '+28.5% Pace',
-      trend: '+28.5%',
+      subValue: `Diagnostic & practice logs • ${timeRange.toUpperCase()}`,
+      badge: timeRange.toUpperCase(),
+      trend: `${quizzesTakenCount} attempts`,
       isPositive: true,
       icon: Clock,
       gradient: 'bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED]',
       shadow: 'shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.48)]',
-      progressPercent: 76,
+      progressPercent: Math.min(100, quizzesTakenCount),
     },
     {
       title: 'At-Risk Students',
       value: loadingKPIs ? null : atRiskCount.toString(),
-      subValue: 'Score < 60% or low activity',
-      badge: 'Action Priority',
-      trend: '-2.1%',
+      subValue: `Learners scoring below 60% • ${timeRange.toUpperCase()}`,
+      badge: timeRange.toUpperCase(),
+      trend: `${atRiskCount} learners`,
       isPositive: true,
       icon: ShieldAlert,
       gradient: 'bg-gradient-to-br from-[#FB7185] via-[#F43F5E] to-[#E11D48]',
       shadow: 'shadow-[0_8px_24px_-6px_rgba(244,63,94,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(244,63,94,0.48)]',
-      progressPercent: 12,
+      progressPercent: summary?.activeLearners ? (atRiskCount / summary.activeLearners) * 100 : 0,
     },
   ];
 
@@ -338,7 +343,7 @@ export const AdminAnalytics: React.FC = () => {
       color: 'text-amber-600 dark:text-amber-400',
       bg: 'bg-amber-500/10 dark:bg-amber-950/20',
       border: 'border-amber-200/80 dark:border-amber-900/40',
-      value: loadingKPIs ? null : (summary?.achievementsUnlocked || 342).toLocaleString(),
+      value: loadingKPIs ? null : (summary?.achievementsUnlocked ?? 0).toLocaleString(),
     },
     {
       label: 'Platform XP Earned',
@@ -347,7 +352,7 @@ export const AdminAnalytics: React.FC = () => {
       color: 'text-violet-600 dark:text-violet-400',
       bg: 'bg-violet-500/10 dark:bg-violet-950/20',
       border: 'border-violet-200/80 dark:border-violet-900/40',
-      value: loadingKPIs ? null : ((summary?.totalXPEarned ?? 384500) >= 1_000_000 ? `${((summary?.totalXPEarned ?? 384500) / 1_000_000).toFixed(1)}M` : (summary?.totalXPEarned ?? 384500) >= 1_000 ? `${Math.round((summary?.totalXPEarned ?? 384500) / 1_000)}K` : (summary?.totalXPEarned ?? 384500).toLocaleString()),
+      value: loadingKPIs ? null : ((summary?.totalXPEarned ?? 0) >= 1_000_000 ? `${((summary?.totalXPEarned ?? 0) / 1_000_000).toFixed(1)}M` : (summary?.totalXPEarned ?? 0) >= 1_000 ? `${Math.round((summary?.totalXPEarned ?? 0) / 1_000)}K` : (summary?.totalXPEarned ?? 0).toLocaleString()),
     },
     {
       label: 'Active Streaks',
@@ -356,7 +361,7 @@ export const AdminAnalytics: React.FC = () => {
       color: 'text-rose-600 dark:text-rose-400',
       bg: 'bg-rose-500/10 dark:bg-rose-950/20',
       border: 'border-rose-200/80 dark:border-rose-900/40',
-      value: loadingKPIs ? null : (summary?.activeStreaks || 148).toLocaleString(),
+      value: loadingKPIs ? null : (summary?.activeStreaks ?? 0).toLocaleString(),
     },
     {
       label: 'AI Tutor Sessions',
@@ -365,7 +370,7 @@ export const AdminAnalytics: React.FC = () => {
       color: 'text-sky-600 dark:text-sky-400',
       bg: 'bg-sky-500/10 dark:bg-sky-950/20',
       border: 'border-sky-200/80 dark:border-sky-900/40',
-      value: loadingKPIs ? null : (summary?.aiTutorSessions || 1280).toLocaleString(),
+      value: loadingKPIs ? null : (summary?.aiTutorSessions ?? 0).toLocaleString(),
     },
   ];
 
@@ -406,7 +411,7 @@ export const AdminAnalytics: React.FC = () => {
 
           {/* Refresh Button */}
           <button
-            onClick={loadData}
+            onClick={() => loadData(timeRange)}
             disabled={loadingKPIs}
             title="Refresh platform telemetry"
             aria-label="Refresh platform telemetry"

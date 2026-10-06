@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as firestore from 'firebase/firestore';
 import type { DocumentSnapshot } from 'firebase/firestore';
 import * as lessonContent from '../../hooks/useLessonContent';
@@ -143,7 +143,10 @@ async function finishLesson(): Promise<void> {
 }
 
 describe('G1b #171 lesson completion subject fallback', () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
+    cleanup();
     document.body.innerHTML = '';
     sessionStorage.clear();
     vi.clearAllMocks();
@@ -167,6 +170,7 @@ describe('G1b #171 lesson completion subject fallback', () => {
       return () => undefined;
     });
     vi.spyOn(progressService, 'recalculateAndUpdateModuleProgress').mockResolvedValue(100);
+    vi.spyOn(progressService, 'completeQuiz');
   });
 
   it('persists fallback subject progress and updates the journey after readback', async () => {
@@ -233,5 +237,32 @@ describe('G1b #171 lesson completion subject fallback', () => {
       }));
     });
     expect(screen.getByText('Generating Quiz...')).toBeInTheDocument();
+  });
+
+  it('surfaces quiz generation failures with a retry instead of inventing questions', async () => {
+    generatePracticeSessionSpy.mockRejectedValue(new Error('service unavailable'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    renderFallbackModule(vi.fn(), vi.fn());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quiz' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Quiz questions could not be loaded');
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(progressService.completeQuiz).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(generatePracticeSessionSpy).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('alert')).toHaveTextContent('Quiz questions could not be loaded');
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it('shows Review for a completed lesson and browser back returns to the module', async () => {
+    renderFallbackModule(vi.fn(), vi.fn());
+    progressListener(buildProgress([LESSON_ID]));
+    expect(await screen.findByRole('button', { name: /Review/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Fallback Lesson/i }));
+    await screen.findByRole('button', { name: /Section: Part 1/ });
+    fireEvent(window, new PopStateEvent('popstate', { state: { mathPulseModule: MODULE_ID } }));
+    await screen.findByText('Study Journey');
   });
 });

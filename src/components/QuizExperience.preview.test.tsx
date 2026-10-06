@@ -44,6 +44,9 @@ describe('QuizExperience preview mode', () => {
     fireEvent.click(screen.getByRole('button', { name: '4' }));
     await act(async () => { vi.advanceTimersByTime(2_200); });
     expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Review answers'));
+    expect(screen.getByText('Your answer: 4 · Correct')).toBeInTheDocument();
+    expect(screen.getByText('2 + 2 = 4')).toBeInTheDocument();
     expect(screen.getAllByText('+0').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'RETAKE QUIZ' }));
@@ -117,7 +120,7 @@ describe('QuizExperience preview mode', () => {
     const onQuizEnd = vi.fn();
     vi.useFakeTimers();
     render(<QuizExperience quiz={assignedQuiz} studentId="student-1" onComplete={onComplete} onQuizEnd={onQuizEnd} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: '4' }));
+    fireEvent.click(screen.getByRole('button', { name: '3' }));
     await act(async () => { vi.advanceTimersByTime(2_200); });
     expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
     await act(async () => { vi.advanceTimersByTime(60_000); });

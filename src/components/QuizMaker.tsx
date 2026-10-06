@@ -115,9 +115,19 @@ const filterTopicsByGrade = (
 };
 
 // Balanced limits for classroom use: allows longer quizzes while keeping response times practical.
-const MAX_QUESTIONS_LIMIT = 30;
+const MAX_QUESTIONS_LIMIT = 12;
 const MAX_TOPICS_LIMIT = 12;
+export const DEFAULT_QUIZ_QUESTION_COUNT = 5;
 const QUIZ_TASK_STORAGE_KEY = 'mathpulse:quiz-maker:active-task';
+
+export function addQuizTopic(selected: string[], topic: string): string[] {
+  if (selected.includes(topic) || selected.length >= MAX_TOPICS_LIMIT) return selected;
+  return [...selected, topic];
+}
+
+export function resolveQuizTitle(title: string, grade: string, topics: string[]): string {
+  return title.trim() || `${grade} Quiz – ${topics.length > 0 ? topics.slice(0, 2).join(', ') : 'Mixed Topics'}`;
+}
 
 interface PersistedQuizTask {
   taskId: string;
@@ -204,7 +214,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   // Form state
   const [step, setStep] = useState<Step>('setup');
   const [selectedGrade, setSelectedGrade] = useState(normalizeGradeLevel(initialGrade));
-  const [numQuestions, setNumQuestions] = useState(10); // Capped at MAX_QUESTIONS_LIMIT
+  const [numQuestions, setNumQuestions] = useState(DEFAULT_QUIZ_QUESTION_COUNT); // Capped at MAX_QUESTIONS_LIMIT
+  const [quizTitle, setQuizTitle] = useState('');
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [excludeTopics, setExcludeTopics] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<QuestionType[]>(['multiple_choice', 'word_problem', 'identification']);
@@ -397,9 +408,14 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   };
 
   const toggleTopic = (topic: string) => {
-    setSelectedTopics(prev =>
-      prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
-    );
+    setSelectedTopics(prev => {
+      if (prev.includes(topic)) return prev.filter(t => t !== topic);
+      const next = addQuizTopic(prev, topic);
+      if (next === prev) {
+        toast.error(`Choose no more than ${MAX_TOPICS_LIMIT} topics.`);
+      }
+      return next;
+    });
     // Remove from exclude if added
     setExcludeTopics(prev => prev.filter(t => t !== topic));
   };
@@ -799,7 +815,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     });
 
     return {
-      title: `${effectiveGrade} Quiz – ${effectiveTopics.length > 0 ? effectiveTopics.slice(0, 2).join(', ') : 'Mixed Topics'}`,
+      title: resolveQuizTitle(quizTitle, effectiveGrade, effectiveTopics),
       gradeLevel: effectiveGrade,
       questions,
       totalPoints: result.totalPoints,
@@ -1593,6 +1609,18 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       </select>
                       <ChevronDown size={15} className="text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
+                  </div>
+                  <div className="flex-1 group">
+                    <label htmlFor="quiz-title" className="text-xs sm:text-[13px] font-semibold text-[#1e293b] mb-1.5 block">Quiz title</label>
+                    <input
+                      id="quiz-title"
+                      type="text"
+                      value={quizTitle}
+                      maxLength={120}
+                      onChange={(event) => setQuizTitle(event.target.value)}
+                      placeholder="Optional title"
+                      className="w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] rounded-xl px-3.5 py-2 sm:py-2.5 h-[40px] sm:h-[42px]"
+                    />
                   </div>
                   {/* Question Counter */}
                   <div className="flex-1 group">
