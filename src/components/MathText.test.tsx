@@ -30,6 +30,12 @@ describe('MathText spacing (S7)', () => {
     expect(katex?.textContent).toContain('500');
   });
 
+  it('renders an un-delimited indexed variable as math instead of raw underscores', () => {
+    const { container } = render(<MathText>{'a_{n-1}'}</MathText>);
+    expect(container.querySelector('.katex')).not.toBeNull();
+    expect(container.querySelector('.katex-html')?.textContent).not.toContain('_');
+  });
+
   it('renders plain prose without math untouched', () => {
     expect(renderedText('What is the mean of 4, 7, and 12?')).toBe('What is the mean of 4, 7, and 12?');
   });

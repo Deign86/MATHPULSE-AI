@@ -175,6 +175,32 @@ describe('notificationFirestoreService', () => {
       expect(getDocs).toHaveBeenCalled();
     });
 
+    it('maps trusted teacher quiz-completion notifications into the teacher activity inbox', async () => {
+      vi.mocked(getDocs).mockResolvedValue(snapshotWith({ docs: [
+        {
+          id: 'quiz-completed-1',
+          data: () => ({
+            userId: 'test-user-id',
+            type: 'quiz_completed',
+            title: 'Student quiz completed',
+            message: 'A student completed Algebra with a score of 80%.',
+            recipientRole: 'teacher',
+            studentId: 'student-1',
+            isRead: false,
+            createdAt: new Date(2000, 0, 1),
+          }),
+        },
+      ] }));
+
+      const notices = await getUserNotifications('test-user-id');
+
+      expect(notices[0]).toMatchObject({
+        type: 'quiz_completed',
+        recipientRole: 'teacher',
+        studentId: 'student-1',
+      });
+    });
+
     it('returns empty array when the requested inbox is not the signed-in user', async () => {
       const result = await getUserNotifications('someone-else');
 

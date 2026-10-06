@@ -83,6 +83,7 @@ const AdminSubjects: React.FC = () => {
   const { userProfile } = useAuth();
   const { availability, loading, error } = useSubjectAvailability();
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [availabilityOverrides, setAvailabilityOverrides] = useState<Record<string, boolean>>({});
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -98,6 +99,7 @@ const AdminSubjects: React.FC = () => {
       setSavingId(subjectId);
       try {
         await toggleSubjectAvailability(subjectId, nextAvailable, userProfile.uid);
+        setAvailabilityOverrides((current) => ({ ...current, [subjectId]: nextAvailable }));
         toast.success(
           `${SUBJECT_ROWS.find((s) => s.id === subjectId)?.name || subjectId} is now ${nextAvailable ? 'available' : 'locked'}`,
         );
@@ -115,7 +117,7 @@ const AdminSubjects: React.FC = () => {
     const query = searchTerm.trim().toLowerCase();
     return SUBJECT_ROWS.filter((subject) => {
       const entry = availability[subject.id];
-      const isAvailable = entry?.available ?? !subject.shelved;
+      const isAvailable = availabilityOverrides[subject.id] ?? entry?.available ?? !subject.shelved;
       const pdfPath = entry?.pdfPath ?? '';
 
       // Text search
@@ -140,7 +142,7 @@ const AdminSubjects: React.FC = () => {
 
       return true;
     });
-  }, [searchTerm, selectedGrade, selectedStatus, availability]);
+  }, [searchTerm, selectedGrade, selectedStatus, availability, availabilityOverrides]);
 
   const hasActiveFilters = searchTerm !== '' || selectedGrade !== 'All Grades' || selectedStatus !== 'All Statuses';
 
@@ -175,7 +177,7 @@ const AdminSubjects: React.FC = () => {
           },
           {
             label: 'Available',
-            value: SUBJECT_ROWS.filter((s) => availability[s.id]?.available !== false).length,
+            value: SUBJECT_ROWS.filter((s) => (availabilityOverrides[s.id] ?? availability[s.id]?.available) !== false).length,
             subtext: 'Accessible to students',
             badge: 'Active',
             icon: Unlock,
@@ -184,7 +186,7 @@ const AdminSubjects: React.FC = () => {
           },
           {
             label: 'Locked',
-            value: SUBJECT_ROWS.filter((s) => availability[s.id]?.available === false).length,
+            value: SUBJECT_ROWS.filter((s) => (availabilityOverrides[s.id] ?? availability[s.id]?.available) === false).length,
             subtext: 'Materials not yet linked',
             badge: 'Locked',
             icon: Lock,
@@ -328,7 +330,7 @@ const AdminSubjects: React.FC = () => {
         ) : (
           filteredSubjects.map((subject) => {
             const entry = availability[subject.id];
-            const isAvailable = entry?.available ?? !subject.shelved;
+            const isAvailable = availabilityOverrides[subject.id] ?? entry?.available ?? !subject.shelved;
             const lastUpdated = entry?.lastUpdated;
             const isSaving = savingId === subject.id;
 
@@ -429,7 +431,7 @@ const AdminSubjects: React.FC = () => {
               ) : (
                 filteredSubjects.map((subject) => {
                   const entry = availability[subject.id];
-                  const isAvailable = entry?.available ?? !subject.shelved;
+            const isAvailable = availabilityOverrides[subject.id] ?? entry?.available ?? !subject.shelved;
                   const lastUpdated = entry?.lastUpdated;
                   const isSaving = savingId === subject.id;
 

@@ -13,6 +13,7 @@ interface RightSidebarProps {
   userLevel: number;
   userPhoto?: string;
   currentXP: number;
+  currentStreak: number;
   overallXP?: number;
   xpToNextLevel: number;
   onLogout?: () => void;
@@ -253,6 +254,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
   onOpenLeaderboard,
   userPhoto,
   currentXP,
+  currentStreak,
   hasCompletedDiagnostic,
   onOpenAssessment,
   onNavigateToModules,
@@ -363,7 +365,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
               Streak
             </span>
             <span className="block text-base sm:text-lg font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1">
-              7 Days
+              {currentStreak} Days
             </span>
           </div>
         </motion.button>

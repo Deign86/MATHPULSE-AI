@@ -471,7 +471,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
       excludeTopics,
       classSectionId: selectedClassId,
       className: selectedClassName,
-      preferImportedTopics: rolloutFlags.quizEnabled,
+      preferImportedTopics: rolloutFlags.quizEnabled && selectedTopics.length === 0,
     };
   };
 

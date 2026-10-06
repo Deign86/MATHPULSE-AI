@@ -53,6 +53,7 @@ const AIMonitoringPage: React.FC = () => {
 
   const topSpending = data.features.find((f) => f.isTopSpending);
   const mostActive = data.features.find((f) => f.isMostActive);
+  const latestDailyMetric = data.telemetry.dailyMetrics[data.telemetry.dailyMetrics.length - 1];
 
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-8 animate-in fade-in duration-300">
@@ -122,13 +123,11 @@ const AIMonitoringPage: React.FC = () => {
           progressPercent={100}
         />
         <KPICard
-          title="Total AI Requests"
-          value={data.totalUsage.toLocaleString()}
-          subValue={data.billingCycleLabel}
+          title="AI Attempts (30 days)"
+          value={data.telemetry.totalAttempts.toLocaleString()}
+          subValue={`Today: ${latestDailyMetric.totalAttempts.toLocaleString()} attempts`}
           icon={<Activity className="h-5 w-5" />}
           theme="purple"
-          progressPercent={75}
-          trend="+18.4%"
         />
         <KPICard
           title="Cache Hit Efficiency"
@@ -140,6 +139,33 @@ const AIMonitoringPage: React.FC = () => {
           trend="+5.1%"
         />
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <KPICard
+          title="Average Generation Time"
+          value={data.telemetry.averageLatencyMs === null ? '—' : `${data.telemetry.averageLatencyMs.toLocaleString()} ms`}
+          subValue={data.telemetry.latencyDefinition}
+          icon={<Activity className="h-5 w-5" />}
+          theme="sky"
+        />
+        <KPICard
+          title="Success Rate"
+          value={data.telemetry.successRate === null ? '—' : `${data.telemetry.successRate.toFixed(1)}%`}
+          subValue={data.telemetry.successRateDefinition}
+          icon={<Zap className="h-5 w-5" />}
+          theme="emerald"
+          progressPercent={data.telemetry.successRate ?? undefined}
+        />
+      </div>
+
+      <dl aria-label="Daily AI attempts in Asia/Manila time">
+        {data.telemetry.dailyMetrics.map((dailyMetric) => (
+          <div key={dailyMetric.date}>
+            <dt>{dailyMetric.date}</dt>
+            <dd>{dailyMetric.totalAttempts} attempts; {dailyMetric.successfulAttempts} successful</dd>
+          </div>
+        ))}
+      </dl>
 
       {/* ── Secondary Summary Panels ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
