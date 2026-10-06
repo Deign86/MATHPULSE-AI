@@ -33,7 +33,7 @@ describe('MathText spacing (S7)', () => {
   it('renders an un-delimited indexed variable as math instead of raw underscores', () => {
     const { container } = render(<MathText>{'a_{n-1}'}</MathText>);
     expect(container.querySelector('.katex')).not.toBeNull();
-    expect(container.textContent).not.toContain('_');
+    expect(container.querySelector('.katex-html')?.textContent).not.toContain('_');
   });
 
   it('renders plain prose without math untouched', () => {

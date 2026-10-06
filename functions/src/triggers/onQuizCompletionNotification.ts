@@ -12,12 +12,13 @@ type QuizSubmission = {
 
 type QuizAssignment = {
   lrn?: string;
-  teacherId?: string;
+  teacherId?: string | number;
 };
 
 type ClassSectionOwnership = {
   studentUids?: string[];
   ownerTeacherId?: string;
+  teacherId?: string;
 };
 
 type TeacherProfile = {
@@ -78,9 +79,8 @@ export function assignmentTeacherId(
   assignment: QuizAssignment | undefined,
   studentId: string,
 ): string | null {
-  return assignment?.lrn === studentId && assignment.teacherId !== undefined
-    ? assignment.teacherId
-    : null;
+  const teacherId = parseString(assignment?.teacherId);
+  return assignment?.lrn === studentId && teacherId !== undefined ? teacherId : null;
 }
 
 export function enrollmentTeacherId(
