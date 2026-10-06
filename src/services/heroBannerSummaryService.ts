@@ -182,17 +182,25 @@ function _buildRecommendation(
   }
 
   // Fallback based on risk level
+  const weaknesses = proficiencyProfile?.weaknesses ?? [];
   const riskCap = _capitalizeRisk(risk);
+  const topWeaknesses = _formatTopWeakness(weaknesses);
 
   if (risk === 'critical' || risk === 'high') {
-    return `We recommend starting with foundational lessons and guided practice to build confidence. Focus on one topic at a time, and don't hesitate to review earlier material.`;
+    return topWeaknesses
+      ? `We recommend starting with foundational lessons and guided practice for ${topWeaknesses}. Focus on one topic at a time, and don't hesitate to review earlier material.`
+      : `We recommend starting with foundational lessons and guided practice to build confidence. Focus on one topic at a time, and don't hesitate to review earlier material.`;
   }
 
   if (risk === 'moderate') {
-    return `Start with guided review lessons to strengthen your foundation, then progressively tackle more challenging problems.`;
+    return topWeaknesses
+      ? `Start with guided review lessons for ${topWeaknesses} to strengthen your foundation, then progressively tackle more challenging problems.`
+      : `Start with guided review lessons to strengthen your foundation, then progressively tackle more challenging problems.`;
   }
 
-  return `Continue practicing regularly and review topics you find challenging. Your personalized learning path will guide you to the right lessons.`;
+  return topWeaknesses
+    ? `Continue practicing regularly — focus extra attention on ${topWeaknesses}. Your personalized learning path will guide you to the right lessons.`
+    : `Continue practicing regularly and review topics you find challenging. Your personalized learning path will guide you to the right lessons.`;
 }
 
 function _capitalizeRisk(risk: string): string {
@@ -211,4 +219,10 @@ function _toDate(value: Date | Timestamp | string | number | null | undefined): 
   if (value instanceof Date) return value;
   if (value instanceof Timestamp) return value.toDate();
   return new Date(value);
+}
+
+function _formatTopWeakness(weaknesses: string[]): string | null {
+  const top = weaknesses.slice(0, 2);
+  if (top.length === 0) return null;
+  return top.join(' and ');
 }
