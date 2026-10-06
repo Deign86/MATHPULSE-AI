@@ -34,6 +34,7 @@ import {
   getClassAnalytics,
   refreshClassInsights,
   type ClassAnalyticsReport,
+  type TopicPerformance,
 } from '../services/classAnalyticsService';
 import { getUserProgress } from '../services/progressService';
 import {
@@ -130,6 +131,13 @@ export function formatRiskLabel(value: string): string {
   if (normalized === 'LOW RISK') return 'Low risk';
   if (normalized === 'CRITICAL') return 'Critical';
   return value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (letter: string) => letter.toUpperCase());
+}
+
+export function deriveTopicPerformance(topicPerformance: readonly TopicPerformance[] | undefined): { topic: string; score: number }[] {
+  return (topicPerformance ?? [])
+    .filter((item) => item.topic.trim().length > 0)
+    .map((item) => ({ topic: item.topic, score: Math.round(item.class_accuracy) }))
+    .sort((left, right) => left.score - right.score);
 }
 
 interface TeacherDashboardProps {
@@ -3906,45 +3914,9 @@ const AnalyticsView: React.FC<{
       return bs ? bs.risk_level : null;
     };
 
-    // Topic performance only includes observed class assessment data.
     const effectiveTopicPerformance = useMemo(() => {
-      const topicAggregates: Record<string, { total: number; sum: number }> = {};
-
-      if (backendReport?.insights?.topic_performance?.length) {
-        backendReport.insights.topic_performance.forEach((item) => {
-          if (item.topic) {
-            topicAggregates[item.topic] = { total: 1, sum: item.class_accuracy };
-          }
-        });
-      }
-
-      students.forEach((student) => {
-        const studentScore = getStudentScore(student.id) ?? student.avgScore;
-        if (student.weakestTopic && student.weakestTopic !== 'N/A') {
-          if (!topicAggregates[student.weakestTopic]) {
-            topicAggregates[student.weakestTopic] = { total: 0, sum: 0 };
-          }
-          topicAggregates[student.weakestTopic].total += 1;
-          topicAggregates[student.weakestTopic].sum += studentScore;
-        }
-        if (Array.isArray(student.struggles)) {
-          student.struggles.forEach((struggle) => {
-            if (struggle && struggle !== 'N/A' && struggle !== student.weakestTopic) {
-              if (!topicAggregates[struggle]) {
-                topicAggregates[struggle] = { total: 0, sum: 0 };
-              }
-              topicAggregates[struggle].total += 1;
-              topicAggregates[struggle].sum += studentScore;
-            }
-          });
-        }
-      });
-
-      return Object.entries(topicAggregates)
-        .filter(([, aggregate]) => aggregate.total > 0)
-        .map(([topic, aggregate]) => ({ topic, score: Math.round(aggregate.sum / aggregate.total) }))
-        .sort((a, b) => a.score - b.score);
-    }, [backendReport, students, progressScores, backendHasData]);
+      return deriveTopicPerformance(backendReport?.insights?.topic_performance ?? undefined);
+    }, [backendReport]);
 
     const handleRefreshInsights = async () => {
       setInsightsRefreshing(true);

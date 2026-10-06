@@ -3,41 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import * as aiMonitoring from '../../hooks/useAIMonitoring';
 import AIMonitoringPage from './AIMonitoringPage';
-import type { AIMonitoringSummary } from '../../services/aiMonitoringService';
 
 afterEach(cleanup);
-
-const monitoringSummary: AIMonitoringSummary = {
-  systemStatus: 'healthy',
-  actionRequired: false,
-  hasPerformanceIssues: false,
-  monthlyCost: 0,
-  projectedMonthlyCost: 0,
-  billingCycleLabel: 'Current cycle',
-  costBreakdown: { cacheHitCost: 0, cacheMissCost: 0, outputCost: 0 },
-  totalUsage: 20,
-  totalInputTokens: 0,
-  totalOutputTokens: 0,
-  cacheHitRate: 0,
-  activeEngine: 'DeepSeek',
-  activeEngineModelId: 'deepseek-chat',
-  engineTier: 'standard',
-  promotionalPricingActive: false,
-  promotionalPriceExpiresUtc: '',
-  estimatedCostAfterPromo: 0,
-  lastUpdated: '2026-10-05T00:00:00.000Z',
-  features: [],
-  pricingMeta: {
-    activeModel: 'deepseek-chat',
-    isPromotional: false,
-    promoExpiresUtc: null,
-    daysUntilPromoEnds: 0,
-    currentInputCacheMissRate: 0,
-    currentOutputRate: 0,
-    fullPriceInputRate: 0,
-    fullPriceOutputRate: 0,
-  },
-};
 
 describe('AI monitoring page regressions', () => {
   it('shows its loading skeleton while metrics are loading', () => {
