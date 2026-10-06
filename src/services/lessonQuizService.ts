@@ -1,4 +1,4 @@
-import type { Question } from '@/types/curriculum';
+import type { Question, QuestionType } from '@/types/curriculum';
 import { apiFetch } from './apiService';
 
 interface LessonQuizParams {
@@ -15,8 +15,9 @@ interface RetrievalConfidence { [strategy: string]: number }
 
 interface QuizGenerationResponse {
   questions: Array<{
-    id: number;
-    type: string;
+    // Backend QuizQuestion shape: `questionType` uses the underscore vocabulary
+    // (identification, enumeration, multiple_choice, word_problem, equation_based).
+    questionType: string;
     question: string;
     options?: string[];
     correctAnswer: string;
@@ -48,6 +49,14 @@ type SubjectName =
  * When new PDFs are ingested into the vectorstore, they automatically
  * become available for quiz generation — no code changes needed.
  */
+/**
+ * Map a backend question type to the Try-It renderer's vocabulary. Only
+ * multiple_choice ships options; every other backend kind is answered as
+ * free text through the fill-in-blank path.
+ */
+const toUiQuestionType = (backendType: string): QuestionType =>
+  backendType === 'multiple_choice' ? 'multiple-choice' : 'fill-in-blank';
+
 export async function generateLessonQuiz(params: LessonQuizParams): Promise<Question[]> {
   const { lessonTitle, topic, subjectId, competencyCode, questionCount = 6 } = params;
 
@@ -69,7 +78,9 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
         subject: subjectName,
         lessonTitle,
         questionCount,
-        questionTypes: ['multiple-choice', 'true-false', 'fill-in-blank'],
+        // Backend QuizGenerationRequest only accepts its underscore vocabulary.
+        // Only multiple_choice ships options; the rest render as text answers.
+        questionTypes: ['multiple_choice', 'identification', 'word_problem'],
         difficulty: 'medium',
         competencyCode,
         varianceSeed,
@@ -80,11 +91,13 @@ export async function generateLessonQuiz(params: LessonQuizParams): Promise<Ques
       throw new Error('Quiz generation returned no lesson-specific questions.');
     }
 
-    // Map API response to InteractiveLesson Question type
-    // SAFETY: the quiz API returns question/type/bloom values already constrained to the Question unions.
-    return response.questions.map((q) => ({
-      id: q.id,
-      type: q.type as Question['type'],
+    // Map API response to InteractiveLesson Question type. The backend attaches
+    // options only to multiple_choice; every other kind is answered as text,
+    // which the Try-It renderer supports via its fill-in-blank path.
+    // SAFETY: the mapped values are exactly the QuestionType union members.
+    return response.questions.map((q, index) => ({
+      id: index,
+      type: toUiQuestionType(q.questionType),
       question: q.question,
       options: q.options || undefined,
       correctAnswer: q.correctAnswer,
