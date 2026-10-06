@@ -510,7 +510,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
 
   useEffect(() => {
     const isLiveMatch = Boolean(
-      activeMatch && (activeMatch.status === 'in_progress' || activeMatch.status === 'ready')
+      activeMatch && (activeMatch.status === 'in_progress' || activeMatch.status === 'ready' || activeMatch.status === 'completed')
     );
     setIsInQuizMode?.(isLiveMatch);
     return () => {

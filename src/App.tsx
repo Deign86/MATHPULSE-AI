@@ -1165,23 +1165,25 @@ const App = ({ authOverride }: AppProps = {}) => {
     <ChatProvider>
       <div className="flex h-dvh w-full bg-[#f8faff] overflow-hidden">
         {/* Desktop Sidebar */}
-        <div className="hidden lg:block h-full shrink-0 relative z-20">
-          <Suspense fallback={sidebarShellFallback}>
-            <Sidebar
-              activeTab={activeTab}
-              setActiveTab={handleStudentNavigation}
-              userRole={userRole}
-              onOpenSettings={() => handleStudentNavigation('Settings')}
-              onLogout={() => setActiveModal('logout_confirm')}
-              sidebarCollapsed={isSidebarCollapsed}
-              setSidebarCollapsed={setIsSidebarCollapsed}
-              forceCollapsed={activeTab === 'Quiz Battle'}
-            />
-          </Suspense>
-        </div>
+        {!isInQuizMode && (
+          <div className="hidden lg:block h-full shrink-0 relative z-20">
+            <Suspense fallback={sidebarShellFallback}>
+              <Sidebar
+                activeTab={activeTab}
+                setActiveTab={handleStudentNavigation}
+                userRole={userRole}
+                onOpenSettings={() => handleStudentNavigation('Settings')}
+                onLogout={() => setActiveModal('logout_confirm')}
+                sidebarCollapsed={isSidebarCollapsed}
+                setSidebarCollapsed={setIsSidebarCollapsed}
+                forceCollapsed={activeTab === 'Quiz Battle'}
+              />
+            </Suspense>
+          </div>
+        )}
 
         {/* Mobile Sidebar Overlay */}
-        {isMobileSidebarOpen && (
+        {isMobileSidebarOpen && !isInQuizMode && (
           <>
             <button
               aria-label="Close navigation"
@@ -1225,17 +1227,18 @@ const App = ({ authOverride }: AppProps = {}) => {
           <OnlineOfflineBanner />
 
           {/* Invisible Universal Student Header Bar — Clean & Floating */}
-          <header className={`w-full px-3 sm:px-6 lg:px-8 xl:px-12 pt-2.5 sm:pt-3.5 lg:pt-4 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
-            <div className="max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full flex items-center justify-between gap-2">
-              {/* Upper Left: Level Badge & XP Counter */}
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setActiveModal('rewards')}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-b from-rose-50 to-rose-100/90 border border-rose-200/80 shadow-[0_2px_0_#fecdd3,0_3px_8px_rgba(244,63,94,0.08)] active:translate-y-[1px] active:shadow-none hover:bg-rose-50 transition-all shrink-0 cursor-pointer"
-                  title="Level Progress"
-                  aria-label={`Level ${userLevel}`}
-                >
+          {!isInQuizMode && (
+            <header className={`w-full px-3 sm:px-6 lg:px-8 xl:px-12 pt-2.5 sm:pt-3.5 lg:pt-4 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
+              <div className="max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full flex items-center justify-between gap-2">
+                {/* Upper Left: Level Badge & XP Counter */}
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModal('rewards')}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-b from-rose-50 to-rose-100/90 border border-rose-200/80 shadow-[0_2px_0_#fecdd3,0_3px_8px_rgba(244,63,94,0.08)] active:translate-y-[1px] active:shadow-none hover:bg-rose-50 transition-all shrink-0 cursor-pointer"
+                    title="Level Progress"
+                    aria-label={`Level ${userLevel}`}
+                  >
                   <Crown className="w-3.5 h-3.5 text-rose-500 drop-shadow-sm" />
                   <span className="text-xs font-display font-black text-rose-700 dark:text-rose-400">Lv {userLevel}</span>
                 </button>
@@ -1334,6 +1337,7 @@ const App = ({ authOverride }: AppProps = {}) => {
               </div>
             </div>
           </header>
+          )}
 
           {/* Main Content Area */}
           <main
