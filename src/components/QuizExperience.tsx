@@ -672,7 +672,7 @@ const newStreak = streak + 1;
      else if (newStreak >= 3) { setComboMultiplier(2); }
      else { setComboMultiplier(1); }
 
-    if (!previewMode && !localOnlyRef.current) {
+    if (!previewMode && !localOnlyRef.current && document.createElement('canvas').getContext('2d')) {
       import('canvas-confetti').then((confetti) => {
         confetti.default({ particleCount: 30, spread: 40, colors: ['#75D06A', '#6ED1CF'], origin: { y: 0.6 } });
       });
