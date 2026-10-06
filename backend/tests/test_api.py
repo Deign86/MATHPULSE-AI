@@ -116,6 +116,11 @@ client = TestClient(app, headers={"Authorization": "Bearer test-auth-token"})
 # ─── Fixtures ──────────────────────────────────────────────────
 
 
+@pytest.fixture(autouse=True)
+def reset_rate_limit_storage():
+    main_module.app.state.limiter._storage.reset()
+
+
 def make_deepseek_risk_mock(
     risk_label: str = "low risk academically stable",
     confidence: float = 0.85,

@@ -54,6 +54,7 @@ describe('AI monitoring page regressions', () => {
     expect(screen.getByText('88.9%')).toBeTruthy();
     expect(screen.getByText('9 attempts; 8 successful')).toBeTruthy();
     expect(screen.getByLabelText('Daily AI attempts in Asia/Manila time')).toBeTruthy();
+    expect(screen.getByText('8 successful', { exact: false })).toBeTruthy();
   });
 
 });
