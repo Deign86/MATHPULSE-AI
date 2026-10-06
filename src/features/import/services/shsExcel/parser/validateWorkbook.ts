@@ -88,6 +88,45 @@ function detectFinalSemIssues(sheets: FinalSemestralRecordExtraction[]): string[
   return issues;
 }
 
+function detectInvalidLearnerNames(
+  inputData: InputDataExtraction,
+  quarterSheets: QuarterlyRecordExtraction[],
+  finalSheets: FinalSemestralRecordExtraction[],
+): string[] {
+  const issues: string[] = [];
+  const validateName = (name: string, sheetName: string, sourceRow: number) => {
+    if (/^[A-Za-z]$/.test(name.trim())) {
+      issues.push(`${sheetName} row ${sourceRow}: learner name is a single character; this row is quarantined.`);
+    }
+  };
+  inputData.learners.forEach((learner) => validateName(learner.fullName, learner.sourceSheet, learner.sourceRow));
+  quarterSheets.forEach((sheet) => sheet.learnerGrades.forEach((row) => validateName(row.fullName, sheet.sheetName, row.sourceRow)));
+  finalSheets.forEach((sheet) => sheet.learnerGrades.forEach((row) => validateName(row.fullName, sheet.sheetName, row.sourceRow)));
+  return issues;
+}
+
+function detectInvalidAssessmentMarks(sheets: QuarterlyRecordExtraction[]): string[] {
+  const issues: string[] = [];
+  sheets.forEach((sheet) => {
+    const columns = [...sheet.assessmentColumns.writtenWorks, ...sheet.assessmentColumns.performanceTasks];
+    sheet.learnerGrades.forEach((row) => {
+      columns.forEach((column) => {
+        const value = row.writtenWorks?.[column.key] ?? row.performanceTasks?.[column.key];
+        const rawValue = String(value ?? '').trim();
+        if (/%\s*$/.test(rawValue)) {
+          issues.push(`${sheet.sheetName} row ${row.sourceRow}: ${column.label} contains a percentage, not a raw mark; this row is quarantined.`);
+          return;
+        }
+        const numericValue = Number(rawValue);
+        if (rawValue && Number.isFinite(numericValue) && (numericValue < 0 || (column.maxScore !== undefined && numericValue > column.maxScore))) {
+          issues.push(`${sheet.sheetName} row ${row.sourceRow}: ${column.label} mark ${numericValue} is outside its valid 0-${column.maxScore ?? '∞'} range; this row is quarantined.`);
+        }
+      });
+    });
+  });
+  return issues;
+}
+
 export function validateWorkbook(input: {
   detection: FormatDetectionResult;
   inputData: InputDataExtraction;
@@ -115,6 +154,8 @@ export function validateWorkbook(input: {
   }
 
   detectDuplicateLearners(input.inputData.learners).forEach((issue) => warnings.push(issue));
+  detectInvalidLearnerNames(input.inputData, input.quarterSheets, input.finalSheets).forEach((issue) => errors.push(issue));
+  detectInvalidAssessmentMarks(input.quarterSheets).forEach((issue) => errors.push(issue));
   detectIncompleteQuarterRows(input.quarterSheets).forEach((issue) => warnings.push(issue));
   detectFinalSemIssues(input.finalSheets).forEach((issue) => warnings.push(issue));
 
@@ -123,7 +164,9 @@ export function validateWorkbook(input: {
   input.finalSheets.forEach((sheet) => warnings.push(...sheet.warnings));
 
   if (input.unmappedCellRegions > input.mappedCellRegions) {
-    warnings.push('A significant portion of workbook regions are unclassified; review diagnostics before confirming import.');
+    errors.push(`Workbook has ${input.unmappedCellRegions} unmapped workbook regions versus ${input.mappedCellRegions} mapped regions; resolve column mapping before confirming import.`);
+  } else if (input.unmappedCellRegions > 0) {
+    warnings.push(`Workbook has ${input.unmappedCellRegions} unmapped workbook regions; review their source columns before confirming import.`);
   }
 
   const confidence = input.detection.confidence;

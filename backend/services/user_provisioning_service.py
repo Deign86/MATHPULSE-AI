@@ -169,14 +169,17 @@ class UserProvisioningService:
             "role": role_lower,
             "status": normalized_status,
             "grade": grade,
-            "section": section,
-            "classSectionId": class_section_id,
             "forcePasswordChange": True,
             "photo": self._build_default_avatar_url(display_name),
             "updatedAt": self._firestore_server_timestamp,
         }
 
         if role_lower == "student":
+            section = (user_input.section or "").strip()
+            if not section:
+                raise UserProvisioningError("missing_section", "Section is required for student accounts.", 400)
+            payload["section"] = section
+            payload["classSectionId"] = self._slugify(f"{grade}_{section}")
             lrn = (user_input.lrn or "").strip()
             if not lrn:
                 raise UserProvisioningError("missing_lrn", "LRN is required for student accounts.", 400)
@@ -195,7 +198,7 @@ class UserProvisioningService:
         elif role_lower == "teacher":
             payload.update(
                 {
-                    "department": f"{grade} - {section}",
+                    "department": "Mathematics",
                     "teacherId": f"TCH-{self._slugify(payload['email'])}",
                     "subject": "Mathematics",
                     "yearsOfExperience": "0",
@@ -204,6 +207,8 @@ class UserProvisioningService:
                 }
             )
         else:
+            payload["section"] = section
+            payload["classSectionId"] = class_section_id
             payload.update(
                 {
                     "department": f"{grade} - {section}",

@@ -39,6 +39,7 @@ import {
 } from '../services/adminService';
 import { memberOf } from '../utils/memberOf';
 import { useAuth } from '../contexts/AuthContext';
+import { getOptimisticAdminStatus } from '../utils/adminUserStatus';
 import { toast } from 'sonner';
 import {
   getFirstValidationError,
@@ -452,6 +453,24 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       if (options.exportFormat) payload.exportFormat = options.exportFormat;
 
       const result = await applyAdminBulkAction(payload);
+
+      // Reflect successful row actions immediately; the follow-up page request can
+      // be delayed by the admin API's read-after-write consistency window.
+      const optimisticStatus = getOptimisticAdminStatus(action, options.status);
+      if (optimisticStatus && explicitUserIds?.length) {
+        const changedIds = new Set(explicitUserIds);
+        setUsers((current) => current.map((user) => (
+          changedIds.has(user.id) ? { ...user, status: optimisticStatus } : user
+        )));
+        setKnownUsersById((current) => {
+          const next = { ...current };
+          explicitUserIds.forEach((userId) => {
+            const knownUser = next[userId];
+            if (knownUser) next[userId] = { ...knownUser, status: optimisticStatus };
+          });
+          return next;
+        });
+      }
 
       if (action === 'export') {
         downloadExportRows(result.exportRows);

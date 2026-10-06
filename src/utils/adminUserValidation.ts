@@ -85,7 +85,7 @@ export function validateAdminCreateUserForm(data: AdminCreateUserFormData): Admi
     errors.grade = 'Grade is required.';
   }
 
-  if (!data.section.trim()) {
+  if (data.role.trim().toLowerCase() === 'student' && !data.section.trim()) {
     errors.section = 'Section is required.';
   }
 

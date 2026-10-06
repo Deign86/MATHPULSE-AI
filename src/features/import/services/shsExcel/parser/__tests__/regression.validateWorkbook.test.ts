@@ -32,4 +32,69 @@ describe('workbook validation regressions', () => {
     expect(validation.errors).toHaveLength(3);
     expect(validation.isOfficialFormatLikely).toBe(false);
   });
+
+  it('blocks single-character learner names and percentage-formatted raw marks with row-level errors', () => {
+    const validation = validateWorkbook({
+      detection,
+      inputData: {
+        ...inputData,
+        learners: [{ fullName: 'A', sourceSheet: 'Input Data', sourceRow: 12 }],
+      },
+      quarterSheets: [{
+        sheetName: 'First Quarter',
+        quarter: 'FIRST',
+        assessmentColumns: {
+          writtenWorks: [{ key: 'ww1', label: 'WW1', maxScore: 10 }],
+          performanceTasks: [],
+        },
+        learnerGrades: [{
+          fullName: 'Juan Dela Cruz',
+          sourceRow: 15,
+          writtenWorks: { ww1: '11%' },
+        }],
+        signatures: [],
+        warnings: [],
+      }],
+      finalSheets: [{ sheetName: 'Final', learnerGrades: [], signatures: [], warnings: [] }],
+      mappedCellRegions: 2,
+      unmappedCellRegions: 0,
+      totalSheets: 3,
+    });
+
+    expect(validation.errors).toEqual(expect.arrayContaining([
+      expect.stringContaining('Input Data row 12'),
+      expect.stringContaining('First Quarter row 15'),
+    ]));
+    expect(validation.isOfficialFormatLikely).toBe(false);
+  });
+
+  it('blocks imports when unmapped workbook regions outweigh mapped regions', () => {
+    const validation = validateWorkbook({
+      detection,
+      inputData,
+      quarterSheets: [{ sheetName: 'First Quarter', quarter: 'FIRST', assessmentColumns: { writtenWorks: [], performanceTasks: [] }, learnerGrades: [], signatures: [], warnings: [] }],
+      finalSheets: [{ sheetName: 'Final', learnerGrades: [], signatures: [], warnings: [] }],
+      mappedCellRegions: 1,
+      unmappedCellRegions: 3,
+      totalSheets: 3,
+    });
+
+    expect(validation.errors).toEqual(expect.arrayContaining([expect.stringContaining('unmapped workbook regions')]));
+    expect(validation.isOfficialFormatLikely).toBe(false);
+  });
+
+  it('reports smaller unmapped-region counts instead of allowing them to pass silently', () => {
+    const validation = validateWorkbook({
+      detection,
+      inputData,
+      quarterSheets: [{ sheetName: 'First Quarter', quarter: 'FIRST', assessmentColumns: { writtenWorks: [], performanceTasks: [] }, learnerGrades: [], signatures: [], warnings: [] }],
+      finalSheets: [{ sheetName: 'Final', learnerGrades: [], signatures: [], warnings: [] }],
+      mappedCellRegions: 4,
+      unmappedCellRegions: 1,
+      totalSheets: 3,
+    });
+
+    expect(validation.errors).toEqual([]);
+    expect(validation.warnings).toEqual(expect.arrayContaining([expect.stringContaining('1 unmapped workbook regions')]));
+  });
 });

@@ -230,6 +230,16 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     : { kind: 'library' };
 
   useEffect(() => {
+    if (!selectedModule) return;
+    window.history.pushState({ ...window.history.state, mathPulseModule: selectedModule.id }, '');
+    const handleModuleBack = (event: PopStateEvent) => {
+      if (!event.state?.mathPulseModule) setSelectedModule(null);
+    };
+    window.addEventListener('popstate', handleModuleBack);
+    return () => window.removeEventListener('popstate', handleModuleBack);
+  }, [selectedModule]);
+
+  useEffect(() => {
     const handleAssignedQuizNavigation = (event: Event) => {
       if (!(event instanceof CustomEvent)) return;
       const parsedDetail = assignedQuizNavigationDetailSchema.safeParse(event.detail);
