@@ -45,7 +45,7 @@ describe('AssessmentPage Regression Suite', () => {
     sessionStorage.clear();
     vi.clearAllMocks();
     vi.spyOn(diagnosticService, 'submitDiagnostic').mockResolvedValue({
-      test_id: 'test-123',
+      success: true,
       overall_risk: 'low',
       overall_score_percent: 100,
       mastery_summary: {
