@@ -30,6 +30,7 @@ import { uploadProfilePicture } from '../services/profileImageService';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
 import ConfirmModal from './ConfirmModal';
 import type { ProfileData } from './SettingsPage';
+import { hasUnsavedProfileChanges } from '../utils/profileDirtyState';
 
 export interface ProfilePageProps {
   profileData: ProfileData;
@@ -94,6 +95,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
   // Hook into browser beforeunload
   useUnsavedChangesWarning(isDirty);
+
+  // A photo upload persists immediately, so a photo-only difference from the
+  // incoming profile is not unsaved work. Any other differing field keeps the
+  // guard raised (e.g. a name edited before the photo was uploaded).
+  useEffect(() => {
+    if (isDirty && !hasUnsavedProfileChanges(accountData, profileData)) {
+      setIsDirty(false);
+    }
+  }, [accountData, profileData, isDirty]);
 
   const handleFieldChange = <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => {
     setAccountData((prev) => ({ ...prev, [key]: value }));
