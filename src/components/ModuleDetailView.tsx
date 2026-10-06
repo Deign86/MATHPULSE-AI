@@ -54,6 +54,22 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   const [quizLoadError, setQuizLoadError] = useState<string | null>(null);
   const [quizAttempt, setQuizAttempt] = useState(0);
 
+  useEffect(() => {
+    if (!selectedLesson) return;
+    window.history.pushState({ ...window.history.state, mathPulseModuleLesson: module.id }, '');
+    const handleLessonBack = (event: PopStateEvent) => {
+      if (!event.state?.mathPulseModuleLesson) {
+        setSelectedLesson(null);
+        return;
+      }
+      setSelectedLesson((current) => current?.type === 'quiz' && current.returnToLesson
+        ? { type: 'lesson', lesson: current.returnToLesson, returnFromQuiz: true }
+        : current);
+    };
+    window.addEventListener('popstate', handleLessonBack);
+    return () => window.removeEventListener('popstate', handleLessonBack);
+  }, [selectedLesson, module.id]);
+
   // Check if the Initial Assessment has been completed before showing REVIEW markers
   useEffect(() => {
     if (!userProfile?.uid) return;

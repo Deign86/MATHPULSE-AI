@@ -1307,13 +1307,6 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const [maxUnlockedSection, setMaxUnlockedSection] = useState<number>(() => initialSection >= 0 ? initialSection : 0);
 
   useEffect(() => {
-    window.history.pushState({ lessonViewer: true }, '', window.location.href);
-    const handlePopState = () => onBack();
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [onBack]);
-
-  useEffect(() => {
     setMaxUnlockedSection(prev => Math.max(prev, currentSection));
   }, [currentSection]);
 

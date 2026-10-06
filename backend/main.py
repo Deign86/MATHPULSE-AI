@@ -6078,7 +6078,6 @@ async def preview_student_account_import(
         effective_default_grade = (defaultGrade or "").strip() or inferred_grade
         effective_default_section = (defaultSection or "").strip() or inferred_section
 
-        duplicate_lrn_rows = _duplicate_student_lrn_rows(parsed_rows)
         seen_student_ids: Set[str] = set()
         seen_emails: Set[str] = set()
         preview_rows: List[Dict[str, Any]] = []
@@ -6135,11 +6134,7 @@ async def preview_student_account_import(
 
             student_id_key = re.sub(r"\s+", "", student_id).lower()
             email_key = generated_email.lower()
-            if student_id in duplicate_lrn_rows:
-                duplicate_in_file = True
-                duplicate_rows = duplicate_lrn_rows.get(student_id, [])
-                issues.append(f"Duplicate LRN in file at rows {', '.join(map(str, duplicate_rows))}")
-            elif student_id_key and student_id_key in seen_student_ids:
+            if student_id_key and student_id_key in seen_student_ids:
                 duplicate_in_file = True
                 issues.append("Duplicate studentId in file")
             if email_key and email_key in seen_emails:
