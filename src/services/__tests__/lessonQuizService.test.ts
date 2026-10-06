@@ -12,8 +12,7 @@ describe('lessonQuizService', () => {
   it('maps generated lesson questions from the API response', async () => {
     apiFetchSpy.mockResolvedValue({
       questions: [{
-        id: 3,
-        type: 'multiple-choice',
+        questionType: 'multiple_choice',
         question: 'Which value is the interest rate?',
         options: ['Principal', 'Rate'],
         correctAnswer: 'Rate',
@@ -30,7 +29,7 @@ describe('lessonQuizService', () => {
       lessonTitle: 'Simple Interest',
       questionCount: 1,
     })).resolves.toEqual([{
-      id: 3,
+      id: 0,
       type: 'multiple-choice',
       question: 'Which value is the interest rate?',
       options: ['Principal', 'Rate'],
@@ -38,6 +37,44 @@ describe('lessonQuizService', () => {
       explanation: 'The rate is the percent charged.',
       hints: [],
       bloomLevel: 'apply',
+    }]);
+
+    expect(apiFetchSpy).toHaveBeenCalledWith(
+      '/api/quiz/generate',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('multiple_choice'),
+      }),
+    );
+  });
+
+  it('maps option-less backend kinds to the text-answer path', async () => {
+    apiFetchSpy.mockResolvedValue({
+      questions: [{
+        questionType: 'identification',
+        question: 'What is P = S - C?',
+        correctAnswer: 'Profit',
+        explanation: 'Profit equals sales minus cost.',
+        bloomLevel: 'remember',
+      }],
+      retrievalConfidence: {},
+      sourceChunks: 1,
+      generatedAt: '2026-09-30T00:00:00.000Z',
+    });
+
+    await expect(generateLessonQuiz({
+      lessonId: 'gm-1-l1',
+      lessonTitle: 'Simple Interest',
+      questionCount: 1,
+    })).resolves.toEqual([{
+      id: 0,
+      type: 'fill-in-blank',
+      question: 'What is P = S - C?',
+      options: undefined,
+      correctAnswer: 'Profit',
+      explanation: 'Profit equals sales minus cost.',
+      hints: [],
+      bloomLevel: 'remember',
     }]);
   });
 
