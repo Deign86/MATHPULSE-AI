@@ -1627,8 +1627,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   };
 
   // Block completion if either the external practice quiz OR the Try It Yourself quiz is unfinished
-  // Practice activities remain available but do not gate reading completion.
-  const isPracticeRequired = false;
+  const isPracticeRequired = Boolean(
+    (practiceQuiz && !practiceQuizCompleted) || !tryItQuizCompleted
+  );
   const currentTab = SECTION_TABS[currentSection] || SECTION_TABS[0];
   const CurrentTabIcon = currentTab.icon;
   // SAFETY: lesson objects from curriculum metadata dynamically carry the optional subject name.
