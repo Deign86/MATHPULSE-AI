@@ -336,6 +336,7 @@ export interface LessonProgress {
   timeSpent: number; // in seconds
   score?: number;
   progressPercent?: number;
+  lastSectionIndex?: number;
   quizCompleted?: boolean;
   quizScore?: number;
   studyMaterialsCompleted?: boolean;
@@ -381,6 +382,7 @@ export interface UserProgress {
   quizAttempts: QuizAttempt[];
   totalLessonsCompleted: number;
   totalQuizzesCompleted: number;
+  dailyStreak?: number;
   averageScore: number;
   updatedAt: Date;
 }

@@ -375,12 +375,14 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
 
     const start = parseDateTime(formDate, formStartTime);
     const end = formEndTime ? parseDateTime(formDate, formEndTime) : undefined;
-    if (end && (Number.isNaN(end.getTime()) || end.getTime() <= start.getTime())) {
-      setError('Choose an end time later than the start time.');
+    if (Number.isNaN(start.getTime())) {
+      setError('Choose a valid event date and start time.');
       return;
     }
-    setSaving(true);
-    setError('');
+    if (formEndTime && (!end || Number.isNaN(end.getTime()) || end.getTime() <= start.getTime())) {
+      setError('End time must be later than the start time.');
+      return;
+    }
     const evData = {
       title: formTitle.trim(),
       classId: formClassId || undefined,

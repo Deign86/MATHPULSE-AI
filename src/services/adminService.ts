@@ -223,7 +223,7 @@ export interface TopPerformer {
 /** Firestore timestamp-shaped value. */
 interface TimestampLike { toDate: () => Date }
 /** Field values this service consumes from Firestore documents. */
-type DocValue = string | number | boolean | null | TimestampLike | DocValue[];
+type DocValue = string | number | boolean | null | Date | TimestampLike | DocValue[];
 
 /** Parse a Firestore progress-doc subject map without blind casts. */
 function asProgressMap(v: DocValue | undefined): Record<string, { progress?: DocValue }> | undefined {
@@ -1121,6 +1121,13 @@ function analyticsAttemptDate(attempt: QuizAttemptDoc): Date | null {
   const occurredAt = attempt.completedAt ?? attempt.timestamp ?? attempt.createdAt ?? attempt.date;
   if (isTimestamp(occurredAt)) {
     const date = occurredAt.toDate();
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (occurredAt instanceof Date) {
+    return Number.isNaN(occurredAt.getTime()) ? null : occurredAt;
+  }
+  if (isNumber(occurredAt)) {
+    const date = new Date(occurredAt);
     return Number.isNaN(date.getTime()) ? null : date;
   }
   if (isString(occurredAt)) {

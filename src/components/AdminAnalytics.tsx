@@ -15,8 +15,9 @@ import {
   Tooltip as RechartsTooltip
 } from 'recharts';
 import { getAnalyticsSummary, type AnalyticsSummary } from '../services/adminService';
+import type { AdminAnalyticsRange } from '../utils/adminAnalyticsRange';
 
-type TimeRange = '7d' | '30d' | '90d' | 'all';
+type TimeRange = AdminAnalyticsRange;
 const TIME_RANGES: readonly TimeRange[] = ['7d', '30d', '90d', 'all'];
 type AnalyticsTab = 'outcomes' | 'curriculum' | 'engagement';
 
@@ -135,66 +136,29 @@ export const AdminAnalytics: React.FC = () => {
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('outcomes');
   const [isExporting, setIsExporting] = useState(false);
-  const latestSummaryRequest = useRef(0);
+  const summaryRequestId = useRef(0);
 
-  const loadData = useCallback((range: TimeRange) => {
-    const requestId = latestSummaryRequest.current + 1;
-    latestSummaryRequest.current = requestId;
+  const loadData = useCallback(() => {
+    const requestId = summaryRequestId.current + 1;
+    summaryRequestId.current = requestId;
     setLoadingKPIs(true);
-    getAnalyticsSummary(range)
+    getAnalyticsSummary(timeRange)
       .then((nextSummary) => {
-        if (requestId === latestSummaryRequest.current) setSummary(nextSummary);
+        if (summaryRequestId.current === requestId) setSummary(nextSummary);
       })
-      .catch(() => {
-        if (requestId === latestSummaryRequest.current) console.error('Failed to load analytics summary.');
-      })
+      .catch(console.error)
       .finally(() => {
-        if (requestId === latestSummaryRequest.current) setLoadingKPIs(false);
+        if (summaryRequestId.current === requestId) setLoadingKPIs(false);
       });
-  }, []);
-
-  useEffect(() => { loadData(timeRange); }, [loadData, timeRange]);
-
-  // Performance Trend Curves
-  const trajectoryData = useMemo(() => {
-    const baseTarget = 80;
-    if (timeRange === '7d') {
-      return [
-        { period: 'Day 1', studentScore: 76.2, targetScore: baseTarget, aiAssisted: 78.5 },
-        { period: 'Day 2', studentScore: 77.8, targetScore: baseTarget, aiAssisted: 80.1 },
-        { period: 'Day 3', studentScore: 79.4, targetScore: baseTarget, aiAssisted: 82.3 },
-        { period: 'Day 4', studentScore: 78.9, targetScore: baseTarget, aiAssisted: 81.6 },
-        { period: 'Day 5', studentScore: 81.5, targetScore: baseTarget, aiAssisted: 84.0 },
-        { period: 'Day 6', studentScore: 83.2, targetScore: baseTarget, aiAssisted: 86.4 },
-        { period: 'Day 7', studentScore: 84.8, targetScore: baseTarget, aiAssisted: 87.9 },
-      ];
-    }
-    if (timeRange === '90d') {
-      return [
-        { period: 'Wk 1-2', studentScore: 70.4, targetScore: 75, aiAssisted: 73.5 },
-        { period: 'Wk 3-4', studentScore: 73.1, targetScore: 76, aiAssisted: 76.8 },
-        { period: 'Wk 5-6', studentScore: 75.8, targetScore: 78, aiAssisted: 79.4 },
-        { period: 'Wk 7-8', studentScore: 78.4, targetScore: 80, aiAssisted: 82.1 },
-        { period: 'Wk 9-10', studentScore: 81.2, targetScore: 80, aiAssisted: 85.0 },
-        { period: 'Wk 11-12', studentScore: 84.6, targetScore: 82, aiAssisted: 88.2 },
-      ];
-    }
-    if (timeRange === 'all') {
-      return [
-        { period: 'Quarter 1', studentScore: 72.1, targetScore: 75, aiAssisted: 74.8 },
-        { period: 'Quarter 2', studentScore: 76.8, targetScore: 78, aiAssisted: 80.2 },
-        { period: 'Quarter 3', studentScore: 81.5, targetScore: 80, aiAssisted: 84.9 },
-        { period: 'Quarter 4', studentScore: 85.4, targetScore: 82, aiAssisted: 89.1 },
-      ];
-    }
-    // Default 30d
-    return [
-      { period: 'Week 1', studentScore: 74.5, targetScore: baseTarget, aiAssisted: 77.2 },
-      { period: 'Week 2', studentScore: 77.3, targetScore: baseTarget, aiAssisted: 80.4 },
-      { period: 'Week 3', studentScore: 80.1, targetScore: baseTarget, aiAssisted: 83.6 },
-      { period: 'Week 4', studentScore: 83.8, targetScore: baseTarget, aiAssisted: 86.9 },
-    ];
   }, [timeRange]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Only the selected-window aggregate is available from the live summary.
+  const trajectoryData = useMemo(() => {
+    if (summary === null) return [];
+    return [{ period: timeRange.toUpperCase(), studentScore: summary.avgQuizScore, targetScore: 80 }];
+  }, [summary, timeRange]);
 
   // Grade Cohort Distribution
   const cohortData = useMemo(() => {
@@ -411,7 +375,7 @@ export const AdminAnalytics: React.FC = () => {
 
           {/* Refresh Button */}
           <button
-            onClick={() => loadData(timeRange)}
+            onClick={() => loadData()}
             disabled={loadingKPIs}
             title="Refresh platform telemetry"
             aria-label="Refresh platform telemetry"
@@ -483,18 +447,22 @@ export const AdminAnalytics: React.FC = () => {
                   <span className="text-white/90 font-medium truncate drop-shadow-xs">
                     {kpi.subValue}
                   </span>
-                  <span className="inline-flex items-center gap-0.5 font-black text-white text-[9px] sm:text-[10px] bg-white/20 backdrop-blur-md px-1.5 sm:px-2 py-0.5 rounded-full border border-white/25 shadow-2xs shrink-0">
-                    {kpi.trend}
-                  </span>
+                  {kpi.trend && (
+                    <span className="inline-flex items-center gap-0.5 font-black text-white text-[9px] sm:text-[10px] bg-white/20 backdrop-blur-md px-1.5 sm:px-2 py-0.5 rounded-full border border-white/25 shadow-2xs shrink-0">
+                      {kpi.trend}
+                    </span>
+                  )}
                 </div>
 
                 {/* Micro Progress Bar */}
-                <div className="w-full h-1 sm:h-1.5 rounded-full bg-white/20 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-white transition-all duration-500 shadow-xs"
-                    style={{ width: `${Math.min(Math.max(kpi.progressPercent, 0), 100)}%` }}
-                  />
-                </div>
+                {kpi.progressPercent !== undefined && (
+                  <div className="w-full h-1 sm:h-1.5 rounded-full bg-white/20 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-white transition-all duration-500 shadow-xs"
+                      style={{ width: `${Math.min(Math.max(kpi.progressPercent, 0), 100)}%` }}
+                    />
+                  </div>
+                )}
               </div>
             </motion.div>
           );
@@ -564,8 +532,8 @@ export const AdminAnalytics: React.FC = () => {
                       <TrendingUp size={18} />
                     </div>
                     <div>
-                      <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">Learning Mastery Trajectory</h2>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">Student comprehension velocity compared to benchmark</p>
+                      <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">Average Quiz Score by Range</h2>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">Live average of quiz attempts in the selected range</p>
                     </div>
                   </div>
 
@@ -574,10 +542,6 @@ export const AdminAnalytics: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-[#9956DE]" />
                       <span>Students ({avgQuizScore}%)</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" />
-                      <span>AI Cohort</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-400">
                       <span className="w-3 h-0.5 bg-slate-300 dark:bg-slate-600" />
@@ -594,10 +558,6 @@ export const AdminAnalytics: React.FC = () => {
                         <linearGradient id="colorStudent" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#9956DE" stopOpacity={0.35} />
                           <stop offset="95%" stopColor="#9956DE" stopOpacity={0.0} />
-                        </linearGradient>
-                        <linearGradient id="colorAi" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.6} />
@@ -637,16 +597,6 @@ export const AdminAnalytics: React.FC = () => {
                         strokeWidth={2.5}
                         fillOpacity={1}
                         fill="url(#colorStudent)"
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="aiAssisted"
-                        name="aiAssisted"
-                        stroke="#10B981"
-                        strokeWidth={1.5}
-                        strokeDasharray="4 4"
-                        fillOpacity={1}
-                        fill="url(#colorAi)"
                       />
                       <Area
                         type="monotone"

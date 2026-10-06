@@ -1707,6 +1707,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     return managedClasses.length > 0 ? managedClasses : classes;
   }, [managedClasses, classes]);
 
+  const classSectionIdFor = useCallback((classItem: ClassView): string | undefined => {
+    if (classItem.classMetadata?.classSectionId) return classItem.classMetadata.classSectionId;
+    if (classItem.classSectionId) return classItem.classSectionId;
+    const parsed = parseClassName(classItem.classMetadata?.className || classItem.name);
+    return buildClassSectionId(parsed.grade, parsed.section) || undefined;
+  }, []);
+
   const handleSidebarNav = (view: View) => {
     setActiveView(view);
     if (view !== 'analytics' && view !== 'competency') {
@@ -1717,12 +1724,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
   const selectedClassSectionId = useMemo(() => {
     if (!selectedClass) return undefined;
-    if (selectedClass.classMetadata?.classSectionId) return selectedClass.classMetadata.classSectionId || undefined;
-    if (selectedClass.classSectionId) return selectedClass.classSectionId;
-    const parsed = parseClassName(selectedClass.classMetadata?.className || selectedClass.name);
-    const computed = buildClassSectionId(parsed.grade, parsed.section);
-    return computed || undefined;
-  }, [selectedClass]);
+    return classSectionIdFor(selectedClass);
+  }, [selectedClass, classSectionIdFor]);
 
   const effectiveAnalyticsClass = useMemo(() => {
     if (selectedClass) return selectedClass;
@@ -2181,6 +2184,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 {activeView === 'topic_mastery' && (
                   <TopicMasteryView
                     classSectionId={selectedClassSectionId}
+                    classOptions={availableClasses.flatMap((classItem) => {
+                      const sectionId = classSectionIdFor(classItem);
+                      return sectionId ? [{ sectionId, name: classItem.name }] : [];
+                    })}
+                    onClassSectionChange={(sectionId) => {
+                      setSelectedClass(availableClasses.find((classItem) => classSectionIdFor(classItem) === sectionId) || null);
+                    }}
                     onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     activeTab={topicMasteryTab}
@@ -3854,7 +3864,7 @@ const AnalyticsView: React.FC<{
           );
           filtered = filtered.filter(s => topIds.has(s.id));
         } else {
-          filtered = filtered.filter(s => s.avgScore >= 85 && s.riskLevel !== 'high');
+          filtered = filtered.filter(s => (progressScores.get(s.id) || s.avgScore) >= 75 && s.riskLevel !== 'high');
         }
       } else if (filterType === 'Risk') {
         if (backendReport) {
@@ -4356,7 +4366,7 @@ const AnalyticsView: React.FC<{
                 <div className="space-y-[8px]">
                   {attentionStudents.slice(0, 4).map((student) => {
                     const backendRisk = getStudentRisk(student.id);
-                    const riskLabel = backendRisk || (student.riskLevel === 'high' ? 'HIGH RISK' : 'MEDIUM RISK');
+                    const riskLabel = backendRisk === 'PENDING_ASSESSMENT' ? 'Unassessed' : backendRisk || (student.riskLevel === 'high' ? 'HIGH RISK' : 'MEDIUM RISK');
                     const isCritical = backendRisk === 'Critical' || (student.avgScore === 0 && student.riskLevel === 'high');
                     const isHigh = backendRisk === 'High Risk' || student.riskLevel === 'high';
                     const theme = isCritical ? 'bg-red-50/60 border-red-100' : isHigh ? 'bg-rose-50/40 border-rose-50' : 'bg-amber-50/40 border-amber-50';

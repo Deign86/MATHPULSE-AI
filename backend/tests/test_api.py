@@ -855,6 +855,60 @@ class TestQuizGeneration:
         })
         assert response.status_code == 422
 
+    @patch("main.call_hf_chat")
+    def test_generate_quiz_returns_requested_count_for_selected_topic(self, mock_chat):
+        questions = [
+            {
+                "questionType": "identification",
+                "question": f"Linear equation question {index + 1}",
+                "correctAnswer": "x = -3",
+                "topic": "Algebra",
+            }
+            for index in range(5)
+        ]
+        mock_chat.return_value = json.dumps(questions)
+
+        response = client.post("/api/quiz/preview", json={
+            "topics": ["Linear Equations"],
+            "gradeLevel": "Grade 11",
+            "numQuestions": 5,
+        })
+
+        assert response.status_code == 200
+        generated = response.json()["questions"]
+        assert len(generated) == 5
+        assert all(question["topic"] == "Linear Equations" for question in generated)
+        prompt = mock_chat.call_args.args[0]
+        assert "Linear Equations" in str(prompt)
+
+    @patch("main.call_hf_chat")
+    def test_chat_rate_limit_returns_429_after_flood(self, mock_chat, monkeypatch):
+        mock_chat.return_value = "What is the first step?"
+        monkeypatch.setattr(main_module, "CHAT_RATE_LIMIT_REQUESTS", 2)
+        monkeypatch.setattr(main_module, "CHAT_RATE_LIMIT_WINDOW_SECONDS", 60)
+        main_module._chat_rate_limit_requests.clear()
+
+        payload = {"message": "How do I solve x + 2 = 5?", "history": []}
+        assert client.post("/api/chat", json=payload).status_code == 200
+        assert client.post("/api/chat", json=payload).status_code == 200
+        limited = client.post("/api/chat", json=payload)
+
+        assert limited.status_code == 429
+        assert "You are asking too fast, please wait a moment" in limited.json()["detail"]
+
+
+def test_ai_monitoring_summary_exposes_nested_telemetry_without_top_level_counters():
+    from routes import ai_monitoring
+
+    summary = ai_monitoring.get_monitoring_summary(_admin=object())
+
+    assert "telemetry" in summary
+    assert "dailyQuestions" not in summary
+    assert "averageLatencyMs" not in summary
+    assert "successRate" not in summary
+    assert "features" in summary
+    assert "pricingMeta" in summary
+
 
 class TestClassRecordImportMapping:
     def test_sanitize_column_mapping_drops_none_and_unknown_fields(self):
@@ -897,14 +951,16 @@ class TestClassRecordImportMapping:
                 "points": 1,
                 "explanation": "Slope = rise/run.",
             }
-            for index in range(3)
+            for index in range(5)
         ])
         mock_chat.return_value = quiz_json
         response = client.post("/api/quiz/preview", json={
             "topics": ["Algebra"],
             "gradeLevel": "Grade 11",
+            "numQuestions": 5,
         })
         assert response.status_code == 200
+        assert len(response.json()["questions"]) == 5
 
     @patch("main.call_hf_chat")
     def test_preview_quiz_rejects_partial_question_set(self, mock_chat):
@@ -926,6 +982,7 @@ class TestClassRecordImportMapping:
         response = client.post("/api/quiz/preview", json={
             "topics": ["Algebra"],
             "gradeLevel": "Grade 11",
+            "numQuestions": 3,
         })
 
         assert response.status_code == 502
@@ -950,6 +1007,7 @@ class TestClassRecordImportMapping:
             response = client.post("/api/quiz/preview", json={
                 "topics": ["Algebra"],
                 "gradeLevel": "Grade 11",
+                "numQuestions": 3,
             })
 
         assert response.status_code == 502

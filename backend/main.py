@@ -350,6 +350,10 @@ CHAT_STREAM_CONTINUATION_TAIL_CHARS = max(
     80,
     int(os.getenv("CHAT_STREAM_CONTINUATION_TAIL_CHARS", "900")),
 )
+CHAT_RATE_LIMIT_REQUESTS = max(1, int(os.getenv("CHAT_RATE_LIMIT_REQUESTS", "60")))
+CHAT_RATE_LIMIT_WINDOW_SECONDS = max(1, int(os.getenv("CHAT_RATE_LIMIT_WINDOW_SECONDS", "60")))
+_chat_rate_limit_requests: Dict[str, List[float]] = defaultdict(list)
+_chat_rate_limit_lock = Lock()
 CHAT_STREAM_COMPLETION_MODE_DEFAULT = os.getenv(
     "CHAT_STREAM_COMPLETION_MODE_DEFAULT",
     "auto",
@@ -2421,6 +2425,27 @@ async def root():
 # ─── AI Chat Tutor ─────────────────────────────────────────────
 
 
+def _enforce_chat_rate_limit(http_request: Optional[Request]) -> None:
+    user = getattr(getattr(http_request, "state", None), "user", None)
+    client = getattr(http_request, "client", None)
+    user_key = getattr(user, "uid", None) or getattr(client, "host", None) or "anonymous"
+    now = time.monotonic()
+    cutoff = now - CHAT_RATE_LIMIT_WINDOW_SECONDS
+    with _chat_rate_limit_lock:
+        recent_requests = [
+            timestamp for timestamp in _chat_rate_limit_requests[user_key]
+            if timestamp > cutoff
+        ]
+        if len(recent_requests) >= CHAT_RATE_LIMIT_REQUESTS:
+            _chat_rate_limit_requests[user_key] = recent_requests
+            raise HTTPException(
+                status_code=429,
+                detail="You are asking too fast, please wait a moment",
+            )
+        recent_requests.append(now)
+        _chat_rate_limit_requests[user_key] = recent_requests
+
+
 MATH_TUTOR_SYSTEM_PROMPT = """You are Pulse, MathPulse AI's friendly math tutor for Filipino Senior High School
 students. You help students understand and solve problems in General Mathematics,
 Business Mathematics, Statistics & Probability, and Finite Mathematics, all aligned
@@ -2429,6 +2454,7 @@ with the DepEd Strengthened SHS Curriculum and SDO Navotas learning modules.
 YOUR BEHAVIOR RULES:
 1. PERSONALIZE every response. Address the student by first name occasionally.
 2. NEVER give direct answers to quiz or exam items — guide with hints and questions instead.
+   On a student's first response to a math problem, do not give the final answer: withhold the final numeric answer and ask a guiding question first. Do not state a solved value such as "x = -3" in that first response. Reveal and explain the answer only after the student has attempted the next step or explicitly asks to check their work.
 3. If the student is struggling on a critical gap topic, gently steer them back to
    prerequisite concepts before moving forward.
 4. Use the SDO Navotas step-by-step method for ALL solutions:
@@ -2709,13 +2735,14 @@ def _build_stream_continuation_prompt(original_question: str, expected_end_marke
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor_endpoint(request: Request, chat_request: ChatRequest):
-    return await chat_tutor(chat_request)
+    return await chat_tutor(chat_request, request)
 
 
-async def chat_tutor(request: ChatRequest):
+async def chat_tutor(request: ChatRequest, http_request: Request = None):
     """AI Math Tutor powered by Hugging Face Inference routing."""
     _start_ms = int(time.monotonic() * 1000)
     try:
+        _enforce_chat_rate_limit(http_request)
         # ─── Context-Aware Intent Gate (before scope check) ──────
         # Load active state to determine if student is mid-session.
         # If so, skip scope check for short/vague replies.
@@ -2912,11 +2939,12 @@ async def _update_memory_after_response(
 
 @app.post("/api/chat/stream")
 async def chat_tutor_stream_endpoint(request: Request, chat_request: ChatRequest):
-    return await chat_tutor_stream(chat_request)
+    return await chat_tutor_stream(chat_request, request)
 
 
-async def chat_tutor_stream(request: ChatRequest):
+async def chat_tutor_stream(request: ChatRequest, http_request: Request = None):
     """SSE stream endpoint for AI Math Tutor chat responses."""
+    _enforce_chat_rate_limit(http_request)
     try:
         # ─── Context-Aware Intent Gate (before scope check) ──────
         _skip_scope_check = False
@@ -5333,6 +5361,23 @@ def _generate_temporary_password(length: int = 12) -> str:
             return candidate
 
 
+def _student_import_full_name(row: Dict[str, Any]) -> str:
+    return " ".join(
+        part for part in (str(row.get("firstName") or "").strip(), str(row.get("lastName") or "").strip()) if part
+    )
+
+
+def _duplicate_student_lrn_rows(rows: Sequence[Dict[str, Any]]) -> Dict[str, List[int]]:
+    row_numbers_by_lrn: Dict[str, List[int]] = {}
+    for row in rows:
+        # Normalize keys consistently with the import rejection gate: strip all
+        # whitespace and lowercase so variants of the same LRN always collide.
+        student_id = re.sub(r"\s+", "", str(row.get("studentId") or "")).lower()
+        if student_id:
+            row_numbers_by_lrn.setdefault(student_id, []).append(int(row.get("rowNumber") or 0))
+    return {student_id: row_numbers for student_id, row_numbers in row_numbers_by_lrn.items() if len(row_numbers) > 1}
+
+
 def _parse_provisioning_dataframe(df: Any) -> Dict[str, Any]:
     header_map: Dict[str, str] = {}
     for column in df.columns.tolist():
@@ -6049,7 +6094,7 @@ async def preview_student_account_import(
             email = str(row.get("email") or "").strip().lower()
             grade = str(row.get("grade") or "").strip() or effective_default_grade
             section = str(row.get("section") or "").strip() or effective_default_section
-            full_name = " ".join(part for part in [first_name, middle_name, last_name] if part).strip()
+            full_name = _student_import_full_name(row)
 
             issues: List[str] = []
             if not first_name:
@@ -6255,12 +6300,8 @@ async def commit_student_account_import(
             if str(row.get("status") or "") in {"valid", "move_confirmation_required"}
         ]
 
-        student_lrns = [
-            re.sub(r"\s+", "", str(row.get("studentId") or "")).lower()
-            for row in preview_rows
-            if str(row.get("studentId") or "").strip()
-        ]
-        duplicate_lrns = {lrn for lrn, count in Counter(student_lrns).items() if count > 1}
+        duplicate_lrn_rows = _duplicate_student_lrn_rows(preview_rows)
+        duplicate_lrns = set(duplicate_lrn_rows)
         has_existing_lrn = any(
             bool(row.get("duplicateLrnInFirestore"))
             and str(row.get("status") or "") != "move_confirmation_required"
@@ -11974,6 +12015,10 @@ Remember:
                 detail=f"Quiz generation returned {len(parsed_questions)} of {request.numQuestions} requested questions. Please try again.",
             )
 
+        parsed_questions = parsed_questions[:request.numQuestions]
+        for question_index, question in enumerate(parsed_questions):
+            question["topic"] = effective_topics[question_index % len(effective_topics)]
+
         topic_provenance_map: Dict[str, Dict[str, Optional[str]]] = {}
         for imported_topic in (imported_topics_payload.get("topics") or []):
             title = str(imported_topic.get("title") or "").strip()
@@ -12077,11 +12122,9 @@ Remember:
 @app.post("/api/quiz/preview", response_model=QuizResponse)
 async def preview_quiz(http_request: Request, request: QuizGenerationRequest):
     """
-    Generate a 3-question preview quiz for teachers to verify AI question
+    Generate a requested-count preview quiz for teachers to verify AI question
     quality before assigning a full quiz to students.
     """
-    # Override to produce only 3 questions
-    request.numQuestions = 3
     return await generate_quiz(http_request, request)
 
 
