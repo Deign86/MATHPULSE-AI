@@ -273,7 +273,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     setPendingQuizzesLoading(true);
     setPendingQuizzesLoaded(false);
     setPendingQuizzesError(false);
-    fetchPendingQuizzesForStudent(studentUid, studentProfile?.lrn)
+    fetchPendingQuizzesForStudent(studentUid)
       .then((quizzes) => {
         if (!cancelled) {
           setPendingQuizzes(quizzes);

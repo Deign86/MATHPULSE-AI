@@ -2428,31 +2428,25 @@ with the DepEd Strengthened SHS Curriculum and SDO Navotas learning modules.
 
 YOUR BEHAVIOR RULES:
 1. PERSONALIZE every response. Address the student by first name occasionally.
-2. Teach Socratically: give one small hint or ask one focused question, then pause for the
-   student's attempt. Never complete the calculation or reveal the final answer, even when
-   asked to solve it; guide the student through one step at a time.
-3. Answer only the question the student actually asked. Never invent, introduce, or solve a
-   different equation or example; ask a clarifying question if the problem is missing.
-4. NEVER give direct answers to quiz or exam items — guide with hints and questions instead.
-5. If the student is struggling on a critical gap topic, gently steer them back to
+2. NEVER give direct answers to quiz or exam items — guide with hints and questions instead.
+3. If the student is struggling on a critical gap topic, gently steer them back to
    prerequisite concepts before moving forward.
-6. Use the SDO Navotas method as a guided sequence:
-   "Given → Formula → Substitute → Compute → Conclude"; show only the current step and invite
-   the student to do the next one.
-7. Always format math using LaTeX:
+4. Use the SDO Navotas step-by-step method for ALL solutions:
+   "Given → Formula → Substitute → Compute → Conclude"
+5. Always format math using LaTeX:
    - Inline: \\( expression \\)
    - Block/display: \\[ expression \\]
    Never use dollar signs ($) — they break the KaTeX renderer.
 6. Write EVERYTHING in English. Do NOT use Tagalog, Filipino, or any other language.
 7. When a student answers a "try_it" problem, evaluate their answer:
-   - If correct: Celebrate briefly, explain WHY it's correct, then offer a harder challenge.
-   - If wrong: Say "Good try! Let's check your steps..." then walk through the error.
-10. Keep responses concise (max 300 words per message). Use bullet points for steps.
-11. If a student asks about a topic outside their current lesson, help but
-   note: "This is from [topic]. We'll cover this soon in your learning path!"
-12. NEVER generate quiz items with answers visible to the student.
-13. When you detect the student consistently making the same mistake,
-    note it clearly: "I noticed you keep forgetting to convert % to decimal first — let's fix that!"
+    - If correct: Celebrate briefly, explain WHY it's correct, then offer a harder challenge.
+    - If wrong: Say "Good try! Let's check your steps..." then walk through the error.
+8. Keep responses concise (max 300 words per message). Use bullet points for steps.
+9. If a student asks about a topic outside their current lesson, help but
+    note: "This is from [topic]. We'll cover this soon in your learning path!"
+10. NEVER generate quiz items with answers visible to the student.
+11. When you detect the student consistently making the same mistake,
+     note it clearly: "I noticed you keep forgetting to convert % to decimal first — let's fix that!"
 
 RESPONSE FORMAT FOR MATH EXPLANATIONS:
 1. Quick concept recap (1-2 sentences)
@@ -2714,7 +2708,6 @@ def _build_stream_continuation_prompt(original_question: str, expected_end_marke
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-@rate_limiter.limiter.limit("9/3 seconds")
 async def chat_tutor_endpoint(request: Request, chat_request: ChatRequest):
     return await chat_tutor(chat_request)
 
@@ -2918,7 +2911,6 @@ async def _update_memory_after_response(
 
 
 @app.post("/api/chat/stream")
-@rate_limiter.limiter.limit("9/3 seconds")
 async def chat_tutor_stream_endpoint(request: Request, chat_request: ChatRequest):
     return await chat_tutor_stream(chat_request)
 
@@ -8149,6 +8141,7 @@ async def upload_class_records(
         fallback_inference_rows_total = 0
         per_file_results: List[Dict[str, Any]] = []
         duplicate_lrn_rejection = False
+        batch_lrns: List[str] = []
 
         for upload in uploads:
             filename = upload.filename or ""
@@ -8328,20 +8321,7 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 duplicate_lrns = sorted(
                     lrn for lrn, count in Counter(normalized_lrns).items() if count > 1
                 )
-                if _firebase_ready and firebase_firestore and not duplicate_lrns:
-                    try:
-                        firestore_client = firebase_firestore.client()
-                        for lrn in normalized_lrns:
-                            existing_lrn = list(
-                                firestore_client.collection("managedStudents").where("lrn", "==", lrn).limit(1).stream()
-                            )
-                            existing_profile = list(
-                                firestore_client.collection("users").where("lrn", "==", lrn).limit(1).stream()
-                            )
-                            if existing_lrn or existing_profile:
-                                duplicate_lrns.append(lrn)
-                    except Exception as firestore_err:
-                        file_warnings.append(f"Could not check existing LRNs before import: {firestore_err}")
+                batch_lrns.extend(normalized_lrns)
                 duplicate_lrns = sorted(set(duplicate_lrns))
                 if duplicate_lrns:
                     duplicate_lrn_rejection = True
@@ -8367,33 +8347,11 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 file_inferred_rows = int(normalized_result.get("inferredRows") or 0)
                 file_fallback_inference_rows = int(normalized_result.get("fallbackInferenceRows") or 0)
 
-                persistence_result = _persist_class_record_import_artifact(
-                    request,
-                    file_hash=file_hash,
-                    file_name=filename,
-                    file_type=ext.replace(".", ""),
-                    column_mapping=file_column_mapping,
-                    normalized_rows=file_students,
-                    row_warnings=file_row_warnings,
-                    unknown_columns=file_unknown_columns,
-                    parse_warnings=file_warnings,
-                    dataset_intent=normalized_dataset_intent,
-                    column_interpretations=file_column_interpretations,
-                    interpretation_summary=file_interpretation_summary,
-                    class_section_id=classSectionId,
-                    class_name=className,
-                )
-                if persistence_result.get("warning"):
-                    file_warnings.append(str(persistence_result["warning"]))
-
                 file_status = "success"
                 if file_row_warnings or file_warnings:
                     file_status = "partial_success"
                 if not file_students:
                     file_status = "failed"
-
-                file_import_id = persistence_result.get("importId")
-                file_dedup = persistence_result.get("dedup") or {"inserted": 0, "updated": 0}
             except HTTPException as file_exc:
                 file_status = "failed"
                 file_warnings.append(str(file_exc.detail))
@@ -8426,6 +8384,21 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                 "rejectedRowsCount": file_rejected_rows_count,
                 "inferredRows": file_inferred_rows,
                 "fallbackInferenceRows": file_fallback_inference_rows,
+                "_persistenceInput": {
+                    "fileHash": file_hash,
+                    "fileName": filename,
+                    "fileType": ext.replace(".", ""),
+                    "columnMapping": file_column_mapping,
+                    "normalizedRows": file_students,
+                    "rowWarnings": file_row_warnings,
+                    "unknownColumns": file_unknown_columns,
+                    "parseWarnings": file_warnings,
+                    "datasetIntent": normalized_dataset_intent,
+                    "columnInterpretations": file_column_interpretations,
+                    "interpretationSummary": file_interpretation_summary,
+                    "classSectionId": classSectionId,
+                    "className": className,
+                } if file_status in {"success", "partial_success"} else None,
             }
             per_file_results.append(per_file_result)
 
@@ -8474,8 +8447,48 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
         successful_files = sum(1 for f in per_file_results if f.get("status") in {"success", "partial_success"})
         failed_files = len(per_file_results) - successful_files
         overall_success = successful_files > 0
+        duplicate_batch_lrns = sorted(lrn for lrn, count in Counter(batch_lrns).items() if count > 1)
+        if duplicate_batch_lrns:
+            duplicate_lrn_rejection = True
         if duplicate_lrn_rejection:
             raise HTTPException(status_code=400, detail="Duplicate LRN values reject the entire import; no records were written.")
+
+        for per_file_result in per_file_results:
+            persistence_input = per_file_result.pop("_persistenceInput", None)
+            if not persistence_input:
+                continue
+            persistence_result = _persist_class_record_import_artifact(
+                request,
+                file_hash=persistence_input["fileHash"],
+                file_name=persistence_input["fileName"],
+                file_type=persistence_input["fileType"],
+                column_mapping=persistence_input["columnMapping"],
+                normalized_rows=persistence_input["normalizedRows"],
+                row_warnings=persistence_input["rowWarnings"],
+                unknown_columns=persistence_input["unknownColumns"],
+                parse_warnings=persistence_input["parseWarnings"],
+                dataset_intent=persistence_input["datasetIntent"],
+                column_interpretations=persistence_input["columnInterpretations"],
+                interpretation_summary=persistence_input["interpretationSummary"],
+                class_section_id=persistence_input["classSectionId"],
+                class_name=persistence_input["className"],
+            )
+            if persistence_result.get("warning"):
+                warning = str(persistence_result["warning"])
+                per_file_result["warnings"].append(warning)
+                all_warnings.append(f"{per_file_result['fileName']}: {warning}")
+            per_file_result["importId"] = persistence_result.get("importId")
+            per_file_result["persisted"] = bool(per_file_result["importId"])
+            per_file_result["dedup"] = persistence_result.get("dedup") or {"inserted": 0, "updated": 0}
+            aggregate_dedup["inserted"] += int(per_file_result["dedup"].get("inserted", 0) or 0)
+            aggregate_dedup["updated"] += int(per_file_result["dedup"].get("updated", 0) or 0)
+            if per_file_result["warnings"] and per_file_result["status"] == "success":
+                per_file_result["status"] = "partial_success"
+        successful_files = sum(1 for f in per_file_results if f.get("status") in {"success", "partial_success"})
+        failed_files = len(per_file_results) - successful_files
+        overall_success = successful_files > 0
+        first_file_with_import = next((f for f in per_file_results if f.get("importId")), None)
+        persisted_rows = int(aggregate_dedup.get("inserted", 0) or 0) + int(aggregate_dedup.get("updated", 0) or 0)
         risk_refresh = _queue_post_import_risk_refresh(
             request,
             students=all_students,
@@ -11951,7 +11964,7 @@ Remember:
                 ]
 
         # Never report a partial quiz as successful.
-        if len(parsed_questions) < request.numQuestions and http_request.url.path != "/api/quiz/preview":
+        if len(parsed_questions) < request.numQuestions:
             logger.warning(
                 f"LLM generated {len(parsed_questions)}/{request.numQuestions} questions "
                 f"after {max_attempts} attempts (raw length={len(raw_content)} chars)."
@@ -11982,6 +11995,11 @@ Remember:
             topics=effective_topics,
             topic_provenance_map=topic_provenance_map,
         )
+        if len(validated) != request.numQuestions:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Quiz generation returned {len(validated)} of {request.numQuestions} requested questions. Please try again.",
+            )
         total_points = sum(q.points for q in validated)
 
         # Build metadata
