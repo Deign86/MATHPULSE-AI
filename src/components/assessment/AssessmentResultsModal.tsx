@@ -29,6 +29,8 @@ interface AssessmentResultsModalProps {
   studentId: string;
   latestResult?: AssessmentResult | null;
   heroBannerSummary?: HeroBannerModalSummary | null;
+  /** Optional callback for "Continue to Learning Path" — called alongside onClose. */
+  onContinueToLearningPath?: () => void;
 }
 
 type ProficiencyKey = 'Beginner' | 'Developing' | 'Proficient' | 'Advanced';
@@ -485,6 +487,7 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
   studentId,
   latestResult: initialResult,
   heroBannerSummary,
+  onContinueToLearningPath,
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('latest');
   const [latestResult, setLatestResult] = useState<AssessmentResult | null>(initialResult || null);
@@ -650,7 +653,10 @@ const AssessmentResultsModal: React.FC<AssessmentResultsModalProps> = ({
         <div className="shrink-0 px-4 sm:px-6 py-3 sm:py-3.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-end gap-2.5">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              onContinueToLearningPath?.();
+            }}
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] transition-all shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Continue to Learning Path</span>
