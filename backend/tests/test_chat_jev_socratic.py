@@ -53,7 +53,10 @@ async def test_conceptual_question_uses_normal_chat_generation(
     async def route_intent(_message: str) -> dict[str, object]:
         return {"choice": "conceptual_confusion", "confidence": 0.91}
 
-    async def normal_llm_call(*_args: object, **_kwargs: object) -> str:
+    observed_messages: list[dict[str, str]] = []
+
+    async def normal_llm_call(messages: list[dict[str, str]], **_kwargs: object) -> str:
+        observed_messages.extend(messages)
         return "A function maps each input to exactly one output."
 
     monkeypatch.setattr(main, "route_student_intent", route_intent)
@@ -63,6 +66,9 @@ async def test_conceptual_question_uses_normal_chat_generation(
 
     assert response.response == "A function maps each input to exactly one output."
     assert response.activeModel is None
+    system_prompt = observed_messages[0]["content"]
+    assert "Write EVERYTHING in English" in system_prompt
+    assert "Respond in the student's language" not in system_prompt
 
 
 @pytest.mark.asyncio
