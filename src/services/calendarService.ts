@@ -4,13 +4,16 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   serverTimestamp,
   onSnapshot,
   query,
   where,
   limit,
   Unsubscribe,
+  type DocumentData,
   type FirestoreError,
+  type UpdateData,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { CalendarEvent } from '../types/models';
@@ -85,11 +88,15 @@ export const createCalendarEvent = async (
 export const updateCalendarEvent = async (
   eventId: string,
   updates: Partial<Pick<CalendarEvent, 'title' | 'description' | 'startTime' | 'endTime' | 'color'>>,
+  clearFields: readonly ('description' | 'endTime')[] = [],
 ): Promise<void> => {
   const eventRef = doc(db, 'calendarEvents', eventId);
-  const firestoreUpdates = Object.fromEntries(
+  const firestoreUpdates: UpdateData<DocumentData> = Object.fromEntries(
     Object.entries(updates).filter(([, value]) => value !== undefined),
   );
+  for (const field of clearFields) {
+    firestoreUpdates[field] = deleteField();
+  }
   await updateDoc(eventRef, {
     ...firestoreUpdates,
     updatedAt: serverTimestamp(),

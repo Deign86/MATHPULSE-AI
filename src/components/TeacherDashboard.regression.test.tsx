@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countResolvedStudentsForClass, deriveResolvedClassCounts, formatRiskLabel } from './TeacherDashboard';
+import { countResolvedStudentsForClass, deriveResolvedClassCounts, deriveTopicPerformance, formatRiskLabel } from './TeacherDashboard';
 import { classifyWRI } from '../utils/riskEngine';
 
 describe('teacher dashboard roster and risk regressions', () => {
@@ -28,5 +28,13 @@ describe('teacher dashboard roster and risk regressions', () => {
   it('shows assessment statuses as student-facing labels', () => {
     expect(formatRiskLabel('PENDING_ASSESSMENT')).toBe('Not assessed');
     expect(formatRiskLabel('High Risk')).toBe('High risk');
+  });
+
+  it('uses only backend topic performance and returns empty when none is available', () => {
+    expect(deriveTopicPerformance(undefined)).toEqual([]);
+    expect(deriveTopicPerformance([
+      { topic: 'Functions', class_accuracy: 72.6, struggling_count: 3, mastered_count: 4 },
+      { topic: '  ', class_accuracy: 20, struggling_count: 1, mastered_count: 0 },
+    ])).toEqual([{ topic: 'Functions', score: 73 }]);
   });
 });

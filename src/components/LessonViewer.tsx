@@ -407,6 +407,10 @@ interface LessonViewerProps {
   onLogLessonView?: (userId: string, lessonId: string, topic: string) => Promise<void>;
 }
 
+export function shouldRestoreSavedLessonSection(initialSection: number): boolean {
+  return initialSection !== -1;
+}
+
 // ---------------------------------------------------------------------------
 // parseIntroContent — splits intro content into:
 //   { welcome: string, objectives: { text: string; example?: string }[] }
@@ -1471,6 +1475,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     }
     void getUserProgress(userProfile.uid).then((progress) => {
       if (cancelled) return;
+      if (!shouldRestoreSavedLessonSection(initialSection)) {
+        setSectionProgressLoaded(true);
+        return;
+      }
       const savedLessonProgress = progress?.lessons?.[lesson.id];
       const savedSection = savedLessonProgress
         ? Object.entries(savedLessonProgress).find(([key]) => key === 'lastSectionIndex')?.[1]
@@ -1484,7 +1492,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       if (!cancelled) setSectionProgressLoaded(true);
     });
     return () => { cancelled = true; };
-  }, [lesson.id, userProfile?.uid, totalSections]);
+  }, [lesson.id, userProfile?.uid, totalSections, initialSection]);
 
   useEffect(() => {
     const practiceIdx = sections.findIndex((s) => s.type === 'try_it_yourself');
