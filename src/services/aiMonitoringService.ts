@@ -28,6 +28,27 @@ export interface PricingMeta {
   fullPriceOutputRate: number;
 }
 
+export interface AIDailyMetric {
+  date: string;
+  totalAttempts: number;
+  successfulAttempts: number;
+  completedRequests: number;
+  averageLatencyMs: number | null;
+  successRate: number | null;
+}
+
+export interface AIMonitoringTelemetry {
+  dailyMetrics: AIDailyMetric[];
+  totalAttempts: number;
+  successfulAttempts: number;
+  completedRequests: number;
+  averageLatencyMs: number | null;
+  successRate: number | null;
+  latencyDefinition: string;
+  successRateDefinition: string;
+  dayTimezone: 'Asia/Manila';
+}
+
 export interface AIMonitoringSummary {
   systemStatus: 'healthy' | 'issues_found' | 'degraded';
   actionRequired: boolean;
@@ -53,6 +74,7 @@ export interface AIMonitoringSummary {
   lastUpdated: string;
   features: AIFeatureMetric[];
   pricingMeta: PricingMeta;
+  telemetry: AIMonitoringTelemetry;
 }
 
 export async function fetchAIMonitoringSummary(): Promise<AIMonitoringSummary> {

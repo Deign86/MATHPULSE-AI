@@ -1295,8 +1295,8 @@ playSound('complete');
                     </div>
                   )}
 
-                  {/* Explanation after answering - only show if user requested it */}
-                  {isCurrentlyAnswered && userRequestedExplanation && (
+                  {/* Show the answer explanation immediately after submission. */}
+                  {isCurrentlyAnswered && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full mt-4 space-y-4 max-w-3xl">
                       <div className={`border-2 rounded-2xl p-5 flex items-start gap-4 ${
                          (viewIndex === currentQuestionIndex ? lastAnswerCorrect : answerRecords[viewIndex]?.correct) ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'

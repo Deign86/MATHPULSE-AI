@@ -137,7 +137,7 @@ describe('ModulesPage', () => {
 
     renderModulesPage();
 
-    expect(quizService.fetchPendingQuizzesForStudent).toHaveBeenCalledWith('user-1');
+    expect(quizService.fetchPendingQuizzesForStudent).toHaveBeenCalledWith('user-1', 'school-lrn-1');
     expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
   });
 

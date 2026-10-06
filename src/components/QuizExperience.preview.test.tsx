@@ -18,15 +18,26 @@ const previewQuiz: Quiz = {
   }],
 };
 const assignedQuiz: Quiz = { ...previewQuiz, id: 'assigned-test', generatedQuizId: 'generated-assignment' };
+const getCanvasContext = HTMLCanvasElement.prototype.getContext;
 
 describe('QuizExperience preview mode', () => {
   beforeEach(() => {
+    HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
+      clearRect: vi.fn(), fillRect: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(),
+      arc: vi.fn(), fill: vi.fn(), stroke: vi.fn(), save: vi.fn(), restore: vi.fn(),
+      translate: vi.fn(), rotate: vi.fn(), scale: vi.fn(), closePath: vi.fn(),
+    });
     vi.spyOn(extraHints, 'useExtraHints').mockReturnValue({
       extraHintsEnabled: false, hintTokens: 0, totalHintsAvailable: 0, loading: false,
     });
   });
 
-  afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); });
+  afterEach(() => {
+    cleanup();
+    HTMLCanvasElement.prototype.getContext = getCanvasContext;
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
 
   it('keeps normal completion and retake local', async () => {
     const submit = vi.spyOn(automationService, 'triggerQuizSubmitted').mockResolvedValue({
@@ -42,7 +53,9 @@ describe('QuizExperience preview mode', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '4' }));
-    await act(async () => { vi.advanceTimersByTime(2_200); });
+    await act(async () => { vi.advanceTimersByTime(200); });
+    expect(screen.getByText('2 + 2 = 4')).toBeInTheDocument();
+    await act(async () => { vi.advanceTimersByTime(1_800); });
     expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Review answers'));
     expect(screen.getByText('Your answer: 4 · Correct')).toBeInTheDocument();
@@ -51,7 +64,8 @@ describe('QuizExperience preview mode', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'RETAKE QUIZ' }));
     fireEvent.click(screen.getByRole('button', { name: '4' }));
-    await act(async () => { vi.advanceTimersByTime(2_200); });
+    await act(async () => { vi.advanceTimersByTime(200); });
+    await act(async () => { vi.advanceTimersByTime(1_800); });
     expect(screen.getAllByText(/Quiz Complete/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: 'FINISH' }));
 
@@ -142,7 +156,8 @@ describe('QuizExperience preview mode', () => {
     vi.useFakeTimers();
     render(<QuizExperience quiz={assignedQuiz} studentId="student-1" onComplete={onComplete} onQuizEnd={onQuizEnd} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: '4' }));
-    await act(async () => { vi.advanceTimersByTime(2_200); });
+    await act(async () => { vi.advanceTimersByTime(2_000); });
+    expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
     expect(submit).toHaveBeenCalledOnce();
     expect(saveResults).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'RETAKE QUIZ' }));
@@ -151,7 +166,8 @@ describe('QuizExperience preview mode', () => {
     expect(completedAttempt).toHaveLength(1);
     expect(completedAttempt[0]).toMatchObject({ questionId: 'question-1', correct: true });
     fireEvent.click(screen.getByRole('button', { name: '4' }));
-    await act(async () => { vi.advanceTimersByTime(2_200); });
+    await act(async () => { vi.advanceTimersByTime(2_000); });
+    expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
     expect(submit).toHaveBeenCalledOnce();
     expect(saveResults).toHaveBeenCalledOnce();
     expect(onComplete).toHaveBeenCalledOnce();

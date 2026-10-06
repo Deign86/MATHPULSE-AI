@@ -82,6 +82,7 @@ const classRecordImportDocumentSchema = z.object({
 
 type ImportMappingLog = z.infer<typeof importMappingLogSchema>;
 type ClassRecordUploadHistoryEntry = z.infer<typeof classRecordUploadHistorySchema>[number];
+type WorkbookParseError = Error;
 
 function createPaginationItems(total: number, current: number): PaginationItem[] {
   if (total <= 7) {
@@ -158,6 +159,7 @@ export default function DataImportView({
   const [dragOver1, setDragOver1] = useState(false);
   const [dragOver2, setDragOver2] = useState(false);
   const [uploadingClassRecords, setUploadingClassRecords] = useState(false);
+  const [classRecordParsing, setClassRecordParsing] = useState(false);
   const [uploadingCourseMaterials, setUploadingCourseMaterials] = useState(false);
   const [recentMaterials, setRecentMaterials] = useState<CourseMaterialArtifactSummary[]>([]);
   const [recentMaterialsLoading, setRecentMaterialsLoading] = useState(true);
@@ -176,6 +178,8 @@ export default function DataImportView({
   interface PendingImportUpload {
     file: File;
     type: 'class_records' | 'course_materials';
+    workbookResult?: ParseWorkbookResult;
+    parserErrors?: string[];
   }
 
   const [pendingUpload, setPendingUpload] = useState<PendingImportUpload | null>(null);
@@ -307,6 +311,34 @@ export default function DataImportView({
 
   const handleSelectClassRecordsFile = (file: File) => {
     setPendingUpload({ file, type: 'class_records' });
+    setShsExcelResult(null);
+    setClassRecordParsing(/\.(xlsx|xls)$/i.test(file.name));
+    if (!/\.(xlsx|xls)$/i.test(file.name)) return;
+    void parseShsWorkbook(file, { confidenceThreshold: DETECTION_CONFIDENCE_THRESHOLD }).then((workbookResult) => {
+      const parseErrors = workbookResult.imported.validation.errors.slice();
+      if (workbookResult.mapping.studentEntities.length === 0) {
+        parseErrors.push('Workbook parsing found no student records.');
+      }
+      const malformedRows = workbookResult.mapping.studentEntities
+        .filter((student) => {
+          const lrn = student.lrn?.trim() || '';
+          const email = student.email?.trim() || '';
+          return lrn ? !/^\d{12}$/.test(lrn) : !email;
+        })
+        .map((student) => `Row ${student.sourceRow}: ${student.lrn ? 'LRN must contain exactly 12 digits.' : 'LRN or email is required.'}`);
+      const parserErrorsWithIdentity = [...parseErrors, ...malformedRows];
+      setShsExcelResult(workbookResult);
+      setPendingUpload((current) => current?.file === file
+        ? { ...current, workbookResult, parserErrors: parserErrorsWithIdentity }
+        : current);
+      if (parserErrorsWithIdentity.length) {
+        setUploadResult(parserErrorsWithIdentity.join(' '));
+      }
+    }).catch((error: WorkbookParseError) => {
+      const parserErrors = [error instanceof Error ? error.message : 'Workbook parsing failed.'];
+      setPendingUpload((current) => current?.file === file ? { ...current, parserErrors } : current);
+      setUploadResult(parserErrors.join(' '));
+    }).finally(() => setClassRecordParsing(false));
   };
 
   const handleSelectCourseMaterialFile = (file: File) => {
@@ -321,13 +353,14 @@ export default function DataImportView({
 
   const handleConfirmUpload = () => {
     if (!pendingUpload) return;
-    const { file, type } = pendingUpload;
+    const { file, type, workbookResult, parserErrors } = pendingUpload;
+    if (type === 'class_records' && (classRecordParsing || (parserErrors?.length ?? 0) > 0)) return;
     setPendingUpload(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (materialInputRef.current) materialInputRef.current.value = '';
 
     if (type === 'class_records') {
-      void handleFileUpload(file);
+      void handleFileUpload(file, workbookResult);
     } else {
       void handleCourseMaterialUpload(file);
     }
@@ -404,7 +437,7 @@ export default function DataImportView({
     return new File([rows.join('\n')], `${normalizedName}-normalized.csv`, { type: 'text/csv' });
   };
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (file: File, parsedWorkbook?: ParseWorkbookResult) => {
     setUploadingClassRecords(true);
     setUploadResult('');
     setUploadInterpretation(null);
@@ -413,28 +446,17 @@ export default function DataImportView({
 
     if (/\.(xlsx|xls)$/i.test(file.name)) {
       try {
-        const workbookResult = await parseShsWorkbook(file, { confidenceThreshold: DETECTION_CONFIDENCE_THRESHOLD });
+        const workbookResult = parsedWorkbook ?? await parseShsWorkbook(file, { confidenceThreshold: DETECTION_CONFIDENCE_THRESHOLD });
         setShsExcelResult(workbookResult);
-        const malformedLrnRows = workbookResult.mapping.studentEntities
-          .map((student, index) => ({
-            row: student.sourceRow || index + 2,
-            lrn: student.lrn?.trim() || '',
-            email: student.email?.trim() || '',
-          }))
-          .filter(({ lrn, email }) => (lrn ? !/^\d{12}$/.test(lrn) : !email));
-        if (malformedLrnRows.length > 0) {
-          const rowErrors = malformedLrnRows.map(({ row, lrn }) =>
-            `Row ${row}: ${lrn ? 'LRN must contain exactly 12 digits.' : 'LRN or email is required.'}`,
-          );
-          setUploadResult(rowErrors.join(' '));
-          toast.error(rowErrors.join(' '));
-          setUploadingClassRecords(false);
-          return;
-        }
+        if (workbookResult.imported.validation.errors.length) throw new Error(workbookResult.imported.validation.errors.join(' '));
         const normalizedFile = buildNormalizedWorkbookCsv(workbookResult, file.name);
         if (normalizedFile) uploadFile = normalizedFile;
-      } catch {
+      } catch (error: unknown) {
         setShsExcelResult(null);
+        setUploadResult(error instanceof Error ? error.message : 'Workbook parsing failed.');
+        toast.error(error instanceof Error ? error.message : 'Workbook parsing failed.');
+        setUploadingClassRecords(false);
+        return;
       }
     } else {
       setShsExcelResult(null);
@@ -454,16 +476,15 @@ export default function DataImportView({
 
       const resolvedImportContext = resolveUploadedClassContext(result, classSectionId, className, classMetadata);
 
-      if (uploadedStudentsCount > 0) {
-        onImportedClassRecords?.({
-          students: result.students,
-          classSectionId: resolvedImportContext.classSectionId,
-          className: resolvedImportContext.className,
-          classMetadata: resolvedImportContext.classMetadata,
-        });
-      }
-
       if (result.success) {
+        if (uploadedStudentsCount > 0) {
+          onImportedClassRecords?.({
+            students: result.students,
+            classSectionId: resolvedImportContext.classSectionId,
+            className: resolvedImportContext.className,
+            classMetadata: resolvedImportContext.classMetadata,
+          });
+        }
         toast.success(`Successfully imported ${uploadedStudentsCount} student records.`);
         const mappingLog: ImportMappingLog = {
           datasetIntent: result.datasetIntent,
@@ -1264,7 +1285,7 @@ export default function DataImportView({
               role="dialog"
               aria-modal="true"
               aria-labelledby="confirm-upload-title"
-              className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden z-10 p-5 sm:p-6 space-y-4"
+              className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto z-10 p-5 sm:p-6 space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -1328,6 +1349,39 @@ export default function DataImportView({
                 </div>
               </div>
 
+              {pendingUpload.type === 'class_records' && /\.(xlsx|xls)$/i.test(pendingUpload.file.name) && (
+                <section aria-label="Class record parse preview" className="space-y-2">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                    {classRecordParsing ? 'Parsing workbook…' : 'Workbook preview'}
+                  </h4>
+                  {pendingUpload.parserErrors?.length ? (
+                    <ul role="alert" className="max-h-24 overflow-y-auto rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+                      {pendingUpload.parserErrors.map((message, index) => <li key={`${index}-${message}`}>{message}</li>)}
+                    </ul>
+                  ) : null}
+                  {pendingUpload.workbookResult && (
+                    <div className="max-h-36 overflow-y-auto rounded-lg border border-slate-200 text-xs dark:border-slate-700">
+                      <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-slate-200 px-2 py-1 font-bold dark:border-slate-700">
+                        <span>Name</span><span>LRN</span><span>Score</span>
+                      </div>
+                      <ul className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {pendingUpload.workbookResult.mapping.studentEntities.map((student) => {
+                        const scoreRow = pendingUpload.workbookResult?.mapping.gradeEntities.find((grade) => normalizeLearnerKey(grade.fullName) === normalizeLearnerKey(student.fullName));
+                        const score = scoreRow?.finalGrades ?? scoreRow?.firstSemester ?? scoreRow?.quarterlyGrade ?? scoreRow?.initialGrade;
+                        return (
+                          <li key={`${student.sourceRow}-${student.fullName}`} className="grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-1.5">
+                            <span className="truncate font-medium">{student.fullName}</span>
+                            <span>{student.lrn || 'No LRN'}</span>
+                            <span>{score ?? '—'}</span>
+                          </li>
+                        );
+                      })}
+                      </ul>
+                    </div>
+                  )}
+                </section>
+              )}
+
               {/* Explanatory Notice */}
               <div className="rounded-xl p-3 bg-violet-50/60 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900/40 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                 {pendingUpload.type === 'class_records' ? (
@@ -1354,6 +1408,7 @@ export default function DataImportView({
                 <Button
                   type="button"
                   onClick={handleConfirmUpload}
+                  disabled={pendingUpload.type === 'class_records' && (classRecordParsing || (pendingUpload.parserErrors?.length ?? 0) > 0)}
                   className="w-full sm:w-auto h-10 text-xs sm:text-sm font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xs cursor-pointer active:scale-95"
                 >
                   <Check className="w-4 h-4 mr-1.5" />

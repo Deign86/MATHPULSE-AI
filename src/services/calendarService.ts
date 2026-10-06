@@ -1,10 +1,10 @@
 import {
   collection,
+  deleteField,
   doc,
   setDoc,
   updateDoc,
   deleteDoc,
-  deleteField,
   serverTimestamp,
   onSnapshot,
   query,
@@ -55,6 +55,7 @@ export const createCalendarEvent = async (
   userId: string,
   payload: {
     title: string;
+    classId?: string;
     description?: string;
     startTime: Date;
     endTime?: Date;
@@ -66,6 +67,7 @@ export const createCalendarEvent = async (
     id: eventRef.id,
     userId,
     title: payload.title,
+    classId: payload.classId,
     description: payload.description,
     startTime: payload.startTime,
     endTime: payload.endTime,

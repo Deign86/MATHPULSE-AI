@@ -52,6 +52,7 @@ export interface RewardsPageProps {
   currentXP?: number;
   totalXP?: number;
   xpToNextLevel?: number;
+  currentStreak: number;
 }
 
 interface DailyQuest {
@@ -73,6 +74,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
   currentXP = 0,
   totalXP = 0,
   xpToNextLevel = 500,
+  currentStreak,
 }) => {
   const [loading, setLoading] = useState(true);
   const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
@@ -340,7 +342,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
             <div className="min-w-0">
               <p className="text-[10px] font-black text-white/70 uppercase truncate">Active Streak</p>
               <p className="text-base sm:text-lg font-black text-white tabular-nums leading-tight mt-0.5">
-                {progressData.dailyStreak || 0} <span className="text-xs text-white/60 font-semibold">Days</span>
+                {currentStreak} <span className="text-xs text-white/60 font-semibold">Days</span>
               </p>
             </div>
           </div>

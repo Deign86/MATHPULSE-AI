@@ -41,6 +41,7 @@ admin.initializeApp();
 export { onStudentCreated } from "./triggers/onStudentCreated";
 export { onDiagnosticComplete } from "./triggers/onDiagnosticComplete";
 export { onQuizSubmitted } from "./triggers/onQuizSubmitted";
+export { onQuizCompletionNotification } from "./triggers/onQuizCompletionNotification";
 export { onAttendanceUpdate } from "./triggers/onAttendanceUpdate";
 export { onContentUpdated } from "./triggers/onContentUpdated";
 export {
