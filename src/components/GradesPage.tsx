@@ -72,6 +72,18 @@ interface ExamMilestone {
 
 type ExportFormat = 'csv' | 'pdf';
 
+export function calculateExamReadinessScore(
+  averageScore: number,
+  proficiencyRate: number,
+  diagnosticScore: number | undefined,
+  hasCompletedAssessment: boolean,
+): number | null {
+  if (averageScore > 0 && proficiencyRate > 0) return Math.round((averageScore * 0.6) + (proficiencyRate * 0.4));
+  if (averageScore > 0) return averageScore;
+  if (diagnosticScore !== undefined) return diagnosticScore;
+  return hasCompletedAssessment ? 0 : null;
+}
+
 // Creative Radial Score Ring with smooth SVG gradient
 const RadialScoreRing: React.FC<{ 
   value: number; 
@@ -415,13 +427,13 @@ const GradesPage = () => {
 
   // Compute exam readiness score from average & quiz proficiency
   const examReadinessScore = useMemo(() => {
-    if (averageScore > 0 && proficiencyRate > 0) {
-      return Math.round((averageScore * 0.6) + (proficiencyRate * 0.4));
-    }
-    if (averageScore > 0) return averageScore;
-    if (diagnosticSummary?.score) return diagnosticSummary.score;
-    return null;
-  }, [averageScore, proficiencyRate, diagnosticSummary?.score]);
+    return calculateExamReadinessScore(
+      averageScore,
+      proficiencyRate,
+      diagnosticSummary?.score,
+      totalQuizzes > 0 || recentQuizzes.length > 0,
+    );
+  }, [averageScore, proficiencyRate, diagnosticSummary?.score, totalQuizzes, recentQuizzes.length]);
 
   // Derive core Senior High School STEM exam milestones
   const examMilestones = useMemo<ExamMilestone[]>(() => {

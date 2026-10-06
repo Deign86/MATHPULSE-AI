@@ -5,13 +5,11 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
-  deleteField,
   serverTimestamp,
   onSnapshot,
   query,
   where,
   limit,
-  type UpdateData,
   Unsubscribe,
   type DocumentData,
   type FirestoreError,
@@ -104,8 +102,6 @@ export const updateCalendarEvent = async (
   await updateDoc(eventRef, {
     ...firestoreUpdates,
     updatedAt: serverTimestamp(),
-  await updateDoc(eventRef, {
-    ...firestoreUpdates,
   });
 };
 
