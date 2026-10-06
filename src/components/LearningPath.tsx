@@ -6,6 +6,8 @@ import { UserProgress, type StudentProfile } from '../types/models';
 import ModuleFolderCard from './ModuleFolderCard';
 import { type DiagnosticTopicKey, TOPIC_TO_MODULE_ID, normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 import { type CurriculumModuleRuntime } from '../data/curriculumModules';
+import { subscribeToCompetencyProfile } from '../services/assessmentService';
+import { getWeakestDiagnosticTopics } from '../utils/recommendedTopics';
 
 interface LearningPathProps {
   onNavigateToModules?: (moduleId?: string) => void;
@@ -22,10 +24,23 @@ const LearningPath: React.FC<LearningPathProps> = ({
 }) => {
   const { userProfile } = useAuth();
   const [progress, setProgress] = useState<UserProgress | null>(null);
+  const [latestWeakTopics, setLatestWeakTopics] = useState<DiagnosticTopicKey[]>([]);
+
+  useEffect(() => {
+    if (!userProfile?.uid) {
+      setLatestWeakTopics([]);
+      return;
+    }
+    return subscribeToCompetencyProfile(userProfile.uid, (profile) => {
+      setLatestWeakTopics(getWeakestDiagnosticTopics(profile?.competencies ?? {}));
+    });
+  }, [userProfile?.uid]);
 
   const normalizedRiskTopics = React.useMemo<DiagnosticTopicKey[]>(() => {
     const primary =
-      priorityTopics.length > 0
+      latestWeakTopics.length > 0
+        ? latestWeakTopics
+        : priorityTopics.length > 0
         ? priorityTopics
         : atRiskSubjects
           .map((entry) => normalizeDiagnosticTopic(entry))
@@ -37,7 +52,7 @@ const LearningPath: React.FC<LearningPathProps> = ({
       seen.add(entry);
       return true;
     });
-  }, [priorityTopics, atRiskSubjects]);
+  }, [latestWeakTopics, priorityTopics, atRiskSubjects]);
 
   const modulePool = React.useMemo(() => {
     if (normalizedRiskTopics.length === 0) return modules.slice(0, 3);

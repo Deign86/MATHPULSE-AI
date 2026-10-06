@@ -75,6 +75,29 @@ async def test_conceptual_question_uses_normal_chat_generation(
 
 
 @pytest.mark.asyncio
+async def test_chat_system_prompt_requires_guidance_before_final_numeric_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_messages: list[dict[str, str]] = []
+
+    async def route_intent(_message: str) -> dict[str, object]:
+        return {"choice": "conceptual_confusion", "confidence": 0.91}
+
+    async def capture_llm(messages: list[dict[str, str]], **_kwargs: object) -> str:
+        captured_messages.extend(messages)
+        return "What operation would isolate x first?"
+
+    monkeypatch.setattr(main, "route_student_intent", route_intent)
+    monkeypatch.setattr(main, "call_hf_chat_async", capture_llm)
+
+    await main.chat_tutor(main.ChatRequest(message="What is the answer to 3x+9=0?"))
+
+    system_prompt = captured_messages[0]["content"].lower()
+    assert "do not give the final answer" in system_prompt
+    assert "ask a guiding question first" in system_prompt
+
+
+@pytest.mark.asyncio
 async def test_jev_failure_fails_open_to_normal_chat_generation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

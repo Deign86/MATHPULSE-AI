@@ -13,6 +13,7 @@ import { cacheKeys } from '../utils/cacheKeys';
 import { useCurriculum } from '../hooks/useCurriculum';
 import { apiUrl } from '../config/env';
 import { recordGet } from '../utils/memberOf';
+import { filterTopicMasteryRows } from '../utils/topicMasteryFilters';
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -99,6 +100,8 @@ const STATUS_ORDER = {
 
 export interface TopicMasteryViewProps {
   classSectionId?: string;
+  classOptions?: Array<{ sectionId: string; name: string }>;
+  onClassSectionChange?: (sectionId: string) => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   activeTab?: 'mastery' | 'availability';
@@ -108,6 +111,8 @@ export interface TopicMasteryViewProps {
 
 const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
   classSectionId,
+  classOptions = [],
+  onClassSectionChange,
   onOpenNotifications,
   onOpenProfile,
   activeTab,
@@ -352,16 +357,15 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
     }
   }, [gradeScopedSubjectIds, subjectFilter]);
 
-  const filteredTopics = topics
-    .filter(t => {
-      const matchedSubject = SHS_MATH_SUBJECTS.find((subject) =>
-        subject.id === t.subjectId || subject.name.toLowerCase() === t.subjectId.trim().toLowerCase()
-      );
-      if (subjectFilter !== 'all' && matchedSubject?.id !== subjectFilter) return false;
-      if (!matchedSubject || !gradeScopedSubjectIds.includes(matchedSubject.id)) return false;
-      if (searchQuery && !t.topicName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      return true;
-    })
+  // Normalize backend subject names to canonical IDs before filtering, so the
+  // ID-only filter helper does not discard rows carrying subject names.
+  const normalizedTopics = topics.map((t) => {
+    const matchedSubject = SHS_MATH_SUBJECTS.find((subject) =>
+      subject.id === t.subjectId || subject.name.toLowerCase() === t.subjectId.trim().toLowerCase()
+    );
+    return matchedSubject ? { ...t, subjectId: matchedSubject.id } : t;
+  });
+  const filteredTopics = filterTopicMasteryRows(normalizedTopics, subjectFilter, gradeScopedSubjectIds, searchQuery)
     .sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
       switch (sortField) {
@@ -465,6 +469,23 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
         <>
           {/* Search & Filters Row */}
           <div className="flex flex-col md:flex-row gap-2.5 sm:gap-4">
+            {classOptions.length > 0 && (
+              <label className="sr-only" htmlFor="topic-mastery-class">Class section</label>
+            )}
+            {classOptions.length > 0 && (
+              <select
+                id="topic-mastery-class"
+                aria-label="Class section"
+                value={classSectionId || ''}
+                onChange={(event) => onClassSectionChange?.(event.target.value)}
+                className="bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] rounded-[12px] px-3 py-2.5"
+              >
+                <option value="">All Classes</option>
+                {classOptions.map((classOption) => (
+                  <option key={classOption.sectionId} value={classOption.sectionId}>{classOption.name}</option>
+                ))}
+              </select>
+            )}
             <div className="flex items-center bg-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full md:w-64">
               <Search size={15} className="text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
               <input

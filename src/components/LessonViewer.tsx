@@ -382,6 +382,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
 import { getUserProgress, updateLessonProgressPercent } from '../services/progressService';
+import { getSavedLessonSectionIndex } from '../utils/lessonSectionProgress';
 import type { MicroLessonCardProps, MicroLessonPhase } from './notebook/MicroLessonCard';
 
 interface LessonViewerProps {
@@ -1467,10 +1468,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   const microLessonCards = buildMicroLessonCards(sections);
 
   useEffect(() => {
-    if (initialSection >= 0 && initialSection < totalSections) {
+    if (sections.length > 0 && initialSection >= 0 && initialSection < totalSections) {
       setCurrentSection(initialSection);
     }
-  }, [lesson.id]);
+  }, [lesson.id, initialSection, sections.length, totalSections]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1481,16 +1482,10 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     }
     void getUserProgress(userProfile.uid).then((progress) => {
       if (cancelled) return;
-      if (!shouldRestoreSavedLessonSection(initialSection)) {
-        setSectionProgressLoaded(true);
-        return;
+      const savedSectionIndex = getSavedLessonSectionIndex(progress?.lessons?.[lesson.id], sections.length);
+      if (initialSection >= 0 && savedSectionIndex !== undefined) {
+        setCurrentSection(savedSectionIndex);
       }
-      const savedLessonProgress = progress?.lessons?.[lesson.id];
-      const savedSection = savedLessonProgress
-        ? Object.entries(savedLessonProgress).find(([key]) => key === 'lastSectionIndex')?.[1]
-        : undefined;
-      const savedSectionIndex = Number.isInteger(savedSection) && savedSection >= 0 ? savedSection : undefined;
-      if (savedSectionIndex !== undefined) setCurrentSection(Math.min(savedSectionIndex, totalSections - 1));
       setSectionProgressLoaded(true);
     }).catch((caughtError) => {
       const restoreError = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
@@ -1498,7 +1493,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
       if (!cancelled) setSectionProgressLoaded(true);
     });
     return () => { cancelled = true; };
-  }, [lesson.id, userProfile?.uid, totalSections, initialSection]);
+  }, [lesson.id, userProfile?.uid, sections.length, totalSections, initialSection]);
 
   useEffect(() => {
     const practiceIdx = sections.findIndex((s) => s.type === 'try_it_yourself');
@@ -1628,8 +1623,9 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   };
 
   // Block completion if either the external practice quiz OR the Try It Yourself quiz is unfinished
+  const hasTryItSection = sections.some((section) => section.type === 'try_it_yourself');
   const isPracticeRequired = Boolean(
-    (practiceQuiz && !practiceQuizCompleted) || !tryItQuizCompleted
+    (practiceQuiz && !practiceQuizCompleted) || (hasTryItSection && !tryItQuizCompleted)
   );
   const currentTab = SECTION_TABS[currentSection] || SECTION_TABS[0];
   const CurrentTabIcon = currentTab.icon;

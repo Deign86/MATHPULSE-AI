@@ -1905,12 +1905,14 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                           type={showPassword ? 'text' : 'password'}
                           value={formData.password}
                           onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          placeholder="At least 8 characters"
                           className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 pr-10 text-xs font-bold tracking-widest text-slate-900 dark:text-white"
                         />
                         <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                           {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
                       </div>
+                      <p className="text-xs text-slate-500">Use 8+ characters with uppercase, lowercase, a number, and a special character.</p>
                       {formErrors.password && <p className="text-xs text-rose-500">{formErrors.password}</p>}
                     </div>
                   )}

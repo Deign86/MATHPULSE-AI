@@ -15,6 +15,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { z } from 'zod';
 import { getCurriculumModulesForLearner } from '../data/curriculumModules';
 import {
   UserProgress,
@@ -228,6 +229,28 @@ export const updateLessonQuizCompletion = async (
         });
       }
     } catch { /* non-critical */ }
+
+    try {
+      const { getStudentContext } = await import('./pipelineService');
+      const context = getStudentContext();
+      if (context) {
+        const [studentService, activityModule] = await Promise.all([
+          import('./studentService'),
+          import('../utils/lessonCompletionActivity'),
+        ]);
+        const studentSnapshot = await getDoc(doc(db, 'users', userId));
+        const studentRecord = studentSnapshot.data();
+        const nameField = z.string().safeParse(studentRecord?.name);
+        const lrnField = z.string().safeParse(studentRecord?.lrn);
+        const studentName = nameField.success ? nameField.data : 'Student';
+        const studentLrn = lrnField.success ? lrnField.data : userId;
+        await studentService.logActivity(
+          activityModule.buildLessonCompletionActivity(studentName, studentLrn, context.classId, lessonId),
+        );
+      }
+    } catch (error) {
+      console.warn('[progressService] Could not publish lesson completion to teacher activity feed:', error);
+    }
   } catch (error) {
     console.error('Error updating lesson quiz completion:', error);
     throw error;
