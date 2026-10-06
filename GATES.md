@@ -1953,4 +1953,23 @@ Use the existing RequireRole render, quizBattle submit strings, scoringEngine da
   EXPECT: RTDB config ok
   EVIDENCE: RTDB emulator uses port 9000; database.rules.json remains configured only at the top level.
 
+---
+
+# Gates: Issue #198 — Profile and signup persistence
+
+Scope: Fix three profile defects — signup name reset to "User", Save Changes not refreshing AuthContext, ID-card photo stored as raw base64.
+
+- [x] G1: Email signup's supplied full name survives the auth-listener race and persists instead of the generic fallback.
+  CHECK: npm run typecheck
+  EXPECT: exit 0
+  EVIDENCE: pending-name localStorage handoff in src/services/authService.ts consumed in src/contexts/AuthContext.tsx; typecheck exit 0.
+- [x] G2: Saving a profile refreshes AuthContext after Firestore updates.
+  CHECK: npm run typecheck
+  EXPECT: exit 0
+  EVIDENCE: await refreshProfile() added to handleSaveProfile in src/App.tsx; typecheck exit 0.
+- [x] G3: Student ID photo selection uploads a File to Storage, persists a download URL, and refreshes AuthContext.
+  CHECK: npm test -- --run src/components/__tests__/StudentIDCard.test.tsx
+  EXPECT: passed
+  EVIDENCE: StudentIDCard passes File to ProfilePage.handlePhotoUploaded via uploadProfilePicture; StudentIDCard suite 3/3 green.
+
 

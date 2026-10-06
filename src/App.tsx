@@ -830,6 +830,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     try {
       await updateUserProfile(userProfile.uid, updates);
       setProfileOverrides((prev) => ({ ...prev, ...updates }));
+      await refreshProfile();
       setActiveModal(null);
       toast.success('Profile updated successfully');
     } catch (error) {
