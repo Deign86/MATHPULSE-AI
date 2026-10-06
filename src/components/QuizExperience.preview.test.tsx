@@ -136,7 +136,6 @@ describe('QuizExperience preview mode', () => {
     render(<QuizExperience quiz={assignedQuiz} studentId="student-1" onComplete={onComplete} onQuizEnd={onQuizEnd} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: '3' }));
     await act(async () => { vi.advanceTimersByTime(2_200); });
-    fireEvent.click(screen.getByRole('button', { name: /View Results/ }));
     expect(screen.getByText(/Quiz Complete/)).toBeInTheDocument();
     await act(async () => { vi.advanceTimersByTime(60_000); });
     expect(submit).toHaveBeenCalledOnce();
