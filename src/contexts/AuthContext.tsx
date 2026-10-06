@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../lib/firebase.ts';
 import { User, UserRole, StudentProfile, TeacherProfile, AdminProfile } from '../types/models.ts';
-import { getUserProfile, getUserProfileFromServer, createUserProfile, consumePendingAuthRole, getLastAuthRole, resolveGoogleRedirect } from '../services/authService.ts';
+import { getUserProfile, getUserProfileFromServer, createUserProfile, consumePendingAuthRole, consumePendingAuthName, getLastAuthRole, resolveGoogleRedirect } from '../services/authService.ts';
 
 
 export interface AuthContextType {
@@ -63,6 +63,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // can never grant admin — new profiles clamp to student/teacher.
           const requestedRole = consumePendingAuthRole() || getLastAuthRole() || 'student';
           const safeRequestedRole: UserRole = requestedRole === 'admin' ? 'student' : requestedRole;
+          const pendingName = consumePendingAuthName();
 
           // Fetch user profile from Firestore
           let profile = await getUserProfile(user.uid);
@@ -70,7 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // If profile doesn't exist, auto-create it
           if (!profile && user.email) {
             const role: UserRole = safeRequestedRole;
-            const name = user.displayName || 'User';
+            const name = pendingName || user.displayName || 'User';
             
             try {
               profile = await createUserProfile(user, role, { name });
@@ -124,7 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUserProfile({
               uid: user.uid,
               email: user.email || '',
-              name: user.displayName || 'User',
+              name: pendingName || user.displayName || 'User',
               role: safeRequestedRole,
               photo: user.photoURL || '',
               createdAt: new Date(),
