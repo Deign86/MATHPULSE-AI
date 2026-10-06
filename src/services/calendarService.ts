@@ -56,8 +56,6 @@ export const createCalendarEvent = async (
     startTime: Date;
     endTime?: Date;
     color?: 'purple' | 'blue' | 'emerald' | 'amber' | 'rose';
-    classSectionId?: string;
-    className?: string;
   },
 ): Promise<CalendarEvent> => {
   const eventRef = doc(collection(db, 'calendarEvents'));
@@ -69,8 +67,6 @@ export const createCalendarEvent = async (
     startTime: payload.startTime,
     endTime: payload.endTime,
     color: payload.color,
-    classSectionId: payload.classSectionId,
-    className: payload.className,
     createdAt: new Date(),
   };
 
@@ -88,7 +84,7 @@ export const createCalendarEvent = async (
 
 export const updateCalendarEvent = async (
   eventId: string,
-  updates: Partial<Pick<CalendarEvent, 'title' | 'description' | 'startTime' | 'endTime' | 'color' | 'classSectionId' | 'className'>>,
+  updates: Partial<Pick<CalendarEvent, 'title' | 'description' | 'startTime' | 'endTime' | 'color'>>,
 ): Promise<void> => {
   const eventRef = doc(db, 'calendarEvents', eventId);
   const firestoreUpdates = Object.fromEntries(

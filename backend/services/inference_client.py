@@ -3,7 +3,6 @@ import time
 import json
 import re
 import random
-from datetime import datetime, timezone
 from threading import Lock
 from dataclasses import dataclass
 from pathlib import Path
@@ -466,8 +465,6 @@ class InferenceClient:
             "requests_total": 0,
             "requests_ok": 0,
             "requests_error": 0,
-            "requests_today": 0,
-            "metrics_date_utc": datetime.now(timezone.utc).date().isoformat(),
             "retries_total": 0,
             "fallback_attempts": 0,
             "latency_sum_ms": 0.0,
@@ -538,21 +535,12 @@ class InferenceClient:
             doc_ref = self.firestore.collection("system_metrics").document("inference_stats")
             with self._metrics_lock:
                 snapshot = dict(self._metrics)
-                latency_count = self._metrics.get("latency_count") or 0
-                latency_sum = self._metrics.get("latency_sum_ms") or 0.0
-                snapshot["avg_latency_ms"] = round(latency_sum / latency_count, 2) if latency_count else 0.0
 
             doc_ref.set(snapshot, merge=True)
         except Exception as e:
             LOGGER.warning(f"?????? Failed to persist metrics: {e}")
 
     def _record_attempt(self, *, task_type: str, provider: str, route: str, fallback_depth: int) -> None:
-        today = datetime.now(timezone.utc).date().isoformat()
-        with self._metrics_lock:
-            if self._metrics.get("metrics_date_utc") != today:
-                self._metrics["requests_today"] = 0
-                self._metrics["metrics_date_utc"] = today
-            self._metrics["requests_today"] = (self._metrics.get("requests_today") or 0) + 1
         self._bump_metric("requests_total", 1)
         self._bump_bucket("task_counts", (task_type or "default").strip().lower(), 1)
         self._bump_bucket("provider_counts", provider, 1)
@@ -571,8 +559,6 @@ class InferenceClient:
                 "requests_total": self._metrics.get("requests_total") or 0,
                 "requests_ok": self._metrics.get("requests_ok") or 0,
                 "requests_error": self._metrics.get("requests_error") or 0,
-                "requests_today": self._metrics.get("requests_today") or 0,
-                "metrics_date_utc": self._metrics.get("metrics_date_utc"),
                 "retries_total": self._metrics.get("retries_total") or 0,
                 "fallback_attempts": self._metrics.get("fallback_attempts") or 0,
                 "avg_latency_ms": avg_latency,
@@ -1012,12 +998,6 @@ def parse_json_response(text: Optional[str]) -> Optional[dict]:
 
 
 def create_default_client(firestore_client: Optional[Any] = None) -> InferenceClient:
-    if firestore_client is None:
-        try:
-            from firebase_admin import firestore
-            firestore_client = firestore.client()
-        except Exception:
-            firestore_client = None
     return InferenceClient(firestore_client=firestore_client)
 
 

@@ -12,34 +12,6 @@ logger = logging.getLogger("mathpulse.ai_monitoring")
 router = APIRouter(prefix="/api/admin/ai-monitoring", tags=["admin", "ai-monitoring"])
 
 
-def _monitoring_telemetry(metrics: dict, today_utc: str) -> dict:
-    total = metrics.get("requests_total", 0)
-    succeeded = metrics.get("requests_ok", 0)
-    latency = metrics.get("avg_latency_ms", 0)
-    daily_total = metrics.get("requests_today", 0) if metrics.get("metrics_date_utc") == today_utc else 0
-    total = total if isinstance(total, (int, float)) and not isinstance(total, bool) and total > 0 else 0
-    succeeded = succeeded if isinstance(succeeded, (int, float)) and not isinstance(succeeded, bool) and succeeded >= 0 else 0
-    latency = latency if isinstance(latency, (int, float)) and not isinstance(latency, bool) and latency >= 0 else 0
-    daily_total = daily_total if isinstance(daily_total, (int, float)) and not isinstance(daily_total, bool) and daily_total >= 0 else 0
-    return {
-        "dailyQuestionCount": int(daily_total),
-        "averageLatencyMs": round(float(latency), 2),
-        "successRate": round(min(1.0, succeeded / total), 4) if total else 0.0,
-    }
-
-
-def _read_inference_telemetry() -> dict:
-    try:
-        from firebase_admin import firestore
-
-        snapshot = firestore.client().collection("system_metrics").document("inference_stats").get()
-        metrics = snapshot.to_dict() if snapshot.exists else {}
-        return _monitoring_telemetry(metrics or {}, datetime.now(timezone.utc).date().isoformat())
-    except Exception as exc:
-        logger.warning("Could not load inference telemetry: %s", exc)
-        return _monitoring_telemetry({}, datetime.now(timezone.utc).date().isoformat())
-
-
 def require_admin(request: Request):
     user = getattr(request.state, "user", None)
     if user is None:
@@ -161,7 +133,6 @@ def _aggregate_summary() -> dict:
         "lastUpdated": datetime.now(timezone.utc).isoformat(),
     }
 
-    summary.update(_read_inference_telemetry())
     return {"summary": summary, "features": features}
 
 

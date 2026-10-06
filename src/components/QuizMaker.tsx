@@ -115,7 +115,7 @@ const filterTopicsByGrade = (
 };
 
 // Balanced limits for classroom use: allows longer quizzes while keeping response times practical.
-const MAX_QUESTIONS_LIMIT = 30;
+const MAX_QUESTIONS_LIMIT = 12;
 const MAX_TOPICS_LIMIT = 12;
 export const DEFAULT_QUIZ_QUESTION_COUNT = 5;
 const QUIZ_TASK_STORAGE_KEY = 'mathpulse:quiz-maker:active-task';

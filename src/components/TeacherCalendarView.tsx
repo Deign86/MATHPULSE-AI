@@ -205,7 +205,6 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
   const [formStartTime, setFormStartTime] = useState('09:00');
   const [formEndTime, setFormEndTime] = useState('');
   const [formColor, setFormColor] = useState<EventColor>('purple');
-  const [formClassId, setFormClassId] = useState('');
 
   // View Modal State
   const [viewEventOpen, setViewEventOpen] = useState(false);
@@ -318,7 +317,6 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
     setFormStartTime('09:00');
     setFormEndTime('');
     setFormColor('purple');
-    setFormClassId('');
     setIsAddOpen(true);
   };
 
@@ -335,7 +333,6 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
     setFormStartTime(pad2(ev.startTime.getHours()) + ':' + pad2(ev.startTime.getMinutes()));
     setFormEndTime(ev.endTime ? (pad2(ev.endTime.getHours()) + ':' + pad2(ev.endTime.getMinutes())) : '');
     setFormColor(ev.color || 'purple');
-    setFormClassId(ev.classSectionId || '');
     setViewEventOpen(false);
     setIsAddOpen(true);
   };
@@ -368,7 +365,6 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
       setError('Choose an end time later than the start time.');
       return;
     }
-    const selectedClass = classes?.find((classItem) => classItem.id === formClassId);
     setSaving(true);
     setError('');
     const evData = {
@@ -377,8 +373,6 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
       startTime: start,
       endTime: end,
       color: formColor,
-      classSectionId: selectedClass?.id,
-      className: selectedClass?.name,
     };
 
     let tempId: string | null = null;
@@ -714,21 +708,6 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
                   className="bg-white border-slate-200 focus:border-[#a855f7] focus:ring-4 focus:ring-purple-50 rounded-xl h-12 px-4 transition-all text-[14px]"
                 />
               </div>
-
-              {classes && classes.length > 0 && (
-                <div className="space-y-2">
-                  <label htmlFor="calendar-class" className="text-[13px] font-bold text-[#1e293b] ml-1">Class</label>
-                  <select
-                    id="calendar-class"
-                    value={formClassId}
-                    onChange={(event) => setFormClassId(event.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl h-12 px-4 text-[14px]"
-                  >
-                    <option value="">No class</option>
-                    {classes.map((classItem) => <option key={classItem.id} value={classItem.id}>{classItem.name}</option>)}
-                  </select>
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

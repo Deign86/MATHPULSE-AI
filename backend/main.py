@@ -29,7 +29,7 @@ import string
 import asyncio
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
-from collections import Counter, defaultdict, deque
+from collections import Counter, defaultdict
 from threading import Lock
 
 # Lazy import for audit_logger to prevent ModuleNotFoundError during test collection.
@@ -2706,35 +2706,9 @@ def _build_stream_continuation_prompt(original_question: str, expected_end_marke
     return "\n".join(lines)
 
 
-_chat_message_windows: dict[str, deque[float]] = defaultdict(deque)
-_chat_message_windows_lock = Lock()
-_CHAT_MESSAGE_LIMIT = 12
-_CHAT_MESSAGE_WINDOW_SECONDS = 60
-_SOCRATIC_CHAT_SAFETY_RULE = (
-    "TUTORING SAFETY RULE: Teach Socratically. Do not solve a student's active problem or "
-    "provide its final answer directly, even when explicitly asked. Offer one hint or a "
-    "single next step, then ask the student to try it.\n\n"
-)
-
-
-def _enforce_chat_message_limit(user_id: str | None) -> None:
-    if not user_id:
-        return
-    now = time.monotonic()
-    key = user_id
-    with _chat_message_windows_lock:
-        timestamps = _chat_message_windows[key]
-        while timestamps and now - timestamps[0] >= _CHAT_MESSAGE_WINDOW_SECONDS:
-            timestamps.popleft()
-        if len(timestamps) >= _CHAT_MESSAGE_LIMIT:
-            raise HTTPException(status_code=429, detail="Too many chat messages. Please wait a minute and try again.")
-        timestamps.append(now)
-
-
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor(request: ChatRequest):
     """AI Math Tutor powered by Hugging Face Inference routing."""
-    _enforce_chat_message_limit(request.userId)
     _start_ms = int(time.monotonic() * 1000)
     try:
         # ─── Context-Aware Intent Gate (before scope check) ──────
@@ -2781,7 +2755,7 @@ async def chat_tutor(request: ChatRequest):
             except Exception as intent_err:
                 logger.warning("Jev intent routing failed; continuing with chat: %s", intent_err)
 
-        system_prompt = _SOCRATIC_CHAT_SAFETY_RULE + MATH_TUTOR_SYSTEM_PROMPT
+        system_prompt = MATH_TUTOR_SYSTEM_PROMPT
 
         if request.crossSessionMemory:
             system_prompt = (
@@ -2934,7 +2908,6 @@ async def _update_memory_after_response(
 @app.post("/api/chat/stream")
 async def chat_tutor_stream(request: ChatRequest):
     """SSE stream endpoint for AI Math Tutor chat responses."""
-    _enforce_chat_message_limit(request.userId)
     try:
         # ─── Context-Aware Intent Gate (before scope check) ──────
         _skip_scope_check = False
@@ -2962,7 +2935,7 @@ async def chat_tutor_stream(request: ChatRequest):
                 )
             except Exception as mem_err:
                 logger.debug(f"Memory context injection skipped: {mem_err}")
-        prompt_content = _SOCRATIC_CHAT_SAFETY_RULE + MATH_TUTOR_SYSTEM_PROMPT
+        prompt_content = MATH_TUTOR_SYSTEM_PROMPT
         if request.crossSessionMemory:
             prompt_content = (
                 "RELEVANT CONTEXT FROM THIS STUDENT'S PRIOR CONVERSATIONS (use only when relevant; "
@@ -11641,9 +11614,9 @@ async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
     Supports Bloom's Taxonomy integration, multiple question types,
     and graph-based identification questions.
     """
-    # Quiz item cap ??? returns 400 with exact message for test compatibility
-    if request.numQuestions > 10:
-        raise HTTPException(status_code=400, detail="capped at 10 items")
+    # Quiz item cap — 12 classroom items maximum.
+    if request.numQuestions > 12:
+        raise HTTPException(status_code=400, detail="capped at 12 items")
 
     try:
 
