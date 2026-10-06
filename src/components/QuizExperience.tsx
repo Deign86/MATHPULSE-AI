@@ -636,6 +636,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
     setAnswers(newAnswers);
     setLastAnswerCorrect(isCorrect);
     setShowExplanation(true);
+    setUserRequestedExplanation(true);
 
     if (!isCorrect) {
       // Keep feedback visible until the learner chooses to continue.
@@ -671,13 +672,11 @@ const newStreak = streak + 1;
      else if (newStreak >= 3) { setComboMultiplier(2); }
      else { setComboMultiplier(1); }
 
-    // Use specific canvas confetti for correct answers
-    import('canvas-confetti').then((confetti) => {
-      if (!previewMode && !localOnlyRef.current) {
-        if (!window.CanvasRenderingContext2D) return;
+    if (!previewMode) {
+      import('canvas-confetti').then((confetti) => {
         confetti.default({ particleCount: 30, spread: 40, colors: ['#75D06A', '#6ED1CF'], origin: { y: 0.6 } });
-      }
-    });
+      });
+    }
 
     setShowRoundResult(true);
   };
