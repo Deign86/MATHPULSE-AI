@@ -71,18 +71,18 @@ jobs:
           VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY || vars.VITE_FIREBASE_VAPID_KEY }}
         run: npm run build
 
-      - name: Validate PWA output and bundle safety
-        run: npm run validate:pwa
-
-      - name: Check production bundle safety
-        shell: bash
-        run: |
-          set -euo pipefail
-          if grep -RinE 'huggingface\.co/spaces/Deign86/MathPulse-AI' build \
-            --include='*.js' --include='*.html' --include='*.json'; then
-            echo 'Retired hosted frontend reference found in build output'
-            exit 1
-          fi
+      - parallel:
+          - name: Validate PWA output and bundle safety
+            run: npm run validate:pwa
+          - name: Check production bundle safety
+            shell: bash
+            run: |
+              set -euo pipefail
+              if grep -RinE 'huggingface\.co/spaces/Deign86/MathPulse-AI' build \
+                --include='*.js' --include='*.html' --include='*.json'; then
+                echo 'Retired hosted frontend reference found in build output'
+                exit 1
+              fi
 
       - name: Upload PWA build artifact
         uses: actions/upload-artifact@v4

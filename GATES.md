@@ -61,3 +61,54 @@ ABANDON: line22 authenticated E2E cannot run because `npx e2e list` found 15 stu
   CHECK: node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
   EXPECT: All gates are checked and no EVIDENCE line remains pending.
   EVIDENCE: `git diff --check` exited 0; temporary build helper was removed; Unlazy status reports `ALL MET (40 met, 2 abandoned)` across the root and existing lane ledgers.
+
+## Main regression verification — 2026-10-07 follow-up
+
+- [x] Confirm the tested checkout is current `main` and record pre-existing working-tree changes.
+  CHECK: git status --short --branch
+  EXPECT: Branch is `main`; any pre-existing changes are identified before verification.
+  EVIDENCE: `HEAD` and `origin/main` both resolve to `78c388bd4fd9125c818793e5e44af54d0941203c`; the only pre-existing untracked item is `.slim/`. `GATES.md` is modified only for this verification ledger.
+
+- [x] Run the complete frontend verification set prescribed by `TESTING.md` and repo instructions.
+  CHECK: npm test -- --run; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0 with zero test failures and zero type/lint/anti-slop errors.
+  EVIDENCE: Vitest passed 127 files / 551 tests; typecheck passed; ESLint passed with zero warnings; anti-slop exited 0 with 434 warnings / 0 errors; production build passed with `VITE_API_URL=/api`; `npm run check:models` and `npm run validate:pwa` also passed.
+
+- [x] Run the complete backend regression verification prescribed by `TESTING.md`.
+  EXPECT: Backend pre-deploy check and pytest suite exit 0 with zero failures, allowing documented warnings only.
+  EVIDENCE: `python -X utf8 backend/pre_deploy_check.py` passed; backend pytest completed 598/598 tests with 2 dependency warnings and zero failures.
+
+- [x] Run Firebase Functions lint, build, and regression tests, including emulator-backed tests when locally supported.
+  EXPECT: Functions checks exit 0; emulator-only skips are either exercised successfully or stated precisely.
+  EVIDENCE: Functions lint passed with the 2 documented axios warnings; build passed; normal test run passed 72 with 7 emulator-only skips. A local Firestore+RTDB emulator run then passed all 79/79 tests with zero skips/failures using temporary alternate Firestore port 8088 because Steam occupied 8080; temporary emulator config/processes were removed afterward.
+
+- [x] Investigate test coverage gaps against high-risk and recently changed production surfaces without adding speculative tests.
+  EVIDENCE: Current `HEAD` changed production files all have paired regression tests. Broader gaps remain: `src/contexts/ChatContext.tsx` is 1329 lines and its two consumer tests do not directly exercise `sendMessage`, session create/delete, or retry behavior; `src/services/progressService.ts` is 720 lines while its direct unit test covers only `calculateLatestAttemptAverage` (2 tests), leaving Firestore-writing progress methods covered mostly indirectly. The repo has 15 E2E specs, but `TESTING.md` marks E2E manual-only with no CI job, and no required E2E role credentials were configured locally. No coverage-threshold tooling was found in package/backend CI configuration.
+
+- [x] Recheck the working tree after tests and restore only test-generated mutations, preserving pre-existing user files.
+  CHECK: git status --short --branch
+  EXPECT: No new unexplained product changes or generated test artifacts remain.
+  EVIDENCE: Four backend vectorstore files mutated by pytest were restored to `HEAD`; temporary Firebase emulator files/processes were removed. Final expected state is `GATES.md` modified for this ledger plus pre-existing untracked `.slim/` only.
+
+- [x] Complete the Unlazy ledger with fresh evidence from this verification run.
+  CHECK: node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
+  EXPECT: This follow-up section has no unchecked gate or pending evidence.
+  EVIDENCE: `git diff --check` exited 0; final status shows only `GATES.md` plus pre-existing `.slim/`; gate checker reports `ALL MET (52 met, 3 abandoned)` across the root and existing lane ledgers.
+
+## GitHub Actions parallel-step optimization — 2026-10-07
+
+- [x] Use GitHub Actions native `parallel` only for workflow steps that are independent and share no required intermediate outputs.
+  EVIDENCE: `.github/workflows/ci.yml` now groups independent frontend model/type/lint/anti-slop checks, frontend test/build work, post-build PWA validators, and Functions lint/build/tool setup. `deploy-frontend.yml` parallelizes only the two read-only build validators; `deploy-functions.yml` overlaps lint with `npm test`, whose script already performs the required TypeScript build.
+
+- [x] Preserve dependency ordering for build artifacts, emulator tests, deployments, and backend checks with shared mutable state.
+  EVIDENCE: Install steps remain barriers before parallel work; PWA validators and uploads remain after the build barrier; Functions emulator tests remain after build/Java/Firebase CLI setup; deploy jobs still require validation. Backend validation/tests and Android debug/release builds were intentionally left sequential because they can touch shared mutable state/output directories.
+
+- [x] Validate all changed workflow YAML and inspect the final diff for accidental behavior changes.
+  CHECK: git diff --check
+  EXPECT: No whitespace errors; changed workflow files remain valid YAML and preserve required dependency order.
+  EVIDENCE: Prettier parsed all three changed workflow YAML files successfully; `git diff --check` exited 0. Functions lint passed with 0 errors / 2 existing warnings, TypeScript build passed, normal tests passed 72 with 7 emulator-only skips, and the exact no-rebuild emulator test command passed 79/79 using temporary Firestore port 8088 because local port 8080 is occupied. The temporary emulator config was removed. Root `npm run lint:anti-slop` also exited 0.
+
+- [x] Complete the Unlazy ledger with recorded evidence for this optimization.
+  CHECK: node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
+  EXPECT: This optimization section has no unchecked gate or pending evidence.
+  EVIDENCE: Final gate checker exited 0 and reported `ALL MET (56 met, 3 abandoned)` across the root and existing lane ledgers.

@@ -38,9 +38,12 @@ jobs:
           cache-dependency-path: functions/package-lock.json
 
       - run: npm ci --legacy-peer-deps
-      - run: npm run lint
-      - run: npm run build
-      - run: npm test
+
+      - parallel:
+          - name: Lint Functions
+            run: npm run lint
+          - name: Build and test Functions
+            run: npm test
 
   deploy:
     name: Deploy to Firebase Functions
