@@ -54,4 +54,18 @@ describe('PracticeCenter', () => {
     expect(screen.getByText(/recommended practice topics come from your diagnostic results/i)).toBeInTheDocument();
     expect(screen.getByText(/teacher-assigned quiz/i)).toBeInTheDocument();
   });
+
+  it.each([
+    ['BusinessMath', 'Simple and Compound Interest'],
+    ['Logic', 'Truth Values and Truth Tables'],
+    ['Functions', 'Patterns and Real-Life Relationships'],
+  ])('shows practice topics in the diagnostic %s focus area', async (focus, title) => {
+    render(<PracticeCenter userId="user-1" atRiskTopics={[focus]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recommended' }));
+
+    expect(await screen.findByText(title)).toBeInTheDocument();
+    expect(screen.queryByText('No recommended practice topics yet')).not.toBeInTheDocument();
+    expect(screen.queryByText('Systems of Linear Equations and Matrices')).not.toBeInTheDocument();
+  });
 });

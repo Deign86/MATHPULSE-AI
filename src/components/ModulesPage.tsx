@@ -116,6 +116,13 @@ type LearningPathState =
 
 const IDLE_LEARNING_PATH: LearningPathState = { status: 'idle' };
 
+const interventionStepType = (section: TeacherUploadedModule['sections'][number]) =>
+  section.stepType || (section.content.includes('video lesson') ? 'video_lesson'
+    : section.content.includes('practice') ? 'practice'
+    : section.content.includes('assessment') ? 'assessment'
+    : section.content.includes('chat') ? 'chat_session'
+    : section.content.includes('review') ? 'review' : undefined);
+
 const ModulesPage: React.FC<ModulesPageProps> = ({
   onEarnXP,
   atRiskSubjects = [],
@@ -155,6 +162,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
   const [selectedTeacherModule, setSelectedTeacherModule] = useState<TeacherUploadedModule | null>(null);
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
+  const [submittedInterventionSteps, setSubmittedInterventionSteps] = useState(() => new Map<string, number[]>());
   const [practiceAnswers, setPracticeAnswers] = useState<Record<number, string>>({});
   const [revealedExplanations, setRevealedExplanations] = useState<Record<number, boolean>>({});
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
@@ -265,7 +273,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     if (!studentUid) {
       setPendingQuizzes([]);
       setPendingQuizzesLoading(false);
-      setPendingQuizzesLoaded(true);
+      setPendingQuizzesLoaded(false);
       return;
     }
 
@@ -299,6 +307,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     const quiz = pendingQuizzes.find((pendingQuiz) => pendingQuiz.generatedQuizId === assignedQuizToOpen);
     if (quiz) {
       setSelectedQuiz(quiz);
+      setAssignedQuizUnavailable(false);
       setAssignedQuizToOpen(null);
       const params = new URLSearchParams(window.location.search);
       params.delete('quizId');
@@ -306,11 +315,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       window.history.replaceState({}, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
     } else {
       setAssignedQuizUnavailable(true);
-      setAssignedQuizToOpen(null);
-      const params = new URLSearchParams(window.location.search);
-      params.delete('quizId');
-      const queryString = params.toString();
-      window.history.replaceState({}, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
     }
   }, [assignedQuizToOpen, pendingQuizzes, pendingQuizzesLoaded, pendingQuizzesLoading, pendingQuizzesError]);
 
@@ -745,11 +749,25 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   }
 
   if (selectedTeacherModule) {
+    const moduleAttemptKey = JSON.stringify([userProfile?.uid, selectedTeacherModule.moduleId || selectedTeacherModule.title]);
+    const submittedSteps = submittedInterventionSteps.get(moduleAttemptKey) ?? [];
+    const requiredQuestionSteps = selectedTeacherModule.sections.flatMap((section, index) => {
+      const stepType = interventionStepType(section);
+      return stepType === 'practice' || stepType === 'assessment' ? [index] : [];
+    });
+    const completedSections = selectedTeacherModule.sections.map((section, index) => submittedSteps.includes(index)
+      || (!requiredQuestionSteps.includes(index) && !!section.isCompleted));
+    const completeInterventionStep = (index: number) => {
+      setSubmittedInterventionSteps((previous) => {
+        const submitted = previous.get(moduleAttemptKey) ?? [];
+        return submitted.includes(index) ? previous : new Map(previous).set(moduleAttemptKey, [...submitted, index]);
+      });
+    };
     const totalDuration = selectedTeacherModule.sections?.reduce((acc, s) => acc + (s.durationMinutes || 10), 0) || 30;
-    const completedCount = selectedTeacherModule.sections?.filter((s) => s.isCompleted).length || 0;
+    const completedCount = completedSections.filter(Boolean).length;
     const totalSections = selectedTeacherModule.sections?.length || 0;
     const progressPct = totalSections > 0 ? Math.round((completedCount / totalSections) * 100) : 0;
-    const nextUnfinishedStep = selectedTeacherModule.sections?.findIndex((s) => !s.isCompleted);
+    const nextUnfinishedStep = completedSections.findIndex((completed) => !completed);
     const resumeIndex = nextUnfinishedStep !== -1 && nextUnfinishedStep !== undefined ? nextUnfinishedStep : 0;
     const ctaText = completedCount === 0 ? 'Start Interactive Module' : completedCount === totalSections ? 'Review Module from Step 1' : `Resume at Step ${resumeIndex + 1}`;
 
@@ -769,9 +787,21 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             studentName={studentProfile?.name || 'Student'}
             studentUid={userProfile?.uid}
             practice={selectedTeacherModule.practice}
+            requiredQuestionSteps={requiredQuestionSteps}
+            submittedQuestionSteps={submittedSteps}
+            onStepComplete={completeInterventionStep}
             onClose={() => setActiveStepIndex(null)}
-            onNext={hasNext ? () => setActiveStepIndex(activeStepIndex + 1) : undefined}
+            onNext={hasNext ? () => {
+              completeInterventionStep(activeStepIndex);
+              setActiveStepIndex(activeStepIndex + 1);
+            } : undefined}
             onPrev={hasPrev ? () => setActiveStepIndex(activeStepIndex - 1) : undefined}
+            onFinish={() => {
+              if (requiredQuestionSteps.every((index) => submittedSteps.includes(index))) {
+                completeInterventionStep(activeStepIndex);
+                setActiveStepIndex(null);
+              }
+            }}
           />
         </AnimatePresence>
       );
@@ -1016,12 +1046,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               {/* Connected Vertical Timeline */}
               <div className="relative space-y-4 before:absolute before:inset-0 before:left-5 sm:before:left-6 before:w-0.5 before:bg-gradient-to-b before:from-purple-500 before:via-indigo-400 before:to-slate-200 dark:before:to-slate-800 before:-z-0">
                 {selectedTeacherModule.sections.map((section, i) => {
-                  const detectedType = section.stepType
-                    || (section.content.includes('video lesson') ? 'video_lesson'
-                      : section.content.includes('practice') ? 'practice'
-                      : section.content.includes('assessment') ? 'assessment'
-                      : section.content.includes('chat') ? 'chat_session'
-                      : section.content.includes('review') ? 'review' : undefined);
+                  const detectedType = interventionStepType(section);
                   const StepIcon = detectedType === 'video_lesson' ? Video
                     : detectedType === 'practice' ? PenTool
                     : detectedType === 'assessment' ? CheckCircle2
@@ -1034,19 +1059,20 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                     : detectedType === 'chat_session' ? 'AI Tutor Chat'
                     : detectedType === 'review' ? 'Topic Review' : 'Lesson Step';
 
-                  const isCurrent = i === resumeIndex && !section.isCompleted;
+                  const isCompleted = completedSections[i];
+                  const isCurrent = i === resumeIndex && !isCompleted;
 
                   return (
                     <div key={i} className="relative z-10 pl-12 sm:pl-14">
                       {/* Timeline Node Badge */}
                       <div className={`absolute left-0 top-4 w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-display font-black text-sm shadow-sm transition-transform duration-200 shrink-0 ${
-                        section.isCompleted
+                        isCompleted
                           ? 'bg-emerald-500 text-white ring-4 ring-emerald-100 dark:ring-emerald-950'
                           : isCurrent
                           ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white ring-4 ring-purple-100 dark:ring-purple-950 scale-105 shadow-md'
                           : 'bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                       }`}>
-                        {section.isCompleted ? <CheckCircle2 size={20} /> : String(i + 1).padStart(2, '0')}
+                        {isCompleted ? <CheckCircle2 size={20} /> : String(i + 1).padStart(2, '0')}
                       </div>
 
                       {/* Step Card */}
@@ -1056,7 +1082,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                         className={`w-full text-left rounded-2xl p-5 sm:p-6 transition-all border cursor-pointer group bg-white dark:bg-slate-800/60 shadow-2xs hover:shadow-md hover:-translate-y-0.5 ${
                           isCurrent
                             ? 'border-purple-300 dark:border-purple-600 ring-2 ring-purple-100 dark:ring-purple-950/50'
-                            : section.isCompleted
+                            : isCompleted
                             ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/20 dark:bg-emerald-950/10'
                             : 'border-slate-200/80 dark:border-slate-800 hover:border-purple-300 dark:hover:border-purple-600'
                         }`}
@@ -1091,7 +1117,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
                           <div className="shrink-0 self-start sm:self-center">
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 shadow-2xs group-hover:shadow-sm group-hover:scale-105 transition-all whitespace-nowrap shrink-0">
-                              <span className="whitespace-nowrap">{section.isCompleted ? 'Review Step' : 'Launch Step'}</span>
+                              <span className="whitespace-nowrap">{isCompleted ? 'Review Step' : 'Launch Step'}</span>
                               <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform shrink-0" />
                             </div>
                           </div>
@@ -1741,8 +1767,17 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       {(activeTab === 'practice' || activeTab === 'recommended') && (
         <section aria-label="Assigned by your teacher" className="mb-6 space-y-3">
           <h2 className="text-lg font-bold text-slate-800">Assigned by your teacher</h2>
-          {assignedQuizUnavailable && (
-            <p role="status" className="text-sm text-slate-500">This assigned quiz is no longer pending. Check with your teacher if you need access.</p>
+          {assignedQuizUnavailable && !pendingQuizzesLoading && !pendingQuizzesError && (
+            <div role="status" className="text-sm text-slate-500">
+              <p>This assigned quiz is unavailable. It may have been removed or completed. Retry or check with your teacher.</p>
+              <button
+                type="button"
+                onClick={() => setPendingQuizRefresh((refresh) => refresh + 1)}
+                className="mt-2 font-semibold underline"
+              >
+                Retry
+              </button>
+            </div>
           )}
           {pendingQuizzesLoading ? (
             <p role="status" className="text-sm text-slate-500">Loading assigned quizzes…</p>

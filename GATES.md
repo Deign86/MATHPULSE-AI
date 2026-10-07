@@ -1,5 +1,23 @@
 # Acceptance Gates
 
+## Definitive issue closure audit — 2026-10-07
+
+- [x] Issue #207: assigned quizzes remain accessible and discoverable; stale records cannot hide usable work, while real load failures remain retryable.
+  CHECK: npm test -- --run src/services/__tests__/quizService.test.ts src/components/ModulesPage.test.tsx src/components/PracticeCenter.test.tsx --maxWorkers=2
+  EXPECT: Focused quiz service and Recommended/deep-link regressions pass, including existing assignment permissions.
+  EVIDENCE: Focused quiz/ModulesPage/PracticeCenter run passed 29 tests; corrected ModulesPage snapshot fixture then passed all 11 tests. Backfill offline tests passed 3/3. Live additive repair updated 7 quiz documents; authenticated client reads verified 6 active students could read 9 pending assignments under deployed rules. Remaining stale records reference deleted accounts or quizzes and were not broadened into grants.
+- [x] Issue #208: step-scoped practice and assessment require answers and checking before completion; step transitions never reuse another step's questions.
+  CHECK: npm test -- --run src/components/ModuleStepGuide.test.tsx src/services/interventionService.test.ts --maxWorkers=2
+  EXPECT: Regression tests prove generation/retry, selectable answers, feedback, completion blocking, and safe transitions.
+  EVIDENCE: Guide/interventionService passed 15 tests; parent integration passed 11 tests, including free exit, reopen/resume, wrong-answer submission and all-step Finish gating. Two browser tests passed against the real guide component with a deterministic generation boundary, including direct-final navigation.
+- [x] Full frontend regression, typecheck, lint, anti-slop, and production build pass.
+  EXPECT: Every command exits zero; existing warnings are recorded accurately.
+  EVIDENCE: Full frontend run passed 129 files / 581 tests; final fixture correction separately passed 11/11 and typecheck plus scoped ESLint/Oxlint. Full ESLint, anti-slop and production build exited 0. Backend pre-deploy passed and pytest passed 598 tests. Functions build/test passed 72 tests with 7 emulator-only skips; lint had zero errors and two existing axios warnings. Build retained existing chunk-size/import warnings.
+- [x] Independent review resolves all material findings and the gate ledger verifies completion.
+  EXPECT: Reviewer findings resolved; gate checker reports this section met.
+  EVIDENCE: Independent GPT-6 Luna review found no actionable material findings; all four prior findings were resolved (global Finish guard, submitted-count progress, single-step counter, Auth-validated recipient backfill). Gate checker and whitespace check run before commit.
+Publication, CI, and issue disposition are tracked separately in `.slim/deepwork/issue-207-208-delivery.md`; they require a published commit and cannot run inside the pre-commit hook.
+
 ## Post-fix main regression sweep — 2026-10-07
 
 - [x] Current `main`/working-tree state is captured before regression testing, including all source files under test.
@@ -21,7 +39,7 @@
 
 - [ ] User-facing functional coverage is exercised through available E2E/flow tests; any credential- or emulator-dependent gap is stated precisely.
   EVIDENCE: `npx e2e list` succeeded; environment/.env.local credential-name checks returned no configured E2E user credentials.
-ABANDON: line22 authenticated E2E cannot run because `npx e2e list` found 15 student/teacher/admin flows but no `E2E_USER_{STUDENT,TEACHER,ADMIN}_{USERNAME,PASSWORD}` credentials are configured in the environment or `.env.local`.
+ABANDON: line40 authenticated E2E cannot run because `npx e2e list` found 15 student/teacher/admin flows but no `E2E_USER_{STUDENT,TEACHER,ADMIN}_{USERNAME,PASSWORD}` credentials are configured in the environment or `.env.local`. The issue audit above separately verified deterministic browser flows and authenticated quiz reads.
 
 - [x] Final diff is clean of generated test artifacts and the gate ledger is complete.
   CHECK: git diff --check; node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status

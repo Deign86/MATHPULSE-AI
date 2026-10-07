@@ -234,8 +234,10 @@ export async function fetchPendingQuizzesForStudent(studentUid: string): Promise
     assignmentsSnap = await getDocs(fallbackQuery);
   }
 
+  const assignments = [...assignmentsSnap.docs]
+    .sort((a, b) => toMillis(b.data().assignedAt) - toMillis(a.data().assignedAt));
   const quizReads = await Promise.allSettled(
-    assignmentsSnap.docs.map(async (assignmentDoc) => {
+    assignments.map(async (assignmentDoc) => {
       const quizId = z.string().min(1).safeParse(assignmentDoc.data().quizId);
       if (!quizId.success) return null;
       const generatedQuiz = await fetchGeneratedQuiz(quizId.data);
@@ -250,10 +252,15 @@ export async function fetchPendingQuizzesForStudent(studentUid: string): Promise
       return;
     }
     console.warn(
-      `[quizService] Skipping unreadable pending quiz assignment ${assignmentsSnap.docs[index].id}:`,
+      `[quizService] Skipping unreadable pending quiz assignment ${assignments[index].id}:`,
       quizRead.reason,
     );
   });
+
+  if (quizzes.length === 0) {
+    const failedRead = quizReads.find((quizRead) => quizRead.status === 'rejected');
+    if (failedRead?.status === 'rejected') throw failedRead.reason;
+  }
 
   return quizzes;
 }

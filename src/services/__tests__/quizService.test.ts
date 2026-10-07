@@ -270,3 +270,82 @@ describe('fetchPendingQuizzesForStudent', () => {
     expect(quizzes[0].assignmentId).toBe('assignment-readable');
   });
 });
+
+describe('pending quiz load failures and index fallback', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const stubPendingAssignments = (assignments: { id: string; quizId: string; assignedAt: number }[]) => {
+    vi.spyOn(firestore, 'collection').mockReturnValue(fakeCollectionReference);
+    // SAFETY: query constraints are opaque sentinels consumed only by the query boundary spy.
+    vi.spyOn(firestore, 'where').mockReturnValue(fakeQuery as never);
+    // SAFETY: the sort constraint is consumed only by the query boundary spy.
+    vi.spyOn(firestore, 'orderBy').mockReturnValue(fakeQuery as never);
+    vi.spyOn(firestore, 'query').mockReturnValue(fakeQuery);
+    vi.spyOn(firestore, 'doc').mockReturnValue(fakeQuizDocument);
+    // SAFETY: the snapshot supplies the assignment fields consumed by the service, without real Firestore IO.
+    const snapshot = { docs: assignments.map((assignment) => ({ id: assignment.id, data: () => assignment })) } as never;
+    const getDocs = vi.spyOn(firestore, 'getDocs').mockResolvedValue(snapshot);
+    const getDoc = vi.spyOn(firestore, 'getDoc');
+    return { snapshot, getDocs, getDoc };
+  };
+
+  it('rejects when every pending quiz read is denied so the caller can retry', async () => {
+    const { getDoc } = stubPendingAssignments([{ id: 'assignment-1', quizId: 'quiz-1', assignedAt: 1 }]);
+    const denied = new Error('permission-denied');
+    getDoc.mockRejectedValue(denied);
+
+    await expect(fetchPendingQuizzesForStudent('student-uid')).rejects.toBe(denied);
+  });
+
+  it('omits a deleted quiz rather than reporting a load failure', async () => {
+    const { getDoc } = stubPendingAssignments([{ id: 'assignment-orphan', quizId: 'deleted', assignedAt: 1 }]);
+    // SAFETY: deleted documents expose exists(), and the loader never consumes other snapshot fields.
+    getDoc.mockResolvedValue({ exists: () => false } as never);
+
+    await expect(fetchPendingQuizzesForStudent('student-uid')).resolves.toEqual([]);
+  });
+
+  it('does not hide a denied read when the only other assignment points to a deleted quiz', async () => {
+    const { getDoc } = stubPendingAssignments([
+      { id: 'assignment-1', quizId: 'quiz-1', assignedAt: 2 },
+      { id: 'assignment-orphan', quizId: 'deleted', assignedAt: 1 },
+    ]);
+    const denied = new Error('permission-denied');
+    getDoc.mockRejectedValueOnce(denied);
+    // SAFETY: deleted documents expose exists(), and the loader never consumes other snapshot fields.
+    getDoc.mockResolvedValueOnce({ exists: () => false } as never);
+
+    await expect(fetchPendingQuizzesForStudent('student-uid')).rejects.toBe(denied);
+  });
+
+  it('keeps newest-first ordering when the assignment index is unavailable', async () => {
+    const { snapshot, getDocs, getDoc } = stubPendingAssignments([
+      { id: 'older-assignment', quizId: 'older', assignedAt: 1 },
+      { id: 'newer-assignment', quizId: 'newer', assignedAt: 2 },
+    ]);
+    getDocs.mockRejectedValueOnce(Object.assign(new Error('The query requires an index.'), { code: 'failed-precondition' }))
+      .mockResolvedValueOnce(snapshot);
+    // SAFETY: these generated quiz snapshots supply all fields consumed by toPlayableQuiz.
+    getDoc.mockImplementation(async () => ({
+      id: 'quiz-1', exists: () => true,
+      data: () => ({ title: 'Review', questions: [], totalPoints: 0, status: 'assigned',
+        metadata: { topicsCovered: [], difficultyBreakdown: { easy: 1, medium: 0, hard: 0 } } }),
+    } as never));
+
+    const quizzes = await fetchPendingQuizzesForStudent('student-uid');
+
+    expect(quizzes.map((quiz) => quiz.assignmentId)).toEqual(['newer-assignment', 'older-assignment']);
+    expect(getDocs).toHaveBeenCalledTimes(2);
+    expect(firestore.where).toHaveBeenCalledWith('lrn', '==', 'student-uid');
+    expect(firestore.where).toHaveBeenCalledWith('status', '==', 'pending');
+  });
+
+  it('propagates assignment permission errors without issuing a broader fallback query', async () => {
+    const { getDocs } = stubPendingAssignments([]);
+    const denied = Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' });
+    getDocs.mockRejectedValue(denied);
+
+    await expect(fetchPendingQuizzesForStudent('student-uid')).rejects.toBe(denied);
+    expect(getDocs).toHaveBeenCalledOnce();
+  });
+});
