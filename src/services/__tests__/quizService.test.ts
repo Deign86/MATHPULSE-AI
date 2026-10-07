@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as firestore from 'firebase/firestore';
 import type { CollectionReference, DocumentReference, Query, Transaction } from 'firebase/firestore';
 import type { GeneratedQuiz } from '../../types/models';
-import { fetchPendingQuizzesForStudent, saveQuizResults } from '../quizService';
+import { assignQuizToStudent, fetchPendingQuizzesForStudent, saveQuizResults } from '../quizService';
 
 // SAFETY: this opaque reference is returned by the Firestore boundary spy and consumed only by mocked transaction IO.
 const fakeDocumentReference = { id: 'submission-1' } as DocumentReference;
@@ -16,6 +16,50 @@ const fakeQuizDocument = { id: 'quiz-1' } as DocumentReference;
 const assignmentSnapshot = (status: 'pending' | 'completed', assessmentType = 'graded') => ({
   exists: () => true,
   data: () => ({ status, assessmentType }),
+});
+
+describe('assignQuizToStudent ownership contract', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('writes the student Auth UID to both the assignment owner field and generated-quiz recipients', async () => {
+    // SAFETY: these opaque references are consumed only by mocked Firestore batch calls in this test.
+    const generatedQuizReference = { id: 'quiz-1' } as DocumentReference;
+    // SAFETY: this opaque assignment reference is consumed only by the mocked batch.set boundary.
+    const assignmentReference = { id: 'assignment-1' } as DocumentReference;
+    const batch = {
+      update: vi.fn(),
+      set: vi.fn(),
+      commit: vi.fn().mockResolvedValue(undefined),
+    };
+
+    vi.spyOn(firestore, 'collection').mockReturnValue(fakeCollectionReference);
+    vi.spyOn(firestore, 'doc')
+      .mockReturnValueOnce(generatedQuizReference)
+      .mockReturnValueOnce(assignmentReference);
+    // SAFETY: the mock implements exactly the update, set, and commit methods exercised by assignQuizToStudent.
+    vi.spyOn(firestore, 'writeBatch').mockReturnValue(batch as never);
+    // SAFETY: these sentinel values are compared only at the mocked Firestore boundary and are never executed as SDK values.
+    const arrayUnion = vi.spyOn(firestore, 'arrayUnion').mockReturnValue('recipient-union' as never);
+    // SAFETY: this sentinel timestamp is compared only at the mocked Firestore boundary.
+    const serverTimestamp = vi.spyOn(firestore, 'serverTimestamp').mockReturnValue('server-time' as never);
+
+    await assignQuizToStudent('quiz-1', 'student-auth-uid', 'teacher-uid');
+
+    expect(arrayUnion).toHaveBeenCalledWith('student-auth-uid');
+    expect(batch.update).toHaveBeenCalledWith(generatedQuizReference, expect.objectContaining({
+      'metadata.assignedTo': 'student-auth-uid',
+      recipientUids: 'recipient-union',
+      assignedBy: 'teacher-uid',
+    }));
+    expect(batch.set).toHaveBeenCalledWith(assignmentReference, expect.objectContaining({
+      quizId: 'quiz-1',
+      lrn: 'student-auth-uid',
+      teacherId: 'teacher-uid',
+      status: 'pending',
+    }));
+    expect(serverTimestamp).toHaveBeenCalledTimes(2);
+    expect(batch.commit).toHaveBeenCalledOnce();
+  });
 });
 
 describe('saveQuizResults assignment idempotency', () => {

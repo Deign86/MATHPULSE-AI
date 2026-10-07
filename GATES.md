@@ -125,7 +125,7 @@ ABANDON: line22 authenticated E2E cannot run because `npx e2e list` found 15 stu
 
 - [x] Fix assigned-quiz loading so one stale/unreadable assignment cannot fail the whole list and valid assigned students can read their quiz reliably.
   EXPECT: Assignment writes and Firestore read rules agree on canonical student UID; pending-quiz loading tolerates stale/missing quiz records without masking valid assignments.
-  EVIDENCE: `fetchPendingQuizzesForStudent` now settles quiz reads independently and keeps readable assignments when another read fails; focused service regression passed.
+  EVIDENCE: `assignQuizToStudent` writes the student's Auth UID to both `quizAssignments.lrn` and `generatedQuizzes.recipientUids`; `fetchPendingQuizzesForStudent` settles quiz reads independently and keeps readable assignments when another read fails. Focused service regressions cover both contracts.
 
 - [x] Make teacher-assigned quizzes discoverable from the student's Recommended/practice experience with an accurate empty state.
   EXPECT: Pending teacher assignments are surfaced from the Recommended path, and the empty state explains assessment-based recommendations when no diagnostic recommendations exist.
@@ -133,17 +133,17 @@ ABANDON: line22 authenticated E2E cannot run because `npx e2e list` found 15 stu
 
 - [x] Add focused regression coverage for the confirmed failures and run it green after the fix.
   EXPECT: New/updated tests fail on the pre-fix contract and pass on the final implementation.
-  EVIDENCE: Focused suite passed: `quizService.test.ts`, `ModulesPage.test.tsx`, `PracticeCenter.test.tsx`, and `ModuleStepGuide.test.tsx`; full Vitest run passed all 128 test files.
+  EVIDENCE: Focused suite passed: `quizService.test.ts`, `ModulesPage.test.tsx`, `PracticeCenter.test.tsx`, and `ModuleStepGuide.test.tsx`; explicit coverage now includes assignment ownership/recipient writes, stale unreadable assignments, Recommended discovery, practice generation, assessment mastery generation, and retry recovery. Full Vitest passed 128 files / 558 tests.
 - [x] Fix intervention module practice and assessment steps so students can launch real questions instead of seeing blank whitespace.
   EXPECT: Practice and assessment steps with no stored questions expose an on-demand generator, render valid returned questions in the existing step guide, and provide retry feedback on generation failure.
-  EVIDENCE: `ModuleStepGuide` now generates step-scoped Practice/Mastery questions through the existing practice service, renders them in the current practice UI, and exposes retry feedback; regression passed.
+  EVIDENCE: `ModuleStepGuide` now generates step-scoped Practice/Mastery questions through the existing practice service, renders them in the current practice UI, and exposes retry feedback; separate practice, mastery-assessment, and retry regressions passed.
 
 - [x] Run the required frontend static and regression checks for the touched surface.
   CHECK: npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop
   EXPECT: All commands exit 0 with zero type/lint/anti-slop errors.
-  EVIDENCE: Typecheck, ESLint with zero warnings, anti-slop, focused regressions, full 128-file Vitest suite, and production build with `VITE_API_URL=/api` all exited 0.
+  EVIDENCE: Typecheck and ESLint with zero warnings exited 0 after the final test additions; anti-slop exited 0 with 434 existing warnings / 0 errors; focused regressions passed; full Vitest passed 128 files / 558 tests; production build with `VITE_API_URL=/api` passed all release checks.
 
 - [x] Review the final diff and complete the Unlazy ledger with fresh evidence.
   CHECK: git diff --check; node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
   EXPECT: No whitespace errors; this section has no pending evidence or unmet gate.
-  EVIDENCE: `git diff --check` passed; final gate checker is run immediately after this ledger update.
+  EVIDENCE: `git diff --check` exited 0; the final gate checker reported `ALL MET (64 met, 3 abandoned)` across the root and existing lane ledgers.
