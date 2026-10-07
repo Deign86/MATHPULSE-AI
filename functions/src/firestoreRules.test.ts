@@ -70,7 +70,9 @@ test("Quiz A-then-B recipient grants stay additive and assignment completion is 
   );
   assert.match(backfill, /FieldValue\.arrayUnion\(uid\)/);
   assert.match(backfill, /quizAssignments/);
-  assert.match(backfill, /metadata\.assignedTo/);
+  assert.match(backfill, /auth\.getUser\(uid\)/);
+  assert.match(backfill, /status: z\.literal\('pending'\)/);
+  assert.doesNotMatch(backfill, /quiz\.get\('metadata\.assignedTo'\)/);
 });
 
 test("Quiz results and submissions require both client-created identities to match the caller", () => {
@@ -98,11 +100,12 @@ test("Quiz assignment recipient backfill reports orphans and continues with vali
   assert.match(backfill, /const quizIds = new Set\(quizzes\.docs\.map\(\(quiz\) => quiz\.id\)\)/);
   assert.match(backfill, /if \(!quizIds\.has\(quizId\)\)/);
   assert.match(backfill, /orphans \+= 1/);
-  assert.match(backfill, /console\.warn\(.*orphan assignment=/);
+  assert.doesNotMatch(backfill, /console\.warn\(.*orphan assignment=/);
   assert.match(backfill, /continue;/);
-  assert.match(backfill, /recipient_updates=\$\{writes\} orphans=\$\{orphans\}/);
+  assert.match(backfill, /recipient_updates=\$\{summary.recipientUpdates\} orphans=\$\{summary.orphans\}/);
   assert.ok(backfill.indexOf("if (!quizIds.has(quizId))") < backfill.indexOf("recipients.add(lrn)"));
-  assert.match(backfill, /for \(const quiz of quizzes\.docs\)/);
+  assert.match(backfill, /for \(const recipients of recipientByQuiz.values\(\)\)/);
+  assert.match(backfill, /validRecipients\.set\(uid, valid\)/);
   assert.match(backfill, /FieldValue\.arrayUnion\(uid\)/);
 });
 

@@ -1,5 +1,23 @@
 # Acceptance Gates
 
+## Definitive issue closure audit — 2026-10-07
+
+- [x] Issue #207: assigned quizzes remain accessible and discoverable; stale records cannot hide usable work, while real load failures remain retryable.
+  CHECK: npm test -- --run src/services/__tests__/quizService.test.ts src/components/ModulesPage.test.tsx src/components/PracticeCenter.test.tsx --maxWorkers=2
+  EXPECT: Focused quiz service and Recommended/deep-link regressions pass, including existing assignment permissions.
+  EVIDENCE: Focused quiz/ModulesPage/PracticeCenter run passed 29 tests; corrected ModulesPage snapshot fixture then passed all 11 tests. Backfill offline tests passed 3/3. Live additive repair updated 7 quiz documents; authenticated client reads verified 6 active students could read 9 pending assignments under deployed rules. Remaining stale records reference deleted accounts or quizzes and were not broadened into grants.
+- [x] Issue #208: step-scoped practice and assessment require answers and checking before completion; step transitions never reuse another step's questions.
+  CHECK: npm test -- --run src/components/ModuleStepGuide.test.tsx src/services/interventionService.test.ts --maxWorkers=2
+  EXPECT: Regression tests prove generation/retry, selectable answers, feedback, completion blocking, and safe transitions.
+  EVIDENCE: Guide/interventionService passed 15 tests; parent integration passed 11 tests, including free exit, reopen/resume, wrong-answer submission and all-step Finish gating. Two browser tests passed against the real guide component with a deterministic generation boundary, including direct-final navigation.
+- [x] Full frontend regression, typecheck, lint, anti-slop, and production build pass.
+  EXPECT: Every command exits zero; existing warnings are recorded accurately.
+  EVIDENCE: Full frontend run passed 129 files / 581 tests; final fixture correction separately passed 11/11 and typecheck plus scoped ESLint/Oxlint. Full ESLint, anti-slop and production build exited 0. Backend pre-deploy passed and pytest passed 598 tests. Functions build/test passed 72 tests with 7 emulator-only skips; lint had zero errors and two existing axios warnings. Build retained existing chunk-size/import warnings.
+- [x] Independent review resolves all material findings and the gate ledger verifies completion.
+  EXPECT: Reviewer findings resolved; gate checker reports this section met.
+  EVIDENCE: Independent GPT-6 Luna review found no actionable material findings; all four prior findings were resolved (global Finish guard, submitted-count progress, single-step counter, Auth-validated recipient backfill). Gate checker and whitespace check run before commit.
+Publication, CI, and issue disposition are tracked separately in `.slim/deepwork/issue-207-208-delivery.md`; they require a published commit and cannot run inside the pre-commit hook.
+
 ## Post-fix main regression sweep — 2026-10-07
 
 - [x] Current `main`/working-tree state is captured before regression testing, including all source files under test.
@@ -21,7 +39,7 @@
 
 - [ ] User-facing functional coverage is exercised through available E2E/flow tests; any credential- or emulator-dependent gap is stated precisely.
   EVIDENCE: `npx e2e list` succeeded; environment/.env.local credential-name checks returned no configured E2E user credentials.
-ABANDON: line22 authenticated E2E cannot run because `npx e2e list` found 15 student/teacher/admin flows but no `E2E_USER_{STUDENT,TEACHER,ADMIN}_{USERNAME,PASSWORD}` credentials are configured in the environment or `.env.local`.
+ABANDON: line40 authenticated E2E cannot run because `npx e2e list` found 15 student/teacher/admin flows but no `E2E_USER_{STUDENT,TEACHER,ADMIN}_{USERNAME,PASSWORD}` credentials are configured in the environment or `.env.local`. The issue audit above separately verified deterministic browser flows and authenticated quiz reads.
 
 - [x] Final diff is clean of generated test artifacts and the gate ledger is complete.
   CHECK: git diff --check; node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
@@ -112,3 +130,38 @@ ABANDON: line22 authenticated E2E cannot run because `npx e2e list` found 15 stu
   CHECK: node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
   EXPECT: This optimization section has no unchecked gate or pending evidence.
   EVIDENCE: Final gate checker exited 0 and reported `ALL MET (56 met, 3 abandoned)` across the root and existing lane ledgers.
+
+## GitHub open-issue fixes — 2026-10-07
+
+- [x] Confirm the repository's live open-issue set before implementation and again before completion.
+  EXPECT: Every currently open GitHub issue in `Deign86/MATHPULSE-AI` is identified; any discrepancy with the requested count is recorded with fresh API evidence.
+  EVIDENCE: GitHub search returned exactly issues #207 and #208 as open on 2026-10-07 before implementation; final live recheck is recorded below before push.
+
+- [x] Reproduce or prove the root cause of each open issue from the current `main` code before changing behavior.
+  EXPECT: The failing contract is demonstrated by a focused failing test or concrete code/rules evidence, and the fix targets the shared root cause.
+  EVIDENCE: #207 was covered by focused pending-assignment and Recommended-view regressions; #208 was confirmed in `assignLearningPathAsModule` (`practice: []`) plus `ModuleStepGuide` rendering practice only when questions already existed.
+
+- [x] Fix assigned-quiz loading so one stale/unreadable assignment cannot fail the whole list and valid assigned students can read their quiz reliably.
+  EXPECT: Assignment writes and Firestore read rules agree on canonical student UID; pending-quiz loading tolerates stale/missing quiz records without masking valid assignments.
+  EVIDENCE: `assignQuizToStudent` writes the student's Auth UID to both `quizAssignments.lrn` and `generatedQuizzes.recipientUids`; `fetchPendingQuizzesForStudent` settles quiz reads independently and keeps readable assignments when another read fails. Focused service regressions cover both contracts.
+
+- [x] Make teacher-assigned quizzes discoverable from the student's Recommended/practice experience with an accurate empty state.
+  EXPECT: Pending teacher assignments are surfaced from the Recommended path, and the empty state explains assessment-based recommendations when no diagnostic recommendations exist.
+  EVIDENCE: `ModulesPage` and `PracticeCenter` regressions passed for assigned-section routing, Recommended teacher assignments, and the diagnostic-based empty state.
+
+- [x] Add focused regression coverage for the confirmed failures and run it green after the fix.
+  EXPECT: New/updated tests fail on the pre-fix contract and pass on the final implementation.
+  EVIDENCE: Focused suite passed: `quizService.test.ts`, `ModulesPage.test.tsx`, `PracticeCenter.test.tsx`, and `ModuleStepGuide.test.tsx`; explicit coverage now includes assignment ownership/recipient writes, stale unreadable assignments, Recommended discovery, practice generation, assessment mastery generation, and retry recovery. Full Vitest passed 128 files / 558 tests.
+- [x] Fix intervention module practice and assessment steps so students can launch real questions instead of seeing blank whitespace.
+  EXPECT: Practice and assessment steps with no stored questions expose an on-demand generator, render valid returned questions in the existing step guide, and provide retry feedback on generation failure.
+  EVIDENCE: `ModuleStepGuide` now generates step-scoped Practice/Mastery questions through the existing practice service, renders them in the current practice UI, and exposes retry feedback; separate practice, mastery-assessment, and retry regressions passed.
+
+- [x] Run the required frontend static and regression checks for the touched surface.
+  CHECK: npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop
+  EXPECT: All commands exit 0 with zero type/lint/anti-slop errors.
+  EVIDENCE: Typecheck and ESLint with zero warnings exited 0 after the final test additions; anti-slop exited 0 with 434 existing warnings / 0 errors; focused regressions passed; full Vitest passed 128 files / 558 tests; production build with `VITE_API_URL=/api` passed all release checks.
+
+- [x] Review the final diff and complete the Unlazy ledger with fresh evidence.
+  CHECK: git diff --check; node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
+  EXPECT: No whitespace errors; this section has no pending evidence or unmet gate.
+  EVIDENCE: `git diff --check` exited 0; the final gate checker reported `ALL MET (64 met, 3 abandoned)` across the root and existing lane ledgers.

@@ -234,12 +234,32 @@ export async function fetchPendingQuizzesForStudent(studentUid: string): Promise
     assignmentsSnap = await getDocs(fallbackQuery);
   }
 
+  const assignments = [...assignmentsSnap.docs]
+    .sort((a, b) => toMillis(b.data().assignedAt) - toMillis(a.data().assignedAt));
+  const quizReads = await Promise.allSettled(
+    assignments.map(async (assignmentDoc) => {
+      const quizId = z.string().min(1).safeParse(assignmentDoc.data().quizId);
+      if (!quizId.success) return null;
+      const generatedQuiz = await fetchGeneratedQuiz(quizId.data);
+      return generatedQuiz ? toPlayableQuiz(generatedQuiz, assignmentDoc.id) : null;
+    }),
+  );
   const quizzes: PlayableQuiz[] = [];
 
-  for (const assignDoc of assignmentsSnap.docs) {
-    const { quizId } = assignDoc.data();
-    const gen = await fetchGeneratedQuiz(quizId);
-    if (gen) quizzes.push(toPlayableQuiz(gen, assignDoc.id));
+  quizReads.forEach((quizRead, index) => {
+    if (quizRead.status === 'fulfilled') {
+      if (quizRead.value) quizzes.push(quizRead.value);
+      return;
+    }
+    console.warn(
+      `[quizService] Skipping unreadable pending quiz assignment ${assignments[index].id}:`,
+      quizRead.reason,
+    );
+  });
+
+  if (quizzes.length === 0) {
+    const failedRead = quizReads.find((quizRead) => quizRead.status === 'rejected');
+    if (failedRead?.status === 'rejected') throw failedRead.reason;
   }
 
   return quizzes;

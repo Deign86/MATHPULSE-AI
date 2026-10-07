@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { InterventionVideoStep } from './intervention/InterventionVideoStep';
+import { Button } from './ui/button';
 import { apiService } from '../services/apiService';
+import { generatePracticeSession } from '../services/practiceService';
 import type { LearningStep } from '../services/interventionService';
 
 interface ModuleSection {
@@ -39,7 +41,13 @@ interface Props {
   totalSections: number;
   moduleTitle: string;
   studentName: string;
+  studentUid?: string;
   practice?: Array<{ question: string; options: Array<{ label: string; text: string }>; answer: string; explanation: string }>;
+  generatePractice?: typeof generatePracticeSession;
+  requiredQuestionSteps?: readonly number[];
+  submittedQuestionSteps?: readonly number[];
+  onStepComplete?: (sectionIndex: number) => void;
+  onFinish?: () => void;
   onClose: () => void;
   onNext?: () => void;
   onPrev?: () => void;
@@ -49,6 +57,18 @@ interface StepChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
+
+interface StepPractice {
+  questions?: Props['practice'];
+  answers: Record<number, string>;
+  submitted: Record<number, boolean>;
+  loading: boolean;
+  error: string | null;
+}
+
+const EMPTY_STEP_PRACTICE: StepPractice = {
+  answers: {}, submitted: {}, loading: false, error: null,
+};
 
 type StepTypeKey = 'video_lesson' | 'practice' | 'assessment' | 'chat_session' | 'review';
 
@@ -82,7 +102,13 @@ export const ModuleStepGuide: React.FC<Props> = ({
   totalSections,
   moduleTitle,
   studentName,
+  studentUid,
   practice,
+  generatePractice = generatePracticeSession,
+  requiredQuestionSteps,
+  submittedQuestionSteps = [],
+  onStepComplete,
+  onFinish,
   onClose,
   onNext,
   onPrev,
@@ -97,7 +123,6 @@ export const ModuleStepGuide: React.FC<Props> = ({
 
   const topic = section.topic || section.title.replace(/^Step \d+:\s*/, '');
   const typeMeta = recordGet(STEP_TYPE_META, detectedType) ?? STEP_TYPE_META.video_lesson;
-  const progressPct = Math.round((stepNumber / totalSections) * 100);
 
   const videoStep: LearningStep = {
     step_number: stepNumber,
@@ -137,7 +162,17 @@ export const ModuleStepGuide: React.FC<Props> = ({
 
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [showAnswers, setShowAnswers] = useState<Record<number, boolean>>({});
+  const practiceKey = JSON.stringify([moduleId || moduleTitle, studentUid, sectionIndex,
+    stepNumber, detectedType, topic, section.competencyTag, section.numItems]);
+  const [stepPractice, setStepPractice] = useState(() => new Map<string, StepPractice>());
+  const currentPractice = stepPractice.get(practiceKey) ?? EMPTY_STEP_PRACTICE;
+  const { answers: selectedAnswers, submitted: submittedAnswers, loading: practiceLoading, error: practiceError } = currentPractice;
+  const generationRequest = useRef(0);
+  const updatePractice = (changes: Partial<StepPractice>) => {
+    setStepPractice((previous) => new Map(previous).set(practiceKey, {
+      ...(previous.get(practiceKey) ?? EMPTY_STEP_PRACTICE), ...changes,
+    }));
+  };
   const [activeTab, setActiveTab] = useState<'content' | 'practice'>('content');
   const [showSideBySideChat, setShowSideBySideChat] = useState(true);
   const [mobileViewTab, setMobileViewTab] = useState<'content' | 'practice' | 'chat'>('content');
@@ -204,7 +239,69 @@ export const ModuleStepGuide: React.FC<Props> = ({
     setChatMessages([freshMessage]);
   };
 
-  const hasPractice = practice && practice.length > 0;
+  const effectivePractice = currentPractice.questions ?? practice ?? [];
+  const hasPractice = effectivePractice.length > 0;
+  const needsGeneratedPractice = detectedType === 'practice' || detectedType === 'assessment';
+  const canProceed = !needsGeneratedPractice || (hasPractice && !practiceLoading
+    && effectivePractice.every((_, index) => submittedAnswers[index]));
+  const checkedCount = effectivePractice.filter((_, index) => submittedAnswers[index]).length;
+  const requiredSteps = requiredQuestionSteps ?? (needsGeneratedPractice ? [sectionIndex] : []);
+  const submittedCount = requiredSteps.filter((index) => submittedQuestionSteps.includes(index)
+    || (index === sectionIndex && needsGeneratedPractice && canProceed)).length;
+  const canFinish = canProceed && submittedCount === requiredSteps.length;
+  const canAdvance = onNext ? canProceed : canFinish;
+  const progressPct = requiredSteps.length > 0 ? Math.round((submittedCount / requiredSteps.length) * 100) : 0;
+
+  const loadGeneratedPractice = async () => {
+    if (!studentUid || practiceLoading) return;
+    const request = ++generationRequest.current;
+    updatePractice({ loading: true, error: null });
+    try {
+      const response = await generatePractice({
+        userId: studentUid,
+        subject: 'General Mathematics',
+        competency: section.competencyTag || topic,
+        difficulty: detectedType === 'assessment' ? 'Mastery' : 'Practice',
+        count: section.numItems || (detectedType === 'assessment' ? 5 : 10),
+      });
+      if (request !== generationRequest.current) return;
+      const questions = response.questions
+        .filter((question) => question.options.length > 0
+          && question.correct_index >= 0
+          && question.correct_index < question.options.length)
+        .map((question) => ({
+          question: question.question,
+          options: question.options.map((text, index) => ({
+            label: String.fromCharCode(65 + index),
+            text,
+          })),
+          answer: String.fromCharCode(65 + question.correct_index),
+          explanation: question.explanation || '',
+        }));
+      if (questions.length === 0) throw new Error('No valid practice questions returned');
+      updatePractice({ questions });
+      setActiveTab('practice');
+      setMobileViewTab('practice');
+    } catch (error) {
+      if (request !== generationRequest.current) return;
+      console.warn('[ModuleStepGuide] Practice generation failed:', error);
+      updatePractice({ error: 'Practice questions could not be loaded. Please try again.' });
+    } finally {
+      if (request === generationRequest.current) updatePractice({ loading: false });
+    }
+  };
+
+  useEffect(() => {
+    setActiveTab('content');
+    setMobileViewTab('content');
+    return () => {
+      generationRequest.current += 1;
+      setStepPractice((previous) => {
+        const pending = previous.get(practiceKey);
+        return pending?.loading ? new Map(previous).set(practiceKey, { ...pending, loading: false }) : previous;
+      });
+    };
+  }, [practiceKey]);
 
   // AI Chat Pane component
   const renderAIChatPane = (isInlineMobile = false) => (
@@ -397,8 +494,8 @@ export const ModuleStepGuide: React.FC<Props> = ({
           </button>
 
           {/* Step indicator counter */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap shrink-0">
-            <span>Step {stepNumber}</span>
+          <div aria-label="Current step" className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap shrink-0">
+            <span>Step {sectionIndex + 1}</span>
             <span className="text-slate-400">/</span>
             <span>{totalSections}</span>
           </div>
@@ -515,7 +612,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                     }`}
                   >
                     <PenTool size={13} className="shrink-0" />
-                    <span className="whitespace-nowrap">Practice ({practice.length})</span>
+                    <span className="whitespace-nowrap">Practice ({effectivePractice.length})</span>
                   </button>
                   )}
 
@@ -590,7 +687,8 @@ export const ModuleStepGuide: React.FC<Props> = ({
 
                   {/* Guided Practice Prompt Card */}
                   {hasPractice && (
-                    <div
+                    <button
+                      type="button"
                       onClick={() => {
                         setActiveTab('practice');
                         setMobileViewTab('practice');
@@ -603,10 +701,10 @@ export const ModuleStepGuide: React.FC<Props> = ({
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap truncate">
-                            Ready to Practice? ({practice.length} Items)
+                            Ready to Practice? ({effectivePractice.length} Items)
                           </h4>
                           <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                            Test your knowledge with immediate answer reveal and explanations.
+                            Select and check each answer to see feedback and explanations.
                           </p>
                         </div>
                       </div>
@@ -614,6 +712,31 @@ export const ModuleStepGuide: React.FC<Props> = ({
                         <span className="whitespace-nowrap">Go to Practice</span>
                         <ArrowRight size={14} className="shrink-0" />
                       </span>
+                    </button>
+                  )}
+                  {!hasPractice && needsGeneratedPractice && (
+                    <div className="rounded-2xl border border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-slate-900 p-5 shadow-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                            {detectedType === 'assessment' ? 'Mastery Check' : 'Practice Questions'}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Generate {section.numItems || (detectedType === 'assessment' ? 5 : 10)} questions for this step and work through them here.
+                          </p>
+                          {practiceError && <p role="alert" className="text-xs text-rose-600 dark:text-rose-400 mt-2">{practiceError}</p>}
+                          {!studentUid && <p role="alert" className="text-xs text-rose-600 dark:text-rose-400 mt-2">Sign in to load questions for this step.</p>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void loadGeneratedPractice()}
+                          disabled={practiceLoading || !studentUid}
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {practiceLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                          {practiceLoading ? 'Generating...' : practiceError ? 'Try Again' : 'Start Questions'}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -627,64 +750,84 @@ export const ModuleStepGuide: React.FC<Props> = ({
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                          Practice Items · {practice?.length || 0} Questions
+                          Practice Items · {effectivePractice.length} Questions
                         </h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Solve each question, then click Reveal Answer to verify your steps.
+                          Select an answer for every question and click Check Answer. Incorrect attempts still count as submitted.
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {practice?.map((q, i) => (
-                    <div
+                  {effectivePractice.map((q, i) => (
+                    <fieldset
                       key={i}
                       className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-all"
                     >
-                      <div className="flex items-start gap-3 mb-3">
+                      <legend className="text-sm font-bold text-slate-900 dark:text-white leading-snug mb-3">
                         <span
-                          className="w-6 h-6 rounded-lg text-white text-[11px] font-black flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs"
+                          aria-hidden="true"
+                          className="w-6 h-6 rounded-lg text-white text-[11px] font-black inline-flex items-center justify-center mr-3 shadow-2xs"
                           style={{ background: 'linear-gradient(135deg, #9956DE, #7274ED)' }}
                         >
                           {i + 1}
                         </span>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-snug">{q.question}</p>
-                      </div>
+                        {q.question}
+                      </legend>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pl-9 mb-3">
                         {q.options.map((opt, j) => {
                           const isCorrect = opt.label === q.answer;
                           return (
-                            <div
+                            <label
                               key={j}
                               className={`text-xs rounded-xl px-3.5 py-2.5 font-medium border flex items-center justify-between ${
-                                isCorrect && showAnswers[i]
+                                isCorrect && submittedAnswers[i]
                                   ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 font-bold'
                                   : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-700 text-slate-700 dark:text-slate-300'
                               }`}
                             >
+                              <input
+                                type="radio"
+                                name={`${practiceKey}-question-${i}`}
+                                value={opt.label}
+                                checked={selectedAnswers[i] === opt.label}
+                                disabled={!!submittedAnswers[i]}
+                                onChange={() => updatePractice({ answers: { ...selectedAnswers, [i]: opt.label } })}
+                                className="mr-2 accent-indigo-600"
+                              />
                               <span>{opt.label}. {opt.text}</span>
-                              {isCorrect && showAnswers[i] && (
+                              {isCorrect && submittedAnswers[i] && (
                                 <Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
                               )}
-                            </div>
+                            </label>
                           );
                         })}
                       </div>
 
                       <div className="pl-9 pt-2 flex flex-col gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowAnswers((prev) => ({ ...prev, [i]: !prev[i] }))}
-                          className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline self-start cursor-pointer"
+                        <Button
+                          size="sm"
+                          disabled={!selectedAnswers[i] || !!submittedAnswers[i]}
+                          onClick={() => {
+                            if (selectedAnswers[i] && !submittedAnswers[i]) {
+                              updatePractice({ submitted: { ...submittedAnswers, [i]: true } });
+                              if (effectivePractice.every((_, index) => index === i || submittedAnswers[index])) {
+                                onStepComplete?.(sectionIndex);
+                              }
+                            }
+                          }}
+                          className="self-start"
                         >
-                          {showAnswers[i] ? 'Hide Answer' : 'Reveal Answer & Explanation'}
-                        </button>
+                          {submittedAnswers[i] ? 'Answer Checked' : 'Check Answer'}
+                        </Button>
 
-                        {showAnswers[i] && (
+                        {submittedAnswers[i] && (
                           <div
+                            role="status"
                             className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-900 dark:text-emerald-200 space-y-1"
                           >
+                            <p className="font-bold">{selectedAnswers[i] === q.answer ? 'Correct.' : 'Incorrect. Review the explanation below.'}</p>
                             <p className="font-bold flex items-center gap-1">
                               <CheckCircle2 size={13} className="text-emerald-600" />
                               Correct Answer: Option {q.answer}
@@ -697,7 +840,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                           </div>
                         )}
                       </div>
-                    </div>
+                    </fieldset>
                   ))}
                 </div>
               )}
@@ -732,6 +875,11 @@ export const ModuleStepGuide: React.FC<Props> = ({
       </div>
 
       {/* ── Polished Bottom Action Bar (Unobstructed, Flexible & Responsive) ── */}
+      {!canAdvance && (
+        <p id="step-submission-help" className="px-4 py-2 text-center text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900">
+          {!canProceed ? 'Select and check every answer in this step to continue.' : 'Submit the remaining practice and assessment steps before finishing the module.'}
+        </p>
+      )}
       <div className="flex-shrink-0 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 px-3 sm:px-8 xl:px-10 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 z-30 shadow-xs">
         {/* Prev Button */}
         <div className="flex justify-start shrink-0">
@@ -759,9 +907,21 @@ export const ModuleStepGuide: React.FC<Props> = ({
         {/* Centered Step Progress Indicator Pill */}
         <div className="flex-1 max-w-[220px] sm:max-w-xs md:max-w-sm flex flex-col items-center gap-1 min-w-0 px-1 sm:px-2">
           <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-300 font-display whitespace-nowrap truncate">
-            <span className="hidden sm:inline">Step </span>{stepNumber} of {totalSections} · {progressPct}% Complete
+            <span className="hidden sm:inline">Step </span>{sectionIndex + 1} of {totalSections}
           </span>
-          <div className="w-full h-1.5 sm:h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
+          {needsGeneratedPractice && (
+            <span className="text-[11px] text-slate-600 dark:text-slate-300" role="status">
+              {checkedCount} of {effectivePractice.length || section.numItems || (detectedType === 'assessment' ? 5 : 10)} answers checked
+            </span>
+          )}
+          <div
+            role="progressbar"
+            aria-label="Question submission progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPct}
+            className="w-full h-1.5 sm:h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner"
+          >
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
@@ -777,8 +937,10 @@ export const ModuleStepGuide: React.FC<Props> = ({
           {onNext ? (
             <button
               type="button"
-              onClick={onNext}
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-sm hover:shadow-md cursor-pointer hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap shrink-0"
+              onClick={() => { if (canProceed) onNext(); }}
+              disabled={!canProceed}
+              aria-describedby={!canProceed ? 'step-submission-help' : undefined}
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-sm hover:shadow-md cursor-pointer hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: 'linear-gradient(135deg, #9956DE, #7274ED)' }}
             >
               <span className="whitespace-nowrap">Next Step</span>
@@ -787,8 +949,10 @@ export const ModuleStepGuide: React.FC<Props> = ({
           ) : (
             <button
               type="button"
-              onClick={onClose}
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-sm hover:shadow-md cursor-pointer hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap shrink-0"
+              onClick={() => { if (canFinish) (onFinish ?? onClose)(); }}
+              disabled={!canFinish}
+              aria-describedby={!canFinish ? 'step-submission-help' : undefined}
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-sm hover:shadow-md cursor-pointer hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
             >
               <CheckCircle2 size={14} className="shrink-0" />

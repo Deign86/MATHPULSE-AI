@@ -15,6 +15,8 @@ import * as PracticeCenterNs from './PracticeCenter';
 import * as QuizExperienceNs from './QuizExperience';
 import * as quizService from '../services/quizService';
 import * as progressService from '../services/progressService';
+import * as practiceService from '../services/practiceService';
+import type { TeacherUploadedModule } from '../data/curriculumModules';
 
 // Firestore IO stubs: firebase deps are inlined in vitest.config, so these
 // namespaces are configurable. No real network/IO is touched.
@@ -44,14 +46,15 @@ const testUserProfile: StudentProfile = {
   updatedAt: new Date('2026-01-01T00:00:00Z'),
 };
 
-vi.spyOn(authNs, 'useAuth').mockReturnValue({
+const studentAuth: AuthContextType = {
   currentUser: null,
   userProfile: testUserProfile,
   loading: false,
   isLoggedIn: true,
   userRole: 'student',
   refreshProfile: async () => {},
-});
+};
+vi.spyOn(authNs, 'useAuth').mockReturnValue(studentAuth);
 
 vi.spyOn(notificationsNs, 'notify').mockImplementation(() => Promise.resolve());
 
@@ -69,7 +72,10 @@ vi.spyOn(PracticeCenterNs, 'default').mockImplementation(
 
 import ModulesPage from './ModulesPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.spyOn(authNs, 'useAuth').mockReturnValue(studentAuth);
+});
 
 const renderModulesPage = () =>
   render(
@@ -115,6 +121,34 @@ describe('ModulesPage', () => {
     expect(screen.getAllByText(/practice center stub/i)).not.toHaveLength(0);
     expect(screen.queryByRole('button', { name: /^assigned$/i })).not.toBeInTheDocument();
     expect(window.location.search).toContain('section=assigned-quizzes');
+  });
+
+  it('shows pending teacher assignments from the Recommended tab', async () => {
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([
+      {
+        generatedQuizId: 'quiz-recommended',
+        id: 'assignment-recommended',
+        title: 'Teacher Recommended Review',
+        subject: 'General Mathematics',
+        difficulty: 'Medium',
+        questions: 5,
+        duration: '10 minutes',
+        xpReward: 20,
+        type: 'practice',
+        completed: false,
+        locked: false,
+        source: 'ai_generated',
+        loadedQuestions: [],
+      },
+    ]);
+    window.history.replaceState({}, '', '/modules');
+
+    renderModulesPage();
+    fireEvent.click(screen.getAllByRole('button', { name: /^recommended$/i })[0]);
+
+    expect(await screen.findByRole('heading', { name: /assigned by your teacher/i })).toBeInTheDocument();
+    expect(await screen.findByText('Teacher Recommended Review')).toBeInTheDocument();
+    expect(quizService.fetchPendingQuizzesForStudent).toHaveBeenCalledWith('user-1');
   });
 
   it('waits for assigned quizzes to load and auto-opens the quiz from its deep link', async () => {
@@ -210,6 +244,47 @@ describe('ModulesPage', () => {
     expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
   });
 
+  it('keeps a missing deep-link target retryable while showing other usable assignments', async () => {
+    const otherQuiz: quizService.PlayableQuiz = {
+      generatedQuizId: 'other-quiz', id: 'other-assignment', title: 'Other Usable Review',
+      subject: 'General Mathematics', difficulty: 'Medium', questions: 1, duration: '5 min',
+      xpReward: 20, type: 'practice', completed: false, locked: false, source: 'ai_generated', loadedQuestions: [],
+    };
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset()
+      .mockResolvedValueOnce([otherQuiz])
+      .mockResolvedValueOnce([{ ...otherQuiz, generatedQuizId: 'requested-quiz', id: 'requested-assignment' }]);
+    window.history.replaceState({}, '', '/modules?section=assigned-quizzes&quizId=requested-quiz');
+
+    renderModulesPage();
+
+    expect(await screen.findByText('Other Usable Review')).toBeInTheDocument();
+    expect(window.location.search).toContain('quizId=requested-quiz');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
+    expect(window.location.search).not.toContain('quizId=');
+  });
+
+  it('waits for the student profile before consuming an assigned quiz deep link', async () => {
+    const auth = vi.spyOn(authNs, 'useAuth');
+    const authenticated = authNs.useAuth();
+    auth.mockReturnValue({ ...authenticated, userProfile: null, loading: true });
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([{
+      generatedQuizId: 'quiz-1', id: 'assignment-1', title: 'Functions Review', subject: 'General Mathematics',
+      difficulty: 'Medium', questions: 1, duration: '5 min', xpReward: 20, type: 'practice',
+      completed: false, locked: false, source: 'ai_generated', loadedQuestions: [],
+    }]);
+    window.history.replaceState({}, '', '/modules?section=assigned-quizzes&quizId=quiz-1');
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const page = <QueryClientProvider client={queryClient}><ModulesPage /></QueryClientProvider>;
+
+    const rendered = render(page);
+    expect(window.location.search).toContain('quizId=quiz-1');
+    auth.mockReturnValue(authenticated);
+    rendered.rerender(<QueryClientProvider client={queryClient}><ModulesPage /></QueryClientProvider>);
+
+    expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
+  });
+
   it('does not duplicate quiz persistence from the parent completion callback', async () => {
     vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([{
       generatedQuizId: 'quiz-1',
@@ -244,5 +319,83 @@ describe('ModulesPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /teacher uploaded/i })[0]);
 
     expect(firestore.where).toHaveBeenCalledWith('assignedTo', '==', 'user-1');
+  });
+});
+
+describe('teacher intervention step completion integration', () => {
+  const assignedModule: TeacherUploadedModule = {
+    moduleId: 'intervention-1', title: 'Assigned intervention', gradeLevel: 'Grade 11',
+    subject: 'General Mathematics', quarter: 'Q1', moduleType: 'teacher_uploaded', sourceLabel: 'Teacher Upload',
+    strandOrTrack: null, teacherId: 'teacher-1', assignedTo: 'user-1', createdAt: new Date('2026-10-07T00:00:00Z'),
+    competencyTags: ['Addition'], summary: 'Practice addition', learningObjectives: [], practice: [],
+    sections: [
+      { title: 'Step 2: Guided Practice', content: 'Solve examples', stepType: 'practice', stepNumber: 2, topic: 'Addition', numItems: 1 },
+      { title: 'Step 3: Independent Practice', content: 'Solve independently', stepType: 'practice', stepNumber: 3, topic: 'Addition', numItems: 1 },
+      { title: 'Step 4: Mastery Check', content: 'Check understanding', stepType: 'assessment', stepNumber: 4, topic: 'Addition', numItems: 1 },
+    ],
+  };
+
+  const openAssignedModule = async () => {
+    window.history.replaceState({}, '', '/modules');
+    sessionStorage.clear();
+    Element.prototype.scrollIntoView = vi.fn();
+    // SAFETY: opaque collection handles are forwarded to the query/subscription boundary only.
+    const teacherCollection = { path: 'modules' } as firestore.CollectionReference;
+    // SAFETY: unrelated collection handles only reach inert test subscriptions.
+    const otherCollection = { path: 'other' } as firestore.CollectionReference;
+    const collectionSpy = vi.spyOn(firestore, 'collection').mockImplementation((...args) => args[1] === 'modules' ? teacherCollection : otherCollection);
+    const querySpy = vi.spyOn(firestore, 'query').mockImplementation((reference) => reference);
+    // SAFETY: this snapshot includes the docs/id/data members consumed by ModulesPage's module subscription.
+    const snapshot = Object.create(firestore.QuerySnapshot.prototype, {
+      docs: { value: [{ id: assignedModule.moduleId, data: () => assignedModule }] },
+    }) as firestore.QuerySnapshot;
+    const subscribe = (reference: firestore.Query, next: (snapshot: firestore.QuerySnapshot) => void) => {
+      if (reference === teacherCollection) next(snapshot);
+      return vi.fn();
+    };
+    const snapshotSpy = vi.spyOn(firestore, 'onSnapshot').mockImplementation(vi.fn().mockImplementation(subscribe));
+    const generation = vi.spyOn(practiceService, 'generatePracticeSession').mockResolvedValue({
+      session_id: 'local-attempt', generated_at: '2026-10-07T00:00:00Z',
+      questions: [{ id: 'q-1', question: 'What is 2 + 3?', options: ['4', '5'], correct_index: 1,
+        explanation: 'Add the terms.', competency: 'Addition', difficulty: 'Practice', bloomsLevel: 'apply' }],
+    });
+    renderModulesPage();
+    fireEvent.click(screen.getByRole('button', { name: /teacher uploaded/i }));
+    fireEvent.click(await screen.findByRole('heading', { name: 'Assigned intervention' }));
+    return () => {
+      collectionSpy.mockImplementation(vi.fn());
+      querySpy.mockImplementation(vi.fn());
+      // SAFETY: the shared subscription stub returns an unsubscribe function and performs no IO.
+      snapshotSpy.mockImplementation((() => vi.fn()) as typeof firestore.onSnapshot);
+      generation.mockRestore();
+    };
+  };
+
+  const submitIncorrectAttempt = async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Start Questions' }));
+    await screen.findByRole('group', { name: 'What is 2 + 3?' });
+    fireEvent.click(screen.getByRole('radio', { name: 'A. 4' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Check Answer' }));
+  };
+
+  it('blocks direct-final Finish and retains submitted steps across exit, reopen, and navigation', async () => {
+    const restore = await openAssignedModule();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: /Step 4: Mastery Check/ }));
+      await submitIncorrectAttempt();
+      expect(screen.getByRole('button', { name: 'Finish Module' })).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Close study guide' }));
+      expect(await screen.findByText('1 of 3 steps finished')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Resume at Step 1/ }));
+      await submitIncorrectAttempt();
+      fireEvent.click(screen.getByRole('button', { name: 'Next Step' }));
+      await submitIncorrectAttempt();
+      fireEvent.click(screen.getByRole('button', { name: 'Next Step' }));
+      await submitIncorrectAttempt();
+      expect(screen.getByRole('button', { name: 'Finish Module' })).toBeEnabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Finish Module' }));
+      expect(await screen.findByText('3 of 3 steps finished')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Review Module from Step 1/ })).toBeInTheDocument();
+    } finally { restore(); }
   });
 });
