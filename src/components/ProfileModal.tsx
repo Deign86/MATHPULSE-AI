@@ -48,7 +48,7 @@ interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   profileData: ProfileData;
-  onSave: (data: ProfileData) => void;
+  onSave: (data: ProfileData) => Promise<void> | void;
 }
 
 const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileData, onSave }) => {
@@ -94,7 +94,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
     loadLeaderboardData();
   }, [isOpen, editedData.role, editedData.uid]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const validationError = validateProfileDraft({
       name: editedData.name,
       phone: editedData.phone,
@@ -103,8 +103,13 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, profileDat
       toast.error(validationError);
       return;
     }
-    onSave(editedData);
-    setIsEditing(false);
+    try {
+      await onSave(editedData);
+      setIsEditing(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save profile';
+      toast.error(message);
+    }
   };
 
   const handleCancel = () => {

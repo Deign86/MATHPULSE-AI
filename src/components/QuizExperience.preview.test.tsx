@@ -141,6 +141,7 @@ describe('QuizExperience preview mode', () => {
       success: true, event: 'quiz_submitted', lrn: 'student-1', message: 'test', remedialQuizzesCreated: 0, notifications: [],
     });
     const saveResults = vi.spyOn(quizService, 'saveQuizResults').mockResolvedValue(undefined);
+    const saveProgress = vi.spyOn(progressService, 'recordPracticeQuiz').mockResolvedValue(undefined);
     const onComplete = vi.fn();
     const onQuizEnd = vi.fn();
     vi.useFakeTimers();
@@ -152,6 +153,15 @@ describe('QuizExperience preview mode', () => {
     await act(async () => { vi.advanceTimersByTime(60_000); });
     expect(submit).toHaveBeenCalledOnce();
     expect(saveResults).toHaveBeenCalledOnce();
+    expect(saveProgress).toHaveBeenCalledOnce();
+    expect(saveProgress).toHaveBeenCalledWith(
+      'student-1',
+      'assigned-test',
+      'Math',
+      0,
+      [expect.objectContaining({ questionId: 'question-1', selectedAnswer: '1', isCorrect: false })],
+      expect.any(Number),
+    );
     expect(onComplete).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'FINISH' }));
     expect(onQuizEnd).toHaveBeenCalledOnce();

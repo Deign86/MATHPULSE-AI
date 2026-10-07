@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   BookOpen,
   Lock,
@@ -84,6 +84,15 @@ const AdminSubjects: React.FC = () => {
   const { availability, loading, error } = useSubjectAvailability();
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedAvailability, setSavedAvailability] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    setSavedAvailability((previous) => {
+      const confirmed = Object.keys(previous).filter((id) => availability[id]?.available === previous[id]);
+      if (confirmed.length === 0) return previous;
+      const next = { ...previous };
+      confirmed.forEach((id) => { delete next[id]; });
+      return next;
+    });
+  }, [availability]);
   const currentAvailability = useMemo(() => {
     const mergedAvailability = { ...availability };
     Object.entries(savedAvailability).forEach(([subjectId, available]) => {
@@ -196,7 +205,7 @@ const AdminSubjects: React.FC = () => {
           },
           {
             label: 'Locked',
-            value: SUBJECT_ROWS.filter((s) => currentAvailability[s.id]?.available === false).length,
+            value: SUBJECT_ROWS.filter((s) => !(currentAvailability[s.id]?.available ?? !s.shelved)).length,
             subtext: 'Materials not yet linked',
             badge: 'Locked',
             icon: Lock,

@@ -383,6 +383,8 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
       setError('End time must be later than the start time.');
       return;
     }
+    setSaving(true);
+    setError('');
     const evData = {
       title: formTitle.trim(),
       classId: formClassId || undefined,

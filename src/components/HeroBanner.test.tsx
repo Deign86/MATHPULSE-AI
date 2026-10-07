@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import HeroBanner from './HeroBanner';
 
@@ -55,5 +55,19 @@ describe('HeroBanner', () => {
     );
     // Alert reappears
     expect(screen.getByText('Assessment Complete!')).toBeInTheDocument();
+  });
+
+  it('keeps a dismissed completion alert hidden after the dashboard remounts', () => {
+    const firstRender = render(
+      <HeroBanner userName="Student" studentId="s1" assessmentCompleted />,
+    );
+
+    fireEvent.click(within(firstRender.container).getByLabelText(/Dismiss assessment complete/i));
+    expect(window.localStorage.getItem('mathpulse:dismissed_assessment_complete_tooltip_s1')).toBe('true');
+    firstRender.unmount();
+
+    const remount = render(<HeroBanner userName="Student" studentId="s1" assessmentCompleted />);
+
+    expect(within(remount.container).queryByText('Assessment Complete!')).not.toBeInTheDocument();
   });
 });

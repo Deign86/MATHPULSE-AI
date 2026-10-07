@@ -12,7 +12,9 @@ import * as ModuleFolderCardNs from './ModuleFolderCard';
 import * as ModulesMascotNs from './ModulesMascot';
 import * as DailyCheckInModalNs from './DailyCheckInModal';
 import * as PracticeCenterNs from './PracticeCenter';
+import * as QuizExperienceNs from './QuizExperience';
 import * as quizService from '../services/quizService';
+import * as progressService from '../services/progressService';
 
 // Firestore IO stubs: firebase deps are inlined in vitest.config, so these
 // namespaces are configurable. No real network/IO is touched.
@@ -206,6 +208,34 @@ describe('ModulesPage', () => {
     expect(window.location.search).toContain('quizId=quiz-1');
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
+  });
+
+  it('does not duplicate quiz persistence from the parent completion callback', async () => {
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([{
+      generatedQuizId: 'quiz-1',
+      id: 'quiz-1',
+      title: 'Functions Review',
+      subject: 'General Mathematics',
+      difficulty: 'Medium',
+      questions: 1,
+      duration: '10 minutes',
+      xpReward: 20,
+      type: 'practice',
+      completed: false,
+      locked: false,
+      source: 'ai_generated',
+      loadedQuestions: [],
+    }]);
+    const recordPracticeQuiz = vi.spyOn(progressService, 'recordPracticeQuiz').mockResolvedValue();
+    vi.spyOn(QuizExperienceNs, 'default').mockImplementation(({ onComplete }) => (
+      <button type="button" onClick={() => onComplete?.(80, 20)}>Complete mocked quiz</button>
+    ));
+    window.history.replaceState({}, '', '/modules?section=assigned-quizzes&quizId=quiz-1');
+
+    renderModulesPage();
+    fireEvent.click(await screen.findByRole('button', { name: /complete mocked quiz/i }));
+
+    expect(recordPracticeQuiz).not.toHaveBeenCalled();
   });
 
   it('scopes teacher-uploaded modules to the signed-in student', () => {

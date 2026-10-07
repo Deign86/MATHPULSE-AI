@@ -2,6 +2,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import App from './App';
 
 afterEach(() => cleanup());
@@ -26,5 +28,10 @@ describe('App role routing', () => {
 
     expect(await screen.findByText(/access denied/i)).toBeInTheDocument();
     expect(screen.queryByText('Dashboard', { exact: true })).not.toBeInTheDocument();
+  });
+
+  it('wires the assessment results CTA to the URL-aware navigation handler', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/App.tsx'), 'utf8');
+    expect(source).toMatch(/onContinueToLearningPath=\{\(\) => handleStudentNavigation\('Modules'\)\}/);
   });
 });

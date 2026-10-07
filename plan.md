@@ -1,21 +1,23 @@
-# Curriculum Source-of-Truth Migration
+# Recent Merge Regression Investigation
 
 ## Scope
-Replace the repository curriculum corpus with `datasets/curriculum/sshs_learning_resources`, migrate ingestion from pdfplumber to LiteParse based on the installed package contract, remove stale vectorstore artifacts safely, update docs/cache versioning, and verify RAG/backend/frontend behavior.
+Audit the three most recently merged pull requests on `main` (#204, #206, #197), reproduce regressions introduced or exposed by their combined merge order, fix proven root causes with the smallest safe diff, and verify the repository using `TESTING.md`.
 
 ## Contracts
-- Corpus owner: `datasets/curriculum/sshs_learning_resources/`.
-- Ingestion entrypoint is `scripts/ingest_curriculum.py --data-dir <dir>`; the legacy backend JSON/JSONL loader remains separate.
-- Existing Chroma collection name and embedding model remain unchanged unless code inspection proves otherwise.
-- Backup must precede deletion; local-only generated vectorstore is not committed as source data.
-- One implementation writer owns repository code changes; reviewers inspect after implementation.
+- Treat `origin/main` as the integration truth after refreshing refs.
+- Inspect every changed file from the three PRs, with extra attention to files touched by more than one PR.
+- Do not change behavior without a reproduced failure, a broken contract, or a demonstrable merge-loss conflict.
+- Add or strengthen regression coverage before each code fix when practical.
+- Keep fixes local to the proven root cause and preserve unrelated merged behavior.
 
 ## Work leaves
-1. Reconnaissance: current data layout, parser call sites, requirements, vectorstore tracking, tests, cache version.
-2. Corpus and safety: backup/inventory, source README, old corpus/vectorstore handling.
-3. LiteParse migration: parser adapter and ingestion call-site updates with tests.
-4. Docs and PWA cache: documentation, tracking, service-worker cache bump.
-5. Integration verification: tests, typecheck/build, stale-reference and diff review.
+1. Establish the exact three merged PRs, merge order, changed-file overlap, and CI/test baseline.
+2. Review each PR independently for merge-losses, stale assumptions, and contract conflicts.
+3. Reproduce suspected regressions with targeted tests or deterministic checks.
+4. Patch proven regressions and add regression tests.
+5. Run targeted checks, full CI-equivalent verification, anti-slop, and final diff review.
 
 ## Status log
-- 2026-02-??: gates and plan created; reconnaissance pending.
+- 2026-10-07: Investigation started; latest merged PRs identified as #204, #206, and #197.
+- 2026-10-07: Fixed proven merge regressions in assessment CTA navigation, assessment-alert dismissal persistence, quiz attempt persistence ownership, profile failed-save handling, teacher calendar save state, and Admin Subjects availability totals/realtime reconciliation; final CI-equivalent verification completed.
+- 2026-10-07: Post-fix regression sweep passed frontend (551), backend (598), targeted changed-feature tests (27), production build/static checks, and all 79 Functions tests under Firestore+RTDB emulators. Authenticated browser E2E remains credential-gated because no E2E user credentials are configured locally.

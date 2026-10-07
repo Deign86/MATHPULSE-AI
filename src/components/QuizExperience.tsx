@@ -742,7 +742,7 @@ const newStreak = streak + 1;
       }).catch((err) => console.error('[WARN] Automation: quiz pipeline failed:', err));
     }
 
-    // Save detailed results for AI-generated quizzes
+    // Save detailed assignment/submission results for AI-generated quizzes.
     if (shouldRewardAttempt && quiz.source === 'ai_generated' && studentId) {
       saveQuizResults(
         studentId,
@@ -760,8 +760,11 @@ const newStreak = streak + 1;
           bloomLevel: q.bloomLevel || 'understand',
         })),
       ).catch((err) => console.error('[WARN] Quiz result save failed:', err));
-    } else if (shouldRewardAttempt && studentId) {
-      // Persist static quiz attempts to progress (XP awarded by parent via onComplete callback)
+    }
+
+    // Persist every rewarded attempt to progress exactly once so aggregate score/risk
+    // refreshes have complete answer and timing data regardless of quiz source.
+    if (shouldRewardAttempt && studentId) {
       recordPracticeQuiz(
         studentId,
         quiz.id,

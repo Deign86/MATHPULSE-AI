@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { ArrowRight, Zap, Brain, CheckCircle, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { Skeleton } from './ui/skeleton';
@@ -70,10 +70,13 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
   }, [showResultsModal, studentId]);
 
   const reduceMotion = useReducedMotion();
+  const previousAssessmentCompletedRef = useRef(assessmentCompleted);
 
-  // Reset dismiss flag when a new assessment completes — allows reappearance of alert.
   useEffect(() => {
-    if (assessmentCompleted) {
+    const newlyCompleted = assessmentCompleted && !previousAssessmentCompletedRef.current;
+    previousAssessmentCompletedRef.current = assessmentCompleted;
+
+    if (newlyCompleted) {
       setIsAssessmentCompleteDismissed(false);
       try {
         localStorage.removeItem(dismissStorageKey);
