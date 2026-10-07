@@ -260,7 +260,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   }, []);
 
   useEffect(() => {
-    if (activeTab !== 'practice') return;
+    if (activeTab !== 'practice' && activeTab !== 'recommended') return;
     const studentUid = userProfile?.uid;
     if (!studentUid) {
       setPendingQuizzes([]);
@@ -292,7 +292,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       });
 
     return () => { cancelled = true; };
-  }, [activeTab, studentProfile?.lrn, userProfile?.uid, pendingQuizRefresh]);
+  }, [activeTab, userProfile?.uid, pendingQuizRefresh]);
 
   useEffect(() => {
     if (!assignedQuizToOpen || !pendingQuizzesLoaded || pendingQuizzesLoading || pendingQuizzesError) return;
@@ -767,6 +767,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             totalSections={selectedTeacherModule.sections.length}
             moduleTitle={selectedTeacherModule.title}
             studentName={studentProfile?.name || 'Student'}
+            studentUid={userProfile?.uid}
             practice={selectedTeacherModule.practice}
             onClose={() => setActiveStepIndex(null)}
             onNext={hasNext ? () => setActiveStepIndex(activeStepIndex + 1) : undefined}
@@ -1737,6 +1738,45 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           </div>
         )}
 
+      {(activeTab === 'practice' || activeTab === 'recommended') && (
+        <section aria-label="Assigned by your teacher" className="mb-6 space-y-3">
+          <h2 className="text-lg font-bold text-slate-800">Assigned by your teacher</h2>
+          {assignedQuizUnavailable && (
+            <p role="status" className="text-sm text-slate-500">This assigned quiz is no longer pending. Check with your teacher if you need access.</p>
+          )}
+          {pendingQuizzesLoading ? (
+            <p role="status" className="text-sm text-slate-500">Loading assigned quizzes…</p>
+          ) : pendingQuizzesError ? (
+            <div role="alert" className="text-sm text-rose-600">
+              <p>Could not load assigned quizzes.</p>
+              <button
+                type="button"
+                onClick={() => setPendingQuizRefresh((refresh) => refresh + 1)}
+                className="mt-2 font-semibold underline"
+              >
+                Retry
+              </button>
+            </div>
+          ) : pendingQuizzes.length === 0 ? (
+            <p className="text-sm text-slate-500">You have no pending assigned quizzes. Check back when your teacher assigns one.</p>
+          ) : pendingQuizzes.map((quiz) => (
+            <div key={quiz.generatedQuizId} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
+              <div>
+                <h3 className="font-bold text-slate-800">{quiz.title}</h3>
+                <p className="text-sm text-slate-500">{quiz.subject} · {quiz.questions} questions · {quiz.duration}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedQuiz(quiz)}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+              >
+                <Play size={14} /> Take quiz
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
+
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -1748,42 +1788,6 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         >
           {activeTab === 'practice' ? (
             <div className="space-y-6">
-            <section aria-label="Assigned by your teacher" className="space-y-3">
-              <h2 className="text-lg font-bold text-slate-800">Assigned by your teacher</h2>
-              {assignedQuizUnavailable && (
-                <p role="status" className="text-sm text-slate-500">This assigned quiz is no longer pending. Check with your teacher if you need access.</p>
-              )}
-              {pendingQuizzesLoading ? (
-                <p role="status" className="text-sm text-slate-500">Loading assigned quizzes…</p>
-              ) : pendingQuizzesError ? (
-                <div role="alert" className="text-sm text-rose-600">
-                  <p>Could not load assigned quizzes.</p>
-                  <button
-                    type="button"
-                    onClick={() => setPendingQuizRefresh((refresh) => refresh + 1)}
-                    className="mt-2 font-semibold underline"
-                  >
-                    Retry
-                  </button>
-                </div>
-              ) : pendingQuizzes.length === 0 ? (
-                <p className="text-sm text-slate-500">You have no pending assigned quizzes. Check back when your teacher assigns one.</p>
-              ) : pendingQuizzes.map((quiz) => (
-                <div key={quiz.generatedQuizId} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
-                  <div>
-                    <h3 className="font-bold text-slate-800">{quiz.title}</h3>
-                    <p className="text-sm text-slate-500">{quiz.subject} · {quiz.questions} questions · {quiz.duration}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedQuiz(quiz)}
-                    className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
-                  >
-                    <Play size={14} /> Take quiz
-                  </button>
-                </div>
-              ))}
-            </section>
             <PracticeCenter
               userId={userProfile?.uid ?? ''}
               onStartQuiz={(quiz) => {

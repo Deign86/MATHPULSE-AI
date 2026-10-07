@@ -16,6 +16,7 @@ import {
 import { motion } from 'motion/react';
 import { InterventionVideoStep } from './intervention/InterventionVideoStep';
 import { apiService } from '../services/apiService';
+import { generatePracticeSession } from '../services/practiceService';
 import type { LearningStep } from '../services/interventionService';
 
 interface ModuleSection {
@@ -39,7 +40,9 @@ interface Props {
   totalSections: number;
   moduleTitle: string;
   studentName: string;
+  studentUid?: string;
   practice?: Array<{ question: string; options: Array<{ label: string; text: string }>; answer: string; explanation: string }>;
+  generatePractice?: typeof generatePracticeSession;
   onClose: () => void;
   onNext?: () => void;
   onPrev?: () => void;
@@ -82,7 +85,9 @@ export const ModuleStepGuide: React.FC<Props> = ({
   totalSections,
   moduleTitle,
   studentName,
+  studentUid,
   practice,
+  generatePractice = generatePracticeSession,
   onClose,
   onNext,
   onPrev,
@@ -138,6 +143,9 @@ export const ModuleStepGuide: React.FC<Props> = ({
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [showAnswers, setShowAnswers] = useState<Record<number, boolean>>({});
+  const [generatedPractice, setGeneratedPractice] = useState<Props['practice']>();
+  const [practiceLoading, setPracticeLoading] = useState(false);
+  const [practiceError, setPracticeError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'content' | 'practice'>('content');
   const [showSideBySideChat, setShowSideBySideChat] = useState(true);
   const [mobileViewTab, setMobileViewTab] = useState<'content' | 'practice' | 'chat'>('content');
@@ -204,7 +212,52 @@ export const ModuleStepGuide: React.FC<Props> = ({
     setChatMessages([freshMessage]);
   };
 
-  const hasPractice = practice && practice.length > 0;
+  const effectivePractice = generatedPractice ?? practice ?? [];
+  const hasPractice = effectivePractice.length > 0;
+  const needsGeneratedPractice = detectedType === 'practice' || detectedType === 'assessment';
+
+  const loadGeneratedPractice = async () => {
+    if (!studentUid || practiceLoading) return;
+    setPracticeLoading(true);
+    setPracticeError(null);
+    try {
+      const response = await generatePractice({
+        userId: studentUid,
+        subject: 'General Mathematics',
+        competency: section.competencyTag || topic,
+        difficulty: detectedType === 'assessment' ? 'Mastery' : 'Practice',
+        count: section.numItems || (detectedType === 'assessment' ? 5 : 10),
+      });
+      const questions = response.questions
+        .filter((question) => question.options.length > 0
+          && question.correct_index >= 0
+          && question.correct_index < question.options.length)
+        .map((question) => ({
+          question: question.question,
+          options: question.options.map((text, index) => ({
+            label: String.fromCharCode(65 + index),
+            text,
+          })),
+          answer: String.fromCharCode(65 + question.correct_index),
+          explanation: question.explanation || '',
+        }));
+      if (questions.length === 0) throw new Error('No valid practice questions returned');
+      setGeneratedPractice(questions);
+      setActiveTab('practice');
+      setMobileViewTab('practice');
+    } catch (error) {
+      console.warn('[ModuleStepGuide] Practice generation failed:', error);
+      setPracticeError('Practice questions could not be loaded. Please try again.');
+    } finally {
+      setPracticeLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setGeneratedPractice(undefined);
+    setPracticeError(null);
+    setShowAnswers({});
+  }, [sectionIndex]);
 
   // AI Chat Pane component
   const renderAIChatPane = (isInlineMobile = false) => (
@@ -515,7 +568,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                     }`}
                   >
                     <PenTool size={13} className="shrink-0" />
-                    <span className="whitespace-nowrap">Practice ({practice.length})</span>
+                    <span className="whitespace-nowrap">Practice ({effectivePractice.length})</span>
                   </button>
                   )}
 
@@ -603,7 +656,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap truncate">
-                            Ready to Practice? ({practice.length} Items)
+                            Ready to Practice? ({effectivePractice.length} Items)
                           </h4>
                           <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                             Test your knowledge with immediate answer reveal and explanations.
@@ -614,6 +667,30 @@ export const ModuleStepGuide: React.FC<Props> = ({
                         <span className="whitespace-nowrap">Go to Practice</span>
                         <ArrowRight size={14} className="shrink-0" />
                       </span>
+                    </div>
+                  )}
+                  {!hasPractice && needsGeneratedPractice && (
+                    <div className="rounded-2xl border border-indigo-200/80 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-slate-900 p-5 shadow-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                            {detectedType === 'assessment' ? 'Mastery Check' : 'Practice Questions'}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Generate {section.numItems || (detectedType === 'assessment' ? 5 : 10)} questions for this step and work through them here.
+                          </p>
+                          {practiceError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-2">{practiceError}</p>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void loadGeneratedPractice()}
+                          disabled={practiceLoading || !studentUid}
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {practiceLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                          {practiceLoading ? 'Generating...' : practiceError ? 'Try Again' : 'Start Questions'}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -627,7 +704,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                          Practice Items · {practice?.length || 0} Questions
+                          Practice Items · {effectivePractice.length} Questions
                         </h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           Solve each question, then click Reveal Answer to verify your steps.
@@ -636,7 +713,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {practice?.map((q, i) => (
+                  {effectivePractice.map((q, i) => (
                     <div
                       key={i}
                       className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-all"

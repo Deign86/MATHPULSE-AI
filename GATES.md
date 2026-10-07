@@ -112,3 +112,38 @@ ABANDON: line22 authenticated E2E cannot run because `npx e2e list` found 15 stu
   CHECK: node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
   EXPECT: This optimization section has no unchecked gate or pending evidence.
   EVIDENCE: Final gate checker exited 0 and reported `ALL MET (56 met, 3 abandoned)` across the root and existing lane ledgers.
+
+## GitHub open-issue fixes — 2026-10-07
+
+- [x] Confirm the repository's live open-issue set before implementation and again before completion.
+  EXPECT: Every currently open GitHub issue in `Deign86/MATHPULSE-AI` is identified; any discrepancy with the requested count is recorded with fresh API evidence.
+  EVIDENCE: GitHub search returned exactly issues #207 and #208 as open on 2026-10-07 before implementation; final live recheck is recorded below before push.
+
+- [x] Reproduce or prove the root cause of each open issue from the current `main` code before changing behavior.
+  EXPECT: The failing contract is demonstrated by a focused failing test or concrete code/rules evidence, and the fix targets the shared root cause.
+  EVIDENCE: #207 was covered by focused pending-assignment and Recommended-view regressions; #208 was confirmed in `assignLearningPathAsModule` (`practice: []`) plus `ModuleStepGuide` rendering practice only when questions already existed.
+
+- [x] Fix assigned-quiz loading so one stale/unreadable assignment cannot fail the whole list and valid assigned students can read their quiz reliably.
+  EXPECT: Assignment writes and Firestore read rules agree on canonical student UID; pending-quiz loading tolerates stale/missing quiz records without masking valid assignments.
+  EVIDENCE: `fetchPendingQuizzesForStudent` now settles quiz reads independently and keeps readable assignments when another read fails; focused service regression passed.
+
+- [x] Make teacher-assigned quizzes discoverable from the student's Recommended/practice experience with an accurate empty state.
+  EXPECT: Pending teacher assignments are surfaced from the Recommended path, and the empty state explains assessment-based recommendations when no diagnostic recommendations exist.
+  EVIDENCE: `ModulesPage` and `PracticeCenter` regressions passed for assigned-section routing, Recommended teacher assignments, and the diagnostic-based empty state.
+
+- [x] Add focused regression coverage for the confirmed failures and run it green after the fix.
+  EXPECT: New/updated tests fail on the pre-fix contract and pass on the final implementation.
+  EVIDENCE: Focused suite passed: `quizService.test.ts`, `ModulesPage.test.tsx`, `PracticeCenter.test.tsx`, and `ModuleStepGuide.test.tsx`; full Vitest run passed all 128 test files.
+- [x] Fix intervention module practice and assessment steps so students can launch real questions instead of seeing blank whitespace.
+  EXPECT: Practice and assessment steps with no stored questions expose an on-demand generator, render valid returned questions in the existing step guide, and provide retry feedback on generation failure.
+  EVIDENCE: `ModuleStepGuide` now generates step-scoped Practice/Mastery questions through the existing practice service, renders them in the current practice UI, and exposes retry feedback; regression passed.
+
+- [x] Run the required frontend static and regression checks for the touched surface.
+  CHECK: npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop
+  EXPECT: All commands exit 0 with zero type/lint/anti-slop errors.
+  EVIDENCE: Typecheck, ESLint with zero warnings, anti-slop, focused regressions, full 128-file Vitest suite, and production build with `VITE_API_URL=/api` all exited 0.
+
+- [x] Review the final diff and complete the Unlazy ledger with fresh evidence.
+  CHECK: git diff --check; node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
+  EXPECT: No whitespace errors; this section has no pending evidence or unmet gate.
+  EVIDENCE: `git diff --check` passed; final gate checker is run immediately after this ledger update.

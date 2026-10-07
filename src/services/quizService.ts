@@ -234,13 +234,26 @@ export async function fetchPendingQuizzesForStudent(studentUid: string): Promise
     assignmentsSnap = await getDocs(fallbackQuery);
   }
 
+  const quizReads = await Promise.allSettled(
+    assignmentsSnap.docs.map(async (assignmentDoc) => {
+      const quizId = z.string().min(1).safeParse(assignmentDoc.data().quizId);
+      if (!quizId.success) return null;
+      const generatedQuiz = await fetchGeneratedQuiz(quizId.data);
+      return generatedQuiz ? toPlayableQuiz(generatedQuiz, assignmentDoc.id) : null;
+    }),
+  );
   const quizzes: PlayableQuiz[] = [];
 
-  for (const assignDoc of assignmentsSnap.docs) {
-    const { quizId } = assignDoc.data();
-    const gen = await fetchGeneratedQuiz(quizId);
-    if (gen) quizzes.push(toPlayableQuiz(gen, assignDoc.id));
-  }
+  quizReads.forEach((quizRead, index) => {
+    if (quizRead.status === 'fulfilled') {
+      if (quizRead.value) quizzes.push(quizRead.value);
+      return;
+    }
+    console.warn(
+      `[quizService] Skipping unreadable pending quiz assignment ${assignmentsSnap.docs[index].id}:`,
+      quizRead.reason,
+    );
+  });
 
   return quizzes;
 }

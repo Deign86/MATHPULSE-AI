@@ -168,4 +168,61 @@ describe('fetchPendingQuizzesForStudent', () => {
     expect(quizzes[0].title).toBe('Algebra review');
     expect(quizzes[0].assignmentId).toBe('assignment-1');
   });
+
+  it('keeps readable assigned quizzes when another pending quiz cannot be read', async () => {
+    const readableQuiz: GeneratedQuiz = {
+      id: 'quiz-readable',
+      title: 'Readable review',
+      gradeLevel: 'Grade 11',
+      questions: [],
+      totalPoints: 0,
+      metadata: {
+        topicsCovered: [],
+        difficultyBreakdown: { easy: 1, medium: 0, hard: 0 },
+        bloomDistribution: {},
+        questionTypeBreakdown: {},
+        supplementalPurpose: '',
+        recommendedTeacherActions: [],
+        generatedAt: '',
+        generatedBy: 'teacher_generated',
+      },
+      status: 'assigned',
+      source: 'teacher_generated',
+    };
+    // SAFETY: this assignment fixture contains exactly the fields read by fetchPendingQuizzesForStudent.
+    const unreadableAssignment = {
+      id: 'assignment-stale',
+      data: () => ({ quizId: 'quiz-stale' }),
+    } as never;
+    // SAFETY: this assignment fixture contains exactly the fields read by fetchPendingQuizzesForStudent.
+    const readableAssignment = {
+      id: 'assignment-readable',
+      data: () => ({ quizId: 'quiz-readable' }),
+    } as never;
+    // SAFETY: this snapshot fixture implements exactly the methods called by fetchGeneratedQuiz.
+    const readableQuizSnapshot = {
+      id: 'quiz-readable',
+      exists: () => true,
+      data: () => readableQuiz,
+    } as never;
+
+    vi.spyOn(firestore, 'collection').mockReturnValue(fakeCollectionReference);
+    // SAFETY: the query spies are consumed only by the fake Firestore query constructor.
+    vi.spyOn(firestore, 'where').mockReturnValue(fakeQuery as never);
+    // SAFETY: the query mock is consumed only by the Firestore query constructor in this test.
+    vi.spyOn(firestore, 'orderBy').mockReturnValue(fakeQuery as never);
+    vi.spyOn(firestore, 'query').mockReturnValue(fakeQuery);
+    // SAFETY: the minimal snapshot contains the docs list consumed by the pending-assignment loader.
+    vi.spyOn(firestore, 'getDocs').mockResolvedValue({ docs: [unreadableAssignment, readableAssignment] } as never);
+    vi.spyOn(firestore, 'doc').mockReturnValue(fakeQuizDocument);
+    vi.spyOn(firestore, 'getDoc')
+      .mockRejectedValueOnce(new Error('permission-denied'))
+      .mockResolvedValueOnce(readableQuizSnapshot);
+
+    const quizzes = await fetchPendingQuizzesForStudent('student-uid');
+
+    expect(quizzes).toHaveLength(1);
+    expect(quizzes[0].title).toBe('Readable review');
+    expect(quizzes[0].assignmentId).toBe('assignment-readable');
+  });
 });

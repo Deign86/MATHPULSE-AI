@@ -414,8 +414,19 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
         {filteredTopics.length === 0 && (
           <div className="flex flex-col items-center justify-center h-64 text-slate-500 relative z-10">
             <Target size={48} className="mb-3" />
-            <p className="font-medium">No topics found</p>
-            <p className="text-sm">Try adjusting your filters or search query</p>
+            {selectedFilter === 'recommended' ? (
+              <>
+                <p className="font-medium">No recommended practice topics yet</p>
+                <p className="max-w-lg px-4 text-center text-sm">
+                  Recommended practice topics come from your diagnostic results. Teacher-assigned quizzes appear in the Assigned by your teacher section above.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">No topics found</p>
+                <p className="text-sm">Try adjusting your filters or search query</p>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -117,6 +117,34 @@ describe('ModulesPage', () => {
     expect(window.location.search).toContain('section=assigned-quizzes');
   });
 
+  it('shows pending teacher assignments from the Recommended tab', async () => {
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([
+      {
+        generatedQuizId: 'quiz-recommended',
+        id: 'assignment-recommended',
+        title: 'Teacher Recommended Review',
+        subject: 'General Mathematics',
+        difficulty: 'Medium',
+        questions: 5,
+        duration: '10 minutes',
+        xpReward: 20,
+        type: 'practice',
+        completed: false,
+        locked: false,
+        source: 'ai_generated',
+        loadedQuestions: [],
+      },
+    ]);
+    window.history.replaceState({}, '', '/modules');
+
+    renderModulesPage();
+    fireEvent.click(screen.getAllByRole('button', { name: /^recommended$/i })[0]);
+
+    expect(await screen.findByRole('heading', { name: /assigned by your teacher/i })).toBeInTheDocument();
+    expect(await screen.findByText('Teacher Recommended Review')).toBeInTheDocument();
+    expect(quizService.fetchPendingQuizzesForStudent).toHaveBeenCalledWith('user-1');
+  });
+
   it('waits for assigned quizzes to load and auto-opens the quiz from its deep link', async () => {
     vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([
       {

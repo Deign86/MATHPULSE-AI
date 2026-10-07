@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import * as authNs from '../contexts/AuthContext';
 import * as practiceServiceNs from '../services/practiceService';
 import PracticeCenter from './PracticeCenter';
@@ -30,6 +30,8 @@ vi.spyOn(practiceServiceNs, 'generatePracticeSession').mockResolvedValue({
   generated_at: '2026-01-01T00:00:00Z',
 });
 
+afterEach(cleanup);
+
 describe('PracticeCenter', () => {
   it('renders topic cards from curriculum', async () => {
     render(<PracticeCenter userId="user-1" />);
@@ -41,5 +43,15 @@ describe('PracticeCenter', () => {
     expect((await screen.findAllByText('Quizzes Completed')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Total XP Earned')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Average Score')).length).toBeGreaterThan(0);
+  });
+
+  it('explains what Recommended means when there are no diagnostic focus topics', async () => {
+    render(<PracticeCenter userId="user-1" atRiskTopics={[]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recommended' }));
+
+    expect(await screen.findByText('No recommended practice topics yet')).toBeInTheDocument();
+    expect(screen.getByText(/recommended practice topics come from your diagnostic results/i)).toBeInTheDocument();
+    expect(screen.getByText(/teacher-assigned quiz/i)).toBeInTheDocument();
   });
 });
