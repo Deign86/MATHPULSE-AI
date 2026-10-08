@@ -186,7 +186,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await expect(screen.getByRole('heading', 'Leave this quiz?')).toBeHidden();
   });
 
-  test("finishing a lesson quiz turns that lesson's Quiz button into Retry", { session: 'student', timeout: 480_000, tags: ['known-bug'] }, async ({ app, agent, browser, screen }) => {
+  test("finishing a lesson quiz turns that lesson's Quiz button into Retry", { session: 'student', timeout: 480_000 }, async ({ app, agent, browser, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();

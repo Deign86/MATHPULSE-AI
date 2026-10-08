@@ -226,7 +226,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [assignedQuizToOpen, setAssignedQuizToOpen] = useState<string | null>(() =>
     new URLSearchParams(window.location.search).get('quizId'),
   );
-  const practiceQuizEndRef = React.useRef<((quiz: QuizExperienceQuiz, answers: QuizAnswerRecord[]) => void) | null>(null);
+  const practiceQuizEndRef = React.useRef<((quiz: QuizExperienceQuiz, answers: QuizAnswerRecord[], xpEarned: number) => void) | null>(null);
   const [learningPath, setLearningPath] = useState<LearningPathState>(IDLE_LEARNING_PATH);
 
   const currentView: ModulesPageView = selectedQuiz
@@ -1826,7 +1826,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             <PracticeCenter
               userId={userProfile?.uid ?? ''}
               onStartQuiz={(quiz) => {
-                practiceQuizEndRef.current = async (q, answers) => {
+                practiceQuizEndRef.current = async (q, answers, xpEarned) => {
                   if (!userProfile?.uid) return;
 
                   const topicName = q.title?.replace(/^Practice Quiz:\s*/i, '').replace(/\s*\(AI\)\s*$/i, '') || '';
@@ -1857,7 +1857,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                         return { question_id: a.questionId, selected_index };
                       });
                       const result = await submitPracticeSession({ session_id: q.generatedQuizId!, userId: userProfile.uid, answers: submitAnswers });
-                      toast.success(`Score: ${result.score_percent}% | Correct: ${result.correct_count}/${result.total} | +${result.xp_earned} XP`);
+                      toast.success(`Score: ${result.score_percent}% | Correct: ${result.correct_count}/${result.total} | +${xpEarned} XP`);
                     } catch (e) {
                       console.error(e);
                       toast.success(`Score: ${scorePercent}%`);

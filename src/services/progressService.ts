@@ -264,7 +264,6 @@ export const completeLesson = async (
   moduleId: string,
   lessonId: string,
   timeSpent: number,
-  xpReward: number = 50,
   quizCompleted?: boolean,
   quizScore?: number,
 ): Promise<void> => {
@@ -342,10 +341,7 @@ export const completeLesson = async (
       { merge: true }
     );
 
-    // Award XP
-    if (isNewLesson) {
-      await awardXP(userId, xpReward, 'lesson_complete', `Completed lesson: ${lessonId}`);
-    }
+    // XP is credited once by the caller's onEarnXP (gamificationService.awardXP).
 
     // Recalculate aggregates (averageScore, subject progress, overallRisk)
     await recalculateProgressAggregates(userId);
@@ -425,7 +421,7 @@ export const completeQuiz = async (
   score: number,
   answers: QuizAnswer[],
   timeSpent: number,
-  xpRewardOverride?: number
+  lessonId?: string,
 ): Promise<void> => {
   try {
     const progressRef = doc(db, 'progress', userId);
@@ -448,9 +444,6 @@ export const completeQuiz = async (
       timeSpent,
       answers,
     };
-
-    // Calculate XP based on score, with optional override from caller
-    const xpReward = xpRewardOverride !== undefined ? xpRewardOverride : Math.floor((score / 100) * 100);
 
     // Update module progress
     if (!progressData.subjects) progressData.subjects = {};
@@ -489,11 +482,15 @@ export const completeQuiz = async (
       quizAttempts: [...(progressData.quizAttempts || []), quizAttempt],
       [`subjects.${subjectId}.modulesProgress.${moduleId}`]: moduleProgress,
       ...(isNewQuiz && { totalQuizzesCompleted: increment(1) }),
+      ...(lessonId && {
+        [`lessons.${lessonId}.lessonId`]: lessonId,
+        [`lessons.${lessonId}.quizCompleted`]: true,
+        [`lessons.${lessonId}.quizScore`]: score,
+      }),
       updatedAt: serverTimestamp(),
     });
 
-    // Award XP
-    await awardXP(userId, xpReward, 'quiz_complete', `Completed quiz: ${quizId} (Score: ${score}%)`);
+    // XP is credited once by the caller's onEarnXP (gamificationService.awardXP).
 
     // Recalculate aggregates (averageScore, subject progress, overallRisk)
     await recalculateProgressAggregates(userId);

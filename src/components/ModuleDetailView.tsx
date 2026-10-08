@@ -357,13 +357,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       learningObjectives: [currentLesson.learningCompetency ?? currentLesson.description ?? currentLesson.title],
       questions: getQuestionCountForQuiz('practice'),
       duration: currentLesson.duration,
-      completed: false,
+      completed: completedQuizIds.has(`${currentLesson.id}-practice`),
       locked: false,
       type: 'practice' as const,
     } satisfies Quiz & { learningObjectives: string[] };
     setSelectedLesson({ type: 'quiz', quiz: practiceQuiz, returnToLesson: currentLesson });
     setIsInQuizMode?.(true);
-  }, [setIsInQuizMode]);
+  }, [completedQuizIds, setIsInQuizMode]);
 
   const handleComplete = useCallback((score?: number, totalXP?: number, goToNext?: boolean) => {
     const current = selectedLessonRef.current;
@@ -393,7 +393,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             module.id,
             currentLesson.id,
             0,
-            xpAmount
           );
           await recalculateAndUpdateModuleProgress(
             userProfile.uid,
@@ -489,7 +488,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             duration: selectedLesson.quiz.duration || '15 min',
             xpReward: 50,
             type: 'practice',
-            completed: selectedLesson.quiz.completed,
+            completed: selectedLesson.quiz.completed || completedQuizIds.has(selectedLesson.quiz.id),
             locked: false,
             // SAFETY: trusted internal value already conforms to the asserted type.
             loadedQuestions: quizQuestions as AIQuizQuestion[],
@@ -508,7 +507,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             if (userProfile?.uid && subjectId) {
               void (async () => {
                 try {
-                  await completeQuiz(userProfile.uid, subjectId, module.id, selectedLesson.quiz.id, score, [], 0, xpEarned);
+                  await completeQuiz(userProfile.uid, subjectId, module.id, selectedLesson.quiz.id, score, [], 0, selectedLesson.returnToLesson?.id);
                   await recalculateAndUpdateModuleProgress(userProfile.uid, subjectId, module.id, module.lessons.length, module.quizzes.length);
                   await subscribeToUserProgress(userProfile.uid, setUserProgress);
                 } catch (err) { console.warn('[Quiz] Progress persist failed:', err); }

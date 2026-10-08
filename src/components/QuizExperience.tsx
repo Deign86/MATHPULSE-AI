@@ -226,7 +226,7 @@ interface QuizExperienceProps {
   /** Called with (score percent, XP earned) when quiz session completes — used for static quizzes */
   onComplete?: (score: number, xpEarned: number) => void;
   /** Called with (quiz, answerRecords) when the user exits after completing — preferred for practice sessions */
-  onQuizEnd?: (quiz: Quiz, answers: QuizAnswerRecord[]) => void;
+  onQuizEnd?: (quiz: Quiz, answers: QuizAnswerRecord[], xpEarned: number) => void;
   studentId?: string;
   atRiskSubjects?: string[];
 }
@@ -379,6 +379,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   const quizEndRef = useRef(false);
   const localOnlyRef = useRef(previewMode || quiz.completed);
   const hasRewardedAttemptRef = useRef(quiz.completed);
+  const earnedXpRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startCountdownRef = useRef<() => void>(() => {});
   const finalizeScoreRef = useRef<() => void>(() => {});
@@ -444,7 +445,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
       timerRef.current = null;
       if (showResultsRef.current && !quizEndRef.current && !localOnlyRef.current) {
         quizEndRef.current = true;
-        onQuizEndRef.current?.(quiz, answerRecordsRef.current);
+        onQuizEndRef.current?.(quiz, answerRecordsRef.current, earnedXpRef.current);
       }
     };
   }, []);
@@ -538,7 +539,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   const deliverCompletedAttempt = () => {
     if (showResultsRef.current && !localOnlyRef.current && !quizEndRef.current) {
       quizEndRef.current = true;
-      onQuizEnd?.(quiz, answerRecords);
+      onQuizEnd?.(quiz, answerRecords, earnedXpRef.current);
     }
   };
 
@@ -728,6 +729,7 @@ const newStreak = streak + 1;
     }
 
     setTotalXP(xpEarned);
+    earnedXpRef.current = xpEarned;
 
     const timeSpent = totalTime - timeRemaining;
 
@@ -873,6 +875,9 @@ playSound('complete');
             <p className="text-slate-400 font-bold text-[10px] mb-3 uppercase tracking-widest tabular-nums">
                Quiz Complete • Score: {score}/{questions.length}
             </p>
+            {!previewMode && localOnlyRef.current && (
+              <p className="text-amber-600 font-bold text-[10px] mb-3 uppercase tracking-widest">Retake · no XP awarded</p>
+            )}
             
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
