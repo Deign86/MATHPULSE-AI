@@ -30,6 +30,7 @@ Leaf gates: `gates/issues-lane-<x>.md` (written by each lane). Root gates: `GATE
 
 ## Status log
 - 2026-10-08: Plan written; 11 worktrees created; lanes dispatched in parallel.
+- 2026-10-08: Lanes D2, H1, H2, I hit the session limit; H1/H2 had committed, D2/I were finished by fresh agents. All 11 lanes merged; root ledger met (96/96 issues, 605 vitest, 601 pytest, build green). Pushed and opened PR #309.
 - (previous task) 2026-10-07: Investigation started; latest merged PRs identified as #204, #206, and #197.
 - (previous task) 2026-10-07: Fixed proven merge regressions in assessment CTA navigation, assessment-alert dismissal persistence, quiz attempt persistence ownership, profile failed-save handling, teacher calendar save state, and Admin Subjects availability totals/realtime reconciliation; final CI-equivalent verification completed.
 - (previous task) 2026-10-07: Post-fix regression sweep passed frontend (551), backend (598), targeted changed-feature tests (27), production build/static checks, and all 79 Functions tests under Firestore+RTDB emulators. Authenticated browser E2E remains credential-gated because no E2E user credentials are configured locally.
