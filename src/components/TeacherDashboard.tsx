@@ -97,6 +97,7 @@ import { toast } from 'sonner';
 import QuizMaker from './QuizMaker';
 import QuestionBankPanel from './QuestionBankPanel';
 import TopicMasteryView from './TopicMasteryView';
+import TeacherModuleStatusControl from './TeacherModuleStatusControl';
 import StudentCompetencyTable from './StudentCompetencyTable';
 import ChatMarkdown from './ChatMarkdown';
 import TeacherNotificationsView from './TeacherNotificationsView';
@@ -144,6 +145,7 @@ type View =
   | 'edit_records'
   | 'topic_mastery'
   | 'competency'
+  | 'module_availability'
   | 'notifications'
   | 'calendar'
   | 'quiz_maker'
@@ -806,7 +808,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [insightDismissed, setInsightDismissed] = useState(false);
   const [insightModalOpen, setInsightModalOpen] = useState(false);
   const [showMobileCalendar, setShowMobileCalendar] = useState(false);
-  const [topicMasteryTab, setTopicMasteryTab] = useState<'mastery' | 'availability'>('mastery');
+  const [topicMasteryTab, setTopicMasteryTab] = useState<'mastery' | 'competency'>('mastery');
+
+  useEffect(() => {
+    if (activeView === 'competency') {
+      setTopicMasteryTab('competency');
+      setActiveView('topic_mastery');
+    }
+  }, [activeView]);
 
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
@@ -1844,11 +1853,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 forceExpanded={isMobileViewport}
               />
               <NavItem
-                icon={Users}
-                label="Competency Matrix"
-                active={activeView === 'competency'}
+                icon={BookOpen}
+                label="Module Availability"
+                active={activeView === 'module_availability'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
-                onClick={() => handleSidebarNav('competency')}
+                onClick={() => handleSidebarNav('module_availability')}
                 forceExpanded={isMobileViewport}
               />
             </div>
@@ -1899,7 +1908,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Header */}
-          {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery', 'calendar', 'notifications', 'question_bank', 'import', 'quiz_maker'].includes(activeView) && (
+          {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery', 'module_availability', 'calendar', 'notifications', 'question_bank', 'import', 'quiz_maker'].includes(activeView) && (
             <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3.5 sm:px-6 xl:px-8 py-3 sm:py-4 flex-shrink-0 z-30 w-full min-w-0 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
               <div className="flex flex-row items-center justify-between gap-2 sm:gap-4 mb-0 w-full min-w-0">
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
@@ -1910,6 +1919,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       {activeView === 'intervention' && 'Intervention Center'}
                       {activeView === 'competency' && 'Student Competency'}
                       {activeView === 'topic_mastery' && 'Topic Mastery'}
+                      {activeView === 'module_availability' && 'Module Availability & Materials'}
                       {activeView === 'calendar' && 'Academic Calendar'}
                       {activeView === 'notifications' && 'Notifications'}
                       {activeView === 'question_bank' && 'Question Bank'}
@@ -1922,6 +1932,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       {activeView === 'intervention' && 'Identify and support at-risk students.'}
                       {activeView === 'competency' && 'Track student learning competencies.'}
                       {activeView === 'topic_mastery' && 'Mastery breakdown across math topics.'}
+                      {activeView === 'module_availability' && 'Manage curriculum modules, materials, and publishing status.'}
                       {activeView === 'calendar' && 'Schedules, deadlines, and events.'}
                       {activeView === 'notifications' && 'Recent student and system alerts.'}
                       {activeView === 'question_bank' && 'Manage curriculum quiz questions.'}
@@ -1934,7 +1945,10 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
                       <button
                         type="button"
-                        onClick={() => setActiveView('competency')}
+                        onClick={() => {
+                          setTopicMasteryTab('competency');
+                          setActiveView('topic_mastery');
+                        }}
                         className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f3e8ff] dark:bg-purple-950/40 border border-[#e9d5ff] dark:border-purple-800/60 rounded-full shadow-2xs hover:shadow-xs hover:bg-[#ede9fe] hover:border-purple-300 cursor-pointer transition-all active:scale-95"
                         title="View student competency matrix"
                       >
@@ -2184,6 +2198,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 {activeView === 'topic_mastery' && (
                   <TopicMasteryView
                     classSectionId={selectedClassSectionId}
+                    className={selectedClass?.name}
                     classOptions={availableClasses.flatMap((classItem) => {
                       const sectionId = classSectionIdFor(classItem);
                       return sectionId ? [{ sectionId, name: classItem.name }] : [];
@@ -2196,7 +2211,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     activeTab={topicMasteryTab}
                     onTabChange={setTopicMasteryTab}
                     teacherId={currentUser?.uid || ''}
+                    fallbackStudents={students}
+                    insightDismissed={insightDismissed}
+                    onOpenInsightModal={() => setInsightModalOpen(true)}
                   />
+                )}
+                {activeView === 'module_availability' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8"
+                  >
+                    <TeacherModuleStatusControl teacherId={currentUser?.uid || ''} />
+                  </motion.div>
                 )}
                 {activeView === 'competency' && effectiveAnalyticsClass && (
                   <StudentCompetencyTable
@@ -2245,8 +2273,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
                     onNavigateToModuleAvailability={() => {
-                      setTopicMasteryTab('availability');
-                      setActiveView('topic_mastery');
+                      setActiveView('module_availability');
                     }}
                     onImportedClassRecords={(payload) => {
                       const uploadedStudents = payload.students.map((item) =>
@@ -2572,22 +2599,22 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    handleSidebarNav('competency');
+                    handleSidebarNav('module_availability');
                     setOpenMobileMenu(null);
                   }}
                   className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
-                    activeView === 'competency'
+                    activeView === 'module_availability'
                       ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-sm'
                       : 'text-slate-700 hover:bg-violet-50'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                      activeView === 'competency' ? 'bg-white/20' : 'bg-amber-100 text-amber-600'
+                      activeView === 'module_availability' ? 'bg-white/20' : 'bg-amber-100 text-amber-600'
                     }`}>
-                      <Users size={16} aria-hidden="true" />
+                      <BookOpen size={16} aria-hidden="true" />
                     </div>
-                    <span>Competency Matrix</span>
+                    <span>Module Availability</span>
                   </div>
                   <ChevronRight size={14} className="opacity-70" />
                 </button>
@@ -2656,20 +2683,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               <span className="text-[10px] mt-1 leading-none truncate font-display">AI Tools</span>
             </button>
 
-            {/* 4. Insights (Expandable: Topic Mastery & Competency Matrix) */}
+            {/* 4. Insights (Expandable: Topic Mastery & Module Availability) */}
             <button
               type="button"
               onClick={() => setOpenMobileMenu(prev => prev === 'insights' ? null : 'insights')}
-              aria-label="Insights Options: Topic Mastery and Competency Matrix"
+              aria-label="Insights Options: Topic Mastery and Module Availability"
               aria-expanded={openMobileMenu === 'insights'}
               aria-haspopup="true"
               className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all cursor-pointer active:scale-95 ${
-                activeView === 'topic_mastery' || activeView === 'competency' || openMobileMenu === 'insights'
+                activeView === 'topic_mastery' || activeView === 'module_availability' || activeView === 'competency' || openMobileMenu === 'insights'
                   ? 'text-violet-600 font-bold bg-violet-50'
                   : 'text-slate-500 font-medium hover:text-slate-900'
               }`}
             >
-              <Target size={20} className={activeView === 'topic_mastery' || activeView === 'competency' || openMobileMenu === 'insights' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <Target size={20} className={activeView === 'topic_mastery' || activeView === 'module_availability' || activeView === 'competency' || openMobileMenu === 'insights' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
               <span className="text-[10px] mt-1 leading-none truncate font-display">Insights</span>
             </button>
           </div>

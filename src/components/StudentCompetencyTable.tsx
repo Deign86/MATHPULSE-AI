@@ -59,7 +59,7 @@ interface CompetencyStudent {
   accountUid?: string;
 }
 
-interface FallbackStudentInput {
+export interface FallbackStudentInput {
   id: string;
   lrn?: string;
   name: string;
@@ -309,7 +309,7 @@ function createPaginationItems(total: number, current: number): PaginationItem[]
 
 // -”€-”€-”€ Component -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
 
-const StudentCompetencyTable: React.FC<{
+export interface StudentCompetencyTableProps {
   classSectionId?: string;
   className?: string;
   fallbackStudents?: FallbackStudentInput[];
@@ -318,7 +318,24 @@ const StudentCompetencyTable: React.FC<{
   onOpenProfile?: () => void;
   insightDismissed?: boolean;
   onOpenInsightModal?: () => void;
-}> = ({ classSectionId, className, fallbackStudents = [], onBack, onOpenNotifications, onOpenProfile, insightDismissed, onOpenInsightModal }) => {
+  classOptions?: Array<{ sectionId: string; name: string }>;
+  onClassSectionChange?: (sectionId: string) => void;
+  embedded?: boolean;
+}
+
+const StudentCompetencyTable: React.FC<StudentCompetencyTableProps> = ({
+  classSectionId,
+  className,
+  fallbackStudents = [],
+  onBack,
+  onOpenNotifications,
+  onOpenProfile,
+  insightDismissed,
+  onOpenInsightModal,
+  classOptions,
+  onClassSectionChange,
+  embedded = false,
+}) => {
   const { currentUser, userProfile } = useAuth();
 
   const competencyMatrixLoadIdRef = useRef(0);
@@ -679,9 +696,9 @@ const StudentCompetencyTable: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8"
+      className={embedded ? "space-y-4 sm:space-y-6" : "p-3.5 sm:p-6 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8"}
     >
-      {onBack && (
+      {!embedded && onBack && (
         <div className="flex items-center justify-between mb-2">
           <button
             type="button"
@@ -698,6 +715,21 @@ const StudentCompetencyTable: React.FC<{
       <div className="sticky top-0 z-30 py-2 sm:py-3 bg-[#f8fafc]/90 backdrop-blur-[16px] border-b border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] px-2 sm:px-4 mb-3 sm:mb-4 rounded-b-[18px]">
         <div className="flex flex-col md:flex-row gap-2.5 sm:gap-4 items-center justify-between">
           <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 w-full md:w-auto items-center">
+            {/* Class Selector Dropdown */}
+            {classOptions && classOptions.length > 0 && (
+              <select
+                aria-label="Class section"
+                value={classSectionId || ''}
+                onChange={(e) => onClassSectionChange?.(e.target.value)}
+                className="bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] rounded-full px-3.5 py-1.5 shadow-2xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">All Classes</option>
+                {classOptions.map((classOption) => (
+                  <option key={classOption.sectionId} value={classOption.sectionId}>{classOption.name}</option>
+                ))}
+              </select>
+            )}
+
             {/* Search */}
             <div className="flex items-center bg-white px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full sm:w-64">
               <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#9956DE] transition-colors" />

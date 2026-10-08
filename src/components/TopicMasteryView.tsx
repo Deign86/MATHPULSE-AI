@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2, BarChart3, CheckCircle, AlertTriangle, EyeOff, Search, Bell, BookOpen } from 'lucide-react';
-import TeacherModuleStatusControl from './TeacherModuleStatusControl';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Loader2, BarChart3, CheckCircle, AlertTriangle, EyeOff, Search, Bell, BookOpen, Users } from 'lucide-react';
+import StudentCompetencyTable, { type FallbackStudentInput } from './StudentCompetencyTable';
 import { TeacherStatCard } from './TeacherStatCard';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
@@ -100,17 +100,22 @@ const STATUS_ORDER = {
 
 export interface TopicMasteryViewProps {
   classSectionId?: string;
+  className?: string;
   classOptions?: Array<{ sectionId: string; name: string }>;
   onClassSectionChange?: (sectionId: string) => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
-  activeTab?: 'mastery' | 'availability';
-  onTabChange?: (tab: 'mastery' | 'availability') => void;
+  activeTab?: 'mastery' | 'competency';
+  onTabChange?: (tab: 'mastery' | 'competency') => void;
   teacherId?: string;
+  fallbackStudents?: FallbackStudentInput[];
+  insightDismissed?: boolean;
+  onOpenInsightModal?: () => void;
 }
 
 const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
   classSectionId,
+  className,
   classOptions = [],
   onClassSectionChange,
   onOpenNotifications,
@@ -118,9 +123,12 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
   activeTab,
   onTabChange,
   teacherId,
+  fallbackStudents = [],
+  insightDismissed,
+  onOpenInsightModal,
 }) => {
   const { currentUser, userProfile } = useAuth();
-  const [localTab, setLocalTab] = useState<'mastery' | 'availability'>(activeTab || 'mastery');
+  const [localTab, setLocalTab] = useState<'mastery' | 'competency'>(activeTab || 'mastery');
   const currentTab = activeTab || localTab;
 
   useEffect(() => {
@@ -129,7 +137,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
     }
   }, [activeTab, localTab]);
 
-  const handleTabSwitch = (tab: 'mastery' | 'availability') => {
+  const handleTabSwitch = (tab: 'mastery' | 'competency') => {
     setLocalTab(tab);
     onTabChange?.(tab);
   };
@@ -432,7 +440,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
       exit={{ opacity: 0, y: -20 }}
       className="w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8"
     >
-      {/* Tab Switcher: Student Mastery Matrix vs Module Availability & Materials (Unified Segmented Control Pill) */}
+      {/* Tab Switcher: Student Mastery Matrix vs Competency Matrix (Unified Segmented Control Pill) */}
       <div className="inline-flex items-center p-1 sm:p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200/90 dark:border-slate-800 rounded-full shadow-2xs gap-1 max-w-full overflow-x-auto no-scrollbar">
         <button
           type="button"
@@ -450,21 +458,33 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
 
         <button
           type="button"
-          onClick={() => handleTabSwitch('availability')}
+          onClick={() => handleTabSwitch('competency')}
           className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-display font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
-            currentTab === 'availability'
+            currentTab === 'competency'
               ? 'bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white shadow-sm shadow-purple-500/25 ring-1 ring-white/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/70'
           }`}
         >
-          <BookOpen size={15} className="shrink-0" />
-          <span className="sm:hidden">Module Availability</span>
-          <span className="hidden sm:inline">Module Availability & Materials</span>
+          <Users size={15} className="shrink-0" />
+          <span className="sm:hidden">Competency Matrix</span>
+          <span className="hidden sm:inline">Competency Matrix</span>
         </button>
       </div>
 
-      {currentTab === 'availability' ? (
-        <TeacherModuleStatusControl teacherId={teacherId || currentUser?.uid || ''} />
+      {currentTab === 'competency' ? (
+        <StudentCompetencyTable
+          classSectionId={classSectionId}
+          className={className}
+          fallbackStudents={fallbackStudents}
+          classOptions={classOptions}
+          onClassSectionChange={onClassSectionChange}
+          onBack={classSectionId ? () => onClassSectionChange?.('') : undefined}
+          onOpenNotifications={onOpenNotifications}
+          onOpenProfile={onOpenProfile}
+          insightDismissed={insightDismissed}
+          onOpenInsightModal={onOpenInsightModal}
+          embedded
+        />
       ) : (
         <>
           {/* Search & Filters Row */}

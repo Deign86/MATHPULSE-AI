@@ -165,3 +165,25 @@ ABANDON: line40 authenticated E2E cannot run because `npx e2e list` found 15 stu
   CHECK: git diff --check; node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
   EXPECT: No whitespace errors; this section has no pending evidence or unmet gate.
   EVIDENCE: `git diff --check` exited 0; the final gate checker reported `ALL MET (64 met, 3 abandoned)` across the root and existing lane ledgers.
+
+## Topic Mastery competency tab + Module Availability view — 2026-10-08
+
+- [x] Pill control inside Topic Mastery replaces "Module Availability & Materials" with "Competency Matrix".
+  CHECK: npm run typecheck
+  EXPECT: TypeScript compilation succeeds with updated tab union 'mastery' | 'competency'.
+  EVIDENCE: `npm run typecheck` passed with exit code 0. `TopicMasteryView` segmented control pills now feature "Student Mastery Matrix" and "Competency Matrix".
+
+- [x] Module Availability has its own dedicated page/tab in sidebar and navigation.
+  CHECK: npm run typecheck
+  EXPECT: `TeacherDashboard` supports `module_availability` view, sidebar item, mobile navigation, and renders `TeacherModuleStatusControl`.
+  EVIDENCE: `TeacherDashboard` registers `module_availability` in `View` union, sidebar item under Insights, mobile popup menu, and renders `TeacherModuleStatusControl`.
+
+- [x] Competency Matrix is embedded inside Topic Mastery view under the second pill.
+  CHECK: npm run typecheck
+  EXPECT: `TopicMasteryView` renders `StudentCompetencyTable` when competency tab is selected.
+  EVIDENCE: `TopicMasteryView` renders `StudentCompetencyTable` when `currentTab === 'competency'` with class options and synchronized class section filtering.
+
+- [x] Oxlint anti-slop and typecheck pass with zero errors.
+  CHECK: npm run lint:anti-slop && npm run typecheck
+  EXPECT: 0 errors.
+  EVIDENCE: `oxlint --quiet` returned 0 errors; `tsc --noEmit` exited 0; 544 vitest tests across 125 test files passed.
