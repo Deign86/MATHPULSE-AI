@@ -1,0 +1,1327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MathPulse AI User Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="screens/rects.js"></script>
+<style>
+  :root {
+    --ink: #1e1b4b;
+    --text: #334155;
+    --muted: #64748b;
+    --violet: #7c3aed;
+    --violet-soft: #ede9fe;
+    --pink: #db2777;
+    --teal: #0fb5a4;
+    --teal-dark: #0d8f82;
+    --line: #e2e8f0;
+    --paper: #ffffff;
+  }
+  @page { size: 8.5in 11in; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'Nunito', system-ui, sans-serif; color: var(--text); background: #e5e7eb; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html.export body, html.export .page { background: transparent; box-shadow: none; }
+  html.export .ph, html.export .pf { visibility: hidden; }
+
+  .page { width: 8.5in; height: 11in; position: relative; overflow: hidden; background: var(--paper); margin: 0 auto 24px; break-after: page; }
+  @media print { body { background: none; } .page { margin: 0; } }
+  @media screen { .page { box-shadow: 0 6px 30px rgba(15, 23, 42, .18); } body { padding: 24px 0; } }
+
+  /* Header: rule, logo, long rule (matches the reference layout) */
+  .ph { position: absolute; top: 34px; left: 0; right: 0; display: flex; align-items: center; gap: 12px; }
+  .ph::before { content: ''; width: 46px; height: 4px; background: var(--violet); border-radius: 0 3px 3px 0; }
+  .ph::after { content: ''; flex: 1; height: 4px; background: linear-gradient(90deg, var(--violet), var(--pink)); margin-right: 40px; border-radius: 3px; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 21px; color: var(--ink); letter-spacing: -.01em; }
+  .brand img { width: 34px; height: 34px; border-radius: 9px; }
+  .brand b { color: var(--violet); }
+
+  /* Footer: layered waves with the page number */
+  .pf { position: absolute; left: 0; right: 0; bottom: 0; height: 104px; }
+  .pf svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pf .num { position: absolute; right: 44px; bottom: 16px; color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .04em; }
+  .pf .doc { position: absolute; left: 44px; bottom: 16px; color: rgba(255, 255, 255, .8); font-weight: 700; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; }
+
+  .pc { position: absolute; top: 96px; left: 56px; right: 56px; bottom: 112px; }
+
+  h2.sec { font-size: 21px; font-weight: 900; color: var(--violet); text-transform: uppercase; letter-spacing: .02em; margin: 0 0 4px; }
+  h2.sec .n { color: var(--pink); margin-right: 6px; }
+  h3 { font-size: 15.5px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: .03em; margin: 0 0 6px; }
+  h3 .sub { color: var(--violet); margin-right: 6px; }
+  p { font-size: 13.5px; line-height: 1.55; margin: 0 0 8px; }
+  .lead { font-size: 14px; color: var(--text); margin-bottom: 14px; }
+  .note { font-size: 12.5px; font-style: italic; color: var(--muted); border-left: 3px solid var(--teal); padding: 4px 0 4px 10px; margin-top: 10px; }
+  .note b { color: var(--ink); font-style: normal; }
+  b, strong { color: var(--ink); font-weight: 800; }
+  code, .code { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10.5px; }
+  code { background: var(--violet-soft); color: #5b21b6; padding: 1px 5px; border-radius: 5px; }
+  .spacer { height: 18px; }
+  .divider { height: 1px; background: var(--line); margin: 16px 0; }
+
+  /* Numbered keys: badge numbers match the callouts on the phone */
+  ol.keys, ul.dots { list-style: none; padding: 0; margin: 0 0 6px; }
+  ol.keys li, ul.dots li { font-size: 13.5px; line-height: 1.45; margin: 0 0 8px; padding-left: 28px; position: relative; }
+  ol.keys > li > i { position: absolute; left: 0; top: 0; width: 21px; height: 21px; border-radius: 50%; background: var(--teal); color: #fff; font-style: normal; font-weight: 900; font-size: 11px; display: grid; place-items: center; }
+  ul.dots li { padding-left: 16px; }
+  ul.dots li::before { content: ''; position: absolute; left: 3px; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--violet); }
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 0 0 8px; }
+  ol.steps li { counter-increment: step; font-size: 13.5px; line-height: 1.45; margin: 0 0 7px; padding-left: 30px; position: relative; }
+  ol.steps li::before { content: counter(step); position: absolute; left: 0; top: -1px; width: 21px; height: 21px; border-radius: 7px; background: var(--violet); color: #fff; font-weight: 900; font-size: 11px; display: grid; place-items: center; }
+
+  /* Feature rows: phone on one side, short text on the other */
+  .feat { display: grid; grid-template-columns: 236px 1fr; gap: 20px; align-items: center; }
+  .feat.flip { grid-template-columns: 1fr 236px; }
+  .feat.flip > figure { order: 2; }
+  .feat + .feat { margin-top: 14px; }
+  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .trio > div { display: flex; flex-direction: column; align-items: center; }
+  .trio > div > :not(figure) { align-self: stretch; }
+  .trio figure { margin-bottom: 14px; }
+
+  /* Phone frame + zoom callouts (built by the script below) */
+  figure.shot { --pw: 178px; position: relative; margin: 0 auto; }
+  .phone { position: absolute; inset: 0; background: #0f0f14; border-radius: calc(var(--pw) * .16); padding: 7px; box-shadow: 0 18px 36px -12px rgba(30, 27, 75, .45), inset 0 0 0 1.5px #3a3a46; }
+  .phone::after { content: ''; position: absolute; top: calc(7px + var(--pw) * .028); left: 50%; width: 30%; height: calc(var(--pw) * .062); transform: translateX(-50%); background: #000; border-radius: 99px; z-index: 3; }
+  .screen { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: calc(var(--pw) * .125); background: #fff; }
+  .screen img { display: block; width: 100%; }
+  .status { display: flex; justify-content: space-between; align-items: center; padding: 0 9%; font-weight: 800; color: #111; }
+  .status.dark { color: #fff; }
+  .status svg { height: 50%; width: auto; fill: currentColor; }
+  .zoom { position: absolute; z-index: 5; border: 2.5px solid var(--teal); border-radius: 10px; background-repeat: no-repeat; box-shadow: 0 0 0 3px #fff, 0 14px 28px -8px rgba(30, 27, 75, .5); }
+  .zoom b { position: absolute; top: -15px; left: -15px; width: 22px; height: 22px; border-radius: 50%; background: var(--teal-dark); color: #fff; font-weight: 900; font-size: 12px; display: grid; place-items: center; box-shadow: 0 0 0 2.5px #fff; }
+  .caption { font-size: 11px; font-weight: 800; color: var(--violet); text-transform: uppercase; letter-spacing: .05em; text-align: center; margin-top: 4px; }
+
+  /* Cards, tables, tiles */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: #fff; }
+  .card h4 { margin: 6px 0 3px; font-size: 14px; font-weight: 900; color: var(--ink); }
+  .card p { font-size: 12.5px; margin: 0; line-height: 1.45; }
+  .ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; }
+  .ico svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .c-violet { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+  .c-pink { background: linear-gradient(135deg, #f472b6, #db2777); }
+  .c-teal { background: linear-gradient(135deg, #2dd4bf, #0d9488); }
+  .c-blue { background: linear-gradient(135deg, #60a5fa, #2563eb); }
+  .c-amber { background: linear-gradient(135deg, #fbbf24, #ea580c); }
+  .c-green { background: linear-gradient(135deg, #4ade80, #16a34a); }
+  .c-ink { background: linear-gradient(135deg, #4c1d95, #1e1b4b); }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .tile { border-radius: 14px; padding: 12px; background: #faf8ff; border: 1px solid #ede9fe; }
+  .tile h4 { margin: 8px 0 2px; font-size: 13px; font-weight: 900; color: var(--ink); }
+  .tile p { margin: 0; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  th { background: var(--ink); color: #fff; text-align: left; font-weight: 800; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  td { padding: 7px 12px; border-top: 1px solid var(--line); vertical-align: top; line-height: 1.4; }
+  tr:nth-child(even) td { background: #faf8ff; }
+  td:first-child { font-weight: 800; color: var(--ink); width: 30%; }
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .box { border-radius: 14px; padding: 14px 16px; background: #faf8ff; border: 1px solid #ede9fe; }
+  .box.teal { background: #effcfa; border-color: #c5f1eb; }
+  .codeblock { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10.5px; background: #1e1b4b; color: #e9e5ff; border-radius: 9px; padding: 7px 10px; margin: 4px 0 2px; white-space: pre-wrap; line-height: 1.5; }
+  .faq { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .q { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .q h4 { margin: 0 0 6px; font-size: 13.5px; font-weight: 900; color: var(--ink); display: flex; gap: 8px; }
+  .q h4::before { content: 'Q'; flex: none; width: 20px; height: 20px; border-radius: 6px; background: var(--pink); color: #fff; font-size: 11px; display: grid; place-items: center; }
+  .q ul { margin: 0; padding-left: 16px; }
+  .q li { font-size: 12.5px; line-height: 1.45; margin-bottom: 3px; }
+  .tag { display: inline-block; font-size: 9.5px; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; padding: 2px 8px; border-radius: 99px; background: var(--violet-soft); color: var(--violet); margin-left: 4px; vertical-align: 2px; }
+
+  /* TOC */
+  .toc { list-style: none; padding: 0; margin: 18px 0 0; }
+  .toc li { display: flex; align-items: baseline; gap: 8px; font-size: 13px; padding: 5px 0; }
+  .toc li.top { font-weight: 900; color: var(--ink); font-size: 14.5px; margin-top: 10px; }
+  .toc li.sub { padding-left: 30px; color: var(--text); }
+  .toc li .fill { flex: 1; border-bottom: 2px dotted #cbd5e1; transform: translateY(-4px); }
+  .toc li .pg { font-weight: 800; color: var(--violet); min-width: 18px; text-align: right; }
+  .toc .k { color: var(--pink); width: 22px; display: inline-block; }
+
+  /* Cover */
+  .cover { background: #fff; }
+  .cover .swoosh { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .cover .top { position: absolute; top: 56px; left: 64px; }
+  .cover .brand { font-size: 30px; }
+  .cover .brand img { width: 50px; height: 50px; border-radius: 13px; }
+  .cover h1 { position: absolute; top: 150px; left: 60px; margin: 0; color: var(--ink); font-weight: 900; line-height: .9; font-size: 84px; letter-spacing: -.02em; }
+  .cover h1 span { display: block; font-size: 118px; }
+  .cover .rule { position: absolute; top: 392px; left: 64px; display: flex; gap: 10px; }
+  .cover .rule i { height: 3px; width: 190px; background: var(--teal); border-radius: 3px; }
+  .cover .rule i + i { width: 60px; background: var(--pink); }
+  .cover .subtitle { position: absolute; top: 408px; left: 64px; font-size: 22px; color: var(--ink); font-weight: 700; }
+  .cover .roles { position: absolute; top: 442px; left: 64px; display: flex; gap: 8px; }
+  .cover .roles span { font-size: 11px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; padding: 5px 12px; border-radius: 99px; color: #fff; }
+  .cover .phones figure { position: absolute; }
+  .cover .prepared { position: absolute; top: 872px; left: 0; right: 0; text-align: center; line-height: 1.45; }
+  .cover .prepared b { display: block; color: var(--ink); font-size: 14px; letter-spacing: .06em; margin-bottom: 2px; }
+  .cover .prepared span { display: block; font-size: 14px; color: var(--ink); font-weight: 600; }
+  .cover .prepared .dept { font-size: 12.5px; color: var(--text); font-weight: 700; margin-top: 4px; }
+
+  .closing .pc { display: flex; flex-direction: column; justify-content: center; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<section class="page cover" data-noheader>
+  <svg class="swoosh" viewBox="0 0 816 1056" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="sw1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c4b5fd"/><stop offset="1" stop-color="#7c3aed"/></linearGradient>
+      <linearGradient id="sw2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#1e1b4b"/></linearGradient>
+      <linearGradient id="sw3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f9a8d4"/><stop offset="1" stop-color="#db2777"/></linearGradient>
+    </defs>
+    <path d="M816 0 V1056 H560 C 700 900, 520 700, 640 520 C 730 380, 560 200, 816 0 Z" fill="url(#sw1)" opacity=".35"/>
+    <path d="M816 120 V1056 H650 C 760 880, 600 690, 700 520 C 780 380, 660 260, 816 120 Z" fill="url(#sw2)" opacity=".9"/>
+    <path d="M0 1056 V960 C 160 920, 360 1010, 560 950 C 680 912, 760 930, 816 912 V1056 Z" fill="url(#sw1)" opacity=".45"/>
+    <path d="M0 1056 V1004 C 200 970, 420 1050, 816 980 V1056 Z" fill="url(#sw2)"/>
+    <path d="M300 1056 C 420 1012, 600 1030, 816 1004 V1014 C 620 1040, 440 1026, 330 1056 Z" fill="url(#sw3)" opacity=".8"/>
+  </svg>
+  <div class="top"><div class="brand"><img src="assets/logo.png" alt="">MathPulse <b>AI</b></div></div>
+  <h1>USER<span>MANUAL</span></h1>
+  <div class="rule"><i></i><i></i></div>
+  <div class="subtitle">AI-Powered Math Tutoring for Senior High School Students</div>
+  <div class="roles"><span class="c-violet">Student</span><span class="c-pink">Teacher</span><span class="c-ink">Administrator</span></div>
+  <div class="phones">
+    <figure class="shot" data-src="t-dashboard" data-noclamp style="--pw:160px; left:110px; top:496px; transform: rotate(-9deg);">
+      <i class="zoom" data-id="stats" data-k="1.25"></i>
+    </figure>
+    <figure class="shot" data-src="a-overview" data-noclamp style="--pw:160px; left:546px; top:482px; transform: rotate(8deg);">
+      <i class="zoom" data-id="actions" data-k="1.3"></i>
+    </figure>
+    <figure class="shot" data-src="s-dashboard" data-noclamp style="--pw:176px; left:320px; top:474px;">
+      <i class="zoom" data-id="goals" data-k="1.3"></i>
+    </figure>
+  </div>
+  <div class="prepared"><b>PREPARED BY:</b><span>Lorraine Isabel B. Cabigon, Deign Grey O. Lazaro, Faijah F. Nonoy,</span><span>Raineer C. Rosado, and Sean Mark P. Vasquez</span><span class="dept">Department of Information Technology, Pamantasan ng Lungsod ng Valenzuela</span></div>
+</section>
+
+<!-- ============ TABLE OF CONTENTS ============ -->
+<section class="page">
+  <div class="pc">
+    <h2 class="sec">Table of Contents</h2>
+    <ul class="toc">
+      <li class="top"><span class="k">1</span>Introduction to MathPulse AI<span class="fill"></span><span class="pg" data-to="s1"></span></li>
+      <li class="sub">1.1 What is MathPulse AI?<span class="fill"></span><span class="pg" data-to="s1"></span></li>
+      <li class="sub">1.2 Intended users<span class="fill"></span><span class="pg" data-to="s1"></span></li>
+      <li class="sub">1.3 Key features<span class="fill"></span><span class="pg" data-to="s1"></span></li>
+      <li class="top"><span class="k">2</span>Software &amp; Hardware Specifications<span class="fill"></span><span class="pg" data-to="s2"></span></li>
+      <li class="top"><span class="k">3</span>Installation &amp; Deployment Guide<span class="fill"></span><span class="pg" data-to="s3"></span></li>
+      <li class="sub">3.1 Open MathPulse AI in a browser<span class="fill"></span><span class="pg" data-to="s3"></span></li>
+      <li class="sub">3.2 Install the app on your phone or computer<span class="fill"></span><span class="pg" data-to="s3"></span></li>
+      <li class="sub">3.3 Deployment guide (IT staff)<span class="fill"></span><span class="pg" data-to="s3-3"></span></li>
+      <li class="top"><span class="k">4</span>System Access &amp; Authentication<span class="fill"></span><span class="pg" data-to="s4"></span></li>
+      <li class="sub">4.1 Signing in<span class="fill"></span><span class="pg" data-to="s4"></span></li>
+      <li class="sub">4.2 Creating an account &amp; resetting a password<span class="fill"></span><span class="pg" data-to="s4-2"></span></li>
+      <li class="sub">4.3 Home screen by role &amp; signing out<span class="fill"></span><span class="pg" data-to="s4-3"></span></li>
+      <li class="top"><span class="k">5</span>Users Functions and Capabilities Guide<span class="fill"></span><span class="pg" data-to="s5"></span></li>
+      <li class="sub">5.1 Student<span class="fill"></span><span class="pg" data-to="s5"></span></li>
+      <li class="sub">5.2 Teacher<span class="fill"></span><span class="pg" data-to="s5-2"></span></li>
+      <li class="sub">5.3 Administrator<span class="fill"></span><span class="pg" data-to="s5-3"></span></li>
+      <li class="top"><span class="k">6</span>Troubleshooting &amp; Common Issues (FAQ)<span class="fill"></span><span class="pg" data-to="s6"></span></li>
+      <li class="top"><span class="k">7</span>System Maintenance &amp; Security<span class="fill"></span><span class="pg" data-to="s7"></span></li>
+      <li class="top"><span class="k">A</span>Appendices<span class="fill"></span><span class="pg" data-to="sA"></span></li>
+      <li class="sub">Appendix A: Glossary of Terms &amp; System Definitions<span class="fill"></span><span class="pg" data-to="sA"></span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ 1. INTRODUCTION ============ -->
+<section class="page">
+  <div class="pc">
+    <h2 class="sec" id="s1"><span class="n">1</span>Introduction to MathPulse AI</h2>
+    <div class="feat flip" style="grid-template-columns: 1fr 190px; align-items: start;">
+      <div>
+        <h3><span class="sub">1.1</span>What is MathPulse AI?</h3>
+        <p class="lead">MathPulse AI is a learning app for Senior High School STEM mathematics. It follows the <b>DepEd Strengthened SHS curriculum</b> and gives every student a 24/7 AI tutor, guided lessons, and games that reward practice. Teachers see who needs help early, and administrators keep the school's data, curriculum, and AI usage in order.</p>
+        <p class="note"><b>Note:</b> MathPulse AI runs in any modern web browser and can be installed on a phone like a regular app. No separate download store is needed.</p>
+      </div>
+      <img src="assets/mascot-desk.png" alt="L.O.L.I., the MathPulse AI mascot" style="width:180px;">
+    </div>
+    <div class="spacer"></div>
+    <h3><span class="sub">1.2</span>Intended users</h3>
+    <div class="cards">
+      <div class="card"><div class="ico c-violet"><svg data-icon="cap"></svg></div><h4>Students</h4><p>Grade 11–12 STEM learners who study modules, take quizzes, chat with the AI tutor, and earn XP.</p></div>
+      <div class="card"><div class="ico c-pink"><svg data-icon="board"></svg></div><h4>Teachers</h4><p>Math teachers who manage classes, build AI quizzes, import grades, and track at-risk students.</p></div>
+      <div class="card"><div class="ico c-ink"><svg data-icon="shield"></svg></div><h4>Administrators</h4><p>School staff who manage accounts, sections, curriculum files, AI health, and audit logs.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <h3><span class="sub">1.3</span>Key features</h3>
+    <div class="tiles">
+      <div class="tile"><div class="ico c-violet"><svg data-icon="bot"></svg></div><h4>L.O.L.I. AI Tutor</h4><p>Step-by-step help, any time.</p></div>
+      <div class="tile"><div class="ico c-blue"><svg data-icon="book"></svg></div><h4>Curriculum Modules</h4><p>DepEd lessons, materials, and quizzes.</p></div>
+      <div class="tile"><div class="ico c-teal"><svg data-icon="check"></svg></div><h4>Diagnostic Assessment</h4><p>Finds strengths and gaps on day one.</p></div>
+      <div class="tile"><div class="ico c-pink"><svg data-icon="swords"></svg></div><h4>Quiz Battle</h4><p>1-vs-1 matches with classmates or a bot.</p></div>
+      <div class="tile"><div class="ico c-amber"><svg data-icon="trophy"></svg></div><h4>XP, Streaks &amp; Ranks</h4><p>Levels, leaderboards, and avatar rewards.</p></div>
+      <div class="tile"><div class="ico c-green"><svg data-icon="chart"></svg></div><h4>At-Risk Monitoring</h4><p>Early warning for students who need help.</p></div>
+      <div class="tile"><div class="ico c-violet"><svg data-icon="sparkles"></svg></div><h4>AI Quiz Maker</h4><p>Teachers generate quizzes in minutes.</p></div>
+      <div class="tile"><div class="ico c-ink"><svg data-icon="database"></svg></div><h4>Curriculum Knowledge Base</h4><p>AI answers grounded in DepEd modules.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. SPECIFICATIONS ============ -->
+<section class="page">
+  <div class="pc">
+    <h2 class="sec" id="s2"><span class="n">2</span>Software &amp; Hardware Specifications</h2>
+    <p class="lead">MathPulse AI works on phones, tablets, and computers. Use the recommended setup below for the smoothest experience.</p>
+    <h3>For students, teachers &amp; administrators</h3>
+    <table>
+      <tr><th>Item</th><th>Recommended</th></tr>
+      <tr><td>Device</td><td>Smartphone, tablet, laptop, or desktop computer</td></tr>
+      <tr><td>Operating system</td><td>Android 7.0 or newer &middot; iOS / iPadOS 16.4 or newer &middot; Windows 10/11 &middot; macOS &middot; ChromeOS</td></tr>
+      <tr><td>Web browser</td><td>Latest Google Chrome, Microsoft Edge, Safari, or Firefox</td></tr>
+      <tr><td>Memory (RAM)</td><td>3 GB or more on phones; 4 GB or more on computers</td></tr>
+      <tr><td>Free storage</td><td>About 100 MB for the installed app and saved content</td></tr>
+      <tr><td>Screen</td><td>360 px wide or larger (any current smartphone)</td></tr>
+      <tr><td>Internet</td><td>Stable connection, 3 Mbps or faster. Required for the AI tutor, Quiz Battle, and saving progress</td></tr>
+    </table>
+    <div class="spacer"></div>
+    <h3>System platform (for IT staff)</h3>
+    <table>
+      <tr><th>Layer</th><th>Technology</th></tr>
+      <tr><td>Web app (PWA)</td><td>React 18, TypeScript, Vite, Tailwind CSS &middot; hosted on Firebase Hosting</td></tr>
+      <tr><td>Android app</td><td>Capacitor 7 (Android 7.0+, target SDK 35)</td></tr>
+      <tr><td>Backend API</td><td>FastAPI on Python 3.11 &middot; hosted on Hugging Face Spaces</td></tr>
+      <tr><td>Database</td><td>Cloud Firestore; Firebase Realtime Database for Quiz Battle matchmaking</td></tr>
+      <tr><td>Sign-in</td><td>Firebase Authentication (email &amp; password, Google)</td></tr>
+      <tr><td>Automation</td><td>Cloud Functions for Firebase (Node.js 22) &middot; Firebase Cloud Messaging for push alerts</td></tr>
+      <tr><td>AI models</td><td>DeepSeek (<code>deepseek-chat</code> for tutoring, <code>deepseek-reasoner</code> for curriculum lessons)</td></tr>
+      <tr><td>Knowledge base</td><td>ChromaDB vector store with <code>BAAI/bge-small-en-v1.5</code> embeddings over DepEd SSHS modules</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============ 3. INSTALLATION ============ -->
+<section class="page">
+  <div class="pc">
+    <h2 class="sec" id="s3"><span class="n">3</span>Installation &amp; Deployment Guide</h2>
+    <h3><span class="sub">3.1</span>Open MathPulse AI in a browser</h3>
+    <ol class="steps">
+      <li>Open your browser (<b>Chrome</b> on Android or computer, <b>Safari</b> on iPhone/iPad).</li>
+      <li>Go to <b style="color:var(--violet)">https://mathpulse-ai-2026.web.app</b></li>
+      <li>Sign in with the account your school gave you (see Section 4).</li>
+    </ol>
+    <div class="divider"></div>
+    <h3><span class="sub">3.2</span>Install the app on your phone or computer</h3>
+    <div class="feat" style="grid-template-columns: 1fr 230px;">
+      <div>
+        <div class="box" style="margin-bottom:12px">
+          <h3 style="font-size:12.5px">Android (Chrome)</h3>
+          <ol class="steps" style="margin:0">
+            <li>Open the link in Chrome.</li>
+            <li>Tap the <b>&#8942; menu</b>, then <b>Install app</b> (or <b>Add to Home screen</b>).</li>
+            <li>Tap <b>Install</b>. MathPulse AI appears on your home screen.</li>
+          </ol>
+        </div>
+        <div class="box teal" style="margin-bottom:12px">
+          <h3 style="font-size:12.5px">iPhone / iPad (Safari)</h3>
+          <ol class="keys" style="margin:0">
+            <li><i>1</i>Tap the <b>phone icon</b> at the top of the app.</li>
+            <li><i>2</i>Follow the guide: <b>Share</b> &rarr; <b>Add to Home Screen</b> &rarr; <b>Add</b>.</li>
+          </ol>
+        </div>
+        <div class="box">
+          <h3 style="font-size:12.5px">Computer (Chrome / Edge)</h3>
+          <p style="margin:0;font-size:12px">Click the <b>install icon</b> at the right end of the address bar, then <b>Install</b>.</p>
+        </div>
+      </div>
+      <figure class="shot" data-src="s-install-ios" data-export="3-2-install-iphone" style="--pw:190px; order:2;">
+        <i class="zoom" data-id="button" data-n="1" data-k="1.9" data-dx="6"></i>
+        <i class="zoom" data-id="help" data-n="2" data-k="1.2" data-dx="-26" data-dy="40"></i>
+      </figure>
+    </div>
+    <p class="note"><b>Note:</b> The installed app updates itself. When a new version is released, it loads automatically the next time you open MathPulse AI.</p>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <h3 id="s3-3"><span class="sub">3.3</span>Deployment guide (IT staff)</h3>
+    <p class="lead">These steps publish MathPulse AI for a school. They need a computer with <b>Node.js 22</b>, <b>Git</b>, and the <b>Firebase CLI</b>, plus access to the <code>mathpulse-ai-2026</code> Firebase project.</p>
+    <ol class="steps">
+      <li><b>Get the code and install packages</b><div class="codeblock">git clone &lt;repository-url&gt; &amp;&amp; cd MATHPULSE-AI
+npm install</div></li>
+      <li><b>Add configuration.</b> Copy <code>.env.example</code> to <code>.env.local</code> and fill in the Firebase and AI keys. Keep the Firebase service-account file in <code>.secrets/</code>. Never commit either one.</li>
+      <li><b>Build and publish the web app</b><div class="codeblock">npm run build
+npx firebase deploy --only hosting --project mathpulse-ai-2026</div></li>
+      <li><b>Publish Cloud Functions</b> (notifications, scoring, Quiz Battle)<div class="codeblock">cd functions &amp;&amp; npm install &amp;&amp; npm run build
+npx firebase deploy --only functions --project mathpulse-ai-2026</div></li>
+      <li><b>Publish the backend API.</b> Pushing changes under <code>backend/</code> to the <code>main</code> branch syncs them to the Hugging Face Space automatically. Set the Space secrets <code>FIREBASE_SERVICE_ACCOUNT_JSON</code>, <code>DEEPSEEK_API_KEY</code>, <code>DEEPSEEK_BASE_URL</code>, and <code>INFERENCE_PROVIDER</code>.</li>
+      <li><b>Optional: build the Android app</b><div class="codeblock">npm run android:release</div></li>
+      <li><b>Check the release.</b> Open the site and sign in once as a student, a teacher, and an administrator.</li>
+    </ol>
+    <p class="note"><b>Note:</b> Only IT staff need this section. Students and teachers just open the link or install the app (Section 3.2).</p>
+  </div>
+</section>
+
+<!-- ============ 4. ACCESS & AUTHENTICATION ============ -->
+<section class="page">
+  <div class="pc">
+    <h2 class="sec" id="s4"><span class="n">4</span>System Access &amp; Authentication</h2>
+    <p class="lead">Everyone signs in on the same screen. MathPulse AI opens the right home screen for your role automatically.</p>
+    <h3><span class="sub">4.1</span>Signing in</h3>
+    <div class="feat" style="grid-template-columns: 300px 1fr; margin-top: 8px;">
+      <figure class="shot" data-src="p-login" data-export="4-1-sign-in" style="--pw:240px">
+        <i class="zoom" data-rect="25,321,340,175" data-n="1" data-k="1.1" data-dx="10"></i>
+        <i class="zoom" data-id="forgot" data-n="2" data-k="1.7" data-dx="52"></i>
+        <i class="zoom" data-id="google" data-n="3" data-k="1.15" data-dx="20" data-dy="26"></i>
+      </figure>
+      <div>
+        <p style="font-weight:800;color:var(--ink);margin-bottom:10px">STEPS TO SIGN IN:</p>
+        <ol class="keys">
+          <li><i>1</i>Type your <b>email address</b> and <b>password</b>, then tap <b>Sign In</b>. Tap the eye icon to show the password.</li>
+          <li><i>2</i>Forgot it? Tap <b>Forgot password?</b> (see 4.2).</li>
+          <li><i>3</i>Using a Google account from your school? Tap <b>Continue with Google</b>.</li>
+        </ol>
+        <p class="note"><b>Note:</b> Your school administrator creates teacher and administrator accounts. Students may also create their own account (4.2).</p>
+        <p class="note"><b>Security:</b> Sign-in is protected by TLS. Your data is encrypted in transit and at rest.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <h3 id="s4-2"><span class="sub">4.2</span>Creating an account &amp; resetting a password</h3>
+    <div class="feat">
+      <figure class="shot" data-src="p-signup" data-export="4-2-create-account">
+        <i class="zoom" data-id="role" data-n="1" data-k="1.25" data-dx="28"></i>
+        <i class="zoom" data-id="section" data-n="2" data-k="1.25" data-dx="28" data-dy="14"></i>
+      </figure>
+      <div>
+        <h3>Create an account</h3>
+        <p>On the sign-in screen, tap <b>Create one</b>.</p>
+        <ol class="keys">
+          <li><i>1</i>Enter your full name and choose <b>Student</b> or <b>Teacher</b>.</li>
+          <li><i>2</i>Students pick their <b>grade level, section, and track</b> so they join the right class.</li>
+        </ol>
+        <p>Add your email and a password, then tap <b>Create Account</b>.</p>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="p-forgot" data-export="4-2-reset-password">
+        <i class="zoom" data-id="form" data-n="1" data-k="1.2" data-dx="-26"></i>
+      </figure>
+      <div>
+        <h3>Reset your password</h3>
+        <ol class="keys">
+          <li><i>1</i>Type your account email and tap <b>Send reset link</b>.</li>
+        </ol>
+        <ul class="dots">
+          <li>Open the email from MathPulse AI and choose a new password.</li>
+          <li>Tap <b>Back to sign in</b> and sign in with the new password.</li>
+        </ul>
+        <p class="note"><b>Note:</b> No email after a few minutes? Check your Spam folder.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <h3 id="s4-3"><span class="sub">4.3</span>Your home screen by role</h3>
+    <p>After signing in, each role lands on its own dashboard.</p>
+    <div class="trio" style="margin-top:14px">
+      <div><figure class="shot" data-src="s-dashboard" data-export="4-3-home-student" style="--pw:160px"></figure><div class="caption">Student Dashboard</div></div>
+      <div><figure class="shot" data-src="t-dashboard" data-export="4-3-home-teacher" style="--pw:160px"></figure><div class="caption">Teacher Dashboard</div></div>
+      <div><figure class="shot" data-src="a-overview" data-export="4-3-home-admin" style="--pw:160px"></figure><div class="caption">Admin Dashboard</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="feat" style="grid-template-columns: 236px 1fr;">
+      <figure class="shot" data-src="s-menu-profile" data-export="4-3-sign-out" style="--pw:160px">
+        <i class="zoom" data-id="menu" data-n="1" data-k="1.3" data-dx="-30"></i>
+      </figure>
+      <div>
+        <h3>Signing out</h3>
+        <ol class="keys">
+          <li><i>1</i><b>Students:</b> tap <b>Profile</b> on the bottom bar, then <b>Sign Out</b>.</li>
+        </ol>
+        <ul class="dots">
+          <li><b>Teachers &amp; administrators:</b> tap your photo at the top-right corner, then <b>Sign Out</b>.</li>
+        </ul>
+        <p class="note"><b>Tip:</b> Always sign out on shared or school computers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5.1 STUDENT ============ -->
+<section class="page">
+  <div class="pc">
+    <h2 class="sec" id="s5"><span class="n">5</span>Users Functions and Capabilities Guide</h2>
+    <h3><span class="sub">5.1</span>Student</h3>
+    <div class="feat" style="grid-template-columns: 300px 1fr; margin-top: 10px;">
+      <figure class="shot" data-src="s-dashboard" data-export="5-1-student-dashboard" style="--pw:250px">
+        <i class="zoom" data-id="stats" data-n="1" data-k="1.25" data-dx="20"></i>
+        <i class="zoom" data-id="cta" data-n="2" data-k="1.5" data-dx="-6"></i>
+        <i class="zoom" data-id="goals" data-n="3" data-k="1.18" data-dx="26"></i>
+        <i class="zoom" data-id="streak" data-n="4" data-k="1.4" data-dx="30" data-dy="10"></i>
+      </figure>
+      <div>
+        <h3>Dashboard</h3>
+        <p>Your home base. It shows your progress and the next thing to study.</p>
+        <p style="font-weight:800;color:var(--ink)">WHAT YOU'LL SEE:</p>
+        <ol class="keys">
+          <li><i>1</i><b>Level &amp; XP</b> – your current level and total experience points. Tap the <b>calculator</b> or <b>bell</b> icons on the right for tools and alerts.</li>
+          <li><i>2</i><b>Continue Learning</b> – jumps back to your last lesson.</li>
+          <li><i>3</i><b>Daily Goals</b> – how many lessons you finished today.</li>
+          <li><i>4</i><b>Streak</b> – days in a row you studied. Keep it alive for bonus rewards.</li>
+        </ol>
+        <p>Scroll down to <b>Start Learning</b> to open any module.</p>
+      </div>
+    </div>
+    <div class="box" style="margin-top:22px">
+      <h3 style="font-size:13.5px">On a computer: keyboard shortcuts</h3>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px 18px;font-size:12.5px">
+        <span><code>Alt + D</code> Dashboard</span><span><code>Alt + M</code> Modules</span><span><code>Alt + C</code> AI Chat</span><span><code>Alt + G</code> Grades</span>
+        <span><code>Alt + B</code> Quiz Battle</span><span><code>Alt + S</code> Settings</span><span><code>Alt + K</code> Calculator</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="s-menu-modules" data-export="5-1-student-navigation">
+        <i class="zoom" data-id="menu" data-n="1" data-k="1.45" data-dx="30" data-dy="-34"></i>
+        <i class="zoom" data-id="nav" data-n="2" data-k="1.18" data-dx="8" data-dy="10"></i>
+      </figure>
+      <div>
+        <h3>Getting around</h3>
+        <ol class="keys">
+          <li><i>1</i>Some bottom-bar buttons open a <b>small menu</b>. Tap an item to open it.</li>
+          <li><i>2</i>The <b>bottom bar</b> is always visible:</li>
+        </ol>
+        <table style="margin-top:4px">
+          <tr><th>Button</th><th>Opens</th></tr>
+          <tr><td>Dashboard</td><td>Home screen</td></tr>
+          <tr><td>Modules</td><td>Modules &middot; Assessment</td></tr>
+          <tr><td>Mascot (center)</td><td>AI Chat &middot; Avatar Studio</td></tr>
+          <tr><td>Quiz Battle</td><td>Quiz Battle &middot; Leaderboard</td></tr>
+          <tr><td>Profile</td><td>My Profile &middot; Settings &middot; Sign Out</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="s-modules" data-export="5-1-student-modules">
+        <i class="zoom" data-rect="20,164,350,84" data-n="1" data-k="1.2" data-dx="-26"></i>
+        <i class="zoom" data-id="card" data-n="2" data-k="1.22" data-dx="-26"></i>
+      </figure>
+      <div>
+        <h3>Modules</h3>
+        <p>All DepEd Strengthened SHS modules for your grade.</p>
+        <ol class="keys">
+          <li><i>1</i><b>Search &amp; filters</b> – find a module by title or narrow it by quarter.</li>
+          <li><i>2</i><b>Module card</b> – shows the subject, your progress bar, and the number of lessons and quizzes. Tap it to open.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="s-module-detail" data-export="5-1-student-module-detail">
+        <i class="zoom" data-id="mastery" data-n="1" data-k="1.25" data-dx="26"></i>
+        <i class="zoom" data-id="lesson" data-n="2" data-k="1.22" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>Inside a module</h3>
+        <ol class="keys">
+          <li><i>1</i><b>Module Mastery</b> – how much of the module you have completed.</li>
+          <li><i>2</i><b>Study Journey</b> – each lesson in order:
+            <ul class="dots" style="margin-top:5px">
+              <li><b>Play button</b> – start the lesson (theory, examples, and <em>Try-It-Yourself</em> steps).</li>
+              <li><b>Study Materials</b> – reading files for the lesson.</li>
+              <li><b>Quiz</b> – check your understanding and earn XP.</li>
+            </ul>
+          </li>
+        </ol>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="s-grades" data-export="5-1-student-grades">
+        <i class="zoom" data-id="export" data-n="1" data-k="1.6" data-dx="-12"></i>
+        <i class="zoom" data-id="stats" data-n="2" data-k="1.18" data-dx="-26"></i>
+        <i class="zoom" data-id="diagnostic" data-n="3" data-k="1.22" data-dx="-26"></i>
+      </figure>
+      <div>
+        <h3>Grades &amp; Assessment</h3>
+        <ol class="keys">
+          <li><i>1</i><b>Export Report</b> – save your grades as CSV or PDF.</li>
+          <li><i>2</i><b>Average, Focus, Quizzes</b> – your score average, the subject to practice, and quizzes completed.</li>
+          <li><i>3</i><b>Initial Diagnostic Results</b> – your starting score and risk level. Tap <b>View Full Analysis</b> for details.</li>
+        </ol>
+        <p class="note"><b>New students</b> take a short <b>diagnostic assessment</b> first. MathPulse AI uses it to build your personal learning path.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="s-ai-chat" data-export="5-1-student-ai-chat">
+        <i class="zoom" data-id="header" data-n="1" data-k="1.2" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>AI Chat – L.O.L.I. tutor</h3>
+        <p>Open the <b>mascot button</b> &rarr; <b>AI Chat</b>. L.O.L.I. explains math step by step and answers from DepEd modules.</p>
+        <ol class="keys">
+          <li><i>1</i>Tap <b>+ New</b> to start a chat, or search past conversations. Tap any chat in the list to continue it.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="s-chat-convo" data-export="5-1-student-ai-conversation">
+        <i class="zoom" data-rect="58,138,282,166" data-n="1" data-k="1.18" data-dx="-30"></i>
+        <i class="zoom" data-rect="12,714,378,40" data-n="2" data-k="1.18" data-dx="-14"></i>
+      </figure>
+      <div>
+        <h3>Asking a question</h3>
+        <p>Type your question in the box at the bottom and tap send.</p>
+        <ol class="keys">
+          <li><i>1</i><b>Step-by-step answers</b> with proper math formatting. L.O.L.I. guides you instead of only giving the answer.</li>
+          <li><i>2</i><b>Quick prompts</b> – tap <b>Explain step-by-step</b>, <b>SHS practice problem</b>, or <b>Simplify</b> to continue.</li>
+        </ol>
+        <p class="note"><b>Note:</b> AI can make mistakes. Check important answers with your teacher.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="s-avatar" data-export="5-1-student-avatar-studio">
+        <i class="zoom" data-rect="299,63,77,24" data-n="1" data-k="1.6" data-dx="22" data-dy="22"></i>
+        <i class="zoom" data-id="items" data-n="2" data-k="1.18" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>Avatar Studio</h3>
+        <p>Dress up your mascot with items you unlock using XP.</p>
+        <ol class="keys">
+          <li><i>1</i><b>XP balance</b> – XP you can spend.</li>
+          <li><i>2</i><b>Wardrobe</b> – pick a category tab, then tap an item. Locked items show their XP price.</li>
+        </ol>
+        <p>Tap <b>Save Changes</b> to keep your look, or <b>Reset Avatar</b> to start over.</p>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="s-quiz-battle" data-export="5-1-student-quiz-battle">
+        <i class="zoom" data-id="modes" data-n="1" data-k="1.2" data-dx="-26"></i>
+      </figure>
+      <div>
+        <h3>Quiz Battle</h3>
+        <p>Fast 1-vs-1 math matches with live scores and XP rewards.</p>
+        <ol class="keys">
+          <li><i>1</i>Choose a battle mode:
+            <ul class="dots" style="margin-top:5px">
+              <li><b>VS Player</b> – match with a classmate or join with a room code.</li>
+              <li><b>VS Bot</b> – practice alone with adjustable difficulty.</li>
+            </ul>
+          </li>
+        </ol>
+        <p><b>Hall of Fame</b> below lists the top arena champions.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="s-leaderboard" data-export="5-1-student-leaderboard">
+        <i class="zoom" data-id="tabs" data-n="1" data-k="1.4" data-dx="34"></i>
+        <i class="zoom" data-id="gap" data-n="2" data-k="1.2" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>Leaderboard</h3>
+        <ol class="keys">
+          <li><i>1</i>Switch rankings between <b>Daily</b>, <b>Weekly</b>, and <b>All Time</b>.</li>
+          <li><i>2</i>See your rank and the XP you need to pass the next student. Tap <b>Battle</b> to earn XP fast.</li>
+        </ol>
+        <p><b>Class Standings</b> below ranks students in your section.</p>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="s-notifications" data-export="5-1-student-notifications">
+        <i class="zoom" data-id="panel" data-n="1" data-k="1.1" data-dx="-30"></i>
+      </figure>
+      <div>
+        <h3>Notifications</h3>
+        <p>Tap the <b>bell</b> at the top-right corner.</p>
+        <ol class="keys">
+          <li><i>1</i>See new quizzes from your teacher, daily rewards, check-in reminders, and assessment results. A dot marks unread alerts. Tap <b>Mark read</b> to clear them.</li>
+        </ol>
+        <p class="note"><b>Tip:</b> Turn on <b>Alerts &amp; Reminders</b> in Settings to receive push notifications.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="trio">
+      <div>
+        <figure class="shot" data-src="s-profile" data-export="5-1-student-profile" style="--pw:168px">
+          <i class="zoom" data-id="pass" data-n="1" data-k="1.18"></i>
+        </figure>
+        <h3>My Profile</h3>
+        <ol class="keys">
+          <li><i>1</i><b>Student Pass</b> – your digital school ID with LRN, grade, and section. Tap <b>Tap to flip card</b> to see the back.</li>
+        </ol>
+        <ul class="dots"><li>Tap <b>Edit Profile</b> to update your details.</li></ul>
+      </div>
+      <div>
+        <figure class="shot" data-src="s-settings" data-export="5-1-student-settings" style="--pw:168px">
+          <i class="zoom" data-id="theme" data-n="1" data-k="1.2"></i>
+        </figure>
+        <h3>Settings</h3>
+        <ol class="keys">
+          <li><i>1</i>Open a section to change it:</li>
+        </ol>
+        <ul class="dots">
+          <li><b>Display &amp; Theme</b> – light or dark mode</li>
+          <li><b>Alerts &amp; Reminders</b></li>
+          <li><b>Login &amp; Password</b></li>
+          <li><b>My Data &amp; Files</b></li>
+        </ul>
+      </div>
+      <div>
+        <figure class="shot" data-src="s-calculator" data-export="5-1-student-calculator" style="--pw:168px">
+          <i class="zoom" data-id="verify" data-n="1" data-k="1.3"></i>
+        </figure>
+        <h3>Calculator</h3>
+        <p style="font-size:12px">Tap the <b>calculator</b> icon at the top for a full scientific calculator.</p>
+        <ol class="keys">
+          <li><i>1</i><b>Verify with SymPy</b> double-checks your answer.</li>
+        </ol>
+        <ul class="dots"><li>On a computer, press <b>Alt + K</b>.</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5.2 TEACHER ============ -->
+<section class="page">
+  <div class="pc">
+    <h3 id="s5-2" style="font-size:16px;color:var(--violet)"><span class="sub" style="color:var(--pink)">5.2</span>Teacher</h3>
+    <div class="feat" style="grid-template-columns: 290px 1fr; margin-top: 10px;">
+      <figure class="shot" data-src="t-dashboard" data-export="5-2-teacher-dashboard" style="--pw:240px">
+        <i class="zoom" data-id="stats" data-n="1" data-k="1.18" data-dx="26"></i>
+        <i class="zoom" data-id="classes" data-n="2" data-k="1.25" data-dx="30"></i>
+      </figure>
+      <div>
+        <h3>Dashboard</h3>
+        <ol class="keys">
+          <li><i>1</i><b>Class summary</b> – total students, class average, engagement, and students who need attention.</li>
+          <li><i>2</i><b>My Classes</b> – tap <b>Manage</b> to open a class, or the trash icon to delete it.</li>
+        </ol>
+        <p>Top-right icons: <b>AI Insight</b> (sparkle), <b>calendar</b>, <b>notifications</b>, and your <b>profile</b>.</p>
+        <table style="margin-top:6px">
+          <tr><th>Bottom bar</th><th>Opens</th></tr>
+          <tr><td>Dashboard</td><td>Home screen</td></tr>
+          <tr><td>Teaching</td><td>My Classes &middot; Schedule &amp; Calendar</td></tr>
+          <tr><td>AI Tools</td><td>AI Quiz Maker &middot; Question Bank &middot; Data Import</td></tr>
+          <tr><td>Insights</td><td>Topic Mastery &middot; Module Availability</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="t-classes" data-export="5-2-teacher-my-classes">
+        <i class="zoom" data-id="picker" data-n="1" data-k="1.3" data-dx="26"></i>
+        <i class="zoom" data-id="stats" data-n="2" data-k="1.15" data-dx="26"></i>
+        <i class="zoom" data-id="filters" data-n="3" data-k="1.3" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>My Classes</h3>
+        <ol class="keys">
+          <li><i>1</i>Pick a class, or tap <b>+ New Class</b> to create one.</li>
+          <li><i>2</i><b>Class analytics</b> – average, module completion, participation, and at-risk count.</li>
+          <li><i>3</i><b>Students</b> – search, filter by <b>Top Performers</b> or <b>Needs Attention</b>, and tap <b>+ Add</b> to enroll.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="t-calendar" data-export="5-2-teacher-calendar">
+        <i class="zoom" data-id="month" data-n="1" data-k="1.2" data-dx="-26"></i>
+        <i class="zoom" data-id="add" data-n="2" data-k="1.7" data-dx="-30"></i>
+      </figure>
+      <div>
+        <h3>Schedule &amp; Calendar</h3>
+        <ol class="keys">
+          <li><i>1</i>Move between months. Dots under a date mark scheduled events.</li>
+          <li><i>2</i>Tap a date, then <b>+ Add Event</b> for quizzes, deadlines, or reminders.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="t-quiz-maker" data-export="5-2-teacher-ai-quiz-maker">
+        <i class="zoom" data-id="tabs" data-n="1" data-k="1.25" data-dx="26"></i>
+        <i class="zoom" data-id="steps" data-n="2" data-k="1.25" data-dx="26" data-dy="8"></i>
+        <i class="zoom" data-id="next" data-n="3" data-k="1.25" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>AI Quiz Maker</h3>
+        <ol class="keys">
+          <li><i>1</i><b>Create Quiz</b> or open saved quizzes in <b>Quiz Bank</b>.</li>
+          <li><i>2</i>Follow 4 steps: <b>Setup</b> &rarr; <b>Topics</b> &rarr; <b>Question Style</b> &rarr; <b>Preview</b>.</li>
+          <li><i>3</i>Enter the title, grade, and number of questions, then tap <b>Next</b>.</li>
+        </ol>
+        <p>Review the AI questions in Preview before assigning them.</p>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="t-question-bank" data-export="5-2-teacher-question-bank">
+        <i class="zoom" data-id="ingest" data-n="1" data-k="1.1" data-dx="-26"></i>
+      </figure>
+      <div>
+        <h3>Question Bank</h3>
+        <ol class="keys">
+          <li><i>1</i><b>Ingest New PDF</b> – enter the PDF's storage path, grade level, and topic, then tap <b>Ingest PDF</b>. MathPulse AI pulls quiz questions out of it.</li>
+        </ol>
+        <p><b>Processing Status</b> below shows each PDF's progress.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="t-data-import" data-export="5-2-teacher-data-import">
+        <i class="zoom" data-id="target" data-n="1" data-k="1.18" data-dx="26"></i>
+        <i class="zoom" data-id="upload" data-n="2" data-k="1.12" data-dx="26" data-dy="10"></i>
+      </figure>
+      <div>
+        <h3>Data Import</h3>
+        <ol class="keys">
+          <li><i>1</i>Choose the <b>class</b> the file belongs to.</li>
+          <li><i>2</i>Upload a <b>class record</b> spreadsheet (.csv, .xlsx, .xls).</li>
+        </ol>
+        <ul class="dots">
+          <li>Below it, upload <b>curriculum documents</b> (.pdf, .docx, .txt) or import student accounts.</li>
+        </ul>
+        <p class="note"><b>Why import?</b> Grades feed the risk score that flags students who need help.</p>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="t-topic-mastery" data-export="5-2-teacher-topic-mastery">
+        <i class="zoom" data-id="tabs" data-n="1" data-k="1.3" data-dx="-26"></i>
+      </figure>
+      <div>
+        <h3>Topic Mastery</h3>
+        <ol class="keys">
+          <li><i>1</i>Switch between the <b>Mastery Matrix</b> (scores per topic) and the <b>Competency Matrix</b> (DepEd competencies).</li>
+        </ol>
+        <ul class="dots">
+          <li>Filter by class, subject, and grade.</li>
+          <li>Cards count topics that are mastered, need work, or are excluded from quizzes.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="t-module-availability" data-export="5-2-teacher-module-availability">
+        <i class="zoom" data-id="stats" data-n="1" data-k="1.15" data-dx="26"></i>
+        <i class="zoom" data-id="configure" data-n="2" data-k="1.7" data-dx="-10" data-dy="-6"></i>
+      </figure>
+      <div>
+        <h3>Module Availability</h3>
+        <ol class="keys">
+          <li><i>1</i>Counts of modules that are <b>Available</b>, use <b>Teacher Material</b>, are <b>Coming Soon</b>, or are <b>Unavailable</b>.</li>
+          <li><i>2</i>Tap <b>Configure</b> to open or close a module for students, or attach your own PDF when standard content is missing.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="t-ai-insight" data-export="5-2-teacher-ai-insight">
+        <i class="zoom" data-id="modal" data-n="1" data-k="1.08" data-dx="-26"></i>
+      </figure>
+      <div>
+        <h3>AI Insight</h3>
+        <p>Tap the <b>sparkle</b> icon at the top of the dashboard.</p>
+        <ol class="keys">
+          <li><i>1</i>A short teaching suggestion based on your classes' recent results. Tap <b>Minimize to Menu</b> to close it.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5.3 ADMIN ============ -->
+<section class="page">
+  <div class="pc">
+    <h3 id="s5-3" style="font-size:16px;color:var(--violet)"><span class="sub" style="color:var(--pink)">5.3</span>Administrator</h3>
+    <div class="feat">
+      <figure class="shot" data-src="a-overview" data-export="5-3-admin-dashboard">
+        <i class="zoom" data-id="actions" data-n="1" data-k="1.18" data-dx="26"></i>
+        <i class="zoom" data-id="stats" data-n="2" data-k="1.1" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>Dashboard</h3>
+        <ol class="keys">
+          <li><i>1</i><b>Quick actions</b> – add a faculty member or student, open class sections, upload curriculum, or open the analytics hub.</li>
+          <li><i>2</i><b>School summary</b> – teaching faculty, active sections, AI tutor sessions, and students needing academic support.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="a-menu-manage" data-export="5-3-admin-navigation">
+        <i class="zoom" data-id="menu" data-n="1" data-k="1.3" data-dx="-20" data-dy="-30"></i>
+      </figure>
+      <div>
+        <ol class="keys">
+          <li><i>1</i>Bottom-bar buttons open small menus:</li>
+        </ol>
+        <table>
+          <tr><th>Button</th><th>Opens</th></tr>
+          <tr><td>Overview</td><td>Admin dashboard</td></tr>
+          <tr><td>Manage</td><td>Users &middot; Classes</td></tr>
+          <tr><td>AI</td><td>RAG Manager</td></tr>
+          <tr><td>Curriculum</td><td>Curriculum Control &middot; Content PDFs</td></tr>
+          <tr><td>Insights</td><td>Analytics &middot; Audit Log</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="a-users" data-export="5-3-admin-users">
+        <i class="zoom" data-id="stats" data-n="1" data-k="1.1" data-dx="26"></i>
+        <i class="zoom" data-id="tools" data-n="2" data-k="1.4" data-dx="34"></i>
+        <i class="zoom" data-id="actions" data-n="3" data-k="1.3" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>Users</h3>
+        <ol class="keys">
+          <li><i>1</i>Totals for all, active, admin, teacher, and student accounts.</li>
+          <li><i>2</i>Search by name, email, or LRN. Use the buttons beside it to filter, refresh, or <b>add a user</b>.</li>
+          <li><i>3</i>On each account: <b>Edit</b>, <b>Deactivate</b>, or delete.</li>
+        </ol>
+        <p class="note"><b>Tip:</b> Deactivate instead of delete when a student transfers. Their records stay safe.</p>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="a-classes" data-export="5-3-admin-classes">
+        <i class="zoom" data-id="stats" data-n="1" data-k="1.18" data-dx="-26"></i>
+        <i class="zoom" data-id="assign" data-n="2" data-k="1.08" data-dx="-26"></i>
+      </figure>
+      <div>
+        <h3>Classes</h3>
+        <ol class="keys">
+          <li><i>1</i>Sections in total, with a teacher, and without one.</li>
+          <li><i>2</i>Pick a teacher from the list to assign a section, or tap <b>Unassign Teacher</b>.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat" style="grid-template-columns: 300px 1fr; margin-top: 10px;">
+      <figure class="shot" data-src="a-rag" data-export="5-3-admin-rag-manager" style="--pw:250px">
+        <i class="zoom" data-id="stats" data-n="1" data-k="1.1" data-dx="26"></i>
+        <i class="zoom" data-id="rebuild" data-n="2" data-k="1.5" data-dx="20"></i>
+      </figure>
+      <div>
+        <h3>RAG Manager</h3>
+        <p>Manages the curriculum knowledge base the AI tutor reads from.</p>
+        <ol class="keys">
+          <li><i>1</i>Indexed sections, active subjects, ingested documents, and pipeline status (<b>Online</b> = healthy).</li>
+          <li><i>2</i>Tap <b>Rebuild Knowledge</b> after uploading new curriculum files.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="a-curriculum" data-export="5-3-admin-curriculum-control">
+        <i class="zoom" data-id="subject" data-n="1" data-k="1.15" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>Curriculum Control</h3>
+        <p>Lists every math subject, with counts of available and locked ones at the top.</p>
+        <ol class="keys">
+          <li><i>1</i>Use the <b>switch</b> on a subject card to make it available or lock it. The card shows its grade and quarters.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="a-content-pdfs" data-export="5-3-admin-content-pdfs">
+        <i class="zoom" data-id="tabs" data-n="1" data-k="1.3" data-dx="-26"></i>
+        <i class="zoom" data-id="upload" data-n="2" data-k="1.05" data-dx="-26" data-dy="-10"></i>
+      </figure>
+      <div>
+        <h3>Content PDFs</h3>
+        <ol class="keys">
+          <li><i>1</i>Switch between <b>Import Modules</b> and <b>File Inventory</b>.</li>
+          <li><i>2</i>Drop an official DepEd module PDF (up to 50 MB) to add it to the AI knowledge base.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="feat">
+      <figure class="shot" data-src="a-analytics" data-export="5-3-admin-analytics">
+        <i class="zoom" data-id="range" data-n="1" data-k="1.25" data-dx="26"></i>
+      </figure>
+      <div>
+        <h3>Analytics</h3>
+        <ol class="keys">
+          <li><i>1</i>Pick a time range (<b>7D</b>, <b>30D</b>, <b>90D</b>, <b>All</b>) and tap <b>Export Report</b> to download.</li>
+        </ol>
+        <ul class="dots">
+          <li>Cards show active learners, mastery average, quizzes taken, and at-risk students.</li>
+          <li>Charts below show learning trends over time.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="feat flip">
+      <figure class="shot" data-src="a-audit-log" data-export="5-3-admin-audit-log">
+        <i class="zoom" data-id="export" data-n="1" data-k="1.6" data-dx="-20"></i>
+        <i class="zoom" data-id="event" data-n="2" data-k="1.1" data-dx="-26" data-dy="-20"></i>
+      </figure>
+      <div>
+        <h3>Audit Log</h3>
+        <p>A record of important system and admin actions.</p>
+        <ol class="keys">
+          <li><i>1</i><b>Export CSV</b> saves the log for reports.</li>
+          <li><i>2</i>Each event shows its type, actor, and time. Tap <b>Inspect</b> for full details.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. TROUBLESHOOTING ============ -->
+<section class="page">
+  <div class="pc">
+    <h2 class="sec" id="s6"><span class="n">6</span>Troubleshooting &amp; Common Issues (FAQ)</h2>
+    <p class="lead">Try these quick fixes first. If a problem continues, contact your teacher or school administrator.</p>
+    <div class="faq">
+      <div class="q"><h4>I can't sign in.</h4><ul><li>Check the email spelling and that Caps Lock is off.</li><li>Use <b>Forgot password?</b> to set a new one.</li><li>Still blocked? Your account may be deactivated. Ask your administrator.</li></ul></div>
+      <div class="q"><h4>The reset email never arrived.</h4><ul><li>Wait 5 minutes and check Spam or Promotions.</li><li>Make sure you typed the email your account uses.</li></ul></div>
+      <div class="q"><h4>The app is stuck on "Loading…".</h4><ul><li>Check your internet connection.</li><li>Close and reopen the app, or refresh the page.</li><li>Update your browser to the latest version.</li></ul></div>
+      <div class="q"><h4>L.O.L.I. says the AI tutor is unavailable.</h4><ul><li>The AI service is busy or offline for a moment.</li><li>Wait a minute and send your question again. Your chats are saved.</li></ul></div>
+      <div class="q"><h4>I don't see an install option.</h4><ul><li><b>iPhone:</b> use Safari, then Share &rarr; Add to Home Screen.</li><li><b>Android:</b> use Chrome &rarr; &#8942; menu &rarr; Install app.</li><li>Already installed? The option is hidden.</li></ul></div>
+      <div class="q"><h4>I'm not getting notifications.</h4><ul><li>Allow notifications for MathPulse AI in your phone or browser settings.</li><li>Turn on <b>Alerts &amp; Reminders</b> in Settings.</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <div class="faq">
+      <div class="q"><h4>My XP or streak didn't update.</h4><ul><li>Refresh the app; progress syncs when you are online.</li><li>A streak counts once per day, so finish at least one activity daily.</li></ul></div>
+      <div class="q"><h4>Quiz Battle can't find an opponent.</h4><ul><li>Few players may be online. Try <b>VS Bot</b>.</li><li>Or share a <b>room code</b> with a classmate.</li></ul></div>
+      <div class="q"><h4>A module is locked or "Coming Soon".</h4><ul><li>Your teacher or administrator has not opened it yet.</li><li>Ask your teacher when it will be available.</li></ul></div>
+      <div class="q"><h4><span>The screen looks too dark or too bright. <span class="tag">All</span></span></h4><ul><li>Go to <b>Settings &rarr; Display &amp; Theme</b> and choose Light or Dark mode.</li></ul></div>
+      <div class="q"><h4><span>My spreadsheet import failed. <span class="tag">Teacher</span></span></h4><ul><li>Use a .csv, .xlsx, or .xls file.</li><li>Select the target class before uploading.</li><li>Keep the DepEd class-record layout (names and scores in their columns).</li></ul></div>
+      <div class="q"><h4><span>The AI gives off-topic answers. <span class="tag">Admin</span></span></h4><ul><li>Open <b>RAG Manager</b> and check the pipeline is <b>Online</b>.</li><li>After uploading modules, tap <b>Rebuild Knowledge</b>.</li></ul></div>
+      <div class="q"><h4>I see an "offline" page.</h4><ul><li>Your device lost its connection. Reconnect and the app reloads.</li></ul></div>
+      <div class="q"><h4><span>A user can't see their class. <span class="tag">Admin</span></span></h4><ul><li>Check the student's section in <b>Users</b>.</li><li>Check a teacher is assigned in <b>Classes</b>.</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7. MAINTENANCE & SECURITY ============ -->
+<section class="page">
+  <div class="pc">
+    <h2 class="sec" id="s7"><span class="n">7</span>System Maintenance &amp; Security</h2>
+    <h3><span class="sub">7.1</span>Built-in security</h3>
+    <div class="cards" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="card"><div class="ico c-violet"><svg data-icon="lock"></svg></div><h4>Secure sign-in</h4><p>Firebase Authentication handles passwords. MathPulse AI never stores them.</p></div>
+      <div class="card"><div class="ico c-pink"><svg data-icon="shield"></svg></div><h4>Role-based access</h4><p>Students, teachers, and admins only see what their role allows, in the app and on the server.</p></div>
+      <div class="card"><div class="ico c-teal"><svg data-icon="key"></svg></div><h4>Encrypted data</h4><p>Data is encrypted in transit (TLS) and at rest.</p></div>
+      <div class="card"><div class="ico c-blue"><svg data-icon="list"></svg></div><h4>Audit trail</h4><p>Admin and system events are logged and can be exported.</p></div>
+      <div class="card"><div class="ico c-amber"><svg data-icon="gauge"></svg></div><h4>Rate limits</h4><p>The API limits requests per role to stop abuse and runaway AI costs.</p></div>
+      <div class="card"><div class="ico c-ink"><svg data-icon="eye"></svg></div><h4>Private keys</h4><p>API keys live in protected server secrets, never in the app or the code.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <h3><span class="sub">7.2</span>Good habits for every user</h3>
+    <div class="twocol">
+      <ul class="dots">
+        <li>Use a strong password you don't use anywhere else.</li>
+        <li>Never share your account or password.</li>
+        <li>Sign out on shared or school computers.</li>
+      </ul>
+      <ul class="dots">
+        <li>Lock your phone with a PIN or fingerprint.</li>
+        <li>Keep your browser and phone updated.</li>
+        <li>Report strange account activity to your administrator.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <h3><span class="sub">7.3</span>Maintenance checklist (administrators &amp; IT)</h3>
+    <table>
+      <tr><th>Task</th><th>How</th><th style="width:22%">How often</th></tr>
+      <tr><td>Review security events</td><td>Insights &rarr; <b>Audit Log</b>; check warnings</td><td>Weekly</td></tr>
+      <tr><td>Refresh the knowledge base</td><td>AI &rarr; <b>RAG Manager</b> &rarr; Rebuild Knowledge</td><td>After new uploads</td></tr>
+      <tr><td>Update sections &amp; teachers</td><td>Manage &rarr; <b>Classes</b></td><td>Each semester</td></tr>
+      <tr><td>Clean up accounts</td><td>Manage &rarr; <b>Users</b>; deactivate graduates and transferees</td><td>Each school year</td></tr>
+      <tr><td>Back up the database</td><td>Firebase Console &rarr; Firestore &rarr; Import/Export to a Cloud Storage bucket</td><td>Monthly</td></tr>
+      <tr><td>Rotate secret keys</td><td>Replace AI and service-account keys; update Space secrets</td><td>Every 6 months, or right away if exposed</td></tr>
+      <tr><td>Publish updates</td><td>Follow Section 3.3; test all three roles after release</td><td>Each release</td></tr>
+    </table>
+    <div class="spacer"></div>
+    <div class="twocol">
+      <div class="box">
+        <h3><span class="sub">7.4</span>Backup &amp; recovery</h3>
+        <ul class="dots" style="margin:0">
+          <li>Keep at least the last 3 monthly Firestore exports.</li>
+          <li>To restore, import an export from the Firebase Console.</li>
+          <li>Curriculum PDFs stay in Firebase Storage. Rebuild the knowledge base after restoring.</li>
+        </ul>
+      </div>
+      <div class="box teal">
+        <h3><span class="sub">7.5</span>Data privacy</h3>
+        <ul class="dots" style="margin:0">
+          <li>Collect only what lessons need: name, LRN, grade, and section.</li>
+          <li>Give admin roles only to staff who need them.</li>
+          <li>Follow the Data Privacy Act of 2012 (RA 10173) for student records.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ APPENDIX A ============ -->
+<section class="page">
+  <div class="pc">
+    <h2 class="sec" id="sA"><span class="n">A</span>Appendix A: Glossary of Terms &amp; System Definitions</h2>
+    <table style="margin-top:10px">
+      <tr><th>Term</th><th>Definition</th></tr>
+      <tr><td>XP (Experience Points)</td><td>Points earned from lessons, quizzes, and battles. XP raises your level and buys avatar items.</td></tr>
+      <tr><td>Level</td><td>Your rank in the app. It goes up as your total XP grows.</td></tr>
+      <tr><td>Streak</td><td>The number of days in a row you completed an activity.</td></tr>
+      <tr><td>Daily Goals</td><td>The number of lessons to finish each day.</td></tr>
+      <tr><td>Module</td><td>A group of lessons on one DepEd topic (e.g., Business and Finance).</td></tr>
+      <tr><td>Module Mastery</td><td>The percentage of a module's lessons and quizzes you have completed.</td></tr>
+      <tr><td>Diagnostic Assessment</td><td>The first test a new student takes. It measures starting skills and builds the learning path.</td></tr>
+      <tr><td>Learning Path</td><td>The personal order of lessons recommended for each student.</td></tr>
+      <tr><td>Risk Level</td><td>A label (Low, Moderate, High) showing how much support a student may need, based on diagnostic results, grades, and in-app scores.</td></tr>
+      <tr><td>At-Risk Student</td><td>A student whose risk level means a teacher should step in.</td></tr>
+      <tr><td>Intervention</td><td>Extra tasks or materials a teacher assigns to help an at-risk student.</td></tr>
+      <tr><td>L.O.L.I.</td><td>Logical Operations &amp; Learning Intelligence, the MathPulse AI math tutor and mascot.</td></tr>
+      <tr><td>Quiz Battle</td><td>A live 1-vs-1 math match against a classmate or a bot.</td></tr>
+      <tr><td>Leaderboard</td><td>Rankings of students by XP (daily, weekly, all time).</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="page">
+  <div class="pc">
+    <table>
+      <tr><th>Term</th><th>Definition</th></tr>
+      <tr><td>Avatar Studio</td><td>Where students customize their mascot with items unlocked by XP.</td></tr>
+      <tr><td>Student Pass</td><td>A student's digital school ID inside the app.</td></tr>
+      <tr><td>LRN</td><td>Learner Reference Number, the DepEd student ID.</td></tr>
+      <tr><td>Topic Mastery</td><td>A teacher view of class scores per topic and competency.</td></tr>
+      <tr><td>Module Availability</td><td>Whether students can open a module: Available, Teacher Material, Coming Soon, or Unavailable.</td></tr>
+      <tr><td>RAG (Retrieval-Augmented Generation)</td><td>The method the AI uses to look up DepEd modules before it answers, so replies match the curriculum.</td></tr>
+      <tr><td>Knowledge Base / Vector Store</td><td>The searchable index of curriculum text that RAG reads from.</td></tr>
+      <tr><td>Audit Log</td><td>A record of important system and administrator actions.</td></tr>
+      <tr><td>PWA (Progressive Web App)</td><td>A website that installs and runs like a phone app.</td></tr>
+      <tr><td>DepEd SSHS</td><td>Department of Education Strengthened Senior High School curriculum.</td></tr>
+    </table>
+    <div class="spacer"></div>
+    <h3>Revision history</h3>
+    <p>This section documents the version history and changes made to this manual.</p>
+    <table>
+      <tr><th style="width:12%">Version</th><th style="width:20%">Date</th><th>Description</th><th style="width:30%">Author</th></tr>
+      <tr><td>1.0</td><td style="font-weight:600">Oct 8, 2026</td><td style="font-weight:600;color:var(--text)">Initial release of the MathPulse AI User Manual</td><td style="font-weight:600;color:var(--text)">Cabigon,&nbsp;L. / Lazaro,&nbsp;D. / Nonoy,&nbsp;F. / Rosado,&nbsp;R. / Vasquez,&nbsp;S.</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============ CLOSING ============ -->
+<section class="page closing">
+  <div class="pc">
+    <div style="text-align:center">
+      <img src="assets/logo.png" alt="" style="width:96px;border-radius:24px;box-shadow:0 12px 30px -8px rgba(124,58,237,.5)">
+      <h2 class="sec" style="font-size:26px;margin-top:22px">Thank you for using MathPulse AI.</h2>
+      <p class="lead" style="max-width:520px;margin:10px auto 0">This manual guides students, teachers, and administrators in using MathPulse AI's learning, teaching, and management features. For help or system updates, refer to future revisions of this document.</p>
+      <div class="rule" style="display:flex;gap:10px;justify-content:center;margin:26px 0"><i style="height:3px;width:120px;background:var(--teal);border-radius:3px"></i><i style="height:3px;width:40px;background:var(--pink);border-radius:3px"></i></div>
+      <div class="brand" style="justify-content:center;font-size:24px"><img src="assets/logo.png" alt="">MathPulse <b>AI</b></div>
+      <p style="margin:16px 0 2px"><b>PREPARED BY:</b></p>
+      <p style="margin:0">Lorraine Isabel B. Cabigon, Deign Grey O. Lazaro, Faijah F. Nonoy,<br>Raineer C. Rosado, and Sean Mark P. Vasquez</p>
+      <p style="margin-top:8px;font-weight:700">Department of Information Technology, Pamantasan ng Lungsod ng Valenzuela</p>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Lucide-style icon paths used by the cards and tiles.
+  const ICONS = {
+    cap: '<path d="M21.4 10.9a1 1 0 0 0 0-1.8L12.8 5.2a2 2 0 0 0-1.7 0L2.6 9.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.7 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
+    board: '<path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/>',
+    shield: '<path d="M20 13c0 5-3.5 7.5-7.7 9a1 1 0 0 1-.7 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.5 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    bot: '<path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+    book: '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    check: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+    swords: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="m5 14 4 4"/><path d="m7 17-3 3"/><path d="m3 19 2 2"/>',
+    trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.7V17c0 .6-.5 1-1 1.2C7.8 18.8 7 20.2 7 22"/><path d="M14 14.7V17c0 .6.5 1 1 1.2 1.2.6 2 2 2 3.8"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>',
+    chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+    sparkles: '<path d="M9.9 15.5A2 2 0 0 0 8.5 14l-6.1-1.6a.5.5 0 0 1 0-1L8.5 10A2 2 0 0 0 9.9 8.5l1.6-6.1a.5.5 0 0 1 1 0L14 8.5a2 2 0 0 0 1.5 1.4l6.1 1.6a.5.5 0 0 1 0 1L15.5 14a2 2 0 0 0-1.5 1.5l-1.6 6.1a.5.5 0 0 1-1 0z"/>',
+    database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
+    lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+    list: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
+    gauge: '<path d="m12 14 4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/>',
+    eye: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  };
+  for (const svg of document.querySelectorAll('svg[data-icon]')) {
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.innerHTML = ICONS[svg.dataset.icon] ?? '';
+  }
+
+  // Header and footer on every page except the cover.
+  const FOOTER_WAVES = `<svg viewBox="0 0 816 104" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 40 C 180 0, 360 80, 560 34 S 760 30, 816 22 V104 H0Z" fill="#c4b5fd" opacity=".45"/>
+    <path d="M0 62 C 200 30, 420 96, 640 52 S 790 50, 816 46 V104 H0Z" fill="#8b5cf6" opacity=".85"/>
+    <path d="M0 80 C 240 56, 470 110, 816 70 V104 H0Z" fill="#2e1065"/></svg>`;
+  const pages = [...document.querySelectorAll('.page')];
+  pages.forEach((page, index) => {
+    if (page.hasAttribute('data-noheader')) return;
+    page.insertAdjacentHTML('afterbegin', '<header class="ph"><div class="brand"><img src="assets/logo.png" alt="">MathPulse <b>AI</b></div></header>');
+    page.insertAdjacentHTML('beforeend', `<footer class="pf">${FOOTER_WAVES}<span class="doc">MathPulse AI &middot; User Manual</span><span class="num">${index + 1}</span></footer>`);
+  });
+
+  // Table of contents page numbers come from where each target heading landed.
+  for (const slot of document.querySelectorAll('[data-to]')) {
+    const target = document.getElementById(slot.dataset.to);
+    slot.textContent = target ? String(pages.indexOf(target.closest('.page')) + 1) : '?';
+  }
+
+  // Phone frames and zoom callouts. Rects are in app pixels of a 390x844 screen.
+  const BEZEL = 7;
+  const STATUS = 40;
+  const STATUS_ICONS = '<span style="display:flex;gap:3px;align-items:center;height:100%"><svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg><svg viewBox="0 0 26 12"><rect x="0.5" y="0.5" width="22" height="11" rx="3" fill="none" stroke="currentColor"/><rect x="2.5" y="2.5" width="16" height="7" rx="1.5"/><rect x="23.5" y="4" width="2" height="4" rx="1"/></svg></span>';
+
+  const sampleTopColor = (img) => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const context = canvas.getContext('2d');
+      context.drawImage(img, img.naturalWidth / 2, 2, 1, 1, 0, 0, 1, 1);
+      const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+      return { css: `rgb(${red},${green},${blue})`, dark: red * 0.299 + green * 0.587 + blue * 0.114 < 140 };
+    } catch {
+      return { css: '#ffffff', dark: false };
+    }
+  };
+
+  const buildShot = (figure) => {
+    // The PDF build points SCREEN_DIR/SCREEN_EXT at JPEG copies to keep the file small.
+    const src = `${window.SCREEN_DIR ?? 'screens/'}${figure.dataset.src}.${window.SCREEN_EXT ?? 'png'}`;
+    const phoneWidth = parseFloat(getComputedStyle(figure).getPropertyValue('--pw')) || 178;
+    const scale = (phoneWidth - 2 * BEZEL) / 390;
+    const statusHeight = STATUS * scale;
+    figure.style.width = `${phoneWidth}px`;
+    figure.style.height = `${statusHeight + 844 * scale + 2 * BEZEL}px`;
+    figure.insertAdjacentHTML('afterbegin', `<div class="phone"><div class="screen"><div class="status" style="height:${statusHeight}px;font-size:${statusHeight * 0.48}px"><span>9:41</span>${STATUS_ICONS}</div><img src="${src}" alt=""></div></div>`);
+    const img = figure.querySelector('.screen img');
+    const status = figure.querySelector('.status');
+    const paintStatus = () => {
+      const color = sampleTopColor(img);
+      status.style.background = color.css;
+      status.classList.toggle('dark', color.dark);
+    };
+    if (img.complete) paintStatus(); else img.addEventListener('load', paintStatus, { once: true });
+
+    for (const zoom of figure.querySelectorAll('.zoom')) {
+      const fromRects = window.RECTS?.[figure.dataset.src]?.[zoom.dataset.id];
+      const rect = zoom.dataset.rect ? zoom.dataset.rect.split(',').map(Number) : fromRects && [fromRects.x, fromRects.y, fromRects.w, fromRects.h];
+      if (!rect) {
+        console.warn(`missing rect ${figure.dataset.src}.${zoom.dataset.id}`);
+        zoom.remove();
+        continue;
+      }
+      const pad = Number(zoom.dataset.pad ?? 8);
+      const x = Math.max(0, rect[0] - pad);
+      const y = Math.max(0, rect[1] - pad);
+      const w = Math.min(390 - x, rect[2] + 2 * pad);
+      const h = Math.min(844 - y, rect[3] + 2 * pad);
+      const k = Number(zoom.dataset.k ?? 1.3);
+      const originLeft = BEZEL + x * scale;
+      const originTop = BEZEL + statusHeight + y * scale;
+      const width = w * scale * k;
+      const height = h * scale * k;
+      zoom.style.left = `${originLeft + (w * scale) / 2 - width / 2 + Number(zoom.dataset.dx ?? 0)}px`;
+      zoom.style.top = `${originTop + (h * scale) / 2 - height / 2 + Number(zoom.dataset.dy ?? 0)}px`;
+      zoom.style.width = `${width}px`;
+      zoom.style.height = `${height}px`;
+      zoom.style.backgroundImage = `url(${src})`;
+      zoom.style.backgroundSize = `${390 * scale * k}px auto`;
+      zoom.style.backgroundPosition = `${-x * scale * k}px ${-y * scale * k}px`;
+      if (zoom.dataset.n) zoom.innerHTML = `<b>${zoom.dataset.n}</b>`;
+    }
+  };
+
+  // Keep callouts inside the page with an 18px margin.
+  const clampToPage = (figure) => {
+    if (figure.hasAttribute('data-noclamp')) return;
+    const page = figure.closest('.page').getBoundingClientRect();
+    for (const zoom of figure.querySelectorAll('.zoom')) {
+      const box = zoom.getBoundingClientRect();
+      const shift = Math.max(0, page.left + 18 - box.left) - Math.max(0, box.right - (page.right - 18));
+      if (shift !== 0) zoom.style.left = `${parseFloat(zoom.style.left) + shift}px`;
+    }
+  };
+
+  const figures = [...document.querySelectorAll('figure.shot')];
+  figures.forEach(buildShot);
+  const reportOverflow = () => {
+    pages.forEach((page, index) => {
+      const content = page.querySelector('.pc');
+      if (content && content.scrollHeight > content.clientHeight + 1) {
+        console.warn(`overflow page ${index + 1} by ${content.scrollHeight - content.clientHeight}px`);
+      }
+    });
+  };
+  Promise.all([
+    document.fonts.ready,
+    ...[...document.images].map((img) => (img.complete ? null : new Promise((done) => { img.onload = done; img.onerror = done; }))),
+  ]).then(() => {
+    figures.forEach(clampToPage);
+    reportOverflow();
+    window.MANUAL_READY = true;
+  });
+</script>
+</body>
+</html>
