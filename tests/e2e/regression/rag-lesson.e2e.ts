@@ -1,17 +1,146 @@
-import { test } from '@e2e-dev/web';
-import { credentials, expect } from 'e2e';
+import { describe, test } from '@e2e-dev/web';
+import { expect } from 'e2e';
 
-test('student can open a curriculum module for a RAG lesson', async ({ app, agent, screen }) => {
-  const student = credentials.user('student');
-  await app.open('/');
-  await agent.act('sign in to MathPulse using the supplied student email and password', {
-    params: { username: student.username, password: student.password },
+const dismissDialogs =
+  'if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing';
+const lessonLoaded =
+  'The lesson screen has finished loading: either a lesson notebook with section text is shown, or an error or "AI lesson unavailable" message is shown. The "Loading lesson from DepEd curriculum..." screen is gone.';
+const lessonTitle = 'Represent business transactions and financial goals using variables and equations.';
+const ragLessonRoute = '**/api/rag/lesson';
+
+describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
+  test('a curriculum lesson renders grounded AI content instead of an error or the PDF fallback', { session: 'student', timeout: 240_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
+    await app.open('/modules');
+    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    // The Daily Rewards modal opens on a timer after the claim state loads, so give it a moment before dismissing.
+    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
+    await agent.act(dismissDialogs);
+    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    const content = screen.getByRole('main');
+    await content.getByRole('button', /^Business and Finance/).tap();
+    await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
+
+    await content.getByRole('button', /^Lesson 1\s*Represent business transactions/).tap();
+    await agent.waitFor(lessonLoaded, { timeout: 120_000 });
+    await expect(screen.getByText('AI lesson unavailable')).toBeHidden();
+    await expect(screen.getByRole('heading', 'Failed to Load Lesson')).toBeHidden();
+    await expect(screen.getByRole('heading', 'Lesson Source Unavailable')).toBeHidden();
+    await expect(screen.getByRole('heading', lessonTitle, { level: 1 })).toBeVisible();
+    // Issue #164: students get no staff RAG telemetry.
+    await expect(screen.getByRole('button', 'Inspect evidence')).toBeHidden();
+
+    await screen.getByRole('button', 'Go to Intro section').tap();
+    await expect(screen.getByText('Lesson Mission & Overview')).toBeVisible();
+    await agent.assert(
+      'The lesson introduction gives an overview or learning objectives about representing business transactions or financial goals (such as prices, budgets, savings or income) with variables and equations. It is real lesson text, not an error message, a loading screen or a placeholder.',
+    );
+
+    await screen.getByRole('button', 'Go to Concepts section').tap();
+    await expect(screen.getByText(/^Part 2 of \d+$/)).toBeVisible();
+    await agent.assert(
+      'The page explains mathematical concepts such as variables, expressions or equations applied to business or personal finance situations.',
+    );
+
+    await screen.getByRole('button', 'Go to Examples section').tap();
+    await expect(screen.getByText(/^Part 4 of \d+$/)).toBeVisible();
+    await agent.assert('The page shows at least one worked example problem about a business or financial situation.');
   });
-  await expect(screen.getByRole('button', 'Dashboard')).toBeVisible();
 
-  await agent.act('open Modules from the student navigation');
-  await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
+  test('a failed RAG request falls back to the DepEd source PDF and Retry recovers the AI lesson', { session: 'student', timeout: 300_000, tags: ['ai'] }, async ({ app, agent, screen, browser }) => {
+    await browser.route(ragLessonRoute, async (route) => {
+      await route.abort();
+    });
+    await app.open('/modules');
+    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
+    await agent.act(dismissDialogs);
+    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    const content = screen.getByRole('main');
+    await content.getByRole('button', /^Business and Finance/).tap();
+    await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
 
-  await agent.act('open a visible mathematics module and its first lesson');
-  await expect(screen.getByText(/Lesson|Objectives|Overview/i)).toBeVisible();
+    await content.getByRole('button', /^Lesson 1\s*Represent business transactions/).tap();
+    await expect(screen.getByText('AI lesson unavailable')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByText('DepEd PDF')).toBeVisible();
+    await expect(screen.getByText(lessonTitle)).toBeVisible();
+    const openPdf = screen.getByRole('link', 'Open PDF in new tab');
+    await expect(openPdf).toHaveAttribute(
+      'href',
+      /^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/mathpulse-ai-2026\.firebasestorage\.app\/o\/.+\.pdf\?alt=media$/,
+    );
+    await expect(openPdf).toHaveAttribute('target', '_blank');
+
+    await agent.act('open the PDF viewing options with the "View Options" or "Show options" button');
+    await expect(screen.getByRole('heading', 'Read DepEd Curriculum Material')).toBeVisible();
+    await expect(screen.getByRole('link', /^Open PDF in New Window \/ Tab/)).toBeVisible();
+    await expect(screen.getByRole('button', 'Retry Generating AI Lesson')).toBeVisible();
+    await screen.getByRole('button', 'Back to PDF preview').tap();
+    await expect(screen.getByRole('heading', 'Read DepEd Curriculum Material')).toBeHidden();
+
+    await browser.unroute(ragLessonRoute);
+    await screen.getByRole('button', 'Retry AI lesson').tap();
+    await agent.waitFor(lessonLoaded, { timeout: 120_000 });
+    await expect(screen.getByText('AI lesson unavailable')).toBeHidden();
+    await expect(screen.getByRole('button', 'Go to Intro section')).toBeVisible();
+    await expect(screen.getByRole('heading', lessonTitle, { level: 1 })).toBeVisible();
+  });
+
+  test('a lesson whose curriculum PDF is not ingested explains why the AI lesson is unavailable', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+    // Mirrors the backend 404 body for missing curriculum context: FastAPI nests it under "detail".
+    await browser.route(ragLessonRoute, async (route) => {
+      const cors = {
+        'access-control-allow-origin': '*',
+        'access-control-allow-headers': 'authorization, content-type',
+        'access-control-allow-methods': 'POST, OPTIONS',
+      };
+      if (route.request.method === 'OPTIONS') {
+        await route.fulfill({ status: 204, headers: cors });
+        return;
+      }
+      await route.fulfill({
+        status: 404,
+        headers: cors,
+        json: {
+          detail: {
+            error: 'no_curriculum_context',
+            message: 'No curriculum content found for this lesson. Please ensure the PDF has been ingested.',
+            retrievalBand: 'low',
+            sources: [],
+          },
+          status: 404,
+        },
+      });
+    });
+    await app.open('/modules');
+    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
+    await agent.act(dismissDialogs);
+    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    const content = screen.getByRole('main');
+    await content.getByRole('button', /^Business and Finance/).tap();
+    await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
+
+    await content.getByRole('button', /^Lesson 1\s*Represent business transactions/).tap();
+    await expect(screen.getByText('AI lesson unavailable')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByText(/Please ensure the PDF has been ingested\./)).toBeVisible();
+  });
+
+  test('the PDF fallback offers a way back to the module', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+    await browser.route(ragLessonRoute, async (route) => {
+      await route.abort();
+    });
+    await app.open('/modules');
+    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
+    await agent.act(dismissDialogs);
+    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    const content = screen.getByRole('main');
+    await content.getByRole('button', /^Business and Finance/).tap();
+    await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
+
+    await content.getByRole('button', /^Lesson 1\s*Represent business transactions/).tap();
+    await expect(screen.getByText('AI lesson unavailable')).toBeVisible({ timeout: 30_000 });
+    await screen.getByRole('button', 'Go back').tap();
+    await expect(screen.getByRole('heading', 'Study Journey')).toBeVisible();
+  });
 });
