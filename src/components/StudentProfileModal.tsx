@@ -83,7 +83,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
             <button
               onClick={onClose}
               aria-label="Close profile modal"
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-black/20 hover:bg-black/30 text-white rounded-xl transition-colors z-10 cursor-pointer shadow-xs"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-black/20 hover:bg-black/30 text-white rounded-xl transition-colors z-20 cursor-pointer shadow-xs"
             >
               <X size={18} />
             </button>

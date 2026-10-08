@@ -48,7 +48,7 @@ describe('teacher dashboard', { tags: ['teacher', 'teacher-dashboard'] }, () => 
     await expect(screen.getByRole('heading', 'Class Analytics', { level: 1 })).toBeVisible();
   });
 
-  test('each class row shows its risk pill', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('each class row shows its risk pill', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     const rows = screen.getByText('Manage Class');
@@ -82,7 +82,7 @@ describe('teacher dashboard', { tags: ['teacher', 'teacher-dashboard'] }, () => 
     await expect(screen.getByRole('heading', 'Class Analytics', { level: 1 })).toBeVisible();
   });
 
-  test('the at-risk pill opens a view of at-risk students', { session: 'teacher', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('the at-risk pill opens a view of at-risk students', { session: 'teacher' }, async ({ app, agent, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
 
@@ -199,7 +199,7 @@ describe('teacher dashboard', { tags: ['teacher', 'teacher-dashboard'] }, () => 
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible();
   });
 
-  test('drawer mini calendar puts the 1st of the month under its weekday', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('drawer mini calendar puts the 1st of the month under its weekday', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', 'Open schedule and activity panel').tap();

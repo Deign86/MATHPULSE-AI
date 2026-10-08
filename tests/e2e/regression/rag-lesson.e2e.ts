@@ -85,7 +85,7 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
     await expect(screen.getByRole('heading', lessonTitle, { level: 1 })).toBeVisible();
   });
 
-  test('a lesson whose curriculum PDF is not ingested explains why the AI lesson is unavailable', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('a lesson whose curriculum PDF is not ingested explains why the AI lesson is unavailable', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     // Mirrors the backend 404 body for missing curriculum context: FastAPI nests it under "detail".
     await browser.route(ragLessonRoute, async (route) => {
       const cors = {
@@ -125,7 +125,37 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
     await expect(screen.getByText(/Please ensure the PDF has been ingested\./)).toBeVisible();
   });
 
-  test('the PDF fallback offers a way back to the module', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  // lessonService used to throw a plain Error, so useLessonContent never saw the HTTP status and
+  // every failure, a rejected session included, read "Failed to load lesson content.".
+  test('a lesson request the backend rejects as unauthenticated asks the student to sign in again', { session: 'student' }, async ({ app, agent, screen, browser }) => {
+    await browser.route(ragLessonRoute, async (route) => {
+      const cors = {
+        'access-control-allow-origin': '*',
+        'access-control-allow-headers': 'authorization, content-type',
+        'access-control-allow-methods': 'POST, OPTIONS',
+      };
+      if (route.request.method === 'OPTIONS') {
+        await route.fulfill({ status: 204, headers: cors });
+        return;
+      }
+      await route.fulfill({ status: 401, headers: cors, json: { detail: 'Invalid or expired token' } });
+    });
+    await app.open('/modules');
+    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
+    await agent.act(dismissDialogs);
+    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    const content = screen.getByRole('main');
+    await content.getByRole('button', /^Business and Finance/).tap();
+    await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
+
+    await content.getByRole('button', /^Lesson 1\s*Represent business transactions/).tap();
+    await expect(screen.getByText('AI lesson unavailable')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByText(/Please sign in again to access lessons\./)).toBeVisible();
+    await expect(screen.getByText(/Failed to load lesson content\./)).toBeHidden();
+  });
+
+  test('the PDF fallback offers a way back to the module', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await browser.route(ragLessonRoute, async (route) => {
       await route.abort();
     });

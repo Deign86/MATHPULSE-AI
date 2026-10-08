@@ -205,7 +205,7 @@ describe('student AI chat', { tags: ['student', 'ai-chat'] }, () => {
     await expect(browser).toHaveURL('/');
   });
 
-  test('phone chat keeps the composer clear of the bottom bar, titles new chats, and answers quick prompts', { session: 'student', tags: ['phone', 'known-bug'], timeout: 420_000 }, async ({ app, agent, screen, browser }) => {
+  test('phone chat keeps the composer clear of the bottom bar, titles new chats, and answers quick prompts', { session: 'student', tags: ['phone'], timeout: 420_000 }, async ({ app, agent, screen, browser }) => {
     const marker = `E2E-${Date.now()}`;
     const question = `${marker} 9 * 4 = ? Use LaTeX`;
     const ownRow = screen.getByRole('button', `Open conversation: ${question}`);

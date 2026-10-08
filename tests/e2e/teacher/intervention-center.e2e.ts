@@ -287,7 +287,7 @@ describe('teacher intervention center', { tags: ['teacher', 'intervention'] }, (
     await expect(screen.getByRole('heading', 'AI Analysis')).toBeVisible();
   });
 
-  test('Section Assignment shows the fixed grade and disables Update Assignment for a blank section, without saving', { session: 'teacher', timeout: 240_000 }, async ({ app, browser, screen }) => {
+  test('Section Assignment shows the student grade and disables Update Assignment for a blank section, without saving', { session: 'teacher', timeout: 240_000 }, async ({ app, browser, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Teaching' }).getByRole('button', 'My Classes').tap();
@@ -303,7 +303,7 @@ describe('teacher intervention center', { tags: ['teacher', 'intervention'] }, (
     const section = screen.getByPlaceholder('Section');
     const update = screen.getByRole('button', 'Update Assignment');
     await expect(grade).toBeDisabled();
-    await expect(grade).toHaveValue('Grade 11');
+    await expect(grade).toHaveValue(/^Grade 1[12]$/);
     await expect(section).toHaveValue(/\S/);
     await expect(update).toBeEnabled();
     const originalSection = await section.inputValue();

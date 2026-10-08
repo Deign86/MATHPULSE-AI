@@ -157,7 +157,7 @@ describe('teacher data import', { tags: ['teacher', 'data-import'] }, () => {
     await expect(scope.getByRole('option')).toHaveCount(classCount + 1);
   });
 
-  test('choosing a class in Target Class Context switches the import scope', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('choosing a class in Target Class Context switches the import scope', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     const hasClass = await screen.getByText('Manage Class').first().waitFor({ timeout: 15_000 }).then(() => true, () => false);
@@ -173,7 +173,7 @@ describe('teacher data import', { tags: ['teacher', 'data-import'] }, () => {
     await expect(scope).toHaveValue(chosenValue);
   });
 
-  test('Target Class Context shows the class opened with Manage Class', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Target Class Context shows the class opened with Manage Class', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     const manage = screen.getByText('Manage Class').first();
@@ -191,7 +191,7 @@ describe('teacher data import', { tags: ['teacher', 'data-import'] }, () => {
     await expect(scope).toHaveValue((await classOption.first().getAttribute('value')) ?? '');
   });
 
-  test('Go to Modules leaves Data Import for the modules screen', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Go to Modules leaves Data Import for the modules screen', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Teaching' }).getByRole('button', 'Data Import').tap();
@@ -283,7 +283,7 @@ describe('teacher data import', { tags: ['teacher', 'data-import'] }, () => {
     await expect(screen.getByRole('heading', 'Edit Class Records')).toBeHidden();
   });
 
-  test('Cancel discards an in-progress row edit', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Cancel discards an in-progress row edit', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Teaching' }).getByRole('button', 'Data Import').tap();

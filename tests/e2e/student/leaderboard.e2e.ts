@@ -2,7 +2,7 @@ import { describe, test } from '@e2e-dev/web';
 import { expect } from 'e2e';
 
 describe('student leaderboard', { tags: ['student', 'leaderboard'] }, () => {
-  test('Leadership Board in the sidebar opens the Leaderboard with Class Standings', { session: 'student' }, async ({ app, agent, screen, browser }) => {
+  test('Leadership Board in the sidebar opens the Leaderboard with School Standings', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
@@ -12,79 +12,39 @@ describe('student leaderboard', { tags: ['student', 'leaderboard'] }, () => {
     await expect(screen.getByRole('heading', 'Leaderboard')).toBeVisible({ timeout: 30_000 });
     await expect(browser).toHaveURL('/leaderboard');
     await expect(screen.getByText('Hall of Champions')).toBeVisible();
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible();
+    await expect(screen.getByRole('heading', 'School Standings')).toBeVisible();
     await expect(screen.getByText(/^\d+ Learners$/)).toBeVisible();
     await expect(screen.getByText(/^#\d+$/)).toBeVisible();
     await expect(
-      screen.getByText(/^(Only \d+ XP needed to overtake .+!|You hold the #1 rank! Keep mastering drills!)$/),
+      screen.getByText(/^(Only \d+ XP needed to overtake .+!|You hold the #1 rank! Keep mastering drills!|You're outside the top \d+\. Keep mastering drills to climb in!)$/),
     ).toBeVisible();
-    for (const filter of ['Show daily leaderboard', 'Show weekly leaderboard', 'Show All Time leaderboard']) {
-      await expect(screen.getByRole('button', filter)).toBeVisible();
-    }
+    await expect(screen.getByRole('main').getByText('All Time')).toBeVisible();
   });
 
-  test('daily, weekly, and All Time pills each become the highlighted filter', { session: 'student' }, async ({ app, agent, screen, browser }) => {
+  // Issue #233: the leaderboard collection only stores all-time XP, so the page shows a single
+  // All Time ranking instead of Daily/Weekly pills that could not change the order.
+  test('the ranking is all-time only, with no Daily or Weekly filter pills', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/leaderboard');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
-    await expect(screen.getByRole('heading', 'Leaderboard')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByRole('heading', 'School Standings')).toBeVisible({ timeout: 30_000 });
 
-    const daily = screen.getByRole('button', 'Show daily leaderboard');
-    const weekly = screen.getByRole('button', 'Show weekly leaderboard');
-    const allTime = screen.getByRole('button', 'Show All Time leaderboard');
-    await expect(daily).toHaveText(/^daily$/i);
-    await expect(weekly).toHaveText(/^weekly$/i);
-    await expect(allTime).toHaveText('All Time');
-    await expect(browser).toHaveClass(weekly, /from-purple-600/);
-
-    await daily.tap();
-    await expect(browser).toHaveClass(daily, /from-purple-600/, { timeout: 30_000 });
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
-    await expect(browser).not.toHaveClass(weekly, /from-purple-600/);
-
-    await allTime.tap();
-    await expect(browser).toHaveClass(allTime, /from-purple-600/, { timeout: 30_000 });
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
-    await expect(browser).not.toHaveClass(daily, /from-purple-600/);
-
-    await weekly.tap();
-    await expect(browser).toHaveClass(weekly, /from-purple-600/, { timeout: 30_000 });
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
-    await expect(browser).not.toHaveClass(allTime, /from-purple-600/);
+    await expect(screen.getByRole('main').getByText('All Time')).toBeVisible();
+    await expect(screen.getByRole('button', 'Show daily leaderboard')).toHaveCount(0);
+    await expect(screen.getByRole('button', 'Show weekly leaderboard')).toHaveCount(0);
+    await expect(screen.getByRole('button', 'Show All Time leaderboard')).toHaveCount(0);
   });
 
-  test('the weekly and All Time filters rank by different XP', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('School Standings highlights the signed-in student row and opens their profile', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/leaderboard');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
-
-    const podiumXp = screen.getByRole('main').getByText(/^\d+(\.\d)?k? XP$/);
-    await expect(podiumXp).toHaveCount(3);
-    const weeklyXp = (await podiumXp.allTextContents()).join(' | ');
-
-    await screen.getByRole('button', 'Show All Time leaderboard').tap();
-    await expect
-      .poll(
-        async () => {
-          const shown = await podiumXp.allTextContents();
-          return shown.length === 3 ? shown.join(' | ') : weeklyXp;
-        },
-        { timeout: 20_000 },
-      )
-      .not.toBe(weeklyXp);
-  });
-
-  test('Class Standings highlights the signed-in student row and opens their profile', { session: 'student' }, async ({ app, agent, screen, browser }) => {
-    await app.open('/leaderboard');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByRole('heading', 'School Standings')).toBeVisible({ timeout: 30_000 });
 
     const youBadge = screen.getByText(/^you$/i);
     test.skip(
       (await screen.getByRole('main').getByText(/^you$/i).count()) === 0,
-      'the e2e student is on the podium or outside the top 25, so Class Standings has no You row',
+      'the e2e student is on the podium or outside the top 25, so School Standings has no You row',
     );
     const youRow = browser.locator('main div.group.rounded-2xl').filter({ has: youBadge });
     await expect(browser).toHaveClass(youRow, /border-purple-500/);
@@ -97,11 +57,11 @@ describe('student leaderboard', { tags: ['student', 'leaderboard'] }, () => {
     await expect(screen.getByRole('heading', 'Performance Stats')).toBeHidden();
   });
 
-  test('the rank bar claims the #1 rank only when the rank badge reads #1', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('the rank bar claims the #1 rank only when the rank badge reads #1', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/leaderboard');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByRole('heading', 'School Standings')).toBeVisible({ timeout: 30_000 });
 
     const rankBadge = await screen.getByText(/^#\d+$/).textContent();
     const holdsFirst = screen.getByText('You hold the #1 rank! Keep mastering drills!');
@@ -116,9 +76,9 @@ describe('student leaderboard', { tags: ['student', 'leaderboard'] }, () => {
     await app.open('/leaderboard');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByRole('heading', 'School Standings')).toBeVisible({ timeout: 30_000 });
 
-    // Podium names render in the order 2nd, 1st, 3rd, ahead of the Class Standings heading.
+    // Podium names render in the order 2nd, 1st, 3rd, ahead of the School Standings heading.
     await screen.getByRole('main').getByRole('heading', { level: 3 }).nth(1).tap();
     await expect(screen.getByRole('heading', 'Performance Stats')).toBeVisible({ timeout: 15_000 });
     await expect(screen.getByRole('heading', 'Rankings')).toBeVisible();
@@ -133,7 +93,7 @@ describe('student leaderboard', { tags: ['student', 'leaderboard'] }, () => {
     await app.open('/leaderboard');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByRole('heading', 'School Standings')).toBeVisible({ timeout: 30_000 });
 
     await screen.getByRole('button', 'Battle').tap();
     await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible({ timeout: 30_000 });
@@ -141,14 +101,14 @@ describe('student leaderboard', { tags: ['student', 'leaderboard'] }, () => {
 
     await browser.back();
     await expect(browser).toHaveURL('/leaderboard');
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByRole('heading', 'School Standings')).toBeVisible({ timeout: 30_000 });
     await screen.getByRole('main').getByRole('button', 'Quiz Battle').tap();
     await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible({ timeout: 30_000 });
     await expect(browser).toHaveURL('/battle');
 
     await browser.back();
     await expect(browser).toHaveURL('/leaderboard');
-    await expect(screen.getByRole('heading', 'Class Standings')).toBeVisible({ timeout: 30_000 });
+    await expect(screen.getByRole('heading', 'School Standings')).toBeVisible({ timeout: 30_000 });
     await screen.getByRole('main').getByRole('button', 'Modules').tap();
     await expect(browser).toHaveURL('/modules');
     await expect(screen.getByRole('heading', 'Leaderboard')).toBeHidden({ timeout: 15_000 });
@@ -168,7 +128,7 @@ describe('student leaderboard', { tags: ['student', 'leaderboard'] }, () => {
     await mobileNav.getByRole('button', 'Leaderboard').tap();
     await expect(screen.getByRole('heading', 'Leaderboard')).toBeVisible({ timeout: 30_000 });
     await expect(browser).toHaveURL('/leaderboard');
-    await expect(screen.getByRole('button', 'Show All Time leaderboard')).toBeVisible();
+    await expect(screen.getByRole('main').getByText('All Time')).toBeVisible();
 
     await battleOptions.tap();
     await expect(battleOptions).toBeExpanded();
@@ -185,7 +145,7 @@ describe('student leaderboard', { tags: ['student', 'leaderboard'] }, () => {
       await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
       await expect(screen.getByText('Leaderboard Locked')).toBeVisible({ timeout: 30_000 });
       await expect(screen.getByText('This feature is temporarily unavailable while you focus on your learning.')).toBeVisible();
-      await expect(screen.getByRole('heading', 'Class Standings')).toBeHidden();
+      await expect(screen.getByRole('heading', 'School Standings')).toBeHidden();
     },
   );
 

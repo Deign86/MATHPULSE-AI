@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ArrowLeft,
   Palette,
@@ -66,10 +66,18 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
   const [emailAlerts, setEmailAlerts] = useState<boolean>(
     settingsData?.notifications?.emailNotifications ?? true
   );
-  const [atRiskAlerts, setAtRiskAlerts] = useState(true);
-  const [quizAlerts, setQuizAlerts] = useState(true);
-  const [weeklyDigest, setWeeklyDigest] = useState(true);
+  const [atRiskAlerts, setAtRiskAlerts] = useState<boolean>(
+    settingsData?.notifications?.notificationTypes?.achievements ?? true
+  );
+  const [quizAlerts, setQuizAlerts] = useState<boolean>(
+    settingsData?.notifications?.notificationTypes?.quizReminders ?? true
+  );
+  const [weeklyDigest, setWeeklyDigest] = useState<boolean>(
+    settingsData?.notifications?.notificationTypes?.weeklySummary ?? true
+  );
   const [isDirty, setIsDirty] = useState(false);
+  const savedSettingsRef = useRef<UserSettings | undefined>(settingsData);
+  const previewedSettingsRef = useRef<UserSettings | undefined>(undefined);
 
   // Password update states
   const [currentPassword, setCurrentPassword] = useState('');
@@ -78,33 +86,47 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  const syncFromSettings = useCallback((saved: UserSettings) => {
+    setDarkMode(saved.appearance?.darkMode ?? false);
+    setCompactView(saved.appearance?.compactView ?? false);
+    setReduceAnimations(saved.appearance?.reduceAnimations ?? false);
+    setEmailAlerts(saved.notifications?.emailNotifications ?? true);
+    setAtRiskAlerts(saved.notifications?.notificationTypes?.achievements ?? true);
+    setQuizAlerts(saved.notifications?.notificationTypes?.quizReminders ?? true);
+    setWeeklyDigest(saved.notifications?.notificationTypes?.weeklySummary ?? true);
+  }, []);
+
+  // Sync settings loaded or saved by the app; skip echoes of our own theme preview
   useEffect(() => {
-    if (settingsData?.appearance?.darkMode !== undefined) {
-      setDarkMode(settingsData.appearance.darkMode);
+    if (settingsData && settingsData !== previewedSettingsRef.current) {
+      savedSettingsRef.current = settingsData;
+      syncFromSettings(settingsData);
     }
-    if (settingsData?.appearance?.compactView !== undefined) {
-      setCompactView(settingsData.appearance.compactView);
-    }
-    if (settingsData?.appearance?.reduceAnimations !== undefined) {
-      setReduceAnimations(settingsData.appearance.reduceAnimations);
-    }
-    if (settingsData?.notifications?.emailNotifications !== undefined) {
-      setEmailAlerts(settingsData.notifications.emailNotifications);
-    }
-  }, [settingsData]);
+  }, [settingsData, syncFromSettings]);
 
   const handleDarkModeChange = (isDark: boolean) => {
     setDarkMode(isDark);
     setIsDirty(true);
     if (onApplySettingsPreview && settingsData) {
-      onApplySettingsPreview({
+      const previewed = {
         ...settingsData,
         appearance: {
           ...settingsData.appearance,
           darkMode: isDark,
         },
-      });
+      };
+      previewedSettingsRef.current = previewed;
+      onApplySettingsPreview(previewed);
     }
+  };
+
+  const discardChanges = () => {
+    const saved = savedSettingsRef.current;
+    if (saved) {
+      syncFromSettings(saved);
+      onApplySettingsPreview?.(saved);
+    }
+    setIsDirty(false);
   };
 
   const handleSaveSettings = async () => {
@@ -578,7 +600,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
                         Clear Browser Cache
                       </h4>
                       <p className="text-[11px] text-rose-700/80 dark:text-rose-300/80 mt-1">
-                        Purge cached student indices, lesson drafts, and offline analytics. Will reload the workspace.
+                        Purge cached student indices, lesson drafts, and offline analytics.
                       </p>
                     </div>
                     {onClearCache && (
@@ -618,12 +640,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      if (settingsData?.appearance?.darkMode !== undefined) {
-                        setDarkMode(settingsData.appearance.darkMode);
-                      }
-                      setIsDirty(false);
-                    }}
+                    onClick={discardChanges}
                     disabled={isSaving}
                     className="min-h-[40px] text-xs font-bold rounded-xl"
                   >
@@ -658,7 +675,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
         onClose={() => setIsDiscardConfirmOpen(false)}
         onConfirm={() => {
           setIsDiscardConfirmOpen(false);
-          setIsDirty(false);
+          discardChanges();
           if (onBack) onBack();
         }}
         title="Discard Unsaved Settings?"

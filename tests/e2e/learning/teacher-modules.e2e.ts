@@ -193,7 +193,7 @@ describe('student teacher uploaded modules', { tags: ['student', 'teacher-module
     await expect(screen.getByText(/^0 of \d+ Attempted$/)).toBeVisible();
   });
 
-  test('Study Guide step progress is still shown after a page reload', { session: 'student', timeout: 300_000, tags: ['known-bug'] }, async ({ app, agent, browser, screen }) => {
+  test('Study Guide step progress is still shown after a page reload', { session: 'student', timeout: 300_000 }, async ({ app, agent, browser, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();

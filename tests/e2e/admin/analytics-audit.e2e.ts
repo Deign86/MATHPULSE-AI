@@ -48,9 +48,8 @@ describe('admin analytics and audit log', { tags: ['admin', 'analytics-audit'] }
 
     await screen.getByRole('button', 'Curriculum & Subject Health').tap();
     await expect(screen.getByRole('heading', 'Curriculum & Subject Performance Matrix')).toBeVisible();
-    for (const column of ['Subject', 'Enrolled', 'Quiz Submissions', 'Average Score', 'Curriculum Completion', 'Mastery Status']) {
-      await expect(screen.getByRole('columnheader', column)).toBeVisible();
-    }
+    await expect(screen.getByText(/^Per-subject performance is not available yet/)).toBeVisible();
+    await expect(screen.getByRole('columnheader')).toHaveCount(0);
     await expect(screen.getByRole('heading', 'Mastery Cohorts')).toBeHidden();
 
     await screen.getByRole('button', 'Engagement & Leaderboards').tap();
@@ -84,7 +83,7 @@ describe('admin analytics and audit log', { tags: ['admin', 'analytics-audit'] }
     expect(weekReport.suggestedFilename).toMatch(/^MathPulse_Analytics_7d_\d{4}-\d{2}-\d{2}\.csv$/);
   });
 
-  test('Manage Sections on Top Performing STEM Classes opens Class Management', { session: 'admin', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Manage Sections on Top Performing STEM Classes opens Class Management', { session: 'admin' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Insights & Security' }).getByRole('button', 'Analytics').tap();
@@ -254,7 +253,7 @@ describe('admin analytics and audit log', { tags: ['admin', 'analytics-audit'] }
     await expect(screen.getByText('Audit log exported successfully')).toBeVisible();
   });
 
-  test('the filter-toolbar Export button has an accessible name', { session: 'admin', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('the filter-toolbar Export button has an accessible name', { session: 'admin' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Insights & Security' }).getByRole('button', 'Audit Log').tap();

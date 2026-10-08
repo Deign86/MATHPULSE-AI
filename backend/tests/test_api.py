@@ -2450,6 +2450,43 @@ class TestAdminListUsersEndpoint:
         assert payload["users"][0]["role"] == "Student"
         assert payload["hasMore"] is True
 
+    def test_filter_admin_user_records_matches_lrn(self):
+        records = [
+            {"uid": "student-a", "name": "Alice Student", "email": "alice@student.com", "lrn": "100000000001"},
+            {"uid": "student-b", "name": "Ben Student", "email": "ben@student.com", "lrn": "100000000002"},
+        ]
+
+        matched = main_module._filter_admin_user_records(records, search="100000000002")
+
+        assert [record["uid"] for record in matched] == ["student-b"]
+
+    def test_get_admin_users_search_total_is_independent_of_page_size(self):
+        seed_users = {
+            f"student-{index:03d}": {
+                "name": f"Student {index:03d}",
+                "email": f"student{index:03d}@student.com",
+                "role": "student",
+                "status": "Active",
+                "lrn": f"1000000{index:05d}",
+                "createdAt": 1710000000 + index,
+            }
+            for index in range(100)
+        }
+        firestore = _ProvisionFirestoreModule({"users": seed_users, "accessAuditLogs": {}})
+
+        totals = []
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "admin-uid",
+            "email": "admin@example.com",
+            "role": "admin",
+        }):
+            for page_size in (10, 25, 50):
+                response = client.get(f"/api/admin/users?page=1&pageSize={page_size}&search=Student 099")
+                assert response.status_code == 200
+                totals.append(response.json()["total"])
+
+        assert totals == [1, 1, 1]
+
     def test_get_admin_users_rejects_invalid_role_filter(self):
         firestore = _ProvisionFirestoreModule({"users": {}, "accessAuditLogs": {}})
 

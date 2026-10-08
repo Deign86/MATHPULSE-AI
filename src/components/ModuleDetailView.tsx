@@ -17,6 +17,7 @@ import type { UserProgress, AIQuizQuestion } from '../types/models';
 
 import { generatePracticeSession } from '../services/practiceService';
 import { useModuleProgress } from '../hooks/useModuleProgress';
+import { CURRICULUM_MODULE_BLUEPRINTS } from '../data/curriculumModules';
 import { Loader2 } from 'lucide-react';
 import MathPulseLoader from './ui/MathPulseLoader';
 
@@ -130,9 +131,12 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
     }
   }, [selectedLesson, module.id]);
 
-  const moduleLevel = useMemo(() => {
-    const candidate = Number(module.id.split('-').pop());
-    return Number.isFinite(candidate) && candidate > 0 ? candidate : 1;
+  // Chapter = the module's position within its subject's blueprint sequence; ids are slugs, not numbers.
+  const curriculumChapter = useMemo(() => {
+    const blueprint = CURRICULUM_MODULE_BLUEPRINTS.find((candidate) => candidate.id === module.id);
+    if (!blueprint) return null;
+    const subjectBlueprints = CURRICULUM_MODULE_BLUEPRINTS.filter((candidate) => candidate.subjectId === blueprint.subjectId);
+    return { number: subjectBlueprints.indexOf(blueprint) + 1, quarter: blueprint.quarter };
   }, [module.id]);
 
   const subjectIdResolution = useMemo(() => {
@@ -357,13 +361,13 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
       learningObjectives: [currentLesson.learningCompetency ?? currentLesson.description ?? currentLesson.title],
       questions: getQuestionCountForQuiz('practice'),
       duration: currentLesson.duration,
-      completed: false,
+      completed: completedQuizIds.has(`${currentLesson.id}-practice`),
       locked: false,
       type: 'practice' as const,
     } satisfies Quiz & { learningObjectives: string[] };
     setSelectedLesson({ type: 'quiz', quiz: practiceQuiz, returnToLesson: currentLesson });
     setIsInQuizMode?.(true);
-  }, [setIsInQuizMode]);
+  }, [completedQuizIds, setIsInQuizMode]);
 
   const handleComplete = useCallback((score?: number, totalXP?: number, goToNext?: boolean) => {
     const current = selectedLessonRef.current;
@@ -393,7 +397,6 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             module.id,
             currentLesson.id,
             0,
-            xpAmount
           );
           await recalculateAndUpdateModuleProgress(
             userProfile.uid,
@@ -489,7 +492,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             duration: selectedLesson.quiz.duration || '15 min',
             xpReward: 50,
             type: 'practice',
-            completed: selectedLesson.quiz.completed,
+            completed: selectedLesson.quiz.completed || completedQuizIds.has(selectedLesson.quiz.id),
             locked: false,
             // SAFETY: trusted internal value already conforms to the asserted type.
             loadedQuestions: quizQuestions as AIQuizQuestion[],
@@ -508,7 +511,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
             if (userProfile?.uid && subjectId) {
               void (async () => {
                 try {
-                  await completeQuiz(userProfile.uid, subjectId, module.id, selectedLesson.quiz.id, score, [], 0, xpEarned);
+                  await completeQuiz(userProfile.uid, subjectId, module.id, selectedLesson.quiz.id, score, [], 0, selectedLesson.returnToLesson?.id);
                   await recalculateAndUpdateModuleProgress(userProfile.uid, subjectId, module.id, module.lessons.length, module.quizzes.length);
                   await subscribeToUserProgress(userProfile.uid, setUserProgress);
                 } catch (err) { console.warn('[Quiz] Progress persist failed:', err); }
@@ -549,12 +552,16 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
         <div className="relative p-5 md:p-6 lg:p-8 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-5">
           <div className="flex-1 text-white">
             <div className="flex flex-wrap items-center gap-2 mb-2 md:mb-2.5">
-              <div className="px-2.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-[#f8fafc] border border-white/20 shadow-sm flex items-center gap-1">
-                <Bookmark size={12} /> Chapter {module.id.split('-').pop() || '1'}
-              </div>
-              <div className="px-2.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-400 border border-emerald-400/30">
-                Lv {moduleLevel}
-              </div>
+              {curriculumChapter && (
+                <>
+                  <div className="px-2.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-[#f8fafc] border border-white/20 shadow-sm flex items-center gap-1">
+                    <Bookmark size={12} /> Chapter {curriculumChapter.number}
+                  </div>
+                  <div className="px-2.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-400 border border-emerald-400/30">
+                    {curriculumChapter.quarter}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-2 mb-2">

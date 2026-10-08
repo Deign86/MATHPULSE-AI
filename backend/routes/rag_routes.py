@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -72,7 +73,8 @@ async def _generate_text(
         top_p=0.9,
         enable_thinking=enable_thinking,
     )
-    return _get_inference_client().generate_from_messages(request)
+    # The inference client is synchronous; keep its network call off the event loop.
+    return await asyncio.to_thread(_get_inference_client().generate_from_messages, request)
 
 
 def _log_rag_usage(
@@ -349,7 +351,8 @@ def _ensure_7_sections(lesson_data: dict, lesson_title: str, chunks: Optional[Li
 async def rag_lesson(request: Request, payload: RagLessonRequest):
     # ── Step 1: Retrieve curriculum chunks ───────────────────────────────────
     try:
-        chunks, retrieval_mode = retrieve_lesson_pdf_context(
+        chunks, retrieval_mode = await asyncio.to_thread(
+            retrieve_lesson_pdf_context,
             topic=build_lesson_query(
                 payload.topic,
                 payload.subject,
@@ -566,7 +569,8 @@ async def rag_lesson(request: Request, payload: RagLessonRequest):
 
 @router.post("/generate-problem")
 async def rag_generate_problem(request: Request, payload: RagProblemRequest):
-    chunks = retrieve_curriculum_context(
+    chunks = await asyncio.to_thread(
+        retrieve_curriculum_context,
         query=payload.topic,
         subject=payload.subject,
         quarter=payload.quarter,
@@ -621,7 +625,7 @@ async def rag_analysis_context(request: Request, payload: RagAnalysisContextRequ
     if not payload.weakTopics:
         raise HTTPException(status_code=400, detail="weakTopics must be a non-empty list")
 
-    chunks = build_analysis_curriculum_context(payload.weakTopics, payload.subject)
+    chunks = await asyncio.to_thread(build_analysis_curriculum_context, payload.weakTopics, payload.subject)
     lines = ["LEARNING COMPETENCIES:"]
     for index, row in enumerate(chunks, start=1):
         lines.append(

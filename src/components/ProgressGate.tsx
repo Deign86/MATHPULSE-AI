@@ -3,13 +3,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, Lock, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Lock, CheckCircle, Loader2, LogOut } from 'lucide-react';
 import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { sanitizeDisplayName } from '../utils/profileValidation';
 import { useAuth } from '../contexts/AuthContext';
 
-export const ProgressGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ProgressGate: React.FC<{ children: React.ReactNode; onSignOut?: () => void }> = ({ children, onSignOut }) => {
   const { currentUser } = useAuth();
   const [gated, setGated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -103,8 +103,18 @@ export const ProgressGate: React.FC<{ children: React.ReactNode }> = ({ children
               </div>
             </div>
             <div className="text-xs text-slate-400">
-              You can still review completed lessons and practice problems while you wait.
+              Lessons, practice and the rest of MathPulse stay closed until {teacherName} confirms your plan. You can sign out and come back later.
             </div>
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700 transition-colors"
+              >
+                <LogOut size={16} />
+                Sign out
+              </button>
+            )}
           </div>
         </motion.div>
       ) : (

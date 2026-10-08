@@ -12,8 +12,13 @@ export const PricingInfoTooltip: React.FC<PricingInfoTooltipProps> = ({ pricingM
   return (
     <div className="relative inline-block">
       <button
+        type="button"
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
+        onFocus={() => setShow(true)}
+        onBlur={() => setShow(false)}
+        onClick={() => setShow(true)}
+        aria-expanded={show}
         className="rounded p-1 text-slate-400 hover:text-slate-600"
         aria-label="Pricing info"
       >

@@ -72,11 +72,11 @@ export function useModuleProgress({
     async (lessonId: string) => {
       if (!userId) return;
       const progressRef = doc(db, 'progress', userId);
+      // setDoc treats dotted keys as literal field names; only nested objects merge into lessons.<id>.
       await setDoc(
         progressRef,
         {
-          [`lessons.${lessonId}.lessonId`]: lessonId,
-          [`lessons.${lessonId}.studyMaterialsCompleted`]: true,
+          lessons: { [lessonId]: { lessonId, studyMaterialsCompleted: true } },
           updatedAt: serverTimestamp(),
         },
         { merge: true },

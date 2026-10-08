@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 import logging
 
 from config.ai_pricing import get_active_pricing, get_full_pricing, DEEPSEEK_PRICING
-from services.cost_calculator import calculate_feature_cost, calculate_full_price_cost
 
 logger = logging.getLogger("mathpulse.ai_monitoring")
 
@@ -53,6 +52,7 @@ def _aggregate_telemetry() -> dict:
         }
         for offset in range(30)
     }
+    requests_by_task_type: dict[str, int] = {}
     start_at = datetime.combine(first_day, time.min, tzinfo=MANILA).astimezone(timezone.utc)
     end_at = datetime.combine(today + timedelta(days=1), time.min, tzinfo=MANILA).astimezone(timezone.utc)
     db = _get_firestore_client()
@@ -76,6 +76,9 @@ def _aggregate_telemetry() -> dict:
                     continue
                 daily = days[bucket]
                 daily["totalAttempts"] += 1
+                task_type = event.get("taskType")
+                if isinstance(task_type, str) and task_type:
+                    requests_by_task_type[task_type] = requests_by_task_type.get(task_type, 0) + 1
                 if event.get("status") == "success":
                     daily["successfulAttempts"] += 1
                     latency_ms = event.get("latencyMs")
@@ -104,6 +107,7 @@ def _aggregate_telemetry() -> dict:
 
     return {
         "dailyMetrics": daily_metrics,
+        "requestsByTaskType": requests_by_task_type,
         "totalAttempts": total_attempts,
         "successfulAttempts": successful_attempts,
         "completedRequests": completed_requests,
@@ -145,94 +149,69 @@ def _build_pricing_meta(model_id: str = "deepseek-v4-pro") -> dict:
     }
 
 
-def _aggregate_summary() -> dict:
-    """
-    Aggregate AI monitoring summary from in-memory/mock data.
-    In production, this reads from Firestore ai_usage_logs collection.
-    """
-    # TODO: Replace with actual Firestore aggregation when usage logging is wired
+FEATURE_NAMES = {
+    "chat": "AI Chat Tutor",
+    "rag_lesson": "RAG Lessons",
+    "lesson_generation": "Lesson Generation",
+    "quiz_generation": "Quiz Generation",
+    "verify_solution": "Solution Verification",
+    "intervention_plan": "Intervention Plans",
+    "class_report": "Class Reports",
+    "daily_insight": "Daily Insights",
+    "learning_path": "Learning Paths",
+    "risk_narrative": "Risk Narratives",
+}
+COST_TRACKING_NOTE = (
+    "Token usage, cost and cache hits are not logged; only attempt counts, outcomes and latency are measured."
+)
+
+
+def _aggregate_summary(telemetry: dict | None = None) -> dict:
+    """Summarise measured attempts per task type. Cost and cache figures are not measured and stay null."""
+    if telemetry is None:
+        telemetry = _aggregate_telemetry()
     model_id = "deepseek-v4-pro"
     pricing = get_active_pricing(model_id)
+    total_attempts = telemetry["totalAttempts"]
+    by_task_type = sorted(telemetry["requestsByTaskType"].items(), key=lambda entry: (-entry[1], entry[0]))
 
-    # Feature definitions with estimated token distributions
-    features_config = [
-        {"id": "ai_chat_tutor", "name": "AI Chat Tutor", "model": model_id, "share": 0.35, "cache_hit_rate": 0.62, "icon": "MessageCircle"},
-        {"id": "hint_generation", "name": "Hint Generation", "model": model_id, "share": 0.28, "cache_hit_rate": 0.58, "icon": "Lightbulb"},
-        {"id": "lesson_generation", "name": "Lesson Generation", "model": model_id, "share": 0.18, "cache_hit_rate": 0.35, "icon": "GraduationCap"},
-        {"id": "learning_paths", "name": "Learning Paths", "model": model_id, "share": 0.09, "cache_hit_rate": 0.40, "icon": "Target"},
-        {"id": "quiz_generation", "name": "Quiz Generation", "model": model_id, "share": 0.09, "cache_hit_rate": 0.38, "icon": "PenTool"},
-        {"id": "other", "name": "Other AI Features", "model": model_id, "share": 0.01, "cache_hit_rate": 0.50, "icon": "Zap"},
+    features = [
+        {
+            "featureId": task_type,
+            "featureName": FEATURE_NAMES.get(task_type, task_type.replace("_", " ").title()),
+            "modelId": model_id,
+            "monthlyCost": None,
+            "requestShare": round(count / total_attempts * 100, 1) if total_attempts else 0.0,
+            "totalRequests": count,
+            "totalInputTokens": None,
+            "totalOutputTokens": None,
+            "cacheHitRate": None,
+            "isMostActive": position == 0,
+            "isTopSpending": False,
+            "icon": "Zap",
+        }
+        for position, (task_type, count) in enumerate(by_task_type)
     ]
-
-    total_requests = 6900
-    total_input_tokens = 8_500_000
-    total_output_tokens = 3_200_000
-
-    features = []
-    total_cost = 0.0
-    total_full_price_cost = 0.0
-    total_cache_hit_tokens = 0
-    total_cache_miss_tokens = 0
-
-    for fc in features_config:
-        req_count = int(total_requests * fc["share"])
-        input_share = int(total_input_tokens * fc["share"])
-        output_share = int(total_output_tokens * fc["share"])
-        cache_hit = int(input_share * fc["cache_hit_rate"])
-        cache_miss = input_share - cache_hit
-
-        cost = calculate_feature_cost(fc["model"], cache_hit, cache_miss, output_share)
-        full_cost = calculate_full_price_cost(fc["model"], cache_hit, cache_miss, output_share)
-
-        total_cost += cost["total_usd"]
-        total_full_price_cost += full_cost
-        total_cache_hit_tokens += cache_hit
-        total_cache_miss_tokens += cache_miss
-
-        features.append({
-            "featureId": fc["id"],
-            "featureName": fc["name"],
-            "modelId": fc["model"],
-            "monthlyCost": round(cost["total_usd"], 4),
-            "costShare": round(fc["share"] * 100, 1),
-            "totalRequests": req_count,
-            "totalInputTokens": input_share,
-            "totalOutputTokens": output_share,
-            "cacheHitRate": fc["cache_hit_rate"],
-            "isMostActive": fc["id"] == "ai_chat_tutor",
-            "isTopSpending": fc["id"] == "ai_chat_tutor",
-            "icon": fc["icon"],
-        })
-
-    overall_cache_hit_rate = total_cache_hit_tokens / (total_cache_hit_tokens + total_cache_miss_tokens) if (total_cache_hit_tokens + total_cache_miss_tokens) > 0 else 0
-
-    # Cost breakdown
-    total_cache_hit_cost = (total_cache_hit_tokens / 1_000_000) * pricing["input_cache_hit_per_1m"]
-    total_cache_miss_cost = (total_cache_miss_tokens / 1_000_000) * pricing["input_cache_miss_per_1m"]
-    total_output_cost = (total_output_tokens / 1_000_000) * pricing["output_per_1m"]
 
     summary = {
         "systemStatus": "healthy",
         "actionRequired": False,
         "hasPerformanceIssues": False,
-        "monthlyCost": round(total_cost, 4),
-        "projectedMonthlyCost": round(total_cost * 1.1, 4),
-        "billingCycleLabel": "Current Billable Cycle",
-        "costBreakdown": {
-            "cacheHitCost": round(total_cache_hit_cost, 6),
-            "cacheMissCost": round(total_cache_miss_cost, 6),
-            "outputCost": round(total_output_cost, 6),
-        },
-        "totalUsage": total_requests,
-        "totalInputTokens": total_cache_hit_tokens + total_cache_miss_tokens,
-        "totalOutputTokens": total_output_tokens,
-        "cacheHitRate": round(overall_cache_hit_rate, 4),
+        "monthlyCost": None,
+        "projectedMonthlyCost": None,
+        "billingCycleLabel": "Last 30 days",
+        "costBreakdown": None,
+        "costTrackingNote": COST_TRACKING_NOTE,
+        "totalUsage": total_attempts,
+        "totalInputTokens": None,
+        "totalOutputTokens": None,
+        "cacheHitRate": None,
         "activeEngine": "DeepSeek-V4 Pro",
         "activeEngineModelId": model_id,
         "engineTier": "High-Performance LLM",
         "promotionalPricingActive": pricing.get("is_promotional", False),
         "promotionalPriceExpiresUtc": pricing.get("promo_expires_utc", ""),
-        "estimatedCostAfterPromo": round(total_full_price_cost, 4),
+        "estimatedCostAfterPromo": None,
         "lastUpdated": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -242,19 +221,19 @@ def _aggregate_summary() -> dict:
 @router.get("/summary")
 def get_monitoring_summary(_admin=Depends(require_admin)):
     """Returns AI monitoring summary + feature metrics + pricing metadata."""
-    data = _aggregate_summary()
+    telemetry = _aggregate_telemetry()
+    aggregated = _aggregate_summary(telemetry)
     return {
-        **data["summary"],
-        "features": data["features"],
+        **aggregated["summary"],
+        "features": aggregated["features"],
         "pricingMeta": _build_pricing_meta(),
-        "telemetry": _aggregate_telemetry(),
+        "telemetry": telemetry,
     }
 
 
 @router.post("/refresh")
 def refresh_monitoring(_admin=Depends(require_admin)):
-    """Re-aggregate usage metrics and recalculate costs."""
-    data = _aggregate_summary()
+    """Acknowledge a refresh; the summary endpoint re-aggregates on every read."""
     # TODO: Write to Firestore ai_monitoring/summary when Firestore admin SDK is available
     pricing = get_active_pricing("deepseek-v4-pro")
     return {

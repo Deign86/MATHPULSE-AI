@@ -409,7 +409,7 @@ describe('teacher topic mastery and competency matrix', { tags: ['teacher', 'top
     await expect(screen.getByRole('button', 'Back to Classes')).toBeVisible();
   });
 
-  test('Back to Classes opens the class picker and choosing a class reopens its table', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Back to Classes opens the class picker and choosing a class reopens its table', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     const hasClass = await screen.getByText('Manage Class').first().waitFor({ timeout: 15_000 }).then(() => true, () => false);

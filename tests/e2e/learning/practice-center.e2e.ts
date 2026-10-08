@@ -113,7 +113,7 @@ describe('student practice center', { tags: ['student', 'practice-center'] }, ()
     await expect(screen.getByRole('heading', 'Composite Functions')).toBeVisible();
   });
 
-  test('one practice attempt reports the same XP in the XP toast and in the score toast', { session: 'student', timeout: 420_000, tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('one practice attempt reports the same XP in the XP toast and in the score toast', { session: 'student', timeout: 420_000 }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
@@ -147,7 +147,7 @@ describe('student practice center', { tags: ['student', 'practice-center'] }, ()
     expect(scoreToastXp).toBe(toastXp);
   });
 
-  test('the Practice Center hides topics from shelved subjects', { session: 'student', timeout: 120_000, tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('the Practice Center hides topics from shelved subjects', { session: 'student', timeout: 120_000 }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();

@@ -205,14 +205,13 @@ export const exportUserDataSnapshot = async (uid: string): Promise<UserDataSnaps
     'progress',
     'xpActivities',
     'achievements',
-    'notifications',
     'tasks',
     'chatSessions',
     'chatMessages',
   ];
 
-  const byUserId = await Promise.all(
-    ownerCollections.map(async (collectionName) => {
+  const byUserId = await Promise.all([
+    ...ownerCollections.map(async (collectionName) => {
       const q = query(collection(db, collectionName), where('userId', '==', uid));
       const snap = await getDocs(q);
       return {
@@ -220,7 +219,11 @@ export const exportUserDataSnapshot = async (uid: string): Promise<UserDataSnaps
         items: snap.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() })),
       };
     }),
-  );
+    getDocs(collection(db, 'notifications', uid, 'items')).then((snap) => ({
+      collectionName: 'notifications',
+      items: snap.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() })),
+    })),
+  ]);
 
   return {
     exportedAt: new Date().toISOString(),
