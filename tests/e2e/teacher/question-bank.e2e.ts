@@ -83,7 +83,7 @@ describe('teacher question bank', { tags: ['teacher', 'question-bank'] }, () => 
     await expect(screen.getByRole('button', 'Ingest PDF')).toBeEnabled();
   });
 
-  test('Ingest New PDF fields are reachable by their labels', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Ingest New PDF fields are reachable by their labels', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Teaching' }).getByRole('button', 'Question Bank').tap();

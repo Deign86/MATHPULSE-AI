@@ -70,7 +70,7 @@ describe('teacher AI quiz maker', { tags: ['teacher', 'quiz-maker'] }, () => {
     await expect(questionCount).toHaveValue('1');
   });
 
-  test('Setup step has a single Quiz title field', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Setup step has a single Quiz title field', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Teaching' }).getByRole('button', 'AI Quiz Maker').tap();

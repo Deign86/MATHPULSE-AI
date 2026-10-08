@@ -1,12 +1,18 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import HeroBanner from './HeroBanner';
 
 describe('HeroBanner', () => {
   beforeEach(() => {
     // Clear localStorage between tests
     window.localStorage.clear();
+  });
+
+  // Vitest globals are off, so Testing Library does not unmount on its own; a still-mounted banner
+  // lets the lazy DashboardAvatar resolve after the jsdom environment is torn down.
+  afterEach(() => {
+    cleanup();
   });
 
   it('personalizes the banner and continues learning on request', () => {
@@ -69,5 +75,15 @@ describe('HeroBanner', () => {
     const remount = render(<HeroBanner userName="Student" studentId="s1" assessmentCompleted />);
 
     expect(within(remount.container).queryByText('Assessment Complete!')).not.toBeInTheDocument();
+  });
+
+  it('keeps a dismissed alert hidden when the diagnostic check resolves from unknown to completed', () => {
+    window.localStorage.setItem('mathpulse:dismissed_assessment_complete_tooltip_s1', 'true');
+    const { container, rerender } = render(<HeroBanner userName="Student" studentId="s1" assessmentCompleted={null} />);
+
+    rerender(<HeroBanner userName="Student" studentId="s1" assessmentCompleted={true} />);
+
+    expect(window.localStorage.getItem('mathpulse:dismissed_assessment_complete_tooltip_s1')).toBe('true');
+    expect(within(container).queryByText('Assessment Complete!')).not.toBeInTheDocument();
   });
 });

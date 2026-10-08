@@ -7,6 +7,28 @@ import { getScopeBoundaryResponse } from '../utils/mathScope';
 import { buildChatHintCacheKey, getHintCacheResponse, isHintPrompt, setHintCacheResponse } from '../utils/hintCache';
 
 
+export function generateTitleFromMessages(messages: Pick<Message, 'sender' | 'text'>[]): string {
+  const firstUserMessage = (messages.find(m => m.sender === 'user')?.text || '').trim();
+  if (!firstUserMessage) return 'New Chat';
+  const lower = firstUserMessage.toLowerCase();
+
+  if (/\bquadratic\b/.test(lower) || lower.includes('ax² + bx + c')) return 'Quadratic Equations Help';
+  if (/\b(?:derivatives?|calculus)\b/.test(lower)) return 'Derivatives & Calculus';
+  if (lower.includes('pythagor') || lower.includes('right triangle')) return 'Pythagorean Theorem';
+  if (/\b(?:trig\w*|sin|cos|tan|sine|cosine|tangent)\b/.test(lower)) return 'Trigonometry Help';
+  if (/\b(?:areas?|perimeters?)\b/.test(lower)) return 'Geometry - Area & Perimeter';
+  if (/\balgebra/.test(lower) || (/\bsolve\b/.test(lower) && /\bx\b/.test(lower))) return 'Algebra Problem Solving';
+  if (/\bfactor/.test(lower)) return 'Factoring Practice';
+  if (/\b(?:graph|plot)/.test(lower)) return 'Graphing Functions';
+  if (/\b(?:matrix|matrices)\b/.test(lower)) return 'Matrix Operations';
+  if (/\bintegra(?:l|te)/.test(lower)) return 'Integration Problems';
+  if (/\blimits?\b/.test(lower)) return 'Limits in Calculus';
+  if (/\b(?:statistic|probability)/.test(lower)) return 'Statistics & Probability';
+
+  const truncated = firstUserMessage.slice(0, 40);
+  return truncated.length < firstUserMessage.length ? truncated + '...' : truncated;
+}
+
 export interface Message {
   id: string;
   sender: 'user' | 'ai';
@@ -755,28 +777,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     loadSessions();
   }, [currentUser, sessionsRetryCount]);
-
-  const generateTitleFromMessages = (messages: Message[]): string => {
-    if (messages.length === 0) return 'New Chat';
-    const firstUserMessage = messages.find(m => m.sender === 'user')?.text || '';
-    const lower = firstUserMessage.toLowerCase();
-
-    if (lower.includes('quadratic') || lower.includes('ax² + bx + c')) return 'Quadratic Equations Help';
-    if (lower.includes('derivative') || lower.includes('calculus')) return 'Derivatives & Calculus';
-    if (lower.includes('pythagor') || lower.includes('right triangle')) return 'Pythagorean Theorem';
-    if (lower.includes('trig') || lower.includes('sin') || lower.includes('cos')) return 'Trigonometry Help';
-    if (lower.includes('area') || lower.includes('perimeter')) return 'Geometry - Area & Perimeter';
-    if (lower.includes('algebra') || (lower.includes('solve') && lower.includes('x'))) return 'Algebra Problem Solving';
-    if (lower.includes('factor')) return 'Factoring Practice';
-    if (lower.includes('graph') || lower.includes('plot')) return 'Graphing Functions';
-    if (lower.includes('matrix') || lower.includes('matrices')) return 'Matrix Operations';
-    if (lower.includes('integral') || lower.includes('integrate')) return 'Integration Problems';
-    if (lower.includes('limit')) return 'Limits in Calculus';
-    if (lower.includes('statistic') || lower.includes('probability')) return 'Statistics & Probability';
-
-    const truncated = firstUserMessage.slice(0, 40);
-    return truncated.length < firstUserMessage.length ? truncated + '...' : truncated;
-  };
 
   const createNewSession = useCallback((firstMessage?: Message): string => {
     const tempId = crypto !== undefined && (crypto.randomUUID instanceof Function)

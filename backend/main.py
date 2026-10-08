@@ -5809,6 +5809,7 @@ def _filter_admin_user_records(
                     str(record.get("uid") or ""),
                     str(record.get("name") or ""),
                     str(record.get("email") or ""),
+                    str(record.get("lrn") or ""),
                 ]
             ).lower()
             if search_term not in searchable:
@@ -6951,13 +6952,10 @@ async def list_admin_users(
             detail="Requested page is too deep. Narrow filters or use a smaller page number.",
         )
 
-    required_window = page * pageSize
-    scan_limit = min(max(required_window * 4, pageSize * 8), ADMIN_USERS_MAX_SCAN_DOCS)
-
     firestore_client = cast(Any, firebase_firestore).client()
     records = await _load_admin_user_records_for_list(
         firestore_client,
-        scan_limit=scan_limit,
+        scan_limit=ADMIN_USERS_MAX_SCAN_DOCS,
         role=role,
         class_section_id=classSectionId,
     )

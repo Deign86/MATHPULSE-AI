@@ -184,7 +184,7 @@ describe('teacher profile and settings', { tags: ['teacher', 'profile-settings']
     await expect(browser).not.toHaveClass(html, smartDarkClass);
   });
 
-  test('Appearance: Discard after previewing Dark Theme returns to the saved light theme', { session: 'teacher', tags: ['known-bug'] }, async ({ app, browser, screen }) => {
+  test('Appearance: Discard after previewing Dark Theme returns to the saved light theme', { session: 'teacher' }, async ({ app, browser, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', profileMenu).tap();
@@ -201,7 +201,7 @@ describe('teacher profile and settings', { tags: ['teacher', 'profile-settings']
     await expect(browser).not.toHaveClass(html, smartDarkClass);
   });
 
-  test('Appearance: Discard reverts an unsaved Compact Class Density switch', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Appearance: Discard reverts an unsaved Compact Class Density switch', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', profileMenu).tap();
@@ -254,7 +254,7 @@ describe('teacher profile and settings', { tags: ['teacher', 'profile-settings']
     await expect(screen.getByText('All settings up to date')).toBeVisible();
   });
 
-  test('Notifications: a saved Weekly Class Summary switch keeps its state after a reload', { session: 'teacher', tags: ['known-bug'], timeout: 180_000 }, async ({ app, screen }) => {
+  test('Notifications: a saved Weekly Class Summary switch keeps its state after a reload', { session: 'teacher', timeout: 180_000 }, async ({ app, screen }) => {
     // The switches have no accessible name; the fourth one sits beside 'Weekly Class Summary'.
     const weeklySummary = screen.getByRole('switch').nth(3);
     const openNotifications = async () => {
@@ -331,7 +331,7 @@ describe('teacher profile and settings', { tags: ['teacher', 'profile-settings']
     await expect(screen.getByRole('button', 'Back to Dashboard')).toBeVisible();
   });
 
-  test('Data & Records: Export JSON downloads the records snapshot', { session: 'teacher', tags: ['known-bug'] }, async ({ app, browser, screen }) => {
+  test('Data & Records: Export JSON downloads the records snapshot', { session: 'teacher' }, async ({ app, browser, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', profileMenu).tap();
@@ -340,7 +340,6 @@ describe('teacher profile and settings', { tags: ['teacher', 'profile-settings']
 
     await screen.getByRole('button', 'Data & Records').tap();
     await expect(screen.getByText('Export Class Records Snapshot')).toBeVisible();
-    // Fails today: exportUserDataSnapshot queries the top-level 'notifications' collection, which firestore.rules deny, so no file is produced.
     const download = await browser.waitForDownload(() => screen.getByRole('button', 'Export JSON').tap(), { timeout: 45_000 });
     expect(download.suggestedFilename).toMatch(/^mathpulse-data-export-.+-\d+\.json$/);
     await expect(screen.getByText('Data export downloaded')).toBeVisible();

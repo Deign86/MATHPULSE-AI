@@ -155,7 +155,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await expect(fullName).toHaveValue(draftName);
   });
 
-  test('Discard Changes after Back leaves My Profile without saving the draft', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('Discard Changes after Back leaves My Profile without saving the draft', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/profile');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
@@ -170,7 +170,10 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await screen.getByRole('button', 'Back to Dashboard').tap();
     await expect(screen.getByRole('heading', 'Discard Unsaved Changes?')).toBeVisible();
     await screen.getByRole('button', 'Discard Changes').tap();
+    // The app-level route guard used to still see the draft and open a second prompt here.
+    await expect(screen.getByRole('heading', 'Leave Without Saving?')).toBeHidden();
     await expect(screen.getByRole('heading', 'My Profile')).toBeHidden({ timeout: 15_000 });
+    await expect(screen.getByRole('heading', 'Leave Without Saving?')).toBeHidden();
 
     await app.open('/profile');
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
@@ -268,7 +271,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await expect(screen.getByRole('button', 'Save Changes')).toBeVisible();
   });
 
-  test('Settings applies display settings once and keeps Dark Mode steady instead of re-rendering in a loop', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('Settings applies display settings once and keeps Dark Mode steady instead of re-rendering in a loop', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
@@ -309,7 +312,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await expect(screen.getByRole('button', 'Save Changes')).toBeVisible();
   });
 
-  test('leaving Settings without saving drops the unsaved Daily XP Target instead of showing it as saved', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('leaving Settings without saving drops the unsaved Daily XP Target instead of showing it as saved', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/settings');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
@@ -378,7 +381,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await expect(screen.getByText('School Computer Tip:')).toBeVisible();
   });
 
-  test('My Data & Files: Save Copy downloads the learning summary as JSON', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('My Data & Files: Save Copy downloads the learning summary as JSON', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
@@ -437,7 +440,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await expect(screen.getByRole('heading', 'My Data & Files')).toBeVisible();
   });
 
-  test('Retake Test warns that the reset also wipes XP before it is confirmed', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('Retake Test warns that the reset also wipes XP before it is confirmed', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/settings');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });

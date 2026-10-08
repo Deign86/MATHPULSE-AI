@@ -17,7 +17,8 @@ interface HeroBannerProps {
   showAssessmentTooltip?: boolean;
   onOpenAssessment?: () => void;
   studentId?: string;
-  assessmentCompleted?: boolean;
+  /** null while the diagnostic check is still resolving */
+  assessmentCompleted?: boolean | null;
 }
 
 const HeroBanner: React.FC<HeroBannerProps> = ({
@@ -28,7 +29,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
   showAssessmentTooltip,
   onOpenAssessment,
   studentId,
-  assessmentCompleted = false,
+  assessmentCompleted = null,
 }) => {
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [heroBannerSummary, setHeroBannerSummary] = useState<HeroBannerModalSummary | null>(null);
@@ -73,7 +74,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
   const previousAssessmentCompletedRef = useRef(assessmentCompleted);
 
   useEffect(() => {
-    const newlyCompleted = assessmentCompleted && !previousAssessmentCompletedRef.current;
+    const newlyCompleted = assessmentCompleted === true && previousAssessmentCompletedRef.current === false;
     previousAssessmentCompletedRef.current = assessmentCompleted;
 
     if (newlyCompleted) {

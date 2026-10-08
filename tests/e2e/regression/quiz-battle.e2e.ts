@@ -58,7 +58,7 @@ describe('quiz battle lobby regression', { tags: ['student', 'quiz-battle', 'reg
     await expect(screen.getByRole('button', /^VS Bot/)).toBeVisible();
   });
 
-  test('Alt+B then Alt+D returns to the Dashboard with the sidebar expanded again', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('Alt+B then Alt+D returns to the Dashboard with the sidebar expanded again', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
@@ -75,7 +75,7 @@ describe('quiz battle lobby regression', { tags: ['student', 'quiz-battle', 'reg
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible();
   });
 
-  test('browser Back from Quiz Battle returns to the Dashboard with the sidebar expanded again', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('browser Back from Quiz Battle returns to the Dashboard with the sidebar expanded again', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');

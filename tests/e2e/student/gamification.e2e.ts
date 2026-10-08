@@ -97,7 +97,7 @@ describe('student gamification', { tags: ['student', 'gamification'] }, () => {
     await expect(screen.getByRole('heading', greeting)).toBeVisible({ timeout: 30_000 });
   });
 
-  test('header XP chip and the right sidebar XP slab show the same total', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('header XP chip and the right sidebar XP slab show the same total', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeInterruptions);

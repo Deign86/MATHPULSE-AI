@@ -206,6 +206,10 @@ class TestPracticeSubmit:
         assert data["score_percent"] == 50.0
         assert "per_question_feedback" in data
         assert "updated_stats" in data
+        # #213: the client credits XP once; the backend must not add it again.
+        update_payload = mock_db.collection.return_value.document.return_value.update.call_args.args[0]
+        assert "totalXP" not in update_payload
+        assert data["updated_stats"]["totalXP"] == 0
 
     def test_submit_rejects_mismatched_user(self):
         """Submit with auth userId != payload userId should return 403."""

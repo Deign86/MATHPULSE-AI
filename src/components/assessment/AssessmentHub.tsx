@@ -52,7 +52,7 @@ const AssessmentHub: React.FC<AssessmentHubProps> = ({
             <Play size={16} />
             Start Initial Assessment
           </Button>
-          <p className="text-xs text-slate-400 mt-4">About 10 minutes &middot; question by question &middot; auto-saved</p>
+          <p className="text-xs text-slate-400 mt-4">About 12 minutes &middot; question by question &middot; finish in one sitting</p>
         </div>
       </div>
     );

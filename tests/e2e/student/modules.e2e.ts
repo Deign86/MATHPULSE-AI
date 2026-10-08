@@ -253,7 +253,7 @@ describe('student modules', { tags: ['student', 'modules'] }, () => {
     await expect(infoHeading).toBeHidden();
   });
 
-  test('curriculum info modal lists the subjects the library actually offers', { session: 'student', tags: ['phone', 'known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('curriculum info modal lists the subjects the library actually offers', { session: 'student', tags: ['phone'] }, async ({ app, agent, screen, browser }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
@@ -351,7 +351,7 @@ describe('student modules', { tags: ['student', 'modules'] }, () => {
     await expect(content.getByRole('heading', 'Study Journey')).toBeHidden();
   });
 
-  test('module hero shows a numeric chapter badge', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('module hero shows a numeric chapter badge', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
@@ -365,7 +365,7 @@ describe('student modules', { tags: ['student', 'modules'] }, () => {
     await expect(content.getByText(/^chapter \d+$/i)).toBeVisible();
   });
 
-  test('Study Materials turns into Review once the lesson has been opened', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('Study Materials turns into Review once the lesson has been opened', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     // Only the label is under test, so the lesson's AI request is cut instead of generating a lesson nobody reads.
     await browser.route(ragLessonRoute, async (route) => {
       await route.abort();

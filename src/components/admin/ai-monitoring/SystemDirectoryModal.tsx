@@ -64,7 +64,7 @@ export const SystemDirectoryModal: React.FC<SystemDirectoryModalProps> = ({ open
                     <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">{f.modelId}</p>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-900/40 shrink-0 tabular-nums">
-                    {(f.cacheHitRate * 100).toFixed(0)}% Cache Hit
+                    {f.cacheHitRate === null ? 'Cache not tracked' : `${(f.cacheHitRate * 100).toFixed(0)}% Cache Hit`}
                   </span>
                 </div>
 
@@ -74,7 +74,7 @@ export const SystemDirectoryModal: React.FC<SystemDirectoryModalProps> = ({ open
                     <span className="tabular-nums font-semibold">{f.totalRequests.toLocaleString()} reqs</span>
                   </span>
                   <span className="font-bold text-slate-900 dark:text-white tabular-nums">
-                    ${f.monthlyCost.toFixed(4)}/mo
+                    {f.monthlyCost === null ? 'Cost not tracked' : `$${f.monthlyCost.toFixed(4)}/mo`}
                   </span>
                 </div>
               </div>
@@ -100,9 +100,9 @@ export const SystemDirectoryModal: React.FC<SystemDirectoryModalProps> = ({ open
                 >
                   <td className="py-3 pl-3 font-semibold text-slate-800 dark:text-slate-200 group-hover:text-[#9956DE] dark:group-hover:text-purple-300 transition-colors">{f.featureName}</td>
                   <td className="py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">{f.modelId}</td>
-                  <td className="py-3 text-right font-semibold text-slate-700 dark:text-slate-300 tabular-nums">${f.monthlyCost.toFixed(4)}</td>
+                  <td className="py-3 text-right font-semibold text-slate-700 dark:text-slate-300 tabular-nums">{f.monthlyCost === null ? '—' : `$${f.monthlyCost.toFixed(4)}`}</td>
                   <td className="py-3 text-right text-slate-500 dark:text-slate-400 tabular-nums">{f.totalRequests.toLocaleString()}</td>
-                  <td className="py-3 text-right pr-3 text-emerald-600 dark:text-emerald-400 font-bold tabular-nums">{(f.cacheHitRate * 100).toFixed(0)}%</td>
+                  <td className="py-3 text-right pr-3 text-emerald-600 dark:text-emerald-400 font-bold tabular-nums">{f.cacheHitRate === null ? '—' : `${(f.cacheHitRate * 100).toFixed(0)}%`}</td>
                 </tr>
               ))}
             </tbody>

@@ -142,7 +142,7 @@ describe('session persistence and sign out', { tags: ['any', 'session'] }, () =>
     await expect(screen.getByRole('heading', 'Welcome Back')).toBeVisible({ timeout: 30_000 });
   });
 
-  test('signing back in after a Settings Log Out shows the Dashboard at /', { session: 'student', tags: ['student', 'known-bug'] }, async ({ app, browser, screen }) => {
+  test('signing back in after a Settings Log Out shows the Dashboard at /', { session: 'student', tags: ['student'] }, async ({ app, browser, screen }) => {
     const student = credentials.user('student');
     await app.open('/settings');
     await browser.evaluate(dismissInitialAssessmentForSession);

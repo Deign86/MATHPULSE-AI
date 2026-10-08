@@ -20,10 +20,11 @@ import {
   TableRow,
 } from '../ui/table';
 import { Input } from '../ui/input';
+import ConfirmModal from '../ConfirmModal';
 import { toast } from 'sonner';
 import { apiService } from '../../services/apiService';
 import { SHS_MATH_SUBJECTS } from '../../data/subjects';
-import { collection, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 interface UploadedFile {
@@ -68,6 +69,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [inventorySearch, setInventorySearch] = useState('');
   const [inventoryType, setInventoryType] = useState('All Types');
+  const [pendingDelete, setPendingDelete] = useState<UploadedFile | null>(null);
 
   // Load teacher-uploaded files
   const loadUploadedFiles = useCallback(async () => {
@@ -97,17 +99,12 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
 
   const handleDeleteFile = async (fileId: string, collectionName: string) => {
     try {
-      // Call backend to delete file + associated data
       await apiService.adminDeleteFile(fileId, collectionName);
       toast.success('File removed');
       loadUploadedFiles();
-    } catch {
-      // Fallback: try direct Firestore delete
-      try {
-        await deleteDoc(doc(db, collectionName, fileId));
-        toast.success('File removed');
-        loadUploadedFiles();
-      } catch { toast.error('Failed to delete file'); }
+    } catch (deleteError) {
+      const reason = deleteError instanceof Error ? deleteError.message : 'Unknown error';
+      toast.error(`Failed to delete file: ${reason}`);
     }
   };
 
@@ -687,7 +684,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                         variant="ghost"
                         size="icon"
                         className="h-9 w-9 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 shrink-0"
-                        onClick={() => handleDeleteFile(file.id, file.collection)}
+                        onClick={() => setPendingDelete(file)}
                         title={`Delete ${file.fileName}`}
                       >
                         <Trash2 size={15} />
@@ -782,7 +779,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all"
-                            onClick={() => handleDeleteFile(file.id, file.collection)}
+                            onClick={() => setPendingDelete(file)}
                             title={`Delete ${file.fileName}`}
                           >
                             <Trash2 size={14} />
@@ -797,6 +794,21 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          if (pendingDelete) {
+            await handleDeleteFile(pendingDelete.id, pendingDelete.collection);
+          }
+        }}
+        title="Delete File"
+        message={`Are you sure you want to delete "${pendingDelete?.fileName ?? ''}"? This also removes its imported records.`}
+        confirmText="Delete"
+        type="danger"
+        icon="delete"
+      />
     </div>
   );
 };

@@ -21,108 +21,6 @@ type TimeRange = AdminAnalyticsRange;
 const TIME_RANGES: readonly TimeRange[] = ['7d', '30d', '90d', 'all'];
 type AnalyticsTab = 'outcomes' | 'curriculum' | 'engagement';
 
-interface SubjectMetric {
-  id: string;
-  name: string;
-  code: string;
-  grade: string;
-  enrolled: number;
-  completedPercent: number;
-  quizAttempts: number;
-  avgScore: number;
-  trend: string;
-  status: 'Mastered' | 'On Track' | 'Needs Focus';
-  color: string;
-  bgLight: string;
-}
-
-interface ClassSectionMetric {
-  rank: number;
-  section: string;
-  grade: string;
-  adviser: string;
-  students: number;
-  masteryRate: number;
-  status: 'Exemplary' | 'Proficient' | 'Developing';
-}
-
-const SUBJECT_LIST: SubjectMetric[] = [
-  {
-    id: 'genmath',
-    name: 'General Mathematics',
-    code: 'GMATH-11',
-    grade: 'Grade 11 Core',
-    enrolled: 184,
-    completedPercent: 82,
-    quizAttempts: 1420,
-    avgScore: 84.5,
-    trend: '+5.2%',
-    status: 'Mastered',
-    color: '#9956DE',
-    bgLight: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200/60 dark:border-purple-800/40',
-  },
-  {
-    id: 'precal',
-    name: 'Pre-Calculus',
-    code: 'PRECAL-11',
-    grade: 'Grade 11 STEM',
-    enrolled: 156,
-    completedPercent: 74,
-    quizAttempts: 1180,
-    avgScore: 78.2,
-    trend: '+3.8%',
-    status: 'On Track',
-    color: '#6366F1',
-    bgLight: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200/60 dark:border-indigo-800/40',
-  },
-  {
-    id: 'basical',
-    name: 'Basic Calculus',
-    code: 'BCAL-12',
-    grade: 'Grade 12 STEM',
-    enrolled: 142,
-    completedPercent: 69,
-    quizAttempts: 994,
-    avgScore: 74.6,
-    trend: '+6.1%',
-    status: 'Needs Focus',
-    color: '#0EA5E9',
-    bgLight: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200/60 dark:border-sky-800/40',
-  },
-  {
-    id: 'statprob',
-    name: 'Statistics & Probability',
-    code: 'STAT-11',
-    grade: 'Grade 11 Core',
-    enrolled: 178,
-    completedPercent: 88,
-    quizAttempts: 1310,
-    avgScore: 86.8,
-    trend: '+4.4%',
-    status: 'Mastered',
-    color: '#10B981',
-    bgLight: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/40',
-  },
-];
-
-const TOP_CLASSES: ClassSectionMetric[] = [
-  { rank: 1, section: 'STEM 12 - Euler', grade: 'Grade 12', adviser: 'Prof. M. Santos', students: 42, masteryRate: 91.4, status: 'Exemplary' },
-  { rank: 2, section: 'STEM 11 - Newton', grade: 'Grade 11', adviser: 'Dr. A. Dela Cruz', students: 45, masteryRate: 88.6, status: 'Exemplary' },
-  { rank: 3, section: 'STEM 12 - Gauss', grade: 'Grade 12', adviser: 'Engr. J. Reyes', students: 40, masteryRate: 85.2, status: 'Proficient' },
-  { rank: 4, section: 'STEM 11 - Pascal', grade: 'Grade 11', adviser: 'Prof. L. Ramos', students: 44, masteryRate: 82.9, status: 'Proficient' },
-  { rank: 5, section: 'STEM 12 - Archimedes', grade: 'Grade 12', adviser: 'Dr. C. Navarro', students: 39, masteryRate: 79.1, status: 'Developing' },
-];
-
-const WEEKLY_ACTIVITY = [
-  { day: 'Mon', quizzes: 185, aiSessions: 142, total: 327 },
-  { day: 'Tue', quizzes: 240, aiSessions: 198, total: 438 },
-  { day: 'Wed', quizzes: 310, aiSessions: 265, total: 575 },
-  { day: 'Thu', quizzes: 275, aiSessions: 230, total: 505 },
-  { day: 'Fri', quizzes: 290, aiSessions: 215, total: 505 },
-  { day: 'Sat', quizzes: 195, aiSessions: 160, total: 355 },
-  { day: 'Sun', quizzes: 140, aiSessions: 110, total: 250 },
-];
-
 const COHORT_COLORS = {
   advanced: '#10B981',
   proficient: '#6366F1',
@@ -130,8 +28,16 @@ const COHORT_COLORS = {
   atRisk: '#F43F5E',
 };
 
-export const AdminAnalytics: React.FC = () => {
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
+
+interface AdminAnalyticsProps {
+  onManageSections?: () => void;
+}
+
+export const AdminAnalytics: React.FC<AdminAnalyticsProps> = ({ onManageSections }) => {
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [loadingKPIs, setLoadingKPIs] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [activeTab, setActiveTab] = useState<AnalyticsTab>('outcomes');
@@ -142,11 +48,15 @@ export const AdminAnalytics: React.FC = () => {
     const requestId = summaryRequestId.current + 1;
     summaryRequestId.current = requestId;
     setLoadingKPIs(true);
+    setSummaryError(null);
     getAnalyticsSummary(timeRange)
       .then((nextSummary) => {
         if (summaryRequestId.current === requestId) setSummary(nextSummary);
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error('[AdminAnalytics] summary load failed:', err);
+        if (summaryRequestId.current === requestId) setSummaryError('Analytics could not be loaded.');
+      })
       .finally(() => {
         if (summaryRequestId.current === requestId) setLoadingKPIs(false);
       });
@@ -186,6 +96,16 @@ export const AdminAnalytics: React.FC = () => {
       { name: 'Needs Support (<60%)', count: atRiskCount, percent: totalLearners ? Math.round((atRiskCount / totalLearners) * 100) : 0, color: COHORT_COLORS.atRisk },
     ];
   }, [summary]);
+
+  const weeklyActivity = useMemo(() => {
+    const attemptsByWeekday = new Array<number>(7).fill(0);
+    summary?.quizAttempts.forEach(({ occurredAt }) => {
+      if (occurredAt !== null) attemptsByWeekday[occurredAt.getDay()] += 1;
+    });
+    return WEEKDAY_ORDER.map((weekday) => ({ day: WEEKDAY_LABELS[weekday], quizzes: attemptsByWeekday[weekday] }));
+  }, [summary]);
+  const datedAttemptCount = weeklyActivity.reduce((total, { quizzes }) => total + quizzes, 0);
+  const peakWeekday = weeklyActivity.reduce((peak, entry) => (entry.quizzes > peak.quizzes ? entry : peak), weeklyActivity[0]);
 
   const passRate = useMemo(() => {
     const total = cohortData.reduce((acc, c) => acc + c.count, 0);
@@ -247,6 +167,7 @@ export const AdminAnalytics: React.FC = () => {
   const atRiskCount = new Set((summary?.quizAttempts ?? [])
     .filter(({ score }) => score !== null && score < 60)
     .map(({ learnerId }) => learnerId)).size;
+  const scoredAttemptCount = (summary?.quizAttempts ?? []).filter(({ score }) => score !== null).length;
 
   const kpiBentos = [
     {
@@ -396,6 +317,22 @@ export const AdminAnalytics: React.FC = () => {
         </div>
       </div>
 
+      {summaryError !== null && (
+        <div role="alert" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+          <span className="flex items-center gap-2 font-semibold">
+            <AlertTriangle size={16} />
+            {summaryError} The figures below are placeholders, not platform activity.
+          </span>
+          <button
+            type="button"
+            onClick={() => loadData()}
+            className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-bold text-rose-700 dark:text-rose-200 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors cursor-pointer"
+          >
+            <RefreshCw size={12} /> Retry
+          </button>
+        </div>
+      )}
+
       {/* ── Top Executive KPI Bento Cards (Full Color Gradients - 2x2 on mobile, 4-col on desktop) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {kpiBentos.map((kpi, idx) => {
@@ -429,7 +366,7 @@ export const AdminAnalytics: React.FC = () => {
                       <div className="h-6 sm:h-7 w-16 sm:w-20 bg-white/20 rounded-lg animate-pulse" />
                     ) : (
                       <p className="text-lg sm:text-3xl font-display font-black text-white tabular-nums tracking-tight leading-none drop-shadow-xs">
-                        {kpi.value}
+                        {summaryError === null ? kpi.value : '—'}
                       </p>
                     )}
                   </div>
@@ -569,7 +506,7 @@ export const AdminAnalytics: React.FC = () => {
                         dy={8}
                       />
                       <YAxis
-                        domain={[60, 100]}
+                        domain={[0, 100]}
                         axisLine={false}
                         tickLine={false}
                         tick={{ fontSize: 11, fontWeight: 600, fill: '#94a3b8' }}
@@ -597,6 +534,7 @@ export const AdminAnalytics: React.FC = () => {
                         strokeWidth={2.5}
                         fillOpacity={1}
                         fill="url(#colorStudent)"
+                        dot={{ r: 5, strokeWidth: 2, fill: '#9956DE' }}
                       />
                       <Area
                         type="monotone"
@@ -606,6 +544,7 @@ export const AdminAnalytics: React.FC = () => {
                         strokeWidth={1.5}
                         strokeDasharray="6 6"
                         fill="transparent"
+                        dot={{ r: 3, fill: '#94a3b8' }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -614,7 +553,7 @@ export const AdminAnalytics: React.FC = () => {
 
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span>Aligned with DepEd STEM Most Essential Learning Competencies (MELCs).</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Peak Comprehension: 87.9%</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">Scored attempts: {scoredAttemptCount}</span>
               </div>
             </div>
 
@@ -710,173 +649,19 @@ export const AdminAnalytics: React.FC = () => {
             className="space-y-5"
           >
             <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 p-5 sm:p-6 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-100 dark:border-slate-700/60">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-200/60 dark:border-sky-800/50 shadow-xs">
-                    <BookOpen size={18} />
-                  </div>
-                  <div>
-                    <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">Curriculum & Subject Performance Matrix</h2>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Student enrollment, module completions, and quiz score averages</p>
-                  </div>
+              <div className="flex items-center gap-3 mb-5 pb-3 border-b border-slate-100 dark:border-slate-700/60">
+                <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center border border-sky-200/60 dark:border-sky-800/50 shadow-xs">
+                  <BookOpen size={18} />
                 </div>
-
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                  <BookCheck size={14} className="text-indigo-500" />
-                  4 Core STEM Modules
-                </span>
-              </div>
-
-              {/* Subject Table & Cards Container */}
-              <div className="rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
-                <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
-
-                {/* Mobile Bento Cards (< md) */}
-                <div className="md:hidden space-y-3 p-3.5">
-                  {SUBJECT_LIST.map((subj) => (
-                    <div
-                      key={`mobile-analytics-subj-${subj.id}`}
-                      className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-3 relative overflow-hidden border-l-4 border-l-[#9956DE]"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs border shrink-0 ${subj.bgLight}`}>
-                            {subj.code.slice(0, 2)}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-900 dark:text-white text-sm truncate">{subj.name}</p>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{subj.code} • {subj.grade}</p>
-                          </div>
-                        </div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
-                          subj.status === 'Mastered'
-                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-900/40'
-                            : subj.status === 'On Track'
-                            ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border-indigo-200/60 dark:border-indigo-900/40'
-                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200/60 dark:border-amber-900/40'
-                        }`}>
-                          {subj.status}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2 py-2 px-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800 text-center">
-                        <div>
-                          <p className="text-[10px] font-medium text-slate-400">Enrolled</p>
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 tabular-nums">{subj.enrolled}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-medium text-slate-400">Submissions</p>
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 tabular-nums">{subj.quizAttempts.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-medium text-slate-400">Avg Score</p>
-                          <p className="text-xs font-bold text-[#9956DE] dark:text-purple-300 mt-0.5 tabular-nums">{subj.avgScore}%</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                          <span>Completion ({subj.completedPercent}%)</span>
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">{subj.trend}</span>
-                        </div>
-                        <div className="w-full h-2 rounded-full bg-slate-200/70 dark:bg-slate-700 overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-300"
-                            style={{
-                              width: `${subj.completedPercent}%`,
-                              backgroundColor: subj.color,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Desktop Table View (≥ md) */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50/90 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700/60 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        <th className="py-3.5 px-5">Subject</th>
-                        <th className="py-3.5 px-4 text-center">Enrolled</th>
-                        <th className="py-3.5 px-4 text-center">Quiz Submissions</th>
-                        <th className="py-3.5 px-4 text-center">Average Score</th>
-                        <th className="py-3.5 px-5">Curriculum Completion</th>
-                        <th className="py-3.5 px-4 text-right">Mastery Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 text-xs">
-                      {SUBJECT_LIST.map((subj) => (
-                        <tr key={subj.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-4 px-5">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs border shrink-0 ${subj.bgLight}`}>
-                                {subj.code.slice(0, 2)}
-                              </div>
-                              <div>
-                                <p className="font-bold text-slate-900 dark:text-white text-sm">{subj.name}</p>
-                                <p className="text-[11px] text-slate-400 mt-0.5">{subj.code} • {subj.grade}</p>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-4 px-4 text-center font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
-                            {subj.enrolled} Students
-                          </td>
-
-                          <td className="py-4 px-4 text-center font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
-                            {subj.quizAttempts.toLocaleString()}
-                          </td>
-
-                          <td className="py-4 px-4 text-center">
-                            <span className="inline-flex items-center gap-1 font-bold text-slate-900 dark:text-white tabular-nums text-sm">
-                              {subj.avgScore}%
-                            </span>
-                          </td>
-
-                          <td className="py-4 px-5 min-w-[160px]">
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                                <span>{subj.completedPercent}% completed</span>
-                                <span className="text-emerald-600 dark:text-emerald-400">{subj.trend}</span>
-                              </div>
-                              <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
-                                <div
-                                  className="h-full rounded-full transition-all duration-300"
-                                  style={{
-                                    width: `${subj.completedPercent}%`,
-                                    backgroundColor: subj.color,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-4 px-4 text-right">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                              subj.status === 'Mastered'
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40'
-                                : subj.status === 'On Track'
-                                ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40'
-                                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40'
-                            }`}>
-                              {subj.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">Curriculum & Subject Performance Matrix</h2>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">Per-subject enrollment, completion, and score averages</p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2">
-                <span>Statistics & Probability leads highest curriculum completion (88%).</span>
-                <span className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
-                  All 4 courses active for academic year 2025-2026.
-                </span>
-              </div>
+              <p className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                Per-subject performance is not available yet: quiz attempts are not recorded against a subject. Range-wide outcomes are on the Learning Outcomes & Trajectory tab.
+              </p>
             </div>
           </motion.div>
         )}
@@ -925,7 +710,7 @@ export const AdminAnalytics: React.FC = () => {
                             <div className="w-12 h-5 bg-white/60 dark:bg-slate-800/60 rounded animate-pulse mb-1" />
                           ) : (
                             <p className="text-xl font-bold text-slate-900 dark:text-white tabular-nums leading-none">
-                              {card.value}
+                              {summaryError === null ? card.value : '—'}
                             </p>
                           )}
 
@@ -937,9 +722,6 @@ export const AdminAnalytics: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 text-xs text-slate-500 dark:text-slate-400">
-                  <span>Gamified quests increased practice quiz retries by +34%.</span>
-                </div>
               </div>
 
               {/* Top Performing Classes (7 cols) */}
@@ -952,7 +734,7 @@ export const AdminAnalytics: React.FC = () => {
                       </div>
                       <div>
                         <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">Top Performing STEM Classes</h2>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">Ranked by section mastery mean</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">Section mastery mean for the selected range</p>
                       </div>
                     </div>
 
@@ -961,67 +743,20 @@ export const AdminAnalytics: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Class Leaderboard List */}
-                  <div className="space-y-2">
-                    {TOP_CLASSES.map((cls) => {
-                      const medalBg =
-                        cls.rank === 1
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300'
-                          : cls.rank === 2
-                          ? 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-300'
-                          : cls.rank === 3
-                          ? 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200'
-                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-400 border-slate-200';
-
-                      return (
-                        <div
-                          key={cls.section}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-indigo-300 dark:hover:border-indigo-800 transition-all gap-2 sm:gap-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs border shrink-0 ${medalBg}`}>
-                              #{cls.rank}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{cls.section}</p>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold border border-slate-200 dark:border-slate-700">
-                                  {cls.grade}
-                                </span>
-                              </div>
-                              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">{cls.adviser} • {cls.students} students</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3 self-end sm:self-center">
-                            <div className="text-right">
-                              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tabular-nums">
-                                {cls.masteryRate}%
-                              </span>
-                              <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Mastery</p>
-                            </div>
-
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                              cls.status === 'Exemplary'
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40'
-                                : cls.status === 'Proficient'
-                                ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40'
-                                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40'
-                            }`}>
-                              {cls.status}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <p className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                    Section mastery rankings are not available yet: quiz attempts are not recorded against a class section.
+                  </p>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span>Section Euler achieved highest quarterly diagnostic progress (+8.4%).</span>
-                  <span className="text-indigo-600 dark:text-indigo-400 font-semibold cursor-pointer hover:underline flex items-center gap-0.5">
+                  <span>Sections and advisers are maintained in Class Management.</span>
+                  <button
+                    type="button"
+                    onClick={onManageSections}
+                    className="text-indigo-600 dark:text-indigo-400 font-semibold cursor-pointer hover:underline flex items-center gap-0.5"
+                  >
                     Manage Sections <ChevronRight size={13} />
-                  </span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1035,26 +770,20 @@ export const AdminAnalytics: React.FC = () => {
                   </div>
                   <div>
                     <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">Weekly Study Activity Trends</h2>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Student session volume across the week</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Quiz attempts by weekday • {timeRange.toUpperCase()}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs font-semibold">
-                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#7274ED]" />
-                    <span>Diagnostic Quizzes</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#F29424]" />
-                    <span>AI Tutor Sessions</span>
-                  </div>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#7274ED]" />
+                  <span>Quiz Attempts</span>
                 </div>
               </div>
 
               {/* Recharts Bar Chart */}
               <div className="h-[220px] sm:h-[240px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={WEEKLY_ACTIVITY} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                  <BarChart data={weeklyActivity} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.6} />
                     <XAxis
                       dataKey="day"
@@ -1079,8 +808,7 @@ export const AdminAnalytics: React.FC = () => {
                       }}
                       cursor={{ fill: '#f8fafc', opacity: 0.15 }}
                     />
-                    <Bar dataKey="quizzes" name="Quizzes" fill="#7274ED" radius={[4, 4, 0, 0]} barSize={18} />
-                    <Bar dataKey="aiSessions" name="AI Sessions" fill="#F29424" radius={[4, 4, 0, 0]} barSize={18} />
+                    <Bar dataKey="quizzes" name="Quiz Attempts" fill="#7274ED" radius={[4, 4, 0, 0]} barSize={18} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1088,9 +816,9 @@ export const AdminAnalytics: React.FC = () => {
               <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span className="flex items-center gap-1.5">
                   <Activity size={13} className="text-orange-500" />
-                  Peak activity: Wednesday (575 student sessions)
+                  {datedAttemptCount === 0 ? 'No dated quiz attempts in this range' : `Peak activity: ${peakWeekday.day} (${peakWeekday.quizzes} attempts)`}
                 </span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300">2,955 weekly interactions</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">{datedAttemptCount.toLocaleString()} dated attempts</span>
               </div>
             </div>
           </motion.div>

@@ -110,6 +110,37 @@ function createPaginationItems(total: number, current: number): PaginationItem[]
   return items;
 }
 
+const DATA_HEALTH_STYLES = {
+  synced: {
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    card: 'bg-emerald-50/60 border-emerald-200/80 hover:bg-emerald-50',
+    icon: 'bg-emerald-100 text-emerald-600 border-emerald-200',
+    title: 'text-emerald-800',
+    detail: 'text-emerald-700/80',
+  },
+  empty: {
+    badge: 'bg-slate-50 text-slate-600 border-slate-200',
+    card: 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-50',
+    icon: 'bg-slate-100 text-slate-500 border-slate-200',
+    title: 'text-slate-700',
+    detail: 'text-slate-500',
+  },
+  warning: {
+    badge: 'bg-amber-50 text-amber-700 border-amber-200',
+    card: 'bg-amber-50/60 border-amber-200/80 hover:bg-amber-50',
+    icon: 'bg-amber-100 text-amber-600 border-amber-200',
+    title: 'text-amber-800',
+    detail: 'text-amber-700/80',
+  },
+  error: {
+    badge: 'bg-rose-50 text-rose-700 border-rose-200',
+    card: 'bg-rose-50/60 border-rose-200/80 hover:bg-rose-50',
+    icon: 'bg-rose-100 text-rose-600 border-rose-200',
+    title: 'text-rose-800',
+    detail: 'text-rose-700/80',
+  },
+} as const;
+
 export interface DataImportViewProps {
   classSectionId?: string;
   className?: string;
@@ -126,6 +157,7 @@ export interface DataImportViewProps {
   }) => void;
   onDataChanged?: () => void;
   onBackToClasses?: () => void;
+  onSelectClass?: (classSectionId: string | null) => void;
   onStudentsUpdated?: (students: StudentView[]) => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
@@ -145,6 +177,7 @@ export default function DataImportView({
   onImportedClassRecords,
   onDataChanged,
   onBackToClasses,
+  onSelectClass,
   onStudentsUpdated,
   onOpenNotifications,
   onOpenProfile,
@@ -534,10 +567,14 @@ export default function DataImportView({
         await refreshRecentMaterials();
         onDataChanged?.();
       } else {
-        toast.error(result.warnings?.join(' ') || 'Import completed but no usable student rows were detected. Check required columns and retry.');
+        const message = result.warnings?.join(' ') || 'Import completed but no usable student rows were detected. Check required columns and retry.';
+        setUploadResult(message);
+        toast.error(message);
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      setUploadResult(message);
+      toast.error(message);
     } finally {
       setUploadingClassRecords(false);
     }
@@ -564,6 +601,9 @@ export default function DataImportView({
   const [localStudents, setLocalStudents] = useState<StudentView[]>(initialStudents);
   const [saving, setSaving] = useState(false);
   const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
+
+  const scopeOptionValue = (classItem: { id: string; classSectionId?: string }) => classItem.classSectionId || classItem.id;
+  const scopeClass = availableClasses.find(c => normalizeClassSectionId(scopeOptionValue(c)) === normalizeClassSectionId(classSectionId));
 
   // Filter students: only show students this teacher manages
   const filteredStudents = useMemo(() => {
@@ -612,14 +652,30 @@ export default function DataImportView({
   const visibleRangeStart = filteredStudents.length === 0 ? 0 : (validCurrentPage - 1) * pageSize + 1;
   const visibleRangeEnd = Math.min(validCurrentPage * pageSize, filteredStudents.length);
 
+  const buildSectionDrafts = (students: StudentView[]) => Object.fromEntries(
+    students.map((student) => [buildStudentViewKey(student), { grade: student.grade || '', section: student.section || '' }])
+  );
+
   useEffect(() => {
     setLocalStudents(initialStudents);
-    setSectionDrafts(Object.fromEntries(
-      initialStudents.map((student) => [buildStudentViewKey(student), { grade: student.grade || '', section: student.section || '' }])
-    ));
+    setSectionDrafts(buildSectionDrafts(initialStudents));
   }, [initialStudents]);
 
   const [sectionDrafts, setSectionDrafts] = useState<Record<string, { grade: string; section: string }>>({});
+
+  const closeEditRecords = () => {
+    setEditingRowKey(null);
+    setSectionDrafts(buildSectionDrafts(localStudents));
+    setCurrentImportView('main');
+  };
+
+  const dataHealth = uploadResult
+    ? { styles: DATA_HEALTH_STYLES.error, title: 'Last Import Failed', detail: uploadResult }
+    : classRecordHistoryError || recentMaterialsError
+      ? { styles: DATA_HEALTH_STYLES.warning, title: 'Sync Issue Detected', detail: classRecordHistoryError || recentMaterialsError }
+      : filteredStudents.length === 0
+        ? { styles: DATA_HEALTH_STYLES.empty, title: 'No Records Loaded', detail: 'Import class records to populate this view.' }
+        : { styles: DATA_HEALTH_STYLES.synced, title: 'All Records Synced', detail: 'AI parsing completed successfully with no anomalies detected.' };
 
   const handleSaveEditRecords = async () => {
     setSaving(true);
@@ -697,12 +753,12 @@ export default function DataImportView({
               <div className="relative w-full md:w-[320px]">
                 <select 
                   className="appearance-none bg-slate-50/80 hover:bg-slate-50 border border-slate-200/90 text-slate-800 font-bold text-xs sm:text-[13px] rounded-xl pl-4 pr-10 py-2.5 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 shadow-2xs cursor-pointer w-full transition-all"
-                  value={className || classSectionId || 'All Classes'}
-                  onChange={() => {}}
+                  value={scopeClass ? scopeOptionValue(scopeClass) : 'All Classes'}
+                  onChange={(e) => onSelectClass?.(e.target.value === 'All Classes' ? null : e.target.value)}
                 >
                   <option value="All Classes">All Classes</option>
                   {availableClasses.map(c => (
-                    <option key={c.id} value={c.classSectionId || c.id}>{c.name}</option>
+                    <option key={c.id} value={scopeOptionValue(c)}>{c.name}</option>
                   ))}
                 </select>
                 <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -988,16 +1044,16 @@ export default function DataImportView({
               <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xs border border-slate-200/90 flex flex-col justify-between h-full">
                 <div className="flex items-center justify-between mb-3.5">
                   <h2 className="text-[15px] font-bold text-slate-800 font-display">Data Health</h2>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${dataHealth.styles.badge}`}>
                     Live Status
                   </span>
                 </div>
-                <div className="flex-1 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-5 flex flex-col items-center justify-center text-center transition-all duration-300 hover:bg-emerald-50 hover:shadow-xs">
-                  <div className="w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center mb-2.5 text-emerald-600 shadow-2xs border border-emerald-200">
-                    <CheckCircle2 className="w-5 h-5" />
+                <div className={`flex-1 border rounded-2xl p-5 flex flex-col items-center justify-center text-center transition-all duration-300 hover:shadow-xs ${dataHealth.styles.card}`}>
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-2.5 shadow-2xs border ${dataHealth.styles.icon}`}>
+                    {dataHealth.styles === DATA_HEALTH_STYLES.synced ? <CheckCircle2 className="w-5 h-5" /> : <Info className="w-5 h-5" />}
                   </div>
-                  <h3 className="text-emerald-800 font-bold text-sm mb-1">All Records Synced</h3>
-                  <p className="text-emerald-700/80 text-xs max-w-[220px] leading-relaxed">AI parsing completed successfully with no anomalies detected.</p>
+                  <h3 className={`font-bold text-sm mb-1 ${dataHealth.styles.title}`}>{dataHealth.title}</h3>
+                  <p className={`text-xs max-w-[220px] leading-relaxed ${dataHealth.styles.detail}`}>{dataHealth.detail}</p>
                 </div>
                 <div className="flex flex-col gap-2 mt-4">
                   <button
@@ -1064,7 +1120,7 @@ export default function DataImportView({
                   <p className="text-xs text-slate-500 mt-3">Uploaded curriculum documents are saved here as course materials.</p>
                   <button
                     type="button"
-                    onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }))}
+                    onClick={onNavigateToModuleAvailability}
                     className="mt-2 text-xs font-semibold text-violet-700 hover:text-violet-800 underline"
                   >
                     Go to Modules
@@ -1115,7 +1171,7 @@ export default function DataImportView({
           <div className="space-y-[16px] h-full flex flex-col">
             <div className="shrink-0 mb-2">
               <button
-                onClick={() => setCurrentImportView('main')}
+                onClick={closeEditRecords}
                 className="flex items-center gap-2 text-[13px] font-semibold text-[#4f46e5] hover:text-[#3730a3] transition-colors w-max bg-white px-[18px] py-2 rounded-full shadow-sm border border-slate-200"
               >
                 <ArrowLeft className="w-4 h-4" /> Back to Uploads
@@ -1129,7 +1185,7 @@ export default function DataImportView({
                   <p className="text-[13px] text-[#64748b]">Review and modify student data manually</p>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => setCurrentImportView('main')} className="px-5 py-2 rounded-full border border-slate-300 text-slate-700 font-semibold text-[13px] hover:bg-slate-50">
+                  <button onClick={closeEditRecords} className="px-5 py-2 rounded-full border border-slate-300 text-slate-700 font-semibold text-[13px] hover:bg-slate-50">
                     Cancel
                   </button>
                   <button onClick={handleSaveEditRecords} disabled={saving} className="px-5 py-2 rounded-full bg-emerald-500 text-white font-semibold text-[13px] hover:bg-emerald-600 flex items-center gap-2 disabled:opacity-50">
@@ -1173,8 +1229,17 @@ export default function DataImportView({
                         <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
                           <Info className="w-7 h-7 text-slate-400" />
                         </div>
-                        <h3 className="text-[16px] font-bold text-slate-700 mb-2">No managed classes found</h3>
-                        <p className="text-[13px] text-slate-500 max-w-sm">You don't currently manage any classes. Ask your administrator to assign you as a section manager, or create a new class from the Dashboard.</p>
+                        {availableClasses.length === 0 ? (
+                          <>
+                            <h3 className="text-[16px] font-bold text-slate-700 mb-2">No managed classes found</h3>
+                            <p className="text-[13px] text-slate-500 max-w-sm">You don't currently manage any classes. Ask your administrator to assign you as a section manager, or create a new class from the Dashboard.</p>
+                          </>
+                        ) : (
+                          <>
+                            <h3 className="text-[16px] font-bold text-slate-700 mb-2">No students in this class yet</h3>
+                            <p className="text-[13px] text-slate-500 max-w-sm">Import class records or add students to this class to edit their records here.</p>
+                          </>
+                        )}
                       </div>
                     ) : paginatedStudents.map((student, i) => {
                       const rowKey = buildStudentViewKey(student);
@@ -1210,8 +1275,8 @@ export default function DataImportView({
                             </div>
                             <div className="w-[140px] shrink-0 px-4 flex justify-center">
                               <input 
-                                type="text" 
-                                value="Grade 11"
+                                type="text"
+                                value={sectionDrafts[rowKey]?.grade || student.grade || ''}
                                 readOnly
                                 className={`outline-none px-4 py-1.5 rounded-full text-[13px] font-medium text-slate-600 w-full transition-all text-center ${editingRowKey === rowKey ? 'bg-white border border-purple-500 ring-2 ring-purple-500/20' : 'bg-slate-100 border border-transparent cursor-default'}`}
                               />

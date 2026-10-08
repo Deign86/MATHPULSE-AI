@@ -100,7 +100,7 @@ describe('student deep links and role routing guards', { tags: ['any', 'routing'
     await expect(browser).toHaveURL('/chat');
   });
 
-  test('the dashboard Leaderboards card opens the Leaderboard and updates the URL', { session: 'student', tags: ['student', 'known-bug'] }, async ({ app, browser, screen }) => {
+  test('the dashboard Leaderboards card opens the Leaderboard and updates the URL', { session: 'student', tags: ['student'] }, async ({ app, browser, screen }) => {
     await app.open('/');
     await browser.evaluate(dismissInitialAssessmentForSession);
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });

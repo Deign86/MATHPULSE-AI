@@ -49,7 +49,7 @@ describe('student dashboard', { tags: ['student', 'dashboard'] }, () => {
     await expect(results).toBeHidden();
   });
 
-  test('a dismissed Assessment Complete bubble stays dismissed after a reload', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('a dismissed Assessment Complete bubble stays dismissed after a reload', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeInterruptions);
@@ -138,7 +138,7 @@ describe('student dashboard', { tags: ['student', 'dashboard'] }, () => {
     await expect(summary).toBeHidden();
   });
 
-  test('right sidebar Streak slab uses the singular Day for a one-day streak', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('right sidebar Streak slab uses the singular Day for a one-day streak', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeInterruptions);
@@ -186,7 +186,7 @@ describe('student dashboard', { tags: ['student', 'dashboard'] }, () => {
     await expect(screen.getByRole('heading', 'Leaderboard')).toBeVisible({ timeout: 30_000 });
   });
 
-  test('Leaderboard opened from the dashboard card survives a reload', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('Leaderboard opened from the dashboard card survives a reload', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeInterruptions);

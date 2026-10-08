@@ -127,7 +127,7 @@ describe('student quiz battle', { tags: ['student', 'quiz-battle'] }, () => {
     await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible();
   });
 
-  test('Hall of Fame shows Arena Standings, the time pills, and the duel shortcuts', { session: 'student' }, async ({ app, agent, screen, browser }) => {
+  test('Hall of Fame shows Arena Standings, the All Time label, and the duel shortcuts', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/battle');
     await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible({ timeout: 45_000 });
     await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
@@ -143,14 +143,9 @@ describe('student quiz battle', { tags: ['student', 'quiz-battle'] }, () => {
     await expect(screen.getByText(/^#\d+$/)).toBeVisible();
     await expect(screen.getByRole('button', 'Battle')).toBeVisible();
 
-    const allTime = screen.getByRole('button', 'All Time');
-    const seasonOne = screen.getByRole('button', 'Season 1');
-    await expect(browser).toHaveClass(allTime, /from-amber-400/);
-    await seasonOne.tap();
-    await expect(browser).toHaveClass(seasonOne, /from-amber-400/);
-    await expect(browser).not.toHaveClass(allTime, /from-amber-400/);
-    await allTime.tap();
-    await expect(browser).toHaveClass(allTime, /from-amber-400/);
+    // Issue #275: studentBattleLeaderboard has no season data, so only an All Time label is shown.
+    await expect(screen.getByRole('main').getByText('All Time')).toBeVisible();
+    await expect(screen.getByRole('button', 'Season 1')).toHaveCount(0);
 
     await screen.getByRole('button', 'Practice Bot').tap();
     await expect(screen.getByRole('button', 'Start Battle')).toContainText(/start bot battle/i);
@@ -289,7 +284,7 @@ describe('student quiz battle', { tags: ['student', 'quiz-battle'] }, () => {
       }
     });
 
-    test('Practice Bot after looking at a Private Room still starts a bot battle', { timeout: 180_000, tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+    test('Practice Bot after looking at a Private Room still starts a bot battle', { timeout: 180_000 }, async ({ app, agent, screen }) => {
       await app.open('/battle');
       await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible({ timeout: 45_000 });
       await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');

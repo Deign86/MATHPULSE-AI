@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import * as api from '../services/apiService';
 import AdminRagManager from './AdminRagManager';
 
@@ -18,5 +18,17 @@ describe('admin RAG manager smoke regressions', () => {
     vi.spyOn(api, 'apiFetch').mockRejectedValue(new Error('unavailable'));
     render(<AdminRagManager />);
     expect(await screen.findByText('Indexed Sections')).toBeTruthy();
+  });
+
+  it('shows an error state with Retry when the inventory request fails', async () => {
+    const fetchSpy = vi.spyOn(api, 'apiFetch').mockRejectedValue(new Error('unavailable'));
+    render(<AdminRagManager />);
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByText('unavailable')).toBeTruthy();
+    expect(screen.queryByText('No AI Knowledge Loaded Yet')).toBeNull();
+
+    const callsBeforeRetry = fetchSpy.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsBeforeRetry);
   });
 });

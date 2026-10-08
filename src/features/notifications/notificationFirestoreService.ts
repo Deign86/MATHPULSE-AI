@@ -8,6 +8,7 @@ import {
   doc,
   setDoc,
   getDocs,
+  getDocsFromCache,
   query,
   where,
   orderBy,
@@ -19,6 +20,7 @@ import {
   onSnapshot,
   Timestamp,
   type DocumentData,
+  type QuerySnapshot,
 } from 'firebase/firestore';
 import { startOfDay, endOfDay } from 'date-fns';
 import { auth, db } from '@/lib/firebase';
@@ -144,17 +146,30 @@ export const markAllAsRead = async (userId: string): Promise<void> => {
   if (!requireAuth()) throw new Error('Cannot mark all as read — not authenticated');
   try {
     const itemsRef = collection(db, 'notifications', userId, 'items');
-    const snapshot = await getDocs(itemsRef);
+    // The inbox listener keeps every item in the local cache. Reading it there avoids a server
+    // round trip: a stalled connection used to hang getDocs before any write was queued, and the
+    // listener then overwrote the optimistic "all read" state with the unread server copy.
+    let cached: QuerySnapshot<DocumentData> | null = null;
+    try {
+      cached = await getDocsFromCache(itemsRef);
+    } catch {
+      cached = null;
+    }
+    const snapshot = cached && !cached.empty ? cached : await getDocs(itemsRef);
     const unreadDocs = snapshot.docs.filter((docSnap) => !readNotificationFlag(docSnap.data()));
 
+    // Committing applies each batch to local listeners immediately; awaiting only the server
+    // acknowledgements together keeps a slow first ack from delaying the later batches.
+    const commits: Promise<void>[] = [];
     for (let offset = 0; offset < unreadDocs.length; offset += MARK_ALL_READ_BATCH_SIZE) {
       const batch = writeBatch(db);
       const batchDocs = unreadDocs.slice(offset, offset + MARK_ALL_READ_BATCH_SIZE);
       for (const docSnap of batchDocs) {
         batch.update(docSnap.ref, { isRead: true });
       }
-      await batch.commit();
+      commits.push(batch.commit());
     }
+    await Promise.all(commits);
   } catch (error) {
     console.error('[notificationFirestoreService] Error marking all as read:', error);
     throw error;

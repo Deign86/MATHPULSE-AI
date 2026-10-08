@@ -131,6 +131,7 @@ const App = ({ authOverride }: AppProps = {}) => {
   // Maintenance Mode
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceChecked, setMaintenanceChecked] = useState(false);
+  const [showMaintenanceSignIn, setShowMaintenanceSignIn] = useState(false);
 
   useEffect(() => {
     const checkMaintenance = async () => {
@@ -157,6 +158,8 @@ const App = ({ authOverride }: AppProps = {}) => {
   // Gamification State (derived from Firebase user profile)
   // SAFETY: student sessions always carry a StudentProfile; teacher/admin roles never read these fields.
   const studentProfile = userProfile as StudentProfile;
+  // SAFETY: only read when userRole === 'admin'; handleSaveProfile persists the Admin ID under `lrn`.
+  const adminProfile = userProfile as AdminProfile & { lrn?: string };
   const [userLevel, setUserLevel] = useState(studentProfile?.level || 1);
   const [currentXP, setCurrentXP] = useState(studentProfile?.currentXP || 0);
   const [totalXP, setTotalXP] = useState(studentProfile?.totalXP || 0);
@@ -255,11 +258,14 @@ const App = ({ authOverride }: AppProps = {}) => {
     setActiveTab(tab);
   }, [location.pathname]);
 
+  // Latest navigation handler for listeners registered once (popstate, shortcuts, notification events)
+  const handleStudentNavigationRef = useRef<(tab: string, moduleId?: string, navigationTarget?: { section?: string; quizId?: string }) => void>(() => {});
+
   // Handle browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
       const tab = pathToTab[window.location.pathname] || 'Dashboard';
-      setActiveTab(tab);
+      handleStudentNavigationRef.current(tab);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -303,6 +309,9 @@ const App = ({ authOverride }: AppProps = {}) => {
     }
     setIsMobileSidebarOpen(false);
   };
+  useEffect(() => {
+    handleStudentNavigationRef.current = handleStudentNavigation;
+  });
 
   const [activeModal, setActiveModal] = useState<ActiveAppModal>(null);
   const [xpNotification, setXpNotification] = useState({ show: false, xp: 0, message: '' });
@@ -758,7 +767,7 @@ const App = ({ authOverride }: AppProps = {}) => {
   };
 
   const handleFullScreen = () => {
-    setActiveTab('AI Chat');
+    handleStudentNavigation('AI Chat');
   };
 
   const handleEarnXP = async (xp: number, message: string) => {
@@ -792,6 +801,7 @@ const App = ({ authOverride }: AppProps = {}) => {
       await signOutUser();
       setProfileOverrides({});
       setActiveTab('Dashboard');
+      window.history.replaceState({}, '', '/');
       setActiveModal(null);
     } catch (error) {
       console.error('Error logging out:', error);
@@ -862,7 +872,6 @@ const App = ({ authOverride }: AppProps = {}) => {
     try {
       const merged = await upsertUserSettings(userProfile.uid, settingsUpdates);
       setUserSettings(merged);
-      toast.success('Settings saved successfully');
     } catch (error) {
       console.error('Error saving settings:', error);
       toast.error('Failed to save settings');
@@ -884,17 +893,22 @@ const App = ({ authOverride }: AppProps = {}) => {
   const handleExportData = async () => {
     if (!userProfile?.uid) return;
 
-    const snapshot = await exportUserDataSnapshot(userProfile.uid);
-    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `mathpulse-data-export-${userProfile.uid}-${Date.now()}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-    toast.success('Data export downloaded');
+    try {
+      const snapshot = await exportUserDataSnapshot(userProfile.uid);
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `mathpulse-data-export-${userProfile.uid}-${Date.now()}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      toast.success('Data export downloaded');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast.error('Failed to export data');
+    }
   };
 
   const handleClearCache = async () => {
@@ -961,7 +975,7 @@ const App = ({ authOverride }: AppProps = {}) => {
       setAssessmentDismissed(false);
       setInitialAssessmentCompleted(false);
       setComputedGpa('0');
-      setActiveTab('Dashboard');
+      handleStudentNavigation('Dashboard');
       // Refresh AuthContext profile so stale assessment fields are re-read from Firestore
       void refreshProfile();
       // Re-trigger diagnostic check so modal shows if assessment was properly reset
@@ -990,6 +1004,11 @@ const App = ({ authOverride }: AppProps = {}) => {
       major: studentProfile.major,
       gpa: computedGpa,
     } : undefined),
+    ...(userRole === 'admin' && adminProfile ? {
+      lrn: adminProfile.lrn,
+      position: adminProfile.position,
+      department: adminProfile.department,
+    } : undefined),
     ...profileOverrides,
   } : {
     uid: undefined,
@@ -1000,7 +1019,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     avatarLayers: undefined,
     gender: 'prefer_not_to_say' as const,
     role: userRole,
-  }), [userProfile, userRole, studentProfile, computedGpa, profileOverrides]);
+  }), [userProfile, userRole, studentProfile, adminProfile, computedGpa, profileOverrides]);
 
   const firstName = profileData.name
     .trim()
@@ -1017,31 +1036,31 @@ const App = ({ authOverride }: AppProps = {}) => {
         switch(e.key.toLowerCase()) {
           case 'd':
             e.preventDefault();
-            handleStudentNavigation('Dashboard');
+            handleStudentNavigationRef.current('Dashboard');
             break;
           case 'm':
             e.preventDefault();
-            handleStudentNavigation('Modules');
+            handleStudentNavigationRef.current('Modules');
             break;
           case 'c':
             e.preventDefault();
-            handleStudentNavigation('AI Chat');
+            handleStudentNavigationRef.current('AI Chat');
             break;
           case 'g':
             e.preventDefault();
-            handleStudentNavigation('Grades');
+            handleStudentNavigationRef.current('Grades');
             break;
           case 'b':
             e.preventDefault();
-            handleStudentNavigation('Quiz Battle');
+            handleStudentNavigationRef.current('Quiz Battle');
             break;
           case 's':
             e.preventDefault();
-            handleStudentNavigation('Settings');
+            handleStudentNavigationRef.current('Settings');
             break;
           case 'p':
             e.preventDefault();
-            handleStudentNavigation('Settings');
+            handleStudentNavigationRef.current('Profile');
             break;
           case 'k':
             e.preventDefault();
@@ -1063,7 +1082,7 @@ const App = ({ authOverride }: AppProps = {}) => {
       // SAFETY: navigation events are dispatched by this app's notification flows as CustomEvent with a detail object.
       const detail = (e as CustomEvent).detail;
       if (detail?.tab && isLoggedIn) {
-        handleStudentNavigation(detail.tab, undefined, detail);
+        handleStudentNavigationRef.current(detail.tab, undefined, detail);
       }
     };
 
@@ -1076,7 +1095,7 @@ const App = ({ authOverride }: AppProps = {}) => {
   }
 
   // Maintenance mode: block non-admin users
-  if (maintenanceMode && (!isLoggedIn || userRole !== 'admin')) {
+  if (maintenanceMode && (isLoggedIn ? userRole !== 'admin' : !showMaintenanceSignIn)) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-[#f8fafc] p-6">
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 max-w-md w-full text-center">
@@ -1090,6 +1109,15 @@ const App = ({ authOverride }: AppProps = {}) => {
           <p className="text-xs text-[#94a3b8]">
             Please check back shortly. We apologize for the inconvenience.
           </p>
+          {!isLoggedIn && (
+            <button
+              type="button"
+              onClick={() => setShowMaintenanceSignIn(true)}
+              className="mt-6 text-sm font-semibold text-violet-700 hover:text-violet-900 underline underline-offset-4"
+            >
+              Admin sign in
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1346,7 +1374,7 @@ const App = ({ authOverride }: AppProps = {}) => {
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : activeTab === 'Leaderboard' ? 'overflow-y-auto lg:overflow-hidden p-0 pb-28 sm:pb-32 lg:pb-0' : activeTab === 'Quiz Battle' ? 'overflow-y-auto p-0 pb-28 sm:pb-32 lg:pb-8' : 'pt-1 sm:pt-2 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
+            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' ? 'overflow-hidden p-0 pb-[4.5rem] lg:pb-0' : activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : activeTab === 'Leaderboard' ? 'overflow-y-auto lg:overflow-hidden p-0 pb-28 sm:pb-32 lg:pb-0' : activeTab === 'Quiz Battle' ? 'overflow-y-auto p-0 pb-28 sm:pb-32 lg:pb-8' : 'pt-1 sm:pt-2 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -1425,7 +1453,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                             showAssessmentTooltip={!hasCompletedDiagnostic && hasCompletedDiagnostic !== null}
                             onOpenAssessment={handleOpenInitialAssessment}
                             studentId={userProfile?.uid}
-                            assessmentCompleted={hasCompletedDiagnostic === true}
+                            assessmentCompleted={hasCompletedDiagnostic}
                           />
                         </Suspense>
 
@@ -1484,12 +1512,6 @@ const App = ({ authOverride }: AppProps = {}) => {
                                 <span className="text-[11px] font-bold text-emerald-100">
                                   Lesson Progress
                                 </span>
-                                <span className="text-[11px] font-bold text-white bg-black/20 backdrop-blur-md px-2.5 py-0.5 rounded-full tabular-nums border border-white/20 whitespace-nowrap">
-                                  2 of 5 Lessons
-                                </span>
-                              </div>
-                              <div className="h-2 w-full bg-black/25 rounded-full overflow-hidden shadow-inner">
-                                <div className="h-full bg-white rounded-full w-[40%] shadow-[0_0_8px_rgba(255,255,255,0.7)] transition-all duration-500" />
                               </div>
                             </div>
                           </div>
@@ -1610,7 +1632,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                                   <LeaderboardPreviewCard
                                     currentUserId={userProfile?.uid || ''}
                                     userPhoto={profileData.photo}
-                                    onOpenLeaderboard={() => setActiveTab('Leaderboard')}
+                                    onOpenLeaderboard={() => handleStudentNavigation('Leaderboard')}
                                   />
                                 </div>
                               </div>
@@ -1625,12 +1647,12 @@ const App = ({ authOverride }: AppProps = {}) => {
                             <RightSidebar
                               currentUserId={userProfile?.uid || ''}
                               onOpenRewards={() => setActiveModal('rewards')}
-                              onOpenLeaderboard={() => setActiveTab('Leaderboard')}
-                              onNavigateToModules={() => setActiveTab('Modules')}
+                              onOpenLeaderboard={() => handleStudentNavigation('Leaderboard')}
+                              onNavigateToModules={() => handleStudentNavigation('Modules')}
                               onNavigateToQuizBattle={() => handleStudentNavigation('Quiz Battle')}
                               userLevel={userLevel}
                               userPhoto={profileData.photo}
-                              currentXP={progressXPInLevel}
+                              currentXP={displayXP}
                               currentStreak={currentStreak}
                               xpToNextLevel={xpToNextLevel}
                               overallXP={currentXP}
@@ -1655,6 +1677,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                       isInQuizMode={isInQuizMode}
                       setIsInQuizMode={setIsInQuizMode}
                       hasCompletedDiagnostic={hasCompletedDiagnostic ?? false}
+                      onStreakChange={setCurrentStreak}
                     />
                   </Suspense>
                 ) : activeTab === 'Leaderboard' ? (
@@ -1908,7 +1931,7 @@ const App = ({ authOverride }: AppProps = {}) => {
             onComplete={handleAssessmentComplete}
             onCancel={() => {
               setShowAssessmentPage(false);
-              setActiveTab('Dashboard');
+              handleStudentNavigation('Dashboard');
             }}
           />
         </Suspense>
@@ -1934,7 +1957,7 @@ const App = ({ authOverride }: AppProps = {}) => {
             mode="fullscreen"
             onClose={() => {
               setActiveModal(null);
-              setActiveTab('Dashboard');
+              handleStudentNavigation('Dashboard');
             }}
           />
         </Suspense>
@@ -1945,7 +1968,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     </NotificationProvider>
   );
 
-    authenticatedContent = <ProgressGate>{studentDashboard}</ProgressGate>;
+    authenticatedContent = <ProgressGate onSignOut={handleLogout}>{studentDashboard}</ProgressGate>;
   } else {
     authenticatedContent = (
       <RequireRole allowed={['student']} userRole={userRole} loading={loading} onGoToLogin={handleLogout}>

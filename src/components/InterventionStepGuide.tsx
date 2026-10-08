@@ -121,7 +121,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
                 </div>
               </div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
+            <button onClick={onClose} aria-label="Close step guide" className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
               <X className="w-4 h-4 text-slate-500" />
             </button>
           </div>
@@ -179,7 +179,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
                   placeholder="Ask for help..."
                   className="flex-1 text-[12px] px-3 py-2 rounded-[10px] border border-slate-200 focus:outline-none focus:border-indigo-300"
                 />
-                <button onClick={handleSendChat} disabled={chatLoading} className="w-8 h-8 rounded-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 flex items-center justify-center text-white transition-colors">
+                <button onClick={handleSendChat} disabled={chatLoading} aria-label="Send message" className="w-8 h-8 rounded-full bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 flex items-center justify-center text-white transition-colors">
                   {chatLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 </button>
               </div>

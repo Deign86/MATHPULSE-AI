@@ -751,12 +751,11 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
       return null;
     }
 
-    const historyMode = (historyFilterMode === 'online' || historyFilterMode === 'bot') ? historyFilterMode : 'all';
     // Issue #159: settled individually so one widget's failure still shows the
     // other's data, with the failure recorded for the visible error card.
     const [statsResult, historyResult] = await Promise.allSettled([
       getStudentBattleStats(studentProfile.uid),
-      getStudentBattleHistory(studentProfile.uid, { mode: historyMode, limitCount: 20 }),
+      getStudentBattleHistory(studentProfile.uid, { mode: 'all', limitCount: 20 }),
     ]);
     if (statsResult.status === 'rejected') {
       recordBattleWidgetError('stats', statsResult.reason instanceof Error ? statsResult.reason : new Error('Unknown error'));
@@ -769,7 +768,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
       stats: statsResult.status === 'fulfilled' ? statsResult.value : null,
       history: historyResult.status === 'fulfilled' ? historyResult.value : [],
     };
-  }, [historyFilterMode, studentProfile?.uid]);
+  }, [studentProfile?.uid]);
 
   const refreshCompletedMatchProfile = useCallback(async () => {
     await refreshBattleInsights();
@@ -859,10 +858,12 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
         difficulty === 'easy' || difficulty === 'medium' || difficulty === 'hard'
           ? difficulty
           : prev.difficulty;
+      const nextMode = mode || prev.mode;
       return {
         ...prev,
         subjectId: validSubjectId,
-        mode: mode || prev.mode,
+        mode: nextMode,
+        queueType: nextMode === 'online' ? prev.queueType : 'public_matchmaking',
         difficulty: validDifficulty,
       };
     });
@@ -896,8 +897,6 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
       };
     });
   }, [leaderboardData, leaderboardNameMode, showExactLeaderboardScores, studentProfile?.uid]);
-
-  const [hallOfFameTimeFilter, setHallOfFameTimeFilter] = useState<'all' | 'weekly'>('all');
 
   // Reversible scroll listener: shows sticky placement pills when Hall of Fame podium scrolls out of view
   useEffect(() => {
@@ -4743,32 +4742,10 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                           Hall of Fame
                         </h1>
 
-                        {/* Filter Pill: All Time vs Season 1 */}
-                        <div className="bg-white/15 backdrop-blur-xl rounded-full p-1 flex gap-1 shadow-sm border border-white/20 mb-2">
-                          <button
-                            type="button"
-                            onClick={() => setHallOfFameTimeFilter('all')}
-                            className={cn(
-                              "px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer",
-                              hallOfFameTimeFilter === 'all'
-                                ? "bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-black shadow-md"
-                                : "text-white/80 hover:text-white hover:bg-white/10"
-                            )}
-                          >
+                        <div className="bg-white/15 backdrop-blur-xl rounded-full p-1 flex shadow-sm border border-white/20 mb-2">
+                          <span className="px-4 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-md">
                             All Time
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setHallOfFameTimeFilter('weekly')}
-                            className={cn(
-                              "px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer",
-                              hallOfFameTimeFilter === 'weekly'
-                                ? "bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-black shadow-md"
-                                : "text-white/80 hover:text-white hover:bg-white/10"
-                            )}
-                          >
-                            Season 1
-                          </button>
+                          </span>
                         </div>
                       </div>
 

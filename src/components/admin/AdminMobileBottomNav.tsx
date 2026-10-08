@@ -59,7 +59,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
   const isOverviewActive = activeTab === 'Overview';
   const isManagementActive = activeTab === 'User Management' || activeTab === 'Class Management';
   const isAIActive = activeTab === 'RAG Manager' || activeTab === 'AI Monitoring';
-  const isCurriculumActive = activeTab === 'Subjects' || activeTab === 'Content';
+  const isCurriculumActive = activeTab === 'Curriculum Control' || activeTab === 'Subjects' || activeTab === 'Content';
   const isInsightsActive = activeTab === 'Analytics' || activeTab === 'Audit Log';
 
   return (

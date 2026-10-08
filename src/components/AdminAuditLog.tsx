@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { getAuditLogs, type AuditLogEntry } from '../services/adminService';
+import { downloadAuditLogCsv } from '../utils/auditLogCsv';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -148,38 +149,7 @@ const AdminAuditLog: React.FC = () => {
   const handleExportCSV = () => {
     setIsExporting(true);
     try {
-      const rows = [
-        ['MathPulse AI - Security & Activity Audit Log Export'],
-        [`Exported At: ${new Date().toLocaleString()}`],
-        [`Filtered Events: ${filteredLogs.length} of ${logs.length}`],
-        [],
-        ['Event ID', 'Severity', 'Timestamp', 'Actor Name', 'Actor Role', 'Category', 'Action', 'Details'],
-        ...filteredLogs.map(l => [
-          l.id,
-          l.severity,
-          l.timestamp,
-          l.user?.name || 'System',
-          l.user?.role || 'Service',
-          l.category,
-          l.action,
-          l.details
-        ])
-      ];
-
-      const columnCount = Math.max(...rows.map(row => row.length));
-      const csvContent = rows.map(row => Array.from({ length: columnCount }, (_, index) => {
-        const item = row[index] ?? '';
-        return `"${String(item).replace(/"/g, '""')}"`;
-      }).join(',')).join('\n');
-      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `MathPulse_AuditLogs_${new Date().toISOString().slice(0, 10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadAuditLogCsv(filteredLogs, logs.length);
       toast.success('Audit log exported successfully');
     } catch (err) {
       console.error('Export error:', err);
@@ -214,18 +184,21 @@ const AdminAuditLog: React.FC = () => {
   const visibleRangeStart = filteredLogs.length === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
   const visibleRangeEnd = Math.min(currentPage * pageSize, filteredLogs.length);
 
+  const filteredSharePercent = logs.length === 0 ? 0 : Math.round((filteredLogs.length / logs.length) * 100);
+  const adminSharePercent = logs.length === 0 ? 0 : Math.round((adminActionCount / logs.length) * 100);
+
   const kpis = [
     {
       title: 'Total Audit Events',
       value: loading ? null : logs.length.toLocaleString(),
       subValue: 'System & user telemetry',
       icon: FileText,
-      trend: '+18.4%',
+      trend: `${filteredLogs.length} shown`,
       badge: 'Audit Base',
       isPositive: true,
       gradient: 'bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED]',
       shadow: 'shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.48)]',
-      progressPercent: 84,
+      progressPercent: filteredSharePercent,
     },
     {
       title: 'Security & Warnings',
@@ -249,11 +222,11 @@ const AdminAuditLog: React.FC = () => {
       subValue: 'User and auth mutations',
       icon: UserCheck,
       badge: 'Admin Mutate',
-      trend: '+12.1%',
+      trend: `${adminSharePercent}% of events`,
       isPositive: true,
       gradient: 'bg-gradient-to-br from-[#6366F1] via-[#4F46E5] to-[#4338CA]',
       shadow: 'shadow-[0_8px_24px_-6px_rgba(99,102,241,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(99,102,241,0.48)]',
-      progressPercent: 65,
+      progressPercent: adminSharePercent,
     },
     {
       title: 'Platform Integrity',

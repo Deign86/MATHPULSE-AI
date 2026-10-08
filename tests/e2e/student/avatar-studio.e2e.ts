@@ -74,7 +74,7 @@ describe('student avatar studio', { tags: ['student', 'avatar-studio'], timeout:
     await expect(screen.getByRole('button', 'SAVE CHANGES')).toBeDisabled();
   });
 
-  test('equipping a free top during a Gold Crown preview ends the preview and takes the crown off', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('equipping a free top during a Gold Crown preview ends the preview and takes the crown off', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/avatar');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeAssessmentPrompt);
@@ -206,7 +206,7 @@ describe('student avatar studio', { tags: ['student', 'avatar-studio'], timeout:
     await expect(guardHeading).toBeHidden();
   });
 
-  test('Alt+D after reaching Avatar Studio from the sidebar still asks before dropping an unsaved outfit', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('Alt+D after reaching Avatar Studio from the sidebar still asks before dropping an unsaved outfit', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeAssessmentPrompt);
