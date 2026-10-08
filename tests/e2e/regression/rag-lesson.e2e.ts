@@ -85,7 +85,7 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
     await expect(screen.getByRole('heading', lessonTitle, { level: 1 })).toBeVisible();
   });
 
-  test('a lesson whose curriculum PDF is not ingested explains why the AI lesson is unavailable', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('a lesson whose curriculum PDF is not ingested explains why the AI lesson is unavailable', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     // Mirrors the backend 404 body for missing curriculum context: FastAPI nests it under "detail".
     await browser.route(ragLessonRoute, async (route) => {
       const cors = {
@@ -125,7 +125,7 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
     await expect(screen.getByText(/Please ensure the PDF has been ingested\./)).toBeVisible();
   });
 
-  test('the PDF fallback offers a way back to the module', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('the PDF fallback offers a way back to the module', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await browser.route(ragLessonRoute, async (route) => {
       await route.abort();
     });
