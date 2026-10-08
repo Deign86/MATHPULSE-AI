@@ -78,7 +78,7 @@ describe('teacher schedule and calendar', { tags: ['teacher', 'schedule-calendar
     await expect(editorTitle).toBeHidden();
   });
 
-  test('Save Event without a title is refused, and reopening Add Event starts without the old error', { session: 'teacher', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Save Event without a title is refused, and reopening Add Event starts without the old error', { session: 'teacher' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Teaching' }).getByRole('button', 'Schedule & Calendar').tap();
